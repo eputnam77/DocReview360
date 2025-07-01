@@ -53,11 +53,10 @@ DocuFlow is a comprehensive web-based application designed to streamline the cre
   - Combined Formal Agency and Public Comment
 
 #### 2.1.3 Document Import and Creation
-- **Flexible File Upload**: Support uploading documents in multiple formats, including Markdown (.md), Microsoft Word (.docx), and XML
-- **Rich Editor Support**: Enable users to author and edit documents directly in the browser using rich text editors such as TipTap and Toast UI Editor. Support plain Markdown editing and WYSIWYG (What-You-See-Is-What-You-Get) modes
-- **Manual Entry**: Provide form-based, in-browser tools for structured document creation and data entry
-- **Template Application**: Automatically apply the correct template based on the selected document type. Administrators can manage templates in the admin panel, and updates to templates are automatically propagated to active projects
-- **Database Storage**: Direct storage in tool database/CMS
+- **Multi-Format File Upload**: Support importing documents in common formats, including Markdown (.md), Microsoft Word (.docx), XML, and other standard types. Ensure compatibility with leading browser-based rich text editors such as TipTap and Toast UI Editor (also known as WYSIWYG or block editors)
+- **Manual Entry and Editing**: Provide in-browser, form-based document creation and editing. Support multiple editor modes, including: Markdown editor, WYSIWYG/block editors (TipTap, Toast UI Editor), XML editor, Plain text editor
+- **Template Application**: Automatically apply the correct template based on document type at the time of creation or import. Allow administrators to manage templates within the tool; template updates should propagate automatically to relevant projects
+- **Database Storage**: Store all documents and their version history directly within the system’s database or integrated CMS. Support search, retrieval, and secure access control for stored documents
 
 #### 2.1.4 Search and Discovery System
 - **Comprehensive Search**: Full-text search across all project content, metadata, and comments
