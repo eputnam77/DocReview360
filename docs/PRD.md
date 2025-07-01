@@ -23,28 +23,18 @@ DocuFlow is a comprehensive web-based application designed to streamline the cre
 ### 2.1 Core Functionality
 
 #### 2.1.1 Document Type Management
-- **Pre-configured Document Types** (examples for federal government):
-  - Advisory Circulars (ACs)
-  - Deviations
-  - Exemptions
-  - Handbooks/Manuals
-  - Orders
-  - Policy Memos
-  - Policy Statements
-  - Special Conditions
-  - Directives
-  - Notices
+- **Pre-configured Document Type**: Automatically include a sample document type upon installation to enable immediate testing and onboarding
 - **Extensible Document Type System**:
-  - **Custom Document Types**: Administrator interface to add organization-specific document types
-  - **Document Type Categories**: Organize document types by category (Regulatory, Policy, Technical, Administrative, etc.)
-  - **Template Management**: Automatic template creation and assignment for new document types
-  - **Workflow Configuration**: Default reviewer and approval chain setup for new document types
-  - **Validation Rules**: Custom validation rules and requirements for each document type
-  - **Document Type Conversion**: Ability to convert projects between document types with automatic template application
-  - **Document Type Import/Export**: Import/export document type configurations for sharing across organizations
+  - **Custom Document Types**: Provide an administrator interface for creating organization-specific document types (e.g., Release Notes, Manuals, Advisory Circulars). System automatically recognizes the custom doc type and becomes usage immediately
+  - **Document Type Categories**: Allow administrators to define and manage document type categories (e.g., Software, Policy, Procedures). System automatically recognizes the custom doc type and becomes usage immediately
+  - **Template Management**: Automatically include a sample template upon installation to enable immediate testing and onboarding. Allow administrators to generate and assign templates for each new document type. System automatically recognizes the custom doc type and becomes usage immediately
+  - **Workflow Configuration**: Enable administrators to define default reviewers and approval chains for every document type. Allow non-administrators to add/remove reviewers during the review phase
+  - **Validation Rules**: Support custom validation rules and requirements tailored to each document type
+  - **Document Type Conversion**: Allow users to convert projects between document types, applying the appropriate template automatically
+  - **Document Type Import/Export**: Enable import and export of document type configurations to support sharing and migration across organizations
 - **Document Operations**:
-  - New document creation
-  - Document revision
+  - Create new documents
+  - Revise existing documents
   - Document change/amendment
 - **Project ID Persistence**:
   - **Lifetime Project ID**: Project ID remains constant throughout entire project lifecycle until closure and archival
@@ -63,9 +53,10 @@ DocuFlow is a comprehensive web-based application designed to streamline the cre
   - Combined Formal Agency and Public Comment
 
 #### 2.1.3 Document Import and Creation
-- **File Upload**: Support for markdown documents
-- **Manual Entry**: In-browser form-based document creation
-- **Template Application**: Automatic template application based on document type. Administrator manages templates in tool. Template updates auto flow to projects.
+- **Flexible File Upload**: Support uploading documents in multiple formats, including Markdown (.md), Microsoft Word (.docx), and XML
+- **Rich Editor Support**: Enable users to author and edit documents directly in the browser using rich text editors such as TipTap and Toast UI Editor. Support plain Markdown editing and WYSIWYG (What-You-See-Is-What-You-Get) modes
+- **Manual Entry**: Provide form-based, in-browser tools for structured document creation and data entry
+- **Template Application**: Automatically apply the correct template based on the selected document type. Administrators can manage templates in the admin panel, and updates to templates are automatically propagated to active projects
 - **Database Storage**: Direct storage in tool database/CMS
 
 #### 2.1.4 Search and Discovery System
