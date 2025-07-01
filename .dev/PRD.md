@@ -24,7 +24,7 @@ DocuFlow is a comprehensive web-based application designed to streamline the cre
 
 #### 2.1.0 Installation and Initial Configuration
 - **PyPI Distribution**: Primary installation via `pip install docuflow`.
-- **GitHub Installation**: Test pre-release versions with `git clone` + `pip install .` or `pip install git+https://github.com/eputnam77/NovelScriptCLI.git`.
+- **GitHub Installation**: Test pre-release versions with `git clone` + `pip install .` or `pip install git+https://github.com/eputnam77/DocuFlow.git`.
 - **Setup Wizard**: After install, a CLI or web-based wizard asks for key environment choices:
   - Database selection (default PostgreSQL from the backend stack)
   - Document editor (default TipTap)
