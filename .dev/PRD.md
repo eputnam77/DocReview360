@@ -3,10 +3,10 @@
 ## 1. Executive Summary
 
 ### 1.1 Product Overview
-DocuFlow is a comprehensive web-based application designed to streamline the creation, review, approval, and archival of federal regulatory documents including Advisory Circulars (ACs), Policy Statements, Orders, and other document types. The system provides an end-to-end workflow management solution with integrated document editing, AI assistance, and extensive logging capabilities.
+DocuFlow is a comprehensive web-based application designed to streamline the creation, review, approval, and archival of various document types. The system provides an end-to-end workflow management solution with integrated document editing, AI assistance, and extensive logging capabilities.
 
 ### 1.2 Business Objectives
-- **Streamline Document Creation**: Reduce time-to-publication for federal documents
+- **Streamline Document Creation**: Reduce time-to-publication for documents
 - **Improve Quality**: Ensure consistency and accuracy through AI assistance and validation
 - **Enhance Collaboration**: Enable seamless review and approval workflows
 - **Ensure Compliance**: Maintain federal record-keeping requirements
