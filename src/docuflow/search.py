@@ -37,9 +37,14 @@ def search(
     project: Optional[str] = None,
     user: Optional[str] = None,
     priority: Optional[int] = None,
+    after: datetime | None = None,
+    before: datetime | None = None,
 ) -> List[DocumentModel]:
     """Return documents matching the query and optional filters."""
+
+    normalized = query.lower()
     results: List[DocumentModel] = []
+
     for doc in documents.values():
         if project and doc.project != project:
             continue
@@ -47,6 +52,15 @@ def search(
             continue
         if priority is not None and doc.priority != priority:
             continue
-        if query.lower() in doc.content.lower():
+        if after and (doc.date is None or doc.date < after):
+            continue
+        if before and (doc.date is None or doc.date > before):
+            continue
+
+        project_obj = projects.get(doc.project) if doc.project else None
+        if normalized in doc.content.lower() or (
+            project_obj and normalized in project_obj.name.lower()
+        ):
             results.append(doc)
+
     return results

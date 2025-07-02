@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import (
@@ -97,9 +98,18 @@ async def search_documents(
     project: str | None = None,
     user: str | None = None,
     priority: int | None = None,
+    after: datetime | None = None,
+    before: datetime | None = None,
 ) -> list[DocumentModel]:
     """Return documents matching a full text query."""
-    return search(q, project=project, user=user, priority=priority)
+    return search(
+        q,
+        project=project,
+        user=user,
+        priority=priority,
+        after=after,
+        before=before,
+    )
 
 
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)

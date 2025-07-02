@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi.testclient import TestClient
 
 from docuflow.api import app
@@ -20,3 +22,38 @@ def test_search_returns_matching_document() -> None:
 
     resp = client.get("/search", params={"q": "special", "project": "p1"})
     assert len(resp.json()) == 1
+
+
+def test_search_supports_project_name_and_date_filter() -> None:
+    client = TestClient(app)
+
+    # Create a project explicitly
+    from docuflow import search as search_module
+
+    search_module.add_project(search_module.ProjectModel(id="p2", name="Very Secret Project"))
+
+    content = "Top content"
+    resp = client.post(
+        "/documents/import",
+        files={"file": ("doc.md", content, "text/markdown")},
+        data={"project": "p2", "user": "bob", "priority": 2},
+    )
+    assert resp.status_code == 201
+    doc_id = resp.json()["id"]
+
+    from docuflow import documents as doc_module
+
+    old_date = datetime(2020, 1, 1)
+    doc_module.documents[doc_id].date = old_date
+
+    resp = client.get("/search", params={"q": "Secret"})
+    assert any(d["id"] == doc_id for d in resp.json())
+
+    resp = client.get(
+        "/search",
+        params={
+            "q": "Secret",
+            "after": "2021-01-01T00:00:00",
+        },
+    )
+    assert not any(d["id"] == doc_id for d in resp.json())
