@@ -19,12 +19,18 @@
 - **Task 6 – FastAPI skeleton**
   - `src/docuflow/api.py` exposes `/projects` and `/documents` endpoints.
   - `tests/test_api.py` validates both endpoints.
+- **Task 7 – Authentication module**
+  - `src/docuflow/auth.py` implements JWT and OIDC flows.
+  - `tests/test_token.py` and `tests/test_task07.py` exercise token issuance.
+- **Task 8 – Document type management**
+  - CRUD logic in `src/docuflow/doc_types.py` with API routes.
+  - `tests/test_document_types.py` covers CRUD operations.
 
-All implemented modules have unit tests with overall coverage above 97%.
+All implemented modules have unit tests with overall coverage above 92%.
 
 ## ❌ Missing Features
 
-- Tasks 7–64 from `TASKS.md` have only stub modules without real logic.
+- Tasks 9–64 from `TASKS.md` have only stub modules without real logic.
 - Documentation is largely absent; `docs/index.md` is empty and README is minimal.
 - No integration or end‑to‑end tests are implemented.
 
@@ -35,7 +41,7 @@ All implemented modules have unit tests with overall coverage above 97%.
 
 ## 📋 Recommended Next Steps
 
-1. Prioritize implementing real functionality for the remaining tasks starting with authentication (Task 7) and document type management (Task 8).
+1. Begin work on the next backend features such as document import (Task 9) and search service (Task 10).
 2. Expand documentation using the templates under `.dev/templates/` and generate user guides with MkDocs.
 3. Add integration tests for the CLI and API endpoints once features go beyond placeholders.
 
