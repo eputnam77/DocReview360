@@ -25,7 +25,6 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |19|Add real time dashboard with project assignment views and status widgets.|Medium|4d|Dashboard fetches API data and displays assignments with priority indicators.|`frontend`, `feature`|
 |20|Write developer documentation and user guide in `docs/` using MkDocs.|Medium|3d|Docs build successfully and describe setup, API usage, and contribution guidelines.|`documentation`|
 |21|Set up test suite with pytest, coverage, ruff, mypy, bandit, and integrate with pre-commit.|High|2d|`pre-commit run --all-files` and `pytest --cov` succeed locally.|`testing`, `devops`|
-
 |22|Implement document numbering system tied to project lifecycle.|Medium|2d|Projects receive persistent document numbers displayed in API and UI.|`backend`, `feature`|
 |23|Integrate AI assistance for document creation and validation.|Medium|4d|AI endpoint suggests document type, validates content, and unit tests cover suggestions.|`backend`, `ai`|
 |24|Add collaborative commenting and threaded responses in the editor.|High|4d|Users can comment inline and reply; tests verify comment storage.|`frontend`, `feature`|
@@ -36,7 +35,6 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |29|Develop import/export for document type configurations.|Low|2d|Admin API allows download and upload of document type JSON; tests ensure round‑trip.|`backend`, `feature`|
 |30|Expose plugin management UI for editors and exporters.|Medium|3d|Admin dashboard lists installed plugins and enables toggle; integration test passes.|`frontend`, `feature`|
 |31|Automate stalled project detection and manager notification every two weeks.|Medium|3d|Background job creates status note and triggers notification in tests.|`backend`, `automation`|
-
 |32|Implement project initialization workflow with AI validation and default reviewer assignment.|High|4d|Creating a project via API generates unique ID, validates document type with AI, assigns default reviewers, and stores phase selection.|`backend`, `feature`|
 |33|Add project document type conversion with automatic template application.|Medium|3d|Users can convert a project to another document type via API and the correct template is applied; tests verify conversion.|`backend`, `feature`|
 |34|Provide multi-editor plugin support allowing editor switching per document.|Medium|4d|Documents can be edited with TipTap or alternative editors using plugins and format conversion; tests cover switching.|`frontend`, `editor`|
@@ -60,14 +58,11 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |52|Create infrastructure-as-code templates using Terraform for cloud deployment.|Medium|3d|`terraform plan` succeeds and README documents deployment steps.|`devops`, `infrastructure`|
 |53|Integrate Pandiff for version comparison and change tracking.|Medium|2d|Version diffs generated via Pandiff and shown in editor; tests cover diff output.|`backend`, `editor`|
 |54|Implement backup and disaster recovery strategy with automated daily backups.|Low|2d|Backup scripts run via CI and restore procedure documented; test verifies backup artifact.|`devops`, `backup`|
-
 |55|Ensure UI follows WCAG 2.1 AA accessibility guidelines with responsive design.|Medium|3d|Frontend passes axe-core accessibility tests and layout adjusts for mobile.|`frontend`, `accessibility`|
 |56|Integrate MinIO object storage for document files.|Medium|2d|Documents are stored and retrieved from MinIO; unit tests verify upload and download.|`backend`, `storage`|
 |57|Add Celery-based background task system with Redis broker.|Medium|3d|Background queue runs in Docker Compose and sample task executes during tests.|`backend`, `devops`|
 |58|Integrate Records Keeper for automated archival folder creation.|Low|2d|Archival process creates folders via Records Keeper API; tests mock API calls.|`backend`, `archival`|
-|59|Integrate HR system for leave management to automate temporary reassignment.|Low|3d|Mock HR integration updates assignments and reverts after end date in tests.|`backend`, `integration`|
-|60|Implement security compliance module with encryption settings and data retention policies.|Medium|3d|Configuration allows setting encryption and retention period; tests verify enforcement.|`backend`, `security`|
-|61|Produce short video tutorials for key user workflows and link them in help system.|Low|2d|Video references added to docs and help system; docs build succeeds.|`documentation`, `frontend`|
+|59|Implement security compliance module with encryption settings and data retention policies.|Medium|3d|Configuration allows setting encryption and retention period; tests verify enforcement.|`backend`, `security`|
 All tasks are currently unassigned. The next agent to act is **architect**.
 
 <!-- ready-for:architect -->
