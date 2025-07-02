@@ -26,6 +26,17 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |20|Write developer documentation and user guide in `docs/` using MkDocs.|Medium|3d|Docs build successfully and describe setup, API usage, and contribution guidelines.|`documentation`|
 |21|Set up test suite with pytest, coverage, ruff, mypy, bandit, and integrate with pre-commit.|High|2d|`pre-commit run --all-files` and `pytest --cov` succeed locally.|`testing`, `devops`|
 
+|22|Implement document numbering system tied to project lifecycle.|Medium|2d|Projects receive persistent document numbers displayed in API and UI.|`backend`, `feature`|
+|23|Integrate AI assistance for document creation and validation.|Medium|4d|AI endpoint suggests document type, validates content, and unit tests cover suggestions.|`backend`, `ai`|
+|24|Add collaborative commenting and threaded responses in the editor.|High|4d|Users can comment inline and reply; tests verify comment storage.|`frontend`, `feature`|
+|25|Provide digital signature integration via third-party service with fallback to custom signatures.|High|3d|Approvals capture signature metadata; tests cover signature verification workflow.|`backend`, `security`|
+|26|Create WebSocket channel for real-time project and status updates.|Medium|3d|Clients receive live status notifications in tests.|`backend`, `api`|
+|27|Abstract database layer for multi-database support with migration tools.|Medium|4d|Swappable database backends run basic CRUD tests.|`backend`, `database`|
+|28|Implement saved searches and search analytics dashboard widgets.|Low|3d|Users can save queries and view search statistics via API.|`backend`, `feature`, `dashboard`|
+|29|Develop import/export for document type configurations.|Low|2d|Admin API allows download and upload of document type JSON; tests ensure round‑trip.|`backend`, `feature`|
+|30|Expose plugin management UI for editors and exporters.|Medium|3d|Admin dashboard lists installed plugins and enables toggle; integration test passes.|`frontend`, `feature`|
+|31|Automate stalled project detection and manager notification every two weeks.|Medium|3d|Background job creates status note and triggers notification in tests.|`backend`, `automation`|
+
 All tasks are currently unassigned. The next agent to act is **architect**.
 
 <!-- ready-for:architect -->
