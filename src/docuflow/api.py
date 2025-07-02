@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request, Response
+from fastapi import Depends, FastAPI, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
+
+from . import auth
 
 app = FastAPI(title="DocuFlow")
 
@@ -23,6 +26,18 @@ async def list_projects() -> list[dict[str, str]]:
 async def list_documents() -> list[dict[str, str]]:
     """Return placeholder document data."""
     return [{"id": "1", "project_id": "1"}]
+
+
+@app.post("/token", response_model=auth.Token)
+async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+    """Return a JWT access token for valid user credentials."""
+    return await auth.login_for_access_token(form_data)
+
+
+@app.get("/me")
+async def read_current_user(current_user: auth.User = Depends(auth.get_current_user)) -> auth.User:
+    """Return the authenticated user."""
+    return current_user
 
 
 @app.get("/", response_class=HTMLResponse)
