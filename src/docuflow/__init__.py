@@ -11,9 +11,21 @@ __all__ = [
     "doc_types",
     "documents",
     "search",
+    "workflows",
 ]
 
-from . import api, auth, cli, config, doc_types, documents, models, plugins, search
+from . import (
+    api,
+    auth,
+    cli,
+    config,
+    doc_types,
+    documents,
+    models,
+    plugins,
+    search,
+    workflows,
+)
 
 
 def placeholder() -> int:
