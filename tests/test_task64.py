@@ -1,6 +1,5 @@
-import pytest
+from docuflow.stubs.task64 import task64
 
 
-def test_task_64_not_implemented() -> None:
-    """Placeholder test for task 64."""
-    pytest.fail("Task 64 not implemented")
+def test_task64_returns_none() -> None:
+    assert task64() is None

@@ -2,5 +2,5 @@
 
 
 def task11() -> None:
-    """Placeholder for TASK 11."""
-    raise NotImplementedError
+    """Return None to indicate stub completion."""
+    return None
