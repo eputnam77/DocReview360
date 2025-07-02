@@ -36,23 +36,35 @@ from .documents import (
 from .documents import (
     list_documents as list_docs,
 )
+from .search import ProjectModel, list_projects, search
 
 app = FastAPI(title="DocuFlow")
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
-@app.get("/projects")
-async def list_projects() -> list[dict[str, str]]:
-    """Return placeholder project data."""
-    return [{"id": "1", "name": "Example"}]
+@app.get("/projects", response_model=list[ProjectModel])
+async def list_projects_endpoint() -> list[ProjectModel]:
+    """Return all known projects."""
+    return list_projects()
 
 
 @app.post("/documents/import", status_code=201, response_model=DocumentModel)
-async def import_document_endpoint(file: UploadFile = File(...)) -> DocumentModel:
+async def import_document_endpoint(
+    file: UploadFile = File(...),
+    project: str | None = Form(None),
+    user: str | None = Form(None),
+    priority: int | None = Form(None),
+) -> DocumentModel:
     """Import a DOCX or Markdown file and store it as a document."""
     data = await file.read()
-    return import_document(file.filename, data)
+    return import_document(
+        file.filename,
+        data,
+        project=project,
+        user=user,
+        priority=priority,
+    )
 
 
 @app.get("/documents", response_model=list[DocumentModel])
@@ -74,9 +86,20 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
 async def update_document_endpoint(doc_id: str, document: DocumentModel) -> DocumentModel:
     """Update a document's content and save the previous version."""
     try:
-        return update_document(doc_id, document.content)
+        return update_document(doc_id, document.content, priority=document.priority)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/search", response_model=list[DocumentModel])
+async def search_documents(
+    q: str,
+    project: str | None = None,
+    user: str | None = None,
+    priority: int | None = None,
+) -> list[DocumentModel]:
+    """Return documents matching a full text query."""
+    return search(q, project=project, user=user, priority=priority)
 
 
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)

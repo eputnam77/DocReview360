@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from io import BytesIO
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import uuid4
 from xml.etree.ElementTree import XML
 from zipfile import ZipFile
@@ -17,6 +18,10 @@ class DocumentModel(BaseModel):
     id: str
     content: str
     history: List[str] = []
+    project: Optional[str] = None
+    user: Optional[str] = None
+    date: Optional[datetime] = None
+    priority: Optional[int] = None
 
 
 documents: Dict[str, DocumentModel] = {}
@@ -34,14 +39,29 @@ def _extract_docx_text(data: bytes) -> str:
     return "".join(texts)
 
 
-def import_document(filename: str, data: bytes) -> DocumentModel:
+def import_document(
+    filename: str,
+    data: bytes,
+    *,
+    project: Optional[str] = None,
+    user: Optional[str] = None,
+    priority: Optional[int] = None,
+) -> DocumentModel:
     """Create a document from uploaded bytes."""
     if filename.lower().endswith(".docx"):
         content = _extract_docx_text(data)
     else:
         content = data.decode()
     doc_id = uuid4().hex
-    document = DocumentModel(id=doc_id, content=content, history=[])
+    document = DocumentModel(
+        id=doc_id,
+        content=content,
+        history=[],
+        project=project,
+        user=user,
+        date=datetime.utcnow(),
+        priority=priority,
+    )
     documents[doc_id] = document
     return document
 
@@ -56,11 +76,18 @@ def list_documents() -> list[DocumentModel]:
     return list(documents.values())
 
 
-def update_document(doc_id: str, content: str) -> DocumentModel:
+def update_document(
+    doc_id: str,
+    content: str,
+    *,
+    priority: Optional[int] = None,
+) -> DocumentModel:
     """Replace document content and store previous version as history."""
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
     document.history.append(document.content)
     document.content = content
+    if priority is not None:
+        document.priority = priority
     return document
