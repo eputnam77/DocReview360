@@ -18,6 +18,7 @@ from fastapi import (
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from . import auth
 from .doc_types import (
@@ -38,6 +39,27 @@ from .documents import (
     list_documents as list_docs,
 )
 from .search import ProjectModel, list_projects, search
+from .workflows import (
+    WorkflowModel,
+    advance_workflow,
+    assign_reviewer,
+    create_workflow,
+    get_workflow,
+)
+
+
+class WorkflowCreate(BaseModel):
+    """Input model for creating workflows."""
+
+    project: str
+    phases: list[str]
+
+
+class ReviewerAssign(BaseModel):
+    """Input model for assigning reviewers."""
+
+    user: str
+
 
 app = FastAPI(title="DocuFlow")
 
@@ -153,6 +175,39 @@ async def delete_document_type_endpoint(name: str) -> Response:
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return Response(status_code=204)
+
+
+@app.post("/workflows", status_code=201, response_model=WorkflowModel)
+async def create_workflow_endpoint(workflow: WorkflowCreate) -> WorkflowModel:
+    """Create a new workflow."""
+    return create_workflow(workflow.project, workflow.phases)
+
+
+@app.get("/workflows/{wf_id}", response_model=WorkflowModel)
+async def get_workflow_endpoint(wf_id: str) -> WorkflowModel:
+    """Return a workflow by id."""
+    wf = get_workflow(wf_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return wf
+
+
+@app.post("/workflows/{wf_id}/assign", response_model=WorkflowModel)
+async def assign_reviewer_endpoint(wf_id: str, body: ReviewerAssign) -> WorkflowModel:
+    """Assign a reviewer to a workflow."""
+    try:
+        return assign_reviewer(wf_id, body.user)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/workflows/{wf_id}/advance", response_model=WorkflowModel)
+async def advance_workflow_endpoint(wf_id: str) -> WorkflowModel:
+    """Advance workflow to the next phase."""
+    try:
+        return advance_workflow(wf_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.post("/token", response_model=auth.Token)
