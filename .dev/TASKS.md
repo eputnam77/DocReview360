@@ -61,6 +61,13 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |53|Integrate Pandiff for version comparison and change tracking.|Medium|2d|Version diffs generated via Pandiff and shown in editor; tests cover diff output.|`backend`, `editor`|
 |54|Implement backup and disaster recovery strategy with automated daily backups.|Low|2d|Backup scripts run via CI and restore procedure documented; test verifies backup artifact.|`devops`, `backup`|
 
+|55|Ensure UI follows WCAG 2.1 AA accessibility guidelines with responsive design.|Medium|3d|Frontend passes axe-core accessibility tests and layout adjusts for mobile.|`frontend`, `accessibility`|
+|56|Integrate MinIO object storage for document files.|Medium|2d|Documents are stored and retrieved from MinIO; unit tests verify upload and download.|`backend`, `storage`|
+|57|Add Celery-based background task system with Redis broker.|Medium|3d|Background queue runs in Docker Compose and sample task executes during tests.|`backend`, `devops`|
+|58|Integrate Records Keeper for automated archival folder creation.|Low|2d|Archival process creates folders via Records Keeper API; tests mock API calls.|`backend`, `archival`|
+|59|Integrate HR system for leave management to automate temporary reassignment.|Low|3d|Mock HR integration updates assignments and reverts after end date in tests.|`backend`, `integration`|
+|60|Implement security compliance module with encryption settings and data retention policies.|Medium|3d|Configuration allows setting encryption and retention period; tests verify enforcement.|`backend`, `security`|
+|61|Produce short video tutorials for key user workflows and link them in help system.|Low|2d|Video references added to docs and help system; docs build succeeds.|`documentation`, `frontend`|
 All tasks are currently unassigned. The next agent to act is **architect**.
 
 <!-- ready-for:architect -->
