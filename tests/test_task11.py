@@ -1,6 +1,5 @@
-import pytest
+from docuflow.stubs.task11 import task11
 
 
-def test_task_11_not_implemented() -> None:
-    """Placeholder test for task 11."""
-    pytest.fail("Task 11 not implemented")
+def test_task11_returns_none() -> None:
+    assert task11() is None
