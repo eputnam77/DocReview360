@@ -18,3 +18,13 @@ def test_document_type_crud() -> None:
     resp = client.get("/document-types/policy")
     assert resp.status_code == 200
     assert resp.json()["workflow"] == ["review", "approve"]
+
+    updated = data | {"template": "<h1>Updated</h1>"}
+    resp = client.put("/document-types/policy", json=updated)
+    assert resp.status_code == 200
+    assert resp.json()["template"] == "<h1>Updated</h1>"
+
+    resp = client.delete("/document-types/policy")
+    assert resp.status_code == 204
+    resp = client.get("/document-types")
+    assert resp.json() == []

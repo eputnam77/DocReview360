@@ -13,8 +13,10 @@ from . import auth
 from .doc_types import (
     DocumentTypeModel,
     add_document_type,
+    delete_document_type,
     get_document_type,
     list_document_types,
+    update_document_type,
 )
 
 app = FastAPI(title="DocuFlow")
@@ -54,6 +56,27 @@ async def get_document_type_endpoint(name: str) -> DocumentTypeModel:
     if doc_type is None:
         raise HTTPException(status_code=404, detail="Document type not found")
     return doc_type
+
+
+@app.put("/document-types/{name}", response_model=DocumentTypeModel)
+async def update_document_type_endpoint(
+    name: str, doc_type: DocumentTypeModel
+) -> DocumentTypeModel:
+    """Replace an existing document type."""
+    try:
+        return update_document_type(name, doc_type)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/document-types/{name}", status_code=204, response_class=Response)
+async def delete_document_type_endpoint(name: str) -> Response:
+    """Remove an existing document type."""
+    try:
+        delete_document_type(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @app.post("/token", response_model=auth.Token)
