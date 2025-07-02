@@ -25,12 +25,16 @@
 - **Task 8 – Document type management**
   - CRUD logic in `src/docuflow/doc_types.py` with API routes.
   - `tests/test_document_types.py` covers CRUD operations.
+- **Task 9 – Document import and editing**
+  - `src/docuflow/documents.py` handles DOCX and Markdown uploads.
+  - API endpoints allow importing and updating documents with history.
+  - `tests/test_documents.py` verifies import and edit flows.
 
 All implemented modules have unit tests with overall coverage above 92%.
 
 ## ❌ Missing Features
 
-- Tasks 9–64 from `TASKS.md` have only stub modules without real logic.
+ - Tasks 10–64 from `TASKS.md` have only stub modules without real logic.
 - Documentation is largely absent; `docs/index.md` is empty and README is minimal.
 - No integration or end‑to‑end tests are implemented.
 
@@ -41,7 +45,7 @@ All implemented modules have unit tests with overall coverage above 92%.
 
 ## 📋 Recommended Next Steps
 
-1. Begin work on the next backend features such as document import (Task 9) and search service (Task 10).
+1. Begin work on the search service (Task 10).
 2. Expand documentation using the templates under `.dev/templates/` and generate user guides with MkDocs.
 3. Add integration tests for the CLI and API endpoints once features go beyond placeholders.
 
