@@ -1,1 +1,153 @@
+# ─────────────────────────────── build & metadata ──────────────────────────────
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "novelscript"
+version         = "0.1.0"
+description     = "CLI-first, local-first writing toolbox for fiction and non-fiction."
+requires-python = ">=3.11"
+
+dependencies = [
+  "Jinja2>=3.1.0",
+  "pydantic>=2.0",
+  "matplotlib>=3.0",
+  "fonttools>=4.43.0",
+  "Pillow>=10.2.0",
+  "click>=8.0",
+  "PyYAML>=6.0",
+  "zipp>=3.19.1",
+  "wikipedia>=1.4",
+  "textstat>=0.7",
+  "textblob>=0.19",
+]
+
+[[project.authors]]
+name  = "Eric Putnam"
+email = "info@example.com"
+
+# ───────────────────────────── optional deps buckets ───────────────────────────
+[project.optional-dependencies]
+# tokenizer support for OpenAI / tiktoken
+tokenizer = ["tiktoken>=0.5.1"]
+
+# formatting & linting
+format   = ["ruff>=0.5"]
+lint     = ["ruff>=0.5"]
+
+# static typing
+typing   = ["mypy>=1.10"]
+
+# testing & quality gates (unit, property, E2E, mutation, coverage)
+# NOTE: Playwright binaries are only required locally/CI, not at runtime
+#       Mutmut enables mutation‑testing gate introduced in AGENTS.md v0.4
+#       pytest‑playwright integrates Playwright with pytest collection.
+#       Versions chosen to satisfy Python 3.12 wheels.
+
+test = [
+  "pytest>=8",
+  "pytest-cov>=5",
+  "hypothesis>=6",
+  "pytest-playwright>=0.4",
+  "playwright>=1.44",
+  "mutmut>=2.4",
+]
+
+# security scanning
+security = [
+  "bandit[toml]>=1.8.5",       # "toml" extra lets Bandit parse this file
+  "semgrep>=1.123.0",
+  "pip-audit>=2.7",
+]
+
+# developer convenience (superset of all tools)
+qa  = ["pre-commit>=3.7"]
+
+dev = [
+  "ruff>=0.5",
+  "mypy>=1.10",
+  "pytest>=8",
+  "pytest-cov>=5",
+  "hypothesis>=6",
+  "pytest-playwright>=0.4",
+  "playwright>=1.44",
+  "mutmut>=2.4",
+  "bandit[toml]>=1.8.5",
+  "semgrep>=1.123.0",
+  "pip-audit>=2.7",
+  "pre-commit>=3.7",
+]
+
+# ──────────────────────────── package discovery ───────────────────────────────
+[tool.setuptools]
+packages = ["novelscript"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.package-data]
+"novelscript.styles" = ["*.md"]
+
+# ───────────────────────────── code style tools ───────────────────────────────
+[tool.black]
+line-length    = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+line-length    = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I"]
+
+# ───────────────────────────── static typing (mypy) ───────────────────────────
+[tool.mypy]
+python_version         = "3.11"
+strict                 = false
+ignore_errors          = true
+packages               = ["novelscript"]
+plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
+
+[[tool.mypy.overrides]]
+module                 = [
+  "Jinja2.*",
+  "matplotlib.*",
+  "fonttools.*",
+  "Pillow.*",
+  "click.*",
+]
+ignore_missing_imports = true
+
+# ───────────────────────────── pytest config ───────────────────────────────
+[tool.pytest.ini_options]
+markers = [
+    # Custom markers must be declared here to silence PytestUnknownMarkWarning
+    "property: property-based tests powered by Hypothesis",
+]
+
+# (optional) other pytest settings you may want:
+# addopts = "-ra -q"
+# testpaths = ["tests"]
+
+# ──────────────────────── security scanning (Bandit) ──────────────────────────
+[tool.bandit]
+targets      = ["src/novelscript"]
+exclude_dirs = ["tests", ".venv", "build", "dist"]
+skips        = ["B101", "B110", "B311"]
+
+# Example per-plugin override (optional)
+[tool.bandit.any_other_function_with_shell_equals_true]
+no_shell = ["os.execl", "os.execle", "os.spawnl", "os.spawnv"]
+shell    = ["os.system", "subprocess.Popen"]
+
+[tool.coverage.run]
+omit = [
+  "src/novelscript/templates/*",
+  "src/novelscript/styles/*",
+]
+
 
