@@ -51,6 +51,15 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |43|Apply phase-based archival naming conventions with metadata preservation.|Medium|2d|Archived files follow naming scheme by phase and include metadata records; tests verify file names.|`backend`, `feature`|
 |44|Add AI-powered export format recommendations and preview workflow.|Low|2d|Export API suggests format based on document type and shows preview before final download; tests cover suggestion logic.|`backend`, `ai`, `export`|
 |45|Implement advanced dashboard analytics including priority heat maps and bottleneck detection.|Low|3d|Dashboard shows heat map visualization and reports bottlenecks; integration test verifies data feed.|`frontend`, `dashboard`, `ai`|
+|46|Implement user and organization management with role-based permissions.|High|3d|API allows CRUD for users and organizations with role assignments; tests verify permission enforcement.|`backend`, `security`|
+|47|Add email notification service for assignments, approvals, and reminders.|Medium|2d|Email notifications sent during workflow events with configurable templates; tests confirm delivery logic.|`backend`, `feature`|
+|48|Integrate optional grammar checking tool (Grammarly/Acrolinx).|Low|2d|Editor highlights grammar issues when tool enabled; tests mock grammar API calls.|`frontend`, `editor`, `ai`|
+|49|Implement re-review automation triggered by significant document changes.|Medium|3d|System detects change threshold and notifies original approvers; tests cover detection and notification.|`backend`, `workflow`|
+|50|Add dual status system separating public status data from internal logs.|Medium|2d|Public API returns sanitized status while internal logs retain detail; tests verify separation.|`backend`, `logging`|
+|51|Provide contextual help system with tooltips and links to tutorials.|Low|2d|UI displays help icons and opens documentation/videos; basic UI test validates presence.|`frontend`, `documentation`|
+|52|Create infrastructure-as-code templates using Terraform for cloud deployment.|Medium|3d|`terraform plan` succeeds and README documents deployment steps.|`devops`, `infrastructure`|
+|53|Integrate Pandiff for version comparison and change tracking.|Medium|2d|Version diffs generated via Pandiff and shown in editor; tests cover diff output.|`backend`, `editor`|
+|54|Implement backup and disaster recovery strategy with automated daily backups.|Low|2d|Backup scripts run via CI and restore procedure documented; test verifies backup artifact.|`devops`, `backup`|
 
 All tasks are currently unassigned. The next agent to act is **architect**.
 
