@@ -31,3 +31,19 @@ def get_document_type(name: str) -> DocumentTypeModel | None:
 def list_document_types() -> list[DocumentTypeModel]:
     """Return all known document types."""
     return list(document_types.values())
+
+
+def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentTypeModel:
+    """Update an existing document type."""
+    if name not in document_types:
+        raise KeyError(f"Document type '{name}' not found")
+    document_types[name] = doc_type
+    return doc_type
+
+
+def delete_document_type(name: str) -> None:
+    """Delete a document type by name."""
+    try:
+        del document_types[name]
+    except KeyError as exc:
+        raise KeyError(f"Document type '{name}' not found") from exc
