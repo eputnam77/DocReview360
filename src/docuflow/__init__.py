@@ -13,6 +13,7 @@ __all__ = [
     "search",
     "workflows",
     "approvals",
+    "logs",
 ]
 
 from . import (
@@ -23,6 +24,7 @@ from . import (
     config,
     doc_types,
     documents,
+    logs,
     models,
     plugins,
     search,
