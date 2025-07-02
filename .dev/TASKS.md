@@ -63,6 +63,11 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |57|Add Celery-based background task system with Redis broker.|Medium|3d|Background queue runs in Docker Compose and sample task executes during tests.|`backend`, `devops`|
 |58|Integrate Records Keeper for automated archival folder creation.|Low|2d|Archival process creates folders via Records Keeper API; tests mock API calls.|`backend`, `archival`|
 |59|Implement security compliance module with encryption settings and data retention policies.|Medium|3d|Configuration allows setting encryption and retention period; tests verify enforcement.|`backend`, `security`|
+|60|Enable dual view mode in the document editor (block-based and Markdown preview).|Medium|3d|Users can toggle between block editor and Markdown preview; tests verify round-trip content consistency.|`frontend`, `editor`|
+|61|Integrate MarkReview for track changes and accept/reject workflow.|Medium|3d|Changes tracked via MarkReview and approvers can accept/reject; unit tests cover track change operations.|`backend`, `editor`|
+|62|Implement real-time autosave with version history for document edits.|Medium|2d|Edits automatically save to database and new versions recorded; tests ensure versions increment.|`backend`, `editor`|
+|63|Add Redis caching layer for session management and performance.|Medium|2d|Redis cache stores sessions and improves response times; tests mock caching logic.|`backend`, `devops`|
+|64|Integrate HR system API for automatic temporary reassignment.|Low|3d|Temporary assignments sync with HR leave data and revert when leave ends; integration tests mock HR API.|`backend`, `integration`|
 All tasks are currently unassigned. The next agent to act is **architect**.
 
 <!-- ready-for:architect -->
