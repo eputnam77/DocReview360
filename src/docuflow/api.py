@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form, Request, Response
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 
 from . import auth
+from .doc_types import (
+    DocumentTypeModel,
+    add_document_type,
+    get_document_type,
+    list_document_types,
+)
 
 app = FastAPI(title="DocuFlow")
 
@@ -26,6 +32,28 @@ async def list_projects() -> list[dict[str, str]]:
 async def list_documents() -> list[dict[str, str]]:
     """Return placeholder document data."""
     return [{"id": "1", "project_id": "1"}]
+
+
+@app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
+async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel:
+    """Create a new document type."""
+    add_document_type(doc_type)
+    return doc_type
+
+
+@app.get("/document-types", response_model=list[DocumentTypeModel])
+async def get_document_types() -> list[DocumentTypeModel]:
+    """Return all configured document types."""
+    return list_document_types()
+
+
+@app.get("/document-types/{name}", response_model=DocumentTypeModel)
+async def get_document_type_endpoint(name: str) -> DocumentTypeModel:
+    """Retrieve a single document type by name."""
+    doc_type = get_document_type(name)
+    if doc_type is None:
+        raise HTTPException(status_code=404, detail="Document type not found")
+    return doc_type
 
 
 @app.post("/token", response_model=auth.Token)
