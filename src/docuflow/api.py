@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
@@ -18,6 +27,15 @@ from .doc_types import (
     list_document_types,
     update_document_type,
 )
+from .documents import (
+    DocumentModel,
+    get_document,
+    import_document,
+    update_document,
+)
+from .documents import (
+    list_documents as list_docs,
+)
 
 app = FastAPI(title="DocuFlow")
 
@@ -30,10 +48,35 @@ async def list_projects() -> list[dict[str, str]]:
     return [{"id": "1", "name": "Example"}]
 
 
-@app.get("/documents")
-async def list_documents() -> list[dict[str, str]]:
-    """Return placeholder document data."""
-    return [{"id": "1", "project_id": "1"}]
+@app.post("/documents/import", status_code=201, response_model=DocumentModel)
+async def import_document_endpoint(file: UploadFile = File(...)) -> DocumentModel:
+    """Import a DOCX or Markdown file and store it as a document."""
+    data = await file.read()
+    return import_document(file.filename, data)
+
+
+@app.get("/documents", response_model=list[DocumentModel])
+async def list_documents_endpoint() -> list[DocumentModel]:
+    """Return all imported documents."""
+    return list_docs()
+
+
+@app.get("/documents/{doc_id}", response_model=DocumentModel)
+async def get_document_endpoint(doc_id: str) -> DocumentModel:
+    """Retrieve a single document by id."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return document
+
+
+@app.put("/documents/{doc_id}", response_model=DocumentModel)
+async def update_document_endpoint(doc_id: str, document: DocumentModel) -> DocumentModel:
+    """Update a document's content and save the previous version."""
+    try:
+        return update_document(doc_id, document.content)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
