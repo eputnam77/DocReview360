@@ -68,6 +68,6 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |62|Implement real-time autosave with version history for document edits.|Medium|2d|Edits automatically save to database and new versions recorded; tests ensure versions increment.|`backend`, `editor`|
 |63|Add Redis caching layer for session management and performance.|Medium|2d|Redis cache stores sessions and improves response times; tests mock caching logic.|`backend`, `devops`|
 |64|Integrate HR system API for automatic temporary reassignment.|Low|3d|Temporary assignments sync with HR leave data and revert when leave ends; integration tests mock HR API.|`backend`, `integration`|
-All tasks are currently unassigned. The next agent to act is **architect**.
+All tasks are currently unassigned. The next agent to act is **builder**.
 
-<!-- ready-for:architect -->
+<!-- ready-for:builder -->
