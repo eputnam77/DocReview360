@@ -21,6 +21,13 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from . import auth
+from .approvals import (
+    ApprovalModel,
+    create_approval,
+    get_approval,
+    list_approvals,
+    update_approval_state,
+)
 from .doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -59,6 +66,20 @@ class ReviewerAssign(BaseModel):
     """Input model for assigning reviewers."""
 
     user: str
+
+
+class ApprovalCreate(BaseModel):
+    """Input model for creating approvals."""
+
+    workflow: str
+    reviewer: str
+
+
+class ApprovalUpdate(BaseModel):
+    """Input model for updating approval state."""
+
+    state: str
+    signature: str | None = None
 
 
 app = FastAPI(title="DocuFlow")
@@ -206,6 +227,36 @@ async def advance_workflow_endpoint(wf_id: str) -> WorkflowModel:
     """Advance workflow to the next phase."""
     try:
         return advance_workflow(wf_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/approvals", status_code=201, response_model=ApprovalModel)
+async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
+    """Create an approval for a workflow."""
+    return create_approval(body.workflow, body.reviewer)
+
+
+@app.get("/approvals", response_model=list[ApprovalModel])
+async def list_approvals_endpoint(workflow: str | None = None) -> list[ApprovalModel]:
+    """Return approvals optionally filtered by workflow."""
+    return list_approvals(workflow)
+
+
+@app.get("/approvals/{approval_id}", response_model=ApprovalModel)
+async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
+    """Retrieve a single approval by id."""
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    return approval
+
+
+@app.put("/approvals/{approval_id}", response_model=ApprovalModel)
+async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> ApprovalModel:
+    """Update approval state and signature."""
+    try:
+        return update_approval_state(approval_id, body.state, signature=body.signature)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
