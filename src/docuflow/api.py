@@ -45,7 +45,15 @@ from .documents import (
 from .documents import (
     list_documents as list_docs,
 )
-from .search import ProjectModel, list_projects, search
+from .search import (
+    ProjectModel,
+    add_project,
+    assign_temporary,
+    get_project,
+    list_projects,
+    search,
+    set_project_priority,
+)
 from .workflows import (
     WorkflowModel,
     advance_workflow,
@@ -82,6 +90,28 @@ class ApprovalUpdate(BaseModel):
     signature: str | None = None
 
 
+class ProjectCreate(BaseModel):
+    """Input model for creating projects."""
+
+    id: str
+    name: str
+    user: str | None = None
+    priority: int = 0
+
+
+class PriorityUpdate(BaseModel):
+    """Input for updating project priority."""
+
+    priority: int
+
+
+class TemporaryAssign(BaseModel):
+    """Input for temporary reassignment."""
+
+    user: str
+    until: datetime
+
+
 app = FastAPI(title="DocuFlow")
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -91,6 +121,38 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 async def list_projects_endpoint() -> list[ProjectModel]:
     """Return all known projects."""
     return list_projects()
+
+
+@app.post("/projects", status_code=201, response_model=ProjectModel)
+async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
+    """Create a new project."""
+    project = ProjectModel(**body.model_dump())
+    add_project(project)
+    return project
+
+
+@app.get("/projects/{project_id}", response_model=ProjectModel)
+async def get_project_endpoint(project_id: str) -> ProjectModel:
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
+@app.put("/projects/{project_id}/priority", response_model=ProjectModel)
+async def update_priority_endpoint(project_id: str, body: PriorityUpdate) -> ProjectModel:
+    try:
+        return set_project_priority(project_id, body.priority)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/projects/{project_id}/temporary", response_model=ProjectModel)
+async def temporary_assign_endpoint(project_id: str, body: TemporaryAssign) -> ProjectModel:
+    try:
+        return assign_temporary(project_id, body.user, body.until)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.post("/documents/import", status_code=201, response_model=DocumentModel)
