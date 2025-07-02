@@ -4,9 +4,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name            = "novelscript"
+name            = "docuflow"
 version         = "0.1.0"
-description     = "CLI-first, local-first writing toolbox for fiction and non-fiction."
+description     = "tbd."
 requires-python = ">=3.11"
 
 dependencies = [
@@ -81,13 +81,13 @@ dev = [
 
 # ──────────────────────────── package discovery ───────────────────────────────
 [tool.setuptools]
-packages = ["novelscript"]
+packages = ["docuflow"]
 
 [tool.setuptools.package-dir]
 "" = "src"
 
 [tool.setuptools.package-data]
-"novelscript.styles" = ["*.md"]
+"docuflow.styles" = ["*.md"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]
@@ -109,7 +109,7 @@ select = ["E", "F", "W", "C90", "I"]
 python_version         = "3.11"
 strict                 = false
 ignore_errors          = true
-packages               = ["novelscript"]
+packages               = ["docuflow"]
 plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
 
 [[tool.mypy.overrides]]
@@ -135,7 +135,7 @@ markers = [
 
 # ──────────────────────── security scanning (Bandit) ──────────────────────────
 [tool.bandit]
-targets      = ["src/novelscript"]
+targets      = ["src/docuflow"]
 exclude_dirs = ["tests", ".venv", "build", "dist"]
 skips        = ["B101", "B110", "B311"]
 
@@ -146,8 +146,8 @@ shell    = ["os.system", "subprocess.Popen"]
 
 [tool.coverage.run]
 omit = [
-  "src/novelscript/templates/*",
-  "src/novelscript/styles/*",
+  "src/docuflow/templates/*",
+  "src/docuflow/styles/*",
 ]
 
 
