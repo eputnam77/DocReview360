@@ -30,5 +30,13 @@ login page and dashboard.
    Use username `admin` and password `admin` to sign in.  On successful login
    you will be redirected to the placeholder dashboard.
 
+You can also obtain a demo OIDC token:
+
+```bash
+curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/token
+```
+
+Use the returned token with the `Authorization` header to access `/oidc/me`.
+
 The API currently returns placeholder data and the CLI merely writes a YAML
 file, but this provides a starting point for further development.
