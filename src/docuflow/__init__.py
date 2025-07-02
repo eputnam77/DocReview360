@@ -12,10 +12,12 @@ __all__ = [
     "documents",
     "search",
     "workflows",
+    "approvals",
 ]
 
 from . import (
     api,
+    approvals,
     auth,
     cli,
     config,
