@@ -34,9 +34,23 @@ async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     return await auth.login_for_access_token(form_data)
 
 
+@app.post("/oidc/token", response_model=auth.Token)
+async def oidc_token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+    """Return an ID token using the OIDC demonstration flow."""
+    return await auth.login_for_oidc_token(form_data)
+
+
 @app.get("/me")
 async def read_current_user(current_user: auth.User = Depends(auth.get_current_user)) -> auth.User:
     """Return the authenticated user."""
+    return current_user
+
+
+@app.get("/oidc/me")
+async def read_current_oidc_user(
+    current_user: auth.User = Depends(auth.get_current_user_oidc),
+) -> auth.User:
+    """Return the authenticated user for the OIDC flow."""
     return current_user
 
 
