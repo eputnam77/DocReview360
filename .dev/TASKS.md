@@ -37,6 +37,21 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |30|Expose plugin management UI for editors and exporters.|Medium|3d|Admin dashboard lists installed plugins and enables toggle; integration test passes.|`frontend`, `feature`|
 |31|Automate stalled project detection and manager notification every two weeks.|Medium|3d|Background job creates status note and triggers notification in tests.|`backend`, `automation`|
 
+|32|Implement project initialization workflow with AI validation and default reviewer assignment.|High|4d|Creating a project via API generates unique ID, validates document type with AI, assigns default reviewers, and stores phase selection.|`backend`, `feature`|
+|33|Add project document type conversion with automatic template application.|Medium|3d|Users can convert a project to another document type via API and the correct template is applied; tests verify conversion.|`backend`, `feature`|
+|34|Provide multi-editor plugin support allowing editor switching per document.|Medium|4d|Documents can be edited with TipTap or alternative editors using plugins and format conversion; tests cover switching.|`frontend`, `editor`|
+|35|Enhance TipTap integration with DOCX import, automatic heading insertion, template conversion, and real-time validation.|Medium|4d|Uploading DOCX converts to TipTap format with template applied; missing headings inserted and validation errors reported in tests.|`frontend`, `editor`|
+|36|Implement AI workload management for priority-based assignment suggestions.|Low|3d|API returns AI-generated workload recommendations and tests cover suggestion logic.|`backend`, `ai`|
+|37|Add style guide management and automated compliance checks.|Medium|3d|Administrators can upload style guides and editor highlights violations; unit tests validate compliance engine.|`backend`, `editor`, `feature`|
+|38|Support export preview and batch export of multiple documents.|Medium|3d|Export endpoint offers preview before download and allows selecting multiple projects for export; tests cover both features.|`backend`, `export`|
+|39|Create real-time log dashboard with filtering and search capabilities.|Medium|3d|Dashboard displays streaming logs, supports filter by user/project/date, and tests verify log query API.|`frontend`, `logging`, `dashboard`|
+|40|Containerize application with Docker and docker-compose for local development.|Medium|2d|`docker-compose up` starts all services successfully and documentation explains usage.|`devops`|
+|41|Integrate monitoring stack using Prometheus, Grafana, and Sentry.|Low|3d|Metrics and error tracking are captured in development environment; sample dashboard loads in tests.|`devops`, `monitoring`|
+|42|Extend authentication module to support Login.gov, SAML, and OAuth providers.|Medium|4d|Configuration allows switching auth providers and tests confirm token issuance for each.|`backend`, `security`|
+|43|Apply phase-based archival naming conventions with metadata preservation.|Medium|2d|Archived files follow naming scheme by phase and include metadata records; tests verify file names.|`backend`, `feature`|
+|44|Add AI-powered export format recommendations and preview workflow.|Low|2d|Export API suggests format based on document type and shows preview before final download; tests cover suggestion logic.|`backend`, `ai`, `export`|
+|45|Implement advanced dashboard analytics including priority heat maps and bottleneck detection.|Low|3d|Dashboard shows heat map visualization and reports bottlenecks; integration test verifies data feed.|`frontend`, `dashboard`, `ai`|
+
 All tasks are currently unassigned. The next agent to act is **architect**.
 
 <!-- ready-for:architect -->
