@@ -1,8 +1,8 @@
 """DocuFlow core package."""
 
-__all__ = ["placeholder", "cli", "plugins", "models", "api", "auth"]
+__all__ = ["placeholder", "cli", "plugins", "models", "api", "auth", "doc_types"]
 
-from . import api, auth, cli, models, plugins
+from . import api, auth, cli, doc_types, models, plugins
 
 
 def placeholder() -> int:
