@@ -1,1 +1,19 @@
+# Build artifacts
+dist/
+build/
+*.egg-info/
 
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

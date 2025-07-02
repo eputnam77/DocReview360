@@ -80,11 +80,15 @@ dev = [
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────
+
 [tool.setuptools]
-packages = ["docuflow"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*", ".dev*"]
 
 [tool.setuptools.package-data]
 "docuflow.styles" = ["*.md"]
