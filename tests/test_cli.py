@@ -1,6 +1,7 @@
 from click.testing import CliRunner
 
-from docuflow.cli import CONFIG_FILE, cli
+from docuflow.cli import cli
+from docuflow.config import CONFIG_FILE
 
 
 def test_init_writes_config() -> None:
@@ -18,8 +19,16 @@ def test_init_writes_config() -> None:
                 "none",
                 "--auth",
                 "oidc",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8080",
+                "--debug",
             ],
         )
         assert result.exit_code == 0
         assert CONFIG_FILE.exists()
-        assert "database" in CONFIG_FILE.read_text()
+        data = CONFIG_FILE.read_text()
+        assert "database" in data
+        assert "0.0.0.0" in data
+        assert "8080" in data

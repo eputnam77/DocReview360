@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
-import yaml
 
-CONFIG_FILE = Path("docuflow.yaml")
+from .config import CONFIG_FILE, Config
 
 
 @click.group()
@@ -43,7 +42,25 @@ def cli() -> None:
     show_default=True,
     prompt=True,
 )
-def init(database: str, editor: str, cms: str, auth: str) -> None:
+@click.option("--host", default="127.0.0.1", show_default=True, prompt=True)
+@click.option("--port", type=int, default=8000, show_default=True, prompt=True)
+@click.option("--debug/--no-debug", default=False, show_default=True, prompt=True)
+@click.option(
+    "--config-path",
+    type=click.Path(dir_okay=False, writable=True),
+    default=str(CONFIG_FILE),
+    show_default=True,
+)
+def init(
+    database: str,
+    editor: str,
+    cms: str,
+    auth: str,
+    host: str,
+    port: int,
+    debug: bool,
+    config_path: str,
+) -> None:
     """Interactive configuration wizard.
 
     Parameters
@@ -57,10 +74,19 @@ def init(database: str, editor: str, cms: str, auth: str) -> None:
     auth:
         Authentication provider.
     """
-    config = {"database": database, "editor": editor, "cms": cms, "auth": auth}
+    config = Config(
+        database=database,
+        editor=editor,
+        cms=cms,
+        auth=auth,
+        host=host,
+        port=port,
+        debug=debug,
+    )
+    path = Path(config_path)
     try:
-        CONFIG_FILE.write_text(yaml.safe_dump(config))
-        click.echo(f"Configuration written to {CONFIG_FILE}")
+        config.save(path)
+        click.echo(f"Configuration written to {path}")
     except OSError as exc:
         raise click.ClickException(f"Failed to write config: {exc}") from exc
 
