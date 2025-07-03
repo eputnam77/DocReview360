@@ -17,6 +17,8 @@ __all__ = [
     "exporter",
     "reporting",
     "archive",
+    "comments",
+    "security_utils",
     "ai_utils",
     "monitoring",
 ]
@@ -28,6 +30,7 @@ from . import (
     archive,
     auth,
     cli,
+    comments,
     config,
     doc_types,
     documents,
@@ -38,6 +41,7 @@ from . import (
     plugins,
     reporting,
     search,
+    security_utils,
     workflows,
 )
 

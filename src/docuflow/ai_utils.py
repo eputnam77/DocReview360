@@ -42,3 +42,22 @@ def detect_anomalies(text: str) -> bool:
         if words[i] == words[i + 1]:
             return True
     return False
+
+
+def suggest_document_type(text: str) -> str:
+    """Return a suggested document type name based on keywords."""
+    text_lower = text.lower()
+    if "report" in text_lower:
+        return "report"
+    if "invoice" in text_lower:
+        return "invoice"
+    return "sample"
+
+
+def validate_content(text: str) -> bool:
+    """Very basic content validation using anomaly detection."""
+    if not text.strip():
+        return False
+    if detect_anomalies(text):
+        return False
+    return True
