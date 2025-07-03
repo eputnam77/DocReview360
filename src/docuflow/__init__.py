@@ -16,11 +16,13 @@ __all__ = [
     "logs",
     "exporter",
     "reporting",
+    "archive",
 ]
 
 from . import (
     api,
     approvals,
+    archive,
     auth,
     cli,
     config,
