@@ -1,0 +1,7 @@
+site_name: DocuFlow Docs
+site_url: https://example.com/docuflow
+nav:
+  - Home: index.md
+docs_dir: docs
+theme:
+  name: material
