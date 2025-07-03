@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Dict, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 
 class DocumentTypeModel(BaseModel):
@@ -60,3 +62,30 @@ def delete_document_type(name: str) -> None:
         del document_types[name]
     except KeyError as exc:
         raise KeyError(f"Document type '{name}' not found") from exc
+
+
+def export_document_types(path: str | Path) -> None:
+    """Serialize document types to ``path`` as JSON."""
+    try:
+        json_data = [doc.model_dump() for doc in document_types.values()]
+        Path(path).write_text(json.dumps(json_data, indent=2))
+    except OSError as exc:
+        raise RuntimeError(f"Failed to export document types to {path}") from exc
+
+
+def import_document_types(path: str | Path) -> None:
+    """Load document types from a JSON file."""
+    try:
+        data = json.loads(Path(path).read_text())
+    except OSError as exc:
+        raise RuntimeError(f"Failed to read document types from {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {path}") from exc
+
+    document_types.clear()
+    for item in data:
+        try:
+            doc = DocumentTypeModel(**item)
+        except ValidationError as exc:
+            raise ValueError(f"Invalid document type entry: {item}") from exc
+        document_types[doc.name] = doc
