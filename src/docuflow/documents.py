@@ -121,3 +121,13 @@ def update_document(
     search_module.add_document(document)
 
     return document
+
+
+def autosave_document(doc_id: str, content: str) -> DocumentModel:
+    """Save content if it changed, preserving history."""
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"Document '{doc_id}' not found")
+    if document.content == content:
+        return document
+    return update_document(doc_id, content)
