@@ -1,8 +1,14 @@
-import pytest
+from datetime import datetime, timedelta
 
-from docuflow.stubs.task73 import task73
+from docuflow.search import ProjectModel, overdue_high_priority, projects
 
 
-def test_task73_not_implemented() -> None:
-    task73()
-    pytest.fail("Task 73 not implemented")
+def test_overdue_high_priority_detection() -> None:
+    proj = ProjectModel(
+        id="pX",
+        name="Important",
+        priority=5,
+        created=datetime.utcnow() - timedelta(days=20),
+    )
+    projects[proj.id] = proj
+    assert proj.id in overdue_high_priority()

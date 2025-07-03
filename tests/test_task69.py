@@ -1,8 +1,7 @@
-import pytest
-
-from docuflow.stubs.task69 import task69
+from docuflow.ai_utils import add_feedback_template, generate_feedback
 
 
-def test_task69_not_implemented() -> None:
-    task69()
-    pytest.fail("Task 69 not implemented")
+def test_feedback_template_application() -> None:
+    add_feedback_template("greet", "Hello {text}!")
+    result = generate_feedback("greet", "World")
+    assert result == "Hello World!"

@@ -1,8 +1,18 @@
 import pytest
 
-from docuflow.stubs.task67 import task67
+from docuflow.documents import DocumentModel
+from docuflow.exporter import export_document, set_guardrails
 
 
-def test_task67_not_implemented() -> None:
-    task67()
-    pytest.fail("Task 67 not implemented")
+def test_guardrails_block_export() -> None:
+    def check(content: str) -> bool:
+        return "PII" in content
+
+    set_guardrails(check)
+    doc = DocumentModel(id="1", content="contains PII", history=[])
+    with pytest.raises(ValueError):
+        export_document(doc, "pdf")
+
+    set_guardrails(None)
+    data, media, name = export_document(doc, "pdf")
+    assert media == "application/pdf"

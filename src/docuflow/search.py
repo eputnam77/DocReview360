@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
-from typing import Dict, List, Optional, Set
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Set
 
 from pydantic import BaseModel
 
@@ -75,9 +75,16 @@ def set_project_priority(project_id: str, priority: int) -> ProjectModel:
     return project
 
 
-def assign_temporary(project_id: str, user: str, until: datetime) -> ProjectModel:
-    """Temporarily assign a project to another user."""
+TEMP_ASSIGN_MAX_DAYS = 30
+
+
+def assign_temporary(
+    project_id: str, user: str, until: datetime, *, approved: bool = False
+) -> ProjectModel:
+    """Temporarily assign a project to another user with optional approval."""
     project = projects[project_id]
+    if (until - datetime.utcnow()).days > TEMP_ASSIGN_MAX_DAYS and not approved:
+        raise ValueError("Manager approval required for long assignment")
     project.temp_user = user
     project.temp_until = until
     return project
@@ -94,6 +101,16 @@ def list_projects() -> list[ProjectModel]:
     for proj in projects.values():
         _expire_temp_assignment(proj)
     return list(projects.values())
+
+
+def overdue_high_priority() -> list[str]:
+    """Return IDs of high priority projects that are overdue."""
+    alerts: list[str] = []
+    for proj in projects.values():
+        _expire_temp_assignment(proj)
+        if proj.priority >= 5 and proj.created < datetime.utcnow() - timedelta(days=14):
+            alerts.append(proj.id)
+    return alerts
 
 
 def _normalize(text: str) -> str:
@@ -146,3 +163,23 @@ def search(
         results.append(doc)
 
     return results
+
+
+def ranked_search(query: str) -> List[dict[str, Any]]:
+    """Return search results with simple ranking and preview snippets."""
+    terms = _normalize(query).split()
+    base = search(query)
+
+    def score(doc: DocumentModel) -> int:
+        return sum(doc.content.lower().count(t) for t in terms)
+
+    def snippet(doc: DocumentModel) -> str:
+        if not terms:
+            return doc.content[:30]
+        idx = doc.content.lower().find(terms[0])
+        if idx == -1:
+            return doc.content[:30]
+        return doc.content[idx : idx + 30]
+
+    ranked = sorted(base, key=score, reverse=True)
+    return [{"document": doc, "snippet": snippet(doc), "score": score(doc)} for doc in ranked]

@@ -1,8 +1,7 @@
-import pytest
-
-from docuflow.stubs.task65 import task65
+from docuflow.doc_types import document_types
 
 
-def test_task65_not_implemented() -> None:
-    task65()
-    pytest.fail("Task 65 not implemented")
+def test_sample_document_type_exists() -> None:
+    assert "sample" in document_types
+    doc = document_types["sample"]
+    assert doc.template.startswith("<h1>")

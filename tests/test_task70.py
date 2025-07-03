@@ -1,8 +1,9 @@
-import pytest
-
-from docuflow.stubs.task70 import task70
+import docuflow.ai_utils as ai
 
 
-def test_task70_not_implemented() -> None:
-    task70()
-    pytest.fail("Task 70 not implemented")
+def test_synthlang_reduces_tokens() -> None:
+    ai.synth_enabled = True
+    text = "Documentation"
+    compressed = ai.synth_compress(text)
+    assert len(compressed) < len(text)
+    ai.synth_enabled = False
