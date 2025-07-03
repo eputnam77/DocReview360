@@ -41,6 +41,7 @@ from .archive import (
 from .archive import (
     archive_document as archive_doc,
 )
+from .comments import CommentModel, add_comment, list_comments
 from .doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -119,6 +120,14 @@ class ProjectCreate(BaseModel):
     name: str
     user: str | None = None
     priority: int = 0
+
+
+class CommentCreate(BaseModel):
+    """Input for creating comments."""
+
+    user: str
+    text: str
+    parent: str | None = None
 
 
 class PriorityUpdate(BaseModel):
@@ -225,6 +234,18 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         return update_document(doc_id, document.content, priority=document.priority)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/documents/{doc_id}/comments", response_model=CommentModel, status_code=201)
+async def add_comment_endpoint(doc_id: str, body: CommentCreate) -> CommentModel:
+    """Create a comment on the given document."""
+    return add_comment(doc_id, body.user, body.text, parent=body.parent)
+
+
+@app.get("/documents/{doc_id}/comments", response_model=list[CommentModel])
+async def list_comments_endpoint(doc_id: str) -> list[CommentModel]:
+    """List comments for a document."""
+    return list_comments(doc_id)
 
 
 @app.get("/documents/{doc_id}/export")
