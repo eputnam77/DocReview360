@@ -46,12 +46,14 @@ from .documents import (
     list_documents as list_docs,
 )
 from .logs import LogEntry, log_event, query_logs
+
 from .reporting import (
     DashboardEntry,
     SummaryReport,
     dashboard_data,
     generate_summary,
 )
+
 from .search import (
     ProjectModel,
     add_project,
@@ -400,14 +402,13 @@ async def list_logs(action: str | None = None, user: str | None = None) -> list[
     """Return recorded logs optionally filtered by action or user."""
     return query_logs(action=action, user=user)
 
-
 @app.get("/reports/summary", response_model=SummaryReport)
 async def get_summary_report() -> SummaryReport:
     """Return counts of projects, documents, workflows, and approvals."""
     return generate_summary()
 
-
 @app.get("/reports/dashboard", response_model=list[DashboardEntry])
 async def get_dashboard_data() -> list[DashboardEntry]:
     """Return per-project data for dashboard widgets."""
     return dashboard_data()
+
