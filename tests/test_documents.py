@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from docuflow.api import app
+from docuflow.documents import autosave_document, import_document
 
 
 def test_import_and_edit_document() -> None:
@@ -31,3 +32,18 @@ def test_import_and_edit_document() -> None:
     data = resp.json()
     assert data["content"] == updated
     assert data["history"] == [content]
+
+
+def test_autosave_document() -> None:
+    doc = import_document("doc.md", b"original")
+    autosave_document(doc.id, "original")
+    assert doc.history == []
+    autosave_document(doc.id, "new")
+    assert doc.content == "new"
+    assert doc.history == ["original"]
+    # cleanup to avoid side effects
+    from docuflow import documents as doc_module
+    from docuflow import search as search_module
+
+    search_module.search_index.remove_document(doc.id)
+    del doc_module.documents[doc.id]
