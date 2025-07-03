@@ -44,7 +44,12 @@ def next_document_number(project: Optional[str] = None) -> int:
 
 
 def _extract_docx_text(data: bytes) -> str:
-    """Extract text from a DOCX file using minimal parsing."""
+    """Extract text from a DOCX file using minimal parsing.
+
+    This helper only looks for ``word/document.xml`` and ignores styles or
+    complex formatting. It is sufficient for tests and small example files but
+    should be replaced with a full parser for production use.
+    """
     with ZipFile(BytesIO(data)) as zf:
         xml_data = zf.read("word/document.xml")
     root = XML(xml_data)
