@@ -45,15 +45,14 @@ from .documents import (
 from .documents import (
     list_documents as list_docs,
 )
+from .exporter import export_document
 from .logs import LogEntry, log_event, query_logs
-
 from .reporting import (
     DashboardEntry,
     SummaryReport,
     dashboard_data,
     generate_summary,
 )
-
 from .search import (
     ProjectModel,
     add_project,
@@ -212,6 +211,20 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         return update_document(doc_id, document.content, priority=document.priority)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/documents/{doc_id}/export")
+async def export_document_endpoint(doc_id: str, fmt: str) -> Response:
+    """Return the document converted to the requested format."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    try:
+        data, media, filename = export_document(document, fmt)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    return Response(content=data, media_type=media, headers=headers)
 
 
 @app.get("/search", response_model=list[DocumentModel])
@@ -402,13 +415,14 @@ async def list_logs(action: str | None = None, user: str | None = None) -> list[
     """Return recorded logs optionally filtered by action or user."""
     return query_logs(action=action, user=user)
 
+
 @app.get("/reports/summary", response_model=SummaryReport)
 async def get_summary_report() -> SummaryReport:
     """Return counts of projects, documents, workflows, and approvals."""
     return generate_summary()
 
+
 @app.get("/reports/dashboard", response_model=list[DashboardEntry])
 async def get_dashboard_data() -> list[DashboardEntry]:
     """Return per-project data for dashboard widgets."""
     return dashboard_data()
-
