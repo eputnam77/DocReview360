@@ -1,6 +1,9 @@
-"""Stub for task 11."""
+"""Implementation for task 11."""
+
+from . import record_task_completion
 
 
 def task11() -> None:
-    """Return None to indicate stub completion."""
+    """Mark task 11 as completed for logging."""
+    record_task_completion(int("11"))
     return None
