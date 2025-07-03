@@ -2,6 +2,11 @@ site_name: DocuFlow Docs
 site_url: https://example.com/docuflow
 nav:
   - Home: index.md
+  - Getting Started: getting_started.md
+  - CLI Reference: cli.md
+  - UI Guide: ui.md
+  - API Overview: api_overview.md
+  - Usage Scenarios: scenarios.md
   - Developer Guide: developer.md
 docs_dir: docs
 theme:
