@@ -26,11 +26,17 @@ class DocumentModel(BaseModel):
 
 
 documents: Dict[str, DocumentModel] = {}
+# Track document numbers globally and per project
 _next_document_number = 1
+_project_document_numbers: Dict[str, int] = {}
 
 
-def next_document_number() -> int:
-    """Return the next sequential document number."""
+def next_document_number(project: Optional[str] = None) -> int:
+    """Return the next sequential document number for the project."""
+    if project:
+        current = _project_document_numbers.get(project, 0) + 1
+        _project_document_numbers[project] = current
+        return current
     global _next_document_number
     num = _next_document_number
     _next_document_number += 1
@@ -67,7 +73,7 @@ def import_document(
         id=doc_id,
         content=content,
         history=[],
-        number=next_document_number(),
+        number=next_document_number(project),
         project=project,
         user=user,
         date=datetime.utcnow(),
