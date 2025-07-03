@@ -32,6 +32,9 @@ dependencies = [
 name  = "Eric Putnam"
 email = "info@example.com"
 
+[project.scripts]
+docuflow = "docuflow.cli:cli"
+
 # ───────────────────────────── optional deps buckets ───────────────────────────
 [project.optional-dependencies]
 # tokenizer support for OpenAI / tiktoken
