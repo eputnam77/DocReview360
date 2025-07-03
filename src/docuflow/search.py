@@ -130,7 +130,12 @@ TEMP_ASSIGN_MAX_DAYS = 30
 def assign_temporary(
     project_id: str, user: str, until: datetime, *, approved: bool = False
 ) -> ProjectModel:
-    """Temporarily assign a project to another user with optional approval."""
+    """Temporarily assign a project to another user with optional approval.
+
+    The ``until`` timestamp may be in the past to immediately expire the
+    temporary assignment.  Long assignments beyond ``TEMP_ASSIGN_MAX_DAYS``
+    require ``approved`` to be ``True``.
+    """
     project = projects[project_id]
     if (until - datetime.utcnow()).days > TEMP_ASSIGN_MAX_DAYS and not approved:
         raise ValueError("Manager approval required for long assignment")
