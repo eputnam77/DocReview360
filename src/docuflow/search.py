@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -64,6 +65,18 @@ def list_projects() -> list[ProjectModel]:
     return list(projects.values())
 
 
+def _normalize(text: str) -> str:
+    """Return a whitespace-normalised lowercase string."""
+
+    cleaned = re.sub(r"[^\w]+", " ", text)
+    return cleaned.lower().strip()
+
+
+def _match_all_terms(text: str, terms: list[str]) -> bool:
+    normalized = _normalize(text)
+    return all(term in normalized for term in terms)
+
+
 def search(
     query: str,
     *,
@@ -75,7 +88,7 @@ def search(
 ) -> List[DocumentModel]:
     """Return documents matching the query and optional filters."""
 
-    normalized = query.lower()
+    terms = _normalize(query).split()
     results: List[DocumentModel] = []
 
     for doc in documents.values():
@@ -91,9 +104,10 @@ def search(
             continue
 
         project_obj = projects.get(doc.project) if doc.project else None
-        if normalized in doc.content.lower() or (
-            project_obj and normalized in project_obj.name.lower()
-        ):
+        haystack = doc.content
+        if project_obj:
+            haystack += f" {project_obj.name}"
+        if _match_all_terms(haystack, terms):
             results.append(doc)
 
     return results
