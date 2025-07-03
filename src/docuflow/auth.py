@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 from typing import Any, Dict
 
@@ -10,14 +11,16 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-SECRET_KEY = "secret-key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = os.getenv("DOCUFLOW_SECRET_KEY", "secret-key")  # pragma: no cover
+ALGORITHM = os.getenv("DOCUFLOW_ALGORITHM", "HS256")  # pragma: no cover
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("DOCUFLOW_ACCESS_EXPIRE_MINUTES", "30")
+)  # pragma: no cover
 
 # separate secret for OIDC demonstration
-OIDC_SECRET_KEY = "oidc-secret"
-OIDC_ALGORITHM = "HS256"
-OIDC_TOKEN_EXPIRE_MINUTES = 30
+OIDC_SECRET_KEY = os.getenv("DOCUFLOW_OIDC_SECRET_KEY", "oidc-secret")  # pragma: no cover
+OIDC_ALGORITHM = os.getenv("DOCUFLOW_OIDC_ALGORITHM", "HS256")  # pragma: no cover
+OIDC_TOKEN_EXPIRE_MINUTES = int(os.getenv("DOCUFLOW_OIDC_EXPIRE_MINUTES", "30"))  # pragma: no cover
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token")
@@ -40,6 +43,11 @@ FAKE_USERS_DB = {"alice": {"username": "alice", "password": "password"}}
 
 
 def authenticate_user(username: str, password: str) -> User | None:
+    """Return ``User`` if credentials match, otherwise ``None``."""
+
+    if not username or not password:
+        return None
+
     user = FAKE_USERS_DB.get(username)
     if user and user["password"] == password:
         return User(username=username)
@@ -47,6 +55,8 @@ def authenticate_user(username: str, password: str) -> User | None:
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
+    """Return a signed JWT access token."""
+
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
@@ -71,6 +81,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
 
 
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
+    """Issue a short-lived JWT bearer token."""
+
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -96,7 +108,8 @@ async def login_for_oidc_token(form_data: OAuth2PasswordRequestForm = Depends())
 
 
 def create_id_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
-    """Create an ID token for OIDC authentication."""
+    """Return an ID token for OIDC authentication."""
+
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
