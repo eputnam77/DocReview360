@@ -7,19 +7,34 @@ from typing import Any, Callable, Dict, Iterable, List
 
 
 class PluginRegistry:
-    """Registry that stores plugin callables by name."""
+    """Registry that stores plugin callables by name with enable/disable support."""
 
     def __init__(self) -> None:
         self._plugins: Dict[str, Callable[..., Any]] = {}
+        self._disabled: set[str] = set()
 
-    def register(self, name: str, plugin: Callable[..., Any]) -> None:
-        """Register a plugin under a unique name."""
+    def register(self, name: str, plugin: Callable[..., Any], *, enabled: bool = True) -> None:
+        """Register a plugin under a unique name.
+
+        Parameters
+        ----------
+        name:
+            Unique plugin identifier.
+        plugin:
+            Callable implementing the plugin.
+        enabled:
+            Whether the plugin should start enabled.
+        """
         if name in self._plugins:
             raise ValueError(f"Plugin '{name}' already registered")
         self._plugins[name] = plugin
+        if not enabled:
+            self._disabled.add(name)
 
     def get(self, name: str) -> Callable[..., Any]:
-        """Retrieve a plugin by name."""
+        """Retrieve a plugin by name ensuring it is enabled."""
+        if name in self._disabled:
+            raise ValueError(f"Plugin '{name}' is disabled")
         try:
             return self._plugins[name]
         except KeyError as exc:
@@ -29,12 +44,29 @@ class PluginRegistry:
         """Remove a plugin from the registry."""
         try:
             del self._plugins[name]
+            self._disabled.discard(name)
         except KeyError as exc:
             raise KeyError(f"Plugin '{name}' not found") from exc
+
+    def enable(self, name: str) -> None:
+        """Enable a previously disabled plugin."""
+        if name not in self._plugins:
+            raise KeyError(f"Plugin '{name}' not found")
+        self._disabled.discard(name)
+
+    def disable(self, name: str) -> None:
+        """Disable a plugin without removing it."""
+        if name not in self._plugins:
+            raise KeyError(f"Plugin '{name}' not found")
+        self._disabled.add(name)
 
     def all(self) -> List[str]:
         """List registered plugin names."""
         return list(self._plugins.keys())
+
+    def info(self) -> List[dict[str, Any]]:
+        """Return plugin metadata for management APIs."""
+        return [{"name": name, "enabled": name not in self._disabled} for name in self._plugins]
 
 
 registry = PluginRegistry()

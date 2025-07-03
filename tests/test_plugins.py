@@ -29,3 +29,18 @@ def test_load_plugins_no_register():
 def test_load_plugins_import_error():
     with pytest.raises(ImportError):
         load_plugins(["nonexistent.plugin"])
+
+
+def test_registry_enable_disable_cycle():
+    registry.register("p1", lambda: 1)
+
+    registry.disable("p1")
+    with pytest.raises(ValueError):
+        registry.get("p1")
+
+    registry.enable("p1")
+    assert registry.get("p1")() == 1
+
+    registry.unregister("p1")
+    with pytest.raises(KeyError):
+        registry.get("p1")
