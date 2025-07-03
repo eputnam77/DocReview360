@@ -62,6 +62,8 @@ from .documents import (
 )
 from .exporter import export_document
 from .logs import LogEntry, log_event, query_logs
+from .plugins import load_plugins
+from .plugins import registry as plugin_registry
 from .reporting import (
     DashboardEntry,
     SummaryReport,
@@ -115,6 +117,18 @@ class ApprovalUpdate(BaseModel):
 
     state: str
     signature: str | None = None
+
+
+class PluginModule(BaseModel):
+    """Input model for registering plugins by module path."""
+
+    module: str
+
+
+class PluginToggle(BaseModel):
+    """Input model for enabling or disabling a plugin."""
+
+    name: str
 
 
 class ProjectCreate(BaseModel):
@@ -520,6 +534,52 @@ async def dashboard(request: Request) -> HTMLResponse:
     if request.cookies.get("session") != "admin":
         return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
+
+
+@app.get("/plugins")
+async def list_plugins() -> list[dict[str, Any]]:
+    """Return metadata about registered plugins."""
+    return plugin_registry.info()
+
+
+@app.post("/plugins", status_code=201)
+async def register_plugin(body: PluginModule) -> dict[str, list[str]]:
+    """Load and register plugins from a module path."""
+    try:
+        load_plugins([body.module])
+    except (ImportError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"names": plugin_registry.all()}
+
+
+@app.put("/plugins/{name}/enable")
+async def enable_plugin(name: str) -> dict[str, str]:
+    """Enable a disabled plugin."""
+    try:
+        plugin_registry.enable(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"enabled": name}
+
+
+@app.put("/plugins/{name}/disable")
+async def disable_plugin(name: str) -> dict[str, str]:
+    """Disable a plugin."""
+    try:
+        plugin_registry.disable(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"disabled": name}
+
+
+@app.delete("/plugins/{name}", status_code=204, response_class=Response)
+async def unregister_plugin(name: str) -> Response:
+    """Unregister a plugin entirely."""
+    try:
+        plugin_registry.unregister(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @app.get("/logs", response_model=list[LogEntry])
