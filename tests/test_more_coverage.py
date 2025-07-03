@@ -1,7 +1,13 @@
-import pytest
-from docuflow.doc_types import update_document_type, export_document_types, DocumentTypeModel, document_types
-import docuflow.ai_utils as ai
 from pathlib import Path
+
+import pytest
+
+import docuflow.ai_utils as ai
+from docuflow.doc_types import (
+    DocumentTypeModel,
+    export_document_types,
+    update_document_type,
+)
 
 
 def test_update_nonexistent_type_raises() -> None:
