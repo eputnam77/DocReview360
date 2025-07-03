@@ -2,6 +2,7 @@ site_name: DocuFlow Docs
 site_url: https://example.com/docuflow
 nav:
   - Home: index.md
+  - Developer Guide: developer.md
 docs_dir: docs
 theme:
   name: material
