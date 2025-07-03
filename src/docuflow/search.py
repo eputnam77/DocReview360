@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
@@ -20,6 +22,17 @@ class ProjectModel(BaseModel):
     created: datetime = datetime.utcnow()
     temp_user: Optional[str] = None
     temp_until: datetime | None = None
+
+
+@dataclass
+class SavedSearch:
+    """Representation of a saved search query."""
+
+    id: str
+    query: str
+    user: str | None = None
+    created: datetime = datetime.utcnow()
+    count: int = 0
 
 
 class SearchIndex:
@@ -55,6 +68,8 @@ class SearchIndex:
 
 search_index = SearchIndex()
 projects = search_index.projects
+saved_searches: Dict[str, SavedSearch] = {}
+search_counter: Counter[str] = Counter()
 
 
 def next_project_number() -> int:
@@ -72,6 +87,26 @@ def add_project(project: ProjectModel) -> None:
 def add_document(document: DocumentModel) -> None:
     """Index a document for search."""
     search_index.add_document(document)
+
+
+def save_search(query: str, user: str | None = None) -> SavedSearch:
+    """Store a saved search query and return its record."""
+    search_id = str(len(saved_searches) + 1)
+    record = SavedSearch(id=search_id, query=query, user=user)
+    saved_searches[search_id] = record
+    return record
+
+
+def list_saved_searches(user: str | None = None) -> list[SavedSearch]:
+    """Return all saved searches optionally filtered by user."""
+    if user is None:
+        return list(saved_searches.values())
+    return [s for s in saved_searches.values() if s.user == user]
+
+
+def search_stats() -> Dict[str, int]:
+    """Return recorded search counts per query."""
+    return dict(search_counter)
 
 
 def get_project(project_id: str) -> ProjectModel | None:
@@ -149,6 +184,7 @@ def search(
     before: datetime | None = None,
 ) -> List[DocumentModel]:
     """Return documents matching the query and optional filters."""
+    search_counter[query] += 1
     terms = _normalize(query).split()
     if not terms:
         candidate_ids = set(documents.keys())

@@ -1,5 +1,13 @@
-from docuflow.stubs.task28 import task28
+from docuflow import search
 
 
-def test_task28_returns_none() -> None:
-    assert task28() is None
+def test_saved_search_and_stats() -> None:
+    search.saved_searches.clear()
+    search.search_counter.clear()
+    search.save_search("alpha", user="bob")
+    search.search("alpha")
+    search.search("alpha")
+    stats = search.search_stats()
+    assert stats["alpha"] == 2
+    saved = search.list_saved_searches("bob")
+    assert any(s.query == "alpha" for s in saved)
