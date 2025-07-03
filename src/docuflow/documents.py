@@ -63,6 +63,10 @@ def import_document(
         priority=priority,
     )
     documents[doc_id] = document
+    # Index the document for search without creating an import cycle
+    from . import search as search_module
+
+    search_module.add_document(document)
     return document
 
 

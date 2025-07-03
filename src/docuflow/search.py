@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel
 
@@ -21,12 +21,43 @@ class ProjectModel(BaseModel):
     temp_until: datetime | None = None
 
 
-projects: Dict[str, ProjectModel] = {"1": ProjectModel(id="1", name="Example")}
+class SearchIndex:
+    """Simple in-memory inverted index for documents."""
+
+    def __init__(self) -> None:
+        self.projects: Dict[str, ProjectModel] = {"1": ProjectModel(id="1", name="Example")}
+        self.index: Dict[str, Set[str]] = {}
+
+    def add_project(self, project: ProjectModel) -> None:
+        """Store a project and update indexes."""
+        self.projects[project.id] = project
+
+    def add_document(self, document: DocumentModel) -> None:
+        """Index tokens from the document and associated project."""
+        tokens = _normalize(document.content).split()
+        if document.project and document.project in self.projects:
+            tokens += _normalize(self.projects[document.project].name).split()
+        for token in tokens:
+            self.index.setdefault(token, set()).add(document.id)
+
+    def remove_document(self, doc_id: str) -> None:
+        """Remove a document from the index."""
+        for ids in self.index.values():
+            ids.discard(doc_id)
+
+
+search_index = SearchIndex()
+projects = search_index.projects
 
 
 def add_project(project: ProjectModel) -> None:
     """Store a project in memory."""
-    projects[project.id] = project
+    search_index.add_project(project)
+
+
+def add_document(document: DocumentModel) -> None:
+    """Index a document for search."""
+    search_index.add_document(document)
 
 
 def get_project(project_id: str) -> ProjectModel | None:
@@ -87,11 +118,21 @@ def search(
     before: datetime | None = None,
 ) -> List[DocumentModel]:
     """Return documents matching the query and optional filters."""
-
     terms = _normalize(query).split()
-    results: List[DocumentModel] = []
+    if not terms:
+        candidate_ids = set(documents.keys())
+    else:
+        candidate_ids: Set[str] | None = None
+        for term in terms:
+            ids = search_index.index.get(term, set())
+            candidate_ids = ids if candidate_ids is None else candidate_ids & ids
+        candidate_ids = candidate_ids or set()
 
-    for doc in documents.values():
+    results: List[DocumentModel] = []
+    for doc_id in candidate_ids:
+        doc = documents.get(doc_id)
+        if doc is None:
+            continue
         if project and doc.project != project:
             continue
         if user and doc.user != user:
@@ -102,12 +143,6 @@ def search(
             continue
         if before and (doc.date is None or doc.date > before):
             continue
-
-        project_obj = projects.get(doc.project) if doc.project else None
-        haystack = doc.content
-        if project_obj:
-            haystack += f" {project_obj.name}"
-        if _match_all_terms(haystack, terms):
-            results.append(doc)
+        results.append(doc)
 
     return results
