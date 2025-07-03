@@ -14,7 +14,7 @@ __all__ = [
     "workflows",
     "approvals",
     "logs",
-
+    "exporter",
     "reporting",
 ]
 
@@ -26,6 +26,7 @@ from . import (
     config,
     doc_types,
     documents,
+    exporter,
     logs,
     models,
     plugins,
