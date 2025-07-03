@@ -45,6 +45,13 @@ from .documents import (
 from .documents import (
     list_documents as list_docs,
 )
+from .logs import LogEntry, log_event, query_logs
+from .reporting import (
+    DashboardEntry,
+    SummaryReport,
+    dashboard_data,
+    generate_summary,
+)
 from .search import (
     ProjectModel,
     add_project,
@@ -128,6 +135,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
     project = ProjectModel(**body.model_dump())
     add_project(project)
+    log_event("create_project", user=project.user, project=project.id)
     return project
 
 
@@ -164,13 +172,20 @@ async def import_document_endpoint(
 ) -> DocumentModel:
     """Import a DOCX or Markdown file and store it as a document."""
     data = await file.read()
-    return import_document(
+    document = import_document(
         file.filename,
         data,
         project=project,
         user=user,
         priority=priority,
     )
+    log_event(
+        "import_document",
+        user=user,
+        project=project,
+        filename=file.filename,
+    )
+    return document
 
 
 @app.get("/documents", response_model=list[DocumentModel])
@@ -326,7 +341,9 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
 @app.post("/token", response_model=auth.Token)
 async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
-    return await auth.login_for_access_token(form_data)
+    token_resp = await auth.login_for_access_token(form_data)
+    log_event("login", user=form_data.username)
+    return token_resp
 
 
 @app.post("/oidc/token", response_model=auth.Token)
@@ -363,6 +380,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
     if username == "admin" and password == "admin":
         response = RedirectResponse("/dashboard", status_code=303)
         response.set_cookie("session", "admin")
+        log_event("login", user=username)
         return response
     return templates.TemplateResponse(
         "login.html", {"request": request, "error": "Invalid credentials"}, status_code=400
@@ -375,3 +393,21 @@ async def dashboard(request: Request) -> HTMLResponse:
     if request.cookies.get("session") != "admin":
         return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
+
+
+@app.get("/logs", response_model=list[LogEntry])
+async def list_logs(action: str | None = None, user: str | None = None) -> list[LogEntry]:
+    """Return recorded logs optionally filtered by action or user."""
+    return query_logs(action=action, user=user)
+
+
+@app.get("/reports/summary", response_model=SummaryReport)
+async def get_summary_report() -> SummaryReport:
+    """Return counts of projects, documents, workflows, and approvals."""
+    return generate_summary()
+
+
+@app.get("/reports/dashboard", response_model=list[DashboardEntry])
+async def get_dashboard_data() -> list[DashboardEntry]:
+    """Return per-project data for dashboard widgets."""
+    return dashboard_data()
