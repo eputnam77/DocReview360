@@ -14,23 +14,26 @@
 - **Archival workflow** stores multiple formats for each document. Implemented in `archive.py`.
 - **Minimal React frontend** located under `frontend/`.
 - **Automated tests** provide 90% coverage. See coverage summary in test output.
+- **MkDocs configuration** enables docs build using the Material theme. See `mkdocs.yml`.
+- **Database abstraction layer** added in `database.py` with property-based tests.
+- **Behavior-driven tests** execute feature files via `pytest-bdd`.
 
 ## ⚠️ Partially Implemented Features
 
-- Developer documentation exists in `docs/`, but there is no `mkdocs.yml` so MkDocs build is not configured.
-- Integration test feature files exist under `tests/e2e/features` but have no step implementations.
-- Advanced tasks 27–64 are represented only by stub functions with trivial tests.
+- Developer documentation builds with MkDocs, but content remains minimal.
+- Integration test feature files now run via `pytest-bdd` with basic steps, but coverage is thin.
+- Advanced tasks 27–64 are still largely stubbed with placeholder functions.
 
 ## ❌ Missing Features
 
-- Multi-database layer and migration tooling (Task 27).
+- Multi-database layer exists but lacks migration tooling.
 - Plugin management UI and numerous AI/automation enhancements from tasks 29–64.
 - HR system integration and autosave/versioning features described in the PRD.
 
 ## 📋 Recommended Next Steps
 
-1. Add a proper MkDocs configuration and expand developer/user documentation.
-2. Replace stub modules for tasks 27–64 with real implementations starting with the database abstraction layer.
+1. Expand developer and user documentation using MkDocs.
+2. Replace stub modules for tasks 27–64 with real code, beginning with migrations for the database layer.
 3. Implement integration tests for REST API workflows using the existing feature files.
 4. Continue to maintain ≥70% coverage for all new code.
 
