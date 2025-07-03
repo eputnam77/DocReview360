@@ -1,42 +1,39 @@
 # DocuFlow
 
-DocuFlow is a document workflow management system. The current code base
-includes a minimal FastAPI application and a small CLI tool.  It is not yet a
-full product but you can start the prototype locally and experiment with the
-login page and dashboard.
+DocuFlow helps you organise documents, run simple approval workflows and keep track of your projects. The prototype ships with a small web API, a tiny frontend and a one-command CLI wizard. It is intentionally lightweight so you can explore the features and decide how they fit your own process.
 
 ## Quick start
 
 1. **Install the package**
-
    ```bash
    pip install -e .
    ```
-
-2. **Run the configuration wizard** (optional)
-
+2. **Create a configuration file**
    ```bash
    python -m docuflow.cli init
    ```
-
-3. **Launch the development server**
-
+   The wizard asks for your preferred database, editor and other options then stores them in `docuflow.yml`.
+3. **Run the development server**
    ```bash
    uvicorn docuflow.api:app --reload
    ```
+4. **Open <http://127.0.0.1:8000/>** and sign in with `admin/admin`.
+   You'll land on the dashboard where you can jump to the editor or explore the API docs.
 
-4. **Open <http://127.0.0.1:8000/>** in your browser.
-
-   Use username `admin` and password `admin` to sign in.  On successful login
-   you will be redirected to the placeholder dashboard.
-
-You can also obtain a demo OIDC token:
-
+A demo token is available with:
 ```bash
 curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/token
 ```
+Use the token in the `Authorization` header to call `/oidc/me`.
 
-Use the returned token with the `Authorization` header to access `/oidc/me`.
+The API is a learning tool. Endpoints return dummy data but illustrate how projects, documents and approvals could work together. The frontend contains just a login page, a dashboard and a basic editor shell.
 
-The API currently returns placeholder data and the CLI merely writes a YAML
-file, but this provides a starting point for further development.
+## Features
+
+- In-memory storage for projects and documents
+- Import/export of Markdown and DOCX files
+- Search with saved queries
+- Simple plugin system for editors and exporters
+- Minimal authentication flow with a login form and dashboard
+
+Head over to the [documentation](https://example.com/docuflow) for a full tour of the API, CLI options and UI navigation tips.
