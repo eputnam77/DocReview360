@@ -1,0 +1,13 @@
+{
+  "name": "docuflow-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "echo 'dev server placeholder'"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0"
+  }
+}
