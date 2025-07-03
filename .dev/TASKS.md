@@ -4,8 +4,8 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 
 | # | Task | Priority | Estimate | Acceptance Criteria | Labels |
 |---|------|----------|----------|--------------------|--------|
-|1|Design initial architecture and folder layout. Create ADR explaining decisions.|High|2d|ADR exists describing folder structure and technology choices.|`architecture`, `documentation`|
-|2|Initialize `pyproject.toml`, base package structure under `src/docuflow/`, and CI workflow.|High|1d|Running `poetry install` succeeds and CI workflow executes lint, type check, and tests.|`setup`, `devops`|
+|1|Design initial architecture and folder layout. Create ADR explaining decisions.|High|2d|ADR exists describing folder structure and technology choices. (tests: tests/test_task01_architecture.py)|`architecture`, `documentation`|
+|2|Initialize `pyproject.toml`, base package structure under `src/docuflow/`, and CI workflow.|High|1d|Running `poetry install` succeeds and CI workflow executes lint, type check, and tests. (tests: tests/test_task02_project_setup.py)|`setup`, `devops`|
 |3|Implement configuration wizard (CLI) for initial setup (database, editor, CMS, auth).|High|3d|CLI collects settings and writes config file; tests cover main options. (tests: tests/e2e/features/task03.feature)|`backend`, `cli`|
 |4|Create plugin architecture for editors, exporters, and validators.|High|3d|Plugins can be registered and discovered dynamically with example stub plugins. (tests: tests/property/test_task04_property.py)|`backend`, `architecture`|
 |5|Define SQLAlchemy models for projects, documents, workflows, approvals, users, organizations, document types, templates, and plugins.|High|3d|Models compiled without errors and basic CRUD unit tests pass. (tests: tests/property/test_task05_property.py)|`backend`, `database`|
@@ -24,7 +24,7 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |18|Create frontend skeleton using React with routing and basic pages (dashboard, editor, login).|Medium|5d|`npm start` serves the app and pages load; simple integration test passes. (tests: tests/e2e/features/task18.feature)|`frontend`|
 |19|Add real time dashboard with project assignment views and status widgets.|Medium|4d|Dashboard fetches API data and displays assignments with priority indicators. (tests: tests/e2e/features/task19.feature)|`frontend`, `feature`|
 |20|Write developer documentation and user guide in `docs/` using MkDocs.|Medium|3d|Docs build successfully and describe setup, API usage, and contribution guidelines. (tests: tests/e2e/features/task20.feature)|`documentation`|
-|21|Set up test suite with pytest, coverage, ruff, mypy, bandit, and integrate with pre-commit.|High|2d|`pre-commit run --all-files` and `pytest --cov` succeed locally.|`testing`, `devops`|
+|21|Set up test suite with pytest, coverage, ruff, mypy, bandit, and integrate with pre-commit.|High|2d|`pre-commit run --all-files` and `pytest --cov` succeed locally. (tests: tests/test_task21.py)|`testing`, `devops`|
 |22|Implement document numbering system tied to project lifecycle.|Medium|2d|Projects receive persistent document numbers displayed in API and UI. (tests: tests/e2e/features/task22.feature)|`backend`, `feature`|
 |23|Integrate AI assistance for document creation and validation.|Medium|4d|AI endpoint suggests document type, validates content, and unit tests cover suggestions. (tests: tests/e2e/features/task23.feature)|`backend`, `ai`|
 |24|Add collaborative commenting and threaded responses in the editor.|High|4d|Users can comment inline and reply; tests verify comment storage. (tests: tests/e2e/features/task24.feature)|`frontend`, `feature`|
