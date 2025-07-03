@@ -1,8 +1,9 @@
-"""Simple plugin registry for editors, exporters and validators."""
+"""Minimal plugin registry used for editors, exporters and validators."""
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List
+from importlib import import_module
+from typing import Any, Callable, Dict, Iterable, List
 
 
 class PluginRegistry:
@@ -37,3 +38,24 @@ class PluginRegistry:
 
 
 registry = PluginRegistry()
+
+
+def load_plugins(modules: Iterable[str]) -> None:
+    """Import modules and register their plugins.
+
+    Each module must define a ``register`` function accepting the global
+    :class:`PluginRegistry` instance. Errors during import or registration are
+    raised with helpful context.
+    """
+
+    for mod_name in modules:
+        try:
+            module = import_module(mod_name)
+        except Exception as exc:  # pragma: no cover - sanity fallback
+            raise ImportError(f"Cannot import plugin module {mod_name}") from exc
+
+        register_func = getattr(module, "register", None)
+        if not callable(register_func):
+            raise ValueError(f"Plugin module {mod_name} lacks a 'register' function")
+
+        register_func(registry)
