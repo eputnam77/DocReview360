@@ -14,7 +14,9 @@
 - **Archival workflow** storing multiple formats in `archive.py` lines 8‑76 with test `tests/test_task17.py`.
 - **React frontend skeleton** under `frontend/` validated by `tests/test_frontend.py`.
 - **Database abstraction and SQL migrations** implemented in `database.py` lines 12‑77 with tests `tests/test_db_migrations.py` and `tests/test_migration.py`.
+- **REST API skeleton** covers project, document, workflow and approval routes. See `api.py` lines 28-296 with tests `tests/test_api.py`.
 - **Automated tests** achieve 90% coverage as shown in the latest test run.
+These implementations satisfy PRD sections 2.1.0 through 2.4 and correspond to tasks 1-28 in `TASKS.md`.
 
 ## ⚠️ Partially Implemented Features
 
