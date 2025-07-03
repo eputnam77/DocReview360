@@ -90,8 +90,17 @@ def update_document(
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
+    # Remove the old version from the search index before updating
+    from . import search as search_module
+
+    search_module.search_index.remove_document(doc_id)
+
     document.history.append(document.content)
     document.content = content
     if priority is not None:
         document.priority = priority
+
+    # Re-index the updated document
+    search_module.add_document(document)
+
     return document
