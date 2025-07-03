@@ -161,6 +161,7 @@ shell    = ["os.system", "subprocess.Popen"]
 omit = [
   "src/docuflow/templates/*",
   "src/docuflow/styles/*",
+  "src/docuflow/stubs/*",
 ]
 
 

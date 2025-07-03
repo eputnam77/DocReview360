@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -71,6 +72,7 @@ from .search import (
     assign_temporary,
     get_project,
     list_projects,
+    ranked_search,
     search,
     set_project_priority,
 )
@@ -289,6 +291,22 @@ async def search_documents(
         after=after,
         before=before,
     )
+
+
+@app.get("/search/export")
+async def export_search_results(q: str, fmt: str = "json") -> Response:
+    """Return search results in JSON or CSV with ranking and snippets."""
+    results = ranked_search(q)
+    rows = [{"id": r["document"].id, "snippet": r["snippet"], "score": r["score"]} for r in results]
+    if fmt == "csv":
+        output = "id,snippet,score\n" + "\n".join(
+            f"{r['id']},{r['snippet'].replace(',', ' ')},{r['score']}" for r in rows
+        )
+        media = "text/csv"
+    else:
+        output = json.dumps(rows)
+        media = "application/json"
+    return Response(content=output, media_type=media)
 
 
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)

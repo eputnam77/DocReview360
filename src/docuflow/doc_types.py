@@ -18,6 +18,19 @@ class DocumentTypeModel(BaseModel):
 document_types: Dict[str, DocumentTypeModel] = {}
 
 
+def _bootstrap_sample() -> None:
+    """Create a default sample document type if none exist."""
+    if not document_types:
+        document_types["sample"] = DocumentTypeModel(
+            name="sample",
+            template="<h1>Sample</h1>",
+            workflow=["draft", "review", "final"],
+        )
+
+
+_bootstrap_sample()
+
+
 def add_document_type(doc_type: DocumentTypeModel) -> None:
     """Store a document type in memory."""
     document_types[doc_type.name] = doc_type

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Callable, Dict, List
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -18,6 +18,14 @@ class WorkflowModel(BaseModel):
 
 workflows: Dict[str, WorkflowModel] = {}
 
+# Registered callbacks mimicking agileagents bot webhooks
+bot_callbacks: list[Callable[[WorkflowModel], None]] = []
+
+
+def register_bot(callback: Callable[[WorkflowModel], None]) -> None:
+    """Register an automation bot callback."""
+    bot_callbacks.append(callback)
+
 
 def create_workflow(project: str, phases: List[str]) -> WorkflowModel:
     """Create a workflow for a project starting at the first phase."""
@@ -25,6 +33,8 @@ def create_workflow(project: str, phases: List[str]) -> WorkflowModel:
     start_phase = phases[0] if phases else "start"
     workflow = WorkflowModel(id=wf_id, project=project, phase=start_phase, phases=phases)
     workflows[wf_id] = workflow
+    for cb in bot_callbacks:
+        cb(workflow)
     return workflow
 
 
@@ -50,6 +60,8 @@ def advance_workflow(wf_id: str) -> WorkflowModel:
         raise KeyError(f"Unknown phase '{workflow.phase}'") from exc
     if idx + 1 >= len(workflow.phases):
         workflow.phase = workflow.phases[-1]
-        return workflow
-    workflow.phase = workflow.phases[idx + 1]
+    else:
+        workflow.phase = workflow.phases[idx + 1]
+    for cb in bot_callbacks:
+        cb(workflow)
     return workflow
