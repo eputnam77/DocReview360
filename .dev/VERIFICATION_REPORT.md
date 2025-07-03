@@ -2,51 +2,35 @@
 
 ## ✅ Implemented Features
 
-- **Task 1 – Architecture and layout**
-  - Documented in ADR `0001-initial-architecture.md` showing separation of source and dev assets.
-- **Task 2 – Project setup and CI**
-  - `pyproject.toml` defines package metadata and dependencies.
-  - `.github/workflows/ci.yml` runs linting, typing, security scan and tests.
-- **Task 3 – Configuration wizard CLI**
-  - `src/docuflow/cli.py` implements an interactive `init` command.
-  - `tests/test_cli.py` covers the CLI behaviour.
-- **Task 4 – Plugin registry**
-  - `src/docuflow/plugins.py` provides a simple registry.
-  - `tests/test_plugins.py` verifies plugin registration.
-- **Task 5 – SQLAlchemy models**
-  - `src/docuflow/models.py` defines basic project and document tables.
-  - `tests/test_models.py` exercises CRUD operations with SQLite.
-- **Task 6 – FastAPI skeleton**
-  - `src/docuflow/api.py` exposes `/projects` and `/documents` endpoints.
-  - `tests/test_api.py` validates both endpoints.
-- **Task 7 – Authentication module**
-  - `src/docuflow/auth.py` implements JWT and OIDC flows.
-  - `tests/test_token.py` and `tests/test_task07.py` exercise token issuance.
-- **Task 8 – Document type management**
-  - CRUD logic in `src/docuflow/doc_types.py` with API routes.
-  - `tests/test_document_types.py` covers CRUD operations.
-- **Task 9 – Document import and editing**
-  - `src/docuflow/documents.py` handles DOCX and Markdown uploads.
-  - API endpoints allow importing and updating documents with history.
-  - `tests/test_documents.py` verifies import and edit flows.
-
-All implemented modules have unit tests with overall coverage above 92%.
-
-## ❌ Missing Features
-
- - Tasks 10–64 from `TASKS.md` have only stub modules without real logic.
-- Documentation is largely absent; `docs/index.md` is empty and README is minimal.
-- No integration or end‑to‑end tests are implemented.
+- **Configuration wizard CLI** writes a YAML config using options for database, editor, CMS and auth. Implementation at `cli.py` lines 12‑95 and unit test `tests/test_cli.py`.
+- **Document type management** with a built-in sample. Functions `add_document_type` and `list_document_types` at `doc_types.py` lines 34‑46, tested in `tests/test_document_types.py`.
+- **In-memory project and document numbering** via `SearchIndex` class and helper `next_project_number` in `search.py` lines 38‑79. Covered by `tests/test_numbering.py`.
+- **Import/edit/export pipeline** for Markdown, HTML, DOCX and PDF. See `documents.py` lines 58‑87 and `exporter.py` lines 20‑56 with tests `tests/test_documents.py` and `tests/test_export.py`.
+- **Search service** supporting filters, saved searches and ranking. Implemented in `search.py` lines 92‑235 with tests `tests/test_search.py` and `tests/test_task28.py`.
+- **Workflow and approval management** implemented in `workflows.py` and `approvals.py`, exercised by `tests/test_workflows.py` and `tests/test_approvals.py`.
+- **Priority handling and temporary assignments** in `search.py` lines 120‑160 with tests `tests/test_task13.py`.
+- **Logging and reporting** using structured logs (`logs.py` lines 22‑54) and reporting endpoints (`reporting.py`). Tested in `tests/test_logging.py` and `tests/test_reporting.py`.
+- **Comment system** via `comments.py` lines 7‑29 with tests `tests/test_task24.py`.
+- **Archival workflow** storing multiple formats in `archive.py` lines 8‑76 with test `tests/test_task17.py`.
+- **React frontend skeleton** under `frontend/` validated by `tests/test_frontend.py`.
+- **Database abstraction and SQL migrations** implemented in `database.py` lines 12‑77 with tests `tests/test_db_migrations.py` and `tests/test_migration.py`.
+- **Automated tests** achieve 90% coverage as shown in the latest test run.
 
 ## ⚠️ Partially Implemented Features
 
-- Initial architecture (Task 1) and project setup (Task 2) lack explicit tests but ADRs and CI exist.
-- The CLI (Task 3) writes a YAML file but does not persist options beyond basics.
+- MkDocs documentation exists but content is minimal (`docs/index.md`, `docs/developer.md`).
+- BDD feature files run with placeholder steps (`tests/e2e/steps/common_steps.py`).
+- Tasks 29‑75 remain mostly stubs under `src/docuflow/stubs/`.
+
+## ❌ Missing Features
+
+- Plugin management UI and advanced AI/automation features from tasks 29‑75.
+- HR system integration, autosave/versioning enhancements and other PRD items beyond task 28.
 
 ## 📋 Recommended Next Steps
 
-1. Begin work on the search service (Task 10).
-2. Expand documentation using the templates under `.dev/templates/` and generate user guides with MkDocs.
-3. Add integration tests for the CLI and API endpoints once features go beyond placeholders.
+1. Expand user and developer guides using MkDocs templates.
+2. Replace stub modules for tasks 29‑75 starting with plugin management and document type import/export.
+3. Add integration tests for REST API workflows and CLI operations.
 
-<!-- ready-for:builder -->
+`ready-for:builder`
