@@ -354,7 +354,7 @@ async def list_saved_searches_endpoint(user: str | None = None) -> list[search_m
 
 
 @app.get("/search/stats")
-async def search_stats_endpoint() -> Dict[str, int]:
+async def search_stats_endpoint() -> dict[str, int]:
     """Return counts of executed search queries."""
     return search_stats()
 
