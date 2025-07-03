@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,8 @@ from fastapi import (
     Request,
     Response,
     UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -467,3 +470,16 @@ async def get_summary_report() -> SummaryReport:
 async def get_dashboard_data() -> list[DashboardEntry]:
     """Return per-project data for dashboard widgets."""
     return dashboard_data()
+
+
+@app.websocket("/ws/dashboard")
+async def dashboard_stream(websocket: WebSocket) -> None:
+    """Send dashboard data periodically over a websocket."""
+    await websocket.accept()
+    try:
+        while True:
+            data = [entry.model_dump() for entry in dashboard_data()]
+            await websocket.send_json(data)
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        pass
