@@ -18,6 +18,7 @@ class DocumentModel(BaseModel):
     id: str
     content: str
     history: List[str] = []
+    number: int | None = None
     project: Optional[str] = None
     user: Optional[str] = None
     date: Optional[datetime] = None
@@ -25,6 +26,15 @@ class DocumentModel(BaseModel):
 
 
 documents: Dict[str, DocumentModel] = {}
+_next_document_number = 1
+
+
+def next_document_number() -> int:
+    """Return the next sequential document number."""
+    global _next_document_number
+    num = _next_document_number
+    _next_document_number += 1
+    return num
 
 
 def _extract_docx_text(data: bytes) -> str:
@@ -57,6 +67,7 @@ def import_document(
         id=doc_id,
         content=content,
         history=[],
+        number=next_document_number(),
         project=project,
         user=user,
         date=datetime.utcnow(),
