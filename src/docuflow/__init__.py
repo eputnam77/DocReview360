@@ -14,6 +14,8 @@ __all__ = [
     "workflows",
     "approvals",
     "logs",
+
+    "reporting",
 ]
 
 from . import (
@@ -27,6 +29,7 @@ from . import (
     logs,
     models,
     plugins,
+    reporting,
     search,
     workflows,
 )
