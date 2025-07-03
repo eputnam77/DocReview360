@@ -15,7 +15,14 @@ For more details, see the [Developer Guide](developer.md).
 
 ## Project features
 
-- In-memory project and document storage
+DocuFlow implements a small slice of the functionality described in the
+Product Requirements Document.  The prototype demonstrates the following
+capabilities:
+
+- In-memory project and document storage with sequential numbering
+- Import and export of Markdown and DOCX files
+- Basic search with simple ranking and saved queries
+- Plugin registry for editors, exporters and validators
 - Minimal JWT authentication flow
 - Placeholder React dashboard served from FastAPI
 
