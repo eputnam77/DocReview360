@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from fastapi import (
     Depends,
@@ -27,6 +28,14 @@ from .approvals import (
     get_approval,
     list_approvals,
     update_approval_state,
+)
+from .archive import (
+    ArchiveRecord,
+    get_archive,
+    list_archives,
+)
+from .archive import (
+    archive_document as archive_doc,
 )
 from .doc_types import (
     DocumentTypeModel,
@@ -225,6 +234,38 @@ async def export_document_endpoint(doc_id: str, fmt: str) -> Response:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
     return Response(content=data, media_type=media, headers=headers)
+
+
+class ArchiveMetadata(BaseModel):
+    """Optional metadata for archiving."""
+
+    metadata: dict[str, Any] | None = None
+
+
+@app.post("/archive/{doc_id}", status_code=201, response_model=ArchiveRecord)
+async def archive_document_endpoint(
+    doc_id: str, body: ArchiveMetadata | None = None
+) -> ArchiveRecord:
+    """Archive a document in multiple formats."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return archive_doc(document, metadata=body.metadata if body else None)
+
+
+@app.get("/archive", response_model=list[ArchiveRecord])
+async def list_archives_endpoint() -> list[ArchiveRecord]:
+    """Return all archived documents."""
+    return list_archives()
+
+
+@app.get("/archive/{archive_id}", response_model=ArchiveRecord)
+async def get_archive_endpoint(archive_id: str) -> ArchiveRecord:
+    """Retrieve a single archived record by id."""
+    record = get_archive(archive_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Archive not found")
+    return record
 
 
 @app.get("/search", response_model=list[DocumentModel])
