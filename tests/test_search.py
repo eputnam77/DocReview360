@@ -88,3 +88,32 @@ def test_search_multiword_user_and_priority_filters() -> None:
 
     resp = client.get("/search", params={"q": "Alpha", "priority": 2})
     assert _doc_ids(resp) == {doc_a}
+
+
+def test_search_index_updates_after_edit() -> None:
+    client = TestClient(app)
+
+    resp = client.post(
+        "/documents/import",
+        files={"file": ("c.md", "Old text", "text/markdown")},
+        data={"project": "p4", "user": "carol", "priority": 1},
+    )
+    doc_id = resp.json()["id"]
+
+    # Document initially searchable by old content
+    resp = client.get("/search", params={"q": "Old"})
+    assert _doc_ids(resp) == {doc_id}
+
+    # Update the document
+    client.put(
+        f"/documents/{doc_id}",
+        json={"id": doc_id, "content": "New text", "history": []},
+    )
+
+    # Old term should no longer match
+    resp = client.get("/search", params={"q": "Old"})
+    assert doc_id not in _doc_ids(resp)
+
+    # New term should match
+    resp = client.get("/search", params={"q": "New"})
+    assert _doc_ids(resp) == {doc_id}
