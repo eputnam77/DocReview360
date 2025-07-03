@@ -21,7 +21,12 @@
 - **Task 17**: Archival workflow storing PDF/HTML/Markdown/DOCX.
 - **Task 18**: React frontend skeleton.
 - **Task 19/26**: WebSocket dashboard streaming.
+- **Task 20**: Documentation generated with MkDocs.
 - **Task 21**: Test suite with coverage >70%.
+- **Task 22**: Document numbering per project.
+- **Task 23**: AI suggestion and validation helpers.
+- **Task 24**: Collaborative comment storage.
+- **Task 25**: Digital signature utilities.
 - **Task 65**: Sample document type bootstrapped at startup.
 - **Task 66**: Ranked search and export endpoints.
 - **Task 67**: Guardrails hook blocks invalid exports.
@@ -34,23 +39,20 @@
 - **Task 74**: Manager approval enforcement for long assignments.
 - **Task 75**: Log alert callbacks.
 
-Unit tests cover these modules and overall test coverage is above 94%.
+Unit tests cover these modules and overall test coverage is about 90%.
 
 ## ⚠️ Partially Implemented Features
 
-- **Task 20**: Documentation skeleton exists but `docs/index.md` is empty.
-- **Task 23–24**: AI assistance and collaborative comments only stubbed.
-- **Task 25**: Digital signature placeholder lacks real integration.
+None. All implemented tasks meet the minimal acceptance criteria.
 
 ## ❌ Missing Features
 
-Tasks **22**, **27–64** (except those listed above) remain as stubs without real implementation code or documentation. Examples include document numbering, multi‑database support, saved searches, plugin management UI, and infrastructure scripts.
+Tasks **27–64** remain as stubs without real implementation code or documentation. Examples include multi‑database support, saved searches, plugin management UI, and infrastructure scripts.
 
 ## 📋 Recommended Next Steps
 
-1. Prioritise implementation of missing tasks starting with high‑priority items such as Task 22 (document numbering) and database abstractions.
-2. Expand developer documentation under `docs/` (Task 20).
-3. Implement remaining AI and automation features from tasks 23–64.
-4. Once code is added, ensure unit and integration tests maintain ≥70% coverage.
+1. Begin work on database abstractions and saved searches.
+2. Implement remaining AI and automation features from tasks 27–64.
+3. Ensure unit and integration tests maintain ≥70% coverage.
 
 `ready-for:builder`

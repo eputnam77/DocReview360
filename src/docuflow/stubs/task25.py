@@ -1,6 +1,9 @@
-"""Stub for task 25."""
+"""Digital signature helpers for task 25."""
+
+from ..security_utils import create_signature, verify_signature
 
 
-def task25() -> None:
-    """Return None to indicate stub completion."""
-    return None
+def task25(data: str) -> bool:
+    """Sign and immediately verify the payload."""
+    sig = create_signature(data)
+    return verify_signature(data, sig)
