@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 name            = "docuflow"
 version         = "0.1.0"
 description     = "tbd."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = [
   "Jinja2>=3.1.0",
@@ -21,11 +21,19 @@ dependencies = [
   "wikipedia>=1.4",
   "textstat>=0.7",
   "textblob>=0.19",
+  "fastapi>=0.110",
+  "python-multipart>=0.0.6",
+  "SQLAlchemy>=2.0",
+  "httpx>=0.27",
+  "python-jose[cryptography]>=3.3",
 ]
 
 [[project.authors]]
 name  = "Eric Putnam"
 email = "info@example.com"
+
+[project.scripts]
+docuflow = "docuflow.cli:cli"
 
 # ───────────────────────────── optional deps buckets ───────────────────────────
 [project.optional-dependencies]
@@ -80,33 +88,38 @@ dev = [
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────
+
 [tool.setuptools]
-packages = ["docuflow"]
 
 [tool.setuptools.package-dir]
 "" = "src"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*", ".dev*"]
+
 [tool.setuptools.package-data]
 "docuflow.styles" = ["*.md"]
+"docuflow.templates" = ["*.html"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]
 line-length    = 100
-target-version = ["py311"]
+target-version = ["py312"]
 
 [tool.isort]
 profile = "black"
 
 [tool.ruff]
 line-length    = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I"]
 
 # ───────────────────────────── static typing (mypy) ───────────────────────────
 [tool.mypy]
-python_version         = "3.11"
+python_version         = "3.12"
 strict                 = false
 ignore_errors          = true
 packages               = ["docuflow"]
@@ -148,6 +161,7 @@ shell    = ["os.system", "subprocess.Popen"]
 omit = [
   "src/docuflow/templates/*",
   "src/docuflow/styles/*",
+  "src/docuflow/stubs/*",
 ]
 
 

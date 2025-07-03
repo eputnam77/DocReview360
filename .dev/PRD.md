@@ -126,6 +126,8 @@ DocuFlow is a comprehensive web-based application designed to streamline the cre
 - **Document Validation**: Custom document check engine via Document Checker tool
 - **Grammar Integration**: Optional Grammarly/Acrolinx integration
 - **Workload Optimization**: AI-powered technical writer assignment suggestions
+- **Prompt-Engine**: Centralize reviewer-feedback templates for consistent AI edits
+- **SynthLang**: Trim token usage across all AI-assisted edits and comments
 
 #### 2.2.3 Collaboration Features
 - **Comment System**: Inline comment boxes
@@ -143,6 +145,7 @@ DocuFlow is a comprehensive web-based application designed to streamline the cre
 - **Digital Signature Integration**: Open-source digital signature solution (e.g., DocuSign alternative like SignRequest, HelloSign, or custom solution)
 - **Approval State Management**: Comprehensive tracking of approval status, dates, and signatures
 - **Re-review Triggers**: Automatic re-review requirements when significant changes are made after approval
+- **Agileagents (A2)**: Lambda-ready review/approval bots triggered by document state changes
 
 #### 2.3.2 User Assignment
 - **SME Reassignment**: Support for SME transfer during project lifecycle
@@ -191,6 +194,7 @@ DocuFlow is a comprehensive web-based application designed to streamline the cre
   - **Performance Metrics**: Individual and team performance tracking with historical trends
   - **Capacity Planning**: Predictive analytics for resource allocation and capacity planning
   - **Stalled Project Reports**: Dedicated reports and alerts for projects requiring manager attention
+  - **LangGraph-Studio**: Visual IDE for debugging agent flows and latency hotspots
 
 #### 2.3.4 Approval Management System
 - **Approval Table Structure**: Comprehensive database table tracking:
@@ -404,6 +408,7 @@ The system will generate detailed, human-readable logs for all user actions and 
 - **Source Preservation**: Original document (and revisions) remains in database
 - **Approval Reports**: Comprehensive approval documentation
 - **Export Quality Assurance**: Validation of exported documents for formatting integrity
+- **NeMo-Guardrails**: PII and style validation middleware before publishing or exporting
 - **Batch Export**: Support for exporting multiple documents in selected format
 
 #### 2.5.2 File Format Management
@@ -1192,3 +1197,9 @@ Key architectural strengths include:
 - **Status Automation**: Intelligent status management with automated stalled project detection and reporting
 - **Future-Proofing**: Architecture designed for easy expansion and technology evolution
 
+1. **ruvnet/agileagents (A2)**: deploy Lambda-ready review/approval bots triggered by document state changes. ([github.com][14])
+2. **ruvnet/Prompt-Engine**: centralize reviewer-feedback and rewrite templates for consistent AI edits. ([github.com][15])
+3. **ruvnet/SynthLang**: trim token usage across all AI-assisted edits and comments. ([github.com][2])
+4. **guardrails-ai/NeMo-Guardrails**: add PII/style validation middleware before publishing or exporting. ([github.com][16])
+5. **langchain-ai/LangGraph-Studio**: give admins a visual IDE to debug agent flows and latency hotspots. ([github.com][17])
+6. **ruvnet/ruv-FANN**: compile Rust NN core into a Python wheel to add millisecond-fast, fully offline anomaly detection that flags tense shifts, timeline breaks, and style drift in every passage (`musicscript train`). ([github.com][6])

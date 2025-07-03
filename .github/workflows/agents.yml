@@ -1,1 +1,16 @@
+name: Codex Router
 
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  codex-router:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect next agent
+        run: ./scripts/next-agent.sh
+      - name: Trigger agent via Codex API
+        if: env.NEXT_AGENT != ''
+        run: codex run --agent "$NEXT_AGENT"

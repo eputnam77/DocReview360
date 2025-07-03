@@ -1,0 +1,44 @@
+"""Utility helpers simulating AI integrations."""
+
+from __future__ import annotations
+
+from typing import Dict
+
+
+def apply_feedback_template(template: str, text: str) -> str:
+    """Insert text into the feedback template."""
+    return template.replace("{text}", text)
+
+
+FEEDBACK_TEMPLATES: Dict[str, str] = {"default": "Feedback: {text}"}
+
+
+def add_feedback_template(name: str, template: str) -> None:
+    """Register a new feedback template."""
+    FEEDBACK_TEMPLATES[name] = template
+
+
+def generate_feedback(name: str, text: str) -> str:
+    """Return formatted feedback using the named template."""
+    tmpl = FEEDBACK_TEMPLATES.get(name, FEEDBACK_TEMPLATES["default"])
+    return apply_feedback_template(tmpl, text)
+
+
+# SynthLang simulation
+synth_enabled = False
+
+
+def synth_compress(text: str) -> str:
+    """Reduce token count by removing vowels when enabled."""
+    if not synth_enabled:
+        return text
+    return "".join(ch for ch in text if ch.lower() not in "aeiou")
+
+
+def detect_anomalies(text: str) -> bool:
+    """Very naive anomaly detection checking for repeated words."""
+    words = text.lower().split()
+    for i in range(len(words) - 1):
+        if words[i] == words[i + 1]:
+            return True
+    return False

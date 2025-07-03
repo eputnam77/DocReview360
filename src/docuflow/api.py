@@ -1,0 +1,503 @@
+"""FastAPI application exposing DocuFlow endpoints."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+
+from . import auth
+from .approvals import (
+    ApprovalModel,
+    create_approval,
+    get_approval,
+    list_approvals,
+    update_approval_state,
+)
+from .archive import (
+    ArchiveRecord,
+    get_archive,
+    list_archives,
+)
+from .archive import (
+    archive_document as archive_doc,
+)
+from .doc_types import (
+    DocumentTypeModel,
+    add_document_type,
+    delete_document_type,
+    get_document_type,
+    list_document_types,
+    update_document_type,
+)
+from .documents import (
+    DocumentModel,
+    get_document,
+    import_document,
+    update_document,
+)
+from .documents import (
+    list_documents as list_docs,
+)
+from .exporter import export_document
+from .logs import LogEntry, log_event, query_logs
+from .reporting import (
+    DashboardEntry,
+    SummaryReport,
+    dashboard_data,
+    generate_summary,
+)
+from .search import (
+    ProjectModel,
+    add_project,
+    assign_temporary,
+    get_project,
+    list_projects,
+    ranked_search,
+    search,
+    set_project_priority,
+)
+from .workflows import (
+    WorkflowModel,
+    advance_workflow,
+    assign_reviewer,
+    create_workflow,
+    get_workflow,
+)
+
+
+class WorkflowCreate(BaseModel):
+    """Input model for creating workflows."""
+
+    project: str
+    phases: list[str]
+
+
+class ReviewerAssign(BaseModel):
+    """Input model for assigning reviewers."""
+
+    user: str
+
+
+class ApprovalCreate(BaseModel):
+    """Input model for creating approvals."""
+
+    workflow: str
+    reviewer: str
+
+
+class ApprovalUpdate(BaseModel):
+    """Input model for updating approval state."""
+
+    state: str
+    signature: str | None = None
+
+
+class ProjectCreate(BaseModel):
+    """Input model for creating projects."""
+
+    id: str
+    name: str
+    user: str | None = None
+    priority: int = 0
+
+
+class PriorityUpdate(BaseModel):
+    """Input for updating project priority."""
+
+    priority: int
+
+
+class TemporaryAssign(BaseModel):
+    """Input for temporary reassignment."""
+
+    user: str
+    until: datetime
+
+
+app = FastAPI(title="DocuFlow")
+
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+@app.get("/projects", response_model=list[ProjectModel])
+async def list_projects_endpoint() -> list[ProjectModel]:
+    """Return all known projects."""
+    return list_projects()
+
+
+@app.post("/projects", status_code=201, response_model=ProjectModel)
+async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
+    """Create a new project."""
+    project = ProjectModel(**body.model_dump())
+    add_project(project)
+    log_event("create_project", user=project.user, project=project.id)
+    return project
+
+
+@app.get("/projects/{project_id}", response_model=ProjectModel)
+async def get_project_endpoint(project_id: str) -> ProjectModel:
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
+@app.put("/projects/{project_id}/priority", response_model=ProjectModel)
+async def update_priority_endpoint(project_id: str, body: PriorityUpdate) -> ProjectModel:
+    try:
+        return set_project_priority(project_id, body.priority)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/projects/{project_id}/temporary", response_model=ProjectModel)
+async def temporary_assign_endpoint(project_id: str, body: TemporaryAssign) -> ProjectModel:
+    try:
+        return assign_temporary(project_id, body.user, body.until)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/documents/import", status_code=201, response_model=DocumentModel)
+async def import_document_endpoint(
+    file: UploadFile = File(...),
+    project: str | None = Form(None),
+    user: str | None = Form(None),
+    priority: int | None = Form(None),
+) -> DocumentModel:
+    """Import a DOCX or Markdown file and store it as a document."""
+    data = await file.read()
+    document = import_document(
+        file.filename,
+        data,
+        project=project,
+        user=user,
+        priority=priority,
+    )
+    log_event(
+        "import_document",
+        user=user,
+        project=project,
+        filename=file.filename,
+    )
+    return document
+
+
+@app.get("/documents", response_model=list[DocumentModel])
+async def list_documents_endpoint() -> list[DocumentModel]:
+    """Return all imported documents."""
+    return list_docs()
+
+
+@app.get("/documents/{doc_id}", response_model=DocumentModel)
+async def get_document_endpoint(doc_id: str) -> DocumentModel:
+    """Retrieve a single document by id."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return document
+
+
+@app.put("/documents/{doc_id}", response_model=DocumentModel)
+async def update_document_endpoint(doc_id: str, document: DocumentModel) -> DocumentModel:
+    """Update a document's content and save the previous version."""
+    try:
+        return update_document(doc_id, document.content, priority=document.priority)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/documents/{doc_id}/export")
+async def export_document_endpoint(doc_id: str, fmt: str) -> Response:
+    """Return the document converted to the requested format."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    try:
+        data, media, filename = export_document(document, fmt)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    return Response(content=data, media_type=media, headers=headers)
+
+
+class ArchiveMetadata(BaseModel):
+    """Optional metadata for archiving."""
+
+    metadata: dict[str, Any] | None = None
+
+
+@app.post("/archive/{doc_id}", status_code=201, response_model=ArchiveRecord)
+async def archive_document_endpoint(
+    doc_id: str, body: ArchiveMetadata | None = None
+) -> ArchiveRecord:
+    """Archive a document in multiple formats."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return archive_doc(document, metadata=body.metadata if body else None)
+
+
+@app.get("/archive", response_model=list[ArchiveRecord])
+async def list_archives_endpoint() -> list[ArchiveRecord]:
+    """Return all archived documents."""
+    return list_archives()
+
+
+@app.get("/archive/{archive_id}", response_model=ArchiveRecord)
+async def get_archive_endpoint(archive_id: str) -> ArchiveRecord:
+    """Retrieve a single archived record by id."""
+    record = get_archive(archive_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Archive not found")
+    return record
+
+
+@app.get("/search", response_model=list[DocumentModel])
+async def search_documents(
+    q: str,
+    project: str | None = None,
+    user: str | None = None,
+    priority: int | None = None,
+    after: datetime | None = None,
+    before: datetime | None = None,
+) -> list[DocumentModel]:
+    """Return documents matching a full text query."""
+    return search(
+        q,
+        project=project,
+        user=user,
+        priority=priority,
+        after=after,
+        before=before,
+    )
+
+
+@app.get("/search/export")
+async def export_search_results(q: str, fmt: str = "json") -> Response:
+    """Return search results in JSON or CSV with ranking and snippets."""
+    results = ranked_search(q)
+    rows = [{"id": r["document"].id, "snippet": r["snippet"], "score": r["score"]} for r in results]
+    if fmt == "csv":
+        output = "id,snippet,score\n" + "\n".join(
+            f"{r['id']},{r['snippet'].replace(',', ' ')},{r['score']}" for r in rows
+        )
+        media = "text/csv"
+    else:
+        output = json.dumps(rows)
+        media = "application/json"
+    return Response(content=output, media_type=media)
+
+
+@app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
+async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel:
+    """Create a new document type."""
+    add_document_type(doc_type)
+    return doc_type
+
+
+@app.get("/document-types", response_model=list[DocumentTypeModel])
+async def get_document_types() -> list[DocumentTypeModel]:
+    """Return all configured document types."""
+    return list_document_types()
+
+
+@app.get("/document-types/{name}", response_model=DocumentTypeModel)
+async def get_document_type_endpoint(name: str) -> DocumentTypeModel:
+    """Retrieve a single document type by name."""
+    doc_type = get_document_type(name)
+    if doc_type is None:
+        raise HTTPException(status_code=404, detail="Document type not found")
+    return doc_type
+
+
+@app.put("/document-types/{name}", response_model=DocumentTypeModel)
+async def update_document_type_endpoint(
+    name: str, doc_type: DocumentTypeModel
+) -> DocumentTypeModel:
+    """Replace an existing document type."""
+    try:
+        return update_document_type(name, doc_type)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/document-types/{name}", status_code=204, response_class=Response)
+async def delete_document_type_endpoint(name: str) -> Response:
+    """Remove an existing document type."""
+    try:
+        delete_document_type(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(status_code=204)
+
+
+@app.post("/workflows", status_code=201, response_model=WorkflowModel)
+async def create_workflow_endpoint(workflow: WorkflowCreate) -> WorkflowModel:
+    """Create a new workflow."""
+    return create_workflow(workflow.project, workflow.phases)
+
+
+@app.get("/workflows/{wf_id}", response_model=WorkflowModel)
+async def get_workflow_endpoint(wf_id: str) -> WorkflowModel:
+    """Return a workflow by id."""
+    wf = get_workflow(wf_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return wf
+
+
+@app.post("/workflows/{wf_id}/assign", response_model=WorkflowModel)
+async def assign_reviewer_endpoint(wf_id: str, body: ReviewerAssign) -> WorkflowModel:
+    """Assign a reviewer to a workflow."""
+    try:
+        return assign_reviewer(wf_id, body.user)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/workflows/{wf_id}/advance", response_model=WorkflowModel)
+async def advance_workflow_endpoint(wf_id: str) -> WorkflowModel:
+    """Advance workflow to the next phase."""
+    try:
+        return advance_workflow(wf_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/approvals", status_code=201, response_model=ApprovalModel)
+async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
+    """Create an approval for a workflow."""
+    return create_approval(body.workflow, body.reviewer)
+
+
+@app.get("/approvals", response_model=list[ApprovalModel])
+async def list_approvals_endpoint(workflow: str | None = None) -> list[ApprovalModel]:
+    """Return approvals optionally filtered by workflow."""
+    return list_approvals(workflow)
+
+
+@app.get("/approvals/{approval_id}", response_model=ApprovalModel)
+async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
+    """Retrieve a single approval by id."""
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    return approval
+
+
+@app.put("/approvals/{approval_id}", response_model=ApprovalModel)
+async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> ApprovalModel:
+    """Update approval state and signature."""
+    try:
+        return update_approval_state(approval_id, body.state, signature=body.signature)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/token", response_model=auth.Token)
+async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+    """Return a JWT access token for valid user credentials."""
+    token_resp = await auth.login_for_access_token(form_data)
+    log_event("login", user=form_data.username)
+    return token_resp
+
+
+@app.post("/oidc/token", response_model=auth.Token)
+async def oidc_token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+    """Return an ID token using the OIDC demonstration flow."""
+    return await auth.login_for_oidc_token(form_data)
+
+
+@app.get("/me")
+async def read_current_user(current_user: auth.User = Depends(auth.get_current_user)) -> auth.User:
+    """Return the authenticated user."""
+    return current_user
+
+
+@app.get("/oidc/me")
+async def read_current_oidc_user(
+    current_user: auth.User = Depends(auth.get_current_user_oidc),
+) -> auth.User:
+    """Return the authenticated user for the OIDC flow."""
+    return current_user
+
+
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request) -> HTMLResponse:
+    """Display login page or dashboard depending on session."""
+    if request.cookies.get("session") == "admin":
+        return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.post("/login", response_class=HTMLResponse)
+async def login(request: Request, username: str = Form(...), password: str = Form(...)) -> Response:
+    """Simple credential check for admin user."""
+    if username == "admin" and password == "admin":
+        response = RedirectResponse("/dashboard", status_code=303)
+        response.set_cookie("session", "admin")
+        log_event("login", user=username)
+        return response
+    return templates.TemplateResponse(
+        "login.html", {"request": request, "error": "Invalid credentials"}, status_code=400
+    )
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request) -> HTMLResponse:
+    """Placeholder dashboard displayed after login."""
+    if request.cookies.get("session") != "admin":
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
+
+
+@app.get("/logs", response_model=list[LogEntry])
+async def list_logs(action: str | None = None, user: str | None = None) -> list[LogEntry]:
+    """Return recorded logs optionally filtered by action or user."""
+    return query_logs(action=action, user=user)
+
+
+@app.get("/reports/summary", response_model=SummaryReport)
+async def get_summary_report() -> SummaryReport:
+    """Return counts of projects, documents, workflows, and approvals."""
+    return generate_summary()
+
+
+@app.get("/reports/dashboard", response_model=list[DashboardEntry])
+async def get_dashboard_data() -> list[DashboardEntry]:
+    """Return per-project data for dashboard widgets."""
+    return dashboard_data()
+
+
+@app.websocket("/ws/dashboard")
+async def dashboard_stream(websocket: WebSocket) -> None:
+    """Send dashboard data periodically over a websocket."""
+    await websocket.accept()
+    try:
+        while True:
+            data = [entry.model_dump() for entry in dashboard_data()]
+            await websocket.send_json(data)
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        pass
