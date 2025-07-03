@@ -27,6 +27,7 @@
 - **Task 23**: AI suggestion and validation helpers.
 - **Task 24**: Collaborative comment storage.
 - **Task 25**: Digital signature utilities.
+- **Task 28**: Saved search and analytics support.
 - **Task 65**: Sample document type bootstrapped at startup.
 - **Task 66**: Ranked search and export endpoints.
 - **Task 67**: Guardrails hook blocks invalid exports.
@@ -47,7 +48,7 @@ None. All implemented tasks meet the minimal acceptance criteria.
 
 ## ❌ Missing Features
 
-Tasks **27–64** remain as stubs without real implementation code or documentation. Examples include multi‑database support, saved searches, plugin management UI, and infrastructure scripts.
+Tasks **27** and **29–64** remain as stubs without real implementation code or documentation. Examples include multi-database support, plugin management UI, and infrastructure scripts.
 
 ## 📋 Recommended Next Steps
 

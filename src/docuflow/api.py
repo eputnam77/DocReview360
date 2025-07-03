@@ -26,6 +26,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from . import auth
+from . import search as search_mod
 from .approvals import (
     ApprovalModel,
     create_approval,
@@ -73,8 +74,11 @@ from .search import (
     assign_temporary,
     get_project,
     list_projects,
+    list_saved_searches,
     ranked_search,
+    save_search,
     search,
+    search_stats,
     set_project_priority,
 )
 from .workflows import (
@@ -141,6 +145,13 @@ class TemporaryAssign(BaseModel):
 
     user: str
     until: datetime
+
+
+class SavedSearchCreate(BaseModel):
+    """Input model for creating saved searches."""
+
+    query: str
+    user: str | None = None
 
 
 app = FastAPI(title="DocuFlow")
@@ -328,6 +339,24 @@ async def export_search_results(q: str, fmt: str = "json") -> Response:
         output = json.dumps(rows)
         media = "application/json"
     return Response(content=output, media_type=media)
+
+
+@app.post("/search/saved", status_code=201)
+async def save_search_endpoint(body: SavedSearchCreate) -> search_mod.SavedSearch:
+    """Store a search query for later reuse."""
+    return save_search(body.query, user=body.user)
+
+
+@app.get("/search/saved", response_model=list[search_mod.SavedSearch])
+async def list_saved_searches_endpoint(user: str | None = None) -> list[search_mod.SavedSearch]:
+    """Return saved search queries."""
+    return list_saved_searches(user=user)
+
+
+@app.get("/search/stats")
+async def search_stats_endpoint() -> Dict[str, int]:
+    """Return counts of executed search queries."""
+    return search_stats()
 
 
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
