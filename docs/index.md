@@ -4,6 +4,8 @@
 Welcome to the DocuFlow project. This site contains a short overview of the
 prototype and tips for local development.
 
+For more details, see the [Developer Guide](developer.md).
+
 ## Getting started
 
 1. Install the package with `pip install -e .`.

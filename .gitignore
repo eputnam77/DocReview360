@@ -14,6 +14,13 @@ venv/
 *.swp
 *.swo
 
+# Python caches and coverage
+__pycache__/
+.coverage
+
+# MkDocs build
+site/
+
 # OS
 .DS_Store
 Thumbs.db
