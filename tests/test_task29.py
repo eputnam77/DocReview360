@@ -4,10 +4,10 @@ from docuflow.doc_types import (
     DocumentTypeModel,
     add_document_type,
     delete_document_type,
-    list_document_types,
+    document_types,
     export_document_types,
     import_document_types,
-    document_types,
+    list_document_types,
 )
 
 
