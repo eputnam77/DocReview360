@@ -1,33 +1,22 @@
-
 # DocuFlow Documentation
 
-Welcome to the DocuFlow project. This site contains a short overview of the
-prototype and tips for local development.
+Welcome to the DocuFlow project. This site collects guides and references for running the prototype and exploring its features.
 
-For more details, see the [Developer Guide](developer.md).
-
-## Getting started
-
-1. Install the package with `pip install -e .`.
-2. Run `python -m docuflow.cli init` to create a configuration file.
-3. Launch the API with `uvicorn docuflow.api:app --reload` and open your browser
-   to `http://127.0.0.1:8000/`.
+- [Getting Started](getting_started.md)
+- [CLI Reference](cli.md)
+- [UI Guide](ui.md)
+- [API Overview](api_overview.md)
+- [Usage Scenarios](scenarios.md)
+- [Developer Guide](developer.md)
 
 ## Project features
 
-DocuFlow implements a small slice of the functionality described in the
-Product Requirements Document.  The prototype demonstrates the following
-capabilities:
+DocuFlow implements a small slice of the functionality described in the product requirements. The prototype demonstrates:
 
 - In-memory project and document storage with sequential numbering
 - Import and export of Markdown and DOCX files
-- Basic search with simple ranking and saved queries
+- Basic search with saved queries
 - Plugin registry for editors, exporters and validators
-- Minimal JWT authentication flow
-- Placeholder React dashboard served from FastAPI
+- Minimal authentication flow with login page and dashboard
 
-## Contributing
-
-Pull requests are welcome! Please run the test suite with `pytest` and the
-linters before submitting changes.
-
+Pull requests are welcome! Please run the test suite with `pytest` and the linters before submitting changes.
