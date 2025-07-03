@@ -79,6 +79,6 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |73|Implement priority-based notifications with manager escalation for overdue high priority projects.|Medium|2d|Overdue high priority projects trigger escalation emails to managers; tests mock notification workflow. (tests: tests/e2e/features/task73.feature)|`backend`, `automation`|
 |74|Require manager approval for temporary assignments exceeding configurable duration and notify on return.|Medium|2d|Assignments longer than limit cannot proceed without manager approval and original assignee receives end notification; tests cover approval and notification logic. (tests: tests/e2e/features/task74.feature)|`backend`, `workflow`|
 |75|Add alert integration for log patterns to trigger automated notifications.|Low|2d|Configurable log rules send alerts via email/webhook; tests verify alert trigger on matching log entry. (tests: tests/e2e/features/task75.feature)|`backend`, `logging`|
-All tasks are currently unassigned. The next agent to act is **architect**.
+All tasks are currently unassigned. The next agent to act is **builder**.
 
-<!-- ready-for:architect -->
+<!-- ready-for:builder -->
