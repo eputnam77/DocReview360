@@ -1,8 +1,6 @@
-import pytest
-
-from docuflow.stubs.task71 import task71
+from docuflow.monitoring import open_dashboard
 
 
-def test_task71_not_implemented() -> None:
-    task71()
-    pytest.fail("Task 71 not implemented")
+def test_open_dashboard_returns_url() -> None:
+    url = open_dashboard()
+    assert url.startswith("http://")
