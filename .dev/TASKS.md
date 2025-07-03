@@ -68,6 +68,17 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |62|Implement real-time autosave with version history for document edits.|Medium|2d|Edits automatically save to database and new versions recorded; tests ensure versions increment. (tests: tests/e2e/features/task62.feature)|`backend`, `editor`|
 |63|Add Redis caching layer for session management and performance.|Medium|2d|Redis cache stores sessions and improves response times; tests mock caching logic. (tests: tests/property/test_task63_property.py)|`backend`, `devops`|
 |64|Integrate HR system API for automatic temporary reassignment.|Low|3d|Temporary assignments sync with HR leave data and revert when leave ends; integration tests mock HR API. (tests: tests/e2e/features/task64.feature)|`backend`, `integration`|
-All tasks are currently unassigned. The next agent to act is **builder**.
+|65|Provide sample document type and template on installation for quick onboarding.|Low|1d|Installation generates a default document type with template accessible via API; tests confirm presence after setup. (tests: tests/property/test_task65_property.py)|`backend`, `setup`|
+|66|Add AI-powered search ranking with preview snippets and export of search results.|Medium|3d|Search API returns ranked results with snippet previews and allows CSV/JSON export; tests verify ranking and export endpoints. (tests: tests/e2e/features/task66.feature)|`backend`, `search`, `ai`|
+|67|Integrate NeMo-Guardrails for PII and style validation during publishing and export.|High|3d|Documents fail export when violations detected; tests mock guardrails responses. (tests: tests/e2e/features/task67.feature)|`backend`, `security`, `ai`|
+|68|Deploy agileagents (A2) bots for automated review and approval actions.|Medium|3d|State changes trigger bot callbacks that record approvals; tests simulate bot workflow. (tests: tests/e2e/features/task68.feature)|`backend`, `automation`|
+|69|Integrate Prompt-Engine for reviewer feedback templates and AI edits.|Medium|2d|API exposes feedback templates and AI edits use them; unit tests verify template application. (tests: tests/e2e/features/task69.feature)|`backend`, `ai`|
+|70|Apply SynthLang to reduce token usage in AI-assisted edits and comments.|Low|2d|Token counts decrease when SynthLang is enabled; tests confirm processing step. (tests: tests/e2e/features/task70.feature)|`backend`, `ai`|
+|71|Enable LangGraph-Studio for visual debugging of agent flows.|Low|2d|Admins can open LangGraph dashboard and view flow metrics; integration test confirms dashboard access. (tests: tests/property/test_task71_property.py)|`devops`, `monitoring`|
+|72|Integrate ruv-FANN anomaly detection for style and timeline checks.|Medium|3d|Offline analysis flags style drift and timeline breaks; tests invoke detection on sample text. (tests: tests/e2e/features/task72.feature)|`backend`, `ai`|
+|73|Implement priority-based notifications with manager escalation for overdue high priority projects.|Medium|2d|Overdue high priority projects trigger escalation emails to managers; tests mock notification workflow. (tests: tests/e2e/features/task73.feature)|`backend`, `automation`|
+|74|Require manager approval for temporary assignments exceeding configurable duration and notify on return.|Medium|2d|Assignments longer than limit cannot proceed without manager approval and original assignee receives end notification; tests cover approval and notification logic. (tests: tests/e2e/features/task74.feature)|`backend`, `workflow`|
+|75|Add alert integration for log patterns to trigger automated notifications.|Low|2d|Configurable log rules send alerts via email/webhook; tests verify alert trigger on matching log entry. (tests: tests/e2e/features/task75.feature)|`backend`, `logging`|
+All tasks are currently unassigned. The next agent to act is **architect**.
 
-<!-- ready-for:builder -->
+<!-- ready-for:architect -->
