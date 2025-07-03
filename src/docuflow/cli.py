@@ -11,8 +11,10 @@ from .config import CONFIG_FILE, Config
 
 @click.group()
 def cli() -> None:
-    """Main CLI entrypoint."""
-    pass
+    """Main CLI entrypoint for all commands."""
+    # The function body intentionally does nothing; ``click`` uses it as a
+    # command group.  Having an explicit function makes the entry point clearer.
+    return None
 
 
 @cli.command()
@@ -74,6 +76,9 @@ def init(
     auth:
         Authentication provider.
     """
+    if not (0 < port < 65536):
+        raise click.BadParameter("Port must be between 1 and 65535")
+
     config = Config(
         database=database,
         editor=editor,

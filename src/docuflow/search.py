@@ -140,6 +140,7 @@ def assign_temporary(
 
 
 def _expire_temp_assignment(project: ProjectModel) -> None:
+    """Clear ``project.temp_user`` when the temporary period has ended."""
     if project.temp_user and project.temp_until and datetime.utcnow() >= project.temp_until:
         project.temp_user = None
         project.temp_until = None
@@ -170,6 +171,7 @@ def _normalize(text: str) -> str:
 
 
 def _match_all_terms(text: str, terms: list[str]) -> bool:
+    """Return ``True`` if all ``terms`` are present in ``text``."""
     normalized = _normalize(text)
     return all(term in normalized for term in terms)
 

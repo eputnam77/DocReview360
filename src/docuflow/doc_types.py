@@ -67,8 +67,11 @@ def delete_document_type(name: str) -> None:
 def export_document_types(path: str | Path) -> None:
     """Serialize document types to ``path`` as JSON."""
     try:
+        dest = Path(path)
+        if dest.is_dir():
+            raise ValueError(f"Export path {dest} must be a file")
         json_data = [doc.model_dump() for doc in document_types.values()]
-        Path(path).write_text(json.dumps(json_data, indent=2))
+        dest.write_text(json.dumps(json_data, indent=2))
     except OSError as exc:
         raise RuntimeError(f"Failed to export document types to {path}") from exc
 
@@ -81,6 +84,9 @@ def import_document_types(path: str | Path) -> None:
         raise RuntimeError(f"Failed to read document types from {path}") from exc
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON in {path}") from exc
+
+    if not isinstance(data, list):
+        raise ValueError("JSON must contain a list of document types")
 
     document_types.clear()
     for item in data:
