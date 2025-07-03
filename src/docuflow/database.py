@@ -27,3 +27,15 @@ class Database:
         """Yield a connection context."""
         with self._engine.begin() as conn:
             yield conn
+
+    def migrate(self) -> None:
+        """Create all database tables defined in :mod:`docuflow.models`."""
+        from .models import Base
+
+        Base.metadata.create_all(self._engine)
+
+    def drop_all(self) -> None:
+        """Drop all database tables. Useful for tests."""
+        from .models import Base
+
+        Base.metadata.drop_all(self._engine)

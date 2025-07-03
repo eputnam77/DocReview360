@@ -24,6 +24,13 @@ class PluginRegistry:
         except KeyError as exc:
             raise KeyError(f"Plugin '{name}' not found") from exc
 
+    def unregister(self, name: str) -> None:
+        """Remove a plugin from the registry."""
+        try:
+            del self._plugins[name]
+        except KeyError as exc:
+            raise KeyError(f"Plugin '{name}' not found") from exc
+
     def all(self) -> List[str]:
         """List registered plugin names."""
         return list(self._plugins.keys())
