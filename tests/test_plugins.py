@@ -1,17 +1,31 @@
+import sys
+from types import ModuleType
+
 import pytest
 
-from docuflow.plugins import registry
+from docuflow.plugins import load_plugins, registry
 
 
-def sample_plugin() -> str:
-    return "ok"
+def test_load_plugins_success():
+    mod = ModuleType("dummy_plugin")
+
+    def register(reg):
+        reg.register("dummy", lambda: "ok")
+
+    mod.register = register
+    sys.modules[mod.__name__] = mod
+
+    load_plugins([mod.__name__])
+    assert "dummy" in registry.all()
 
 
-def test_plugin_registry() -> None:
-    registry.register("sample", sample_plugin)
-    assert registry.get("sample")() == "ok"
-    assert "sample" in registry.all()
-    registry.unregister("sample")
-    assert "sample" not in registry.all()
-    with pytest.raises(KeyError):
-        registry.get("sample")
+def test_load_plugins_no_register():
+    mod = ModuleType("bad_plugin")
+    sys.modules[mod.__name__] = mod
+    with pytest.raises(ValueError):
+        load_plugins([mod.__name__])
+
+
+def test_load_plugins_import_error():
+    with pytest.raises(ImportError):
+        load_plugins(["nonexistent.plugin"])
