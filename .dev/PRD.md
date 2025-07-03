@@ -1197,3 +1197,9 @@ Key architectural strengths include:
 - **Status Automation**: Intelligent status management with automated stalled project detection and reporting
 - **Future-Proofing**: Architecture designed for easy expansion and technology evolution
 
+1. **ruvnet/agileagents (A2)**: deploy Lambda-ready review/approval bots triggered by document state changes. ([github.com][14])
+2. **ruvnet/Prompt-Engine**: centralize reviewer-feedback and rewrite templates for consistent AI edits. ([github.com][15])
+3. **ruvnet/SynthLang**: trim token usage across all AI-assisted edits and comments. ([github.com][2])
+4. **guardrails-ai/NeMo-Guardrails**: add PII/style validation middleware before publishing or exporting. ([github.com][16])
+5. **langchain-ai/LangGraph-Studio**: give admins a visual IDE to debug agent flows and latency hotspots. ([github.com][17])
+6. **ruvnet/ruv-FANN**: compile Rust NN core into a Python wheel to add millisecond-fast, fully offline anomaly detection that flags tense shifts, timeline breaks, and style drift in every passage (`musicscript train`). ([github.com][6])
