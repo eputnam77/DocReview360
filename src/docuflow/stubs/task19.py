@@ -1,6 +1,8 @@
-"""Stub for task 19."""
+"""Real-time dashboard helpers."""
+
+from ..reporting import dashboard_data
 
 
-def task19() -> None:
-    """Return None to indicate stub completion."""
-    return None
+def task19() -> list[dict]:
+    """Return dashboard metrics for tests."""
+    return [entry.model_dump() for entry in dashboard_data()]
