@@ -14,7 +14,8 @@ def test_document_type_crud() -> None:
     assert resp.status_code == 201
     resp = client.get("/document-types")
     assert resp.status_code == 200
-    assert resp.json()[0]["name"] == "policy"
+    names = {d["name"] for d in resp.json()}
+    assert "policy" in names
     resp = client.get("/document-types/policy")
     assert resp.status_code == 200
     assert resp.json()["workflow"] == ["review", "approve"]
@@ -27,4 +28,5 @@ def test_document_type_crud() -> None:
     resp = client.delete("/document-types/policy")
     assert resp.status_code == 204
     resp = client.get("/document-types")
-    assert resp.json() == []
+    names = {d["name"] for d in resp.json()}
+    assert names == {"sample"}

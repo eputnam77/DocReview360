@@ -1,8 +1,6 @@
-import pytest
-
-from docuflow.stubs.task72 import task72
+from docuflow.ai_utils import detect_anomalies
 
 
-def test_task72_not_implemented() -> None:
-    task72()
-    pytest.fail("Task 72 not implemented")
+def test_anomaly_detection() -> None:
+    assert detect_anomalies("normal text") is False
+    assert detect_anomalies("bad bad text") is True

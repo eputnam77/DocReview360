@@ -17,9 +17,12 @@ __all__ = [
     "exporter",
     "reporting",
     "archive",
+    "ai_utils",
+    "monitoring",
 ]
 
 from . import (
+    ai_utils,
     api,
     approvals,
     archive,
@@ -31,6 +34,7 @@ from . import (
     exporter,
     logs,
     models,
+    monitoring,
     plugins,
     reporting,
     search,

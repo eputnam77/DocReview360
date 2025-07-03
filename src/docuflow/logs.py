@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -16,12 +16,21 @@ class LogEntry(BaseModel):
 
 
 logs: List[LogEntry] = []
+alerts: List[tuple[str, Callable[[LogEntry], None]]] = []
+
+
+def register_alert(pattern: str, callback: Callable[[LogEntry], None]) -> None:
+    """Register an alert callback triggered when action contains pattern."""
+    alerts.append((pattern, callback))
 
 
 def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry:
     """Record a log entry and return it."""
     entry = LogEntry(timestamp=datetime.utcnow(), action=action, user=user, metadata=metadata)
     logs.append(entry)
+    for pattern, cb in alerts:
+        if pattern in action:
+            cb(entry)
     return entry
 
 

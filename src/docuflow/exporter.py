@@ -2,14 +2,26 @@ from __future__ import annotations
 
 from html import escape
 from io import BytesIO
+from typing import Callable, Optional
 from zipfile import ZipFile
 
 from .documents import DocumentModel
+
+# Customisable guardrails checker; return True if content is invalid
+guardrails_checker: Optional[Callable[[str], bool]] = None
+
+
+def set_guardrails(checker: Callable[[str], bool] | None) -> None:
+    """Register a guardrails validation function."""
+    global guardrails_checker
+    guardrails_checker = checker
 
 
 def export_document(document: DocumentModel, fmt: str) -> tuple[bytes, str, str]:
     """Convert a document into the requested format and return bytes, media type and filename."""
     fmt = fmt.lower()
+    if guardrails_checker is not None and guardrails_checker(document.content):
+        raise ValueError("Content failed guardrails validation")
     if fmt == "markdown" or fmt == "md":
         data = document.content.encode()
         media = "text/markdown"

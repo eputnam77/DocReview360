@@ -1,8 +1,13 @@
-import pytest
-
-from docuflow.stubs.task75 import task75
+from docuflow.logs import clear_logs, log_event, register_alert
 
 
-def test_task75_not_implemented() -> None:
-    task75()
-    pytest.fail("Task 75 not implemented")
+def test_alert_triggered_on_pattern() -> None:
+    triggered = []
+
+    def cb(entry):
+        triggered.append(entry.action)
+
+    register_alert("error", cb)
+    clear_logs()
+    log_event("user_error")
+    assert triggered == ["user_error"]
