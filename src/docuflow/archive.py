@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .documents import DocumentModel
 from .exporter import export_document
@@ -21,6 +21,8 @@ class ArchiveRecord(BaseModel):
     html: bytes
     docx: bytes
     pdf: bytes
+
+    model_config = ConfigDict(ser_json_bytes="base64")
 
 
 archives: Dict[str, ArchiveRecord] = {}

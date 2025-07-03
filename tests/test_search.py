@@ -5,6 +5,10 @@ from fastapi.testclient import TestClient
 from docuflow.api import app
 
 
+def _doc_ids(resp):
+    return {doc["id"] for doc in resp.json()}
+
+
 def test_search_returns_matching_document() -> None:
     client = TestClient(app)
     content = "This document contains special keywords"
@@ -57,3 +61,30 @@ def test_search_supports_project_name_and_date_filter() -> None:
         },
     )
     assert not any(d["id"] == doc_id for d in resp.json())
+
+
+def test_search_multiword_user_and_priority_filters() -> None:
+    client = TestClient(app)
+
+    resp = client.post(
+        "/documents/import",
+        files={"file": ("a.md", "Alpha Beta", "text/markdown")},
+        data={"project": "p3", "user": "alice", "priority": 2},
+    )
+    doc_a = resp.json()["id"]
+
+    resp = client.post(
+        "/documents/import",
+        files={"file": ("b.md", "Alpha Gamma", "text/markdown")},
+        data={"project": "p3", "user": "bob", "priority": 1},
+    )
+    doc_b = resp.json()["id"]
+
+    resp = client.get("/search", params={"q": "Alpha Beta"})
+    assert _doc_ids(resp) == {doc_a}
+
+    resp = client.get("/search", params={"q": "Alpha", "user": "bob"})
+    assert _doc_ids(resp) == {doc_b}
+
+    resp = client.get("/search", params={"q": "Alpha", "priority": 2})
+    assert _doc_ids(resp) == {doc_a}
