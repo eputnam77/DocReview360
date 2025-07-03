@@ -14,6 +14,7 @@ class ProjectModel(BaseModel):
 
     id: str
     name: str
+    number: int | None = None
     user: Optional[str] = None
     priority: int = 0
     created: datetime = datetime.utcnow()
@@ -25,11 +26,17 @@ class SearchIndex:
     """Simple in-memory inverted index for documents."""
 
     def __init__(self) -> None:
-        self.projects: Dict[str, ProjectModel] = {"1": ProjectModel(id="1", name="Example")}
+        self._next_project_number = 1
+        default = ProjectModel(id="1", name="Example", number=self._next_project_number)
+        self._next_project_number += 1
+        self.projects: Dict[str, ProjectModel] = {"1": default}
         self.index: Dict[str, Set[str]] = {}
 
     def add_project(self, project: ProjectModel) -> None:
         """Store a project and update indexes."""
+        if project.number is None:
+            project.number = self._next_project_number
+            self._next_project_number += 1
         self.projects[project.id] = project
 
     def add_document(self, document: DocumentModel) -> None:
@@ -48,6 +55,13 @@ class SearchIndex:
 
 search_index = SearchIndex()
 projects = search_index.projects
+
+
+def next_project_number() -> int:
+    """Return the next sequential project number."""
+    num = search_index._next_project_number
+    search_index._next_project_number += 1
+    return num
 
 
 def add_project(project: ProjectModel) -> None:
