@@ -8,6 +8,7 @@ export default function Dashboard() {
   return (
     <div className="p-4">
       <h1>Dashboard</h1>
+      <a href="/new-project" className="underline">Create Project</a>
       <p>Assigned: {widgets.assigned}</p>
       <p>Active: {widgets.active}</p>
       <p>Pending Approvals: {widgets.pending_approvals}</p>

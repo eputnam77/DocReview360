@@ -26,7 +26,7 @@ curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/to
 ```
 Use the token in the `Authorization` header to call `/oidc/me`.
 
-The API is a learning tool. Endpoints return dummy data but illustrate how projects, documents and approvals could work together. The frontend contains just a login page, a dashboard and a basic editor shell.
+The API is a learning tool. Endpoints return dummy data but illustrate how projects, documents and approvals could work together. The frontend contains a login page, a dashboard, a project creation form and a basic editor shell.
 
 ## Features
 
@@ -34,6 +34,6 @@ The API is a learning tool. Endpoints return dummy data but illustrate how proje
 - Import/export of Markdown and DOCX files
 - Search with saved queries
 - Simple plugin system for editors and exporters
-- Minimal authentication flow with a login form and dashboard
+- Minimal authentication flow with a login form, dashboard and project creation page
 
 Head over to the [documentation](https://example.com/docuflow) for a full tour of the API, CLI options and UI navigation tips.
