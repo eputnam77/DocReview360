@@ -95,3 +95,28 @@ def import_document_types(path: str | Path) -> None:
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
         document_types[doc.name] = doc
+
+
+def export_document_types_json() -> str:
+    """Return document types as a JSON string."""
+    json_data = [doc.model_dump() for doc in document_types.values()]
+    return json.dumps(json_data, indent=2)
+
+
+def import_document_types_json(data: str) -> None:
+    """Load document types from a JSON string."""
+    try:
+        payload = json.loads(data)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Invalid JSON payload") from exc
+
+    if not isinstance(payload, list):
+        raise ValueError("JSON must contain a list of document types")
+
+    document_types.clear()
+    for item in payload:
+        try:
+            doc = DocumentTypeModel(**item)
+        except ValidationError as exc:
+            raise ValueError(f"Invalid document type entry: {item}") from exc
+        document_types[doc.name] = doc
