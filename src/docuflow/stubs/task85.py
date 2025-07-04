@@ -1,9 +1,11 @@
-"""Implementation for task 85."""
+"""UI preference helper for dark mode and reduced motion."""
+
+from __future__ import annotations
 
 from . import record_task_completion
 
 
-def task85() -> None:
-    """Mark task 85 as completed for logging."""
-    record_task_completion(int("85"))
-    return None
+def apply_preferences(dark_mode: bool, reduce_motion: bool) -> dict[str, bool]:
+    """Return the selected preference flags."""
+    record_task_completion(85)
+    return {"dark_mode": dark_mode, "reduce_motion": reduce_motion}

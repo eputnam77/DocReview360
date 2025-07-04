@@ -1,8 +1,6 @@
-import pytest
-
-from docuflow.stubs.task87 import task87
+from docuflow.stubs.task87 import render_chart
 
 
-def test_task87_not_implemented() -> None:
-    task87()
-    pytest.fail("Task 87 not implemented")
+def test_render_chart() -> None:
+    yaml = render_chart("app", {"replicas": 2})
+    assert "app:" in yaml and "replicas: 2" in yaml

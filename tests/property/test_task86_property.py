@@ -1,9 +1,10 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from docuflow.stubs.task86 import task86
+from docuflow.stubs.task86 import has_trivy_step
 
 
-@given(st.none())
-def test_task86_property(_):
-    assert task86() is None
+@given(st.text())
+def test_task86_property(text: str) -> None:
+    """``has_trivy_step`` should always return a boolean."""
+    assert isinstance(has_trivy_step(text), bool)

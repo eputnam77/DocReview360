@@ -1,9 +1,10 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from docuflow.stubs.task87 import task87
+from docuflow.stubs.task87 import render_chart
 
 
-@given(st.none())
-def test_task87_property(_):
-    assert task87() is None
+@given(st.text(), st.dictionaries(st.text(), st.integers()))
+def test_task87_property(name: str, values: dict[str, int]) -> None:
+    yaml = render_chart(name, values)
+    assert isinstance(yaml, str)
