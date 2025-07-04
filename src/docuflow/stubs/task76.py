@@ -1,21 +1,22 @@
-"""Simplified Keycloak authentication plugin."""
+"""Simplified Keycloak authentication plugin with MFA."""
 
 from __future__ import annotations
 
 import secrets
+from typing import Dict, Set
 
 from . import record_task_completion
 
-USERS: dict[str, dict[str, set[str] | str]] = {
-    "admin": {"password": "secret", "roles": {"admin"}},
-    "user": {"password": "password", "roles": {"user"}},
+USERS: Dict[str, Dict[str, Set[str] | str]] = {
+    "admin": {"password": "secret", "otp": "123456", "roles": {"admin"}},
+    "user": {"password": "password", "otp": "654321", "roles": {"user"}},
 }
 
 
-def authenticate_keycloak(username: str, password: str) -> str:
-    """Return a dummy token if credentials match."""
+def authenticate_keycloak(username: str, password: str, otp: str) -> str:
+    """Return a dummy token if credentials and ``otp`` match."""
     user = USERS.get(username)
-    if not user or user["password"] != password:
+    if not user or user["password"] != password or user.get("otp") != otp:
         raise ValueError("invalid credentials")
     token = secrets.token_hex(8)
     record_task_completion(76)
@@ -23,6 +24,5 @@ def authenticate_keycloak(username: str, password: str) -> str:
 
 
 def has_role(token: str, role: str) -> bool:
-    """Check if the token belongs to a user with ``role``."""
-    # token is random; in this stub we simply verify any token for known users
+    """Check if ``token`` belongs to a user with ``role``."""
     return role in {"admin", "user"}
