@@ -89,11 +89,11 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |83|Integrate Metabase dashboards for reporting widgets.|Medium|2d|Dashboard endpoints fetch charts from Metabase; tests mock API requests. (tests: tests/e2e/features/task83.feature)|`frontend`, `dashboard`|
 |84|Create React Flow BPMN editor for admin workflow configuration.|Medium|3d|Admins edit BPMN templates via React Flow and save to backend; UI test verifies node editing. (tests: tests/e2e/features/task84.feature)|`frontend`, `workflow`|
 |85|Add dark mode and reduced motion preferences to UI.|Low|1d|Users toggle dark mode and animations respect system settings; accessibility test passes. (tests: tests/e2e/features/task85.feature)|`frontend`, `accessibility`|
-|86|Include Trivy image scanning step in CI pipeline.|Medium|1d|GitHub Actions run Trivy and fail on high severity CVEs; tests check workflow config. (tests: tests/property/task86_property.py)|`devops`, `security`|
-|87|Provide Helm chart for production Kubernetes deployment.|Medium|3d|`helm install` deploys application with all services; documentation updated. (tests: tests/property/task87_property.py)|`devops`, `infrastructure`|
+|86|Include Trivy image scanning step in CI pipeline.|Medium|1d|GitHub Actions run Trivy and fail on high severity CVEs; tests check workflow config. (tests: tests/property/test_task86_property.py)|`devops`, `security`|
+|87|Provide Helm chart for production Kubernetes deployment.|Medium|3d|`helm install` deploys application with all services; documentation updated. (tests: tests/property/test_task87_property.py)|`devops`, `infrastructure`|
 |88|Expose read-only GraphQL layer for external integrations.|Low|3d|GraphQL queries return project and document data; schema documented and tested. (tests: tests/e2e/features/task88.feature)|`backend`, `api`|
 |89|Research and implement web-native CRDT for offline editing sync.|Low|3d|Prototype demonstrates offline edits merging without conflicts; report summarized in docs. (tests: tests/e2e/features/task89.feature)|`research`, `editor`|
-|90|Document FedRAMP Moderate controls and automate daily encrypted backups.|Medium|2d|Compliance guide added and backup script runs in CI; test verifies backup artifact. (tests: tests/property/task90_property.py)|`documentation`, `security`|
+|90|Document FedRAMP Moderate controls and automate daily encrypted backups.|Medium|2d|Compliance guide added and backup script runs in CI; test verifies backup artifact. (tests: tests/property/test_task90_property.py)|`documentation`, `security`|
 All tasks are currently unassigned. The next agent to act is **builder**.
 
 <!-- ready-for:builder -->
