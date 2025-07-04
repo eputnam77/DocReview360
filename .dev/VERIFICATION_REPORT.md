@@ -38,4 +38,4 @@ These implementations satisfy PRD sections 2.1.0 through 2.5 and correspond to t
 The missing features should be tackled by the **builder** for code gaps and the
 **docwriter** for expanded documentation.
 
-`ready-for:builder`
+`ready-for:verifier`
