@@ -66,6 +66,7 @@ from .exporter import export_document
 from .logs import LogEntry, log_event, query_logs
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
+from .rbac import require_role, add_role
 from .reporting import (
     DashboardEntry,
     SummaryReport,
@@ -555,6 +556,12 @@ async def dashboard(request: Request) -> HTMLResponse:
     if request.cookies.get("session") != "admin":
         return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
+
+
+@app.get("/admin/panel")
+async def admin_panel(user: auth.User = Depends(require_role("admin"))) -> dict[str, str]:
+    """Return a trivial payload for admin-only access."""
+    return {"user": user.username, "admin": "ok"}
 
 
 @app.get("/plugins")
