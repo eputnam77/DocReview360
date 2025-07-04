@@ -79,6 +79,21 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |73|Implement priority-based notifications with manager escalation for overdue high priority projects.|Medium|2d|Overdue high priority projects trigger escalation emails to managers; tests mock notification workflow. (tests: tests/e2e/features/task73.feature)|`backend`, `automation`|
 |74|Require manager approval for temporary assignments exceeding configurable duration and notify on return.|Medium|2d|Assignments longer than limit cannot proceed without manager approval and original assignee receives end notification; tests cover approval and notification logic. (tests: tests/e2e/features/task74.feature)|`backend`, `workflow`|
 |75|Add alert integration for log patterns to trigger automated notifications.|Low|2d|Configurable log rules send alerts via email/webhook; tests verify alert trigger on matching log entry. (tests: tests/e2e/features/task75.feature)|`backend`, `logging`|
-All tasks are currently unassigned. The next agent to act is **builder**.
+|76|Integrate Keycloak for authentication and role management via plugin.|High|3d|Users authenticate against Keycloak and API enforces roles; tests validate token flow. (tests: tests/e2e/features/task76.feature)|`backend`, `security`|
+|77|Add Camunda workflow connector using plugin system.|High|3d|Workflow actions are proxied to Camunda REST API; unit tests mock API calls. (tests: tests/e2e/features/task77.feature)|`backend`, `workflow`|
+|78|Provide Imixs-Workflow adapter for lightweight deployments.|Medium|2d|Installer can switch to Imixs and sample workflow executes; tests ensure adapter selection. (tests: tests/e2e/features/task78.feature)|`backend`, `workflow`|
+|79|Implement ONLYOFFICE Docs connector for rich DOCX editing.|Medium|3d|Documents open in ONLYOFFICE iframe and save back via API; integration test covers edit round‑trip. (tests: tests/e2e/features/task79.feature)|`frontend`, `editor`|
+|80|Integrate Documenso signature service bound to workflow state.|High|3d|Approvals store Documenso signature data and verify callback; tests mock signing flow. (tests: tests/e2e/features/task80.feature)|`backend`, `security`|
+|81|Add Alfresco ECM connector for document storage and retrieval.|Medium|3d|Documents upload to Alfresco and metadata syncs; tests mock ECM API. (tests: tests/e2e/features/task81.feature)|`backend`, `storage`|
+|82|Replace in-memory search with OpenSearch backend and pgvector embeddings.|High|4d|Search API queries OpenSearch index and returns ranked results; tests spin up OpenSearch container. (tests: tests/e2e/features/task82.feature)|`backend`, `search`|
+|83|Integrate Metabase dashboards for reporting widgets.|Medium|2d|Dashboard endpoints fetch charts from Metabase; tests mock API requests. (tests: tests/e2e/features/task83.feature)|`frontend`, `dashboard`|
+|84|Create React Flow BPMN editor for admin workflow configuration.|Medium|3d|Admins edit BPMN templates via React Flow and save to backend; UI test verifies node editing. (tests: tests/e2e/features/task84.feature)|`frontend`, `workflow`|
+|85|Add dark mode and reduced motion preferences to UI.|Low|1d|Users toggle dark mode and animations respect system settings; accessibility test passes. (tests: tests/e2e/features/task85.feature)|`frontend`, `accessibility`|
+|86|Include Trivy image scanning step in CI pipeline.|Medium|1d|GitHub Actions run Trivy and fail on high severity CVEs; tests check workflow config. (tests: tests/property/task86_property.py)|`devops`, `security`|
+|87|Provide Helm chart for production Kubernetes deployment.|Medium|3d|`helm install` deploys application with all services; documentation updated. (tests: tests/property/task87_property.py)|`devops`, `infrastructure`|
+|88|Expose read-only GraphQL layer for external integrations.|Low|3d|GraphQL queries return project and document data; schema documented and tested. (tests: tests/e2e/features/task88.feature)|`backend`, `api`|
+|89|Research and implement web-native CRDT for offline editing sync.|Low|3d|Prototype demonstrates offline edits merging without conflicts; report summarized in docs. (tests: tests/e2e/features/task89.feature)|`research`, `editor`|
+|90|Document FedRAMP Moderate controls and automate daily encrypted backups.|Medium|2d|Compliance guide added and backup script runs in CI; test verifies backup artifact. (tests: tests/property/task90_property.py)|`documentation`, `security`|
+All tasks are currently unassigned. The next agent to act is **architect**.
 
-<!-- ready-for:builder -->
+<!-- ready-for:architect -->
