@@ -4,10 +4,10 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 
 | # | Task | Priority | Estimate | Acceptance Criteria | Labels |
 |---|------|----------|----------|--------------------|--------|
-|1|Design initial architecture and folder layout. Create ADR explaining decisions.|High|2d|ADR exists describing folder structure and technology choices. (tests: tests/test_task01_architecture.py)|`architecture`, `documentation`|
+|1|Design initial builderure and folder layout. Create ADR explaining decisions.|High|2d|ADR exists describing folder structure and technology choices. (tests: tests/test_task01_architecture.py)|`architecture`, `documentation`|
 |2|Initialize `pyproject.toml`, base package structure under `src/docuflow/`, and CI workflow.|High|1d|Running `poetry install` succeeds and CI workflow executes lint, type check, and tests. (tests: tests/test_task02_project_setup.py)|`setup`, `devops`|
 |3|Implement configuration wizard (CLI) for initial setup (database, editor, CMS, auth).|High|3d|CLI collects settings and writes config file; tests cover main options. (tests: tests/e2e/features/task03.feature)|`backend`, `cli`|
-|4|Create plugin architecture for editors, exporters, and validators.|High|3d|Plugins can be registered and discovered dynamically with example stub plugins. (tests: tests/property/test_task04_property.py)|`backend`, `architecture`|
+|4|Create plugin builderure for editors, exporters, and validators.|High|3d|Plugins can be registered and discovered dynamically with example stub plugins. (tests: tests/property/test_task04_property.py)|`backend`, `architecture`|
 |5|Define SQLAlchemy models for projects, documents, workflows, approvals, users, organizations, document types, templates, and plugins.|High|3d|Models compiled without errors and basic CRUD unit tests pass. (tests: tests/property/test_task05_property.py)|`backend`, `database`|
 |6|Expose REST API with FastAPI skeleton (projects, documents, workflows, approvals, users, organizations, plugins).|High|4d|FastAPI app runs locally and endpoints respond with placeholder data; tests cover at least one endpoint per router. (tests: tests/e2e/features/task06.feature)|`backend`, `api`|
 |7|Integrate authentication module supporting OAuth/OIDC with placeholder provider.|High|3d|Users can obtain JWT tokens and access protected endpoints in tests. (tests: tests/e2e/features/task07.feature)|`backend`, `security`|
@@ -94,6 +94,6 @@ Below is a high level list of tasks derived from **PRD.md**. Each task contains 
 |88|Expose read-only GraphQL layer for external integrations.|Low|3d|GraphQL queries return project and document data; schema documented and tested. (tests: tests/e2e/features/task88.feature)|`backend`, `api`|
 |89|Research and implement web-native CRDT for offline editing sync.|Low|3d|Prototype demonstrates offline edits merging without conflicts; report summarized in docs. (tests: tests/e2e/features/task89.feature)|`research`, `editor`|
 |90|Document FedRAMP Moderate controls and automate daily encrypted backups.|Medium|2d|Compliance guide added and backup script runs in CI; test verifies backup artifact. (tests: tests/property/task90_property.py)|`documentation`, `security`|
-All tasks are currently unassigned. The next agent to act is **architect**.
+All tasks are currently unassigned. The next agent to act is **builder**.
 
-<!-- ready-for:architect -->
+<!-- ready-for:builder -->
