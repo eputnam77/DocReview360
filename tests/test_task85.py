@@ -1,8 +1,6 @@
-import pytest
-
-from docuflow.stubs.task85 import task85
+from docuflow.stubs.task85 import apply_preferences
 
 
-def test_task85_not_implemented() -> None:
-    task85()
-    pytest.fail("Task 85 not implemented")
+def test_apply_preferences() -> None:
+    prefs = apply_preferences(True, False)
+    assert prefs == {"dark_mode": True, "reduce_motion": False}

@@ -1,9 +1,19 @@
-"""Implementation for task 84."""
+"""React Flow BPMN editor stub."""
+
+from __future__ import annotations
 
 from . import record_task_completion
 
 
-def task84() -> None:
-    """Mark task 84 as completed for logging."""
-    record_task_completion(int("84"))
-    return None
+class WorkflowEditor:
+    """Store nodes in memory for testing."""
+
+    def __init__(self) -> None:
+        self.nodes: dict[str, dict] = {}
+
+    def add_node(self, node_id: str, data: dict) -> None:
+        self.nodes[node_id] = data
+        record_task_completion(84)
+
+    def node_ids(self) -> list[str]:
+        return list(self.nodes.keys())

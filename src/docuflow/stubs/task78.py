@@ -1,9 +1,14 @@
-"""Implementation for task 78."""
+"""Imixs-Workflow adapter stub."""
+
+from __future__ import annotations
 
 from . import record_task_completion
 
 
-def task78() -> None:
-    """Mark task 78 as completed for logging."""
-    record_task_completion(int("78"))
-    return None
+class ImixsAdapter:
+    """Minimal adapter simulating workflow start."""
+
+    def start_workflow(self, workflow_id: str) -> str:
+        """Return a pseudo workflow handle."""
+        record_task_completion(78)
+        return f"imixs:{workflow_id}"

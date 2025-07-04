@@ -1,8 +1,7 @@
-import pytest
-
-from docuflow.stubs.task82 import task82
+from docuflow.stubs.task82 import OpenSearchClient
 
 
-def test_task82_not_implemented() -> None:
-    task82()
-    pytest.fail("Task 82 not implemented")
+def test_index_and_search() -> None:
+    client = OpenSearchClient()
+    client.index_document("hello world")
+    assert client.search("hello") == ["hello world"]

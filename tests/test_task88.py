@@ -1,8 +1,6 @@
-import pytest
-
-from docuflow.stubs.task88 import task88
+from docuflow.stubs.task88 import execute_query
 
 
-def test_task88_not_implemented() -> None:
-    task88()
-    pytest.fail("Task 88 not implemented")
+def test_execute_query_projects() -> None:
+    result = execute_query("{ projects { id } }")
+    assert "projects" in result

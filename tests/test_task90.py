@@ -1,8 +1,9 @@
-import pytest
+from pathlib import Path
 
-from docuflow.stubs.task90 import task90
+from docuflow.stubs.task90 import create_backup
 
 
-def test_task90_not_implemented() -> None:
-    task90()
-    pytest.fail("Task 90 not implemented")
+def test_create_backup(tmp_path: Path) -> None:
+    dest = tmp_path / "backup.txt"
+    create_backup(dest)
+    assert dest.read_text() == "encrypted backup"

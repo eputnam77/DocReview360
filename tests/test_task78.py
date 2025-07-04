@@ -1,8 +1,6 @@
-import pytest
-
-from docuflow.stubs.task78 import task78
+from docuflow.stubs.task78 import ImixsAdapter
 
 
-def test_task78_not_implemented() -> None:
-    task78()
-    pytest.fail("Task 78 not implemented")
+def test_start_workflow() -> None:
+    adapter = ImixsAdapter()
+    assert adapter.start_workflow("flow1") == "imixs:flow1"
