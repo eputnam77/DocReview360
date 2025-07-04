@@ -62,6 +62,7 @@ def dashboard_data() -> list[DashboardEntry]:
         )
     return data
 
+
 def widget_counts() -> dict[str, int]:
     """Return counts used by dashboard widgets."""
     assigned = sum(1 for p in projects.values() if p.user or p.temp_user)
