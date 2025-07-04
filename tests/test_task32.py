@@ -1,5 +1,13 @@
-from docuflow.stubs.task32 import task32
+from docuflow.plugins import registry
+from docuflow.plugins_ui import render_plugin_table
 
 
-def test_task32_returns_none() -> None:
-    assert task32() is None
+def dummy() -> None:
+    pass
+
+
+def test_render_plugin_table() -> None:
+    registry.register("demo", dummy)
+    html = render_plugin_table()
+    assert "demo" in html
+    assert "enabled" in html

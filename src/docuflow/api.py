@@ -75,6 +75,7 @@ from .reporting import (
     generate_summary,
     widget_counts,
 )
+from . import reporting
 from .search import (
     ProjectModel,
     add_project,
@@ -655,6 +656,12 @@ async def list_logs(action: str | None = None, user: str | None = None) -> list[
 async def get_summary_report() -> SummaryReport:
     """Return counts of projects, documents, workflows, and approvals."""
     return generate_summary()
+
+
+@app.get("/reports/summary.csv")
+async def get_summary_csv() -> Response:
+    """Return the summary report as CSV."""
+    return Response(reporting.summary_csv(), media_type="text/csv")
 
 
 @app.get("/reports/dashboard", response_model=list[DashboardEntry])
