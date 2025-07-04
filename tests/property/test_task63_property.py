@@ -1,6 +1,7 @@
-from docuflow.stubs.task63 import task63
 from hypothesis import given
 from hypothesis import strategies as st
+
+from docuflow.stubs.task63 import task63
 
 
 @given(st.none())

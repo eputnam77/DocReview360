@@ -1,6 +1,7 @@
+from fastapi.testclient import TestClient
+
 from docuflow.api import app
 from docuflow.logs import clear_logs
-from fastapi.testclient import TestClient
 
 
 def test_logging_records_actions() -> None:

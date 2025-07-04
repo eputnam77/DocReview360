@@ -56,9 +56,7 @@ def complete_signature(sig_id: str) -> None:
     """Mark a signature request as completed either locally or remotely."""
     if DOCUMENSO_URL:
         try:
-            resp = httpx.post(
-                f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}/complete", timeout=5
-            )
+            resp = httpx.post(f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}/complete", timeout=5)
             resp.raise_for_status()
         except httpx.HTTPError as exc:  # pragma: no cover - network failure
             raise RuntimeError("Documenso request failed") from exc
@@ -74,9 +72,7 @@ def signature_status(sig_id: str) -> str:
     """Return the status for ``sig_id``."""
     if DOCUMENSO_URL:
         try:
-            resp = httpx.get(
-                f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}", timeout=5
-            )
+            resp = httpx.get(f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}", timeout=5)
             resp.raise_for_status()
             return resp.json()["status"]
         except httpx.HTTPError as exc:  # pragma: no cover - network failure

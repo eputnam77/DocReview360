@@ -1,7 +1,8 @@
 import pytest
-from docuflow.api import app
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
+
+from docuflow.api import app
 
 scenarios("../features")
 
