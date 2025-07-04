@@ -1,8 +1,7 @@
 from pathlib import Path
 
-import pytest
-
 import docuflow.ai_utils as ai
+import pytest
 from docuflow.doc_types import (
     DocumentTypeModel,
     export_document_types,
