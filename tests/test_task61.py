@@ -1,5 +1,7 @@
-from docuflow.stubs.task61 import task61
+from docuflow.markreview import format_change_bars
 
 
-def test_task61_returns_none() -> None:
-    assert task61() is None
+def test_track_changes_output() -> None:
+    lines = format_change_bars("a\nb", "a\nc")
+    assert "[-] b" in lines
+    assert "[+] c" in lines

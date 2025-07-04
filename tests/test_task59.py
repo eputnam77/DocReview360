@@ -1,5 +1,16 @@
-from docuflow.stubs.task59 import task59
+from datetime import datetime, timedelta
+
+from docuflow.security_compliance import should_purge, xor_decrypt, xor_encrypt
 
 
-def test_task59_returns_none() -> None:
-    assert task59() is None
+def test_encrypt_decrypt_roundtrip() -> None:
+    data = b"secret"
+    key = b"k"
+    enc = xor_encrypt(data, key)
+    assert xor_decrypt(enc, key) == data
+
+
+def test_should_purge() -> None:
+    old = datetime.utcnow() - timedelta(days=10)
+    assert should_purge(old, 5)
+    assert not should_purge(datetime.utcnow(), 5)

@@ -17,11 +17,23 @@ class LogEntry(BaseModel):
 
 logs: List[LogEntry] = []
 alerts: List[tuple[str, Callable[[LogEntry], None]]] = []
+_listeners: List[Callable[[LogEntry], None]] = []
 
 
 def register_alert(pattern: str, callback: Callable[[LogEntry], None]) -> None:
     """Register an alert callback triggered when action contains pattern."""
     alerts.append((pattern, callback))
+
+
+def register_listener(callback: Callable[[LogEntry], None]) -> None:
+    """Subscribe to live log events."""
+    _listeners.append(callback)
+
+
+def unregister_listener(callback: Callable[[LogEntry], None]) -> None:
+    """Remove a previously registered listener."""
+    if callback in _listeners:
+        _listeners.remove(callback)
 
 
 def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry:
@@ -31,6 +43,8 @@ def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry
     for pattern, cb in alerts:
         if pattern in action:
             cb(entry)
+    for listener in list(_listeners):
+        listener(entry)
     return entry
 
 
