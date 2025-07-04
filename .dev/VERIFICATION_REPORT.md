@@ -35,4 +35,7 @@ These implementations satisfy PRD sections 2.1.0 through 2.5 and correspond to t
 2. Replace stub modules for tasks 30‑75 starting with plugin management.
 3. Add integration tests for REST API workflows and CLI operations.
 
+The missing features should be tackled by the **builder** for code gaps and the
+**docwriter** for expanded documentation.
+
 `ready-for:verifier`
