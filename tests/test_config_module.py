@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from docuflow.config import Config
 
 
