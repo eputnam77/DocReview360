@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 import pytest
-
 from docuflow.search import ProjectModel, assign_temporary, projects
 
 

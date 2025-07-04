@@ -1,7 +1,6 @@
+from docuflow.models import Base, DocumentType, Organization, Project, User
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
-from docuflow.models import Base, DocumentType, Organization, Project, User
 
 
 def test_models_crud() -> None:

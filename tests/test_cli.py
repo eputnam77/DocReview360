@@ -1,5 +1,4 @@
 from click.testing import CliRunner
-
 from docuflow.cli import cli
 from docuflow.config import CONFIG_FILE
 
