@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from docuflow.api import app
 from docuflow.documents import autosave_document, import_document
+from fastapi.testclient import TestClient
 
 
 def test_import_and_edit_document() -> None:

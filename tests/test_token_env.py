@@ -1,8 +1,7 @@
 import importlib
 
-from jose import jwt
-
 import docuflow.auth as auth
+from jose import jwt
 
 
 def test_env_secret_key(monkeypatch) -> None:
