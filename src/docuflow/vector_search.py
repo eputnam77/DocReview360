@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from collections import Counter, defaultdict
 from math import log, sqrt
 from typing import Dict, Iterable, List, Tuple
 
-import os
 import httpx
 
 OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")

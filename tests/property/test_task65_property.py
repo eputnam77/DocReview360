@@ -1,6 +1,7 @@
-from docuflow.doc_types import document_types
 from hypothesis import given
 from hypothesis import strategies as st
+
+from docuflow.doc_types import document_types
 
 
 @given(st.none())

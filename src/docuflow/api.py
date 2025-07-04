@@ -25,7 +25,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from . import auth
+from . import auth, reporting
 from . import search as search_mod
 from .approvals import (
     ApprovalModel,
@@ -75,7 +75,6 @@ from .reporting import (
     generate_summary,
     widget_counts,
 )
-from . import reporting
 from .search import (
     ProjectModel,
     add_project,

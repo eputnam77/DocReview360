@@ -18,5 +18,6 @@ DocuFlow implements a small slice of the functionality described in the product 
 - Basic search with saved queries
 - Plugin registry for editors, exporters and validators
 - Minimal authentication flow with login page and dashboard
+- Built-in observability helpers exposing Prometheus metrics and optional Sentry reporting
 
 Pull requests are welcome! Please run the test suite with `pytest` and the linters before submitting changes.

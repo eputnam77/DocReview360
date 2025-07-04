@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:  # pragma: no cover - hints only
     from .documents import DocumentModel
