@@ -66,7 +66,7 @@ from .exporter import export_document
 from .logs import LogEntry, log_event, query_logs
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
-from .rbac import require_role, add_role
+from .rbac import require_role
 from .reporting import (
     DashboardEntry,
     SummaryReport,
@@ -237,6 +237,19 @@ async def import_document_endpoint(
         project=project,
         filename=file.filename,
     )
+    return document
+
+
+@app.post("/documents/tiptap", status_code=201, response_model=DocumentModel)
+async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
+    """Import a TipTap JSON document."""
+    from .tiptap import import_tiptap_document
+
+    try:
+        document = import_tiptap_document(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    log_event("import_tiptap", document=document.id)
     return document
 
 

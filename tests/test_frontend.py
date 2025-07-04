@@ -12,6 +12,8 @@ def test_frontend_skeleton() -> None:
     assert "react-dom" in deps
     assert "tailwindcss" in deps
     assert "shadcn-ui" in deps
+    assert "@tanstack/react-query" in deps
+    assert "zustand" in deps
 
     index_src = Path("frontend/pages/index.tsx").read_text()
-    assert "function Home" in index_src
+    assert "useCounterStore" in index_src

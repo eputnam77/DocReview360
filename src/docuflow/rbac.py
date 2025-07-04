@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-"""Simple RBAC utilities and FastAPI dependency."""
-
 from typing import Iterable, Set
 
 from fastapi import Depends, HTTPException, status
 
 from . import auth
+
+"""Simple RBAC utilities and FastAPI dependency."""
 
 # In-memory mapping of usernames to role sets
 USER_ROLES: dict[str, Set[str]] = {"alice": {"user"}}
