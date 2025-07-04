@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import os
-
-"""Simple vector search with optional OpenSearch integration."""
-
 from collections import Counter, defaultdict
 from math import log, sqrt
 from typing import Dict, Iterable, List, Tuple

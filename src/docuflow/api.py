@@ -88,6 +88,7 @@ from .search import (
     search_stats,
     set_project_priority,
 )
+from .status import internal_status, public_status
 from .workflows import (
     WorkflowModel,
     advance_workflow,
@@ -673,6 +674,18 @@ async def get_dashboard_data() -> list[DashboardEntry]:
 async def get_widget_counts() -> dict[str, int]:
     """Return assignment and approval counts for dashboard widgets."""
     return widget_counts()
+
+
+@app.get("/status/public")
+async def public_status_endpoint() -> dict[str, int]:
+    """Expose limited status for unauthenticated users."""
+    return public_status()
+
+
+@app.get("/status/internal")
+async def internal_status_endpoint() -> dict[str, int]:
+    """Return extended system status for admins."""
+    return internal_status()
 
 
 @app.websocket("/ws/dashboard")
