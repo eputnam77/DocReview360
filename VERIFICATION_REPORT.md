@@ -16,7 +16,7 @@
 - **Celery workers and Redis broker** exist but tasks use simple `echo` stub; no real background jobs【F:src/docuflow/celery_app.py†L1-L16】【F:src/docuflow/stubs/task30.py†L1-L9】.
 - **Vector search** provides naive embeddings without OpenSearch integration【F:src/docuflow/vector_search.py†L1-L29】.
 - **Documenso signature connector** simulated with stub function only【F:src/docuflow/stubs/task80.py†L1-L12】.
-- **Observability stack** represented by stub configuration【F:src/docuflow/stubs/task97.py†L1-L11】.
+- **Observability stack** now starts a Prometheus server and optional Sentry integration via `init_observability`【F:src/docuflow/monitoring.py†L1-L32】【F:src/docuflow/stubs/task97.py†L1-L13】.
 - **Multiple editors (Toast UI, ONLYOFFICE, XML editor)** not present; only TipTap implemented.
 - **Security hardening (Keycloak MFA, FedRAMP controls)** not configured beyond basic JWT auth.
 
