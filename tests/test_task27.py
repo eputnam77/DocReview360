@@ -1,5 +1,13 @@
-from docuflow.stubs.task27 import task27
+from docuflow.documents import DocumentModel
+from docuflow.stubs.task27 import task27, task27_preview
 
 
-def test_task27_returns_none() -> None:
-    assert task27() is None
+def test_task27_batch_export_and_preview() -> None:
+    docs = [
+        DocumentModel(id="d1", content="one"),
+        DocumentModel(id="d2", content="two"),
+    ]
+    archive = task27(docs, "markdown")
+    assert archive.startswith(b"PK")  # zip signature
+    preview = task27_preview(docs[0], "markdown", length=2)
+    assert preview == "on"

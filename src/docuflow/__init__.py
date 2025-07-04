@@ -23,6 +23,7 @@ __all__ = [
     "vector_search",
     "rbac",
     "security_utils",
+    "celery_app",
     "ai_utils",
     "monitoring",
 ]
@@ -33,6 +34,7 @@ from . import (
     approvals,
     archive,
     auth,
+    celery_app,
     cli,
     comments,
     config,
