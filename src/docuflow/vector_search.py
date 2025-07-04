@@ -24,6 +24,7 @@ def index_document(doc_id: str, content: str) -> None:
 
 
 def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
+    """Return the cosine similarity between two vectors."""
     dot = sum(x * y for x, y in zip(a, b))
     na = sqrt(sum(x * x for x in a))
     nb = sqrt(sum(y * y for y in b))
