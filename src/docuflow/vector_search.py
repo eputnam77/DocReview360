@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import os
+
+"""Simple vector search with optional OpenSearch integration."""
+
 from collections import Counter, defaultdict
 from math import log, sqrt
 from typing import Dict, Iterable, List, Tuple
@@ -22,7 +25,12 @@ def _embed(text: str) -> Counter[str]:
 
 
 def index_document(doc_id: str, content: str) -> None:
-    """Store the embedding for ``content`` under ``doc_id``."""
+    """Store the embedding for ``content`` under ``doc_id``.
+
+    When ``OPENSEARCH_URL`` is defined the document is also indexed in
+    OpenSearch. Any network failure raises ``RuntimeError`` so callers can
+    decide whether to retry or fall back to the local index.
+    """
     if not doc_id or not content:
         raise ValueError("doc_id and content are required")
     global _total_docs
@@ -31,6 +39,16 @@ def index_document(doc_id: str, content: str) -> None:
         _doc_freq[term] += 1
     _total_docs += 1
     _vectors[doc_id] = [tf, len(content.split())]
+
+    if OPENSEARCH_URL:
+        try:
+            httpx.put(
+                f"{OPENSEARCH_URL.rstrip('/')}/documents/_doc/{doc_id}",
+                json={"content": content},
+                timeout=5,
+            ).raise_for_status()
+        except httpx.HTTPError as exc:  # pragma: no cover - network
+            raise RuntimeError("OpenSearch index failed") from exc
 
 
 def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
