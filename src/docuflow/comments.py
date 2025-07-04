@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Dict, List, Optional
+import re
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -16,16 +17,43 @@ class CommentModel(BaseModel):
     document: str
     user: str
     text: str
+    mentions: list[str] = []
     parent: Optional[str] = None
     created: datetime = datetime.utcnow()
 
 
 _comments: Dict[str, List[CommentModel]] = {}
+_emoji = {"smile": "😄", "thumbsup": "👍", "rocket": "🚀"}
+
+
+def _replace_emojis(text: str) -> str:
+    """Replace ``:name:`` patterns with emoji characters."""
+    return re.sub(
+        r":([a-zA-Z0-9_+\-]+):",
+        lambda m: _emoji.get(m.group(1), m.group(0)),
+        text,
+    )
+
+
+def _extract_mentions(text: str) -> list[str]:
+    """Return ``@user`` mentions from ``text``."""
+    return re.findall(r"@(\w+)", text)
 
 
 def add_comment(document: str, user: str, text: str, parent: str | None = None) -> CommentModel:
-    """Store a comment for the given document."""
-    comment = CommentModel(id=uuid4().hex, document=document, user=user, text=text, parent=parent)
+    """Store a comment for the given document parsing mentions and emoji."""
+    if not document or not user or not text:
+        raise ValueError("document, user and text are required")
+    text = _replace_emojis(text)
+    mentions = _extract_mentions(text)
+    comment = CommentModel(
+        id=uuid4().hex,
+        document=document,
+        user=user,
+        text=text,
+        mentions=mentions,
+        parent=parent,
+    )
     _comments.setdefault(document, []).append(comment)
     return comment
 

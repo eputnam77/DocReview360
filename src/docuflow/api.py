@@ -67,11 +67,13 @@ from .logs import LogEntry, log_event, query_logs
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .rbac import require_role
+from .documenso import complete_signature, request_signature, signature_status
 from .reporting import (
     DashboardEntry,
     SummaryReport,
     dashboard_data,
     generate_summary,
+    widget_counts,
 )
 from .search import (
     ProjectModel,
@@ -514,6 +516,26 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@app.post("/sign/{doc_id}")
+async def sign_document(doc_id: str, user: str = Form(...)) -> dict[str, str]:
+    """Create a Documenso signature request for ``doc_id``."""
+    sig_id = request_signature(doc_id, user)
+    return {"id": sig_id}
+
+
+@app.post("/sign/{sig_id}/complete")
+async def complete_sign(sig_id: str) -> None:
+    """Mark a signature request as completed."""
+    complete_signature(sig_id)
+
+
+@app.get("/sign/{sig_id}")
+async def get_sign_status(sig_id: str) -> dict[str, str]:
+    """Return signature status."""
+    status = signature_status(sig_id)
+    return {"status": status}
+
+
 @app.post("/token", response_model=auth.Token)
 async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
@@ -639,6 +661,12 @@ async def get_summary_report() -> SummaryReport:
 async def get_dashboard_data() -> list[DashboardEntry]:
     """Return per-project data for dashboard widgets."""
     return dashboard_data()
+
+
+@app.get("/dashboard/widgets")
+async def get_widget_counts() -> dict[str, int]:
+    """Return assignment and approval counts for dashboard widgets."""
+    return widget_counts()
 
 
 @app.websocket("/ws/dashboard")
