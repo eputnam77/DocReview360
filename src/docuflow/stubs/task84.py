@@ -10,6 +10,7 @@ class WorkflowEditor:
 
     def __init__(self) -> None:
         self.nodes: dict[str, dict] = {}
+        self.edges: list[tuple[str, str]] = []
 
     def add_node(self, node_id: str, data: dict) -> None:
         self.nodes[node_id] = data
@@ -17,3 +18,12 @@ class WorkflowEditor:
 
     def node_ids(self) -> list[str]:
         return list(self.nodes.keys())
+
+    def add_edge(self, source: str, target: str) -> None:
+        if source not in self.nodes or target not in self.nodes:
+            raise ValueError("unknown node")
+        self.edges.append((source, target))
+        record_task_completion(84)
+
+    def edges_list(self) -> list[tuple[str, str]]:
+        return list(self.edges)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from difflib import SequenceMatcher
 from io import BytesIO
 from typing import Dict, List, Optional
 from uuid import uuid4
@@ -25,7 +26,10 @@ class DocumentModel(BaseModel):
     priority: Optional[int] = None
 
 
+# Stored documents keyed by id
 documents: Dict[str, DocumentModel] = {}
+# Document ids that require a new review cycle
+_re_review: set[str] = set()
 # Track document numbers globally and per project
 _next_document_number = 1
 _project_document_numbers: Dict[str, int] = {}
@@ -117,10 +121,14 @@ def update_document(
 
     search_module.search_index.remove_document(doc_id)
 
-    document.history.append(document.content)
+    old_content = document.content
+    document.history.append(old_content)
     document.content = content
     if priority is not None:
         document.priority = priority
+
+    if SequenceMatcher(None, old_content, content).ratio() < 0.7:
+        _re_review.add(doc_id)
 
     # Re-index the updated document
     search_module.add_document(document)
@@ -136,3 +144,13 @@ def autosave_document(doc_id: str, content: str) -> DocumentModel:
     if document.content == content:
         return document
     return update_document(doc_id, content)
+
+
+def needs_rereview(doc_id: str) -> bool:
+    """Return ``True`` if the document was changed substantially."""
+    return doc_id in _re_review
+
+
+def clear_rereview(doc_id: str) -> None:
+    """Remove the re-review flag for ``doc_id``."""
+    _re_review.discard(doc_id)
