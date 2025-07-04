@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from celery import Celery
+import httpx
 
 broker_url = os.environ.get("CELERY_BROKER_URL", "memory://")
 backend_url = os.environ.get("CELERY_RESULT_BACKEND", "cache+memory://")
@@ -26,3 +27,13 @@ def word_count(text: str) -> int:
     if not isinstance(text, str):
         raise ValueError("text must be a string")
     return len(text.split())
+
+
+@app.task(name="docuflow.fetch_length")
+def fetch_length(url: str) -> int:
+    """Return the length of the response body from ``url``."""
+    if not url.startswith(("http://", "https://")):
+        raise ValueError("url must be http or https")
+    resp = httpx.get(url, timeout=5)
+    resp.raise_for_status()
+    return len(resp.text)
