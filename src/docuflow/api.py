@@ -47,7 +47,9 @@ from .doc_types import (
     DocumentTypeModel,
     add_document_type,
     delete_document_type,
+    export_document_types_json,
     get_document_type,
+    import_document_types_json,
     list_document_types,
     update_document_type,
 )
@@ -383,6 +385,25 @@ async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel
 @app.get("/document-types", response_model=list[DocumentTypeModel])
 async def get_document_types() -> list[DocumentTypeModel]:
     """Return all configured document types."""
+    return list_document_types()
+
+
+@app.get("/document-types/export")
+async def export_doc_types_endpoint() -> Response:
+    """Download all document types as JSON."""
+    data = export_document_types_json()
+    headers = {"Content-Disposition": "attachment; filename=document_types.json"}
+    return Response(content=data, media_type="application/json", headers=headers)
+
+
+@app.post("/document-types/import", status_code=201, response_model=list[DocumentTypeModel])
+async def import_doc_types_endpoint(file: UploadFile = File(...)) -> list[DocumentTypeModel]:
+    """Upload a JSON file of document types and replace existing ones."""
+    data = await file.read()
+    try:
+        import_document_types_json(data.decode())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return list_document_types()
 
 
