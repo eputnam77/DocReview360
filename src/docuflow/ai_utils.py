@@ -92,3 +92,13 @@ def create_validated_document(
     from .documents import import_document
 
     return import_document(filename, data, project=project, user=user)
+
+
+def suggest_export_format(content: str) -> str:
+    """Return a recommended export format based on ``content``."""
+    text = content.lower()
+    if "image" in text:
+        return "pdf"
+    if "table" in text:
+        return "xlsx"
+    return "markdown"
