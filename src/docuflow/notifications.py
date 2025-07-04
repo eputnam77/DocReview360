@@ -41,3 +41,22 @@ def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
     email = {"to": recipient, "subject": subject, "body": body}
     sent_emails.append(email)
     return email
+
+
+def notify_overdue_projects() -> list[dict[str, str]]:
+    """Send alerts for overdue high priority projects."""
+    from . import search
+
+    emails: list[dict[str, str]] = []
+    if "default" not in TEMPLATES:
+        TEMPLATES["default"] = Template("{subject}", "{body}")
+    for pid in search.overdue_high_priority():
+        emails.append(
+            send_email(
+                "default",
+                "admin@example.com",
+                subject=f"Overdue project {pid}",
+                body=pid,
+            )
+        )
+    return emails
