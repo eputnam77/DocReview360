@@ -18,3 +18,11 @@ def echo(value: str) -> str:
     if not isinstance(value, str):
         raise ValueError("value must be a string")
     return value
+
+
+@app.task(name="docuflow.word_count")
+def word_count(text: str) -> int:
+    """Return the number of words in ``text``."""
+    if not isinstance(text, str):
+        raise ValueError("text must be a string")
+    return len(text.split())
