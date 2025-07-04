@@ -1,9 +1,8 @@
 import sys
 from types import ModuleType
 
-from fastapi.testclient import TestClient
-
 from docuflow.api import app
+from fastapi.testclient import TestClient
 
 
 def create_dummy_plugin(name: str) -> str:

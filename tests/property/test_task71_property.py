@@ -1,7 +1,6 @@
+from docuflow.monitoring import open_dashboard
 from hypothesis import given
 from hypothesis import strategies as st
-
-from docuflow.monitoring import open_dashboard
 
 
 @given(st.none())

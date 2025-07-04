@@ -1,7 +1,6 @@
+from docuflow.stubs.task87 import render_chart
 from hypothesis import given
 from hypothesis import strategies as st
-
-from docuflow.stubs.task87 import render_chart
 
 
 @given(st.text(), st.dictionaries(st.text(), st.integers()))
