@@ -4,6 +4,7 @@ __all__ = [
     "placeholder",
     "cli",
     "plugins",
+    "plugins_ui",
     "models",
     "api",
     "auth",
@@ -26,6 +27,9 @@ __all__ = [
     "celery_app",
     "ai_utils",
     "monitoring",
+    "notifications",
+    "plugins_ui",
+    "project_init",
 ]
 
 from . import (
@@ -45,7 +49,10 @@ from . import (
     logs,
     models,
     monitoring,
+    notifications,
     plugins,
+    plugins_ui,
+    project_init,
     rbac,
     reporting,
     search,

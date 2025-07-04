@@ -69,3 +69,12 @@ def widget_counts() -> dict[str, int]:
     active = sum(1 for p in projects.values() if p.temp_user)
     pending = sum(1 for a in approvals.values() if a.state == "pending")
     return {"assigned": assigned, "active": active, "pending_approvals": pending}
+
+
+def summary_csv() -> str:
+    """Return ``generate_summary`` as a single-line CSV string."""
+    summary = generate_summary()
+    return (
+        "projects,documents,workflows,approvals\n"
+        f"{summary.projects},{summary.documents},{summary.workflows},{summary.approvals}\n"
+    )
