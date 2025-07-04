@@ -1,8 +1,12 @@
-import pytest
-
-from docuflow.stubs.task86 import task86
+from docuflow.stubs.task86 import has_trivy_step
 
 
-def test_task86_not_implemented() -> None:
-    task86()
-    pytest.fail("Task 86 not implemented")
+def test_has_trivy_step() -> None:
+    workflow = """
+    jobs:
+      build:
+        steps:
+          - name: Run Trivy
+            uses: aquasec/trivy@v1
+    """
+    assert has_trivy_step(workflow)

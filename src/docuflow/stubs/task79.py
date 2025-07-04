@@ -1,9 +1,14 @@
-"""Implementation for task 79."""
+"""ONLYOFFICE Docs connector stub."""
+
+from __future__ import annotations
 
 from . import record_task_completion
 
 
-def task79() -> None:
-    """Mark task 79 as completed for logging."""
-    record_task_completion(int("79"))
-    return None
+class OnlyofficeConnector:
+    """Provide an HTML iframe snippet for a document."""
+
+    def open_document(self, doc_id: str) -> str:
+        """Return an iframe snippet pointing to the editor."""
+        record_task_completion(79)
+        return f"<iframe src='/onlyoffice/{doc_id}'></iframe>"

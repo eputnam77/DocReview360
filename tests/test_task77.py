@@ -1,8 +1,7 @@
-import pytest
-
-from docuflow.stubs.task77 import task77
+from docuflow.stubs.task77 import CamundaClient
 
 
-def test_task77_not_implemented() -> None:
-    task77()
-    pytest.fail("Task 77 not implemented")
+def test_start_process() -> None:
+    client = CamundaClient()
+    proc_id = client.start_process("wf123")
+    assert proc_id == "started:wf123"

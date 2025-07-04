@@ -1,8 +1,6 @@
-import pytest
-
-from docuflow.stubs.task80 import task80
+from docuflow.stubs.task80 import sign_document
 
 
-def test_task80_not_implemented() -> None:
-    task80()
-    pytest.fail("Task 80 not implemented")
+def test_sign_document() -> None:
+    sig = sign_document("doc1", "alice")
+    assert sig == "signature:doc1:alice"

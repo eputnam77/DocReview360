@@ -1,8 +1,7 @@
-import pytest
-
-from docuflow.stubs.task79 import task79
+from docuflow.stubs.task79 import OnlyofficeConnector
 
 
-def test_task79_not_implemented() -> None:
-    task79()
-    pytest.fail("Task 79 not implemented")
+def test_open_document() -> None:
+    conn = OnlyofficeConnector()
+    iframe = conn.open_document("123")
+    assert "onlyoffice/123" in iframe
