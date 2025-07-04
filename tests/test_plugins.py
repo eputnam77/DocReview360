@@ -2,6 +2,7 @@ import sys
 from types import ModuleType
 
 import pytest
+
 from docuflow.plugins import load_plugins, registry
 
 
@@ -43,3 +44,18 @@ def test_registry_enable_disable_cycle():
     registry.unregister("p1")
     with pytest.raises(KeyError):
         registry.get("p1")
+
+
+def test_registry_duplicate() -> None:
+    registry.register("dup", lambda: None)
+    with pytest.raises(ValueError):
+        registry.register("dup", lambda: None)
+    registry.unregister("dup")
+
+
+def test_registry_info() -> None:
+    registry.register("info", lambda: None, enabled=False)
+    info = registry.info()
+    assert any(p["name"] == "info" and not p["enabled"] for p in info)
+    registry.enable("info")
+    registry.unregister("info")
