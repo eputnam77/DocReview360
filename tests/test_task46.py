@@ -1,8 +1,9 @@
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
+from docuflow import auth
 from docuflow.api import app
 from docuflow.rbac import add_role, has_role, require_role
-from docuflow import auth
 
 
 def test_admin_access_control() -> None:
@@ -20,8 +21,6 @@ def test_admin_access_control() -> None:
     r = client.get("/admin/panel", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     assert r.json()["admin"] == "ok"
-
-from fastapi import Depends, FastAPI
 
 
 def test_require_role_dependency() -> None:

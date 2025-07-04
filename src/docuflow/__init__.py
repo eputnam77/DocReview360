@@ -18,6 +18,7 @@ __all__ = [
     "reporting",
     "archive",
     "comments",
+    "tiptap",
     "rbac",
     "security_utils",
     "ai_utils",
@@ -44,6 +45,7 @@ from . import (
     reporting,
     search,
     security_utils,
+    tiptap,
     workflows,
 )
 
