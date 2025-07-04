@@ -17,7 +17,7 @@ DocuFlow implements a small slice of the functionality described in the product 
 - Import and export of Markdown and DOCX files
 - Basic search with saved queries
 - Plugin registry for editors, exporters and validators
-- Minimal authentication flow with login page and dashboard
+- Minimal authentication flow with login, dashboard and project creation page
 - Built-in observability helpers exposing Prometheus metrics and optional Sentry reporting
 
 Pull requests are welcome! Please run the test suite with `pytest` and the linters before submitting changes.
