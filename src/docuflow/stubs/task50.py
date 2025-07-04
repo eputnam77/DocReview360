@@ -1,9 +1,10 @@
-"""Implementation for task 50."""
+"""Expose dual status API helpers."""
 
+from ..status import internal_status, public_status
 from . import record_task_completion
 
 
-def task50() -> None:
-    """Mark task 50 as completed for logging."""
-    record_task_completion(int("50"))
-    return None
+def task50() -> tuple[dict[str, int], dict[str, int]]:
+    """Return public and internal status information."""
+    record_task_completion(50)
+    return public_status(), internal_status()

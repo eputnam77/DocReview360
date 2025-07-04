@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import os
 
-from celery import Celery
 import httpx
+from celery import Celery
 
 broker_url = os.environ.get("CELERY_BROKER_URL", "memory://")
 backend_url = os.environ.get("CELERY_RESULT_BACKEND", "cache+memory://")
