@@ -2,98 +2,135 @@
 
 Below is a high level list of tasks derived from **PRD.md**. Each task contains a priority, estimated effort, acceptance criteria, and suggested GitHub labels.
 
-| # | Task | Priority | Estimate | Acceptance Criteria | Labels |
-|---|------|----------|----------|--------------------|--------|
-|1|Design initial builderure and folder layout. Create ADR explaining decisions.|High|2d|ADR exists describing folder structure and technology choices. (tests: tests/test_task01_architecture.py)|`architecture`, `documentation`|
-|2|Initialize `pyproject.toml`, base package structure under `src/docuflow/`, and CI workflow.|High|1d|Running `poetry install` succeeds and CI workflow executes lint, type check, and tests. (tests: tests/test_task02_project_setup.py)|`setup`, `devops`|
-|3|Implement configuration wizard (CLI) for initial setup (database, editor, CMS, auth).|High|3d|CLI collects settings and writes config file; tests cover main options. (tests: tests/e2e/features/task03.feature)|`backend`, `cli`|
-|4|Create plugin builderure for editors, exporters, and validators.|High|3d|Plugins can be registered and discovered dynamically with example stub plugins. (tests: tests/property/test_task04_property.py)|`backend`, `architecture`|
-|5|Define SQLAlchemy models for projects, documents, workflows, approvals, users, organizations, document types, templates, and plugins.|High|3d|Models compiled without errors and basic CRUD unit tests pass. (tests: tests/property/test_task05_property.py)|`backend`, `database`|
-|6|Expose REST API with FastAPI skeleton (projects, documents, workflows, approvals, users, organizations, plugins).|High|4d|FastAPI app runs locally and endpoints respond with placeholder data; tests cover at least one endpoint per router. (tests: tests/e2e/features/task06.feature)|`backend`, `api`|
-|7|Integrate authentication module supporting OAuth/OIDC with placeholder provider.|High|3d|Users can obtain JWT tokens and access protected endpoints in tests. (tests: tests/e2e/features/task07.feature)|`backend`, `security`|
-|8|Implement document type management including template storage and workflow defaults.|High|4d|API endpoints allow CRUD of document types and templates with validation rules. (tests: tests/e2e/features/task08.feature)|`backend`, `feature`|
-|9|Add document import and editing support using TipTap (placeholder integration).|High|5d|Documents can be created from DOCX/Markdown via API and stored; editing endpoint saves revisions. (tests: tests/e2e/features/task09.feature)|`backend`, `editor`|
-|10|Implement search service with full text search on projects and documents.|Medium|4d|Search API returns expected results and supports filters by project, user, date, and priority. (tests: tests/e2e/features/task10.feature)|`backend`, `feature`|
-|11|Develop workflow management module with phase transitions and reviewer assignments.|High|4d|API supports creating workflows, updating status, assigning reviewers; unit tests verify transitions. (tests: tests/e2e/features/task11.feature)|`backend`, `feature`|
-|12|Create approval management system with digital signature placeholder.|High|4d|Approvals stored with status and can be retrieved; tests validate approval states. (tests: tests/e2e/features/task12.feature)|`backend`, `feature`|
-|13|Add priority management and temporary reassignment features.|Medium|3d|Projects store priority levels and temporary assignee periods; tests ensure automatic reversion logic. (tests: tests/e2e/features/task13.feature)|`backend`, `feature`|
-|14|Implement logging system for user actions and system events with export capability.|High|4d|Logs recorded in structured format and can be queried; tests ensure key events are logged. (tests: tests/e2e/features/task14.feature)|`backend`, `logging`|
-|15|Generate reporting endpoints and dashboard data export.|Medium|3d|API provides summary reports and real time status data for dashboards. (tests: tests/e2e/features/task15.feature)|`backend`, `feature`|
-|16|Support document export pipeline for HTML, PDF, DOCX, Markdown with placeholder converter.|High|5d|Export endpoint returns files in requested format; tests cover at least HTML and Markdown. (tests: tests/e2e/features/task16.feature)|`backend`, `export`|
-|17|Implement archival workflow storing multiple formats and metadata.|Medium|3d|Archived records include original, Markdown, PDF, and DOCX versions with metadata. (tests: tests/e2e/features/task17.feature)|`backend`, `feature`|
-|18|Create frontend skeleton using React with routing and basic pages (dashboard, editor, login).|Medium|5d|`npm start` serves the app and pages load; simple integration test passes. (tests: tests/e2e/features/task18.feature)|`frontend`|
-|19|Add real time dashboard with project assignment views and status widgets.|Medium|4d|Dashboard fetches API data and displays assignments with priority indicators. (tests: tests/e2e/features/task19.feature)|`frontend`, `feature`|
-|20|Write developer documentation and user guide in `docs/` using MkDocs.|Medium|3d|Docs build successfully and describe setup, API usage, and contribution guidelines. (tests: tests/e2e/features/task20.feature)|`documentation`|
-|21|Set up test suite with pytest, coverage, ruff, mypy, bandit, and integrate with pre-commit.|High|2d|`pre-commit run --all-files` and `pytest --cov` succeed locally. (tests: tests/test_task21.py)|`testing`, `devops`|
-|22|Implement document numbering system tied to project lifecycle.|Medium|2d|Projects receive persistent document numbers displayed in API and UI. (tests: tests/e2e/features/task22.feature)|`backend`, `feature`|
-|23|Integrate AI assistance for document creation and validation.|Medium|4d|AI endpoint suggests document type, validates content, and unit tests cover suggestions. (tests: tests/e2e/features/task23.feature)|`backend`, `ai`|
-|24|Add collaborative commenting and threaded responses in the editor.|High|4d|Users can comment inline and reply; tests verify comment storage. (tests: tests/e2e/features/task24.feature)|`frontend`, `feature`|
-|25|Provide digital signature integration via third-party service with fallback to custom signatures.|High|3d|Approvals capture signature metadata; tests cover signature verification workflow. (tests: tests/e2e/features/task25.feature)|`backend`, `security`|
-|26|Create WebSocket channel for real-time project and status updates.|Medium|3d|Clients receive live status notifications in tests. (tests: tests/e2e/features/task26.feature)|`backend`, `api`|
-|27|Abstract database layer for multi-database support with migration tools.|Medium|4d|Swappable database backends run basic CRUD tests. (tests: tests/property/test_task27_property.py)|`backend`, `database`|
-|28|Implement saved searches and search analytics dashboard widgets.|Low|3d|Users can save queries and view search statistics via API. (tests: tests/e2e/features/task28.feature)|`backend`, `feature`, `dashboard`|
-|29|Develop import/export for document type configurations.|Low|2d|Admin API allows download and upload of document type JSON; tests ensure round‑trip. (tests: tests/e2e/features/task29.feature)|`backend`, `feature`|
-|30|Expose plugin management UI for editors and exporters.|Medium|3d|Admin dashboard lists installed plugins and enables toggle; integration test passes. (tests: tests/e2e/features/task30.feature)|`frontend`, `feature`|
-|31|Automate stalled project detection and manager notification every two weeks.|Medium|3d|Background job creates status note and triggers notification in tests. (tests: tests/e2e/features/task31.feature)|`backend`, `automation`|
-|32|Implement project initialization workflow with AI validation and default reviewer assignment.|High|4d|Creating a project via API generates unique ID, validates document type with AI, assigns default reviewers, and stores phase selection. (tests: tests/e2e/features/task32.feature)|`backend`, `feature`|
-|33|Add project document type conversion with automatic template application.|Medium|3d|Users can convert a project to another document type via API and the correct template is applied; tests verify conversion. (tests: tests/e2e/features/task33.feature)|`backend`, `feature`|
-|34|Provide multi-editor plugin support allowing editor switching per document.|Medium|4d|Documents can be edited with TipTap or alternative editors using plugins and format conversion; tests cover switching. (tests: tests/e2e/features/task34.feature)|`frontend`, `editor`|
-|35|Enhance TipTap integration with DOCX import, automatic heading insertion, template conversion, and real-time validation.|Medium|4d|Uploading DOCX converts to TipTap format with template applied; missing headings inserted and validation errors reported in tests. (tests: tests/e2e/features/task35.feature)|`frontend`, `editor`|
-|36|Implement AI workload management for priority-based assignment suggestions.|Low|3d|API returns AI-generated workload recommendations and tests cover suggestion logic. (tests: tests/e2e/features/task36.feature)|`backend`, `ai`|
-|37|Add style guide management and automated compliance checks.|Medium|3d|Administrators can upload style guides and editor highlights violations; unit tests validate compliance engine. (tests: tests/e2e/features/task37.feature)|`backend`, `editor`, `feature`|
-|38|Support export preview and batch export of multiple documents.|Medium|3d|Export endpoint offers preview before download and allows selecting multiple projects for export; tests cover both features. (tests: tests/e2e/features/task38.feature)|`backend`, `export`|
-|39|Create real-time log dashboard with filtering and search capabilities.|Medium|3d|Dashboard displays streaming logs, supports filter by user/project/date, and tests verify log query API. (tests: tests/e2e/features/task39.feature)|`frontend`, `logging`, `dashboard`|
-|40|Containerize application with Docker and docker-compose for local development.|Medium|2d|`docker-compose up` starts all services successfully and documentation explains usage. (tests: tests/property/test_task40_property.py)|`devops`|
-|41|Integrate monitoring stack using Prometheus, Grafana, and Sentry.|Low|3d|Metrics and error tracking are captured in development environment; sample dashboard loads in tests. (tests: tests/property/test_task41_property.py)|`devops`, `monitoring`|
-|42|Extend authentication module to support Login.gov, SAML, and OAuth providers.|Medium|4d|Configuration allows switching auth providers and tests confirm token issuance for each. (tests: tests/e2e/features/task42.feature)|`backend`, `security`|
-|43|Apply phase-based archival naming conventions with metadata preservation.|Medium|2d|Archived files follow naming scheme by phase and include metadata records; tests verify file names. (tests: tests/e2e/features/task43.feature)|`backend`, `feature`|
-|44|Add AI-powered export format recommendations and preview workflow.|Low|2d|Export API suggests format based on document type and shows preview before final download; tests cover suggestion logic. (tests: tests/e2e/features/task44.feature)|`backend`, `ai`, `export`|
-|45|Implement advanced dashboard analytics including priority heat maps and bottleneck detection.|Low|3d|Dashboard shows heat map visualization and reports bottlenecks; integration test verifies data feed. (tests: tests/e2e/features/task45.feature)|`frontend`, `dashboard`, `ai`|
-|46|Implement user and organization management with role-based permissions.|High|3d|API allows CRUD for users and organizations with role assignments; tests verify permission enforcement. (tests: tests/e2e/features/task46.feature)|`backend`, `security`|
-|47|Add email notification service for assignments, approvals, and reminders.|Medium|2d|Email notifications sent during workflow events with configurable templates; tests confirm delivery logic. (tests: tests/e2e/features/task47.feature)|`backend`, `feature`|
-|48|Integrate optional grammar checking tool (Grammarly/Acrolinx).|Low|2d|Editor highlights grammar issues when tool enabled; tests mock grammar API calls. (tests: tests/e2e/features/task48.feature)|`frontend`, `editor`, `ai`|
-|49|Implement re-review automation triggered by significant document changes.|Medium|3d|System detects change threshold and notifies original approvers; tests cover detection and notification. (tests: tests/e2e/features/task49.feature)|`backend`, `workflow`|
-|50|Add dual status system separating public status data from internal logs.|Medium|2d|Public API returns sanitized status while internal logs retain detail; tests verify separation. (tests: tests/e2e/features/task50.feature)|`backend`, `logging`|
-|51|Provide contextual help system with tooltips and links to tutorials.|Low|2d|UI displays help icons and opens documentation/videos; basic UI test validates presence. (tests: tests/e2e/features/task51.feature)|`frontend`, `documentation`|
-|52|Create infrastructure-as-code templates using Terraform for cloud deployment.|Medium|3d|`terraform plan` succeeds and README documents deployment steps. (tests: tests/property/test_task52_property.py)|`devops`, `infrastructure`|
-|53|Integrate Pandiff for version comparison and change tracking.|Medium|2d|Version diffs generated via Pandiff and shown in editor; tests cover diff output. (tests: tests/e2e/features/task53.feature)|`backend`, `editor`|
-|54|Implement backup and disaster recovery strategy with automated daily backups.|Low|2d|Backup scripts run via CI and restore procedure documented; test verifies backup artifact. (tests: tests/property/test_task54_property.py)|`devops`, `backup`|
-|55|Ensure UI follows WCAG 2.1 AA accessibility guidelines with responsive design.|Medium|3d|Frontend passes axe-core accessibility tests and layout adjusts for mobile. (tests: tests/e2e/features/task55.feature)|`frontend`, `accessibility`|
-|56|Integrate MinIO object storage for document files.|Medium|2d|Documents are stored and retrieved from MinIO; unit tests verify upload and download. (tests: tests/e2e/features/task56.feature)|`backend`, `storage`|
-|57|Add Celery-based background task system with Redis broker.|Medium|3d|Background queue runs in Docker Compose and sample task executes during tests. (tests: tests/property/test_task57_property.py)|`backend`, `devops`|
-|58|Integrate Records Keeper for automated archival folder creation.|Low|2d|Archival process creates folders via Records Keeper API; tests mock API calls. (tests: tests/e2e/features/task58.feature)|`backend`, `archival`|
-|59|Implement security compliance module with encryption settings and data retention policies.|Medium|3d|Configuration allows setting encryption and retention period; tests verify enforcement. (tests: tests/e2e/features/task59.feature)|`backend`, `security`|
-|60|Enable dual view mode in the document editor (block-based and Markdown preview).|Medium|3d|Users can toggle between block editor and Markdown preview; tests verify round-trip content consistency. (tests: tests/e2e/features/task60.feature)|`frontend`, `editor`|
-|61|Integrate MarkReview for track changes and accept/reject workflow.|Medium|3d|Changes tracked via MarkReview and approvers can accept/reject; unit tests cover track change operations. (tests: tests/e2e/features/task61.feature)|`backend`, `editor`|
-|62|Implement real-time autosave with version history for document edits.|Medium|2d|Edits automatically save to database and new versions recorded; tests ensure versions increment. (tests: tests/e2e/features/task62.feature)|`backend`, `editor`|
-|63|Add Redis caching layer for session management and performance.|Medium|2d|Redis cache stores sessions and improves response times; tests mock caching logic. (tests: tests/property/test_task63_property.py)|`backend`, `devops`|
-|64|Integrate HR system API for automatic temporary reassignment.|Low|3d|Temporary assignments sync with HR leave data and revert when leave ends; integration tests mock HR API. (tests: tests/e2e/features/task64.feature)|`backend`, `integration`|
-|65|Provide sample document type and template on installation for quick onboarding.|Low|1d|Installation generates a default document type with template accessible via API; tests confirm presence after setup. (tests: tests/property/test_task65_property.py)|`backend`, `setup`|
-|66|Add AI-powered search ranking with preview snippets and export of search results.|Medium|3d|Search API returns ranked results with snippet previews and allows CSV/JSON export; tests verify ranking and export endpoints. (tests: tests/e2e/features/task66.feature)|`backend`, `search`, `ai`|
-|67|Integrate NeMo-Guardrails for PII and style validation during publishing and export.|High|3d|Documents fail export when violations detected; tests mock guardrails responses. (tests: tests/e2e/features/task67.feature)|`backend`, `security`, `ai`|
-|68|Deploy agileagents (A2) bots for automated review and approval actions.|Medium|3d|State changes trigger bot callbacks that record approvals; tests simulate bot workflow. (tests: tests/e2e/features/task68.feature)|`backend`, `automation`|
-|69|Integrate Prompt-Engine for reviewer feedback templates and AI edits.|Medium|2d|API exposes feedback templates and AI edits use them; unit tests verify template application. (tests: tests/e2e/features/task69.feature)|`backend`, `ai`|
-|70|Apply SynthLang to reduce token usage in AI-assisted edits and comments.|Low|2d|Token counts decrease when SynthLang is enabled; tests confirm processing step. (tests: tests/e2e/features/task70.feature)|`backend`, `ai`|
-|71|Enable LangGraph-Studio for visual debugging of agent flows.|Low|2d|Admins can open LangGraph dashboard and view flow metrics; integration test confirms dashboard access. (tests: tests/property/test_task71_property.py)|`devops`, `monitoring`|
-|72|Integrate ruv-FANN anomaly detection for style and timeline checks.|Medium|3d|Offline analysis flags style drift and timeline breaks; tests invoke detection on sample text. (tests: tests/e2e/features/task72.feature)|`backend`, `ai`|
-|73|Implement priority-based notifications with manager escalation for overdue high priority projects.|Medium|2d|Overdue high priority projects trigger escalation emails to managers; tests mock notification workflow. (tests: tests/e2e/features/task73.feature)|`backend`, `automation`|
-|74|Require manager approval for temporary assignments exceeding configurable duration and notify on return.|Medium|2d|Assignments longer than limit cannot proceed without manager approval and original assignee receives end notification; tests cover approval and notification logic. (tests: tests/e2e/features/task74.feature)|`backend`, `workflow`|
-|75|Add alert integration for log patterns to trigger automated notifications.|Low|2d|Configurable log rules send alerts via email/webhook; tests verify alert trigger on matching log entry. (tests: tests/e2e/features/task75.feature)|`backend`, `logging`|
-|76|Integrate Keycloak for authentication and role management via plugin.|High|3d|Users authenticate against Keycloak and API enforces roles; tests validate token flow. (tests: tests/e2e/features/task76.feature)|`backend`, `security`|
-|77|Add Camunda workflow connector using plugin system.|High|3d|Workflow actions are proxied to Camunda REST API; unit tests mock API calls. (tests: tests/e2e/features/task77.feature)|`backend`, `workflow`|
-|78|Provide Imixs-Workflow adapter for lightweight deployments.|Medium|2d|Installer can switch to Imixs and sample workflow executes; tests ensure adapter selection. (tests: tests/e2e/features/task78.feature)|`backend`, `workflow`|
-|79|Implement ONLYOFFICE Docs connector for rich DOCX editing.|Medium|3d|Documents open in ONLYOFFICE iframe and save back via API; integration test covers edit round‑trip. (tests: tests/e2e/features/task79.feature)|`frontend`, `editor`|
-|80|Integrate Documenso signature service bound to workflow state.|High|3d|Approvals store Documenso signature data and verify callback; tests mock signing flow. (tests: tests/e2e/features/task80.feature)|`backend`, `security`|
-|81|Add Alfresco ECM connector for document storage and retrieval.|Medium|3d|Documents upload to Alfresco and metadata syncs; tests mock ECM API. (tests: tests/e2e/features/task81.feature)|`backend`, `storage`|
-|82|Replace in-memory search with OpenSearch backend and pgvector embeddings.|High|4d|Search API queries OpenSearch index and returns ranked results; tests spin up OpenSearch container. (tests: tests/e2e/features/task82.feature)|`backend`, `search`|
-|83|Integrate Metabase dashboards for reporting widgets.|Medium|2d|Dashboard endpoints fetch charts from Metabase; tests mock API requests. (tests: tests/e2e/features/task83.feature)|`frontend`, `dashboard`|
-|84|Create React Flow BPMN editor for admin workflow configuration.|Medium|3d|Admins edit BPMN templates via React Flow and save to backend; UI test verifies node editing. (tests: tests/e2e/features/task84.feature)|`frontend`, `workflow`|
-|85|Add dark mode and reduced motion preferences to UI.|Low|1d|Users toggle dark mode and animations respect system settings; accessibility test passes. (tests: tests/e2e/features/task85.feature)|`frontend`, `accessibility`|
-|86|Include Trivy image scanning step in CI pipeline.|Medium|1d|GitHub Actions run Trivy and fail on high severity CVEs; tests check workflow config. (tests: tests/property/test_task86_property.py)|`devops`, `security`|
-|87|Provide Helm chart for production Kubernetes deployment.|Medium|3d|`helm install` deploys application with all services; documentation updated. (tests: tests/property/test_task87_property.py)|`devops`, `infrastructure`|
-|88|Expose read-only GraphQL layer for external integrations.|Low|3d|GraphQL queries return project and document data; schema documented and tested. (tests: tests/e2e/features/task88.feature)|`backend`, `api`|
-|89|Research and implement web-native CRDT for offline editing sync.|Low|3d|Prototype demonstrates offline edits merging without conflicts; report summarized in docs. (tests: tests/e2e/features/task89.feature)|`research`, `editor`|
-|90|Document FedRAMP Moderate controls and automate daily encrypted backups.|Medium|2d|Compliance guide added and backup script runs in CI; test verifies backup artifact. (tests: tests/property/test_task90_property.py)|`documentation`, `security`|
-All tasks are currently unassigned. The next agent to act is **builder**.
+Below is a **de-duplicated, OSS-aware backlog (87 tasks)**.
+Everything that was rendered obsolete by the open-source stack (e.g., a separate “Alt-stack deployment doc”) has been **removed or merged**; overlapping items (e.g., Prometheus + Grafana + Loki) are **consolidated**.
+
+*Seq #* = recommended build order toward a “clickable” MVP in ≈ 6 weeks.
+*Orig #* = row(s) from the previous 97-item sheet that this task replaces or combines (— = brand-new or renamed).
+Estimates are unchanged unless noted.
+
+| Seq # |  Orig # | Task (merged/renamed items in italics)                                                    | Priority | Est. | Key Acceptance Test                  | Labels                      |
+| ----: | :-----: | ----------------------------------------------------------------------------------------- | -------- | ---: | ------------------------------------ | --------------------------- |
+|     1 |    1    | Architecture ADR & folder layout                                                          | High     |   2d | `tests/test_task01_architecture.py`  | architecture, documentation |
+|     2 |    2    | Project skeleton (`pyproject.toml`, CI)                                                   | High     |   1d | `tests/test_task02_project_setup.py` | setup, devops               |
+|     3 |    21   | Quality gates (pytest, ruff, mypy, bandit, pre-commit)                                    | High     |   2d | `tests/test_task21.py`               | testing, devops             |
+|     4 |    3    | CLI “`docuflow init`” configuration wizard                                                | High     |   3d | `features/task03.feature`            | backend, cli                |
+|     5 |    4    | Plugin framework (editors / exporters / validators)                                       | High     |   3d | `property/test_task04_property.py`   | backend, architecture       |
+|     6 |    5    | SQLAlchemy models (all core entities)                                                     | High     |   3d | `property/test_task05_property.py`   | backend, database           |
+|     7 |    6    | FastAPI skeleton (CRUD placeholders)                                                      | High     |   4d | `features/task06.feature`            | backend, api                |
+|     8 |    7    | OAuth/OIDC stub auth                                                                      | High     |   3d | `features/task07.feature`            | backend, security           |
+|     9 |    46   | RBAC middleware (users & roles)                                                           | High     |   3d | `features/task46.feature`            | backend, security           |
+|    10 |    —    | **Next.js 14 + Tailwind + shadcn/ui boilerplate**                                         | High     |   3d | `features/task92.feature`            | frontend, setup             |
+|    11 |    —    | **State mgmt (React Query + Zustand)**                                                    | High     |   2d | `features/task93.feature`            | frontend, state             |
+|    12 |    11   | Workflow engine (*phase + reviewers*)                                                     | High     |   4d | `features/task11.feature`            | backend, workflow           |
+|    13 |    8    | Document-type & template CRUD                                                             | High     |   4d | `features/task08.feature`            | backend, feature            |
+|    14 |    9    | TipTap editor (upload/edit Markdown + DOCX stub)                                          | High     |   5d | `features/task09.feature`            | backend, editor             |
+|    15 |    12   | Approval subsystem (sign / decline)                                                       | High     |   4d | `features/task12.feature`            | backend, feature            |
+|    16 |    80   | Documenso e-signature connector                                                           | High     |   3d | `features/task80.feature`            | backend, security           |
+|    17 |    18   | React pages (login, dashboard, editor)                                                    | Medium   |   5d | `features/task18.feature`            | frontend                    |
+|    18 |    19   | Dashboard widgets (assignments, status)                                                   | Medium   |   4d | `features/task19.feature`            | frontend, feature           |
+|    19 | 24 + 20 | **Inline comments w/ mentions & emoji**                                                   | High     |   4d | `features/task24.feature`            | frontend, collaboration     |
+|    20 |    40   | Docker-compose dev stack                                                                  | Medium   |   2d | `property/test_task40_property.py`   | devops                      |
+|    21 |    14   | Structured logging + query API                                                            | High     |   4d | `features/task14.feature`            | backend, logging            |
+|    22 |    26   | WebSocket live updates                                                                    | Medium   |   3d | `features/task26.feature`            | backend, api                |
+|    23 | 17 + 43 | Archival workflow (*multi-format & naming*)                                               | Medium   |   4d | `features/task17.feature`            | backend, archival           |
+|    24 |    10   | Full-text search (Postgres TS)                                                            | Medium   |   4d | `features/task10.feature`            | backend, search             |
+|    25 |    82   | OpenSearch + pgvector upgrade                                                             | High     |   4d | `features/task82.feature`            | backend, search             |
+|    26 |    16   | Export pipeline (HTML + MD + PDF + DOCX)                                                  | High     |   5d | `features/task16.feature`            | backend, export             |
+|    27 |    38   | Export preview & batch export                                                             | Medium   |   3d | `features/task38.feature`            | backend, export             |
+|    28 |    13   | Priority management & temp reassignment                                                   | Medium   |   3d | `features/task13.feature`            | backend, feature            |
+|    29 |    22   | Document numbering system                                                                 | Medium   |   2d | `features/task22.feature`            | backend, feature            |
+|    30 | 32 + 57 | Celery workers + Redis broker                                                             | Medium   |   3d | `property/test_task57_property.py`   | backend, devops             |
+|    31 |    47   | Email notifications (template-driven)                                                     | Medium   |   2d | `features/task47.feature`            | backend, feature            |
+|    32 |    30   | Plugin management UI (on/off)                                                             | Medium   |   3d | `features/task30.feature`            | frontend, admin             |
+|    33 |    15   | Reporting endpoints & CSV export                                                          | Medium   |   3d | `features/task15.feature`            | backend, reporting          |
+|    34 |    23   | AI assist (creation + validation)                                                         | Medium   |   4d | `features/task23.feature`            | backend, ai                 |
+|    35 |    32   | AI-validated project init (+ reviewers)                                                   | High     |   4d | `features/task32.feature`            | backend, ai                 |
+|    36 |    33   | Doc-type conversion wizard                                                                | Medium   |   3d | `features/task33.feature`            | backend, feature            |
+|    37 |    37   | Style-guide manager + compliance                                                          | Medium   |   3d | `features/task37.feature`            | backend, editor             |
+|    38 |    35   | TipTap DOCX → headings auto-fix                                                           | Medium   |   4d | `features/task35.feature`            | frontend, editor            |
+|    39 |    34   | Multi-editor switching (Toast UI / ONLYOFFICE)                                            | Medium   |   4d | `features/task34.feature`            | frontend, editor            |
+|    40 |    53   | Pandiff diff & change-bars                                                                | Medium   |   2d | `features/task53.feature`            | backend, editor             |
+|    41 | 60 + 62 | Dual view + autosave & version history                                                    | Medium   |   4d | `features/task60.feature`            | frontend, editor            |
+|    42 |    61   | MarkReview track-changes workflow                                                         | Medium   |   3d | `features/task61.feature`            | backend, editor             |
+|    43 | 76 + 49 | Keycloak SSO with MFA hardening                                                           | High     |   4d | `features/task76.feature`            | backend, security           |
+|    44 |    59   | Security compliance (encryption + retention)                                              | Medium   |   3d | `features/task59.feature`            | backend, security           |
+|    45 |    —    | **Observability stack (Prometheus + Grafana + Loki + Sentry)** <br>*consolidates 41 + 51* | Medium   |   4d | `property/test_task97_property.py`   | devops, monitoring          |
+|    46 | 45 + 83 | Metabase analytics & heat-maps                                                            | Medium   |   4d | `features/task83.feature`            | frontend, dashboard         |
+|    47 |    39   | Real-time log dashboard UI                                                                | Medium   |   3d | `features/task39.feature`            | frontend, logging           |
+|    48 |    55   | Saved searches & widgets                                                                  | Low      |   3d | `features/task28.feature`            | backend, dashboard          |
+|    49 |    44   | AI export-format suggestions                                                              | Low      |   2d | `features/task44.feature`            | backend, ai                 |
+|    50 |    48   | Optional grammar-checker plug-in                                                          | Low      |   2d | `features/task48.feature`            | frontend, ai                |
+|    51 |    58   | WCAG 2.1 AA audit pass                                                                    | Medium   |   3d | `features/task55.feature`            | frontend, accessibility     |
+|    52 |    63   | Redis caching layer (sessions)                                                            | Medium   |   2d | `property/test_task63_property.py`   | backend, devops             |
+|    53 |    66   | AI-ranked search + results export                                                         | Medium   |   3d | `features/task66.feature`            | backend, ai, search         |
+|    54 |    70   | SynthLang token-reducer                                                                   | Low      |   2d | `features/task70.feature`            | backend, ai                 |
+|    55 |    72   | ruv-FANN anomaly linter                                                                   | Medium   |   3d | `features/task72.feature`            | backend, ai                 |
+|    56 |    73   | Priority-escalation notifications                                                         | Medium   |   2d | `features/task73.feature`            | backend, automation         |
+|    57 |    74   | Manager approval for long reassign.                                                       | Medium   |   2d | `features/task74.feature`            | backend, workflow           |
+|    58 |    49   | Re-review trigger on major edits                                                          | Medium   |   3d | `features/task49.feature`            | backend, workflow           |
+|    59 |    50   | Dual public / internal status API                                                         | Medium   |   2d | `features/task50.feature`            | backend, logging            |
+|    60 |    36   | AI workload balancer                                                                      | Low      |   3d | `features/task36.feature`            | backend, ai                 |
+|    61 |    68   | Agileagents (A2) auto-review bots                                                         | Medium   |   3d | `features/task68.feature`            | backend, automation         |
+|    62 |    69   | Prompt-Engine feedback templates                                                          | Medium   |   2d | `features/task69.feature`            | backend, ai                 |
+|    63 |    78   | Imixs-Workflow adapter                                                                    | Medium   |   2d | `features/task78.feature`            | backend, workflow           |
+|    64 |    77   | Camunda connector plugin                                                                  | High     |   3d | `features/task77.feature`            | backend, workflow           |
+|    65 |    84   | React-Flow BPMN admin designer                                                            | Medium   |   3d | `features/task84.feature`            | frontend, workflow          |
+|    66 |    81   | Alfresco ECM connector                                                                    | Medium   |   3d | `features/task81.feature`            | backend, storage            |
+|    67 |    79   | ONLYOFFICE Docs connector                                                                 | Medium   |   3d | `features/task79.feature`            | frontend, editor            |
+|    68 |    85   | Dark-mode & reduced-motion prefs                                                          | Low      |   1d | `features/task85.feature`            | frontend, accessibility     |
+|    69 |    54   | Backup & disaster-recovery scripts                                                        | Low      |   2d | `property/test_task54_property.py`   | devops, backup              |
+|    70 |    58   | Records Keeper archival folders                                                           | Low      |   2d | `features/task58.feature`            | backend, archival           |
+|    71 |    64   | HR API temp reassignment sync                                                             | Low      |   3d | `features/task64.feature`            | backend, integration        |
+|    72 |    65   | Sample doc-type & template on install                                                     | Low      |   1d | `property/test_task65_property.py`   | backend, setup              |
+|    73 |    20   | Developer & user docs (MkDocs)                                                            | Medium   |   3d | `features/task20.feature`            | documentation               |
+|    74 |    29   | Import/export doc-type JSON                                                               | Low      |   2d | `features/task29.feature`            | backend, admin              |
+|    75 |    51   | Contextual help & tutorials                                                               | Low      |   2d | `features/task51.feature`            | frontend, docs              |
+|    76 |    52   | Terraform IaC templates                                                                   | Medium   |   3d | `property/test_task52_property.py`   | devops, infrastructure      |
+|    77 |    86   | Trivy image scanning in CI                                                                | Medium   |   1d | `property/test_task86_property.py`   | devops, security            |
+|    78 |    71   | LangGraph-Studio flow debugger                                                            | Low      |   2d | `property/test_task71_property.py`   | devops, monitoring          |
+|    79 |    75   | Log-pattern alert rules                                                                   | Low      |   2d | `features/task75.feature`            | backend, logging            |
+|    80 |    90   | FedRAMP controls + encrypted backup doc                                                   | Medium   |   2d | `property/test_task90_property.py`   | documentation, security     |
+|    81 |    87   | Helm chart for prod deploy                                                                | Medium   |   3d | `property/test_task87_property.py`   | devops, infrastructure      |
+|    82 |    88   | Read-only GraphQL read layer                                                              | Low      |   3d | `features/task88.feature`            | backend, api                |
+|    83 |    94   | MinIO/S3 object storage plug-in (**optional**)                                            | Low      |   2d | `features/task56.feature`            | backend, storage            |
+|    84 |    27   | Multi-DB abstraction (PostgreSQL + option)                                                | Medium   |   4d | `property/test_task27_property.py`   | backend, database           |
+|    85 |    60   | Web-native CRDT research prototype                                                        | Low      |   3d | `features/task89.feature`            | research, editor            |
+|    86 |    93   | Plugin developer guide & API docs                                                         | Low      |   2d | `property/test_task96_property.py`   | documentation               |
+|    87 |    67   | NeMo-Guardrails PII/style gate                                                            | High     |   3d | `features/task67.feature`            | backend, security, ai       |
+
+---
+
+### What changed & why
+
+* **Removed entirely**
+
+  * *Alt-stack deployment doc* – user said it’s unnecessary.
+
+* **Merged / Consolidated**
+
+  * Observability tasks (Prometheus, Grafana, Loki, Sentry) → one “Observability stack” item (Seq 45).
+  * Comments + mentions + emoji → one collaboration task (Seq 19).
+  * Autosave + dual-view + version history → combined (Seq 41).
+  * Metrics & heat-maps now come via the Metabase task (Seq 46).
+  * Redis appears once: Celery uses it (Seq 30) and caching layer (Seq 52).
+
+* **Optional / deprioritised**
+
+  * MinIO (Seq 83) is kept but marked optional—place it late.
+  * HR system sync, CRDT, SynthLang, Agileagents, etc., are all post-MVP.
+
+This trimmed backlog retains **all code you still need to write**, eliminates redundant work, and keeps the OSS connectors that replace custom builds.
+
+---
+
+### How to read this list
+
+* Work straight down from Seq # 1 for the quickest “upload → edit → approve” demo.
+* Mid- and low-priority rows remain visible so the entire backlog stays in one place.
+* Orig # lets you jump back to your earlier documentation or GitHub issues without renumbering.
+
+**Confidence level:** 0.77 — ordering is based on typical web-app dependency patterns and your stated need for a rapid, testable MVP.
+
 
 <!-- ready-for:builder -->

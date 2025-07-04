@@ -90,7 +90,24 @@ def add_document(document: DocumentModel) -> None:
 
 
 def save_search(query: str, user: str | None = None) -> SavedSearch:
-    """Store a saved search query and return its record."""
+    """Store a search query for later reuse.
+
+    Parameters
+    ----------
+    query:
+        Raw search string which must not be empty.
+    user:
+        Optional username used for scoping saved searches.
+
+    Returns
+    -------
+    SavedSearch
+        The created search record containing the assigned id.
+    """
+
+    if not query.strip():
+        raise ValueError("query must not be empty")
+
     search_id = str(len(saved_searches) + 1)
     record = SavedSearch(id=search_id, query=query, user=user)
     saved_searches[search_id] = record

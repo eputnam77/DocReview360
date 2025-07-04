@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from html import escape
 from io import BytesIO
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 from zipfile import ZipFile
 
 from .documents import DocumentModel
@@ -54,3 +54,22 @@ def export_document(document: DocumentModel, fmt: str) -> tuple[bytes, str, str]
     else:
         raise ValueError(f"Unsupported format: {fmt}")
     return data, media, name
+
+
+def preview_document(document: DocumentModel, fmt: str, *, length: int = 30) -> str:
+    """Return a human-readable preview of a document export."""
+    data, media, _ = export_document(document, fmt)
+    text = document.content
+    if media.startswith("text/"):
+        text = data.decode()
+    return text[:length]
+
+
+def export_batch(documents: Iterable[DocumentModel], fmt: str) -> bytes:
+    """Export multiple documents of the same format as a ZIP archive."""
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as zf:
+        for doc in documents:
+            data, _, name = export_document(doc, fmt)
+            zf.writestr(name, data)
+    return buffer.getvalue()

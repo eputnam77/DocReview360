@@ -61,3 +61,11 @@ def dashboard_data() -> list[DashboardEntry]:
             )
         )
     return data
+
+
+def widget_counts() -> dict[str, int]:
+    """Return counts used by dashboard widgets."""
+    assigned = sum(1 for p in projects.values() if p.user or p.temp_user)
+    active = sum(1 for p in projects.values() if p.temp_user)
+    pending = sum(1 for a in approvals.values() if a.state == "pending")
+    return {"assigned": assigned, "active": active, "pending_approvals": pending}
