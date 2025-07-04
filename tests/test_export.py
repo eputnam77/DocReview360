@@ -1,5 +1,6 @@
-from docuflow.api import app
 from fastapi.testclient import TestClient
+
+from docuflow.api import app
 
 
 def test_export_markdown_and_html() -> None:
