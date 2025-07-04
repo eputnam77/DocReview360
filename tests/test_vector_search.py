@@ -1,7 +1,7 @@
+import httpx
 import pytest
 
 from docuflow import vector_search
-import httpx
 
 
 def test_vector_search_ranking() -> None:
