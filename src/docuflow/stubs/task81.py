@@ -1,9 +1,18 @@
-"""Implementation for task 81."""
+"""Alfresco ECM connector stub."""
+
+from __future__ import annotations
 
 from . import record_task_completion
 
+STORAGE: dict[str, str] = {}
 
-def task81() -> None:
-    """Mark task 81 as completed for logging."""
-    record_task_completion(int("81"))
-    return None
+
+class AlfrescoClient:
+    """Very small client storing docs in memory."""
+
+    def upload_document(self, doc_id: str, content: str) -> None:
+        STORAGE[doc_id] = content
+        record_task_completion(81)
+
+    def download_document(self, doc_id: str) -> str:
+        return STORAGE[doc_id]

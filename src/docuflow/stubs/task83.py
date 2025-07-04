@@ -1,9 +1,13 @@
-"""Implementation for task 83."""
+"""Metabase dashboard integration stub."""
+
+from __future__ import annotations
 
 from . import record_task_completion
 
 
-def task83() -> None:
-    """Mark task 83 as completed for logging."""
-    record_task_completion(int("83"))
-    return None
+class MetabaseClient:
+    """Minimal client returning fake chart data."""
+
+    def get_chart(self, chart_id: str) -> dict[str, str]:
+        record_task_completion(83)
+        return {"id": chart_id, "title": f"Chart {chart_id}"}

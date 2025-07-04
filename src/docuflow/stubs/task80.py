@@ -1,9 +1,11 @@
-"""Implementation for task 80."""
+"""Documenso signature integration stub."""
+
+from __future__ import annotations
 
 from . import record_task_completion
 
 
-def task80() -> None:
-    """Mark task 80 as completed for logging."""
-    record_task_completion(int("80"))
-    return None
+def sign_document(doc_id: str, user: str) -> str:
+    """Return a pseudo signature string."""
+    record_task_completion(80)
+    return f"signature:{doc_id}:{user}"

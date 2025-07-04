@@ -1,8 +1,7 @@
-import pytest
-
-from docuflow.stubs.task84 import task84
+from docuflow.stubs.task84 import WorkflowEditor
 
 
-def test_task84_not_implemented() -> None:
-    task84()
-    pytest.fail("Task 84 not implemented")
+def test_editor_add_node() -> None:
+    ed = WorkflowEditor()
+    ed.add_node("n1", {"type": "start"})
+    assert ed.node_ids() == ["n1"]

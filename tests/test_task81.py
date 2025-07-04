@@ -1,8 +1,7 @@
-import pytest
-
-from docuflow.stubs.task81 import task81
+from docuflow.stubs.task81 import AlfrescoClient
 
 
-def test_task81_not_implemented() -> None:
-    task81()
-    pytest.fail("Task 81 not implemented")
+def test_alfresco_upload_download() -> None:
+    client = AlfrescoClient()
+    client.upload_document("1", "data")
+    assert client.download_document("1") == "data"

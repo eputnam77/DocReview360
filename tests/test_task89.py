@@ -1,8 +1,5 @@
-import pytest
-
-from docuflow.stubs.task89 import task89
+from docuflow.stubs.task89 import merge_docs
 
 
-def test_task89_not_implemented() -> None:
-    task89()
-    pytest.fail("Task 89 not implemented")
+def test_merge_docs() -> None:
+    assert merge_docs("abc", "abcd") == "abcd"
