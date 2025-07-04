@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - hints only
+    from .documents import DocumentModel
 
 
 def apply_feedback_template(template: str, text: str) -> str:
@@ -61,3 +64,15 @@ def validate_content(text: str) -> bool:
     if detect_anomalies(text):
         return False
     return True
+
+
+def create_validated_document(
+    filename: str, data: bytes, *, user: str | None = None, project: str | None = None
+) -> "DocumentModel":
+    """Create a document after validating its content."""
+    text = data.decode()
+    if not validate_content(text):
+        raise ValueError("Invalid content")
+    from .documents import import_document
+
+    return import_document(filename, data, project=project, user=user)
