@@ -1,6 +1,6 @@
 # Navigating the UI
 
-The user interface contains three simple pages that demonstrate the overall flow.
+The user interface contains four simple pages that demonstrate the overall flow.
 
 ## Login
 
@@ -9,6 +9,10 @@ Visit `/` and sign in with the credentials you created in the configuration file
 ## Dashboard
 
 After logging in you are greeted with a friendly welcome message. The dashboard is mostly placeholder text but includes links to the editor and a button that opens the automatically generated API documentation.
+
+## Create Project
+
+The project creation page lets you submit a new project identifier and name. Once submitted you return to the dashboard.
 
 ## Editor
 
