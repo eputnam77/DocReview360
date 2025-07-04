@@ -1,6 +1,8 @@
-from docuflow.stubs.task80 import sign_document
+from docuflow.documenso import complete_signature, request_signature, signature_status
 
 
-def test_sign_document() -> None:
-    sig = sign_document("doc1", "alice")
-    assert sig == "signature:doc1:alice"
+def test_sign_document_flow() -> None:
+    sig = request_signature("doc1", "alice")
+    assert signature_status(sig) == "pending"
+    complete_signature(sig)
+    assert signature_status(sig) == "signed"
