@@ -19,6 +19,8 @@ __all__ = [
     "archive",
     "comments",
     "tiptap",
+    "fts",
+    "vector_search",
     "rbac",
     "security_utils",
     "ai_utils",
@@ -37,6 +39,7 @@ from . import (
     doc_types,
     documents,
     exporter,
+    fts,
     logs,
     models,
     monitoring,
@@ -46,6 +49,7 @@ from . import (
     search,
     security_utils,
     tiptap,
+    vector_search,
     workflows,
 )
 
