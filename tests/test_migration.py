@@ -1,6 +1,5 @@
-from sqlalchemy import inspect
-
 from docuflow.database import Database
+from sqlalchemy import inspect
 
 
 def test_database_migrate() -> None:
