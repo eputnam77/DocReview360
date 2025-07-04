@@ -28,6 +28,7 @@ Open `http://127.0.0.1:8000/` in your browser. Use the credentials `admin/admin`
 ## 4. Explore the dashboard
 
 After logging in you land on a very small dashboard. From here you can open the editor or browse the automatically generated API documentation. The editor does not save documents yet but demonstrates how future editing will look.
+You can also open the project creation form to add a new project.
 
 ## 5. Next steps
 
