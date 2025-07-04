@@ -53,6 +53,7 @@ from .doc_types import (
     list_document_types,
     update_document_type,
 )
+from .documenso import complete_signature, request_signature, signature_status
 from .documents import (
     DocumentModel,
     get_document,
@@ -67,7 +68,6 @@ from .logs import LogEntry, log_event, query_logs
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .rbac import require_role
-from .documenso import complete_signature, request_signature, signature_status
 from .reporting import (
     DashboardEntry,
     SummaryReport,

@@ -1,12 +1,11 @@
-from __future__ import annotations
-
 """Simple in-memory Documenso signature connector."""
+
+from __future__ import annotations
 
 from typing import Dict
 from uuid import uuid4
 
 from .logs import log_event
-
 
 # In-memory mapping of signature id -> status
 _signatures: Dict[str, str] = {}

@@ -1,0 +1,40 @@
+"""Lightweight full-text search using SQLite FTS5.
+
+This module is a simplified stand in for Postgres full-text search so tests can
+exercise search logic without requiring an external database.  Documents are
+stored in an in-memory virtual table and queried using the ``MATCH`` operator.
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from typing import List
+
+_conn = sqlite3.connect(":memory:")
+_conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5(id, content)")
+
+
+def index_document(doc_id: str, content: str) -> None:
+    """Index ``content`` under ``doc_id``.
+
+    Raises
+    ------
+    ValueError
+        If either argument is empty.
+    """
+    if not doc_id or not content:
+        raise ValueError("doc_id and content are required")
+    _conn.execute("INSERT INTO docs (id, content) VALUES (?, ?)", (doc_id, content))
+
+
+def search(query: str) -> List[str]:
+    """Return document ids matching ``query``."""
+    if not query.strip():
+        raise ValueError("query must not be empty")
+    rows = _conn.execute("SELECT id FROM docs WHERE docs MATCH ?", (query,))
+    return [row[0] for row in rows]
+
+
+def clear() -> None:
+    """Remove all indexed documents."""
+    _conn.execute("DELETE FROM docs")
