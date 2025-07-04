@@ -1,9 +1,9 @@
-"""Implementation for task 30."""
-
+from ..celery_app import echo
 from . import record_task_completion
 
 
-def task30() -> None:
-    """Mark task 30 as completed for logging."""
-    record_task_completion(int("30"))
-    return None
+def task30(value: str = "ok") -> str:
+    """Send ``value`` through the Celery echo task and return the result."""
+    result = echo.delay(value)
+    record_task_completion(30)
+    return result.get(timeout=10)
