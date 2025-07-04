@@ -1,6 +1,7 @@
 import pytest
 
 from docuflow import vector_search
+import httpx
 
 
 def test_vector_search_ranking() -> None:
@@ -10,6 +11,9 @@ def test_vector_search_ranking() -> None:
     results = vector_search.search("alpha")
     assert results[0][0] == "a"
 
+    vector_search.clear()
+    assert vector_search.search("alpha") == []
+
 
 def test_vector_search_invalid() -> None:
     vector_search.clear()
@@ -17,3 +21,21 @@ def test_vector_search_invalid() -> None:
         vector_search.index_document("", "x")
     with pytest.raises(ValueError):
         vector_search.search(" ")
+
+
+def test_vector_search_opensearch_fallback(monkeypatch) -> None:
+    calls = []
+
+    def fake_post(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise httpx.HTTPError("fail")
+
+    monkeypatch.setenv("OPENSEARCH_URL", "http://os")
+    monkeypatch.setattr(vector_search, "OPENSEARCH_URL", "http://os")
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    vector_search.clear()
+    vector_search.index_document("a", "alpha beta")
+    with pytest.raises(RuntimeError):
+        vector_search.search("alpha")
+    assert calls  # ensure HTTP attempted

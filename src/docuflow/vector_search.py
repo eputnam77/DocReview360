@@ -1,26 +1,36 @@
-"""In-memory vector search used as a pgvector replacement."""
+"""Vector search helper with optional OpenSearch integration."""
 
 from __future__ import annotations
 
-from collections import Counter
-from math import sqrt
+from collections import Counter, defaultdict
+from math import log, sqrt
 from typing import Dict, Iterable, List, Tuple
 
+import os
+import httpx
+
+OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")
+
 _vectors: Dict[str, List[float]] = {}
+_doc_freq: Dict[str, int] = defaultdict(int)
+_total_docs = 0
 
 
-def _embed(text: str) -> List[float]:
-    """Create a naive embedding vector from ``text``."""
-    freq = Counter(text.lower().split())
-    # 26 features based on first letter to keep dimensions small
-    return [float(freq.get(chr(ord("a") + i), 0)) for i in range(26)]
+def _embed(text: str) -> Counter[str]:
+    """Return term frequency counter for ``text``."""
+    return Counter(text.lower().split())
 
 
 def index_document(doc_id: str, content: str) -> None:
     """Store the embedding for ``content`` under ``doc_id``."""
     if not doc_id or not content:
         raise ValueError("doc_id and content are required")
-    _vectors[doc_id] = _embed(content)
+    global _total_docs
+    tf = _embed(content)
+    for term in tf:
+        _doc_freq[term] += 1
+    _total_docs += 1
+    _vectors[doc_id] = [tf, len(content.split())]
 
 
 def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
@@ -33,16 +43,49 @@ def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
     return dot / (na * nb)
 
 
+def _tfidf_vector(tf: Counter[str]) -> List[float]:
+    """Return a TF-IDF weighted vector for a term-frequency counter."""
+    vector: List[float] = []
+    for term in sorted(_doc_freq):
+        tf_val = tf.get(term, 0)
+        idf = log((_total_docs + 1) / (_doc_freq[term] + 1)) + 1
+        vector.append(tf_val * idf)
+    return vector
+
+
 def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
     """Return ``top_k`` document ids ranked by cosine similarity."""
     if not query.strip():
         raise ValueError("query must not be empty")
-    q_vec = _embed(query)
-    scored = [(doc_id, _cosine(q_vec, vec)) for doc_id, vec in _vectors.items()]
+
+    if OPENSEARCH_URL:
+        try:
+            resp = httpx.post(
+                f"{OPENSEARCH_URL.rstrip('/')}/_search",
+                json={"query": query, "size": top_k},
+                timeout=5,
+            )
+            resp.raise_for_status()
+            hits = resp.json().get("hits", {}).get("hits", [])
+            return [
+                (hit["_id"], float(hit.get("_score", 0)))  # pragma: no cover - network
+                for hit in hits
+            ]
+        except httpx.HTTPError as exc:
+            raise RuntimeError("OpenSearch request failed") from exc
+
+    q_vec = _tfidf_vector(_embed(query))
+    scored = []
+    for doc_id, (tf, _) in _vectors.items():
+        doc_vec = _tfidf_vector(tf)
+        scored.append((doc_id, _cosine(q_vec, doc_vec)))
     scored.sort(key=lambda t: t[1], reverse=True)
     return scored[:top_k]
 
 
 def clear() -> None:
-    """Remove all indexed vectors."""
+    """Remove all indexed vectors and statistics."""
     _vectors.clear()
+    _doc_freq.clear()
+    global _total_docs
+    _total_docs = 0
