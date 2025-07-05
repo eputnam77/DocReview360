@@ -1,7 +1,6 @@
-from docuflow.ai_utils import suggest_export_format
+from docuflow.security_compliance import generate_compliance_pdf
 
 
-def test_suggest_export_format() -> None:
-    assert suggest_export_format("contains image") == "pdf"
-    assert suggest_export_format("table data") == "xlsx"
-    assert suggest_export_format("plain text") == "markdown"
+def test_generate_compliance_pdf() -> None:
+    pdf = generate_compliance_pdf("flow")
+    assert pdf.startswith(b"%PDF-1.4")

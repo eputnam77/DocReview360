@@ -1,6 +1,5 @@
 import httpx
 import pytest
-import httpx
 
 from docuflow import vector_search
 
@@ -106,7 +105,13 @@ def test_vector_search_pgvector(monkeypatch) -> None:
     monkeypatch.setattr(vector_search, "OPENSEARCH_URL", None)
     monkeypatch.setenv("PGVECTOR_URL", "http://pgv")
     monkeypatch.setattr(vector_search, "PGVECTOR_URL", "http://pgv")
-    monkeypatch.setattr(httpx, "post", lambda url, json, timeout: fake_post_index(url, json, timeout) if url.endswith("/index") else fake_post_search(url, json, timeout))
+
+    def route_post(url: str, json: dict, timeout: int) -> httpx.Response:
+        if url.endswith("/index"):
+            return fake_post_index(url, json, timeout)
+        return fake_post_search(url, json, timeout)
+
+    monkeypatch.setattr(httpx, "post", route_post)
 
     vector_search.clear()
     vector_search.index_document("a", "alpha beta")

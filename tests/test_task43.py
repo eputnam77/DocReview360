@@ -1,5 +1,8 @@
-from docuflow.stubs.task43 import task43
+from docuflow import auth
 
 
-def test_task43_returns_none() -> None:
-    assert task43() is None
+def test_authenticate_mfa() -> None:
+    user = auth.authenticate_mfa("alice", "password", "123456")
+    assert user and user.username == "alice"
+    bad = auth.authenticate_mfa("alice", "password", "000000")
+    assert bad is None

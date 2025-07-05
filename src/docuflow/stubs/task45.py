@@ -1,9 +1,11 @@
 """Implementation for task 45."""
 
+from ..monitoring import start_observability_stack
 from . import record_task_completion
 
 
-def task45() -> None:
-    """Mark task 45 as completed for logging."""
-    record_task_completion(int("45"))
-    return None
+def task45() -> dict:
+    """Return configuration of the started observability stack."""
+    cfg = start_observability_stack(8000, 3000)
+    record_task_completion(45)
+    return cfg
