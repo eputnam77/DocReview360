@@ -21,3 +21,6 @@ DocuFlow implements a small slice of the functionality described in the product 
 - Built-in observability helpers exposing Prometheus metrics and optional Sentry reporting
 
 Pull requests are welcome! Please run the test suite with `pytest` and the linters before submitting changes.
+
+- [User Guide](user_guide.md)
+- [Latest Features](latest_features.md)
