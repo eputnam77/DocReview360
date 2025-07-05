@@ -46,7 +46,7 @@ def cli() -> None:
 )
 @click.option("--host", default="127.0.0.1", show_default=True, prompt=True)
 @click.option("--port", type=int, default=8000, show_default=True, prompt=True)
-@click.option("--debug/--no-debug", default=False, show_default=True, prompt=True)
+@click.option("--debug/--no-debug", default=False, show_default=True)
 @click.option(
     "--seed/--no-seed",
     default=False,

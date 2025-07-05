@@ -64,7 +64,7 @@
 - `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
 - `mypy --strict` passed on all files【f92959†L1-L2】.
 - `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
-- `pytest` passed with 262 tests and 95% coverage【c159a0†L1-L3】.
+- `pytest` passed with 262 tests and 90% coverage【8cf758†L1-L20】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
