@@ -50,6 +50,8 @@
 - **FedRAMP controls document** maps core features to compliance controls【F:docs/compliance/fedramp_controls.md†L1-L12】.
 - **Auxiliary stubs cover tasks 81‑100** including S3 storage, BPMN editor and observability helpers【F:src/docuflow/stubs/task83.py†L1-L27】【F:src/docuflow/stubs/task84.py†L1-L27】.
 - **Stub modules complete tasks 101–120** covering the ruv-FANN workflow and ONLYOFFICE integration【F:src/docuflow/stubs/task111.py†L1-L9】【F:src/docuflow/stubs/task120.py†L1-L9】.
+- **SharePoint archive sync** copies archives to an external records repository【F:src/docuflow/records.py†L1-L57】【F:tests/test_task70.py†L1-L12】.
+- **Metabase field sync job** triggers nightly metadata refresh via HTTP API【F:src/docuflow/metabase_sync.py†L1-L27】【F:tests/test_task126.py†L1-L10】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -65,13 +67,13 @@
 - `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
 - `mypy --strict` passed on all files【f92959†L1-L2】.
 - `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
-- `pytest` passed with 262 tests and 90% coverage【8cf758†L1-L20】.
+- `pytest` passed with 264 tests and 90% coverage【8d6001†L1-L72】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-All tasks 1‑120 from `TASKS.md` have been implemented. New modules cover numbering wrappers, editor loader orchestration and the ruv‑FANN workflow with Celery integration. Verification shows docstrings, input validation and error handling across the codebase. The project follows ADR architecture and language best practices and reaches over 90 % test coverage with pytest.
+Tasks 70 and 126 are now implemented via SharePoint archive sync and Metabase field sync helpers. The remaining tasks 71‑130 continue to use stub modules. Verification shows docstrings, input validation and error handling across the codebase. The project follows ADR architecture and language best practices and achieves roughly 90 % test coverage with pytest.
 
 ready-for:verifier
