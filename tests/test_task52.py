@@ -1,5 +1,7 @@
 from docuflow.stubs.task52 import task52
 
 
-def test_task52_returns_none() -> None:
-    assert task52() is None
+def test_task52_generates_template() -> None:
+    tpl = task52("demo")
+    assert "terraform" in tpl
+    assert "demo-data" in tpl
