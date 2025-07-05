@@ -32,6 +32,7 @@ __all__ = [
     "notifications",
     "plugins_ui",
     "project_init",
+    "metabase",
 ]
 
 from . import (
@@ -51,6 +52,7 @@ from . import (
     fts,
     hr_sync,
     logs,
+    metabase,
     models,
     monitoring,
     notifications,
