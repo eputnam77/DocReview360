@@ -1,10 +1,9 @@
 import string
 from pathlib import Path
 
+from cryptography.fernet import Fernet
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-
-from cryptography.fernet import Fernet
 
 from docuflow.stubs.task90 import create_backup
 
