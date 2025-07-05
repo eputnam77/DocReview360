@@ -27,6 +27,10 @@
 - **Records Keeper helper** creates archival folders【F:src/docuflow/stubs/task58.py†L1-L18】.
 - **HR reassignment sync** implemented in `hr_sync.sync_temp_reassignments`【F:src/docuflow/hr_sync.py†L1-L32】.
 - **Contextual help registry** lets modules provide tutorials【F:src/docuflow/contextual_help.py†L1-L19】.
+- **Sample document type** bootstrapped at startup via `_bootstrap_sample`【F:src/docuflow/doc_types.py†L9-L19】.
+- **Terraform templates generator** outputs S3 and Postgres resources【F:src/docuflow/stubs/task52.py†L1-L49】.
+- **LangGraph debugger URL** returned by `open_dashboard`【F:src/docuflow/monitoring.py†L34-L37】.
+- **Encrypted FedRAMP backups** created with AES using `create_backup`【F:src/docuflow/stubs/task90.py†L1-L24】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery workers and Redis broker** exist but tasks use simple `echo` stub; no real background jobs【F:src/docuflow/celery_app.py†L1-L16】【F:src/docuflow/stubs/task30.py†L1-L9】.

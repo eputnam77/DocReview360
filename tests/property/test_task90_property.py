@@ -4,6 +4,8 @@ from pathlib import Path
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
+from cryptography.fernet import Fernet
+
 from docuflow.stubs.task90 import create_backup
 
 
@@ -11,5 +13,5 @@ from docuflow.stubs.task90 import create_backup
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_task90_property(value: str, tmp_path: Path) -> None:
     dest = tmp_path / f"{value}.bak"
-    create_backup(dest)
-    assert dest.exists()
+    key = create_backup(dest, value)
+    assert Fernet(key).decrypt(dest.read_bytes()) == value.encode()
