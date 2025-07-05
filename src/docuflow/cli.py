@@ -48,6 +48,11 @@ def cli() -> None:
 @click.option("--port", type=int, default=8000, show_default=True, prompt=True)
 @click.option("--debug/--no-debug", default=False, show_default=True, prompt=True)
 @click.option(
+    "--seed/--no-seed",
+    default=False,
+    help="Create sample document type files after writing config",
+)
+@click.option(
     "--config-path",
     type=click.Path(dir_okay=False, writable=True),
     default=str(CONFIG_FILE),
@@ -61,6 +66,7 @@ def init(
     host: str,
     port: int,
     debug: bool,
+    seed: bool,
     config_path: str,
 ) -> None:
     """Interactive configuration wizard.
@@ -75,6 +81,8 @@ def init(
         CMS integration option.
     auth:
         Authentication provider.
+    seed:
+        When ``True`` a sample Advisory Circular markdown file is created.
     """
     if not (0 < port < 65536):
         raise click.BadParameter("Port must be between 1 and 65535")
@@ -92,6 +100,11 @@ def init(
     try:
         config.save(path)
         click.echo(f"Configuration written to {path}")
+        if seed:
+            from .seeds import seed_sample_ac
+
+            sample_path = seed_sample_ac()
+            click.echo(f"Sample document written to {sample_path}")
     except OSError as exc:
         raise click.ClickException(f"Failed to write config: {exc}") from exc
 

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from click.testing import CliRunner
 
 from docuflow.cli import cli
@@ -56,3 +58,30 @@ def test_init_rejects_bad_port() -> None:
             ],
         )
         assert result.exit_code != 0
+
+
+def test_init_with_seed() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(
+            cli,
+            [
+                "init",
+                "--database",
+                "sqlite",
+                "--editor",
+                "tiptap",
+                "--cms",
+                "none",
+                "--auth",
+                "oidc",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8080",
+                "--seed",
+            ],
+        )
+        assert result.exit_code == 0
+        sample = Path("samples/ac.md")
+        assert sample.exists()
