@@ -74,6 +74,6 @@
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-Tasks 70 and 126 are now implemented via SharePoint archive sync and Metabase field sync helpers. The remaining tasks 71‑130 continue to use stub modules. Verification shows docstrings, input validation and error handling across the codebase. The project follows ADR architecture and language best practices and achieves roughly 90 % test coverage with pytest.
+Tasks 70‑130 are now all implemented through their corresponding modules.  Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script.  Each module provides docstrings, input validation and basic error handling in line with the ADR architecture and PRD requirements.  The entire test suite passes with 90 % coverage under pytest.
 
 ready-for:verifier
