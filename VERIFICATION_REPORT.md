@@ -27,6 +27,7 @@
 - **Plugin toggle UI** renders an HTML table of enabled state【F:src/docuflow/plugins_ui.py†L8-L14】【F:tests/test_task32.py†L1-L12】.
 - **Reporting endpoints** return JSON and CSV summaries【F:src/docuflow/reporting.py†L72-L80】【F:tests/test_task33.py†L1-L14】.
 - **AI validation utilities** ensure content quality and project creation【F:src/docuflow/ai_utils.py†L64-L96】【F:src/docuflow/project_init.py†L12-L26】.
+- **AI assist endpoints** provide rewriting and summarization via OpenAI with fallback logic【F:src/docuflow/ai_assist.py†L1-L50】【F:src/docuflow/api.py†L407-L418】【F:tests/test_ai_assist.py†L1-L32】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -49,6 +50,6 @@
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-All tasks 1‑35 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
+All tasks 1‑40 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
 
 ready-for:verifier

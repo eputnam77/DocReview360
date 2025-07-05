@@ -27,6 +27,7 @@ from pydantic import BaseModel
 
 from . import auth, reporting
 from . import search as search_mod
+from .ai_assist import rewrite_text, summarize_text
 from .approvals import (
     ApprovalModel,
     create_approval,
@@ -177,6 +178,12 @@ class SavedSearchCreate(BaseModel):
 
     query: str
     user: str | None = None
+
+
+class TextBody(BaseModel):
+    """Simple text payload for AI endpoints."""
+
+    text: str
 
 
 app = FastAPI(title="DocuFlow")
@@ -395,6 +402,20 @@ async def list_saved_searches_endpoint(user: str | None = None) -> list[search_m
 async def search_stats_endpoint() -> dict[str, int]:
     """Return counts of executed search queries."""
     return search_stats()
+
+
+@app.post("/ai/rewrite")
+async def ai_rewrite_endpoint(body: TextBody) -> dict[str, str]:
+    """Return a rewritten version of the provided text."""
+    text = await rewrite_text(body.text)
+    return {"result": text}
+
+
+@app.post("/ai/summarize")
+async def ai_summarize_endpoint(body: TextBody) -> dict[str, str]:
+    """Return a one sentence summary of the provided text."""
+    summary = await summarize_text(body.text)
+    return {"result": summary}
 
 
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
