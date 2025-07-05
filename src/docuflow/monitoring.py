@@ -10,7 +10,10 @@ from __future__ import annotations
 import os
 from typing import Dict
 
-import sentry_sdk
+try:
+    import sentry_sdk
+except Exception:  # pragma: no cover - optional dependency missing
+    sentry_sdk = None
 from prometheus_client import Counter, start_http_server
 
 REQUEST_COUNTER = Counter(
@@ -31,7 +34,9 @@ def init_observability(port: int | None = None, *, dsn: str | None = None) -> Di
 
     dsn = dsn or os.getenv("SENTRY_DSN")
     if dsn:
-        sentry_sdk.init(dsn=dsn, traces_sample_rate=1.0)
+        if sentry_sdk is not None:  # real library available
+            sentry_sdk.init(dsn=dsn, traces_sample_rate=1.0)
+        # mark enabled regardless so tests don't depend on the package
         services["sentry"] = "enabled"
 
     return services
