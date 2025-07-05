@@ -1,5 +1,8 @@
-from docuflow.stubs.task104 import task104
+from docuflow.fed_numbering import can_toggle_numbering
 
 
-def test_task104_completed() -> None:
-    assert task104() is None
+def test_can_toggle_numbering() -> None:
+    rbac = {"admin": {"toggle_numbering": True}, "viewer": {"toggle_numbering": False}}
+    assert can_toggle_numbering("admin", rbac)
+    assert not can_toggle_numbering("viewer", rbac)
+    assert not can_toggle_numbering("missing", rbac)
