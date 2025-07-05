@@ -101,36 +101,240 @@ Estimates are unchanged unless noted.
 
 ---
 
-### What changed & why
+## Ruv-FANN
 
-* **Removed entirely**
+### Practical Ways to Apply **ruv-FANN** inside DocuFlow
 
-  * *Alt-stack deployment doc* – user said it’s unnecessary.
-
-* **Merged / Consolidated**
-
-  * Observability tasks (Prometheus, Grafana, Loki, Sentry) → one “Observability stack” item (Seq 45).
-  * Comments + mentions + emoji → one collaboration task (Seq 19).
-  * Autosave + dual-view + version history → combined (Seq 41).
-  * Metrics & heat-maps now come via the Metabase task (Seq 46).
-  * Redis appears once: Celery uses it (Seq 30) and caching layer (Seq 52).
-
-* **Optional / deprioritised**
-
-  * MinIO (Seq 83) is kept but marked optional—place it late.
-  * HR system sync, CRDT, SynthLang, Agileagents, etc., are all post-MVP.
-
-This trimmed backlog retains **all code you still need to write**, eliminates redundant work, and keeps the OSS connectors that replace custom builds.
+| #  | Use-case                                       | What it delivers                                                                                                       | Where it runs                                                          | OSS add-ons                                                                |
+| -- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1  | **Offline style-drift & tense-shift detector** | Flags passages that deviate from your FAA/GPO style corpora in < 5 ms per block                                        | TipTap/Toast editor plugin (WASM) **and** Celery “quality-gate” worker | core `ruv-fann` (Rust) export → PyO3 wheel ([github.com][1], [docs.rs][2]) |
+| 2  | **Section classifier & readability scorer**    | Auto-labels headings (Reg text §, Background, Definitions…) and gives Flesch/grade-level; drives conditional templates | Backend micro-service                                                  | `ruv-fann` + training set of labeled paragraphs                            |
+| 3  | **Predictive review-duration forecasting**     | Learns from past cycles; dashboard shows “ETA 8.4 days ± 1.1” so PMs can rebalance load                                | Analytics service feeding Metabase                                     | `neuro-divergent` (built on ruv-FANN) ([docs.rs][3])                       |
+| 4  | **Reviewer auto-match recommender**            | Suggests top SMEs for a new project based on topic vectors & their history                                             | Workflow engine hook (Camunda task listener)                           | ruv-FANN MLP classifier                                                    |
+| 5  | **Audit-log anomaly monitor**                  | Real-time flag if approval/vote patterns differ from learned norm (possible coercion / account hijack)                 | SecOps sidecar                                                         | ruv-FANN streaming inference                                               |
+| 6  | **Edge / air-gapped AI fallback**              | Full DocuFlow AI suite works when the OpenAI endpoint is blocked (GovCloud, classified nets)                           | On-prem Python wheel or WebGPU build                                   | `ruv-FANN` → WebGPU WASM path ([linkedin.com][4])                          |
+| 7  | **Web-first in-editor inference**              | All linting suggestions happen client-side; zero round-trip latency, no PII leaves browser                             | TipTap plugin compiled with `wasm32-webgpu`                            | repo’s `src/webgpu` target ([linkedin.com][4])                             |
+| 8  | **Nightly “quality gate” batch job**           | Blocks promotion to next phase if neural quality score < threshold; pushes report to dashboard                         | Celery beat task                                                       | same model weights as #1                                                   |
+| 9  | **Template-conformance neural diff**           | Learns legal numbering / heading cadence and inserts missing blocks automatically                                      | Import/conversion pipeline                                             | cascade-correlation nets in ruv-FANN ([docs.rs][2])                        |
+| 10 | **Workload & backlog forecasting**             | Uses ruv-swarm + neuro-divergent to predict document inflow and adjust capacity planning                               | Ops dashboard                                                          | `ruv-swarm-ml`, `ruv-swarm-persistence` ([crates.io][5])                   |
 
 ---
 
-### How to read this list
+#### Implementation Task List (ready to drop into your roadmap)
 
-* Work straight down from Seq # 1 for the quickest “upload → edit → approve” demo.
-* Mid- and low-priority rows remain visible so the entire backlog stays in one place.
-* Orig # lets you jump back to your earlier documentation or GitHub issues without renumbering.
+| Order | Task                                                                                      | Owner             | Phase |
+| ----- | ----------------------------------------------------------------------------------------- | ----------------- | ----- |
+| 1     | **Curate training corpus** (50 k “gold” FAA/GPO-compliant paragraphs + 5 k anomalies)     | Tech Writing team | P1    |
+| 2     | **Train & export models** (`cargo run --bin fann-train …`, output `.fann`)                | ML Eng            | P1    |
+| 3     | **Build Python wheel** via *maturin* (`--features pyo3,simd`) and publish to private PyPI | ML Eng            | P2    |
+| 4     | **TipTap WASM plugin** (`wasm32-webgpu`) delivering `lint()` & `predict()`                | Front-end         | P2    |
+| 5     | **Celery quality-gate worker** consuming wheel; posts block-level scores to DB            | Backend           | P2    |
+| 6     | **Camunda listener** for reviewer auto-match; calls `/ai/recommend-reviewers` endpoint    | Workflow          | P3    |
+| 7     | **Metabase card & API** for review-duration forecast                                      | Data Eng          | P3    |
+| 8     | **Security sidecar** streaming audit logs through anomaly model                           | SecOps            | P3    |
+| 9     | **CI pipeline**: SIMD, WASM & native builds tested on every PR                            | DevOps            | P2    |
+| 10    | **Docs & user training** (“How DocuFlow neural lint works”)                               | Docs              | P3    |
 
-**Confidence level:** 0.77 — ordering is based on typical web-app dependency patterns and your stated need for a rapid, testable MVP.
+These integrations keep DocuFlow’s AI **fully on-prem, millisecond fast, and license-free**, while leveraging ruv-FANN’s Rust speed and memory safety.
+
+## Misc
+
+Below is an **“add-on task pack”** you can drop straight into DocuFlow’s roadmap.
+Each task either (a) closes an integration gap, (b) hardens security/ops, or (c) unlocks a feature the upstream OSS already ships but your PRD hasn’t scheduled yet.
+
+| #                              | OSS Component                                                                                                        | New Task                                                                                        | Outcome / Why it helps |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------- |
+| **TipTap 2**                   | Build **DOCX-export extension** in `/plugins/editors/tiptap_docx.ts` using ProseMirror’s node schema → `docx4js`     | One-click Word export from the default editor. ([github.com][1])                                |                        |
+|                                | Bundle **Hocuspocus** collab backend (Docker sidecar) + auth middleware                                              | Real-time co-authoring without 3rd-party SaaS. ([github.com][1])                                |                        |
+| **Toast UI Editor**            | Add **Markdown-to-XML converter plugin** using unified/rehype & your XML template map                                | Lets tech teams draft once and publish to XML spec. ([github.com][2])                           |                        |
+| **ONLYOFFICE Docs**            | Ship Helm chart that autos-registers DocumentServer with DocuFlow via WOPI, including SSL & JWT                      | Zero-click Word/Excel/PowerPoint editing for agencies that ban external SaaS. ([github.com][3]) |                        |
+|                                | Create Cypress E2E test suite that opens a .docx, edits, saves, re-opens                                             | Guards against silent breakage after upgrades.                                                  |                        |
+| **Camunda 8**                  | Maintain **BPMN template library repo** (`/workflows/*.bpmn`) + GitHub Actions that lints with `camunda-modeler-cli` | Keeps process definitions in version control. ([github.com][4])                                 |                        |
+|                                | Author DMN table “Reviewer-Selector” → auto-assign SMEs based on keywords                                            | Removes manual reviewer pick step.                                                              |                        |
+| **Imixs-Workflow** (fallback)  | Provide Spring-Boot starter + REST façade so small installs can swap Camunda with Imixs by env-var                   | Lightweight option for orgs that find Camunda heavy. ([imixs.org][5])                           |                        |
+| **Documenso**                  | Write **status-webhook listener** (`/api/hooks/documenso`) → triggers Camunda “Signed” message                       | Ensures signature state always syncs to workflow. ([documenso.com][6])                          |                        |
+|                                | Build **HashiCorp Vault secret engine** for Documenso’s signing keys                                                 | Separation-of-duty & FISMA key management.                                                      |                        |
+| **OpenSearch**                 | Create ILM policy + hot/warm architecture Terraform module                                                           | Keeps log/index costs predictable at scale. ([opensearch.org][7])                               |                        |
+|                                | Enable **k-NN plugin** & index embeddings from ruv-FANN for semantic search                                          | Natural-language lookup inside DocuFlow.                                                        |                        |
+| **Metabase**                   | Seed **Starter Dashboards** pack (JSON) covering KPIs in PRD; attach row-level permissions via `db_role`             | Gives PMs insights on day 1. ([metabase.com][8])                                                |                        |
+|                                | Automate nightly “sync db fields” job after Alembic migrations                                                       | Prevents broken fields in cards following schema change.                                        |                        |
+| **Keycloak**                   | Scripted **realm import** + MFA policy + Login.gov broker; pack into Helm                                            | Turn-key FedRAMP-ready SSO. ([opensearch.org][7])                                               |                        |
+| **React Flow (admin)**         | Build **DSL → JSON compiler** so admins can author simple `yaml` instead of dragging nodes                           | Faster template authoring; keeps flows in Git.                                                  |                        |
+| **Renovate / Dependabot**      | Add **monorepo-wide OSS upgrade bot** with “security-first” schedule                                                 | Auto-PRs for CVE patches on every upstream tool.                                                |                        |
+| **Trivy / Grype**              | Extend CI to run container and dependency scans; block merge on HIGH/CRITICAL                                        | Maintains ATO posture across all OSS.                                                           |                        |
+| **k6 / Playwright perf tests** | Capture baseline editor latency (TipTap, ONLYOFFICE) before launch                                                   | Detects regressions after each release branch.                                                  |                        |
+
+---
+
+### Scheduling Hints (drop-in to existing phases)
+
+| Phase                    | Add-on items                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| **P 1 – Prototype**      | Camunda template repo, Keycloak realm import, OpenSearch ILM module                   |
+| **P 2 – Core**           | TipTap DOCX export, Hocuspocus collab, Documenso webhooks, Cypress E2E                |
+| **P 3 – Advanced**       | Toast UI XML plugin, Reviewer-Selector DMN, k-NN semantic search, Metabase dashboards |
+| **P 4 – Prod Hardening** | Vault key engine, Renovate/Trivy pipelines, k6/Playwright baselines                   |
+
+Implementing these extra tasks turns each upstream OSS tool from *“bolted-on”* to *“first-class citizen”* inside DocuFlow—covering author experience, process automation, security, and long-term maintainability.
+
+## Templates
+
+### **Template-Lifecycle Add-On Tasks**
+
+| #        | Task                                                                                                                                                                       | What it achieves                                                         | Owner          | Phase |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------- | ----- |
+| **T-1**  | **Author “Golden Source” Markdown template** for each document type (AC, Policy, Manual, etc.). Store in `templates/md/` with Hugo-style front-matter.                     | Single canonical template that downstream formats inherit from.          | Tech Writing   | P 1   |
+| **T-2**  | **Generate TipTap JSON, Toast-MD, XML, and DOCX derivatives** from the Markdown source via a **Pandoc + lua-filter** pipeline; commit to `templates/dist/`.                | Guarantees all editors share identical heading hierarchy & boiler-plate. | DevOps         | P 1   |
+| **T-3**  | **Create Jest/Playwright snapshot tests** that open each template in TipTap and Toast UI, then assert: heading count, required blocks present, placeholder text untouched. | Prevents accidental template drift after edits.                          | Front-end      | P 2   |
+| **T-4**  | **Write XML Schematron rules** for every template (§, Appendix, Tables) and add an **xmllint GitHub Action** that fails on invalid structure.                              | Validates the XML derivatives before release.                            | Backend        | P 2   |
+| **T-5**  | **Build “Template Linter” TipTap plugin** that, on save, compares live doc blocks to the Golden Source AST and highlights missing or extra nodes.                          | Real-time author feedback; zero round-trip to server.                    | Front-end      | P 3   |
+| **T-6**  | **Cross-format round-trip test**: Markdown → TipTap → DOCX → Markdown; diff expected vs. actual in CI (`git diff --no-index`).                                             | Ensures converters are lossless and reversible.                          | QA             | P 3   |
+| **T-7**  | **Template Version Registry API** (`/api/v1/templates`) with semantic versioning, changelog, and “required upgrade” flag.                                                  | Allows projects to lock or migrate templates safely.                     | Backend        | P 3   |
+| **T-8**  | **Admin UI “Diff & Migrate” wizard** that shows visual diff between a doc’s current template and the newest version, with one-click apply.                                 | Smooth transition when a template evolves.                               | UX / Front-end | P 4   |
+| **T-9**  | **Sample Content Seeds**: auto-generate one sample file per template & format on install (`docuflow init --seed`).                                                         | Lets users test the whole workflow instantly.                            | Docs           | P 4   |
+| **T-10** | **Weekly Renovate bot for templates**: opens PR if upstream Golden Source changes, triggers full conversion & test matrix.                                                 | CI keeps every derivative template fresh.                                | DevOps         | P 4   |
+
+> **Why you need separate test templates?**
+> • Editors store structure differently (TipTap JSON vs. Markdown AST vs. Word XML).
+> • Snapshot & schema tests catch silent formatting regressions before they hit reviewers.
+> • Golden-Source–first workflow guarantees consistent numbering, headings, and boiler-plate across every export path.
+
+Add these tasks to the roadmap to make template maintenance **repeatable, testable, and editor-agnostic**.
+
+## TipTap Plugin Wrappers
+
+Below is a **ready-to-paste “Wrapper Work-Pack”** that adds DocuFlow glue-code for three external TipTap extensions:
+
+* **@your-org/tiptap-template-linter** (the new linter you’ll publish)
+* **@your-org/tiptap-markreview** (existing change-tracking plugin)
+* **@your-org/tiptap-fed-numbering** (new federal heading/paragraph numbering plugin)
+
+---
+
+## 1. Folder & naming convention
+
+```
+docuflow/
+└─ plugins/
+   └─ editors/
+      ├─ tiptap_template_linter_wrapper.ts
+      ├─ tiptap_markreview_wrapper.ts
+      └─ tiptap_fed_numbering_wrapper.ts
+```
+
+Each wrapper exposes a **single default function**:
+
+```ts
+export async function register(editor: Editor, ctx: DocuFlowCtx): Promise<void>
+```
+
+*`DocuFlowCtx` gives access to JWT, REST client, RBAC, toast bus, etc.*
+
+---
+
+## 2. Wrapper skeletons
+
+### 2.1 Template-Linter wrapper (`tiptap_template_linter_wrapper.ts`)
+
+```ts
+import { TemplateLinter } from '@your-org/tiptap-template-linter';
+import { fetchGoldenTemplate } from '@/services/templates';
+
+export async function register(editor, ctx) {
+  const tplAst = await fetchGoldenTemplate(ctx.docTypeId);
+
+  editor.registerPlugin(
+    TemplateLinter.configure({
+      templateAst: tplAst,
+      onViolation: (violations) => {
+        ctx.bus.emit('lint:update', violations);
+        if (violations.critical.length) ctx.blockSave('Template violations');
+      },
+    })
+  );
+}
+```
+
+### 2.2 MarkReview wrapper (`tiptap_markreview_wrapper.ts`)
+
+```ts
+import { MarkReview } from '@your-org/tiptap-markreview';
+
+export async function register(editor, ctx) {
+  editor.registerPlugin(
+    MarkReview.configure({
+      userId: ctx.user.id,
+      changeBarColor: ctx.theme.accent,
+      onExport: (delta) => ctx.api.saveDelta(delta),
+    })
+  );
+}
+```
+
+### 2.3 Federal-Numbering wrapper (`tiptap_fed_numbering_wrapper.ts`)
+
+```ts
+import { FedNumbering } from '@your-org/tiptap-fed-numbering';
+
+export async function register(editor, ctx) {
+  editor.registerPlugin(
+    FedNumbering.configure({
+      docType: ctx.docTypeCode,           // e.g. 'AC', 'TSO'
+      levelMap: ctx.settings.levelMap,    // pulled from org settings
+      autoFix: true,
+      onRenumber: (map) => ctx.api.saveNumberMap(map),
+    })
+  );
+}
+```
+
+---
+
+## 3. Loader hook (one line per wrapper)
+
+```ts
+// docuflow/client/editorLoader.ts
+import { register as loadLinter }       from '@/plugins/editors/tiptap_template_linter_wrapper';
+import { register as loadMarkReview }   from '@/plugins/editors/tiptap_markreview_wrapper';
+import { register as loadFedNumbering } from '@/plugins/editors/tiptap_fed_numbering_wrapper';
+
+export async function initEditor(ctx) {
+  const editor = createTipTapInstance(ctx.initialContent);
+
+  await Promise.all([
+    loadLinter(editor, ctx),
+    loadMarkReview(editor, ctx),
+    loadFedNumbering(editor, ctx),
+  ]);
+
+  return editor;
+}
+```
+
+---
+
+## 4. Task list (drop into roadmap)
+
+| ID      | Description                                                                | Owner | Sprint |
+| ------- | -------------------------------------------------------------------------- | ----- | ------ |
+| **W-1** | Scaffold wrappers folder & ctx typings                                     | FE    | S-7    |
+| **W-2** | Implement **Template-Linter** wrapper & save-block hook                    | FE    | S-7    |
+| **W-3** | Implement **MarkReview** wrapper; wire delta export                        | FE    | S-8    |
+| **W-4** | Implement **Fed-Numbering** wrapper; connect org settings API              | FE    | S-8    |
+| **W-5** | Add **editorLoader** init that awaits all wrappers                         | FE    | S-8    |
+| **W-6** | Cypress tests: open template, trigger linter & numbering, assert UI badges | QA    | S-9    |
+| **W-7** | RBAC check: only Editors/Admins can toggle numbering auto-fix              | BE    | S-9    |
+| **W-8** | Docs page “Integrating third-party TipTap plugins”                         | Docs  | S-10   |
+
+---
+
+### Why wrappers (vs. baking into the extension)?
+
+* **Separation of concerns** – the extension stays editor-agnostic; the wrapper handles DocuFlow specifics (auth, APIs, theming, RBAC).
+* **Upgrade safety** – if TipTap or DocuFlow churn, you touch the wrapper, not the shared package.
+* **Multi-tenant config** – wrappers pull tenant-level settings (e.g., numbering map) at runtime.
+
+
 
 
 <!-- ready-for:verifier -->
