@@ -8,6 +8,8 @@ nav:
   - API Overview: api_overview.md
   - Usage Scenarios: scenarios.md
   - Developer Guide: developer.md
+  - User Guide: user_guide.md
+  - Latest Features: latest_features.md
 docs_dir: docs
 theme:
   name: material
