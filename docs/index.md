@@ -8,6 +8,7 @@ Welcome to the DocuFlow project. This site collects guides and references for ru
 - [API Overview](api_overview.md)
 - [Usage Scenarios](scenarios.md)
 - [Developer Guide](developer.md)
+- [AI Workflow](ai_workflow.md)
 
 ## Project features
 
