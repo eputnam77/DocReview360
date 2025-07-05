@@ -1,5 +1,10 @@
 from docuflow.stubs.task126 import task126
 
 
-def test_task126_completed() -> None:
-    assert task126() is None
+def test_task126_completed(monkeypatch) -> None:
+    def dummy_sync(url: str, token: str) -> None:
+        assert url == "https://mb.example"
+        assert token == "tkn"
+
+    monkeypatch.setattr("docuflow.stubs.task126.run_field_sync", dummy_sync)
+    task126("https://mb.example", "tkn")
