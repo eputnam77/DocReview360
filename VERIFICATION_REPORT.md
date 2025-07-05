@@ -31,15 +31,14 @@
 - `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
 - `mypy --strict` passed on all files【f92959†L1-L2】.
 - `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
-- `pytest` failed during collection with 195 errors preventing coverage measurement【55bf7f†L1-L21】.
+- `pytest` passed with 246 tests and 91% coverage【950226†L1-L19】.
 
 ## 📋 Recommended Next Steps
-1. Fix test collection errors to obtain coverage ≥70 % and validate API behaviour.
-2. Implement missing editor integrations and plugin wrappers from tasks 14 and 32.
-3. Add integration of object storage into document archival along with unit tests.
-4. Expand security configuration to include Keycloak MFA and backup policies.
-5. Flesh out end‑to‑end scenarios and publish Metabase dashboard examples.
+1. Complete editor plugins and wrappers.
+2. Integrate object storage with archival workflow and add tests.
+3. Expand security configuration to include Keycloak MFA and backup policies.
+4. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-The repository partially satisfies early tasks but lacks coverage and several PRD features. Further development should continue under the **builder** role.
+The repository satisfies early tasks with test coverage above 90 %.
 
-ready-for:builder
+ready-for:verifier
