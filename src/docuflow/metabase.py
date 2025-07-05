@@ -1,0 +1,53 @@
+"""Utilities for loading and querying Metabase dashboards."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any, Dict, List
+
+from .stubs import record_task_completion
+
+
+def load_dashboards(path: str | Path) -> Dict[str, Any]:
+    """Return the dashboard configuration from ``path``.
+
+    Parameters
+    ----------
+    path:
+        Location of the JSON file describing charts. The file must contain a
+        ``{"charts": [...]}" structure.
+    """
+    src = Path(path)
+    try:
+        text = src.read_text()
+    except OSError as exc:  # pragma: no cover - filesystem errors
+        raise RuntimeError(f"Failed to read {src}") from exc
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Invalid JSON dashboard file") from exc
+    if not isinstance(data, dict) or "charts" not in data:
+        raise ValueError("Dashboard file missing 'charts'")
+    return data
+
+
+class MetabaseClient:
+    """Client wrapper returning fake chart data for demos."""
+
+    def __init__(self, dashboards: Dict[str, Any] | None = None) -> None:
+        self.dashboards = dashboards or {"charts": []}
+
+    def get_chart(self, chart_id: str) -> Dict[str, str]:
+        """Return chart metadata by ``chart_id``."""
+        for chart in self.dashboards.get("charts", []):
+            if chart.get("id") == chart_id:
+                record_task_completion(83)
+                return {"id": chart_id, "title": chart.get("title", "")}
+        record_task_completion(83)
+        return {"id": chart_id, "title": f"Chart {chart_id}"}
+
+    def heatmap(self, project_id: str) -> List[List[int]]:
+        """Return a dummy 3x3 heatmap for ``project_id``."""
+        record_task_completion(83)
+        return [[i + j for j in range(3)] for i in range(3)]
