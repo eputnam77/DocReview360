@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
 
@@ -8,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .documents import DocumentModel
 from .exporter import export_document
+from .object_storage import upload_file
 
 
 class ArchiveRecord(BaseModel):
@@ -29,9 +31,12 @@ archives: Dict[str, ArchiveRecord] = {}
 
 
 def archive_document(
-    document: DocumentModel, metadata: Dict[str, Any] | None = None
+    document: DocumentModel,
+    metadata: Dict[str, Any] | None = None,
+    *,
+    bucket: str | Path = "archive_store",
 ) -> ArchiveRecord:
-    """Store a document snapshot in several formats."""
+    """Store a document snapshot in several formats and persist to disk."""
     md_bytes, _, _ = export_document(document, "markdown")
     html_bytes, _, _ = export_document(document, "html")
     docx_bytes, _, _ = export_document(document, "docx")
@@ -47,6 +52,14 @@ def archive_document(
         pdf=pdf_bytes,
     )
     archives[record.id] = record
+
+    # Persist each artefact for durability
+    base = f"{record.document_id}/{record.id}"
+    upload_file(bucket, f"{base}.md", md_bytes)
+    upload_file(bucket, f"{base}.html", html_bytes)
+    upload_file(bucket, f"{base}.docx", docx_bytes)
+    upload_file(bucket, f"{base}.pdf", pdf_bytes)
+
     return record
 
 
