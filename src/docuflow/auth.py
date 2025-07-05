@@ -39,7 +39,7 @@ class User(BaseModel):
     username: str
 
 
-FAKE_USERS_DB = {"alice": {"username": "alice", "password": "password"}}
+FAKE_USERS_DB = {"alice": {"username": "alice", "password": "password", "otp": "123456"}}
 
 
 def authenticate_user(username: str, password: str) -> User | None:
@@ -52,6 +52,16 @@ def authenticate_user(username: str, password: str) -> User | None:
     if user and user["password"] == password:
         return User(username=username)
     return None
+
+
+def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
+    """Return ``User`` if credentials and OTP match."""
+    user = FAKE_USERS_DB.get(username)
+    if not user:
+        return None
+    if user.get("password") != password or user.get("otp") != otp:
+        return None
+    return User(username=username)
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:

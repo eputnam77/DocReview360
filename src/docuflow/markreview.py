@@ -19,3 +19,8 @@ def format_change_bars(old: str, new: str) -> List[str]:
         else:
             output.append(f"    {line}")
     return output
+
+
+def apply_markreview(old: str, new: str) -> str:
+    """Return a formatted diff suitable for MarkReview workflows."""
+    return "\n".join(format_change_bars(old, new))
