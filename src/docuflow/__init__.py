@@ -34,6 +34,12 @@ __all__ = [
     "plugins_ui",
     "project_init",
     "metabase",
+    "fed_numbering",
+    "editor_loader",
+    "fann_corpus",
+    "fann_model",
+    "wasm_plugin",
+    "pyo3_builder",
 ]
 
 from . import (
@@ -49,7 +55,11 @@ from . import (
     contextual_help,
     doc_types,
     documents,
+    editor_loader,
     exporter,
+    fann_corpus,
+    fann_model,
+    fed_numbering,
     fts,
     hr_sync,
     logs,
@@ -60,6 +70,7 @@ from . import (
     plugins,
     plugins_ui,
     project_init,
+    pyo3_builder,
     rbac,
     reporting,
     search,
@@ -67,6 +78,7 @@ from . import (
     seeds,
     tiptap,
     vector_search,
+    wasm_plugin,
     workflows,
 )
 

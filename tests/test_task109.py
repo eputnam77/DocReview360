@@ -1,5 +1,7 @@
-from docuflow.stubs.task109 import task109
+from docuflow.wasm_plugin import lint_text
 
 
-def test_task109_completed() -> None:
-    assert task109() is None
+def test_lint_pass_fail() -> None:
+    weights = [0.0, -0.1, 1.2, 0.0]
+    assert lint_text("clear", weights)
+    assert not lint_text("bad bad bad", weights)
