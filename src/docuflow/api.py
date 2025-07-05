@@ -53,7 +53,12 @@ from .doc_types import (
     list_document_types,
     update_document_type,
 )
-from .documenso import complete_signature, request_signature, signature_status
+from .documenso import (
+    complete_signature,
+    process_webhook,
+    request_signature,
+    signature_status,
+)
 from .documents import (
     DocumentModel,
     get_document,
@@ -518,10 +523,18 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
 
 
 @app.post("/sign/{doc_id}")
-async def sign_document(doc_id: str, user: str = Form(...)) -> dict[str, str]:
-    """Create a Documenso signature request for ``doc_id``."""
-    sig_id = request_signature(doc_id, user)
-    return {"id": sig_id}
+async def sign_document(
+    doc_id: str,
+    user: str = Form(...),
+    workflow: str | None = Form(None),
+) -> dict[str, str]:
+    """Create a Documenso signature request for ``doc_id``.
+
+    Returns both the signature ``id`` and a ``url`` that a client should
+    redirect the user to for signing.
+    """
+    sig_id, url = request_signature(doc_id, user, workflow)
+    return {"id": sig_id, "url": url}
 
 
 @app.post("/sign/{sig_id}/complete")
@@ -535,6 +548,16 @@ async def get_sign_status(sig_id: str) -> dict[str, str]:
     """Return signature status."""
     status = signature_status(sig_id)
     return {"status": status}
+
+
+@app.post("/hooks/documenso", status_code=204, response_class=Response)
+async def documenso_webhook(payload: dict) -> Response:
+    """Process Documenso webhook callbacks."""
+    try:
+        process_webhook(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @app.post("/token", response_model=auth.Token)
