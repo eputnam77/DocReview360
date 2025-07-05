@@ -55,6 +55,6 @@
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-All tasks 1‑45 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
+All tasks 1‑50 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
 
 ready-for:verifier
