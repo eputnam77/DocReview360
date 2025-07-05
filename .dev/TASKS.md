@@ -133,4 +133,4 @@ This trimmed backlog retains **all code you still need to write**, eliminates re
 **Confidence level:** 0.77 — ordering is based on typical web-app dependency patterns and your stated need for a rapid, testable MVP.
 
 
-<!-- ready-for:builder -->
+<!-- ready-for:verifier -->
