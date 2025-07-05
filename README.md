@@ -36,4 +36,5 @@ The API is a learning tool. Endpoints return dummy data but illustrate how proje
 - Simple plugin system for editors and exporters
 - Minimal authentication flow with a login form, dashboard and project creation page
 
-Head over to the [documentation](https://example.com/docuflow) for a full tour of the API, CLI options and UI navigation tips.
+Head over to the [documentation](https://example.com/docuflow) for a full tour of the API, CLI options and UI navigation tips. The
+[architecture overview](docs/adr/0001-core-architecture.md) describes how the backend, frontend and future services fit together.

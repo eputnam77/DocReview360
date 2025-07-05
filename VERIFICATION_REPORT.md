@@ -1,6 +1,7 @@
 # Verification Report
 
 ## ✅ Implemented Features
+- **Core architecture ADR** records folder layout with C4 diagram【F:docs/adr/0001-core-architecture.md†L1-L33】.
 - **Interactive CLI wizard** saves configuration options to `docuflow.yaml`【F:src/docuflow/cli.py†L12-L90】【F:tests/test_cli.py†L1-L58】.
 - **Document type management** with JSON import/export and sample bootstrap【F:src/docuflow/doc_types.py†L1-L120】.
 - **In-memory search service** indexing projects and documents with saved queries【F:src/docuflow/search.py†L14-L119】【F:src/docuflow/search.py†L160-L207】.
