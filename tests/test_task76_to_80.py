@@ -1,9 +1,8 @@
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 import pytest
 import yaml
-
-from importlib.machinery import SourceFileLoader
 
 iac = SourceFileLoader(
     "docuflow.iac_templates", "src/docuflow/iac_templates/__init__.py"
