@@ -1,5 +1,8 @@
-from docuflow.stubs.task110 import task110
+from docuflow.celery_app import quality_gate
 
 
-def test_task110_completed() -> None:
-    assert task110() is None
+def test_quality_gate() -> None:
+    score = quality_gate("BAD BAD")
+    assert score == 1.0
+    score2 = quality_gate("fine text")
+    assert score2 == 0.0

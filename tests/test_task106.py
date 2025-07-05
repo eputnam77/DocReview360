@@ -1,5 +1,7 @@
-from docuflow.stubs.task106 import task106
+from docuflow.fann_corpus import curate_corpus
 
 
-def test_task106_completed() -> None:
-    assert task106() is None
+def test_curate_corpus() -> None:
+    clean, anomalies = curate_corpus(["normal text", "BAD BAD", "another"], 0.5)
+    assert "normal text" in clean
+    assert "BAD BAD" in anomalies

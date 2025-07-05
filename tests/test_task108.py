@@ -1,5 +1,9 @@
-from docuflow.stubs.task108 import task108
+from pathlib import Path
+
+from docuflow.pyo3_builder import build_stub_wheel
 
 
-def test_task108_completed() -> None:
-    assert task108() is None
+def test_build_stub_wheel(tmp_path: Path) -> None:
+    wheel = build_stub_wheel(tmp_path / "pkg.whl")
+    assert wheel.exists()
+    assert wheel.read_text() == "wheel"
