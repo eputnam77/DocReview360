@@ -26,6 +26,10 @@ def sync_temp_reassignments(records: Iterable[Mapping[str, str]]) -> int:
             user = record["user"]
             until = datetime.fromisoformat(record["until"])
         except (KeyError, ValueError):
+            # ignore malformed rows
+            continue
+        if until <= datetime.utcnow():
+            # skip expired assignments
             continue
         assign_temporary(project, user, until, approved=True)
         count += 1
