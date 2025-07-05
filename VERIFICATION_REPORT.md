@@ -22,6 +22,11 @@
 - **Batch export and preview helpers** create ZIP archives【F:src/docuflow/exporter.py†L60-L74】【F:tests/test_task27.py†L1-L13】.
 - **Priority management with temporary reassignment** and expiry checks【F:src/docuflow/search.py†L146-L167】【F:tests/test_task13.py†L11-L30】.
 - **Document numbering engine** tracks per-project sequences【F:src/docuflow/documents.py†L34-L46】【F:tests/test_task22.py†L1-L9】.
+- **Version history utilities** expose previous revisions with retrieval helpers【F:src/docuflow/documents.py†L117-L136】【F:tests/test_task41.py†L1-L15】.
+- **MarkReview change-bars** generate diff output for PDF workflows【F:src/docuflow/markreview.py†L8-L22】【F:tests/test_task42.py†L1-L5】.
+- **MFA authentication helper** validates OTP codes【F:src/docuflow/auth.py†L44-L63】【F:tests/test_task43.py†L1-L8】.
+- **Compliance report generator** emits PDF bytes for audits【F:src/docuflow/security_compliance.py†L21-L29】【F:tests/test_task44.py†L1-L6】.
+- **Observability stack launcher** returns Prometheus and Grafana URLs【F:src/docuflow/monitoring.py†L31-L40】【F:tests/test_task45.py†L1-L5】.
 - **Celery worker configuration** defaults to Redis broker env vars【F:src/docuflow/celery_app.py†L1-L13】.
 - **Email notifications** render Jinja templates and store sent mails【F:src/docuflow/notifications.py†L18-L33】【F:tests/test_task31.py†L1-L10】.
 - **Plugin toggle UI** renders an HTML table of enabled state【F:src/docuflow/plugins_ui.py†L8-L14】【F:tests/test_task32.py†L1-L12】.
@@ -43,13 +48,13 @@
 - `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
 - `mypy --strict` passed on all files【f92959†L1-L2】.
 - `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
-- `pytest` passed with 251 tests and 91% coverage【206ce1†L1-L19】.
+- `pytest` passed with 254 tests and 90% coverage【c536f5†L1-L20】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-All tasks 1‑40 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
+All tasks 1‑45 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
 
 ready-for:verifier

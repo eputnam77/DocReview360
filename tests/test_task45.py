@@ -1,5 +1,7 @@
-from docuflow.stubs.task45 import task45
+from docuflow.monitoring import start_observability_stack
 
 
-def test_task45_returns_none() -> None:
-    assert task45() is None
+def test_start_observability_stack() -> None:
+    cfg = start_observability_stack(8001, 3001)
+    assert cfg["prometheus"].endswith("8001/")
+    assert cfg["grafana"].endswith("3001/")
