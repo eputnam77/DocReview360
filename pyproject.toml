@@ -28,6 +28,8 @@ dependencies = [
   "python-jose[cryptography]>=3.3",
   "celery>=5.3",
   "redis>=5.0",
+  "graphene>=3.3",
+  "prometheus-client>=0.20",
 ]
 
 [[project.authors]]
@@ -59,6 +61,7 @@ test = [
   "pytest>=8",
   "pytest-cov>=5",
   "hypothesis>=6",
+  "pytest-asyncio>=0.23",
   "pytest-playwright>=0.4",
   "playwright>=1.44",
   "mutmut>=2.4",
@@ -80,6 +83,7 @@ dev = [
   "pytest>=8",
   "pytest-cov>=5",
   "hypothesis>=6",
+  "pytest-asyncio>=0.23",
   "pytest-playwright>=0.4",
   "playwright>=1.44",
   "mutmut>=2.4",
@@ -103,6 +107,7 @@ bandit = {version = ">=1.8.5", extras = ["toml"]}
 semgrep = ">=1.123.0"
 pip-audit = ">=2.7"
 pre-commit = ">=3.7"
+pytest-asyncio = ">=0.23"
 
 # ──────────────────────────── package discovery ───────────────────────────────
 

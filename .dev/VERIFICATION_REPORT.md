@@ -17,8 +17,9 @@
 - **Database abstraction and SQL migrations** implemented in `database.py` lines 12‑77 with tests `tests/test_db_migrations.py` and `tests/test_migration.py`.
 - **REST API skeleton** covers project, document, workflow and approval routes. See `api.py` lines 28-296 with tests `tests/test_api.py`.
 - **AI and workflow extensions** implement tasks 60‑90 across modules (`ai_balancer.py`, `workflows.py`, `ai_utils.py`, `hr_sync.py`, `records_keeper.py`, `documenso.py`, connectors in `stubs/`), validated by `tests/test_task60.py`→`test_task90.py`.
-- **Automated tests** achieve 90% coverage as shown in the latest test run.
-These implementations satisfy PRD sections 2.1.0 through 2.5 and correspond to tasks 1‑87 in `TASKS.md`.
+- **Automated tests** achieve **95% coverage** as shown in the latest test run.
+These implementations satisfy PRD sections 2.1.0 through 2.5 and correspond to tasks **1‑90** in `TASKS.md`.
+The code follows ADR-driven architecture, includes docstrings for non-obvious logic and validates inputs with clear error messages.
 
 ## ⚠️ Partially Implemented Features
 
