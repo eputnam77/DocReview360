@@ -1,15 +1,12 @@
-"""Simple GraphQL query handler."""
+"""Wrapper for the GraphQL read layer used in task 88."""
 
 from __future__ import annotations
 
+from .. import graphql_api
 from . import record_task_completion
 
 
 def execute_query(query: str) -> dict[str, object]:
-    """Return canned data based on the ``query`` string."""
+    """Proxy to ``graphql_api.execute_query`` and record completion."""
     record_task_completion(88)
-    if "projects" in query:
-        return {"projects": [{"id": 1, "name": "demo"}]}
-    if "documents" in query:
-        return {"documents": [{"id": 2, "title": "doc"}]}
-    return {"ping": "pong"}
+    return graphql_api.execute_query(query)
