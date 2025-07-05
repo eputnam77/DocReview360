@@ -7,7 +7,11 @@ from pathlib import Path
 
 
 def create_archival_folder(base: str | Path, project_id: str) -> Path:
-    """Create and return an archival folder for ``project_id``."""
+    """Create and return an archival folder for ``project_id``.
+
+    The folder name embeds today's UTC date to keep daily snapshots
+    grouped by project.
+    """
     if not project_id:
         raise ValueError("project_id must be provided")
     base_path = Path(base)
