@@ -4,7 +4,7 @@ import pytest
 
 from docuflow.archive import archive_document, archives
 from docuflow.documents import DocumentModel
-from docuflow.object_storage import upload_file
+from docuflow.object_storage import download_file, upload_file
 
 
 def test_archive_writes_files(tmp_path: Path) -> None:
@@ -25,3 +25,9 @@ def test_upload_invalid_key(tmp_path: Path) -> None:
         upload_file(tmp_path, "/bad", b"data")
     with pytest.raises(ValueError):
         upload_file(tmp_path, "bad/", b"data")
+
+
+def test_download_roundtrip(tmp_path: Path) -> None:
+    path = upload_file(tmp_path, "foo.txt", b"hello")
+    assert download_file(tmp_path, "foo.txt") == b"hello"
+    assert path.read_bytes() == b"hello"

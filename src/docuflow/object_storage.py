@@ -5,6 +5,29 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def download_file(bucket: str | Path, key: str) -> bytes:
+    """Return the contents of ``bucket``/``key``.
+
+    Parameters
+    ----------
+    bucket:
+        Root directory used as the storage bucket.
+    key:
+        Relative file path under the bucket. Must not be absolute or empty.
+
+    Returns
+    -------
+    bytes
+        The file contents.
+    """
+
+    if not key or key.startswith("/") or key.endswith("/"):
+        raise ValueError("invalid key")
+
+    path = Path(bucket) / key
+    return path.read_bytes()
+
+
 def upload_file(bucket: str | Path, key: str, data: bytes) -> Path:
     """Save ``data`` to ``bucket``/``key`` and return the file path.
 
