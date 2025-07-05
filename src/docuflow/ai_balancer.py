@@ -4,14 +4,22 @@ from __future__ import annotations
 
 from typing import Dict
 
-# map worker name -> active job count
+# In-memory registry mapping each worker name to their current active job count.
 _workers: Dict[str, int] = {}
 
 
 def register_worker(name: str) -> None:
-    """Register a worker with zero load."""
+    """Register a worker with zero load.
+
+    Raises
+    ------
+    ValueError
+        If ``name`` is empty or already registered.
+    """
     if not name:
         raise ValueError("name is required")
+    if name in _workers:
+        raise ValueError(f"{name} already registered")
     _workers[name] = 0
 
 
