@@ -1,64 +1,45 @@
 # Verification Report
 
 ## ✅ Implemented Features
-- **CLI configuration wizard** implemented via `docuflow.cli` with tests verifying config generation【F:src/docuflow/cli.py†L1-L78】【F:tests/test_cli.py†L1-L31】.
-- **Document type management** allows import/export and update operations【F:src/docuflow/doc_types.py†L1-L120】.
-- **TipTap JSON import** and basic markdown conversion handled by `tiptap` module【F:src/docuflow/tiptap.py†L1-L40】.
-- **Workflow and approvals APIs** exposing creation and state update endpoints in FastAPI app【F:src/docuflow/api.py†L162-L260】.
-- **Inline comments with emoji and mentions** supported in `comments` module【F:src/docuflow/comments.py†L1-L34】【F:src/docuflow/comments.py†L35-L57】.
-- **Search with saved queries** implemented in `search` module including project numbering and priority management【F:src/docuflow/search.py†L1-L60】【F:src/docuflow/search.py†L160-L207】.
-- **Export pipeline** converts documents to Markdown, HTML, DOCX and PDF with guardrails hook【F:src/docuflow/exporter.py†L10-L56】.
-- **Authentication and RBAC** handled by `auth` and `rbac` modules with JWT tokens and role checks【F:src/docuflow/auth.py†L1-L38】【F:src/docuflow/rbac.py†L1-L32】.
-- **Docker-compose dev stack** defines Postgres, Redis, OpenSearch and Celery worker services【F:docker-compose.yml†L1-L31】.
-- **Developer documentation** summarises project features and plugin usage【F:docs/index.md†L12-L20】【F:docs/developer.md†L28-L40】.
-- **Anomaly detection** implemented via small FANN model in `ai_utils.detect_anomalies`【F:src/docuflow/ai_utils.py†L42-L63】.
-- **Priority escalation emails** sent by `notify_overdue_projects` when projects age【F:src/docuflow/notifications.py†L46-L62】.
-- **Manager approval** enforced for long reassignments in `assign_temporary`【F:src/docuflow/search.py†L147-L160】.
-- **Re-review trigger** marks documents after major edits【F:src/docuflow/documents.py†L131-L151】.
-- **Dual status API** exposes `public_status` and `internal_status` metrics【F:src/docuflow/status.py†L13-L22】.
-- **AI workload balancer** distributes jobs among workers【F:src/docuflow/ai_balancer.py†L11-L41】.
-- **Agileagents bot hooks** available via `register_bot` callbacks【F:src/docuflow/workflows.py†L21-L37】.
-- **Prompt-Engine templates** supported through `generate_feedback`【F:src/docuflow/ai_utils.py†L17-L28】.
-- **Imixs and Camunda connectors** stubbed for workflow engines【F:src/docuflow/stubs/task78.py†L1-L30】【F:src/docuflow/stubs/task77.py†L1-L30】.
-- **React Flow BPMN designer** provided as in-memory editor【F:src/docuflow/stubs/task84.py†L1-L27】.
-- **Alfresco and ONLYOFFICE connectors** store or open documents【F:src/docuflow/stubs/task81.py†L1-L17】【F:src/docuflow/stubs/task79.py†L1-L14】.
-- **User preference helper** handles dark mode and reduced motion flags【F:src/docuflow/stubs/task85.py†L1-L12】.
-- **Backup script** writes compressed backups via `task54`【F:src/docuflow/stubs/task54.py†L1-L17】.
-- **Records Keeper helper** creates archival folders【F:src/docuflow/stubs/task58.py†L1-L18】.
-- **HR reassignment sync** implemented in `hr_sync.sync_temp_reassignments`【F:src/docuflow/hr_sync.py†L1-L32】.
-- **Contextual help registry** lets modules provide tutorials【F:src/docuflow/contextual_help.py†L1-L19】.
-- **Sample document type** bootstrapped at startup via `_bootstrap_sample`【F:src/docuflow/doc_types.py†L9-L19】.
-- **Terraform templates generator** outputs S3 and Postgres resources【F:src/docuflow/stubs/task52.py†L1-L49】.
-- **LangGraph debugger URL** returned by `open_dashboard`【F:src/docuflow/monitoring.py†L34-L37】.
-- **Encrypted FedRAMP backups** created with AES using `create_backup`【F:src/docuflow/stubs/task90.py†L1-L24】.
+- **Interactive CLI wizard** saves configuration options to `docuflow.yaml`【F:src/docuflow/cli.py†L12-L90】【F:tests/test_cli.py†L1-L58】.
+- **Document type management** with JSON import/export and sample bootstrap【F:src/docuflow/doc_types.py†L1-L120】.
+- **In-memory search service** indexing projects and documents with saved queries【F:src/docuflow/search.py†L14-L119】【F:src/docuflow/search.py†L160-L207】.
+- **Markdown/DOCX import and versioned updates** implemented in `documents` module with tests covering autosave logic【F:src/docuflow/documents.py†L1-L92】【F:tests/test_documents.py†L1-L36】.
+- **Export pipeline** generates Markdown, HTML, DOCX and PDF with optional guardrails check【F:src/docuflow/exporter.py†L10-L56】【F:tests/test_task67.py†L1-L18】.
+- **Workflow and approval APIs** provide CRUD endpoints and reviewer assignment【F:src/docuflow/api.py†L168-L312】【F:src/docuflow/approvals.py†L1-L34】.
+- **Comment system** supports emoji codes and user mentions【F:src/docuflow/comments.py†L1-L37】【F:src/docuflow/comments.py†L38-L58】.
+- **Plugin framework** registers callables and exposes HTML management table【F:src/docuflow/plugins.py†L8-L80】【F:src/docuflow/plugins_ui.py†L1-L14】.
+- **GraphQL read layer** exposes projects and documents via simple schema【F:src/docuflow/graphql_api.py†L1-L46】【F:tests/test_task88.py†L1-L10】.
+- **SQLAlchemy models** define core tables with unit tests verifying CRUD【F:src/docuflow/models.py†L1-L80】【F:tests/test_models.py†L1-L19】.
+- **Basic React frontend** under `frontend/` with state store and sample pages【F:frontend/pages/index.tsx†L1-L18】.
+- **Documentation site** describes installation and API usage【F:docs/index.md†L1-L20】【F:docs/developer.md†L1-L19】.
 
-- **GraphQL read layer** exposes projects and documents via `execute_query`【F:src/docuflow/graphql_api.py†L1-L46】【F:tests/test_task88.py†L1-L10】
-- **Plugin management UI** renders plugin status table for admins【F:src/docuflow/plugins_ui.py†L1-L14】【F:tests/test_task32.py†L1-L11】
-- **File storage helper** saves uploaded bytes to disk via `upload_file`【F:src/docuflow/object_storage.py†L1-L13】
 ## ⚠️ Partially Implemented Features
-- **Celery workers and Redis broker** exist but tasks use simple `echo` stub; no real background jobs【F:src/docuflow/celery_app.py†L1-L16】【F:src/docuflow/stubs/task30.py†L1-L9】.
-- **Vector search** provides naive embeddings without OpenSearch integration【F:src/docuflow/vector_search.py†L1-L29】.
-- **Documenso signature connector** simulated with stub function only【F:src/docuflow/stubs/task80.py†L1-L12】.
-- **Observability stack** now starts a Prometheus server and optional Sentry integration via `init_observability`【F:src/docuflow/monitoring.py†L1-L32】【F:src/docuflow/stubs/task97.py†L1-L13】.
-- **Multiple editors (Toast UI, ONLYOFFICE, XML editor)** not present; only TipTap implemented.
-- **Security hardening (Keycloak MFA, FedRAMP controls)** not configured beyond basic JWT auth.
+- **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
+- **Vector search** provides TF‑IDF ranking but OpenSearch integration is optional and not exercised【F:src/docuflow/vector_search.py†L1-L105】.
+- **Documenso signature connector** works in-memory; no external calls in tests【F:src/docuflow/documenso.py†L1-L58】【F:tests/test_documenso_extra.py†L1-L13】.
+- **Multiple editors** (Toast UI, ONLYOFFICE, XML) referenced in PRD are missing; only TipTap stubs exist.
+- **Security hardening** (Keycloak MFA, FedRAMP backup schedule) is not configured beyond JWT demo auth.
 
 ## ❌ Missing Features
-- **Full AI helper suite (Prompt‑Engine, ruv‑FANN anomaly detection)** not implemented; only placeholder utilities.
-- **Metabase dashboards and analytics** not integrated.
-- **Third-party TipTap plugin wrappers** (template linter, mark review, numbering) are empty placeholders.
-- **Object storage helper** lacks tests and integration in workflows.
-- **Export preview & batch export UI** minimal; no frontend components for plugin management or advanced exports.
-- **End-to-end tests** exist only as placeholder BDD scenarios; `tests/E2E_REPORT.md` is empty.
+- **Metabase analytics and dashboards** from PRD section 3.5 have no implementation.
+- **TipTap plugin wrappers** (template linter, numbering helper) are placeholders with no tests.
+- **Object storage helper** lacks unit tests and is not integrated into archival workflow【F:src/docuflow/object_storage.py†L1-L13】.
+- **End‑to‑end behaviour tests** only contain empty `.feature` files; `tests/E2E_REPORT.md` is empty【F:tests/e2e/features/task141.feature†L1-L7】【F:tests/E2E_REPORT.md†L1-L1】.
+
+## Dev Gate Results
+- `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
+- `mypy --strict` passed on all files【f92959†L1-L2】.
+- `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
+- `pytest` failed during collection with 195 errors preventing coverage measurement【55bf7f†L1-L21】.
 
 ## 📋 Recommended Next Steps
-1. Address failing quality gate checks: `ruff` lint errors and pytest collection failures (124 errors) revealed during verification【341486†L1-L75】【68af6f†L1-L21】.
-2. Implement remaining high-priority tasks from `.dev/TASKS.md`, including TipTap plugin wrappers, workflow engines and signature provider.
-3. Add tests for the object storage helper and ensure integration in document workflows.
-4. Expand test coverage to exercise all modules and aim for ≥70% coverage to satisfy the dev gate.
-5. Enhance documentation to cover incomplete areas such as security hardening and deployment guides.
----
+1. Fix test collection errors to obtain coverage ≥70 % and validate API behaviour.
+2. Implement missing editor integrations and plugin wrappers from tasks 14 and 32.
+3. Add integration of object storage into document archival along with unit tests.
+4. Expand security configuration to include Keycloak MFA and backup policies.
+5. Flesh out end‑to‑end scenarios and publish Metabase dashboard examples.
 
-**Routing Decision:** codebase has several incomplete or stubbed features and failing tests. The next agent should continue development to close these gaps.
+The repository partially satisfies early tasks but lacks coverage and several PRD features. Further development should continue under the **builder** role.
 
 ready-for:builder
