@@ -1,5 +1,6 @@
 import httpx
 import pytest
+import httpx
 
 from docuflow import vector_search
 
@@ -62,3 +63,53 @@ def test_vector_search_index_opensearch(monkeypatch) -> None:
     with pytest.raises(RuntimeError):
         vector_search.index_document("a", "alpha beta")
     assert calls
+
+
+def test_vector_search_opensearch_success(monkeypatch) -> None:
+    def fake_post(url: str, json: dict, timeout: int) -> httpx.Response:
+        assert url.endswith("/_search")
+        data = {"hits": {"hits": [{"_id": "a", "_score": 1.0}]}}
+        req = httpx.Request("POST", url)
+        return httpx.Response(200, json=data, request=req)
+
+    def fake_put(url: str, json: dict, timeout: int) -> httpx.Response:
+        req = httpx.Request("PUT", url)
+        return httpx.Response(201, request=req)
+
+    monkeypatch.setenv("OPENSEARCH_URL", "http://os")
+    monkeypatch.setattr(vector_search, "OPENSEARCH_URL", "http://os")
+    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr(httpx, "put", fake_put)
+
+    vector_search.clear()
+    vector_search.index_document("a", "alpha beta")
+    res = vector_search.search("alpha")
+    assert res == [("a", 1.0)]
+
+
+def test_vector_search_pgvector(monkeypatch) -> None:
+    idx_calls: list[tuple] = []
+    search_calls: list[tuple] = []
+
+    def fake_post_index(url: str, json: dict, timeout: int) -> httpx.Response:
+        idx_calls.append((url, json))
+        req = httpx.Request("POST", url)
+        return httpx.Response(201, request=req)
+
+    def fake_post_search(url: str, json: dict, timeout: int) -> httpx.Response:
+        search_calls.append((url, json))
+        data = {"results": [{"id": "a", "score": 0.9}]}
+        req = httpx.Request("POST", url)
+        return httpx.Response(200, json=data, request=req)
+
+    monkeypatch.delenv("OPENSEARCH_URL", raising=False)
+    monkeypatch.setattr(vector_search, "OPENSEARCH_URL", None)
+    monkeypatch.setenv("PGVECTOR_URL", "http://pgv")
+    monkeypatch.setattr(vector_search, "PGVECTOR_URL", "http://pgv")
+    monkeypatch.setattr(httpx, "post", lambda url, json, timeout: fake_post_index(url, json, timeout) if url.endswith("/index") else fake_post_search(url, json, timeout))
+
+    vector_search.clear()
+    vector_search.index_document("a", "alpha beta")
+    res = vector_search.search("alpha")
+    assert res == [("a", 0.9)]
+    assert idx_calls and search_calls
