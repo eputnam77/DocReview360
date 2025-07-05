@@ -33,6 +33,16 @@
 - **Reporting endpoints** return JSON and CSV summaries【F:src/docuflow/reporting.py†L72-L80】【F:tests/test_task33.py†L1-L14】.
 - **AI validation utilities** ensure content quality and project creation【F:src/docuflow/ai_utils.py†L64-L96】【F:src/docuflow/project_init.py†L12-L26】.
 - **AI assist endpoints** provide rewriting and summarization via OpenAI with fallback logic【F:src/docuflow/ai_assist.py†L1-L50】【F:src/docuflow/api.py†L407-L418】【F:tests/test_ai_assist.py†L1-L32】.
+- **WCAG audit helper** detects missing alt text and button labels【F:src/docuflow/accessibility.py†L1-L23】.
+- **Redis-based cache** stores values with optional TTL【F:src/docuflow/cache.py†L1-L34】.
+- **Vector search ranking** uses TF-IDF cosine similarity and OpenSearch when available【F:src/docuflow/vector_search.py†L82-L120】.
+- **SynthLang token reducer** strips vowels to reduce tokens when enabled【F:src/docuflow/ai_utils.py†L31-L39】.
+- **FANN anomaly linter** flags unusual text via logistic score【F:src/docuflow/ai_utils.py†L42-L63】.
+- **Priority escalation emails** alert on overdue high priority projects【F:src/docuflow/notifications.py†L46-L62】.
+- **Manager approval required** for long temporary assignments【F:src/docuflow/search.py†L147-L161】.
+- **Major edit detection** adds a re-review flag on substantial diffs【F:src/docuflow/documents.py†L120-L134】.
+- **Dual status API** separates public and internal metrics【F:src/docuflow/status.py†L13-L22】.
+- **AI workload balancer** distributes jobs across workers【F:src/docuflow/ai_balancer.py†L1-L40】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -55,6 +65,6 @@
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-All tasks 1‑50 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
+All tasks 1-60 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
 
 ready-for:verifier
