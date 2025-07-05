@@ -11,6 +11,22 @@
 - **Authentication and RBAC** handled by `auth` and `rbac` modules with JWT tokens and role checks【F:src/docuflow/auth.py†L1-L38】【F:src/docuflow/rbac.py†L1-L32】.
 - **Docker-compose dev stack** defines Postgres, Redis, OpenSearch and Celery worker services【F:docker-compose.yml†L1-L31】.
 - **Developer documentation** summarises project features and plugin usage【F:docs/index.md†L12-L20】【F:docs/developer.md†L28-L40】.
+- **Anomaly detection** implemented via small FANN model in `ai_utils.detect_anomalies`【F:src/docuflow/ai_utils.py†L42-L63】.
+- **Priority escalation emails** sent by `notify_overdue_projects` when projects age【F:src/docuflow/notifications.py†L46-L62】.
+- **Manager approval** enforced for long reassignments in `assign_temporary`【F:src/docuflow/search.py†L147-L160】.
+- **Re-review trigger** marks documents after major edits【F:src/docuflow/documents.py†L131-L151】.
+- **Dual status API** exposes `public_status` and `internal_status` metrics【F:src/docuflow/status.py†L13-L22】.
+- **AI workload balancer** distributes jobs among workers【F:src/docuflow/ai_balancer.py†L11-L41】.
+- **Agileagents bot hooks** available via `register_bot` callbacks【F:src/docuflow/workflows.py†L21-L37】.
+- **Prompt-Engine templates** supported through `generate_feedback`【F:src/docuflow/ai_utils.py†L17-L28】.
+- **Imixs and Camunda connectors** stubbed for workflow engines【F:src/docuflow/stubs/task78.py†L1-L30】【F:src/docuflow/stubs/task77.py†L1-L30】.
+- **React Flow BPMN designer** provided as in-memory editor【F:src/docuflow/stubs/task84.py†L1-L27】.
+- **Alfresco and ONLYOFFICE connectors** store or open documents【F:src/docuflow/stubs/task81.py†L1-L17】【F:src/docuflow/stubs/task79.py†L1-L14】.
+- **User preference helper** handles dark mode and reduced motion flags【F:src/docuflow/stubs/task85.py†L1-L12】.
+- **Backup script** writes compressed backups via `task54`【F:src/docuflow/stubs/task54.py†L1-L17】.
+- **Records Keeper helper** creates archival folders【F:src/docuflow/stubs/task58.py†L1-L18】.
+- **HR reassignment sync** implemented in `hr_sync.sync_temp_reassignments`【F:src/docuflow/hr_sync.py†L1-L32】.
+- **Contextual help registry** lets modules provide tutorials【F:src/docuflow/contextual_help.py†L1-L19】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery workers and Redis broker** exist but tasks use simple `echo` stub; no real background jobs【F:src/docuflow/celery_app.py†L1-L16】【F:src/docuflow/stubs/task30.py†L1-L9】.
