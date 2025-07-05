@@ -13,6 +13,9 @@ class WorkflowEditor:
         self.edges: list[tuple[str, str]] = []
 
     def add_node(self, node_id: str, data: dict) -> None:
+        """Insert a node into the diagram."""
+        if not node_id:
+            raise ValueError("node_id required")
         self.nodes[node_id] = data
         record_task_completion(84)
 
