@@ -32,6 +32,9 @@
 - **LangGraph debugger URL** returned by `open_dashboard`【F:src/docuflow/monitoring.py†L34-L37】.
 - **Encrypted FedRAMP backups** created with AES using `create_backup`【F:src/docuflow/stubs/task90.py†L1-L24】.
 
+- **GraphQL read layer** exposes projects and documents via `execute_query`【F:src/docuflow/graphql_api.py†L1-L46】【F:tests/test_task88.py†L1-L10】
+- **Plugin management UI** renders plugin status table for admins【F:src/docuflow/plugins_ui.py†L1-L14】【F:tests/test_task32.py†L1-L11】
+- **File storage helper** saves uploaded bytes to disk via `upload_file`【F:src/docuflow/object_storage.py†L1-L13】
 ## ⚠️ Partially Implemented Features
 - **Celery workers and Redis broker** exist but tasks use simple `echo` stub; no real background jobs【F:src/docuflow/celery_app.py†L1-L16】【F:src/docuflow/stubs/task30.py†L1-L9】.
 - **Vector search** provides naive embeddings without OpenSearch integration【F:src/docuflow/vector_search.py†L1-L29】.
@@ -41,18 +44,19 @@
 - **Security hardening (Keycloak MFA, FedRAMP controls)** not configured beyond basic JWT auth.
 
 ## ❌ Missing Features
-- **GraphQL read layer** described in PRD/TASKS is absent from the codebase.
 - **Full AI helper suite (Prompt‑Engine, ruv‑FANN anomaly detection)** not implemented; only placeholder utilities.
 - **Metabase dashboards and analytics** not integrated.
+- **Third-party TipTap plugin wrappers** (template linter, mark review, numbering) are empty placeholders.
+- **Object storage helper** lacks tests and integration in workflows.
 - **Export preview & batch export UI** minimal; no frontend components for plugin management or advanced exports.
 - **End-to-end tests** exist only as placeholder BDD scenarios; `tests/E2E_REPORT.md` is empty.
 
 ## 📋 Recommended Next Steps
 1. Address failing quality gate checks: `ruff` lint errors and pytest collection failures (124 errors) revealed during verification【341486†L1-L75】【68af6f†L1-L21】.
-2. Implement remaining high-priority tasks from `.dev/TASKS.md`, focusing on real integrations for editors, workflow engines and signature provider.
-3. Expand test coverage to exercise all modules and aim for ≥70% coverage to satisfy the dev gate.
-4. Enhance documentation to cover incomplete areas such as security hardening and deployment guides.
-
+2. Implement remaining high-priority tasks from `.dev/TASKS.md`, including TipTap plugin wrappers, workflow engines and signature provider.
+3. Add tests for the object storage helper and ensure integration in document workflows.
+4. Expand test coverage to exercise all modules and aim for ≥70% coverage to satisfy the dev gate.
+5. Enhance documentation to cover incomplete areas such as security hardening and deployment guides.
 ---
 
 **Routing Decision:** codebase has several incomplete or stubbed features and failing tests. The next agent should continue development to close these gaps.
