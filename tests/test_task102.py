@@ -1,5 +1,12 @@
-from docuflow.stubs.task102 import task102
+from docuflow.editor_loader import load_plugins
 
 
-def test_task102_completed() -> None:
-    assert task102() is None
+def test_load_plugins() -> None:
+    def a() -> str:
+        return "a"
+
+    def b() -> str:
+        return "b"
+
+    names = load_plugins([a, b])
+    assert names == ["a", "b"]

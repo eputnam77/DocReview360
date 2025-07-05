@@ -37,3 +37,14 @@ def fetch_length(url: str) -> int:
     resp = httpx.get(url, timeout=5)
     resp.raise_for_status()
     return len(resp.text)
+
+
+@app.task(name="docuflow.quality_gate")
+def quality_gate(text: str, weights: list[float] | None = None) -> float:
+    """Return anomaly score for ``text`` using the provided model weights."""
+    if weights is None:
+        weights = [0.0, -0.1, 1.2, 0.0]
+    from .wasm_plugin import lint_text
+
+    passed = lint_text(text, weights)
+    return 0.0 if passed else 1.0
