@@ -1,4 +1,9 @@
-from docuflow.stubs.task83 import MetabaseClient
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from docuflow.metabase import MetabaseClient, load_dashboards
 
 
 def test_get_chart() -> None:
@@ -10,3 +15,11 @@ def test_heatmap() -> None:
     client = MetabaseClient()
     data = client.heatmap("p1")
     assert data and len(data) == 3
+
+
+def test_load_dashboards(tmp_path: Path) -> None:
+    path = tmp_path / "dash.json"
+    path.write_text(json.dumps({"charts": [{"id": "1", "title": "Foo"}]}))
+    data = load_dashboards(path)
+    client = MetabaseClient(data)
+    assert client.get_chart("1")["title"] == "Foo"
