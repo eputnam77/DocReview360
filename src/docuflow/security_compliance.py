@@ -22,3 +22,11 @@ def should_purge(created: datetime, retention_days: int) -> bool:
     if retention_days <= 0:
         raise ValueError("retention_days must be positive")
     return datetime.utcnow() - created > timedelta(days=retention_days)
+
+
+def generate_compliance_pdf(data_flow: str) -> bytes:
+    """Return a minimal PDF blob describing the data flow."""
+    if not data_flow:
+        raise ValueError("data_flow required")
+    header = b"%PDF-1.4\n"
+    return header + data_flow.encode("utf-8")

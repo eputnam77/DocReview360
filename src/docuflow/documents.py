@@ -154,3 +154,19 @@ def needs_rereview(doc_id: str) -> bool:
 def clear_rereview(doc_id: str) -> None:
     """Remove the re-review flag for ``doc_id``."""
     _re_review.discard(doc_id)
+
+
+def get_document_versions(doc_id: str) -> list[str]:
+    """Return the list of previous versions for ``doc_id``."""
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"Document '{doc_id}' not found")
+    return document.history.copy()
+
+
+def get_document_version(doc_id: str, index: int) -> str:
+    """Return a specific historical version for ``doc_id``."""
+    versions = get_document_versions(doc_id)
+    if index < 0 or index >= len(versions):
+        raise IndexError("version index out of range")
+    return versions[index]
