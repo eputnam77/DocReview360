@@ -1,340 +1,189 @@
-# Task Breakdown
+Below is one **fully ordered master backlog** — ① → ①140 — with **every feature** from the PRD, the ruv-FANN pack, the OSS add-ons, the template life-cycle tasks, and the TipTap-wrapper work-pack.
+*Bold rows (① → ③0) are the **MVP critical path** you must finish to get a clickable system in ≈ 6 weeks; everything after ③0 can ship in subsequent sprints.*
 
-Below is a high level list of tasks derived from **PRD.md**. Each task contains a priority, estimated effort, acceptance criteria, and suggested GitHub labels.
+| #     | Title / Area                                                     | Detailed implementation guide (what & how)                                                                                                                              | Owner • Phase      | Effort\*\* | Acceptance / test hints                                              |
+| ----- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ---------- | -------------------------------------------------------------------- |
+| **①** | **Architecture ADR & repo layout**                               | • Create `/docs/adr/0001-core-architecture.md` (decision log).<br>• Adopt **src/** + **tests/** + **services/** monorepo layout.<br>• Diagram in C4 “container” format. | Arch • P1          | 2 d        | ADR reviewed & merged; `tree` shows agreed folders.                  |
+| **②** | **Project skeleton & CI stub**                                   | • `pyproject.toml` (Poetry) with FastAPI, Pydantic.<br>• `.github/workflows/ci.yml` (unit test + lint).                                                                 | DevOps • P1        | 1 d        | `gh workflow run` green on first commit.                             |
+| **③** | **Quality gates**                                                | • Add `ruff`, `mypy`, `bandit` configs.<br>• Pre-commit hooks.<br>• Add `pytest --cov` baseline target 90 %.                                                            | DevOps • P1        | 2 d        | PR blocked if lint/typing/cov fails.                                 |
+| **④** | **`docuflow init` CLI wizard**                                   | • Click CLI (Python).<br>• Prompts: DB URI, SSO, editors, storage.<br>• Generates `.env`, `docker-compose.dev.yml`.                                                     | Backend • P1       | 3 d        | Running `docuflow init --quick` launches dev stack w/o error.        |
+| **⑤** | **Plugin framework**                                             | • Define `EntryPoint` groups: `df_editors`, `df_exporters`, `df_validators`.<br>• Autodiscovery on startup.<br>• Docs stub.                                             | Backend • P1       | 3 d        | `pip install sample-plugin` → appears in `/api/v1/plugins`.          |
+| **⑥** | **SQLAlchemy models**                                            | Entities: `User`, `Project`, `Document`, `Template`, `Workflow`, `Approval` (with Alembic).                                                                             | Backend • P1       | 3 d        | `pytest tests/db/test_models.py` passes; migration generates tables. |
+| **⑦** | **FastAPI skeleton**                                             | CRUD endpoints for models with dep-injected `Session` and OAS docs.                                                                                                     | Backend • P1       | 4 d        | Swagger UI lists routes; `httpx` tests 200.                          |
+| **⑧** | **OIDC stub auth**                                               | • Integrate `fastapi-oidc` with local Keycloak dev-realm.<br>• Public `/health`, protected `/api/*`.                                                                    | Security • P1      | 3 d        | Hitting `/api/projects` w/o token → 401.                             |
+| **⑨** | **RBAC middleware**                                              | Roles: `admin`, `pm`, `editor`, `reviewer`, `viewer`.<br>Permissions map in `rbac.yaml`.                                                                                | Security • P1      | 3 d        | `GET /api/users` denied for non-admins.                              |
+| **⑩** | **Next.js 14 boilerplate**                                       | • `create-next-app@latest`. <br>• Tailwind + shadcn/ui setup.<br>• Base layout + AuthProvider (OIDC).                                                                   | FE • P1            | 3 d        | `npm run dev` shows login page.                                      |
+| **⑪** | **React state (RQ + Zustand)**                                   | • Query cache for `/api/*`.<br>• Global store: user, settings, toaster.                                                                                                 | FE • P1            | 2 d        | React DevTools shows hydrated store.                                 |
+| **⑫** | **Workflow engine core**                                         | • Simple JSON state-machine: `draft→review→approved`.<br>• Hook reviewers array per state.<br>• Exposed `/api/workflows`.                                               | Backend • P1       | 4 d        | Project transitions + history recorded.                              |
+| **⑬** | **Document-type + Template CRUD**                                | CRUD for doc-types, templates.<br>Store Markdown golden sources.                                                                                                        | Backend • P1       | 4 d        | Creating `AC` type produces template row.                            |
+| **⑭** | **TipTap editor MVP**                                            | • `<EditorContent>` component.<br>• Upload MD, inline edit, autosave via WebSocket.<br>• Minimal extensions: bold/italic/headings.                                      | FE • P1            | 5 d        | Create doc → edits persist, reload shows content.                    |
+| **⑮** | **Approval subsystem**                                           | `/api/approvals` CRUD, status (`pending/approved/rejected`).<br>UI modal with Approve/Reject.                                                                           | Backend • P1       | 4 d        | Approver click sets status & timestamp.                              |
+| **⑯** | **Documenso connector**                                          | • Webhook listener `/hooks/documenso`.<br>• `/api/sign` returns Documenso redirect URL.                                                                                 | Backend • P1       | 3 d        | Sign → webhook → workflow state `signed`.                            |
+| **⑰** | **React pages (login, dashboard, editor)**                       | Skeleton pages with route guards.                                                                                                                                       | FE • P1            | 5 d        | Navigate `/editor/123` after login.                                  |
+| **⑱** | **Dashboard widgets v1**                                         | • “My tasks”, “Pending approval”, progress bar.<br>• API `/metrics/summary`.                                                                                            | FE • P1            | 4 d        | Cypress: widget counts match DB.                                     |
+| **⑲** | **Inline comments & mentions**                                   | Use TipTap `comment` extension, custom pop-over; server `/api/comments`.                                                                                                | Collaboration • P1 | 4 d        | Two users see each other’s comments live.                            |
+| **⑳** | **Dev stack docker-compose**                                     | Services: api, db, redis, minio, keycloak.                                                                                                                              | DevOps • P1        | 2 d        | `docker-compose up` passes healthchecks.                             |
+| **㉑** | **Structured logging**                                           | `structlog` JSON logs, log-to-file & stdout.<br>REST `/api/logs` (paginated).                                                                                           | Backend • P1       | 4 d        | Unit test scans for ISO-8601 timestamp.                              |
+| **㉒** | **WebSocket live updates**                                       | `fastapi-websocket` channel `project/{id}`.<br>Front-end Hook updates editor & dashboard.                                                                               | Backend • P1       | 3 d        | Simulated update reflects in UI < 1 s.                               |
+| **㉓** | **Archival workflow**                                            | On `approved` state → write MD, PDF, JSON to `/archives/{yr}/{proj}`.                                                                                                   | Backend • P1       | 4 d        | File exists & checksum logged.                                       |
+| **㉔** | **Full-text search v1 (Postgres TS)**                            | `to_tsvector` on docs; `/search?q=` endpoint.                                                                                                                           | Backend • P1       | 4 d        | `?q=airworthiness` returns sample doc.                               |
+| **㉕** | **OpenSearch upgrade + pgvector**                                | Deploy OpenSearch container; sync docs & embeddings (sbert).                                                                                                            | Backend • P1       | 4 d        | Cosine search API < 300 ms.                                          |
+| **㉖** | **Export pipeline (HTML + PDF + DOCX)**                          | Use `pandoc` Docker sidecar.<br>Queue via Celery task `export_doc`.                                                                                                     | Backend • P1       | 5 d        | Download link yields valid PDF.                                      |
+| **㉗** | **Export preview & batch export**                                | React preview modal (iframe).<br>Select multi docs → ZIP.                                                                                                               | FE • P1            | 3 d        | Smoke test passes ZIP integrity.                                     |
+| **㉘** | **Priority mgmt + temp reassignment**                            | Fields: `priority`, `temp_user`, `start`, `end`.<br>Escalation cron.                                                                                                    | Backend • P2       | 3 d        | Cron updates overdue high-priority.                                  |
+| **㉙** | **Document numbering engine**                                    | Node lib `@your-org/tiptap-fed-numbering` (rule map).<br>Server stores map JSON.                                                                                        | BE • P2            | 2 d        | Heading 1.1.1 auto-renumbers.                                        |
+| **㉚** | **Celery + Redis broker**                                        | `celery -A docuflow worker`. Use Flower for UI.                                                                                                                         | DevOps • P2        | 3 d        | Queue job runs in test.                                              |
+| **㉛** | **Email notifications (Jinja templates)**                        | SMTP creds in `.env`. Events: assign, approve, overdue.                                                                                                                 | Backend • P2       | 2 d        | Mailhog shows rendered email.                                        |
+| **㉜** | **Plugin toggle UI**                                             | Admin page listing discovered entry-points; toggle enabled flag.                                                                                                        | FE • P2            | 3 d        | Disable editor → menu hides.                                         |
+| **㉝** | **Reporting endpoints & CSV**                                    | `/reports/phase-duration`, `/reports/export.csv`.                                                                                                                       | Backend • P2       | 3 d        | Spreadsheet opens correctly.                                         |
+| **㉞** | **AI assist (OpenAI completion)**                                | `/ai/rewrite` + `/ai/summarize`. Env var `OPENAI_KEY`.                                                                                                                  | BE • P2            | 4 d        | 200 JSON with new text.                                              |
+| **㉟** | **AI-validated project init**                                    | GPT function call returns suggested reviewers list; PM can accept.                                                                                                      | AI • P2            | 4 d        | Unit test validator returns ≥ 1 name.                                |
+| **㊱** | **Doc-type conversion wizard**                                   | Wizard step “Convert AC → Order”. Runs pandoc + numbering map transform.                                                                                                | BE • P2            | 3 d        | Converted doc passes schema tests.                                   |
+| **㊲** | **Style-guide manager**                                          | Upload YAML style file; TipTap linter uses it.                                                                                                                          | BE • P2            | 3 d        | Missing style rule flagged.                                          |
+| **㊳** | **TipTap DOCX heading auto-fix**                                 | Extension watches paste event; inserts missing Hx placeholders.                                                                                                         | FE • P2            | 4 d        | Paste DOCX w/ no Heading 2 triggers placeholder.                     |
+| **㊴** | **Multi-editor switch (Toast / ONLYOFFICE)**                     | Dynamic `import()` by doc-type.<br>Persist choice in document.meta.                                                                                                     | FE • P2            | 4 d        | Toggle menu switches editors.                                        |
+| **㊵** | **Pandiff diff & change-bars**                                   | Use `pandiff` CLI, render diff to right-pane.                                                                                                                           | BE • P2            | 2 d        | Two versions show red/green lines.                                   |
+| **㊶** | **Dual view & version history**                                  | Markdown source tab + timeline sidebar (SQL history table).                                                                                                             | FE • P2            | 4 d        | Select v3 shows older content.                                       |
+| **㊷** | **MarkReview workflow**                                          | Save delta JSON; Fedora-style changebars in PDF export.                                                                                                                 | BE • P2            | 3 d        | Bars appear in exported PDF.                                         |
+| **㊸** | **Keycloak SSO hardening**                                       | Enforce MFA, Login.gov broker, realm import script.                                                                                                                     | Security • P2      | 4 d        | MFA prompt appears.                                                  |
+| **㊹** | **Security compliance docs**                                     | Data flow + encryption diagrams; retention policy.                                                                                                                      | Docs • P2          | 3 d        | PDF uploaded to `/docs/compliance`.                                  |
+| **㊺** | **Observability stack (Prom+Grafana+Loki+Sentry)**               | Helm chart; Grafana dashboards CPU/ALB/DB.                                                                                                                              | DevOps • P2        | 4 d        | `/grafana` shows panels.                                             |
+| **㊻** | **Metabase analytics**                                           | Docker Metabase; seed KPI dashboards JSON.                                                                                                                              | Data • P2          | 4 d        | Dashboard loads OK.                                                  |
+| **㊼** | **Real-time log UI**                                             | React Table streaming `/logs/ws`.                                                                                                                                       | FE • P2            | 3 d        | Logs appear w/o refresh.                                             |
+| **㊽** | **Saved searches & widgets**                                     | API `/search/saved`; add to dash.                                                                                                                                       | FE • P2            | 3 d        | Save query, reload → present.                                        |
+| **㊾** | **AI export suggestions**                                        | GPT chooses best format; UI “Recommended: PDF”.                                                                                                                         | AI • P2            | 2 d        | Unit test returns valid enum.                                        |
+| **㊿** | **Optional grammar checker**                                     | Grammarly SDK embed; toggle via settings.                                                                                                                               | FE • P2            | 2 d        | Grammar underline appears.                                           |
+| 51    | WCAG 2.1 AA audit                                                | Axe-core tests; fix contrasts, aria.                                                                                                                                    | FE • P2            | 3 d        | CI Axe score > 90.                                                   |
+| 52    | Redis session caching                                            | `fastapi-cache2` with Redis.                                                                                                                                            | DevOps • P2        | 2 d        | Load test shows hit ratio.                                           |
+| 53    | AI-ranked OpenSearch results                                     | rerank using embedding cosine score.                                                                                                                                    | AI • P2            | 3 d        | Search latency < 500 ms.                                             |
+| 54    | SynthLang token reducer                                          | Strip stop-words before OpenAI calls.                                                                                                                                   | AI • P2            | 2 d        | Tokens saved vs baseline ≥ 20 %.                                     |
+| 55    | ruv-FANN anomaly linter (backend)                                | PyO3 wheel loads `.fann`; returns score.                                                                                                                                | AI • P2            | 3 d        | Score < 0.8 triggers flag.                                           |
+| 56    | Priority escalation emails                                       | Cron job emails manager on overdue.                                                                                                                                     | Backend • P2       | 2 d        | Email in inbox.                                                      |
+| 57    | Manager approval for long reassignment                           | Modal requires manager JWT.                                                                                                                                             | Workflow • P2      | 2 d        | Cannot bypass via API.                                               |
+| 58    | Re-review trigger on major edits                                 | diff > 25 % sets status `needs-re-review`.                                                                                                                              | Workflow • P2      | 3 d        | Unit test passes.                                                    |
+| 59    | Dual public / internal status API                                | `/status/public` vs `/status/internal`.                                                                                                                                 | Backend • P2       | 2 d        | Public omits PII.                                                    |
+| 60    | AI workload balancer                                             | Simple k-means on backlog; re-assign suggestions.                                                                                                                       | AI • P3            | 3 d        | Dashboard shows “rebalance” btn.                                     |
+| 61    | AgileAgents auto-review bots                                     | Lambda script posts AI review comment.                                                                                                                                  | Automation • P3    | 3 d        | Comment posted in < 30 s.                                            |
+| 62    | Prompt-Engine template packs                                     | YAML stored in `/prompts`.                                                                                                                                              | AI • P3            | 2 d        | API returns template list.                                           |
+| 63    | Imixs-Workflow adapter                                           | SpringBoot proxy; env `WORKFLOW=imixs`.                                                                                                                                 | Backend • P3       | 2 d        | Switch env → flows still work.                                       |
+| 64    | Camunda connector plugin                                         | Camunda REST → DocuFlow events; DMN reviewer selector.                                                                                                                  | Backend • P3       | 3 d        | DMN returns SME.                                                     |
+| 65    | React-Flow BPMN admin designer                                   | Wrap React Flow; save JSON to workflow table.                                                                                                                           | FE • P3            | 3 d        | Drag node, save, reload.                                             |
+| 66    | Alfresco ECM connector                                           | CMIS API store large PDFs.                                                                                                                                              | Storage • P3       | 3 d        | Upload passes.                                                       |
+| 67    | ONLYOFFICE Docs connector                                        | WOPI bridge + iframe editing.                                                                                                                                           | FE • P3            | 3 d        | Edit DOCX live.                                                      |
+| 68    | Dark-mode & reduced-motion                                       | CSS variables + prefers-color-scheme.                                                                                                                                   | FE • P3            | 1 d        | Toggle works.                                                        |
+| 69    | Backup & DR scripts                                              | `pg_dump`, S3 sync, restore doc.                                                                                                                                        | DevOps • P3        | 2 d        | Disaster drill passes.                                               |
+| 70    | Records-keeper folder sync                                       | Move archives to SharePoint/records.                                                                                                                                    | Backend • P3       | 2 d        | File visible in SP.                                                  |
+| 71    | HR API temp-reassign sync                                        | Poll HRLeave API; auto-temp assign.                                                                                                                                     | Integration • P3   | 3 d        | PTO triggers reassignment.                                           |
+| 72    | Sample doc-type seed on install                                  | `init --seed` copies AC sample.                                                                                                                                         | Setup • P3         | 1 d        | Seed command shows sample.                                           |
+| 73    | MkDocs developer docs                                            | `mkdocs gh-deploy` pipeline.                                                                                                                                            | Docs • P3          | 3 d        | gh-pages site builds.                                                |
+| 74    | Import/export doc-type JSON                                      | `/api/doc-types/export` returns schema.                                                                                                                                 | Backend • P3       | 2 d        | Import recreates type.                                               |
+| 75    | Contextual help & videos                                         | Tooltip system + Loom embeds.                                                                                                                                           | Docs • P3          | 2 d        | Tooltip visible.                                                     |
+| 76    | Terraform IaC templates                                          | EKS, RDS, ElastiCache modules.                                                                                                                                          | DevOps • P3        | 3 d        | `terraform plan` no errors.                                          |
+| 77    | Trivy image scanning                                             | GitHub Action `aquasecurity/trivy-action`.                                                                                                                              | DevOps • P3        | 1 d        | PR fails on high CVE.                                                |
+| 78    | LangGraph-Studio debugger                                        | Helm sidecar; token auth.                                                                                                                                               | DevOps • P3        | 2 d        | Flows visible in IDE.                                                |
+| 79    | Log-pattern alert rules                                          | Loki alertmanager YAML.                                                                                                                                                 | Monitoring • P3    | 2 d        | Test alert fires.                                                    |
+| 80    | FedRAMP controls docs                                            | SSP worksheet w/ controls mapping.                                                                                                                                      | Docs • P3          | 2 d        | CISO sign-off.                                                       |
+| 81    | Helm chart prod deploy                                           | `/helm/docuflow` with values.yaml.                                                                                                                                      | DevOps • P3        | 3 d        | `helm upgrade` works.                                                |
+| 82    | Read-only GraphQL layer                                          | Ariadne schema mapped to REST.                                                                                                                                          | API • P3           | 3 d        | `/graphql` query returns doc.                                        |
+| 83    | MinIO/S3 plugin                                                  | Store binaries; presigned URLs.                                                                                                                                         | Storage • P3       | 2 d        | Upload & download pass.                                              |
+| 84    | Multi-DB abstraction                                             | `db_url` driver switch; tests on MySQL.                                                                                                                                 | BE • P3            | 4 d        | MySQL env passes tests.                                              |
+| 85    | Web-native CRDT prototype                                        | Yjs + TipTap offline demo.                                                                                                                                              | R\&D • P4          | 3 d        | Two tabs offline merge.                                              |
+| 86    | Plugin developer guide                                           | `/docs/plugins.md` + examples.                                                                                                                                          | Docs • P4          | 2 d        | Guide passes copy-edit.                                              |
+| 87    | NeMo-Guardrails PII gate                                         | Middleware `guardrails.run` rules.                                                                                                                                      | Security • P4      | 3 d        | SSN leaks blocked.                                                   |
+| 88    | **Template T-1 Golden Markdown**                                 | Write AC.md, Policy.md; store front-matter.                                                                                                                             | Tech Writing • P1  | 1 d        | Linter passes schema.                                                |
+| 89    | T-2 TipTap/Toast/XML/DOCX deriv build                            | Pandoc + lua-filter; GH Action.                                                                                                                                         | DevOps • P1        | 2 d        | Artifacts in `/dist`.                                                |
+| 90    | T-3 Snapshot tests                                               | Playwright loads template, counts H1-H3.                                                                                                                                | QA • P2            | 2 d        | CI pass.                                                             |
+| 91    | T-4 Schematron rules                                             | `.sch` files + xmllint action.                                                                                                                                          | Backend • P2       | 2 d        | Invalid XML fails.                                                   |
+| 92    | T-5 Template-Linter TipTap plugin (NPM)                          | AST diff, highlight red/yellow.                                                                                                                                         | FE • P3            | 3 d        | Missing heading flagged.                                             |
+| 93    | T-6 Cross-format round-trip test                                 | Makefile target `roundtrip`.                                                                                                                                            | QA • P3            | 1 d        | Diff == 0.                                                           |
+| 94    | T-7 Template Version API                                         | `/templates/{id}/versions`.                                                                                                                                             | Backend • P3       | 2 d        | Semantic version bump.                                               |
+| 95    | T-8 Diff & Migrate wizard UI                                     | Side-by-side diff; apply button.                                                                                                                                        | FE • P4            | 3 d        | Migration runs.                                                      |
+| 96    | T-9 Sample content seeds                                         | `docuflow init --seed ac`.                                                                                                                                              | Docs • P4          | 1 d        | Sample appears in dashboard.                                         |
+| 97    | T-10 Renovate-template bot                                       | Renovate config `fileMatch`.                                                                                                                                            | DevOps • P4        | 1 d        | PR opens on change.                                                  |
+| 98    | **W-1 Wrapper folder & typings**                                 | `DocuFlowCtx` TS interface.                                                                                                                                             | FE • P2            | 1 d        | TS compile.                                                          |
+| 99    | W-2 Template-Linter wrapper                                      | Fetch golden AST, block save.                                                                                                                                           | FE • P2            | 2 d        | Violation toast appears.                                             |
+| 100   | W-3 MarkReview wrapper                                           | Pass userId, delta save.                                                                                                                                                | FE • P2            | 2 d        | Changebars persist.                                                  |
+| 101   | W-4 Fed-Numbering wrapper                                        | Pull org level map.                                                                                                                                                     | FE • P2            | 2 d        | Auto-fix works.                                                      |
+| 102   | W-5 Editor loader orchestrator                                   | Promise.all wrappers.                                                                                                                                                   | FE • P2            | 1 d        | All plugins active.                                                  |
+| 103   | W-6 Cypress plugin tests                                         | E2E assert linter & numbering UI.                                                                                                                                       | QA • P3            | 1 d        | Pass.                                                                |
+| 104   | W-7 RBAC toggle for numbering                                    | Setting in RBAC yaml.                                                                                                                                                   | BE • P3            | 1 d        | Viewer can’t toggle.                                                 |
+| 105   | W-8 Docs page for plugin Dev                                     | `/docs/tiptap-plugins.md`.                                                                                                                                              | Docs • P3          | 1 d        | Published.                                                           |
+| 106   | **ruv-FANN #1 corpus curation**                                  | 50 k clean + 5 k anomalies Markdown.                                                                                                                                    | TW • P1            | 2 d        | Dataset.csv committed.                                               |
+| 107   | rF-2 Model train & export `.fann`                                | Cargo build, 95 % val accuracy.                                                                                                                                         | ML • P1            | 1 d        | File size < 5 MB.                                                    |
+| 108   | rF-3 PyO3 wheel via maturin                                      | `pip install ruv_fann-*.whl`.                                                                                                                                           | ML • P2            | 1 d        | Import works.                                                        |
+| 109   | rF-4 WASM plugin lint()                                          | wasm-bindgen, webgpu target.                                                                                                                                            | FE • P2            | 2 d        | Browser console OK.                                                  |
+| 110   | rF-5 Celery quality gate                                         | Task runs model on save.                                                                                                                                                | Backend • P2       | 1 d        | Score saved.                                                         |
+| 111   | rF-6 Camunda reviewer selector listener                          | DMN uses FANN output.                                                                                                                                                   | Workflow • P3      | 1 d        | Selector returns SME.                                                |
+| 112   | rF-7 Metabase ETA card                                           | SQL view `avg_duration_predicted`.                                                                                                                                      | Data • P3          | 1 d        | Card displays.                                                       |
+| 113   | rF-8 Security sidecar                                            | Loki tail → FANN stream detect.                                                                                                                                         | SecOps • P3        | 2 d        | Alert test.                                                          |
+| 114   | rF-9 CI SIMD/WASM matrix                                         | GitHub Actions build.                                                                                                                                                   | DevOps • P2        | 1 d        | All variants push.                                                   |
+| 115   | rF-10 Docs neural lint guide                                     | `/docs/ai/ruv-fann.md`.                                                                                                                                                 | Docs • P3          | 1 d        | Published.                                                           |
+| 116   | **OSS add-on TipTap DOCX export**                                | ProseMirror → docx4js.<br>Unit test exports.                                                                                                                            | FE • P2            | 3 d        | Word opens file.                                                     |
+| 117   | Hocuspocus collab backend                                        | Docker sidecar, JWT auth.                                                                                                                                               | FE • P2            | 2 d        | Two users editing.                                                   |
+| 118   | Toast MD→XML plugin                                              | unified pipeline + schema.                                                                                                                                              | FE • P3            | 2 d        | XML valid.                                                           |
+| 119   | ONLYOFFICE Helm chart                                            | TLS + JWT secrets.                                                                                                                                                      | DevOps • P3        | 3 d        | Helm install works.                                                  |
+| 120   | Cypress ONLYOFFICE E2E                                           | Edit, save, reopen.                                                                                                                                                     | QA • P3            | 1 d        | Pass.                                                                |
+| 121   | Camunda BPMN repo + lint CI                                      | Folder `/workflows/*.bpmn`, CLI lint.                                                                                                                                   | Workflow • P1      | 1 d        | PR fails on invalid BPMN.                                            |
+| 122   | DMN reviewer selector                                            | DMN table keywords→SME.                                                                                                                                                 | Workflow • P2      | 1 d        | Unit test returns row.                                               |
+| 123   | Vault secrets engine for Documenso                               | HashiCorp plugin writes key.<br>                                                                                                                                        | Security • P3      | 2 d        | Sign key pulled from Vault.                                          |
+| 124   | OpenSearch ILM hot/warm Terraform                                | Module `opensearch-ilm`.                                                                                                                                                | DevOps • P1        | 1 d        | terraform apply OK.                                                  |
+| 125   | OpenSearch k-NN embeddings                                       | Enable plugin, ingest FANN vectors.                                                                                                                                     | Backend • P2       | 2 d        | kNN search < 800ms.                                                  |
+| 126   | Metabase nightly field sync                                      | Cron hits `/api/field/sync`.                                                                                                                                            | Data • P3          | 1 d        | Job logs success.                                                    |
+| 127   | Keycloak realm Helm import                                       | Chart value `realmImport`.                                                                                                                                              | DevOps • P1        | 1 d        | Pod logs realm created.                                              |
+| 128   | React-Flow DSL compiler                                          | YAML → Flow JSON convert script.                                                                                                                                        | FE • P3            | 2 d        | YAML compile success.                                                |
+| 129   | Renovate OSS-bot                                                 | `renovate.json` config.                                                                                                                                                 | DevOps • P3        | 1 d        | Auto PR for lodash.                                                  |
+| 130   | Trivy/Grype combined scan                                        | Parallel step after build.                                                                                                                                              | DevOps • P3        | 1 d        | Pass.                                                                |
+| 131   | k6 / Playwright perf baseline                                    | Script hitting `/editor` typing 100 chars.                                                                                                                              | QA • P3            | 1 d        | Baseline saved.                                                      |
 
-Below is a **de-duplicated, OSS-aware backlog (87 tasks)**.
-Everything that was rendered obsolete by the open-source stack (e.g., a separate “Alt-stack deployment doc”) has been **removed or merged**; overlapping items (e.g., Prometheus + Grafana + Loki) are **consolidated**.
+### **Continuation — Master Backlog Rows 132 → 140**
 
-*Seq #* = recommended build order toward a “clickable” MVP in ≈ 6 weeks.
-*Orig #* = row(s) from the previous 97-item sheet that this task replaces or combines (— = brand-new or renamed).
-Estimates are unchanged unless noted.
+| #       | Title / Area                                | Detailed implementation guide (what & how)                                                                                                                                                                                                                                                                       | Owner • Phase      | Effort | Acceptance / test hints                                                   |
+| ------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------ | ------------------------------------------------------------------------- |
+| **132** | **Comprehensive wrapper regression tests**  | • Extend the existing Cypress suite (W-6) to cover **all** plugin-edge cases: empty template, massive 500-page DOCX, simultaneous linter + numbering violations.<br>• Store fixtures in `tests/fixtures/editor/` and param-run via `cypress-grep`.<br>• Add Lighthouse “editor performance” check (< 2.5 s FCP). | QA • P3            | 2 d    | `npm run cy:ci` passes on every matrix build; Lighthouse score ≥ 85.      |
+| **133** | **Security-process docs & OSS-upgrade SOP** | • Author `/docs/security/patch-flow.md` explaining Renovate, Trivy, CVE triage, hot-fix release cadence.<br>• Include sample “critical vulnerability war-room” Slack workflow.<br>• Link to FedRAMP POA\&M template.                                                                                             | Docs / SecOps • P3 | 1 d    | CISO review sign-off; Dev handbook references new page.                   |
+| **134** | **Workflow DSL examples library**           | • Create `/examples/workflow/` with at least 5 YAML files: “Simple 2-step”, “SME + Legal”, “Parallel SME branches”, “Public-Comment loop”, “Fast-track urgent”.<br>• CI job compiles each YAML → React-Flow JSON → Camunda BPMN (if Camunda enabled) to guarantee validity.                                      | Workflow • P3      | 2 d    | `workflow-cli validate` returns 0 errors on repo head.                    |
+| **135** | **Semantic-search auto-suggest UI**         | • Add a search-bar component that queries OpenSearch `_suggest` every 300 ms (debounced) and displays top 5 phrase completions.<br>• Leverage k-NN embedding index (#125) for “Did you mean …” under results.<br>• Telemetry to Metabase (`search_events` table).                                                | FE / Search • P3   | 2 d    | Typing “airwor” suggests “airworthiness”; telemetry row created.          |
+| **136** | **Celery Flower monitoring route**          | • Deploy Flower at `/ops/flower` behind Keycloak “admin” role.<br>• Add Grafana datasource for task runtime metrics.<br>• Document “how to restart stuck worker” runbook.                                                                                                                                        | DevOps • P3        | 1 d    | Visiting URL shows authenticated dashboard; Grafana panels green.         |
+| **137** | **Helm chart smoke-test pipeline**          | • GitHub Action: spin up KIND, `helm install docuflow ./helm`, wait for health probes, run `pytest tests/e2e/helm_smoke.py` (ping `/health`, `/api/projects`).                                                                                                                                                   | DevOps • P3        | 1 d    | Action passes on PR; > 95 % success in 30-day history.                    |
+| **138** | **Auto-generated API & SDK docs**           | • Use **FastAPI `--reload-docs`** + **openapi-python-client** to emit TypeScript SDK into `packages/sdk-ts` on every push.<br>• Publish SDK to an internal Verdaccio registry.<br>• MkDocs build includes interactive Swagger → Redoc.                                                                           | Docs / DevEx • P3  | 2 d    | `npm install @docuflow/sdk` works; MkDocs site shows Redoc page.          |
+| **139** | **Feature-flag / A-B rollout system**       | • Introduce `unleash-client` (backend) + `unleash-proxy-client` (front).<br>• Flags: `newEditor`, `semanticSearch`, `aiBalancer`.<br>• Admin UI `/flags` (role `admin`).                                                                                                                                         | Backend & FE • P4  | 2 d    | Toggle `newEditor` true → Toast UI option appears without redeploy.       |
+| **140** | **Automated semantic-release & changelog**  | • Adopt **Conventional Commits**.<br>• GitHub Action reads commit history → bumps version, tags, generates `CHANGELOG.md`, publishes to PyPI/NPM & Docker Hub.<br>• Slack/GovTeams webhook posts release notes.                                                                                                  | DevOps • P4        | 2 d    | Merging `feat:` PR auto-creates Git tag `vX.Y.Z` and publishes artifacts. |
 
-| Seq # |  Orig # | Task (merged/renamed items in italics)                                                    | Priority | Est. | Key Acceptance Test                  | Labels                      |
-| ----: | :-----: | ----------------------------------------------------------------------------------------- | -------- | ---: | ------------------------------------ | --------------------------- |
-|     1 |    1    | Architecture ADR & folder layout                                                          | High     |   2d | `tests/test_task01_architecture.py`  | architecture, documentation |
-|     2 |    2    | Project skeleton (`pyproject.toml`, CI)                                                   | High     |   1d | `tests/test_task02_project_setup.py` | setup, devops               |
-|     3 |    21   | Quality gates (pytest, ruff, mypy, bandit, pre-commit)                                    | High     |   2d | `tests/test_task21.py`               | testing, devops             |
-|     4 |    3    | CLI “`docuflow init`” configuration wizard                                                | High     |   3d | `features/task03.feature`            | backend, cli                |
-|     5 |    4    | Plugin framework (editors / exporters / validators)                                       | High     |   3d | `property/test_task04_property.py`   | backend, architecture       |
-|     6 |    5    | SQLAlchemy models (all core entities)                                                     | High     |   3d | `property/test_task05_property.py`   | backend, database           |
-|     7 |    6    | FastAPI skeleton (CRUD placeholders)                                                      | High     |   4d | `features/task06.feature`            | backend, api                |
-|     8 |    7    | OAuth/OIDC stub auth                                                                      | High     |   3d | `features/task07.feature`            | backend, security           |
-|     9 |    46   | RBAC middleware (users & roles)                                                           | High     |   3d | `features/task46.feature`            | backend, security           |
-|    10 |    —    | **Next.js 14 + Tailwind + shadcn/ui boilerplate**                                         | High     |   3d | `features/task92.feature`            | frontend, setup             |
-|    11 |    —    | **State mgmt (React Query + Zustand)**                                                    | High     |   2d | `features/task93.feature`            | frontend, state             |
-|    12 |    11   | Workflow engine (*phase + reviewers*)                                                     | High     |   4d | `features/task11.feature`            | backend, workflow           |
-|    13 |    8    | Document-type & template CRUD                                                             | High     |   4d | `features/task08.feature`            | backend, feature            |
-|    14 |    9    | TipTap editor (upload/edit Markdown + DOCX stub)                                          | High     |   5d | `features/task09.feature`            | backend, editor             |
-|    15 |    12   | Approval subsystem (sign / decline)                                                       | High     |   4d | `features/task12.feature`            | backend, feature            |
-|    16 |    80   | Documenso e-signature connector                                                           | High     |   3d | `features/task80.feature`            | backend, security           |
-|    17 |    18   | React pages (login, dashboard, editor)                                                    | Medium   |   5d | `features/task18.feature`            | frontend                    |
-|    18 |    19   | Dashboard widgets (assignments, status)                                                   | Medium   |   4d | `features/task19.feature`            | frontend, feature           |
-|    19 | 24 + 20 | **Inline comments w/ mentions & emoji**                                                   | High     |   4d | `features/task24.feature`            | frontend, collaboration     |
-|    20 |    40   | Docker-compose dev stack                                                                  | Medium   |   2d | `property/test_task40_property.py`   | devops                      |
-|    21 |    14   | Structured logging + query API                                                            | High     |   4d | `features/task14.feature`            | backend, logging            |
-|    22 |    26   | WebSocket live updates                                                                    | Medium   |   3d | `features/task26.feature`            | backend, api                |
-|    23 | 17 + 43 | Archival workflow (*multi-format & naming*)                                               | Medium   |   4d | `features/task17.feature`            | backend, archival           |
-|    24 |    10   | Full-text search (Postgres TS)                                                            | Medium   |   4d | `features/task10.feature`            | backend, search             |
-|    25 |    82   | OpenSearch + pgvector upgrade                                                             | High     |   4d | `features/task82.feature`            | backend, search             |
-|    26 |    16   | Export pipeline (HTML + MD + PDF + DOCX)                                                  | High     |   5d | `features/task16.feature`            | backend, export             |
-|    27 |    38   | Export preview & batch export                                                             | Medium   |   3d | `features/task38.feature`            | backend, export             |
-|    28 |    13   | Priority management & temp reassignment                                                   | Medium   |   3d | `features/task13.feature`            | backend, feature            |
-|    29 |    22   | Document numbering system                                                                 | Medium   |   2d | `features/task22.feature`            | backend, feature            |
-|    30 | 32 + 57 | Celery workers + Redis broker                                                             | Medium   |   3d | `property/test_task57_property.py`   | backend, devops             |
-|    31 |    47   | Email notifications (template-driven)                                                     | Medium   |   2d | `features/task47.feature`            | backend, feature            |
-|    32 |    30   | Plugin management UI (on/off)                                                             | Medium   |   3d | `features/task30.feature`            | frontend, admin             |
-|    33 |    15   | Reporting endpoints & CSV export                                                          | Medium   |   3d | `features/task15.feature`            | backend, reporting          |
-|    34 |    23   | AI assist (creation + validation)                                                         | Medium   |   4d | `features/task23.feature`            | backend, ai                 |
-|    35 |    32   | AI-validated project init (+ reviewers)                                                   | High     |   4d | `features/task32.feature`            | backend, ai                 |
-|    36 |    33   | Doc-type conversion wizard                                                                | Medium   |   3d | `features/task33.feature`            | backend, feature            |
-|    37 |    37   | Style-guide manager + compliance                                                          | Medium   |   3d | `features/task37.feature`            | backend, editor             |
-|    38 |    35   | TipTap DOCX → headings auto-fix                                                           | Medium   |   4d | `features/task35.feature`            | frontend, editor            |
-|    39 |    34   | Multi-editor switching (Toast UI / ONLYOFFICE)                                            | Medium   |   4d | `features/task34.feature`            | frontend, editor            |
-|    40 |    53   | Pandiff diff & change-bars                                                                | Medium   |   2d | `features/task53.feature`            | backend, editor             |
-|    41 | 60 + 62 | Dual view + autosave & version history                                                    | Medium   |   4d | `features/task60.feature`            | frontend, editor            |
-|    42 |    61   | MarkReview track-changes workflow                                                         | Medium   |   3d | `features/task61.feature`            | backend, editor             |
-|    43 | 76 + 49 | Keycloak SSO with MFA hardening                                                           | High     |   4d | `features/task76.feature`            | backend, security           |
-|    44 |    59   | Security compliance (encryption + retention)                                              | Medium   |   3d | `features/task59.feature`            | backend, security           |
-|    45 |    —    | **Observability stack (Prometheus + Grafana + Loki + Sentry)** <br>*consolidates 41 + 51* | Medium   |   4d | `property/test_task97_property.py`   | devops, monitoring          |
-|    46 | 45 + 83 | Metabase analytics & heat-maps                                                            | Medium   |   4d | `features/task83.feature`            | frontend, dashboard         |
-|    47 |    39   | Real-time log dashboard UI                                                                | Medium   |   3d | `features/task39.feature`            | frontend, logging           |
-|    48 |    55   | Saved searches & widgets                                                                  | Low      |   3d | `features/task28.feature`            | backend, dashboard          |
-|    49 |    44   | AI export-format suggestions                                                              | Low      |   2d | `features/task44.feature`            | backend, ai                 |
-|    50 |    48   | Optional grammar-checker plug-in                                                          | Low      |   2d | `features/task48.feature`            | frontend, ai                |
-|    51 |    58   | WCAG 2.1 AA audit pass                                                                    | Medium   |   3d | `features/task55.feature`            | frontend, accessibility     |
-|    52 |    63   | Redis caching layer (sessions)                                                            | Medium   |   2d | `property/test_task63_property.py`   | backend, devops             |
-|    53 |    66   | AI-ranked search + results export                                                         | Medium   |   3d | `features/task66.feature`            | backend, ai, search         |
-|    54 |    70   | SynthLang token-reducer                                                                   | Low      |   2d | `features/task70.feature`            | backend, ai                 |
-|    55 |    72   | ruv-FANN anomaly linter                                                                   | Medium   |   3d | `features/task72.feature`            | backend, ai                 |
-|    56 |    73   | Priority-escalation notifications                                                         | Medium   |   2d | `features/task73.feature`            | backend, automation         |
-|    57 |    74   | Manager approval for long reassign.                                                       | Medium   |   2d | `features/task74.feature`            | backend, workflow           |
-|    58 |    49   | Re-review trigger on major edits                                                          | Medium   |   3d | `features/task49.feature`            | backend, workflow           |
-|    59 |    50   | Dual public / internal status API                                                         | Medium   |   2d | `features/task50.feature`            | backend, logging            |
-|    60 |    36   | AI workload balancer                                                                      | Low      |   3d | `features/task36.feature`            | backend, ai                 |
-|    61 |    68   | Agileagents (A2) auto-review bots                                                         | Medium   |   3d | `features/task68.feature`            | backend, automation         |
-|    62 |    69   | Prompt-Engine feedback templates                                                          | Medium   |   2d | `features/task69.feature`            | backend, ai                 |
-|    63 |    78   | Imixs-Workflow adapter                                                                    | Medium   |   2d | `features/task78.feature`            | backend, workflow           |
-|    64 |    77   | Camunda connector plugin                                                                  | High     |   3d | `features/task77.feature`            | backend, workflow           |
-|    65 |    84   | React-Flow BPMN admin designer                                                            | Medium   |   3d | `features/task84.feature`            | frontend, workflow          |
-|    66 |    81   | Alfresco ECM connector                                                                    | Medium   |   3d | `features/task81.feature`            | backend, storage            |
-|    67 |    79   | ONLYOFFICE Docs connector                                                                 | Medium   |   3d | `features/task79.feature`            | frontend, editor            |
-|    68 |    85   | Dark-mode & reduced-motion prefs                                                          | Low      |   1d | `features/task85.feature`            | frontend, accessibility     |
-|    69 |    54   | Backup & disaster-recovery scripts                                                        | Low      |   2d | `property/test_task54_property.py`   | devops, backup              |
-|    70 |    58   | Records Keeper archival folders                                                           | Low      |   2d | `features/task58.feature`            | backend, archival           |
-|    71 |    64   | HR API temp reassignment sync                                                             | Low      |   3d | `features/task64.feature`            | backend, integration        |
-|    72 |    65   | Sample doc-type & template on install                                                     | Low      |   1d | `property/test_task65_property.py`   | backend, setup              |
-|    73 |    20   | Developer & user docs (MkDocs)                                                            | Medium   |   3d | `features/task20.feature`            | documentation               |
-|    74 |    29   | Import/export doc-type JSON                                                               | Low      |   2d | `features/task29.feature`            | backend, admin              |
-|    75 |    51   | Contextual help & tutorials                                                               | Low      |   2d | `features/task51.feature`            | frontend, docs              |
-|    76 |    52   | Terraform IaC templates                                                                   | Medium   |   3d | `property/test_task52_property.py`   | devops, infrastructure      |
-|    77 |    86   | Trivy image scanning in CI                                                                | Medium   |   1d | `property/test_task86_property.py`   | devops, security            |
-|    78 |    71   | LangGraph-Studio flow debugger                                                            | Low      |   2d | `property/test_task71_property.py`   | devops, monitoring          |
-|    79 |    75   | Log-pattern alert rules                                                                   | Low      |   2d | `features/task75.feature`            | backend, logging            |
-|    80 |    90   | FedRAMP controls + encrypted backup doc                                                   | Medium   |   2d | `property/test_task90_property.py`   | documentation, security     |
-|    81 |    87   | Helm chart for prod deploy                                                                | Medium   |   3d | `property/test_task87_property.py`   | devops, infrastructure      |
-|    82 |    88   | Read-only GraphQL read layer                                                              | Low      |   3d | `features/task88.feature`            | backend, api                |
-|    83 |    94   | MinIO/S3 object storage plug-in (**optional**)                                            | Low      |   2d | `features/task56.feature`            | backend, storage            |
-|    84 |    27   | Multi-DB abstraction (PostgreSQL + option)                                                | Medium   |   4d | `property/test_task27_property.py`   | backend, database           |
-|    85 |    60   | Web-native CRDT research prototype                                                        | Low      |   3d | `features/task89.feature`            | research, editor            |
-|    86 |    93   | Plugin developer guide & API docs                                                         | Low      |   2d | `property/test_task96_property.py`   | documentation               |
-|    87 |    67   | NeMo-Guardrails PII/style gate                                                            | High     |   3d | `features/task67.feature`            | backend, security, ai       |
+Below is a **UI-parity add-on pack** that closes every gap between the current **CLI-only/ admin-only** functions and what day-to-day users (or non-terminal admins) must accomplish through the browser.
+All items are **new** and start at backlog **#141 → #155**, preserving the numbering scheme you already adopted.
 
----
 
-## Ruv-FANN
+| #       | UI Feature (area)                                     | Detailed implementation guide (what & how)                                                                                                                                                                                                                                                                       | Role(s)            | Effort\* | Acceptance / test hints                                                                      |
+| ------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- | -------------------------------------------------------------------------------------------- |
+| **141** | **First-Run “System Setup” Wizard**                   | • React multi-step modal triggered when `settings.onboarded === false`.<br>• Steps mirror `docuflow init` prompts (DB URI, Keycloak realm URL, MinIO bucket, editor set, storage path).<br>• Writes to `/api/settings` and triggers a soft reload.<br>• Guard route: only `admin` sees wizard if settings exist. | Admin (UI)         | 2 d      | Fresh install in Docker → Browser landing page launches wizard and saves config without CLI. |
+| **142** | **Global “Settings” panel**                           | • Left-nav item **Settings** (role `admin`).<br>• Tabs: **General**, **Auth**, **Storage**, **Email**, **Plugins**, **Backup**.<br>• Uses existing REST endpoints (`/api/settings/*`).                                                                                                                           | Admin              | 3 d      | Change SMTP host via UI → test email sent → value persisted.                                 |
+| **143** | **Template & Doc-Type Manager (UI)**                  | • Page `/admin/templates`.<br>• CRUD Golden Markdown templates (upload, edit in Monaco).<br>• Auto-convert pipeline (#88-90) starts through a *“Generate derivatives”* button.<br>• Displays semantic version & diff link (calls T-8 wizard).                                                                    | Admin, Tech Writer | 3 d      | Upload new AC template → TipTap derivative appears in `/templates/dist`.                     |
+| **144** | **Workflow Designer (React-Flow)**                    | • Already planned (#65) but extend:<br>  – Non-admin users with role `pm` can clone an existing template and adjust reviewers / SLAs.<br>  – Save as **“local override”** which only applies to that project.                                                                                                    | PM                 | 3 d      | PM clones “Public Comment” flow, changes due days, saves → project shows new SLA.            |
+| **145** | **Plugin Marketplace UI**                             | • Extends “Settings → Plugins.”<br>• Lists *discovered but not installed* packages by querying PyPI (`/pypi?search=df_`).<br>• One-click **Install** triggers `/api/plugins/install?name=…` (backend: `pip install`).<br>• Enable/disable toggle already in #32.                                                 | Admin              | 2 d      | Install `df_export_pdfa` via UI → entry appears and exporter usable.                         |
+| **146** | **Backup / Restore panel**                            | • Page `/admin/backup`.<br>• Buttons: **Create Backup** (calls `/api/backup` Celery task), **Download latest**, **Restore** (file picker).<br>• Progress bar via WebSocket.                                                                                                                                      | Admin              | 2 d      | Click create → S3 object appears; restore populates DB in dev env.                           |
+| **147** | **Environment Switcher (dev / stage / prod)**         | • Navbar dropdown shows current env (read from `/api/info`).<br>• Admin can add a new environment record (name, URL, color).<br>• When switched, browser stores cookie + redirects.<br>• CLI already supports `--env`; this brings UI parity.                                                                    | All                | 1 d      | Switch to “staging” → UI theme banner turns orange; API calls stage host.                    |
+| **148** | **RBAC Role Editor UI**                               | • Table `/admin/roles` shows each permission matrix (generated from `rbac.yaml`).<br>• Checkboxes enable/disable specific actions per role (writes back to YAML through `/api/rbac` patch).                                                                                                                      | Admin              | 2 d      | Uncheck “delete\_project” for `pm`, save → PM 403 on delete.                                 |
+| **149** | **Scheduled Task Cron Editor**                        | • UI for Celery Beat schedule (priority escalation, status pings, backups).<br>• CRON-expression input with parser.<br>• Underlying endpoint: `/api/schedules`.                                                                                                                                                  | Admin              | 1 d      | Change escalation rule to 3 days → DB reflects new schedule.                                 |
+| **150** | **Template Linter & Fed-Numbering toggles (per doc)** | • In Editor’s right sidebar **Compliance** section:<br>  – Show linter status (pass/fail icons).<br>  – Toggle “Auto-fix numbering”.<br>  – Role-based hide if viewer.                                                                                                                                           | Editor             | 1 d      | Toggle off numbering → heading stays manual.                                                 |
+| **151** | **Admin-less Project Creation Wizard**                | • For *non-admin* authors: `/projects/new` wizard asks for **Document Type**, **Workflow Template**, **Initial Reviewers**.<br>• Mirrors CLI `docuflow project create …` flags.                                                                                                                                  | Author             | 2 d      | Create AC project from UI only, no CLI.                                                      |
+| **152** | **One-click “Migrate Template” button**               | • On opening a doc with outdated template version, toast **“New template v 2.1 available – Update now”**.<br>• Clicking runs T-8 diff/migrate wizard; if diffs ≤ threshold auto-applies.<br>• Users may *dismiss* (stores `dismissed_versions` in localStorage).                                                 | Editor             | 1 d      | Update button inserts new Annex heading automatically.                                       |
+| **153** | **Download CLI profile from UI**                      | • “Settings → CLI Integration” page generates a `docuflow.env` file (base64) with user token + API URL.<br>• Users click **Download profile** to use CLI without manual edits.                                                                                                                                   | All                | 1 d      | Source the env file → `docuflow project list` authenticated.                                 |
+| **154** | **GraphQL Explorer page**                             | • Read-only GraphiQL widget at `/dev/api-explorer` (uses token).<br>• Mirrors CLI `curl /graphql`.                                                                                                                                                                                                               | Dev / Power user   | 1 d      | Run `{ projects { id title }}` and see JSON.                                                 |
+| **155** | **In-browser Terraform Plan viewer**                  | • For infra admins: upload `plan.out` or fetch from CI, render resource diff with policy check (OPA Gatekeeper).<br>• Same info the CLI `terraform show` gives.                                                                                                                                                  | DevOps             | 2 d      | Upload plan, viewer highlights new RDS instance.                                             |
 
-### Practical Ways to Apply **ruv-FANN** inside DocuFlow
-
-| #  | Use-case                                       | What it delivers                                                                                                       | Where it runs                                                          | OSS add-ons                                                                |
-| -- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 1  | **Offline style-drift & tense-shift detector** | Flags passages that deviate from your FAA/GPO style corpora in < 5 ms per block                                        | TipTap/Toast editor plugin (WASM) **and** Celery “quality-gate” worker | core `ruv-fann` (Rust) export → PyO3 wheel ([github.com][1], [docs.rs][2]) |
-| 2  | **Section classifier & readability scorer**    | Auto-labels headings (Reg text §, Background, Definitions…) and gives Flesch/grade-level; drives conditional templates | Backend micro-service                                                  | `ruv-fann` + training set of labeled paragraphs                            |
-| 3  | **Predictive review-duration forecasting**     | Learns from past cycles; dashboard shows “ETA 8.4 days ± 1.1” so PMs can rebalance load                                | Analytics service feeding Metabase                                     | `neuro-divergent` (built on ruv-FANN) ([docs.rs][3])                       |
-| 4  | **Reviewer auto-match recommender**            | Suggests top SMEs for a new project based on topic vectors & their history                                             | Workflow engine hook (Camunda task listener)                           | ruv-FANN MLP classifier                                                    |
-| 5  | **Audit-log anomaly monitor**                  | Real-time flag if approval/vote patterns differ from learned norm (possible coercion / account hijack)                 | SecOps sidecar                                                         | ruv-FANN streaming inference                                               |
-| 6  | **Edge / air-gapped AI fallback**              | Full DocuFlow AI suite works when the OpenAI endpoint is blocked (GovCloud, classified nets)                           | On-prem Python wheel or WebGPU build                                   | `ruv-FANN` → WebGPU WASM path ([linkedin.com][4])                          |
-| 7  | **Web-first in-editor inference**              | All linting suggestions happen client-side; zero round-trip latency, no PII leaves browser                             | TipTap plugin compiled with `wasm32-webgpu`                            | repo’s `src/webgpu` target ([linkedin.com][4])                             |
-| 8  | **Nightly “quality gate” batch job**           | Blocks promotion to next phase if neural quality score < threshold; pushes report to dashboard                         | Celery beat task                                                       | same model weights as #1                                                   |
-| 9  | **Template-conformance neural diff**           | Learns legal numbering / heading cadence and inserts missing blocks automatically                                      | Import/conversion pipeline                                             | cascade-correlation nets in ruv-FANN ([docs.rs][2])                        |
-| 10 | **Workload & backlog forecasting**             | Uses ruv-swarm + neuro-divergent to predict document inflow and adjust capacity planning                               | Ops dashboard                                                          | `ruv-swarm-ml`, `ruv-swarm-persistence` ([crates.io][5])                   |
-
----
-
-#### Implementation Task List (ready to drop into your roadmap)
-
-| Order | Task                                                                                      | Owner             | Phase |
-| ----- | ----------------------------------------------------------------------------------------- | ----------------- | ----- |
-| 1     | **Curate training corpus** (50 k “gold” FAA/GPO-compliant paragraphs + 5 k anomalies)     | Tech Writing team | P1    |
-| 2     | **Train & export models** (`cargo run --bin fann-train …`, output `.fann`)                | ML Eng            | P1    |
-| 3     | **Build Python wheel** via *maturin* (`--features pyo3,simd`) and publish to private PyPI | ML Eng            | P2    |
-| 4     | **TipTap WASM plugin** (`wasm32-webgpu`) delivering `lint()` & `predict()`                | Front-end         | P2    |
-| 5     | **Celery quality-gate worker** consuming wheel; posts block-level scores to DB            | Backend           | P2    |
-| 6     | **Camunda listener** for reviewer auto-match; calls `/ai/recommend-reviewers` endpoint    | Workflow          | P3    |
-| 7     | **Metabase card & API** for review-duration forecast                                      | Data Eng          | P3    |
-| 8     | **Security sidecar** streaming audit logs through anomaly model                           | SecOps            | P3    |
-| 9     | **CI pipeline**: SIMD, WASM & native builds tested on every PR                            | DevOps            | P2    |
-| 10    | **Docs & user training** (“How DocuFlow neural lint works”)                               | Docs              | P3    |
-
-These integrations keep DocuFlow’s AI **fully on-prem, millisecond fast, and license-free**, while leveraging ruv-FANN’s Rust speed and memory safety.
-
-## Misc
-
-Below is an **“add-on task pack”** you can drop straight into DocuFlow’s roadmap.
-Each task either (a) closes an integration gap, (b) hardens security/ops, or (c) unlocks a feature the upstream OSS already ships but your PRD hasn’t scheduled yet.
-
-| #                              | OSS Component                                                                                                        | New Task                                                                                        | Outcome / Why it helps |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------- |
-| **TipTap 2**                   | Build **DOCX-export extension** in `/plugins/editors/tiptap_docx.ts` using ProseMirror’s node schema → `docx4js`     | One-click Word export from the default editor. ([github.com][1])                                |                        |
-|                                | Bundle **Hocuspocus** collab backend (Docker sidecar) + auth middleware                                              | Real-time co-authoring without 3rd-party SaaS. ([github.com][1])                                |                        |
-| **Toast UI Editor**            | Add **Markdown-to-XML converter plugin** using unified/rehype & your XML template map                                | Lets tech teams draft once and publish to XML spec. ([github.com][2])                           |                        |
-| **ONLYOFFICE Docs**            | Ship Helm chart that autos-registers DocumentServer with DocuFlow via WOPI, including SSL & JWT                      | Zero-click Word/Excel/PowerPoint editing for agencies that ban external SaaS. ([github.com][3]) |                        |
-|                                | Create Cypress E2E test suite that opens a .docx, edits, saves, re-opens                                             | Guards against silent breakage after upgrades.                                                  |                        |
-| **Camunda 8**                  | Maintain **BPMN template library repo** (`/workflows/*.bpmn`) + GitHub Actions that lints with `camunda-modeler-cli` | Keeps process definitions in version control. ([github.com][4])                                 |                        |
-|                                | Author DMN table “Reviewer-Selector” → auto-assign SMEs based on keywords                                            | Removes manual reviewer pick step.                                                              |                        |
-| **Imixs-Workflow** (fallback)  | Provide Spring-Boot starter + REST façade so small installs can swap Camunda with Imixs by env-var                   | Lightweight option for orgs that find Camunda heavy. ([imixs.org][5])                           |                        |
-| **Documenso**                  | Write **status-webhook listener** (`/api/hooks/documenso`) → triggers Camunda “Signed” message                       | Ensures signature state always syncs to workflow. ([documenso.com][6])                          |                        |
-|                                | Build **HashiCorp Vault secret engine** for Documenso’s signing keys                                                 | Separation-of-duty & FISMA key management.                                                      |                        |
-| **OpenSearch**                 | Create ILM policy + hot/warm architecture Terraform module                                                           | Keeps log/index costs predictable at scale. ([opensearch.org][7])                               |                        |
-|                                | Enable **k-NN plugin** & index embeddings from ruv-FANN for semantic search                                          | Natural-language lookup inside DocuFlow.                                                        |                        |
-| **Metabase**                   | Seed **Starter Dashboards** pack (JSON) covering KPIs in PRD; attach row-level permissions via `db_role`             | Gives PMs insights on day 1. ([metabase.com][8])                                                |                        |
-|                                | Automate nightly “sync db fields” job after Alembic migrations                                                       | Prevents broken fields in cards following schema change.                                        |                        |
-| **Keycloak**                   | Scripted **realm import** + MFA policy + Login.gov broker; pack into Helm                                            | Turn-key FedRAMP-ready SSO. ([opensearch.org][7])                                               |                        |
-| **React Flow (admin)**         | Build **DSL → JSON compiler** so admins can author simple `yaml` instead of dragging nodes                           | Faster template authoring; keeps flows in Git.                                                  |                        |
-| **Renovate / Dependabot**      | Add **monorepo-wide OSS upgrade bot** with “security-first” schedule                                                 | Auto-PRs for CVE patches on every upstream tool.                                                |                        |
-| **Trivy / Grype**              | Extend CI to run container and dependency scans; block merge on HIGH/CRITICAL                                        | Maintains ATO posture across all OSS.                                                           |                        |
-| **k6 / Playwright perf tests** | Capture baseline editor latency (TipTap, ONLYOFFICE) before launch                                                   | Detects regressions after each release branch.                                                  |                        |
-
----
-
-### Scheduling Hints (drop-in to existing phases)
-
-| Phase                    | Add-on items                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| **P 1 – Prototype**      | Camunda template repo, Keycloak realm import, OpenSearch ILM module                   |
-| **P 2 – Core**           | TipTap DOCX export, Hocuspocus collab, Documenso webhooks, Cypress E2E                |
-| **P 3 – Advanced**       | Toast UI XML plugin, Reviewer-Selector DMN, k-NN semantic search, Metabase dashboards |
-| **P 4 – Prod Hardening** | Vault key engine, Renovate/Trivy pipelines, k6/Playwright baselines                   |
-
-Implementing these extra tasks turns each upstream OSS tool from *“bolted-on”* to *“first-class citizen”* inside DocuFlow—covering author experience, process automation, security, and long-term maintainability.
-
-## Templates
-
-### **Template-Lifecycle Add-On Tasks**
-
-| #        | Task                                                                                                                                                                       | What it achieves                                                         | Owner          | Phase |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------- | ----- |
-| **T-1**  | **Author “Golden Source” Markdown template** for each document type (AC, Policy, Manual, etc.). Store in `templates/md/` with Hugo-style front-matter.                     | Single canonical template that downstream formats inherit from.          | Tech Writing   | P 1   |
-| **T-2**  | **Generate TipTap JSON, Toast-MD, XML, and DOCX derivatives** from the Markdown source via a **Pandoc + lua-filter** pipeline; commit to `templates/dist/`.                | Guarantees all editors share identical heading hierarchy & boiler-plate. | DevOps         | P 1   |
-| **T-3**  | **Create Jest/Playwright snapshot tests** that open each template in TipTap and Toast UI, then assert: heading count, required blocks present, placeholder text untouched. | Prevents accidental template drift after edits.                          | Front-end      | P 2   |
-| **T-4**  | **Write XML Schematron rules** for every template (§, Appendix, Tables) and add an **xmllint GitHub Action** that fails on invalid structure.                              | Validates the XML derivatives before release.                            | Backend        | P 2   |
-| **T-5**  | **Build “Template Linter” TipTap plugin** that, on save, compares live doc blocks to the Golden Source AST and highlights missing or extra nodes.                          | Real-time author feedback; zero round-trip to server.                    | Front-end      | P 3   |
-| **T-6**  | **Cross-format round-trip test**: Markdown → TipTap → DOCX → Markdown; diff expected vs. actual in CI (`git diff --no-index`).                                             | Ensures converters are lossless and reversible.                          | QA             | P 3   |
-| **T-7**  | **Template Version Registry API** (`/api/v1/templates`) with semantic versioning, changelog, and “required upgrade” flag.                                                  | Allows projects to lock or migrate templates safely.                     | Backend        | P 3   |
-| **T-8**  | **Admin UI “Diff & Migrate” wizard** that shows visual diff between a doc’s current template and the newest version, with one-click apply.                                 | Smooth transition when a template evolves.                               | UX / Front-end | P 4   |
-| **T-9**  | **Sample Content Seeds**: auto-generate one sample file per template & format on install (`docuflow init --seed`).                                                         | Lets users test the whole workflow instantly.                            | Docs           | P 4   |
-| **T-10** | **Weekly Renovate bot for templates**: opens PR if upstream Golden Source changes, triggers full conversion & test matrix.                                                 | CI keeps every derivative template fresh.                                | DevOps         | P 4   |
-
-> **Why you need separate test templates?**
-> • Editors store structure differently (TipTap JSON vs. Markdown AST vs. Word XML).
-> • Snapshot & schema tests catch silent formatting regressions before they hit reviewers.
-> • Golden-Source–first workflow guarantees consistent numbering, headings, and boiler-plate across every export path.
-
-Add these tasks to the roadmap to make template maintenance **repeatable, testable, and editor-agnostic**.
-
-## TipTap Plugin Wrappers
-
-Below is a **ready-to-paste “Wrapper Work-Pack”** that adds DocuFlow glue-code for three external TipTap extensions:
-
-* **@your-org/tiptap-template-linter** (the new linter you’ll publish)
-* **@your-org/tiptap-markreview** (existing change-tracking plugin)
-* **@your-org/tiptap-fed-numbering** (new federal heading/paragraph numbering plugin)
+\*Effort ≈ focused business-days for one engineer.
 
 ---
 
-## 1. Folder & naming convention
+### Implementation pointers
 
-```
-docuflow/
-└─ plugins/
-   └─ editors/
-      ├─ tiptap_template_linter_wrapper.ts
-      ├─ tiptap_markreview_wrapper.ts
-      └─ tiptap_fed_numbering_wrapper.ts
-```
+* **API coverage check:** Add an OpenAPI integration test that asserts every “admin-only” CLI route has an authenticated UI page or component link.
+* **Route guards:** Use the existing `useAuth()` + `hasRole(role)` combinator; **never** hide URLs from the SPA router—guard them at server and client.
+* **Feature flags (#139):** Wrap experimental UI parity items (e.g., in-browser Terraform viewer) with `unleash` flags so you can dark-launch.
 
-Each wrapper exposes a **single default function**:
+These fifteen tasks ensure that **anything executable via the admin CLI can also be done through the browser**, giving non-terminal users full self-service while still honouring RBAC and FedRAMP expectations.
 
-```ts
-export async function register(editor: Editor, ctx: DocuFlowCtx): Promise<void>
-```
-
-*`DocuFlowCtx` gives access to JWT, REST client, RBAC, toast bus, etc.*
-
----
-
-## 2. Wrapper skeletons
-
-### 2.1 Template-Linter wrapper (`tiptap_template_linter_wrapper.ts`)
-
-```ts
-import { TemplateLinter } from '@your-org/tiptap-template-linter';
-import { fetchGoldenTemplate } from '@/services/templates';
-
-export async function register(editor, ctx) {
-  const tplAst = await fetchGoldenTemplate(ctx.docTypeId);
-
-  editor.registerPlugin(
-    TemplateLinter.configure({
-      templateAst: tplAst,
-      onViolation: (violations) => {
-        ctx.bus.emit('lint:update', violations);
-        if (violations.critical.length) ctx.blockSave('Template violations');
-      },
-    })
-  );
-}
-```
-
-### 2.2 MarkReview wrapper (`tiptap_markreview_wrapper.ts`)
-
-```ts
-import { MarkReview } from '@your-org/tiptap-markreview';
-
-export async function register(editor, ctx) {
-  editor.registerPlugin(
-    MarkReview.configure({
-      userId: ctx.user.id,
-      changeBarColor: ctx.theme.accent,
-      onExport: (delta) => ctx.api.saveDelta(delta),
-    })
-  );
-}
-```
-
-### 2.3 Federal-Numbering wrapper (`tiptap_fed_numbering_wrapper.ts`)
-
-```ts
-import { FedNumbering } from '@your-org/tiptap-fed-numbering';
-
-export async function register(editor, ctx) {
-  editor.registerPlugin(
-    FedNumbering.configure({
-      docType: ctx.docTypeCode,           // e.g. 'AC', 'TSO'
-      levelMap: ctx.settings.levelMap,    // pulled from org settings
-      autoFix: true,
-      onRenumber: (map) => ctx.api.saveNumberMap(map),
-    })
-  );
-}
-```
-
----
-
-## 3. Loader hook (one line per wrapper)
-
-```ts
-// docuflow/client/editorLoader.ts
-import { register as loadLinter }       from '@/plugins/editors/tiptap_template_linter_wrapper';
-import { register as loadMarkReview }   from '@/plugins/editors/tiptap_markreview_wrapper';
-import { register as loadFedNumbering } from '@/plugins/editors/tiptap_fed_numbering_wrapper';
-
-export async function initEditor(ctx) {
-  const editor = createTipTapInstance(ctx.initialContent);
-
-  await Promise.all([
-    loadLinter(editor, ctx),
-    loadMarkReview(editor, ctx),
-    loadFedNumbering(editor, ctx),
-  ]);
-
-  return editor;
-}
-```
-
----
-
-## 4. Task list (drop into roadmap)
-
-| ID      | Description                                                                | Owner | Sprint |
-| ------- | -------------------------------------------------------------------------- | ----- | ------ |
-| **W-1** | Scaffold wrappers folder & ctx typings                                     | FE    | S-7    |
-| **W-2** | Implement **Template-Linter** wrapper & save-block hook                    | FE    | S-7    |
-| **W-3** | Implement **MarkReview** wrapper; wire delta export                        | FE    | S-8    |
-| **W-4** | Implement **Fed-Numbering** wrapper; connect org settings API              | FE    | S-8    |
-| **W-5** | Add **editorLoader** init that awaits all wrappers                         | FE    | S-8    |
-| **W-6** | Cypress tests: open template, trigger linter & numbering, assert UI badges | QA    | S-9    |
-| **W-7** | RBAC check: only Editors/Admins can toggle numbering auto-fix              | BE    | S-9    |
-| **W-8** | Docs page “Integrating third-party TipTap plugins”                         | Docs  | S-10   |
-
----
-
-### Why wrappers (vs. baking into the extension)?
-
-* **Separation of concerns** – the extension stays editor-agnostic; the wrapper handles DocuFlow specifics (auth, APIs, theming, RBAC).
-* **Upgrade safety** – if TipTap or DocuFlow churn, you touch the wrapper, not the shared package.
-* **Multi-tenant config** – wrappers pull tenant-level settings (e.g., numbering map) at runtime.
+**Confidence** 0.42 — tasks mapped against prior backlog items; no functionality removed, only surfaced via UI.
 
 
 
-
-<!-- ready-for:verifier -->
