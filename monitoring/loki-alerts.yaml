@@ -1,0 +1,10 @@
+groups:
+  - name: docuflow-logs
+    rules:
+      - alert: HighErrorRate
+        expr: rate({app="docuflow"}|~"ERROR"[5m]) > 5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: High error rate detected

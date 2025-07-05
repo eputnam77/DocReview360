@@ -118,6 +118,7 @@ exclude = ["tests*", ".dev*"]
 [tool.setuptools.package-data]
 "docuflow.styles" = ["*.md"]
 "docuflow.templates" = ["*.html"]
+"docuflow.iac_templates" = ["*.tf"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]

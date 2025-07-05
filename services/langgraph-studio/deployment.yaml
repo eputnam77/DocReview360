@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langgraph-studio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langgraph-studio
+  template:
+    metadata:
+      labels:
+        app: langgraph-studio
+    spec:
+      containers:
+        - name: studio
+          image: langgraph/studio:latest
+          env:
+            - name: STUDIO_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: studio-token
+                  key: token
+        - name: proxy
+          image: nginx:alpine
+          ports:
+            - containerPort: 8080
