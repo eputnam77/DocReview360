@@ -10,6 +10,7 @@ from typing import Dict, Iterable, List, Tuple
 import httpx
 
 OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")
+PGVECTOR_URL = os.getenv("PGVECTOR_URL")
 
 _vectors: Dict[str, List[float]] = {}
 _doc_freq: Dict[str, int] = defaultdict(int)
@@ -46,6 +47,16 @@ def index_document(doc_id: str, content: str) -> None:
             ).raise_for_status()
         except httpx.HTTPError as exc:  # pragma: no cover - network
             raise RuntimeError("OpenSearch index failed") from exc
+
+    if PGVECTOR_URL:
+        try:
+            httpx.post(
+                f"{PGVECTOR_URL.rstrip('/')}/index",
+                json={"id": doc_id, "content": content},
+                timeout=5,
+            ).raise_for_status()
+        except httpx.HTTPError as exc:  # pragma: no cover - network
+            raise RuntimeError("pgvector index failed") from exc
 
 
 def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
@@ -88,6 +99,19 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
             ]
         except httpx.HTTPError as exc:
             raise RuntimeError("OpenSearch request failed") from exc
+
+    elif PGVECTOR_URL:
+        try:
+            resp = httpx.post(
+                f"{PGVECTOR_URL.rstrip('/')}/search",
+                json={"query": query, "k": top_k},
+                timeout=5,
+            )
+            resp.raise_for_status()
+            hits = resp.json().get("results", [])
+            return [(hit["id"], float(hit.get("score", 0))) for hit in hits]
+        except httpx.HTTPError as exc:
+            raise RuntimeError("pgvector search failed") from exc
 
     q_vec = _tfidf_vector(_embed(query))
     scored = []
