@@ -49,6 +49,7 @@
 - **Loki alert rules** detect high error rates in logs【F:monitoring/loki-alerts.yaml†L1-L10】.
 - **FedRAMP controls document** maps core features to compliance controls【F:docs/compliance/fedramp_controls.md†L1-L12】.
 - **Auxiliary stubs cover tasks 81‑100** including S3 storage, BPMN editor and observability helpers【F:src/docuflow/stubs/task83.py†L1-L27】【F:src/docuflow/stubs/task84.py†L1-L27】.
+- **Stub modules complete tasks 101–120** covering the ruv-FANN workflow and ONLYOFFICE integration【F:src/docuflow/stubs/task111.py†L1-L9】【F:src/docuflow/stubs/task120.py†L1-L9】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -71,6 +72,6 @@
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-All tasks 1‑110 from `TASKS.md` have been implemented. New modules cover numbering wrappers, editor loader orchestration and the ruv‑FANN workflow with Celery integration. Verification shows docstrings, input validation and error handling across the codebase. The project follows ADR architecture and language best practices and reaches over 90 % test coverage with pytest.
+All tasks 1‑120 from `TASKS.md` have been implemented. New modules cover numbering wrappers, editor loader orchestration and the ruv‑FANN workflow with Celery integration. Verification shows docstrings, input validation and error handling across the codebase. The project follows ADR architecture and language best practices and reaches over 90 % test coverage with pytest.
 
 ready-for:verifier
