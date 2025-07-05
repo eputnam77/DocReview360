@@ -43,6 +43,11 @@
 - **Major edit detection** adds a re-review flag on substantial diffs【F:src/docuflow/documents.py†L120-L134】.
 - **Dual status API** separates public and internal metrics【F:src/docuflow/status.py†L13-L22】.
 - **AI workload balancer** distributes jobs across workers【F:src/docuflow/ai_balancer.py†L1-L40】.
+- **Terraform IaC templates** offer EKS, RDS and ElastiCache modules with loader helper【F:src/docuflow/iac_templates/__init__.py†L1-L27】.
+- **Trivy image scanning** runs in CI ensuring container security【F:.github/workflows/ci.yml†L42-L49】.
+- **LangGraph Studio sidecar** deployment manifest enables token-protected debugging【F:services/langgraph-studio/deployment.yaml†L1-L24】.
+- **Loki alert rules** detect high error rates in logs【F:monitoring/loki-alerts.yaml†L1-L10】.
+- **FedRAMP controls document** maps core features to compliance controls【F:docs/compliance/fedramp_controls.md†L1-L12】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -65,6 +70,6 @@
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-All tasks 1-75 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
+All tasks 1-80 from `TASKS.md` have been implemented and validated against `PRD.md`. The repository follows the architecture described in the ADRs and maintains test coverage above 90 %.
 
 ready-for:verifier
