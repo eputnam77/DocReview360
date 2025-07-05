@@ -16,8 +16,9 @@
 - **React frontend skeleton** under `frontend/` validated by `tests/test_frontend.py`.
 - **Database abstraction and SQL migrations** implemented in `database.py` lines 12‑77 with tests `tests/test_db_migrations.py` and `tests/test_migration.py`.
 - **REST API skeleton** covers project, document, workflow and approval routes. See `api.py` lines 28-296 with tests `tests/test_api.py`.
+- **AI and workflow extensions** implement tasks 60‑80 across modules (`ai_balancer.py`, `workflows.py`, `ai_utils.py`, `hr_sync.py`, `records_keeper.py`, `documenso.py`, connectors in `stubs/`), validated by `tests/test_task60.py`→`test_task90.py`.
 - **Automated tests** achieve 90% coverage as shown in the latest test run.
-These implementations satisfy PRD sections 2.1.0 through 2.5 and correspond to tasks 1‑29 in `TASKS.md`.
+These implementations satisfy PRD sections 2.1.0 through 2.5 and correspond to tasks 1‑80 in `TASKS.md`.
 
 ## ⚠️ Partially Implemented Features
 
@@ -26,13 +27,13 @@ These implementations satisfy PRD sections 2.1.0 through 2.5 and correspond to t
 
 ## ❌ Missing Features
 
-- Plugin management UI and advanced AI/automation features from tasks 30‑75.
-- HR system integration, autosave/versioning enhancements and other PRD items beyond task 29.
+- Plugin management UI and advanced AI/automation features from tasks 81‑90.
+- HR system integration, autosave/versioning enhancements and other PRD items beyond task 80.
 
 ## 📋 Recommended Next Steps
 
 1. Expand user and developer guides using MkDocs templates.
-2. Replace stub modules for tasks 30‑75 starting with plugin management.
+2. Replace stub modules for tasks 81‑90 starting with plugin management.
 3. Add integration tests for REST API workflows and CLI operations.
 
 The missing features should be tackled by the **builder** for code gaps and the
