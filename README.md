@@ -59,3 +59,31 @@ docuflow export pdf --project "My first project" --out build/project.pdf
 Reload the dashboard and you will see the document listed with its approval
 status. The quick turnaround gives a fresh-doc scent that highlights how light
 the workflow can be.
+
+## Deploy with Docker
+
+Running the app inside containers is a handy way to share it on a server or your favourite cloud provider. The repository already contains a `Dockerfile` and a `docker-compose.yml` so you can start quickly.
+
+1. **Build the image**
+   ```bash
+   docker build -t docuflow:latest .
+   ```
+2. **Launch the container on its own**
+   ```bash
+   docker run -d -p 8000:8000 docuflow:latest
+   ```
+   Visit <http://localhost:8000/> to confirm everything works.
+3. **Run the full stack**
+   ```bash
+   docker compose up
+   ```
+   This command starts Postgres, OpenSearch, Redis and the DocuFlow services.
+
+If you need to deploy on a remote host, tag the image with your registry name and push it:
+
+```bash
+docker tag docuflow:latest registry.example.com/docuflow:1.0.0
+docker push registry.example.com/docuflow:1.0.0
+```
+
+Update your server or container orchestration tool to pull the new image and your DocuFlow instance will be online.
