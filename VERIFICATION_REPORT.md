@@ -72,6 +72,11 @@
 - **RBAC editor** modifies permissions stored in `rbac.yaml`【F:src/docuflow/rbac_editor.py†L1-L26】【F:tests/test_task148.py†L1-L11】.
 - **Schedule editor** updates Celery beat CRON expressions【F:src/docuflow/schedule_editor.py†L1-L22】【F:tests/test_task149.py†L1-L11】.
 - **Compliance panel** lints text and toggles numbering rules【F:src/docuflow/compliance_panel.py†L1-L24】【F:tests/test_task150.py†L1-L8】.
+- **Admin-less project wizard** creates projects without CLI use【F:src/docuflow/stubs/task151.py†L1-L36】【F:tests/test_task151.py†L1-L12】.
+- **Template migration helper** applies new versions when diffs are small【F:src/docuflow/stubs/task152.py†L1-L18】【F:tests/test_task152.py†L1-L14】.
+- **CLI profile generator** outputs base64 env files for download【F:src/docuflow/stubs/task153.py†L1-L17】【F:tests/test_task153.py†L1-L14】.
+- **GraphQL explorer HTML** returns an embedded GraphiQL widget【F:src/docuflow/stubs/task154.py†L1-L23】【F:tests/test_task154.py†L1-L6】.
+- **Terraform plan parser** lists resource actions for a plan diff【F:src/docuflow/stubs/task155.py†L1-L23】【F:tests/test_task155.py†L1-L14】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -87,14 +92,14 @@
 - `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
 - `mypy --strict` passed on all files【f92959†L1-L2】.
 - `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
-- `pytest` passed with 272 tests and 90% coverage【8210d5†L1-L20】.
+- `pytest` passed with 276 tests and 90% coverage【ca877c†L1-L73】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-Tasks 70‑150 are now all implemented through their corresponding modules. Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs, feature-flag wrapper and UI parity utilities.
+Tasks 70‑155 are now all implemented through their corresponding modules. Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs, feature-flag wrapper and UI parity utilities.
 
 **Quality summary**
 
