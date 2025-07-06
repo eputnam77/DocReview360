@@ -1,9 +1,13 @@
 """Implementation for task 143."""
 
-from . import record_task_completion
+from pathlib import Path
+
+from ..template_manager import save_template
 
 
-def task143() -> None:
-    """Mark task 143 as completed for logging."""
-    record_task_completion(143)
-    return None
+def task143(path: Path | None = None) -> Path:
+    """Create an example template."""
+
+    target = path or Path("templates/golden") / "sample.md"
+    tmpl = save_template("sample", "# Sample", root=target.parent)
+    return tmpl
