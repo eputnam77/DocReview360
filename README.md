@@ -38,3 +38,24 @@ The API is a learning tool. Endpoints return dummy data but illustrate how proje
 
 Head over to the [documentation](https://example.com/docuflow) for a full tour of the API, CLI options and UI navigation tips. The
 [architecture overview](docs/adr/0001-core-architecture.md) describes how the backend, frontend and future services fit together.
+
+## Usage example
+
+The following short session shows how a new user might work with DocuFlow. After
+starting the server open a second terminal and run:
+
+```bash
+# create a project and upload a document
+docuflow project create "My first project"
+docuflow document add --project "My first project" README.md
+
+# request approval from a team member
+docuflow approval request --project "My first project" --user bob
+
+# export the document to PDF using the default plugin
+docuflow export pdf --project "My first project" --out build/project.pdf
+```
+
+Reload the dashboard and you will see the document listed with its approval
+status. The quick turnaround gives a fresh-doc scent that highlights how light
+the workflow can be.

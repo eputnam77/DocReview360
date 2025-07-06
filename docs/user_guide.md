@@ -46,3 +46,26 @@ After modifying the file, restart the server so the changes take effect.
 
 Together these capabilities make it easier to integrate DocuFlow into your existing tools and workflows.
 
+## 6. Example workflow
+
+Below is a short end-to-end walkthrough using the CLI and dashboard together:
+
+1. Create a new project:
+   ```bash
+   docuflow project create "Demo Project"
+   ```
+2. Upload a document and open it in the editor:
+   ```bash
+   docuflow document add --project "Demo Project" docs/index.md
+   ```
+   Refresh your browser to see the file listed.
+3. Request an approval from a team member:
+   ```bash
+   docuflow approval request --project "Demo Project" --user alice
+   ```
+4. Once approved, export the document to PDF:
+   ```bash
+   docuflow export pdf --project "Demo Project" --out demo.pdf
+   ```
+5. Check the dashboard to download the generated PDF and confirm the project status.
+
