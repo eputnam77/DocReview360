@@ -1,0 +1,5 @@
+steps:
+  - id: start
+    type: manual
+  - id: end
+    type: manual

@@ -1,9 +1,11 @@
-"""Implementation for task 132."""
+"""Wrapper regression entry point."""
 
-from . import record_task_completion
+from pathlib import Path
+
+from ..regression import run_regression
 
 
-def task132() -> None:
-    """Mark task 132 as completed for logging."""
-    record_task_completion(132)
-    return None
+def task132(fixtures: Path | None = None) -> int:
+    """Return number of markdown fixtures."""
+    path = fixtures or Path("tests/fixtures/editor")
+    return run_regression(path)

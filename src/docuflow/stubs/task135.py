@@ -1,9 +1,9 @@
-"""Implementation for task 135."""
+"""Semantic search auto-suggest helper."""
 
-from . import record_task_completion
+from ..autosuggest import suggest
 
 
-def task135() -> None:
-    """Mark task 135 as completed for logging."""
-    record_task_completion(135)
-    return None
+async def task135(host: str) -> list[str]:
+    """Return suggestion strings from OpenSearch."""
+    results = await suggest(host, "test")
+    return [r.text for r in results]

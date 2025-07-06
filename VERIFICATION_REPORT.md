@@ -52,6 +52,16 @@
 - **Stub modules complete tasks 101–120** covering the ruv-FANN workflow and ONLYOFFICE integration【F:src/docuflow/stubs/task111.py†L1-L9】【F:src/docuflow/stubs/task120.py†L1-L9】.
 - **SharePoint archive sync** copies archives to an external records repository【F:src/docuflow/records.py†L1-L57】【F:tests/test_task70.py†L1-L12】.
 - **Metabase field sync job** triggers nightly metadata refresh via HTTP API【F:src/docuflow/metabase_sync.py†L1-L27】【F:tests/test_task126.py†L1-L10】.
+- **Performance baseline helper** measures typing speed for regression charts【F:src/docuflow/perf.py†L1-L19】【F:tests/test_task131.py†L1-L5】.
+- **Wrapper regression runner** counts editor fixtures for smoke tests【F:src/docuflow/regression.py†L1-L15】【F:tests/test_task132.py†L1-L8】.
+- **Security patch workflow** documented in `/docs/security/patch-flow.md`【F:docs/security/patch-flow.md†L1-L11】.
+- **Workflow DSL examples** stored under `/examples/workflow/`【F:examples/workflow/simple_2_step.yaml†L1-L4】.
+- **Auto-suggest OpenSearch client** returns completion results【F:src/docuflow/autosuggest.py†L1-L30】【F:tests/test_task135.py†L1-L13】.
+- **Celery Flower launcher** starts monitoring UI【F:src/docuflow/flower.py†L1-L21】【F:tests/test_task136.py†L1-L13】.
+- **Helm smoke test script** deploys chart and checks health【F:src/docuflow/scripts/helm_smoke.py†L1-L22】【F:tests/test_task137.py†L1-L11】.
+- **SDK generator** wraps `openapi-python-client`【F:src/docuflow/scripts/generate_sdk.py†L1-L27】【F:tests/test_task138.py†L1-L11】.
+- **Feature flag wrapper** integrates Unleash client【F:src/docuflow/feature_flags.py†L1-L24】【F:tests/test_task139.py†L1-L9】.
+- **Semantic release helper** writes `CHANGELOG.md` from git log【F:src/docuflow/scripts/semantic_release.py†L1-L15】【F:tests/test_task140.py†L1-L12】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -74,6 +84,6 @@
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-Tasks 70‑130 are now all implemented through their corresponding modules.  Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script.  Each module provides docstrings, input validation and basic error handling in line with the ADR architecture and PRD requirements.  The entire test suite passes with 90 % coverage under pytest.
+Tasks 70‑140 are now all implemented through their corresponding modules.  Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs and feature-flag wrapper.  Each module provides docstrings, input validation and basic error handling in line with the ADR architecture and PRD requirements.  The entire test suite passes with 90 % coverage under pytest.
 
 ready-for:verifier
