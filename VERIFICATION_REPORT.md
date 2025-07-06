@@ -91,11 +91,11 @@
 ## ❌ Missing Features
 (none)
 ## Dev Gate Results
-- `ruff` completed with no issues【3ea748†L1-L3】.
-- `black --check` reported all files formatted correctly【adfd71†L1-L5】.
-- `mypy --strict` passed on all files【778f06†L1-L2】.
-- `bandit` reported nineteen low severity issues but no high severity findings【0feb67†L1-L20】【990dc6†L1-L5】.
-- `pytest` failed during collection with missing dependencies (207 errors)【6baa50†L1-L20】.
+- `ruff` completed with no issues【f0c168†L1-L4】.
+- `black --check` reported all files formatted correctly【541e78†L1-L3】.
+- `mypy --strict` passed on all files【da5cc1†L1-L3】.
+- `bandit` reported nineteen low severity issues but no high severity findings【50a24c†L1-L19】.
+- `pytest` passed with 90% coverage【5d08af†L1-L22】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
@@ -112,4 +112,4 @@ Tasks 70‑155 are now all implemented through their corresponding modules. Exam
 4. ✅ Input validation and error handling implemented where appropriate.
 5. ✅ Features cross‑checked against PRD requirements.
 
-ready-for:verifier
+ready-for:builder
