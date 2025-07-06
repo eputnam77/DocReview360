@@ -1,9 +1,8 @@
-"""Implementation for task 136."""
+"""Celery Flower launcher wrapper."""
 
-from . import record_task_completion
+from ..flower import launch_flower
 
 
-def task136() -> None:
-    """Mark task 136 as completed for logging."""
-    record_task_completion(136)
-    return None
+async def task136(app) -> None:
+    """Start Flower for the given Celery app."""
+    await launch_flower(app)
