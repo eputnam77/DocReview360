@@ -1,9 +1,47 @@
-"""Implementation for task 151."""
+"""Admin-less project creation wizard helper (Task 151)."""
 
+from __future__ import annotations
+
+from typing import Iterable
+from uuid import uuid4
+
+from ..doc_types import get_document_type
+from ..project_init import create_project_with_validation
+from ..workflows import get_workflow
 from . import record_task_completion
 
 
-def task151() -> None:
-    """Mark task 151 as completed for logging."""
+def task151(doc_type: str = "sample", reviewers: Iterable[str] | None = None) -> tuple[str, str]:
+    """Create a project without admin privileges.
+
+    Parameters
+    ----------
+    doc_type:
+        Name of the document type to base the project on. Must exist.
+    reviewers:
+        Optional list of reviewers to assign to the initial workflow.
+
+    Returns
+    -------
+    tuple[str, str]
+        ``(project_id, workflow_id)`` of the created objects.
+    """
+
+    dt = get_document_type(doc_type)
+    if dt is None:
+        raise ValueError(f"unknown document type {doc_type}")
+
+    project_id = uuid4().hex
+    project, wf_id = create_project_with_validation(
+        project_id,
+        f"{doc_type}-project",
+        dt.template,
+        reviewers or [],
+    )
+
+    # Ensure workflow exists to mirror UI behaviour
+    if get_workflow(wf_id) is None:
+        raise RuntimeError("workflow creation failed")
+
     record_task_completion(151)
-    return None
+    return project.id, wf_id
