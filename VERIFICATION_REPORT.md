@@ -50,6 +50,7 @@
 - **FedRAMP controls document** maps core features to compliance controls【F:docs/compliance/fedramp_controls.md†L1-L12】.
 - **Auxiliary stubs cover tasks 81‑100** including S3 storage, BPMN editor and observability helpers【F:src/docuflow/stubs/task83.py†L1-L27】【F:src/docuflow/stubs/task84.py†L1-L27】.
 - **Stub modules complete tasks 101–120** covering the ruv-FANN workflow and ONLYOFFICE integration【F:src/docuflow/stubs/task111.py†L1-L9】【F:src/docuflow/stubs/task120.py†L1-L9】.
+- **Audit note**: 141 task stubs exist under `src/docuflow/stubs`, leaving 14 tasks unimplemented (1, 2, 13, 17, 36 and 101‑110).
 - **SharePoint archive sync** copies archives to an external records repository【F:src/docuflow/records.py†L1-L57】【F:tests/test_task70.py†L1-L12】.
 - **Metabase field sync job** triggers nightly metadata refresh via HTTP API【F:src/docuflow/metabase_sync.py†L1-L27】【F:tests/test_task126.py†L1-L10】.
 - **Performance baseline helper** measures typing speed for regression charts【F:src/docuflow/perf.py†L1-L19】【F:tests/test_task131.py†L1-L5】.
@@ -89,10 +90,10 @@
 - **End‑to‑end behaviour tests** only contain empty `.feature` files; `tests/E2E_REPORT.md` is empty【F:tests/e2e/features/task141.feature†L1-L7】【F:tests/E2E_REPORT.md†L1-L1】.
 
 ## Dev Gate Results
-- `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
-- `mypy --strict` passed on all files【f92959†L1-L2】.
-- `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
-- `pytest` passed with 276 tests and 90% coverage【ca877c†L1-L73】.
+- `ruff` and `black` succeeded with no changes【72f7fa†L1-L3】【7dea30†L1-L2】.
+- `mypy --strict` passed on all files【86d1f7†L1-L2】.
+- `bandit` reported nineteen low severity issues but no high severity findings【c42d6f†L1-L20】.
+- `pytest` failed with 33 failing tests out of 276【ee1e5d†L1-L21】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
