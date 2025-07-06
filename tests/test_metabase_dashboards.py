@@ -4,9 +4,8 @@ import pytest
 from docuflow.metabase import fetch_card_csv, fetch_dashboards
 
 
-@pytest.mark.asyncio
-async def test_fetch_dashboards(monkeypatch):
-    async def fake_get(url, headers=None, timeout=None):
+def test_fetch_dashboards(monkeypatch):
+    def fake_get(url, headers=None, timeout=None):
         req = httpx.Request("GET", url)
         return httpx.Response(200, json=[{"id": 1, "name": "Main"}], request=req)
 
@@ -15,9 +14,8 @@ async def test_fetch_dashboards(monkeypatch):
     assert data == [{"id": 1, "name": "Main"}]
 
 
-@pytest.mark.asyncio
-async def test_fetch_card_csv(monkeypatch):
-    async def fake_post(url, headers=None, timeout=None):
+def test_fetch_card_csv(monkeypatch):
+    def fake_post(url, headers=None, timeout=None):
         req = httpx.Request("POST", url)
         return httpx.Response(200, text="a,b\n1,2", request=req)
 
