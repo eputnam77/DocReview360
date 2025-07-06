@@ -1,9 +1,8 @@
-"""Implementation for task 140."""
+"""Semantic release helper."""
 
-from . import record_task_completion
+from ..scripts.semantic_release import run
 
 
 def task140() -> None:
-    """Mark task 140 as completed for logging."""
-    record_task_completion(140)
-    return None
+    """Generate changelog from commits."""
+    run()

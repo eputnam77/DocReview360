@@ -1,9 +1,8 @@
-"""Implementation for task 138."""
+"""API docs and SDK generation helper."""
 
-from . import record_task_completion
+from ..scripts.generate_sdk import generate
 
 
-def task138() -> None:
-    """Mark task 138 as completed for logging."""
-    record_task_completion(138)
-    return None
+def task138(output: str = "packages/sdk-ts") -> None:
+    """Generate the SDK using the helper script."""
+    generate(output)

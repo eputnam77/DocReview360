@@ -1,9 +1,9 @@
-"""Implementation for task 139."""
+"""Feature flag helper."""
 
-from . import record_task_completion
+from ..feature_flags import FeatureFlags
 
 
-def task139() -> None:
-    """Mark task 139 as completed for logging."""
-    record_task_completion(139)
-    return None
+def task139(url: str, api_key: str, name: str) -> bool:
+    """Return flag state using ``FeatureFlags`` wrapper."""
+    flags = FeatureFlags(url, api_key)
+    return flags.is_enabled(name)

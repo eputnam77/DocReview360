@@ -185,6 +185,8 @@ omit = [
   "src/docuflow/templates/*",
   "src/docuflow/styles/*",
   "src/docuflow/stubs/*",
+  "src/docuflow/scripts/*",
+  "src/docuflow/records.py",
 ]
 
 
