@@ -36,6 +36,9 @@ __all__ = [
     "metabase",
     "fed_numbering",
     "editor_loader",
+    "toast_editor",
+    "xml_editor",
+    "onlyoffice_editor",
     "fann_corpus",
     "fann_model",
     "wasm_plugin",
@@ -67,6 +70,7 @@ from . import (
     models,
     monitoring,
     notifications,
+    onlyoffice_editor,
     plugins,
     plugins_ui,
     project_init,
@@ -77,9 +81,11 @@ from . import (
     security_utils,
     seeds,
     tiptap,
+    toast_editor,
     vector_search,
     wasm_plugin,
     workflows,
+    xml_editor,
 )
 
 
