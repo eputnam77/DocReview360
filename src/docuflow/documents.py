@@ -19,6 +19,7 @@ class DocumentModel(BaseModel):
     id: str
     content: str
     history: List[str] = []
+    editor: str = "tiptap"
     number: int | None = None
     project: Optional[str] = None
     user: Optional[str] = None
@@ -170,3 +171,22 @@ def get_document_version(doc_id: str, index: int) -> str:
     if index < 0 or index >= len(versions):
         raise IndexError("version index out of range")
     return versions[index]
+
+
+def set_document_editor(doc_id: str, editor: str) -> DocumentModel:
+    """Set the preferred editor for ``doc_id`` and return the document."""
+    if not editor:
+        raise ValueError("editor required")
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"document '{doc_id}' not found")
+    document.editor = editor
+    return document
+
+
+def get_document_editor(doc_id: str) -> str:
+    """Return the preferred editor for ``doc_id``."""
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"document '{doc_id}' not found")
+    return document.editor
