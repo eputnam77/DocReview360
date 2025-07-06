@@ -1,8 +1,5 @@
-"""Implementation for task 131."""
+"""Performance baseline wrapper for task 131."""
 
-"""Performance baseline wrapper."""
-
-from . import record_task_completion
 from ..perf import measure_typing_time
 
 
