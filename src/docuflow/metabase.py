@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+import httpx
+
 from .stubs import record_task_completion
 
 
@@ -51,3 +53,24 @@ class MetabaseClient:
         """Return a dummy 3x3 heatmap for ``project_id``."""
         record_task_completion(83)
         return [[i + j for j in range(3)] for i in range(3)]
+
+
+def fetch_dashboards(base_url: str, token: str) -> List[Dict[str, Any]]:
+    """Return dashboards from a running Metabase instance."""
+    url = f"{base_url.rstrip('/')}/api/dashboard"
+    resp = httpx.get(url, headers={"X-Metabase-Session": token}, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    if not isinstance(data, list):
+        raise RuntimeError("invalid response from Metabase")
+    record_task_completion(83)
+    return data
+
+
+def fetch_card_csv(base_url: str, card_id: int, token: str) -> str:
+    """Return CSV string for the given card."""
+    url = f"{base_url.rstrip('/')}/api/card/{card_id}/query/csv"
+    resp = httpx.post(url, headers={"X-Metabase-Session": token}, timeout=10)
+    resp.raise_for_status()
+    record_task_completion(83)
+    return resp.text
