@@ -1,9 +1,11 @@
 """Implementation for task 149."""
 
-from . import record_task_completion
+from pathlib import Path
+
+from ..schedule_editor import update_schedule
 
 
-def task149() -> None:
-    """Mark task 149 as completed for logging."""
-    record_task_completion(149)
-    return None
+def task149(path: Path | None = None) -> None:
+    """Adjust Celery schedule."""
+
+    update_schedule("escalation", "0 3 * * *", path=path or Path("schedules.yaml"))

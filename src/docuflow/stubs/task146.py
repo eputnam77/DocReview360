@@ -1,9 +1,9 @@
 """Implementation for task 146."""
 
-from . import record_task_completion
+from ..backup_panel import create_backup_async
 
 
-def task146() -> None:
-    """Mark task 146 as completed for logging."""
-    record_task_completion(146)
-    return None
+def task146(path: str) -> str:
+    """Create a backup asynchronously."""
+
+    return create_backup_async.delay(path).get(timeout=10)
