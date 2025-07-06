@@ -91,22 +91,23 @@
 ## ❌ Missing Features
 (none)
 ## Dev Gate Results
-- `ruff` completed with no issues【f0c168†L1-L4】.
-- `black --check` reported all files formatted correctly【541e78†L1-L3】.
-- `mypy --strict` passed on all files【da5cc1†L1-L3】.
-- `bandit` reported nineteen low severity issues but no high severity findings【50a24c†L1-L19】.
-- `pytest` passed with 90% coverage【5d08af†L1-L22】.
+- `ruff` completed with no issues【73d983†L1-L2】.
+- `black --check` reported all files formatted correctly【aaeae7†L1-L3】.
+- `mypy --strict` passed on all files【d2e09f†L1-L2】.
+- `bandit` reported nineteen low severity issues but no high severity findings【7f75f7†L1-L23】.
+- `pytest` failed to run due to missing dependencies【a4a755†L1-L26】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
+4. Fix failing tests by installing all required dependencies.
 
 Tasks 70‑155 are now all implemented through their corresponding modules. Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs, feature-flag wrapper and UI parity utilities.
 
 **Quality summary**
 
-1. ✅ Test suite reaches ≥90 % coverage using `pytest --cov`.
+1. ❌ Test suite coverage not verified due to pytest failure.
 2. ✅ Code follows ADR folder layout and Python best practices.
 3. ✅ Docstrings explain non‑obvious logic.
 4. ✅ Input validation and error handling implemented where appropriate.
