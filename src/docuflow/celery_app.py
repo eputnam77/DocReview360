@@ -7,6 +7,10 @@ import os
 import httpx
 from celery import Celery
 
+from .documents import documents
+from .exporter import export_batch
+from .search import search_index
+
 broker_url = os.environ.get("CELERY_BROKER_URL", "memory://")
 backend_url = os.environ.get("CELERY_RESULT_BACKEND", "cache+memory://")
 app = Celery("docuflow", broker=broker_url, backend=backend_url)
@@ -48,3 +52,24 @@ def quality_gate(text: str, weights: list[float] | None = None) -> float:
 
     passed = lint_text(text, weights)
     return 0.0 if passed else 1.0
+
+
+@app.task(name="docuflow.export_documents")
+def export_documents(doc_ids: list[str], fmt: str) -> bytes:
+    """Return a ZIP archive for the specified document ids."""
+    docs = []
+    for doc_id in doc_ids:
+        doc = documents.get(doc_id)
+        if doc is None:
+            raise KeyError(f"document '{doc_id}' not found")
+        docs.append(doc)
+    return export_batch(docs, fmt)
+
+
+@app.task(name="docuflow.reindex_document")
+def reindex_document(doc_id: str) -> None:
+    """Reindex ``doc_id`` in the search index."""
+    doc = documents.get(doc_id)
+    if doc is None:
+        raise KeyError(f"document '{doc_id}' not found")
+    search_index.add_document(doc)
