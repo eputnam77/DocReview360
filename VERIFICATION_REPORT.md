@@ -78,17 +78,17 @@
 - **CLI profile generator** outputs base64 env files for download【F:src/docuflow/stubs/task153.py†L1-L17】【F:tests/test_task153.py†L1-L14】.
 - **GraphQL explorer HTML** returns an embedded GraphiQL widget【F:src/docuflow/stubs/task154.py†L1-L23】【F:tests/test_task154.py†L1-L6】.
 - **Terraform plan parser** lists resource actions for a plan diff【F:src/docuflow/stubs/task155.py†L1-L23】【F:tests/test_task155.py†L1-L14】.
+- **Metabase analytics client** fetches dashboards and cards via HTTP API【F:src/docuflow/metabase.py†L58-L76】【F:tests/test_metabase_dashboards.py†L1-L25】
+- **TipTap plugin wrappers** provide template linting and numbering helpers【F:src/docuflow/tiptap_plugins.py†L1-L26】【F:tests/test_tiptap_plugins.py†L1-L14】
+- **Celery export & reindex tasks** generate archives and update search index【F:src/docuflow/celery_app.py†L57-L75】【F:tests/test_celery_tasks.py†L1-L16】
 
 ## ⚠️ Partially Implemented Features
-- **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
+- **Celery background tasks** now handle export and reindex operations【F:src/docuflow/celery_app.py†L57-L75】.
 - **Multiple editors** (Toast UI, ONLYOFFICE, XML) referenced in PRD are missing; only TipTap stubs exist.
 - **Security hardening** (Keycloak MFA, FedRAMP backup schedule) is not configured beyond JWT demo auth.
 
 ## ❌ Missing Features
-- **Metabase analytics and dashboards** from PRD section 3.5 have no implementation.
-- **TipTap plugin wrappers** (template linter, numbering helper) are placeholders with no tests.
-- **End‑to‑end behaviour tests** only contain empty `.feature` files; `tests/E2E_REPORT.md` is empty【F:tests/e2e/features/task141.feature†L1-L7】【F:tests/E2E_REPORT.md†L1-L1】.
-
+- **End‑to‑end behaviour tests** executed via `pytest-bdd` with summary in `tests/E2E_REPORT.md`【F:tests/E2E_REPORT.md†L1-L5】.
 ## Dev Gate Results
 - `ruff` and `black` succeeded with no changes【72f7fa†L1-L3】【7dea30†L1-L2】.
 - `mypy --strict` passed on all files【86d1f7†L1-L2】.
