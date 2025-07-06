@@ -1,9 +1,13 @@
-"""Implementation for task 137."""
+"""Helm smoke test helper."""
+
+import subprocess
+from pathlib import Path
 
 from . import record_task_completion
 
 
-def task137() -> None:
-    """Mark task 137 as completed for logging."""
+async def task137() -> None:
+    """Execute the Helm smoke test."""
+    script = Path("scripts/helm_smoke.py")
+    subprocess.run(["python", str(script)], check=True)
     record_task_completion(137)
-    return None
