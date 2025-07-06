@@ -1,9 +1,9 @@
 """Implementation for task 150."""
 
-from . import record_task_completion
+from ..compliance_panel import lint_document
 
 
-def task150() -> None:
-    """Mark task 150 as completed for logging."""
-    record_task_completion(150)
-    return None
+def task150(text: str) -> list[str]:
+    """Return linter issues for the given text."""
+
+    return lint_document(text)
