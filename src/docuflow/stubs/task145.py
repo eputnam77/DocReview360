@@ -1,9 +1,10 @@
 """Implementation for task 145."""
 
-from . import record_task_completion
+from ..plugin_marketplace import install_plugin
 
 
-def task145() -> None:
-    """Mark task 145 as completed for logging."""
-    record_task_completion(145)
+def task145(name: str) -> None:
+    """Install a plugin."""
+
+    install_plugin(name)
     return None

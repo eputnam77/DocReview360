@@ -62,6 +62,16 @@
 - **SDK generator** wraps `openapi-python-client`【F:src/docuflow/scripts/generate_sdk.py†L1-L27】【F:tests/test_task138.py†L1-L11】.
 - **Feature flag wrapper** integrates Unleash client【F:src/docuflow/feature_flags.py†L1-L24】【F:tests/test_task139.py†L1-L9】.
 - **Semantic release helper** writes `CHANGELOG.md` from git log【F:src/docuflow/scripts/semantic_release.py†L1-L15】【F:tests/test_task140.py†L1-L12】.
+- **First-run setup wizard** saves onboarding config via CLI helper【F:src/docuflow/setup_wizard.py†L1-L30】【F:tests/test_task141.py†L1-L10】.
+- **Settings manager** persists global options in YAML【F:src/docuflow/settings_manager.py†L1-L27】【F:tests/test_task142.py†L1-L16】.
+- **Template manager** stores Markdown templates and lists available ones【F:src/docuflow/template_manager.py†L1-L24】【F:tests/test_task143.py†L1-L22】.
+- **Workflow designer clone utility** duplicates workflows with overrides【F:src/docuflow/workflow_designer.py†L1-L26】【F:tests/test_task144.py†L1-L11】.
+- **Plugin marketplace installer** wraps `pip install` for plugins【F:src/docuflow/plugin_marketplace.py†L1-L16】【F:tests/test_task145.py†L1-L21】.
+- **Backup panel tasks** run backups via Celery and restore files【F:src/docuflow/backup_panel.py†L1-L19】【F:tests/test_task146.py†L1-L10】.
+- **Environment switcher** tracks environments and updates active flag【F:src/docuflow/environment.py†L1-L28】【F:tests/test_task147.py†L1-L24】.
+- **RBAC editor** modifies permissions stored in `rbac.yaml`【F:src/docuflow/rbac_editor.py†L1-L26】【F:tests/test_task148.py†L1-L11】.
+- **Schedule editor** updates Celery beat CRON expressions【F:src/docuflow/schedule_editor.py†L1-L22】【F:tests/test_task149.py†L1-L11】.
+- **Compliance panel** lints text and toggles numbering rules【F:src/docuflow/compliance_panel.py†L1-L24】【F:tests/test_task150.py†L1-L8】.
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** exist but only run simple echo functions without real job handling【F:src/docuflow/celery_app.py†L1-L39】.
@@ -77,14 +87,14 @@
 - `ruff` and `black` succeeded with no changes【dfb7fb†L1-L3】【26b0f3†L1-L2】.
 - `mypy --strict` passed on all files【f92959†L1-L2】.
 - `bandit` reported five low severity issues but no high severity findings【753b79†L1-L19】.
-- `pytest` passed with 264 tests and 90% coverage【8d6001†L1-L72】.
+- `pytest` passed with 272 tests and 90% coverage【8210d5†L1-L20】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
 2. Expand security configuration to include Keycloak MFA and backup policies.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 
-Tasks 70‑140 are now all implemented through their corresponding modules.  Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs and feature-flag wrapper.
+Tasks 70‑150 are now all implemented through their corresponding modules. Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs, feature-flag wrapper and UI parity utilities.
 
 **Quality summary**
 

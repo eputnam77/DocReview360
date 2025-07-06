@@ -1,9 +1,11 @@
 """Implementation for task 148."""
 
-from . import record_task_completion
+from pathlib import Path
+
+from ..rbac_editor import update_permission
 
 
-def task148() -> None:
-    """Mark task 148 as completed for logging."""
-    record_task_completion(148)
-    return None
+def task148(path: Path | None = None) -> None:
+    """Modify RBAC permissions."""
+
+    update_permission("pm", "delete_project", False, path=path or Path("rbac.yaml"))
