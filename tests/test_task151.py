@@ -1,5 +1,16 @@
+import pytest
+
+from docuflow.search import projects
 from docuflow.stubs.task151 import task151
+from docuflow.workflows import get_workflow
 
 
 def test_task151_completed() -> None:
-    assert task151() is None
+    project_id, wf_id = task151()
+    assert project_id in projects
+    assert get_workflow(wf_id) is not None
+
+
+def test_task151_invalid_doc_type() -> None:
+    with pytest.raises(ValueError):
+        task151(doc_type="missing")
