@@ -7,6 +7,7 @@ import os
 import httpx
 from celery import Celery
 
+from .backup_utils import create_backup
 from .documents import documents
 from .exporter import export_batch
 from .search import search_index
@@ -73,3 +74,20 @@ def reindex_document(doc_id: str) -> None:
     if doc is None:
         raise KeyError(f"document '{doc_id}' not found")
     search_index.add_document(doc)
+
+
+@app.task(name="docuflow.create_backup")
+def create_backup_task(path: str) -> str:
+    """Create a compressed backup at ``path`` and return the location."""
+    target = create_backup(path)
+    return str(target)
+
+
+@app.task(name="docuflow.reindex_all")
+def reindex_all() -> int:
+    """Reindex all known documents and return the count."""
+    count = 0
+    for doc in documents.values():
+        search_index.add_document(doc)
+        count += 1
+    return count

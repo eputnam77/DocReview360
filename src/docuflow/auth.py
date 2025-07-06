@@ -64,6 +64,13 @@ def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
     return User(username=username)
 
 
+def keycloak_mfa_login(username: str, password: str, otp: str) -> str:
+    """Return a token from the Keycloak MFA stub."""
+    from .stubs.task76 import authenticate_keycloak
+
+    return authenticate_keycloak(username, password, otp)
+
+
 def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """Return a signed JWT access token."""
 
