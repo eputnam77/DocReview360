@@ -3,7 +3,12 @@
   "compilerOptions": {
     "jsx": "preserve",
     "moduleResolution": "node",
-    "incremental": true
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "lucide-react": ["./components/icons"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
