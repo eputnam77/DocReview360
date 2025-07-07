@@ -14,12 +14,17 @@ DocuFlow helps you organise documents, run simple approval workflows and keep tr
    docuflow init
    ```
    The wizard asks for your preferred database, editor and other options then stores them in `docuflow.yml`.
-3. **Run the development server**
+3. **Start the backend API**
    ```bash
    uvicorn docuflow.api:app --reload
    ```
-4. **Open <http://127.0.0.1:8000/>** and sign in with `admin/admin`.
-   You'll land on the dashboard where links let you open the editors, the review tracker, create a new project or browse the API docs.
+4. **Start the React frontend**
+   ```bash
+   npm install --prefix frontend  # only once
+   npm run dev --prefix frontend
+   ```
+5. **Open <http://localhost:3000/>** and sign in with `admin/admin`.
+   The React dashboard loads at port 3000 and fetches data from the API on port 8000.
 
 ### GitHub Codespaces
 
