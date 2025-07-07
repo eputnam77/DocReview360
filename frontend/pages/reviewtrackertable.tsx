@@ -13,7 +13,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { FileText, RefreshCw, Plus } from "lucide-react";
+import { FileText, RefreshCw, Plus } from "@/components/icons";
 
 /**
  * ProjectTracker – switchable Table/Kanban view for projects.
