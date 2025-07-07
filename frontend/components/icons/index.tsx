@@ -14,3 +14,6 @@ export const Plus = createIcon("Plus");
 export const Pencil = createIcon("Pencil");
 export const ArrowUpRight = createIcon("ArrowUpRight");
 export const LogIn = createIcon("LogIn");
+export const FileText = createIcon("FileText");
+export const Users2 = createIcon("Users2");
+export const BarChart2 = createIcon("BarChart2");
