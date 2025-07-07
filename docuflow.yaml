@@ -1,0 +1,7 @@
+auth: oidc
+cms: none
+database: postgres
+debug: false
+editor: tiptap
+host: 127.0.0.1
+port: 8000
