@@ -13,3 +13,4 @@ export const CirclePlay = createIcon("CirclePlay");
 export const Plus = createIcon("Plus");
 export const Pencil = createIcon("Pencil");
 export const ArrowUpRight = createIcon("ArrowUpRight");
+export const LogIn = createIcon("LogIn");
