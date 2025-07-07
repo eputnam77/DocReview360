@@ -4,13 +4,14 @@ DocuFlow helps you organise documents, run simple approval workflows and keep tr
 
 ## Quick start
 
-1. **Install the package**
+1. **Install the package and web server**
    ```bash
    pip install -e .
+   pip install uvicorn
    ```
 2. **Create a configuration file**
    ```bash
-   python -m docuflow.cli init
+   docuflow init
    ```
    The wizard asks for your preferred database, editor and other options then stores them in `docuflow.yml`.
 3. **Run the development server**
