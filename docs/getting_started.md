@@ -25,6 +25,12 @@ uvicorn docuflow.api:app --reload
 ```
 Open `http://127.0.0.1:8000/` in your browser. Use the credentials `admin/admin` to sign in.
 
+### GitHub Codespaces
+
+Run these commands in a Codespace terminal. When the server starts, expose port
+8000 in the **Ports** panel and click **Open in Browser** to reach the login
+page.
+
 ## 4. Explore the dashboard
 
 After logging in you land on a very small dashboard. From here you can open the editor or browse the automatically generated API documentation. The editor does not save documents yet but demonstrates how future editing will look.

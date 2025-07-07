@@ -20,6 +20,11 @@ DocuFlow helps you organise documents, run simple approval workflows and keep tr
 4. **Open <http://127.0.0.1:8000/>** and sign in with `admin/admin`.
    You'll land on the dashboard where you can jump to the editor or explore the API docs.
 
+### GitHub Codespaces
+
+Run the commands above from your Codespace terminal. When `uvicorn` is running,
+forward port 8000 in the **Ports** panel and choose **Open in Browser** to access the login page.
+
 A demo token is available with:
 ```bash
 curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/token
