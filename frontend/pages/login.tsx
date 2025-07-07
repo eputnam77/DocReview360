@@ -1,11 +1,44 @@
-import React from 'react';
+import React from "react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { LogIn } from "lucide-react";
 
-export default function Login() {
+/**
+ * Full‑screen sign‑in page for DocuFlow.
+ * Drop into your routing as <LoginPage />.
+ */
+export default function LoginPage() {
   return (
-    <form method="post" action="/login" className="flex flex-col items-center gap-2">
-      <input name="username" placeholder="username" className="border" />
-      <input name="password" type="password" placeholder="password" className="border" />
-      <button type="submit">Login</button>
-    </form>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-900 dark:via-purple-900 dark:to-pink-900">
+      <Card className="w-full max-w-md mx-4 shadow-2xl">
+        <CardHeader className="space-y-1 text-center">
+          <LogIn className="mx-auto h-10 w-10 text-indigo-600" />
+          <CardTitle className="text-2xl font-bold">Sign in to DocuFlow</CardTitle>
+          <CardDescription>Welcome back! Enter your credentials.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" placeholder="you@example.com" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input id="password" type="password" placeholder="••••••••" />
+          </div>
+          <Button className="w-full mt-2">Continue</Button>
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+            Don’t have an account? <a href="/sign-up" className="underline">Sign up</a>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
