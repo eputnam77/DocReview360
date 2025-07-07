@@ -23,11 +23,9 @@ def test_login_flow() -> None:
         follow_redirects=False,
     )
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/dashboard"
+    assert resp.headers["location"] == "/reviewtrackertable"
     cookie = resp.cookies.get("session")
     assert cookie == "admin"
 
-    # follow redirect to dashboard
-    resp = client.get("/dashboard", cookies={"session": cookie})
-    assert resp.status_code == 200
-    assert "Welcome to DocuFlow" in resp.text
+    # follow redirect should normally load the review tracker table page
+    # (omitted here as the frontend route is handled by Next.js)
