@@ -19,7 +19,7 @@ This walkthrough helps you explore DocuFlow from the perspective of a new user. 
 
 The configuration file contains an `editor` setting. Supported values include `tiptap`, `toast` and `word`.
 
-1. Run `python -m docuflow.cli init` to regenerate the file or edit it manually.
+1. Run `docuflow init` to regenerate the file or edit it manually.
 2. Set `editor: toast` (or another option) and restart the server.
 3. The next time you open the editor the new tool loads.
 

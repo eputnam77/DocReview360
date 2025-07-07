@@ -5,7 +5,7 @@ DocuFlow ships with a single entry point called `docuflow`. The command wraps a 
 ## init
 
 ```
-python -m docuflow.cli init [OPTIONS]
+docuflow init [OPTIONS]
 ```
 
 Interactive wizard that generates `docuflow.yml`.

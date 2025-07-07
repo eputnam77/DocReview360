@@ -6,14 +6,15 @@ This short guide walks you through the first steps with DocuFlow. It assumes Pyt
 
 ```bash
 pip install -e .
+pip install uvicorn
 ```
-This installs the package in editable mode so local changes are picked up immediately.
+This installs the package in editable mode so local changes are picked up immediately and provides the web server used during development.
 
 ## 2. Configure the application
 
 Run the interactive CLI wizard to generate a configuration file:
 ```bash
-python -m docuflow.cli init
+docuflow init
 ```
 Answer the prompts about your preferred database, editor and other options. The resulting `docuflow.yml` sits in your working directory.
 
