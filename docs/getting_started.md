@@ -34,8 +34,7 @@ page.
 
 ## 4. Explore the dashboard
 
-After logging in you land on a very small dashboard. From here you can open the editor or browse the automatically generated API documentation. The editor does not save documents yet but demonstrates how future editing will look.
-You can also open the project creation form to add a new project.
+After logging in you land on a small dashboard. It lists links to the classic editor, the richer document editor, the review tracker and the project creation form. Widget counts and a compact project table give you a quick overview. The editors still do not save documents but show how future editing might look.
 
 ## 5. Next steps
 
