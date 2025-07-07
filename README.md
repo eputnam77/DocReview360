@@ -19,7 +19,7 @@ DocuFlow helps you organise documents, run simple approval workflows and keep tr
    uvicorn docuflow.api:app --reload
    ```
 4. **Open <http://127.0.0.1:8000/>** and sign in with `admin/admin`.
-   You'll land on the dashboard where you can jump to the editor or explore the API docs.
+   You'll land on the dashboard where links let you open the editors, the review tracker, create a new project or browse the API docs.
 
 ### GitHub Codespaces
 
@@ -32,7 +32,7 @@ curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/to
 ```
 Use the token in the `Authorization` header to call `/oidc/me`.
 
-The API is a learning tool. Endpoints return dummy data but illustrate how projects, documents and approvals could work together. The frontend contains a login page, a dashboard, a project creation form and a basic editor shell.
+The API is a learning tool. Endpoints return dummy data but illustrate how projects, documents and approvals could work together. The frontend contains a login page, dashboard, project creation form, two editor pages and a review tracker table.
 
 ## Features
 
