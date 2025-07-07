@@ -167,7 +167,7 @@ export default function ProjectTracker() {
           <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button asChild className="gap-2">
+          <Button className="gap-2">
             <a href="/projects/new">
               <Plus className="w-4 h-4" /> New Project
             </a>
