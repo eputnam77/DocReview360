@@ -24,3 +24,20 @@ def test_list_documents() -> None:
     doc_id = resp.json()["id"]
     resp = client.get("/documents")
     assert any(d["id"] == doc_id for d in resp.json())
+
+
+def test_metrics_and_audit_endpoints() -> None:
+    client = TestClient(app)
+
+    # metrics summary mirrors /reports/summary
+    resp1 = client.get("/metrics/summary")
+    assert resp1.status_code == 200
+    resp2 = client.get("/reports/summary")
+    assert resp1.json() == resp2.json()
+
+    # audit endpoint mirrors /logs
+    client.get("/projects")  # trigger a log via dependency
+    resp3 = client.get("/api/audit")
+    resp4 = client.get("/logs")
+    assert resp3.status_code == 200
+    assert resp3.json() == resp4.json()
