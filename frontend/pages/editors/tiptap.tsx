@@ -2,7 +2,7 @@ import React from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import { Bold, Italic, Strikethrough, Underline as UnderlineIcon, Code, List, ListOrdered, Blockquote, Undo2, Redo2, Heading } from "lucide-react";
+import { Bold, Italic, Strikethrough, Underline as UnderlineIcon, Code, List, ListOrdered, Quote, Undo2, Redo2, Heading } from "lucide-react";
 
 export default function TiptapEditorPage() {
   const editor = useEditor({
@@ -12,6 +12,7 @@ export default function TiptapEditorPage() {
     ],
     content: "<h1>Welcome to <b>TipTap</b>!</h1><p>Now with more formatting.</p>",
     autofocus: true,
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: "focus:outline-none prose prose-lg max-w-none h-full min-h-[400px]",
@@ -112,7 +113,7 @@ export default function TiptapEditorPage() {
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           title="Blockquote"
         >
-          <Blockquote className="w-4 h-4" />
+          <Quote className="w-4 h-4" />
         </button>
         <button
           type="button"
