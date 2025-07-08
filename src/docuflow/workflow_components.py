@@ -43,7 +43,7 @@ class ProgressSidebar:
     def render(self, workflow: WorkflowInstance) -> str:
         record_task_completion(160)
         steps = ",".join(step.name for step in workflow.steps)
-        return f"<aside data-steps='{steps}'></aside>"
+        return f"<aside data-steps='{steps}' data-current='{workflow.current}'></aside>"
 
 
 class CompletedBanner:
