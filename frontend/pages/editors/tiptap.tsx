@@ -7,6 +7,7 @@ export default function TiptapEditorPage() {
     extensions: [StarterKit],
     content: "<p>Welcome to <b>TipTap</b>!</p>",
     autofocus: true,
+    immediatelyRender: false,
   });
 
   const handleSave = () => {
