@@ -1,14 +1,18 @@
-// frontend/pages/editors/codex.tsx
 import React, { useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 
-// Editor.js loads only on client
-const EditorJS = typeof window !== "undefined" ? require("@editorjs/editorjs") : null;
+// Only import Editor.js tools on client
+let EditorJS: any = null;
+let Header: any = null;
+let List: any = null;
+let Quote: any = null;
 
-// Optionally: import tools
-// import Header from "@editorjs/header";
-// import List from "@editorjs/list";
+if (typeof window !== "undefined") {
+  EditorJS = require("@editorjs/editorjs");
+  Header = require("@editorjs/header");
+  List = require("@editorjs/list");
+  Quote = require("@editorjs/quote");
+}
 
 export default function CodexEditorPage() {
   const ejInstance = useRef<any>(null);
@@ -16,29 +20,35 @@ export default function CodexEditorPage() {
 
   useEffect(() => {
     if (!holder.current || ejInstance.current) return;
-    // Dynamically import tools to avoid SSR errors
     let isMounted = true;
-    import("@editorjs/editorjs").then(({ default: EditorJS }) => {
-      if (!isMounted) return;
-      ejInstance.current = new EditorJS({
-        holder: holder.current!,
-        autofocus: true,
-        placeholder: "Start writing...",
-        tools: {
-          // Add more tools if installed
-          // header: require("@editorjs/header"),
-          // list: require("@editorjs/list"),
-        },
-        data: {
-          blocks: [
-            {
-              type: "paragraph",
-              data: { text: "Welcome to <b>CodeX Editor (Editor.js)</b>!" },
-            },
-          ],
-        },
-      });
+
+    // Dynamically import tools to avoid SSR errors (if you want, but above method is OK)
+    ejInstance.current = new EditorJS({
+      holder: holder.current!,
+      autofocus: true,
+      placeholder: "Start writing...",
+      tools: {
+        header: Header,
+        list: List,
+        quote: Quote,
+      },
+      data: {
+        blocks: [
+          {
+            type: "header",
+            data: { text: "Welcome to <b>CodeX Editor (Editor.js)</b>!", level: 2 },
+          },
+          {
+            type: "paragraph",
+            data: { text: "You can use headings, lists, and blockquotes below." },
+          },
+        ],
+      },
+      onReady: () => {
+        // You can do more on editor ready if needed
+      },
     });
+
     return () => {
       isMounted = false;
       if (ejInstance.current && typeof ejInstance.current.destroy === "function") {
@@ -57,14 +67,20 @@ export default function CodexEditorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
-        <h1 className="text-2xl font-bold mb-4">CodeX Editor (Editor.js)</h1>
-        {/* Editor container */}
-        <div ref={holder} id="codex-editor" className="border rounded min-h-[300px] mb-6 bg-white" />
-        <Button onClick={handleSave}>Save</Button>
-      </div>
+    <div className="fixed inset-0 z-30 bg-white flex flex-col">
+      <header className="flex items-center gap-2 bg-gray-100 px-6 py-3 border-b">
+        <h1 className="text-xl font-bold mr-6">CodeX Editor (Editor.js)</h1>
+        <span className="text-gray-500 text-sm">Headings • Lists • Blockquote</span>
+        <Button className="ml-auto" onClick={handleSave}>Save</Button>
+      </header>
+      <main className="flex-1 overflow-auto p-0">
+        <div
+          ref={holder}
+          id="codex-editor"
+          className="w-full h-full min-h-[500px] px-8 py-6 bg-white"
+          style={{ outline: "none" }}
+        />
+      </main>
     </div>
   );
 }
-
