@@ -1,4 +1,4 @@
-Feature: UI Parity
+Feature: Workflow & Approvals
   Scenario: Project tracker table UI
     Given the system is running
     When the feature is exercised
