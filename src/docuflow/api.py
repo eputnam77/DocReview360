@@ -101,6 +101,7 @@ from .workflows import (
     assign_reviewer,
     create_workflow,
     get_workflow,
+    workflows,
 )
 
 
@@ -212,6 +213,15 @@ async def get_project_endpoint(project_id: str) -> ProjectModel:
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@app.get("/projects/{project_id}/workflow", response_model=WorkflowModel)
+async def get_project_workflow_endpoint(project_id: str) -> WorkflowModel:
+    """Return the workflow associated with a project."""
+    for wf in workflows.values():
+        if wf.project == project_id:
+            return wf
+    raise HTTPException(status_code=404, detail="Workflow not found")
 
 
 @app.put("/projects/{project_id}/priority", response_model=ProjectModel)
@@ -543,6 +553,27 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@app.post("/approvals/{approval_id}/sign")
+async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
+    """Begin a Documenso signing flow for an approval."""
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    wf = get_workflow(approval.workflow)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return_to = f"/projects/{wf.project}"
+    sig_id, url = request_signature(
+        wf.project,
+        approval.reviewer,
+        workflow_id=approval.workflow,
+        approval_id=approval.id,
+        return_url=return_to,
+    )
+    approval.signature = sig_id
+    return {"id": sig_id, "url": url}
+
+
 @app.post("/sign/{doc_id}")
 async def sign_document(
     doc_id: str,
@@ -562,6 +593,7 @@ async def sign_document(
 async def complete_sign(sig_id: str) -> None:
     """Mark a signature request as completed."""
     complete_signature(sig_id)
+    process_webhook({"id": sig_id, "status": "signed"})
 
 
 @app.get("/sign/{sig_id}")
