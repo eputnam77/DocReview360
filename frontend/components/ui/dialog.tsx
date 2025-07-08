@@ -1,26 +1,79 @@
-import React from "react";
+// frontend/components/ui/dialog.tsx
 
-export interface DialogProps extends React.HTMLAttributes<HTMLDivElement> {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+import * as React from "react";
+import * as RadixDialog from "@radix-ui/react-dialog";
+import { cn } from "@/lib/utils";
+
+export interface DialogProps extends React.ComponentProps<typeof RadixDialog.Root> {}
+
+export function Dialog(props: DialogProps) {
+  return <RadixDialog.Root {...props} />;
 }
 
-export function Dialog({ children, ...props }: DialogProps) {
-  return <div {...props}>{children}</div>;
+export function DialogTrigger(props: React.ComponentProps<typeof RadixDialog.Trigger>) {
+  return <RadixDialog.Trigger {...props} />;
 }
 
-export function DialogContent(props: React.HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} />;
+export function DialogContent({
+  className,
+  ...props
+}: React.ComponentProps<typeof RadixDialog.Content>) {
+  return (
+    <RadixDialog.Portal>
+      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity" />
+      <RadixDialog.Content
+        className={cn(
+          "fixed z-50 left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl focus:outline-none",
+          className
+        )}
+        {...props}
+      />
+    </RadixDialog.Portal>
+  );
 }
 
-export function DialogHeader(props: React.HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} />;
+export function DialogHeader({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("mb-4", className)} {...props} />
+  );
 }
 
-export function DialogTitle(props: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 {...props} />;
+export function DialogTitle({
+  className,
+  ...props
+}: React.ComponentProps<typeof RadixDialog.Title>) {
+  return (
+    <RadixDialog.Title
+      className={cn("text-lg font-semibold", className)}
+      {...props}
+    />
+  );
 }
 
-export function DialogFooter(props: React.HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} />;
+export function DialogDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof RadixDialog.Description>) {
+  return (
+    <RadixDialog.Description
+      className={cn("text-sm text-gray-500 dark:text-gray-400", className)}
+      {...props}
+    />
+  );
+}
+
+export function DialogFooter({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("mt-6 flex justify-end gap-2", className)} {...props} />
+  );
+}
+
+export function DialogClose(props: React.ComponentProps<typeof RadixDialog.Close>) {
+  return <RadixDialog.Close {...props} />;
 }
