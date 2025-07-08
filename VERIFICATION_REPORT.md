@@ -90,7 +90,7 @@
 
 ## ❌ Missing Features
 - Workflow UI components (#160) not implemented; placeholder test fails.
-- Start Workflow page (#161) only stubbed.
+- **Start Workflow page** renders an upload form using new React route【F:frontend/app/workflows/[id]/start/page.tsx†L1-L29】【F:tests/test_task161.py†L1-L10】.
 - Workflow Progress view (#162) only stubbed.
 ## Dev Gate Results
 - `ruff` completed with no issues【8dd9bf†L1-L3】.
