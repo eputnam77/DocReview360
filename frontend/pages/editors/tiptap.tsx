@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { Bold, Italic, Strikethrough, Underline as UnderlineIcon, Code, List, ListOrdered, Quote, Undo2, Redo2, Heading } from "lucide-react";
+import FAA_AC_TEMPLATE from "@/data/tiptapTemplates/faa_ac_template";
 
 export default function TiptapEditorPage() {
   const editor = useEditor({
@@ -10,7 +11,7 @@ export default function TiptapEditorPage() {
       StarterKit,
       Underline,
     ],
-    content: "<h1>Welcome to <b>TipTap</b>!</h1><p>Now with more formatting.</p>",
+    content: FAA_AC_TEMPLATE,
     autofocus: true,
     immediatelyRender: false,
     editorProps: {
