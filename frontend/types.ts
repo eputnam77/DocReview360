@@ -31,3 +31,17 @@ export interface WorkflowInstance {
   steps: StepInstance[];
   current: number;           // index of active step (0-based)
 }
+
+/** Categories shown in the workflow gallery */
+export type Category = "All" | "Compliance" | "HR" | "General";
+
+import type { ReactNode } from "react";
+
+/** Template metadata for the gallery */
+export interface Template {
+  id: string;
+  title: string;
+  description: string;
+  category: Category;
+  icon: ReactNode;
+}
