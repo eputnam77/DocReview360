@@ -1,7 +1,8 @@
 import React, { useRef } from "react";
 import dynamic from "next/dynamic";
+import { Button } from "@/components/ui/button";
 
-// Toast Editor only works in browser, so use dynamic import with ssr: false
+// Toast UI Editor only works in browser, so use dynamic import with ssr: false
 const Editor = dynamic(
   () => import("@toast-ui/react-editor").then((mod) => mod.Editor),
   { ssr: false }
@@ -21,25 +22,26 @@ export default function ToastEditorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
-        <h1 className="text-2xl font-bold mb-4">Toast Editor</h1>
+    <div className="fixed inset-0 z-30 bg-white flex flex-col">
+      <header className="flex items-center gap-2 bg-gray-100 px-6 py-3 border-b">
+        <h1 className="text-xl font-bold mr-6">Toast Editor</h1>
+        <span className="text-gray-500 text-sm">Markdown • WYSIWYG</span>
+        <Button className="ml-auto" onClick={handleSave}>Save</Button>
+      </header>
+      <main className="flex-1 overflow-auto p-0">
         <Editor
           ref={editorRef}
-          initialValue="Welcome to **Toast UI Editor**!"
+          initialValue="Welcome to **Toast UI Editor**!\n\n- Edit in Markdown or WYSIWYG\n- This is fullscreen!"
           previewStyle="vertical"
-          height="400px"
+          height="100%"
           initialEditType="markdown"
           useCommandShortcut={true}
+          hideModeSwitch={false}
+          theme="light"
+          usageStatistics={false}
+          className="w-full h-full"
         />
-        <button
-          onClick={handleSave}
-          className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Save
-        </button>
-      </div>
+      </main>
     </div>
   );
 }
-
