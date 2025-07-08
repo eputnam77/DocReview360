@@ -1,10 +1,9 @@
-import pytest
-
 from docuflow.stubs.task161 import render_start_page
 
 
-def test_task161_placeholder() -> None:
-    """Placeholder test for task 161 implementation."""
+def test_task161_start_page() -> None:
+    """Ensure the start page renders an upload dropzone."""
 
-    render_start_page("demo")
-    pytest.fail("Task 161 not implemented yet")
+    html = render_start_page("demo")
+    assert "start-demo" in html
+    assert "upload-dropzone" in html

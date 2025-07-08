@@ -1,10 +1,9 @@
-import pytest
-
 from docuflow.stubs.task162 import render_progress_view
 
 
-def test_task162_placeholder() -> None:
-    """Placeholder test for task 162 implementation."""
+def test_task162_progress_view() -> None:
+    """Ensure progress view includes sidebar and banner."""
 
-    render_progress_view()
-    pytest.fail("Task 162 not implemented yet")
+    html = render_progress_view()
+    assert "<aside" in html
+    assert "completed" in html
