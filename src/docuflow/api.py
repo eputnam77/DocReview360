@@ -696,9 +696,21 @@ async def list_logs(action: str | None = None, user: str | None = None) -> list[
     return query_logs(action=action, user=user)
 
 
+@app.get("/api/audit", response_model=list[LogEntry])
+async def list_audit(action: str | None = None, user: str | None = None) -> list[LogEntry]:
+    """Alias for :func:`list_logs` used by the dashboard."""
+    return query_logs(action=action, user=user)
+
+
 @app.get("/reports/summary", response_model=SummaryReport)
 async def get_summary_report() -> SummaryReport:
     """Return counts of projects, documents, workflows, and approvals."""
+    return generate_summary()
+
+
+@app.get("/metrics/summary", response_model=SummaryReport)
+async def get_metrics_summary() -> SummaryReport:
+    """Alias for :func:`get_summary_report` used by dashboards."""
     return generate_summary()
 
 

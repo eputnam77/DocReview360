@@ -26,4 +26,16 @@ The `/doceditor` page showcases a richer editor powered by Tiptap. It opens in a
 
 The review tracker page lists example documents along with progress bars and due dates. It demonstrates how a reviewer dashboard might appear in the finished product.
 
+## Project Tracker
+
+The project tracker lists all projects in a sortable table. Columns show the document number, title, assigned user, status and last update. Use the **Create New Project** button to open the wizard and the table refreshes once a project is saved.
+
+## Project Details
+
+Clicking a document number opens a details view with metadata and recent audit messages. From here you can launch the rich TipTap editor and upon saving you return to the project page automatically.
+
+## Interactive Dashboard
+
+The dashboard now reads data from `/metrics/summary` and `/api/audit`. A dropdown lets you filter audit messages by project so you can focus on recent activity. Counts for projects, documents and approvals update live.
+
 Use your browser's back button or the navigation links to move between pages.

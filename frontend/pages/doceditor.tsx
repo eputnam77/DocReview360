@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useRouter } from "next/router";
 import {
   Card,
   CardHeader,
@@ -34,6 +35,8 @@ import {
  * inside a modal dialog. Includes a lightweight toolbar.
  */
 export default function DocEditorCard() {
+  const router = useRouter();
+  const returnTo = (router.query.returnTo as string) || undefined;
   const [open, setOpen] = useState(false);
 
   const editor = useEditor({
@@ -47,6 +50,9 @@ export default function DocEditorCard() {
       console.log(editor.getHTML());
     }
     setOpen(false);
+    if (returnTo) {
+      router.push(returnTo);
+    }
   };
 
   /** Toolbar button helper */
