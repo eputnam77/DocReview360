@@ -8,10 +8,12 @@ let List: any = null;
 let Quote: any = null;
 
 if (typeof window !== "undefined") {
-  EditorJS = require("@editorjs/editorjs");
-  Header = require("@editorjs/header");
-  List = require("@editorjs/list");
-  Quote = require("@editorjs/quote");
+  // The CommonJS build exposes the class under .default
+  const EJ = require("@editorjs/editorjs");
+  EditorJS = EJ.default ?? EJ;
+  Header = require("@editorjs/header").default;
+  List = require("@editorjs/list").default;
+  Quote = require("@editorjs/quote").default;
 }
 
 export default function CodexEditorPage() {
