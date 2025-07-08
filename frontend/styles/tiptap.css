@@ -1,0 +1,100 @@
+/* TipTap Content Styling */
+
+.tiptap-content {
+  /* Editor area background and padding */
+  background: #fff;
+  padding: 1.5rem;
+  min-height: 400px;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+/* Paragraph spacing */
+.tiptap-content p {
+  margin-bottom: 1em;
+}
+
+/* Headings: always bold and spaced */
+.tiptap-content h1,
+.tiptap-content h2,
+.tiptap-content h3,
+.tiptap-content h4,
+.tiptap-content h5,
+.tiptap-content h6 {
+  font-weight: bold;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.2;
+}
+
+.tiptap-content h1 { font-size: 2.25rem; }
+.tiptap-content h2 { font-size: 1.5rem; }
+.tiptap-content h3 { font-size: 1.17rem; }
+.tiptap-content h4 { font-size: 1rem; }
+.tiptap-content h5 { font-size: 0.83rem; }
+.tiptap-content h6 { font-size: 0.67rem; }
+
+/* Lists */
+.tiptap-content ul,
+.tiptap-content ol {
+  margin: 1em 0 1em 2em;
+  padding: 0 0 0 1.2em;
+}
+
+.tiptap-content li {
+  margin-bottom: 0.5em;
+}
+
+/* Blockquote (Note, Caution) */
+.tiptap-content blockquote {
+  border-left: 4px solid #a3a3a3;
+  background: #f3f4f6;
+  margin: 1em 0;
+  padding: 0.7em 1em;
+  color: #374151;
+  font-style: italic;
+}
+
+/* Horizontal rule */
+.tiptap-content hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 2em 0;
+}
+
+/* Code blocks (optional) */
+.tiptap-content pre {
+  background: #f3f4f6;
+  border-radius: 0.5rem;
+  padding: 1em;
+  font-size: 0.95em;
+  overflow-x: auto;
+}
+
+/* Table styling (if used) */
+.tiptap-content table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+.tiptap-content th,
+.tiptap-content td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5em 1em;
+}
+
+/* Inline bold, italic, underline */
+.tiptap-content strong { font-weight: bold; }
+.tiptap-content em { font-style: italic; }
+.tiptap-content u { text-decoration: underline; }
+
+/* Images (if enabled) */
+.tiptap-content img {
+  max-width: 100%;
+  display: block;
+  margin: 1em 0;
+}
