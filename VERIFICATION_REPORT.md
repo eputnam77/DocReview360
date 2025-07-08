@@ -89,13 +89,15 @@
 - **Security hardening** (Keycloak MFA, FedRAMP backup schedule) is not configured beyond JWT demo auth.
 
 ## ❌ Missing Features
-(none)
+- Workflow UI components (#160) not implemented; placeholder test fails.
+- Start Workflow page (#161) only stubbed.
+- Workflow Progress view (#162) only stubbed.
 ## Dev Gate Results
-- `ruff` completed with no issues【73d983†L1-L2】.
-- `black --check` reported all files formatted correctly【aaeae7†L1-L3】.
-- `mypy --strict` passed on all files【d2e09f†L1-L2】.
-- `bandit` reported nineteen low severity issues but no high severity findings【7f75f7†L1-L23】.
-- `pytest` failed to run due to missing dependencies【a4a755†L1-L26】.
+- `ruff` completed with no issues【8dd9bf†L1-L3】.
+- `black --check` reported all files unchanged【008a0b†L1-L2】.
+- `mypy --strict` passed on all files【ec1b62†L1-L2】.
+- `bandit` found 19 low-severity issues, no highs【5bf5f3†L1-L7】【670783†L1-L19】.
+- `pytest` ran 182 tests with 1 failure at task 160【de2557†L1-L6】【9901bf†L1-L6】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
