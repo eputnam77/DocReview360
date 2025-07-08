@@ -88,7 +88,7 @@
 
 ## ⚠️ Partially Implemented Features
 - **Celery background tasks** now handle export and reindex operations【F:src/docuflow/celery_app.py†L57-L75】.
-- **Multiple editors** (Toast UI, ONLYOFFICE, XML) referenced in PRD are missing; only TipTap stubs exist.
+- **Multiple editors** (Toast UI, ONLYOFFICE, XML, CodeX) referenced in PRD are missing; only TipTap stubs exist.
 - **Security hardening** (Keycloak MFA, FedRAMP backup schedule) is not configured beyond JWT demo auth.
 
 ## ❌ Missing Features
