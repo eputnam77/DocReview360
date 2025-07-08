@@ -24,9 +24,9 @@ First start the FastAPI backend:
 ```bash
 uvicorn docuflow.api:app --reload
 ```
-Then in a separate terminal start the React UI:
+Then in a separate terminal start the React UI (Node 18+):
 ```bash
-npm install --prefix frontend  # only once
+npm install --legacy-peer-deps --prefix frontend  # only once
 npm run dev --prefix frontend
 ```
 Open `http://localhost:3000/` and sign in with `admin/admin` to reach the React dashboard.
