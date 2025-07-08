@@ -18,11 +18,24 @@ interface Project {
   created?: string;
 }
 
+interface Workflow {
+  id: string;
+  phase: string;
+}
+
+interface Approval {
+  id: string;
+  reviewer: string;
+  state: string;
+}
+
 export default function ProjectDetails() {
   const router = useRouter();
   const { id } = router.query;
   const [project, setProject] = useState<Project | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -30,6 +43,18 @@ export default function ProjectDetails() {
       .then((r) => r.json())
       .then(setProject)
       .catch(() => setProject(null));
+    fetch(`/projects/${id}/workflow`)
+      .then((r) => r.json())
+      .then((wf: Workflow) => {
+        setWorkflow(wf);
+        return fetch(`/approvals?workflow=${wf.id}`);
+      })
+      .then((r) => (r ? r.json() : []))
+      .then((data: Approval[]) => setApprovals(data))
+      .catch(() => {
+        setWorkflow(null);
+        setApprovals([]);
+      });
     fetch("/api/audit")
       .then((r) => r.json())
       .then((data: LogEntry[]) =>
@@ -37,6 +62,14 @@ export default function ProjectDetails() {
       )
       .catch(() => setLogs([]));
   }, [id]);
+
+  const startSign = (aid: string) => {
+    fetch(`/approvals/${aid}/sign`, { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        window.location.href = data.url;
+      });
+  };
 
   if (!project) return <p className="p-4">Loading…</p>;
 
@@ -68,6 +101,26 @@ export default function ProjectDetails() {
           ))}
         </ul>
       </div>
+
+      {workflow && (
+        <div>
+          <h2 className="text-lg font-semibold mt-6">Approvals</h2>
+          <ul className="space-y-1">
+            {approvals.map((a) => (
+              <li key={a.id} className="flex items-center gap-2">
+                <span className="flex-1">
+                  {a.reviewer} – {a.state}
+                </span>
+                {a.state !== "approved" && (
+                  <Button size="sm" onClick={() => startSign(a.id)}>
+                    Approve
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Button>
         <Link href={`/doceditor?returnTo=/projects/${id}`}>Edit Document</Link>

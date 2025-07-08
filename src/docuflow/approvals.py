@@ -7,6 +7,9 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from .logs import log_event
+from .workflows import workflows
+
 
 class ApprovalModel(BaseModel):
     """Representation of an approval record."""
@@ -48,4 +51,22 @@ def update_approval_state(
     approval = approvals[approval_id]
     approval.state = state
     approval.signature = signature
+    if state == "approved":
+        wf = workflows.get(approval.workflow)
+        project_id = wf.project if wf else ""
+        log_event(
+            f"{approval.reviewer} approved document {project_id} with digital signature",
+            user=approval.reviewer,
+            project=project_id,
+        )
+        # check if all approvals done
+        if all(
+            a.state == "approved" and a.workflow == approval.workflow
+            for a in approvals.values()
+            if a.workflow == approval.workflow
+        ):
+            log_event(
+                f"All required approvals completed for project {project_id}",
+                project=project_id,
+            )
     return approval

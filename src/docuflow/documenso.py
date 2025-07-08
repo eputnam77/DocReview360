@@ -22,12 +22,17 @@ DOCUMENSO_URL = os.getenv("DOCUMENSO_URL")
 _signatures: Dict[str, str] = {}
 # store workflow id for each signature when provided
 _sig_workflows: Dict[str, str] = {}
+# map signature id to approval for status updates
+_sig_approvals: Dict[str, str] = {}
 
 
 def request_signature(
     document_id: str,
     user: str,
     workflow_id: str | None = None,
+    *,
+    approval_id: str | None = None,
+    return_url: str | None = None,
 ) -> Tuple[str, str]:
     """Return a signature request id and URL for ``document_id`` issued to ``user``.
 
@@ -41,9 +46,14 @@ def request_signature(
 
     if DOCUMENSO_URL:
         try:
+            payload = {"user": user}
+            if return_url:
+                payload["return_url"] = return_url
+            if approval_id:
+                payload["approval_id"] = approval_id
             resp = httpx.post(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{document_id}",
-                json={"user": user},
+                json=payload,
                 timeout=5,
             )
             resp.raise_for_status()
@@ -55,10 +65,18 @@ def request_signature(
     else:
         sig_id = uuid4().hex
         _signatures[sig_id] = "pending"
-        url = f"https://documenso.local/sign/{sig_id}"
+        url = f"/documenso/{sig_id}"
+        if return_url:
+            from urllib.parse import quote
+
+            url += f"?return={quote(return_url)}"
+            if approval_id:
+                url += f"&approval={quote(approval_id)}"
 
     if workflow_id:
         _sig_workflows[sig_id] = workflow_id
+    if approval_id:
+        _sig_approvals[sig_id] = approval_id
 
     log_event(f"signature_requested:{document_id}:{user}")
     return sig_id, url
@@ -109,11 +127,19 @@ def process_webhook(data: Dict[str, str]) -> None:
     _signatures[sig_id] = status
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
+        appr_id = _sig_approvals.get(sig_id)
         if wf_id:
             try:
                 from .workflows import advance_workflow
 
                 advance_workflow(wf_id)
+            except KeyError:
+                pass
+        if appr_id:
+            try:
+                from .approvals import update_approval_state
+
+                update_approval_state(appr_id, "approved", signature=sig_id)
             except KeyError:
                 pass
     log_event(f"signature_webhook:{sig_id}:{status}")
