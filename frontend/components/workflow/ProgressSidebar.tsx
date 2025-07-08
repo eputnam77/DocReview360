@@ -1,11 +1,12 @@
-// components/workflow/ProgressSidebar.tsx
+// frontend/components/workflow/ProgressSidebar.tsx
+
 import React from "react";
 import type { WorkflowInstance } from "@/types";
 import { CheckCircle2, Circle, ClipboardCheck, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Shows vertical timeline of workflow steps with current/completed status.
+ * Shows a vertical timeline of workflow steps with current/completed status.
  * @param workflow - The workflow instance to show progress for.
  * @param onStepClick - Optional callback when a step is clicked.
  */
@@ -19,11 +20,14 @@ const ProgressSidebar: React.FC<ProgressSidebarProps> = ({
   onStepClick,
 }) => {
   return (
-    <aside className="w-72 border-r px-6 py-8 bg-white">
+    <aside
+      className="w-72 border-r px-6 py-8 bg-white dark:bg-gray-950"
+      aria-label="Workflow Progress"
+    >
       <h2 className="mb-6 text-lg font-semibold">Progress</h2>
       <ul className="relative space-y-6">
         {/* vertical line for timeline */}
-        <span className="absolute left-5 top-10 h-[calc(100%-40px)] w-px bg-border" />
+        <span className="absolute left-5 top-10 h-[calc(100%-40px)] w-px bg-border" aria-hidden="true" />
         {workflow.steps.map((step, i) => {
           const isCompleted = i < workflow.current;
           const isCurrent = i === workflow.current;
@@ -40,9 +44,10 @@ const ProgressSidebar: React.FC<ProgressSidebarProps> = ({
               )}
               onClick={() => onStepClick?.(i)}
               style={{ cursor: onStepClick ? "pointer" : undefined }}
+              aria-current={isCurrent ? "step" : undefined}
             >
               {/* Timeline dot/icon */}
-              <span className="relative top-2 flex h-5 w-5 items-center justify-center">
+              <span className="relative top-2 flex h-5 w-5 items-center justify-center" aria-hidden="true">
                 {isCompleted ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 ) : isCurrent ? (
@@ -55,14 +60,13 @@ const ProgressSidebar: React.FC<ProgressSidebarProps> = ({
               </span>
               {/* Step info */}
               <div>
-                <div className="text-sm">
+                <div className="text-sm flex gap-2 items-center">
                   {step.name}
                   <span className="ml-2 text-xs uppercase text-muted-foreground">
                     {step.kind}
                   </span>
                 </div>
-                {/* Optionally: show status */}
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   {isCompleted
                     ? "Completed"
                     : isCurrent
