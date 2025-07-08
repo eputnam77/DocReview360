@@ -1,4 +1,4 @@
-// components/workflow/CompletedBanner.tsx
+// frontend/components/workflow/CompletedBanner.tsx
 import React from "react";
 import { Rocket } from "lucide-react";
 
