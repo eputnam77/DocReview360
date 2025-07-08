@@ -13,7 +13,7 @@ export default function NewProject() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, name, user: 'admin' }),
     });
-    router.push('/dashboard');
+    router.push('/projects');
   }
 
   return (

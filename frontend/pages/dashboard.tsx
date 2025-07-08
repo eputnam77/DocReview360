@@ -11,13 +11,26 @@ import { LayoutDashboard, FolderOpen, FileText, Users2, BarChart2 } from "lucide
  * Drop into your routes as <DashboardsPage />.
  */
 export default function DashboardsPage() {
-  const [stats, setStats] = useState({ projects: 0, activeDocs: 0, users: 0 });
+  const [stats, setStats] = useState({
+    projects: 0,
+    documents: 0,
+    workflows: 0,
+    approvals: 0,
+  });
+  const [logs, setLogs] = useState<any[]>([]);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/dashboard/widgets")
+    fetch("/metrics/summary")
       .then((r) => r.json())
       .then(setStats)
-      .catch(() => setStats({ projects: 12, activeDocs: 43, users: 7 }));
+      .catch(() =>
+        setStats({ projects: 0, documents: 0, workflows: 0, approvals: 0 })
+      );
+    fetch("/api/audit")
+      .then((r) => r.json())
+      .then(setLogs)
+      .catch(() => setLogs([]));
   }, []);
 
   const StatCard = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
@@ -40,20 +53,40 @@ export default function DashboardsPage() {
       {/* KPI row */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard icon={FolderOpen} label="Projects" value={stats.projects} />
-        <StatCard icon={FileText} label="Active Docs" value={stats.activeDocs} />
-        <StatCard icon={Users2} label="Users" value={stats.users} />
+        <StatCard icon={FileText} label="Documents" value={stats.documents} />
+        <StatCard icon={Users2} label="Approvals" value={stats.approvals} />
       </div>
 
       {/* Analytics Tabs */}
-      <Tabs defaultValue="projects" className="mt-6">
+      <Tabs defaultValue="projects" className="mt-6 space-y-4">
         <TabsList>
           <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
         <TabsContent value="projects">
-          <CardContent className="h-64 flex items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-900">
-            <BarChart2 className="w-16 h-16 text-gray-400" />
-            <span className="ml-4 text-gray-500 dark:text-gray-400">Projects chart coming soon…</span>
+          <CardContent className="h-64 overflow-y-auto rounded-lg bg-gray-50 dark:bg-gray-900 p-4">
+            <select
+              className="mb-2 border rounded p-1"
+              value={projectFilter ?? ""}
+              onChange={(e) => setProjectFilter(e.target.value || null)}
+            >
+              <option value="">All projects</option>
+              {Array.from(new Set(logs.map((l) => l.metadata?.project))).map(
+                (id) =>
+                  id && (
+                    <option key={id} value={id}>
+                      {id}
+                    </option>
+                  )
+              )}
+            </select>
+            <ul className="text-sm space-y-1">
+              {logs
+                .filter((l) => !projectFilter || l.metadata?.project === projectFilter)
+                .map((l, i) => (
+                  <li key={i}>{l.timestamp.slice(0, 10)} – {l.action}</li>
+                ))}
+            </ul>
           </CardContent>
         </TabsContent>
         <TabsContent value="activity">
