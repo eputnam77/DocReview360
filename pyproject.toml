@@ -1,6 +1,6 @@
 # ─────────────────────────────── build & metadata ──────────────────────────────
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -124,6 +124,7 @@ exclude = ["tests*", ".dev*"]
 "docuflow.styles" = ["*.md"]
 "docuflow.templates" = ["*.html"]
 "docuflow.iac_templates" = ["*.tf"]
+"*" = ["*.txt", "*.md", "*.yaml", "*.yml"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]

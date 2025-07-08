@@ -15,13 +15,18 @@ The project currently lacks guidance on where to place documentation templates a
 
 ```text
 DocuFlow/
-├── src/           # Python package `docuflow`
-├── tests/         # Python tests
-├── frontend/      # Next.js application (TypeScript)
-├── plugins/       # Language specific plugins
-├── docs/          # MkDocs documentation
-├── .github/       # GitHub workflows
-└── .dev/          # ADRs, templates and planning docs
+├── src/            # Python package `docuflow`
+├── tests/          # Python tests
+├── frontend/       # Next.js application (TypeScript)
+├── plugins/        # Language specific plugins
+├── services/       # Optional microservices (Go/Rust)
+├── iac/            # Terraform modules for infrastructure
+├── monitoring/     # Grafana dashboards and alert rules
+├── examples/       # Usage samples and demo data
+├── docs/           # MkDocs documentation
+├── scripts/        # Developer utilities
+├── .github/        # GitHub workflows
+└── .dev/           # ADRs, templates and planning docs
 ```
 
 ## Consequences
