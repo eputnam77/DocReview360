@@ -16,6 +16,8 @@ interface Project {
   number?: number;
   user?: string;
   created?: string;
+  // Optionally: editor?: "tiptap" | "toast" | "codex" | "word";
+  // Optionally: documentFileName?: string;
 }
 
 interface Workflow {
@@ -73,6 +75,10 @@ export default function ProjectDetails() {
 
   if (!project) return <p className="p-4">Loading…</p>;
 
+  // Default to TipTap editor for now
+  // In future, could use: `/editors/${project.editor}?projectId=${id}`
+  const editDocUrl = `/editors/tiptap?projectId=${id}&returnTo=/projects/${id}`;
+
   return (
     <div className="p-8 space-y-6">
       <Card>
@@ -122,8 +128,8 @@ export default function ProjectDetails() {
         </div>
       )}
 
-      <Button>
-        <Link href={`/doceditor?returnTo=/projects/${id}`}>Edit Document</Link>
+      <Button asChild>
+        <Link href={editDocUrl}>Edit Document</Link>
       </Button>
     </div>
   );
