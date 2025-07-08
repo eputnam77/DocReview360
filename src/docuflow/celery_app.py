@@ -57,19 +57,36 @@ def quality_gate(text: str, weights: list[float] | None = None) -> float:
 
 @app.task(name="docuflow.export_documents")
 def export_documents(doc_ids: list[str], fmt: str) -> bytes:
-    """Return a ZIP archive for the specified document ids."""
+    """Return a ZIP archive for ``doc_ids`` in the given format.
+
+    Parameters
+    ----------
+    doc_ids:
+        Document identifiers to export.
+    fmt:
+        Target format supported by :func:`export_batch`.
+    """
+
+    if not doc_ids:
+        raise ValueError("no document ids provided")
+
     docs = []
     for doc_id in doc_ids:
         doc = documents.get(doc_id)
         if doc is None:
             raise KeyError(f"document '{doc_id}' not found")
         docs.append(doc)
+
     return export_batch(docs, fmt)
 
 
 @app.task(name="docuflow.reindex_document")
 def reindex_document(doc_id: str) -> None:
     """Reindex ``doc_id`` in the search index."""
+
+    if not doc_id:
+        raise ValueError("doc_id required")
+
     doc = documents.get(doc_id)
     if doc is None:
         raise KeyError(f"document '{doc_id}' not found")
@@ -79,13 +96,18 @@ def reindex_document(doc_id: str) -> None:
 @app.task(name="docuflow.create_backup")
 def create_backup_task(path: str) -> str:
     """Create a compressed backup at ``path`` and return the location."""
+
+    if not path:
+        raise ValueError("path required")
+
     target = create_backup(path)
     return str(target)
 
 
 @app.task(name="docuflow.reindex_all")
 def reindex_all() -> int:
-    """Reindex all known documents and return the count."""
+    """Reindex all known documents and return the number processed."""
+
     count = 0
     for doc in documents.values():
         search_index.add_document(doc)
