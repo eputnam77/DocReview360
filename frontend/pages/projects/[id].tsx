@@ -17,7 +17,6 @@ interface Project {
   user?: string;
   created?: string;
   // Optionally: editor?: "tiptap" | "toast" | "codex" | "word";
-  // Optionally: documentFileName?: string;
 }
 
 interface Workflow {
@@ -29,6 +28,7 @@ interface Approval {
   id: string;
   reviewer: string;
   state: string;
+  documensoSigId?: string; // for Documenso integration
 }
 
 export default function ProjectDetails() {
@@ -76,7 +76,6 @@ export default function ProjectDetails() {
   if (!project) return <p className="p-4">Loading…</p>;
 
   // Default to TipTap editor for now
-  // In future, could use: `/editors/${project.editor}?projectId=${id}`
   const editDocUrl = `/editors/tiptap?projectId=${id}&returnTo=/projects/${id}`;
 
   return (
@@ -118,9 +117,32 @@ export default function ProjectDetails() {
                   {a.reviewer} – {a.state}
                 </span>
                 {a.state !== "approved" && (
-                  <Button size="sm" onClick={() => startSign(a.id)}>
-                    Approve
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => startSign(a.id)}
+                      variant="secondary"
+                    >
+                      Approve (API)
+                    </Button>
+                    {/* Documenso Sign/Approve Link */}
+                    {a.documensoSigId && (
+                      <Button
+                        size="sm"
+                        asChild
+                        className="ml-1"
+                        variant="outline"
+                      >
+                        <Link
+                          href={`/documentso/${a.documensoSigId}?returnTo=/projects/${id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Sign in Documenso
+                        </Link>
+                      </Button>
+                    )}
+                  </>
                 )}
               </li>
             ))}
