@@ -1,4 +1,5 @@
-// components/workflow/StepStatusBadge.tsx
+// frontend/components/workflow/StepStatusBadge.tsx
+
 import React from "react";
 import type { StepInstance } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Badge indicating the status of a workflow step.
- * Shows color, icon, and optional user avatar.
+ * Shows color, icon, and optional user avatar/name.
  */
 interface StepStatusBadgeProps {
   step: StepInstance;
@@ -33,7 +34,8 @@ const statusConfig = {
 };
 
 const StepStatusBadge: React.FC<StepStatusBadgeProps> = ({ step, showUser }) => {
-  const config = statusConfig[step.status as keyof typeof statusConfig] ?? statusConfig.Pending;
+  const config =
+    statusConfig[step.status as keyof typeof statusConfig] || statusConfig.Pending;
 
   return (
     <Badge
@@ -47,20 +49,18 @@ const StepStatusBadge: React.FC<StepStatusBadgeProps> = ({ step, showUser }) => 
       {config.label}
       {/* Optionally show the user who completed it */}
       {showUser && step.completedBy && (
-        <>
-          <span className="ml-2 flex items-center gap-1">
-            {step.completedBy.avatar ? (
-              <img
-                src={step.completedBy.avatar}
-                alt={step.completedBy.name}
-                className="h-4 w-4 rounded-full"
-              />
-            ) : (
-              <User className="h-4 w-4 text-gray-400" />
-            )}
-            <span>{step.completedBy.name}</span>
-          </span>
-        </>
+        <span className="ml-2 flex items-center gap-1">
+          {step.completedBy.avatar ? (
+            <img
+              src={step.completedBy.avatar}
+              alt={step.completedBy.name}
+              className="h-4 w-4 rounded-full"
+            />
+          ) : (
+            <User className="h-4 w-4 text-gray-400" />
+          )}
+          <span>{step.completedBy.name}</span>
+        </span>
       )}
     </Badge>
   );
