@@ -12,6 +12,7 @@ EDITOR_PLUGINS = {
     "toast": "docuflow.toast_editor:ToastEditor",
     "onlyoffice": "docuflow.onlyoffice_editor:OnlyofficeConnector",
     "xml": "docuflow.xml_editor:XMLEditor",
+    "codex": "docuflow.codex_editor:CodeXEditor",
 }
 
 
