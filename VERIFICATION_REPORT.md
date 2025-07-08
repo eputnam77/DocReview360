@@ -76,7 +76,10 @@
 - **Compliance panel** lints text and toggles numbering rules【F:src/docuflow/compliance_panel.py†L1-L24】【F:tests/test_task150.py†L1-L8】.
 - **Admin-less project wizard** creates projects without CLI use【F:src/docuflow/stubs/task151.py†L1-L36】【F:tests/test_task151.py†L1-L12】.
 - **Template migration helper** applies new versions when diffs are small【F:src/docuflow/stubs/task152.py†L1-L18】【F:tests/test_task152.py†L1-L14】.
-- **CLI profile generator** outputs base64 env files for download【F:src/docuflow/stubs/task153.py†L1-L17】【F:tests/test_task153.py†L1-L14】.
+ - **CLI profile generator** outputs base64 env files for download【F:src/docuflow/stubs/task153.py†L1-L17】【F:tests/test_task153.py†L1-L14】.
+ - **Workflow UI components bundle** exports sidebar and badges【F:frontend/components/workflow/index.ts†L1-L4】【F:tests/test_task160.py†L1-L23】.
+ - **Start Workflow page** renders an upload form using new React route【F:frontend/app/workflows/[id]/start/page.tsx†L1-L28】【F:tests/test_task161.py†L1-L10】.
+ - **Workflow Progress view** shows progress sidebar and step badges【F:frontend/app/instances/[id]/page.tsx†L1-L26】【F:tests/test_task162.py†L1-L8】.
 - **GraphQL explorer HTML** returns an embedded GraphiQL widget【F:src/docuflow/stubs/task154.py†L1-L23】【F:tests/test_task154.py†L1-L6】.
 - **Terraform plan parser** lists resource actions for a plan diff【F:src/docuflow/stubs/task155.py†L1-L23】【F:tests/test_task155.py†L1-L14】.
 - **Metabase analytics client** fetches dashboards and cards via HTTP API【F:src/docuflow/metabase.py†L58-L76】【F:tests/test_metabase_dashboards.py†L1-L25】
@@ -89,15 +92,12 @@
 - **Security hardening** (Keycloak MFA, FedRAMP backup schedule) is not configured beyond JWT demo auth.
 
 ## ❌ Missing Features
-- Workflow UI components (#160) not implemented; placeholder test fails.
-- **Start Workflow page** renders an upload form using new React route【F:frontend/app/workflows/[id]/start/page.tsx†L1-L29】【F:tests/test_task161.py†L1-L10】.
-- Workflow Progress view (#162) only stubbed.
 ## Dev Gate Results
-- `ruff` completed with no issues【8dd9bf†L1-L3】.
-- `black --check` reported all files unchanged【008a0b†L1-L2】.
-- `mypy --strict` passed on all files【ec1b62†L1-L2】.
-- `bandit` found 19 low-severity issues, no highs【5bf5f3†L1-L7】【670783†L1-L19】.
-- `pytest` ran 182 tests with 1 failure at task 160【de2557†L1-L6】【9901bf†L1-L6】.
+- `ruff` completed with no issues【673d4b†L1-L2】.
+- `black --check` reported all files unchanged【54536d†L1-L2】.
+- `mypy --strict` passed on all files【6c64ae†L1-L2】.
+- `bandit` found 19 low-severity issues, no highs【769d0e†L1-L23】.
+- `pytest` ran 303 tests with coverage 90.46 %【44a8ab†L95-L98】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
@@ -109,10 +109,10 @@ Tasks 70‑155 are now all implemented through their corresponding modules. Exam
 
 **Quality summary**
 
-1. ❌ Test suite coverage not verified due to pytest failure.
+1. ✅ Test suite passes with coverage ≥90 %.
 2. ✅ Code follows ADR folder layout and Python best practices.
 3. ✅ Docstrings explain non‑obvious logic.
 4. ✅ Input validation and error handling implemented where appropriate.
 5. ✅ Features cross‑checked against PRD requirements.
 
-ready-for:builder
+ready-for:verifier
