@@ -1,0 +1,81 @@
+/* codex.css – Styles for Editor.js/CodeX FAA AC authoring */
+
+.codex-content {
+  background: #fff;
+  padding: 1.5rem;
+  min-height: 500px;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.7;
+  box-sizing: border-box;
+}
+
+/* Headings */
+.codex-content h1,
+.codex-content h2,
+.codex-content h3,
+.codex-content h4,
+.codex-content h5,
+.codex-content h6 {
+  font-weight: bold;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.2;
+}
+
+.codex-content h1 { font-size: 2.25rem; text-align: center; }
+.codex-content h2 { font-size: 1.5rem; }
+.codex-content h3 { font-size: 1.17rem; }
+.codex-content h4 { font-size: 1rem; }
+.codex-content h5 { font-size: 0.83rem; }
+.codex-content h6 { font-size: 0.67rem; }
+
+.codex-content p {
+  margin-bottom: 1em;
+}
+
+.codex-content ul,
+.codex-content ol {
+  margin: 1em 0 1em 2em;
+  padding: 0 0 0 1.2em;
+}
+.codex-content li { margin-bottom: 0.5em; }
+
+.codex-content blockquote {
+  border-left: 4px solid #a3a3a3;
+  background: #f3f4f6;
+  margin: 1em 0;
+  padding: 0.7em 1em;
+  color: #374151;
+  font-style: italic;
+}
+
+.codex-content hr,
+.codex-content .ce-delimiter {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 2em 0;
+  height: 2px;
+  background: none;
+}
+
+/* Editor.js quote block */
+.codex-content .ce-block .cdx-block.cdx-quote {
+  background: #f3f4f6;
+  border-left: 4px solid #a3a3a3;
+  padding: 1em;
+  margin: 1em 0;
+  color: #374151;
+}
+
+.codex-content strong { font-weight: bold; }
+.codex-content em { font-style: italic; }
+.codex-content u { text-decoration: underline; }
+
+.codex-content img {
+  max-width: 100%;
+  display: block;
+  margin: 1em 0;
+}
