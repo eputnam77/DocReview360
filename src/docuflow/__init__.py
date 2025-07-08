@@ -45,6 +45,7 @@ __all__ = [
     "fann_model",
     "wasm_plugin",
     "pyo3_builder",
+    "workflow_components",
 ]
 
 from . import (
@@ -88,6 +89,7 @@ from . import (
     toast_editor,
     vector_search,
     wasm_plugin,
+    workflow_components,
     workflows,
     xml_editor,
 )
