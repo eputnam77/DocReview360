@@ -174,6 +174,7 @@ All items are **new** and start at backlog **#141 → #158**, preserving the num
 | **156** | **Project tracker table UI**                          | • After login, main page lists projects in a sortable table.<br>• Columns: Document Number, Title, Assigned To, Status, Updated.<br>• **Create New Project** button opens the wizard from #151 and refreshes the table on save. | PM, Editor    | 3 d      | Add sample project → row appears with correct fields. |
 | **157** | **Project details & editor workflow**                 | • Clicking a Document Number opens `/projects/{id}` showing metadata, audit history, and a status visual.<br>• **Edit Document** link launches the TipTap editor (#14); on save, returns to details view. | PM, Editor    | 3 d      | Edit doc title → details page shows updated info without reload. |
 | **158** | **Interactive dashboards page**                       | • Left-nav **Dashboard** link loads charts for project statuses and recent audit messages.<br>• Uses existing `/metrics/summary` and `/api/audit` endpoints.<br>• Charts filter by project or date range. | PM, Leadership | 3 d      | Changing filter updates graphs in-place; Cypress test snapshots. |
+| **159** | **Documenso approval button**                          | • Project pages show reviewer approvals with **Approve** button.<br>• Clicking opens Documenso signing page and returns to project.<br>• Dashboard widgets and reports reflect new status. | PM, Editor | 2 d | Sign demo updates approval state to `approved`. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
