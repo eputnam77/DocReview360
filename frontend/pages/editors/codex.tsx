@@ -1,5 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import FAA_AC_TEMPLATE from "@/data/codexTemplates/faa_ac_template";
+
+// Import the CodeX-specific CSS for spacing, headings, etc.
+import "@/styles/codex.css";
 
 // Only import Editor.js tools on client
 let EditorJS: any = null;
@@ -8,7 +12,6 @@ let List: any = null;
 let Quote: any = null;
 
 if (typeof window !== "undefined") {
-  // The CommonJS build exposes the class under .default
   const EJ = require("@editorjs/editorjs");
   EditorJS = EJ.default ?? EJ;
   Header = require("@editorjs/header").default;
@@ -22,9 +25,7 @@ export default function CodexEditorPage() {
 
   useEffect(() => {
     if (!holder.current || ejInstance.current) return;
-    let isMounted = true;
 
-    // Dynamically import tools to avoid SSR errors (if you want, but above method is OK)
     ejInstance.current = new EditorJS({
       holder: holder.current!,
       autofocus: true,
@@ -34,25 +35,13 @@ export default function CodexEditorPage() {
         list: List,
         quote: Quote,
       },
-      data: {
-        blocks: [
-          {
-            type: "header",
-            data: { text: "Welcome to <b>CodeX Editor (Editor.js)</b>!", level: 2 },
-          },
-          {
-            type: "paragraph",
-            data: { text: "You can use headings, lists, and blockquotes below." },
-          },
-        ],
-      },
+      data: FAA_AC_TEMPLATE, // FAA Advisory Circular template
       onReady: () => {
         // You can do more on editor ready if needed
       },
     });
 
     return () => {
-      isMounted = false;
       if (ejInstance.current && typeof ejInstance.current.destroy === "function") {
         ejInstance.current.destroy();
         ejInstance.current = null;
@@ -79,7 +68,7 @@ export default function CodexEditorPage() {
         <div
           ref={holder}
           id="codex-editor"
-          className="w-full h-full min-h-[500px] px-8 py-6 bg-white"
+          className="codex-content w-full h-full min-h-[500px] px-8 py-6 bg-white"
           style={{ outline: "none" }}
         />
       </main>
