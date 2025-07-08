@@ -9,8 +9,7 @@
     "lib": ["es2022", "dom"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["frontend/*"],
-      "lucide-react": ["frontend/components/icons"]
+      "@/*": ["frontend/*"]
     }
   },
   "include": ["plugins/**/*.ts", "frontend/**/*.ts", "frontend/**/*.tsx"]
