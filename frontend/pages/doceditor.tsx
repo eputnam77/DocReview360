@@ -1,5 +1,8 @@
+// components/DocEditorCard.tsx
+"use client";
+
 import React, { useState } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardHeader,
@@ -28,17 +31,12 @@ import {
   Pencil,
 } from "lucide-react";
 
-/**
- * DocEditorCard – aligns visually with other DocuFlow pages
- * ----------------------------------------------------------
- * Click the “Edit Document” button to open a TipTap editor
- * inside a modal dialog. Includes a lightweight toolbar.
- */
 export default function DocEditorCard() {
   const router = useRouter();
-  const returnTo = (router.query.returnTo as string) || undefined;
   const [open, setOpen] = useState(false);
 
+  // You may want to allow a return URL for navigation, e.g. via searchParams
+  // For demo, we'll just close the dialog after save.
   const editor = useEditor({
     extensions: [StarterKit],
     content: "<p>Start editing your document here…</p>",
@@ -46,13 +44,11 @@ export default function DocEditorCard() {
 
   const handleSave = () => {
     if (editor) {
-      // Replace with real save logic
+      // TODO: Replace with real save logic
       console.log(editor.getHTML());
     }
     setOpen(false);
-    if (returnTo) {
-      router.push(returnTo);
-    }
+    // Optionally: navigate elsewhere, e.g. router.push(returnTo);
   };
 
   /** Toolbar button helper */
@@ -62,7 +58,7 @@ export default function DocEditorCard() {
     isActive,
     disabled,
   }: {
-    icon: any;
+    icon: React.ElementType;
     action: () => void;
     isActive?: boolean;
     disabled?: boolean;
@@ -72,8 +68,12 @@ export default function DocEditorCard() {
       onClick={action}
       disabled={disabled}
       className={`p-1.5 rounded-md hover:bg-gray-200/70 dark:hover:bg-gray-700/40 transition-colors ${
-        isActive ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40" : "text-gray-600 dark:text-gray-300"
+        isActive
+          ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40"
+          : "text-gray-600 dark:text-gray-300"
       } disabled:opacity-40`}
+      aria-pressed={isActive}
+      tabIndex={0}
     >
       <Icon className="w-4 h-4" />
     </button>
@@ -82,7 +82,7 @@ export default function DocEditorCard() {
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <Card className="shadow-lg rounded-2xl">
-        <CardHeader className="flex items-center justify-between bg-gray-50 border-b px-6 py-4">
+        <CardHeader className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border-b px-6 py-4">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <Pencil className="w-6 h-6 text-indigo-600" /> Document Editor
           </CardTitle>
@@ -95,7 +95,7 @@ export default function DocEditorCard() {
             Click “Edit Document” to open a rich‑text editor with bold, italic, lists, and more.
           </p>
         </CardContent>
-        <CardFooter className="flex justify-between items-center bg-gray-50 border-t px-6 py-4 text-xs text-gray-400 dark:text-gray-500">
+        <CardFooter className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 border-t px-6 py-4 text-xs text-gray-400 dark:text-gray-500">
           Changes autosave locally (demo only)
           <Button variant="ghost" size="sm">
             View History
@@ -106,22 +106,50 @@ export default function DocEditorCard() {
       {/* ───────────────────────── Dialog ───────────────────────── */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl w-full p-0 overflow-hidden">
-          <DialogHeader className="bg-gray-100 px-6 py-4 border-b">
+          <DialogHeader className="bg-gray-100 dark:bg-gray-900 px-6 py-4 border-b">
             <DialogTitle>Editing Document</DialogTitle>
           </DialogHeader>
 
           {/* Toolbar */}
           {editor && (
             <div className="flex gap-1 px-6 py-3 border-b bg-white dark:bg-gray-950">
-              <MenuButton icon={Bold} action={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} />
-              <MenuButton icon={Italic} action={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} />
-              <MenuButton icon={Strikethrough} action={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")} />
+              <MenuButton
+                icon={Bold}
+                action={() => editor.chain().focus().toggleBold().run()}
+                isActive={editor.isActive("bold")}
+              />
+              <MenuButton
+                icon={Italic}
+                action={() => editor.chain().focus().toggleItalic().run()}
+                isActive={editor.isActive("italic")}
+              />
+              <MenuButton
+                icon={Strikethrough}
+                action={() => editor.chain().focus().toggleStrike().run()}
+                isActive={editor.isActive("strike")}
+              />
               <span className="mx-2 w-px bg-gray-200 dark:bg-gray-800" />
-              <MenuButton icon={List} action={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive("bulletList")} />
-              <MenuButton icon={ListOrdered} action={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")} />
+              <MenuButton
+                icon={List}
+                action={() => editor.chain().focus().toggleBulletList().run()}
+                isActive={editor.isActive("bulletList")}
+              />
+              <MenuButton
+                icon={ListOrdered}
+                action={() => editor.chain().focus().toggleOrderedList().run()}
+                isActive={editor.isActive("orderedList")}
+              />
               <span className="mx-2 w-px bg-gray-200 dark:bg-gray-800" />
-              <MenuButton icon={Undo2} action={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} />
-              <MenuButton icon={Redo2} action={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} />
+              <MenuButton
+                icon={Undo2}
+                action={() => editor.chain().focus().undo().run()}
+                disabled={!editor.can().undo()}
+              />
+              <MenuButton
+                icon={Redo2}
+                action={() => editor.chain().focus().redo().run()}
+                disabled={!editor.can().redo()}
+              />
             </div>
           )}
 
