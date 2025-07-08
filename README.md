@@ -18,9 +18,9 @@ DocuFlow helps you organise documents, run simple approval workflows and keep tr
    ```bash
    uvicorn docuflow.api:app --reload
    ```
-4. **Start the React frontend**
+4. **Start the React frontend** (requires Node 18+)
    ```bash
-   npm install --prefix frontend  # only once
+   npm install --legacy-peer-deps --prefix frontend  # only once
    npm run dev --prefix frontend
    ```
 5. **Open <http://localhost:3000/>** and sign in with `admin/admin`.
