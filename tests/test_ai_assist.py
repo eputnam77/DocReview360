@@ -37,3 +37,15 @@ async def test_ai_summarize_endpoint(monkeypatch) -> None:
 async def test_call_openai_fallback() -> None:
     result = await ai_assist._call_openai("hello world")
     assert result == "world hello"
+
+
+@pytest.mark.asyncio
+async def test_rewrite_validation() -> None:
+    with pytest.raises(ValueError):
+        await ai_assist.rewrite_text("  ")
+
+
+@pytest.mark.asyncio
+async def test_summarize_validation() -> None:
+    with pytest.raises(ValueError):
+        await ai_assist.summarize_text("")
