@@ -1,30 +1,61 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { Bold, Italic, Strikethrough, Underline as UnderlineIcon, Code, List, ListOrdered, Quote, Undo2, Redo2 } from "lucide-react";
 import FAA_AC_TEMPLATE from "@/data/tiptapTemplates/faa_ac_template";
 
+const AVAILABLE_EXTENSIONS = [
+  { name: "StarterKit", extension: StarterKit },
+  { name: "Underline", extension: Underline },
+];
+
 // Import the TipTap-specific CSS
 import "@/styles/tiptap.css";
 
 export default function TiptapEditorPage() {
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-    ],
-    content: FAA_AC_TEMPLATE,
-    autofocus: true,
-    editorProps: {
-      attributes: {
-        class: "tiptap-content focus:outline-none w-full h-full",
+  const [enabledExtensions, setEnabledExtensions] = useState<string[]>(() => {
+    if (typeof window === "undefined") return AVAILABLE_EXTENSIONS.map(e => e.name);
+    const stored = localStorage.getItem("tiptapExtensions");
+    return stored ? JSON.parse(stored) : AVAILABLE_EXTENSIONS.map(e => e.name);
+  });
+
+  const extensions = useMemo(
+    () =>
+      AVAILABLE_EXTENSIONS.filter(e => enabledExtensions.includes(e.name)).map(
+        e => e.extension,
+      ),
+    [enabledExtensions],
+  );
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tiptapExtensions", JSON.stringify(enabledExtensions));
+    }
+  }, [enabledExtensions]);
+
+  const editor = useEditor(
+    {
+      extensions,
+      content: FAA_AC_TEMPLATE,
+      autofocus: true,
+      editorProps: {
+        attributes: {
+          class: "tiptap-content focus:outline-none w-full h-full",
+        },
       },
     },
-  });
+    [extensions],
+  );
 
   const setHeading = (level: number) => {
     editor?.chain().focus().toggleHeading({ level }).run();
+  };
+
+  const toggleExtension = (name: string) => {
+    setEnabledExtensions(prev =>
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name],
+    );
   };
 
   const handleSave = () => {
@@ -41,6 +72,18 @@ export default function TiptapEditorPage() {
       {/* Toolbar */}
       <header className="flex gap-2 items-center bg-gray-100 px-6 py-3 border-b">
         <h1 className="text-xl font-bold mr-6">TipTap Editor</h1>
+        <div className="flex gap-3 mr-6">
+          {AVAILABLE_EXTENSIONS.map(ext => (
+            <label key={ext.name} className="flex items-center gap-1 text-sm">
+              <input
+                type="checkbox"
+                checked={enabledExtensions.includes(ext.name)}
+                onChange={() => toggleExtension(ext.name)}
+              />
+              {ext.name}
+            </label>
+          ))}
+        </div>
         <div className="relative">
           <select
             value={
