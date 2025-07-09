@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Users2, CheckCircle2, Clock, BarChart2, FileEdit } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Users2, CheckCircle2, Clock, BarChart2, FileEdit, Mail, Trash, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -37,8 +38,21 @@ interface Workflow {
 interface Approval {
   id: string;
   reviewer: string;
+  email: string;
   state: "pending" | "approved" | "overdue" | string;
+  statusDate: string;
+  comments?: string;
   documensoSigId?: string;
+}
+interface DispoComment {
+  id: string;
+  reviewer: string;
+  routing: string;
+  email: string;
+  pagePara: string;
+  comment: string;
+  change: string;
+  disposition: string;
 }
 
 // --- Demo Data ---
@@ -64,14 +78,36 @@ const DEMO_WORKFLOW: Workflow = {
   ],
 };
 const DEMO_APPROVALS: Approval[] = [
-  { id: "appr-1", reviewer: "Jane Doe", state: "pending", documensoSigId: "sig-123" },
-  { id: "appr-2", reviewer: "John Smith", state: "approved" },
-  { id: "appr-3", reviewer: "Jill Admin", state: "overdue" },
+  { id: "appr-1", reviewer: "Jane Doe", email: "jane@example.com", state: "pending", statusDate: "2025-07-04", documensoSigId: "sig-123", comments: "Please check the legal cites." },
+  { id: "appr-2", reviewer: "John Smith", email: "john@example.com", state: "approved", statusDate: "2025-07-05", comments: "Approved, no changes needed." },
+  { id: "appr-3", reviewer: "Jill Admin", email: "jill@example.com", state: "overdue", statusDate: "2025-07-06", comments: "" },
 ];
 const DEMO_LOGS: LogEntry[] = [
   { timestamp: "2025-07-04", action: "Draft created" },
   { timestamp: "2025-07-04", action: "Initial review started" },
   { timestamp: "2025-07-05", action: "Draft updated" },
+];
+const DEMO_DISPO_COMMENTS: DispoComment[] = [
+  {
+    id: "c1",
+    reviewer: "Jane Doe",
+    routing: "Legal",
+    email: "jane@example.com",
+    pagePara: "2/3.1",
+    comment: "Clarify regulatory reference.",
+    change: "Rewrite as: 'per 14 CFR 21.8...'",
+    disposition: "Accepted"
+  },
+  {
+    id: "c2",
+    reviewer: "John Smith",
+    routing: "Tech",
+    email: "john@example.com",
+    pagePara: "5/6.2",
+    comment: "Consider splitting into two paragraphs.",
+    change: "Break up 6.2 for clarity.",
+    disposition: "Deferred"
+  },
 ];
 
 // --- UI Helpers ---
@@ -140,6 +176,20 @@ export default function ProjectDetailsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [selectedApprovals, setSelectedApprovals] = useState<string[]>([]);
+  const [showAddReviewer, setShowAddReviewer] = useState(false);
+  const [newReviewer, setNewReviewer] = useState({ reviewer: "", email: "" });
+  const [dispoComments, setDispoComments] = useState<DispoComment[]>([]);
+  const [showAddComment, setShowAddComment] = useState(false);
+  const [newComment, setNewComment] = useState<Omit<DispoComment, "id">>({
+    reviewer: "",
+    routing: "",
+    email: "",
+    pagePara: "",
+    comment: "",
+    change: "",
+    disposition: "",
+  });
   const [loading, setLoading] = useState(true);
 
   // Demo fetch logic
@@ -150,6 +200,7 @@ export default function ProjectDetailsPage() {
       setProject(DEMO_PROJECT); // Replace with real fetch(`/api/projects/${id}`)
       setWorkflow(DEMO_WORKFLOW);
       setApprovals(DEMO_APPROVALS);
+      setDispoComments(DEMO_DISPO_COMMENTS);
       setLogs(DEMO_LOGS);
       setLoading(false);
     }, 300);
@@ -166,6 +217,58 @@ export default function ProjectDetailsPage() {
   const approved = approvals.filter(a => a.state === "approved").length;
   const pending = approvals.filter(a => a.state === "pending").length;
   const overdue = approvals.filter(a => a.state === "overdue").length;
+
+  // Approval Table helpers
+  const handleSelectApproval = (id: string, checked: boolean) => {
+    setSelectedApprovals((prev) =>
+      checked ? [...prev, id] : prev.filter((aid) => aid !== id)
+    );
+  };
+  const handleSendEmail = (approval: Approval) => {
+    // Integrate your real email send logic here.
+    alert(`Email sent to ${approval.email} for review.`);
+  };
+  const handleRemoveReviewer = (id: string) => {
+    setApprovals(approvals.filter((a) => a.id !== id));
+    setSelectedApprovals((prev) => prev.filter((aid) => aid !== id));
+  };
+  const handleAddReviewer = () => {
+    if (!newReviewer.reviewer || !newReviewer.email) return;
+    setApprovals([
+      ...approvals,
+      {
+        id: "appr-" + (Math.random() * 100000).toFixed(0),
+        reviewer: newReviewer.reviewer,
+        email: newReviewer.email,
+        state: "pending",
+        statusDate: new Date().toISOString().slice(0, 10),
+        comments: "",
+      },
+    ]);
+    setShowAddReviewer(false);
+    setNewReviewer({ reviewer: "", email: "" });
+  };
+
+  // Disposition Comments helpers
+  const handleRemoveComment = (id: string) => {
+    setDispoComments(dispoComments.filter((c) => c.id !== id));
+  };
+  const handleAddComment = () => {
+    setDispoComments([
+      ...dispoComments,
+      { ...newComment, id: "c" + (Math.random() * 100000).toFixed(0) },
+    ]);
+    setShowAddComment(false);
+    setNewComment({
+      reviewer: "",
+      routing: "",
+      email: "",
+      pagePara: "",
+      comment: "",
+      change: "",
+      disposition: "",
+    });
+  };
 
   return (
     <div className="p-8 space-y-8">
@@ -268,65 +371,248 @@ export default function ProjectDetailsPage() {
       </div>
 
       {/* --- Approvals Table --- */}
-      {approvals.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Approvals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Reviewer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {approvals.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell>{a.reviewer}</TableCell>
-                    <TableCell>
-                      <span className={cn(
-                        "px-2 py-1 rounded text-xs font-medium",
-                        a.state === "approved"
-                          ? "bg-green-100 text-green-800"
-                          : a.state === "pending"
-                          ? "bg-blue-100 text-blue-800"
-                          : a.state === "overdue"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-700"
-                      )}>
-                        {a.state}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {a.state !== "approved" && (
-                        <>
-                          <Button size="sm" variant="secondary">
-                            Approve (API)
+      <Card>
+        <CardHeader className="flex flex-row justify-between items-center">
+          <CardTitle className="text-lg font-semibold">Approvals</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => setShowAddReviewer((v) => !v)}>
+            <PlusCircle className="w-4 h-4 mr-2" /> Add Reviewer
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {showAddReviewer && (
+            <form
+              className="flex items-center gap-2 mb-4"
+              onSubmit={e => {
+                e.preventDefault();
+                handleAddReviewer();
+              }}
+            >
+              <Input
+                placeholder="Reviewer Name"
+                value={newReviewer.reviewer}
+                onChange={e => setNewReviewer(r => ({ ...r, reviewer: e.target.value }))}
+                className="max-w-xs"
+                required
+              />
+              <Input
+                type="email"
+                placeholder="Email Address"
+                value={newReviewer.email}
+                onChange={e => setNewReviewer(r => ({ ...r, email: e.target.value }))}
+                className="max-w-xs"
+                required
+              />
+              <Button type="submit" size="sm">Add</Button>
+            </form>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <input
+                    type="checkbox"
+                    checked={selectedApprovals.length === approvals.length && approvals.length > 0}
+                    onChange={e =>
+                      setSelectedApprovals(
+                        e.target.checked ? approvals.map(a => a.id) : []
+                      )
+                    }
+                  />
+                </TableHead>
+                <TableHead>Reviewer</TableHead>
+                <TableHead>Send to Reviewer</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Status Date</TableHead>
+                <TableHead>Actions</TableHead>
+                <TableHead>Comments</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {approvals.map((a) => (
+                <TableRow key={a.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedApprovals.includes(a.id)}
+                      onChange={e => handleSelectApproval(a.id, e.target.checked)}
+                    />
+                  </TableCell>
+                  <TableCell>{a.reviewer}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Send email"
+                      onClick={() => handleSendEmail(a)}
+                    >
+                      <Mail className="w-5 h-5" />
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    <span className={cn(
+                      "px-2 py-1 rounded text-xs font-medium",
+                      a.state === "approved"
+                        ? "bg-green-100 text-green-800"
+                        : a.state === "pending"
+                        ? "bg-blue-100 text-blue-800"
+                        : a.state === "overdue"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-700"
+                    )}>
+                      {a.state}
+                    </span>
+                  </TableCell>
+                  <TableCell>{a.statusDate}</TableCell>
+                  <TableCell className="space-x-1">
+                    {a.state !== "approved" && (
+                      <>
+                        <Button size="sm" variant="secondary">Approve (API)</Button>
+                        {a.documensoSigId && (
+                          <Button asChild size="sm" variant="outline">
+                            <Link
+                              href={`/documentso/${a.documensoSigId}?returnTo=/projects/${id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Sign in Documenso
+                            </Link>
                           </Button>
-                          {a.documensoSigId && (
-                            <Button asChild size="sm" className="ml-2" variant="outline">
-                              <Link
-                                href={`/documenso/${a.documensoSigId}?return=/projects/${id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Sign in Documenso
-                              </Link>
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+                        )}
+                      </>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Remove Reviewer"
+                      onClick={() => handleRemoveReviewer(a.id)}
+                    >
+                      <Trash className="w-5 h-5" />
+                    </Button>
+                  </TableCell>
+                  <TableCell className="max-w-xs">{a.comments || <span className="text-gray-400">–</span>}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* --- Document Comments & Disposition Table --- */}
+      <Card>
+        <CardHeader className="flex flex-row justify-between items-center">
+          <CardTitle className="text-lg font-semibold">Document Comments and Disposition</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => setShowAddComment((v) => !v)}>
+            <PlusCircle className="w-4 h-4 mr-2" /> Add Comment
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {showAddComment && (
+            <form
+              className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4"
+              onSubmit={e => {
+                e.preventDefault();
+                handleAddComment();
+              }}
+            >
+              <Input
+                placeholder="Reviewer Name"
+                value={newComment.reviewer}
+                onChange={e => setNewComment(r => ({ ...r, reviewer: e.target.value }))}
+                className="col-span-1"
+                required
+              />
+              <Input
+                placeholder="Routing"
+                value={newComment.routing}
+                onChange={e => setNewComment(r => ({ ...r, routing: e.target.value }))}
+                className="col-span-1"
+                required
+              />
+              <Input
+                type="email"
+                placeholder="Email"
+                value={newComment.email}
+                onChange={e => setNewComment(r => ({ ...r, email: e.target.value }))}
+                className="col-span-1"
+                required
+              />
+              <Input
+                placeholder="Page/Para #"
+                value={newComment.pagePara}
+                onChange={e => setNewComment(r => ({ ...r, pagePara: e.target.value }))}
+                className="col-span-1"
+                required
+              />
+              <Input
+                placeholder="Comment/Rationale"
+                value={newComment.comment}
+                onChange={e => setNewComment(r => ({ ...r, comment: e.target.value }))}
+                className="col-span-1 md:col-span-2"
+                required
+              />
+              <Input
+                placeholder="Recommended Change"
+                value={newComment.change}
+                onChange={e => setNewComment(r => ({ ...r, change: e.target.value }))}
+                className="col-span-1 md:col-span-2"
+                required
+              />
+              <Input
+                placeholder="Disposition"
+                value={newComment.disposition}
+                onChange={e => setNewComment(r => ({ ...r, disposition: e.target.value }))}
+                className="col-span-1"
+                required
+              />
+              <Button type="submit" className="col-span-1 md:col-span-4 mt-1">Add</Button>
+            </form>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reviewer Name</TableHead>
+                <TableHead>Routing</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Page/Para #</TableHead>
+                <TableHead>Comment/Rationale</TableHead>
+                <TableHead>Recommended Change</TableHead>
+                <TableHead>Disposition</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {dispoComments.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell>{c.reviewer}</TableCell>
+                  <TableCell>{c.routing}</TableCell>
+                  <TableCell>{c.email}</TableCell>
+                  <TableCell>{c.pagePara}</TableCell>
+                  <TableCell className="max-w-xs">{c.comment}</TableCell>
+                  <TableCell className="max-w-xs">{c.change}</TableCell>
+                  <TableCell>{c.disposition}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Remove Comment"
+                      onClick={() => handleRemoveComment(c.id)}
+                    >
+                      <Trash className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {dispoComments.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-gray-400 py-6">
+                    No comments added.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* --- Audit History --- */}
       <Card>
