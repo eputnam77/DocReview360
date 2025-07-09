@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { getDemoProject } from "@/data";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +48,11 @@ export default function ProjectDetails() {
     setLoading(true);
     fetch(`/api/projects/${id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setProject(data))
-      .catch(() => setProject(null))
+      .then((data) => {
+        if (data) setProject(data);
+        else setProject(getDemoProject(String(id)) ?? null);
+      })
+      .catch(() => setProject(getDemoProject(String(id)) ?? null))
       .finally(() => setLoading(false));
     fetch(`/api/projects/${id}/workflow`)
       .then((r) => r.json())
