@@ -28,20 +28,24 @@
 
 ## 1 · Agents & Execution Order
 
-|  #  | Agent ID     | Purpose (summary)                                                                     | Auto‑trigger condition        |
-| --- | ------------ | ------------------------------------------------------------------------------------- | ----------------------------- |
-|  0  | `planner`    | Parse `PRD.md`, create `TASKS.md` (epics → issues with acceptance criteria & labels). | manual                        |
-|  1  | `architect`  | Design folder layout, write ADRs, initialise `pyproject.toml`, CI workflow.           | `planner` PR merged           |
-|  2  | `scaffolder` | Generate skeleton code/tests for each open issue.                                     | `architect` PR merged         |
-|  3  | `builder`    | Implement code for issues marked **ready**; keep tests ≥70 % cov.                     | new ready issue               |
-|  4  | `verifier`   | Cross-reference PRD.md → TASKS.md → implemented code. Generate completeness report.   | after reviewer                |
-|  5  | `linter`     | Run `ruff --fix` & `black`; open PR if diff.                                          | after builder push            |
-|  6  | `tester`     | Execute dev‑gate (`pytest`, type‑check, coverage ≥70 %).                              | after linter green            |
-|  7  | `fixer`      | Patch only failing files, re‑run gate until green.                                    | on test failure               |
-|  8  | `security`   | Run Bandit & pip‑audit; open CVE issues.                                              | nightly · before merge → main |
-|  9  | `docwriter`  | Update `README.md`, API refs, examples, changelog.                                    | branch green & cov ≥90 %      |
-|  10  | `reviewer`   | Human‑style review; request approvals.                                                | after docwriter               |
-|  11  | `releasebot` | Bump semver, tag, build & push Docker image, draft release notes.                     | PR merged → main              |
+| #  | Agent ID       | Purpose (summary)                                                                          | Auto‑trigger condition                    |
+| -- | -------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| 0  | `planner`      | Parse **PRD.md** → create **TASKS.md** (epics → issues with acceptance criteria & labels). | manual                                    |
+| 1  | `architect`    | Design folder layout, write ADRs, initialise `pyproject.toml`, and CI skeleton.            | `planner` PR merged                       |
+| 2  | `scaffolder`   | Generate skeleton code *and tests* for each open issue.                                    | `architect` PR merged                     |
+| 3  | `scenario‑gen` | Convert acceptance criteria to Gherkin *.feature* files & Hypothesis strategies.           | new **ready** issue                       |
+| 4  | `verifier`     | Cross‑reference **PRD.md** → **TASKS.md** → implemented code; emit completeness report.    | after `scenario-gen`                      |
+| 5  | `optimizer`    | Performance profiling & optimization audit.                                                | after `verifier`                          |
+| 6  | `builder`      | Implement code for issues marked **ready**; keep unit/integration tests ≥75 % coverage.    | after `optimizer`                         |
+| 7  | `linter`       | Run `ruff --fix` & `black`; open PR if diff.                                               | after `verifier` green                    |
+| 8  | `tester`       | Execute **dev gate** (unit + property tests, type‑check, coverage ≥75 %).                  | after `linter` green                      |
+| 9  | `e2e‑tester`   | Run Playwright E2E suite (headless) against disposable container.                          | after `tester` green                      |
+| 10 | `mutation`     | Run `mutmut`; fails if mutation score < threshold.                                         | after `e2e‑tester` green                  |
+| 11 | `fixer`        | Patch any failing files, re‑run gates until all green.                                     | on test / lint / mutation failure         |
+| 12 | `security`     | Run Bandit & pip‑audit; open CVE issues.                                                   | nightly · before merge→`main`             |
+| 13 | `docwriter`    | Update `README.md`, API refs, examples, changelog.                                         | branch green & cov ≥90 % & mutation ≥80 % |
+| 14 | `reviewer`     | Human‑style review; request approvals.                                                     | after `docwriter`                         |
+| 15 | `releasebot`   | Bump semver, tag, build & push Docker image, draft release notes.                          | PR merged→`main` |
 
 ### Agent Handoff Conventions
 
