@@ -26,3 +26,13 @@ This short report captures the current performance pain points in DocuFlow. We r
 - **Throttle WebSocket pushes**: only emit dashboard updates when metrics change or batch them at a slower interval.
 
 These steps should trim the slowest interactions and lay the groundwork for future scaling.
+
+## Implemented Improvements
+
+Recent updates addressed several of the issues raised above:
+
+- Project and document listings are now cached using Redis (with an in-memory fallback) to avoid repeated scans.
+- The search module leverages an SQLite FTS5 index for fast full-text queries.
+- File uploads stream to temporary files instead of loading the entire payload into memory.
+- Next.js builds enable CSS optimization for smaller bundles.
+- Dashboard websockets only push updates when the data actually changes.
