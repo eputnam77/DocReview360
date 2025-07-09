@@ -7,6 +7,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@editorjs/delimiter": "^1.4.2",
     "@editorjs/editorjs": "^2.29.1",
     "@editorjs/header": "^2.8.8",
     "@editorjs/list": "^2.0.8",
