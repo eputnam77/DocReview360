@@ -11,15 +11,19 @@ export default function AboutPage() {
         <CardContent className="space-y-6">
           <section>
             <p className="text-lg">
-              <strong>DocuFlow</strong> is a modern, collaborative document workflow and approval platform.  
-              Our mission is to streamline regulatory, policy, and technical documentation for teams of any size.
+              <strong>DocuFlow</strong> is a modern, collaborative document
+              workflow and approval platform. Our mission is to streamline
+              regulatory, policy, and technical documentation for teams of any
+              size.
             </p>
           </section>
           <section>
             <h2 className="text-xl font-semibold mt-4 mb-1">Key Features</h2>
             <ul className="list-disc pl-6 space-y-1 text-base">
               <li>Flexible workflow and project management</li>
-              <li>Embedded editors: TipTap, Toast UI, CodeX, and Microsoft Word</li>
+              <li>
+                Embedded editors: TipTap, Toast UI, CodeX, and Microsoft Word
+              </li>
               <li>Customizable approval routing and review cycles</li>
               <li>Full audit history and activity tracking</li>
               <li>Modern UI with accessibility and responsive design</li>
@@ -57,4 +61,3 @@ export default function AboutPage() {
     </div>
   );
 }
-

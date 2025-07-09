@@ -7,7 +7,13 @@ export interface AvatarProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallback?: React.ReactNode;
 }
 
-export function Avatar({ src, alt, size = 36, fallback, ...props }: AvatarProps) {
+export function Avatar({
+  src,
+  alt,
+  size = 36,
+  fallback,
+  ...props
+}: AvatarProps) {
   const [errored, setErrored] = React.useState(false);
 
   return (

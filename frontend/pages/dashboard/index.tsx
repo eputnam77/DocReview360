@@ -1,16 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -48,7 +38,11 @@ type Stats = {
 };
 type StatusData = { name: string; value: number };
 type Activity = { date: string; actions: number };
-type Log = { timestamp: string; action: string; metadata?: { project?: string } };
+type Log = {
+  timestamp: string;
+  action: string;
+  metadata?: { project?: string };
+};
 
 export default function MainDashboardPage() {
   const [stats, setStats] = useState<Stats>({
@@ -88,17 +82,37 @@ export default function MainDashboardPage() {
     ]);
     // Project/Audit logs
     setLogs([
-      { timestamp: "2025-07-05T09:05", action: "Review approved", metadata: { project: "AC-101" } },
-      { timestamp: "2025-07-04T18:22", action: "Draft uploaded", metadata: { project: "AC-102" } },
-      { timestamp: "2025-07-03T15:10", action: "Project started", metadata: { project: "AC-103" } },
-      { timestamp: "2025-07-02T11:32", action: "Review comment added", metadata: { project: "AC-104" } },
-      { timestamp: "2025-07-01T08:00", action: "Project created", metadata: { project: "AC-105" } },
+      {
+        timestamp: "2025-07-05T09:05",
+        action: "Review approved",
+        metadata: { project: "AC-101" },
+      },
+      {
+        timestamp: "2025-07-04T18:22",
+        action: "Draft uploaded",
+        metadata: { project: "AC-102" },
+      },
+      {
+        timestamp: "2025-07-03T15:10",
+        action: "Project started",
+        metadata: { project: "AC-103" },
+      },
+      {
+        timestamp: "2025-07-02T11:32",
+        action: "Review comment added",
+        metadata: { project: "AC-104" },
+      },
+      {
+        timestamp: "2025-07-01T08:00",
+        action: "Project created",
+        metadata: { project: "AC-105" },
+      },
     ]);
   }, []);
 
   // Unique projects for filter dropdown
   const projectOptions = Array.from(
-    new Set(logs.map((l) => l.metadata?.project).filter(Boolean))
+    new Set(logs.map((l) => l.metadata?.project).filter(Boolean)),
   ) as string[];
 
   // KPI card helper
@@ -118,7 +132,9 @@ export default function MainDashboardPage() {
         <Icon className={`w-10 h-10 ${color || "text-indigo-600"}`} />
         <div>
           <p className="text-3xl font-bold leading-none">{value}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {label}
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -133,10 +149,30 @@ export default function MainDashboardPage() {
 
       {/* KPI Row */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users2} label="Assigned to Me" value={stats.assigned} color="text-indigo-600" />
-        <StatCard icon={Clock} label="In Progress" value={stats.inProgress} color="text-orange-600" />
-        <StatCard icon={CheckCircle2} label="Completed" value={stats.completed} color="text-emerald-600" />
-        <StatCard icon={BarChart2} label="Overdue" value={stats.overdue} color="text-red-600" />
+        <StatCard
+          icon={Users2}
+          label="Assigned to Me"
+          value={stats.assigned}
+          color="text-indigo-600"
+        />
+        <StatCard
+          icon={Clock}
+          label="In Progress"
+          value={stats.inProgress}
+          color="text-orange-600"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label="Completed"
+          value={stats.completed}
+          color="text-emerald-600"
+        />
+        <StatCard
+          icon={BarChart2}
+          label="Overdue"
+          value={stats.overdue}
+          color="text-red-600"
+        />
       </div>
 
       {/* Visuals */}
@@ -159,7 +195,10 @@ export default function MainDashboardPage() {
                   label={({ name, value }) => `${name}: ${value}`}
                 >
                   {statusData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                    <Cell
+                      key={`cell-${idx}`}
+                      fill={COLORS[idx % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -178,7 +217,12 @@ export default function MainDashboardPage() {
                 <XAxis dataKey="date" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Line type="monotone" dataKey="actions" stroke="#6366f1" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="actions"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -201,13 +245,16 @@ export default function MainDashboardPage() {
               >
                 <option value="">All projects</option>
                 {projectOptions.map((id) => (
-                  <option key={id} value={id}>{id}</option>
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
                 ))}
               </select>
               <ul className="text-sm space-y-1">
                 {logs
                   .filter(
-                    (l) => !projectFilter || l.metadata?.project === projectFilter
+                    (l) =>
+                      !projectFilter || l.metadata?.project === projectFilter,
                   )
                   .map((l, i) => (
                     <li key={i}>
@@ -235,4 +282,3 @@ export default function MainDashboardPage() {
     </div>
   );
 }
-

@@ -33,16 +33,20 @@ const statusConfig = {
   },
 };
 
-const StepStatusBadge: React.FC<StepStatusBadgeProps> = ({ step, showUser }) => {
+const StepStatusBadge: React.FC<StepStatusBadgeProps> = ({
+  step,
+  showUser,
+}) => {
   const config =
-    statusConfig[step.status as keyof typeof statusConfig] || statusConfig.Pending;
+    statusConfig[step.status as keyof typeof statusConfig] ||
+    statusConfig.Pending;
 
   return (
     <Badge
       variant="secondary"
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium",
-        config.color
+        config.color,
       )}
     >
       {config.icon}

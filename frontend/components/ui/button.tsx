@@ -4,7 +4,13 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "default" | "primary" | "secondary" | "outline" | "danger" | "ghost";
+  variant?:
+    | "default"
+    | "primary"
+    | "secondary"
+    | "outline"
+    | "danger"
+    | "ghost";
   size?: "sm" | "md" | "lg";
 };
 
@@ -18,7 +24,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <button
@@ -43,14 +49,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           size === "sm" && "px-3 py-1 text-xs h-8",
           size === "md" && "px-4 py-2 text-sm h-10",
           size === "lg" && "px-5 py-3 text-base h-12",
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

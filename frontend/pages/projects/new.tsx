@@ -3,7 +3,13 @@ import { useRouter } from "next/router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 
 const DOCUMENT_TYPES = [
@@ -69,13 +75,17 @@ export default function NewProjectPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-xl mx-auto bg-white shadow-lg rounded-xl p-8">
         <h1 className="text-2xl font-bold mb-6">Create New Project</h1>
-        <form className="space-y-5" onSubmit={handleSubmit} encType="multipart/form-data">
+        <form
+          className="space-y-5"
+          onSubmit={handleSubmit}
+          encType="multipart/form-data"
+        >
           <div>
             <Label htmlFor="docId">Document ID *</Label>
             <Input
               id="docId"
               value={docId}
-              onChange={e => setDocId(e.target.value)}
+              onChange={(e) => setDocId(e.target.value)}
               placeholder="E.g., AC 120-76E"
               required
             />
@@ -85,7 +95,7 @@ export default function NewProjectPage() {
             <Input
               id="title"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Title of the document"
               required
             />
@@ -95,7 +105,7 @@ export default function NewProjectPage() {
             <Input
               id="sme"
               value={sme}
-              onChange={e => setSme(e.target.value)}
+              onChange={(e) => setSme(e.target.value)}
               placeholder="Optional"
             />
           </div>
@@ -106,8 +116,10 @@ export default function NewProjectPage() {
                 <SelectValue placeholder="Select a document type" />
               </SelectTrigger>
               <SelectContent>
-                {DOCUMENT_TYPES.map(type => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                {DOCUMENT_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -117,7 +129,7 @@ export default function NewProjectPage() {
             <Input
               id="description"
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Project description (optional)"
             />
           </div>
@@ -131,11 +143,7 @@ export default function NewProjectPage() {
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full"
-          >
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Creating..." : "Create Project"}
           </Button>
         </form>
@@ -143,4 +151,3 @@ export default function NewProjectPage() {
     </div>
   );
 }
-

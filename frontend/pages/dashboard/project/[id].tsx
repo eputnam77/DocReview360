@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
   BarChart2,
@@ -86,8 +81,10 @@ export default function ProjectDashboardPage() {
 
   // Timeline icon helper
   const statusIcon = (status: string) => {
-    if (status === "Completed") return <CheckCircle2 className="text-emerald-600 w-5 h-5" />;
-    if (status === "In Progress") return <Clock className="text-orange-500 w-5 h-5 animate-pulse" />;
+    if (status === "Completed")
+      return <CheckCircle2 className="text-emerald-600 w-5 h-5" />;
+    if (status === "In Progress")
+      return <Clock className="text-orange-500 w-5 h-5 animate-pulse" />;
     return <ChevronRight className="text-gray-400 w-5 h-5" />;
   };
 
@@ -135,7 +132,10 @@ export default function ProjectDashboardPage() {
                 {project.completedSteps}/{project.totalSteps}
               </p>
               <p className="text-xs text-gray-500 mt-1">Steps Complete</p>
-              <Progress value={100 * project.completedSteps / project.totalSteps} className="h-2 mt-1" />
+              <Progress
+                value={(100 * project.completedSteps) / project.totalSteps}
+                className="h-2 mt-1"
+              />
             </div>
           </CardContent>
         </Card>
@@ -160,7 +160,10 @@ export default function ProjectDashboardPage() {
                   label={({ name, value }) => `${name}: ${value}`}
                 >
                   {stepsPieData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                    <Cell
+                      key={`cell-${idx}`}
+                      fill={COLORS[idx % COLORS.length]}
+                    />
                   ))}
                 </Pie>
               </PieChart>
@@ -178,15 +181,17 @@ export default function ProjectDashboardPage() {
                 <li key={step.name} className="flex items-center gap-3">
                   {statusIcon(step.status)}
                   <span className="font-medium">{step.name}</span>
-                  <span className={`ml-2 px-2 py-0.5 text-xs rounded
+                  <span
+                    className={`ml-2 px-2 py-0.5 text-xs rounded
                     ${
                       step.status === "Completed"
                         ? "bg-emerald-100 text-emerald-700"
                         : step.status === "In Progress"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-gray-100 text-gray-500"
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-gray-100 text-gray-500"
                     }
-                  `}>
+                  `}
+                  >
                     {step.status}
                   </span>
                   {step.completed && (
@@ -225,4 +230,3 @@ export default function ProjectDashboardPage() {
     </div>
   );
 }
-
