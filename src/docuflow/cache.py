@@ -19,7 +19,11 @@ def _get_client():
     if _client is None and redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         try:
-            _client = redis.Redis.from_url(url)
+            _client = redis.Redis.from_url(
+                url,
+                socket_connect_timeout=0.1,
+                socket_timeout=0.1,
+            )
             _client.ping()
         except Exception:  # pragma: no cover - redis unreachable
             _client = None
