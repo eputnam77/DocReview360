@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface LogEntry {
   timestamp: string;
@@ -38,6 +39,7 @@ export default function ProjectDetails() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [wordFile, setWordFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -73,10 +75,29 @@ export default function ProjectDetails() {
       });
   };
 
+  const handleWordUpload = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!wordFile) return;
+    const formData = new FormData();
+    formData.append("file", wordFile);
+    formData.append("project", String(id));
+    const res = await fetch("/documents/import", {
+      method: "POST",
+      body: formData,
+    });
+    if (res.ok) {
+      setWordFile(null);
+      // simple feedback
+      alert("Upload complete");
+    } else {
+      alert("Upload failed");
+    }
+  };
+
   if (!project) return <p className="p-4">Loading…</p>;
 
-  // Default to TipTap editor for now
-  const editDocUrl = `/editors/tiptap?projectId=${id}&returnTo=/projects/${id}`;
+  const editor = project.editor ?? "tiptap";
+  const editDocUrl = `/editors/${editor}?projectId=${id}&returnTo=/projects/${id}`;
 
   return (
     <div className="p-8 space-y-6">
@@ -147,6 +168,30 @@ export default function ProjectDetails() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {project.editor === "word" && (
+        <div className="space-y-2">
+          <Button asChild>
+            <a href={`/documents/${project.id}/export?fmt=docx`}>
+              Download DOCX
+            </a>
+          </Button>
+          <form
+            onSubmit={handleWordUpload}
+            className="flex items-center gap-2"
+            encType="multipart/form-data"
+          >
+            <Input
+              type="file"
+              accept=".docx"
+              onChange={(e) => setWordFile(e.target.files?.[0] ?? null)}
+            />
+            <Button type="submit" disabled={!wordFile}>
+              Upload DOCX
+            </Button>
+          </form>
         </div>
       )}
 
