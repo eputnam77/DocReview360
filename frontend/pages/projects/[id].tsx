@@ -43,15 +43,15 @@ export default function ProjectDetails() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/projects/${id}`)
+    fetch(`/api/projects/${id}`)
       .then((r) => r.json())
       .then(setProject)
       .catch(() => setProject(null));
-    fetch(`/projects/${id}/workflow`)
+    fetch(`/api/projects/${id}/workflow`)
       .then((r) => r.json())
       .then((wf: Workflow) => {
         setWorkflow(wf);
-        return fetch(`/approvals?workflow=${wf.id}`);
+          return fetch(`/api/approvals?workflow=${wf.id}`);
       })
       .then((r) => (r ? r.json() : []))
       .then((data: Approval[]) => setApprovals(data))
@@ -68,7 +68,7 @@ export default function ProjectDetails() {
   }, [id]);
 
   const startSign = (aid: string) => {
-    fetch(`/approvals/${aid}/sign`, { method: "POST" })
+    fetch(`/api/approvals/${aid}/sign`, { method: "POST" })
       .then((r) => r.json())
       .then((data) => {
         window.location.href = data.url;
@@ -81,7 +81,7 @@ export default function ProjectDetails() {
     const formData = new FormData();
     formData.append("file", wordFile);
     formData.append("project", String(id));
-    const res = await fetch("/documents/import", {
+    const res = await fetch("/api/documents/import", {
       method: "POST",
       body: formData,
     });
