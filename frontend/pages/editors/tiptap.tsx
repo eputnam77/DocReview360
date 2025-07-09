@@ -2,12 +2,50 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import Blockquote from "@tiptap/extension-blockquote";
+import BoldExtension from "@tiptap/extension-bold";
+import BulletList from "@tiptap/extension-bullet-list";
+import CodeExtension from "@tiptap/extension-code";
+import CodeBlock from "@tiptap/extension-code-block";
+import DocumentExtension from "@tiptap/extension-document";
+import Dropcursor from "@tiptap/extension-dropcursor";
+import Gapcursor from "@tiptap/extension-gapcursor";
+import HardBreak from "@tiptap/extension-hard-break";
+import Heading from "@tiptap/extension-heading";
+import History from "@tiptap/extension-history";
+import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import ItalicExtension from "@tiptap/extension-italic";
+import ListItem from "@tiptap/extension-list-item";
+import OrderedList from "@tiptap/extension-ordered-list";
+import Paragraph from "@tiptap/extension-paragraph";
+import StrikeExtension from "@tiptap/extension-strike";
+import TextExtension from "@tiptap/extension-text";
+import TextStyle from "@tiptap/extension-text-style";
 import { Bold, Italic, Strikethrough, Underline as UnderlineIcon, Code, List, ListOrdered, Quote, Undo2, Redo2 } from "lucide-react";
 import FAA_AC_TEMPLATE from "@/data/tiptapTemplates/faa_ac_template";
 
 const AVAILABLE_EXTENSIONS = [
   { name: "StarterKit", extension: StarterKit },
   { name: "Underline", extension: Underline },
+  { name: "Document", extension: DocumentExtension },
+  { name: "Paragraph", extension: Paragraph },
+  { name: "Text", extension: TextExtension },
+  { name: "History", extension: History },
+  { name: "Bold", extension: BoldExtension },
+  { name: "Italic", extension: ItalicExtension },
+  { name: "Strike", extension: StrikeExtension },
+  { name: "Heading", extension: Heading },
+  { name: "Code", extension: CodeExtension },
+  { name: "CodeBlock", extension: CodeBlock },
+  { name: "Blockquote", extension: Blockquote },
+  { name: "BulletList", extension: BulletList },
+  { name: "OrderedList", extension: OrderedList },
+  { name: "ListItem", extension: ListItem },
+  { name: "HardBreak", extension: HardBreak },
+  { name: "HorizontalRule", extension: HorizontalRule },
+  { name: "Dropcursor", extension: Dropcursor },
+  { name: "Gapcursor", extension: Gapcursor },
+  { name: "TextStyle", extension: TextStyle },
 ];
 
 // Import the TipTap-specific CSS
