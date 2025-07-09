@@ -1,16 +1,42 @@
 // frontend/components/index.tsx
 
 // UI primitives (shadcn/ui)
-export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./ui/card";
+export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "./ui/card";
 export { Button } from "./ui/button";
 export { Input } from "./ui/input";
 export { Label } from "./ui/label";
-export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
+export {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "./ui/select";
 export { Badge } from "./ui/badge";
 export { Progress } from "./ui/progress";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "./ui/table";
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "./ui/table";
+export {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "./ui/dialog";
 
 // Icons (barrel export from your icons folder)
 export * from "./icons";

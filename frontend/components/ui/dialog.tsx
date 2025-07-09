@@ -4,13 +4,16 @@ import * as React from "react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 
-export interface DialogProps extends React.ComponentProps<typeof RadixDialog.Root> {}
+export interface DialogProps
+  extends React.ComponentProps<typeof RadixDialog.Root> {}
 
 export function Dialog(props: DialogProps) {
   return <RadixDialog.Root {...props} />;
 }
 
-export function DialogTrigger(props: React.ComponentProps<typeof RadixDialog.Trigger>) {
+export function DialogTrigger(
+  props: React.ComponentProps<typeof RadixDialog.Trigger>,
+) {
   return <RadixDialog.Trigger {...props} />;
 }
 
@@ -24,7 +27,7 @@ export function DialogContent({
       <RadixDialog.Content
         className={cn(
           "fixed z-50 left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl focus:outline-none",
-          className
+          className,
         )}
         {...props}
       />
@@ -36,9 +39,7 @@ export function DialogHeader({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn("mb-4", className)} {...props} />
-  );
+  return <div className={cn("mb-4", className)} {...props} />;
 }
 
 export function DialogTitle({
@@ -74,6 +75,8 @@ export function DialogFooter({
   );
 }
 
-export function DialogClose(props: React.ComponentProps<typeof RadixDialog.Close>) {
+export function DialogClose(
+  props: React.ComponentProps<typeof RadixDialog.Close>,
+) {
   return <RadixDialog.Close {...props} />;
 }

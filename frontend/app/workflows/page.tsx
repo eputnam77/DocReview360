@@ -14,7 +14,9 @@ function Breadcrumb() {
     <nav className="mb-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
       <span>Workflows</span>
       <span className="mx-1">/</span>
-      <span className="text-indigo-700 dark:text-indigo-300 font-semibold">Templates</span>
+      <span className="text-indigo-700 dark:text-indigo-300 font-semibold">
+        Templates
+      </span>
     </nav>
   );
 }
@@ -22,9 +24,10 @@ function Breadcrumb() {
 export default function WorkflowGalleryPage() {
   const [active, setActive] = useState<Category>("All");
 
-  const filtered = active === "All"
-    ? TEMPLATES
-    : TEMPLATES.filter((t) => t.category === active);
+  const filtered =
+    active === "All"
+      ? TEMPLATES
+      : TEMPLATES.filter((t) => t.category === active);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
@@ -56,4 +59,3 @@ export default function WorkflowGalleryPage() {
     </div>
   );
 }
-

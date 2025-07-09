@@ -27,7 +27,10 @@ const ProgressSidebar: React.FC<ProgressSidebarProps> = ({
       <h2 className="mb-6 text-lg font-semibold">Progress</h2>
       <ul className="relative space-y-6">
         {/* vertical line for timeline */}
-        <span className="absolute left-5 top-10 h-[calc(100%-40px)] w-px bg-border" aria-hidden="true" />
+        <span
+          className="absolute left-5 top-10 h-[calc(100%-40px)] w-px bg-border"
+          aria-hidden="true"
+        />
         {workflow.steps.map((step, i) => {
           const isCompleted = i < workflow.current;
           const isCurrent = i === workflow.current;
@@ -39,15 +42,18 @@ const ProgressSidebar: React.FC<ProgressSidebarProps> = ({
                 isCurrent
                   ? "bg-purple-50 font-bold"
                   : isCompleted
-                  ? "text-gray-700"
-                  : "text-muted-foreground"
+                    ? "text-gray-700"
+                    : "text-muted-foreground",
               )}
               onClick={() => onStepClick?.(i)}
               style={{ cursor: onStepClick ? "pointer" : undefined }}
               aria-current={isCurrent ? "step" : undefined}
             >
               {/* Timeline dot/icon */}
-              <span className="relative top-2 flex h-5 w-5 items-center justify-center" aria-hidden="true">
+              <span
+                className="relative top-2 flex h-5 w-5 items-center justify-center"
+                aria-hidden="true"
+              >
                 {isCompleted ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 ) : isCurrent ? (
@@ -70,8 +76,8 @@ const ProgressSidebar: React.FC<ProgressSidebarProps> = ({
                   {isCompleted
                     ? "Completed"
                     : isCurrent
-                    ? "In Progress"
-                    : "Pending"}
+                      ? "In Progress"
+                      : "Pending"}
                 </div>
               </div>
             </li>

@@ -3,7 +3,13 @@ import { useRouter } from "next/router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 
 const DOCUMENT_TYPES = [
@@ -86,13 +92,17 @@ export default function EditProjectPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-xl mx-auto bg-white shadow-lg rounded-xl p-8">
         <h1 className="text-2xl font-bold mb-6">Edit Project</h1>
-        <form className="space-y-5" onSubmit={handleSubmit} encType="multipart/form-data">
+        <form
+          className="space-y-5"
+          onSubmit={handleSubmit}
+          encType="multipart/form-data"
+        >
           <div>
             <Label htmlFor="docId">Document ID *</Label>
             <Input
               id="docId"
               value={docId}
-              onChange={e => setDocId(e.target.value)}
+              onChange={(e) => setDocId(e.target.value)}
               required
             />
           </div>
@@ -101,7 +111,7 @@ export default function EditProjectPage() {
             <Input
               id="title"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               required
             />
           </div>
@@ -110,7 +120,7 @@ export default function EditProjectPage() {
             <Input
               id="sme"
               value={sme}
-              onChange={e => setSme(e.target.value)}
+              onChange={(e) => setSme(e.target.value)}
             />
           </div>
           <div>
@@ -120,8 +130,10 @@ export default function EditProjectPage() {
                 <SelectValue placeholder="Select a document type" />
               </SelectTrigger>
               <SelectContent>
-                {DOCUMENT_TYPES.map(type => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                {DOCUMENT_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -131,7 +143,7 @@ export default function EditProjectPage() {
             <Input
               id="description"
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
           <div>
@@ -144,11 +156,7 @@ export default function EditProjectPage() {
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full"
-          >
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Saving..." : "Save Changes"}
           </Button>
         </form>
@@ -156,4 +164,3 @@ export default function EditProjectPage() {
     </div>
   );
 }
-

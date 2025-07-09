@@ -62,7 +62,7 @@ export default function ProjectDetails() {
     fetch("/api/audit")
       .then((r) => r.json())
       .then((data: LogEntry[]) =>
-        setLogs(data.filter((l) => l.metadata?.project === id))
+        setLogs(data.filter((l) => l.metadata?.project === id)),
       )
       .catch(() => setLogs([]));
   }, [id]);
