@@ -10,10 +10,12 @@ to discover available wrappers and then loads each script. See the
 ## Dynamic extension toggles
 
 Open **Editors → Tiptap** in the dashboard to try the built‑in extensions.
-A small checkbox list lets you enable or disable options like `StarterKit`
-and `Underline`. When you flip a switch the editor reloads with the new
-extension set. Your choices are saved in the browser so the same
-configuration appears next time.
+A checkbox list now exposes every starter extension from the TipTap docs
+such as `Bold`, `Italic`, `Heading`, `BulletList`, `OrderedList`, `Code`,
+and more. You can still toggle `StarterKit` or `Underline`, but also
+enable or disable individual basics. When you flip a switch the editor
+reloads with the new extension set and your choice is saved in the
+browser, so the same configuration appears next time.
 
 ## Managing plugins via the API
 
