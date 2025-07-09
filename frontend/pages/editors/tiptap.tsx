@@ -1,3 +1,5 @@
+// frontend/pages/editors/tiptap.tsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -33,14 +35,16 @@ import {
   Quote,
   Undo2,
   Redo2,
+  ChevronDown,
+  ChevronUp,
+  Clock
 } from "lucide-react";
 import FAA_AC_TEMPLATE from "@/data/tiptapTemplates/faa_ac_template";
+import "@/styles/tiptap.css";
 
+// --- Extension Management ---
 const AVAILABLE_EXTENSIONS = [
-  {
-    name: "StarterKit",
-    extension: StarterKit.configure({ history: false }),
-  },
+  { name: "StarterKit", extension: StarterKit.configure({ history: false }) },
   { name: "Underline", extension: Underline },
   { name: "Document", extension: DocumentExtension },
   { name: "Paragraph", extension: Paragraph },
@@ -63,89 +67,106 @@ const AVAILABLE_EXTENSIONS = [
   { name: "TextStyle", extension: TextStyle },
 ];
 
-// Import the TipTap-specific CSS
-import "@/styles/tiptap.css";
+// --- Extensions Default ---
+const DEFAULT_TOOLBAR_EXTENSIONS = [
+  "StarterKit",
+  "Underline",
+  "Document",
+  "Paragraph",
+  "Text",
+  "History",
+  "Bold",
+  "Italic",
+  "Strike",
+  "Heading",
+  "Code",
+  "CodeBlock",
+  "Blockquote",
+  "BulletList",
+  "OrderedList",
+  "ListItem",
+  "HardBreak"
+];
 
 function TiptapEditorPage() {
+  // --- Extensions (hidden in a menu) ---
+  const [showExtensionMenu, setShowExtensionMenu] = useState(false);
   const [enabledExtensions, setEnabledExtensions] = useState<string[]>(() => {
-    if (typeof window === "undefined")
-      return AVAILABLE_EXTENSIONS.map((e) => e.name);
+    if (typeof window === "undefined") return DEFAULT_TOOLBAR_EXTENSIONS;
     const stored = localStorage.getItem("tiptapExtensions");
-    return stored
-      ? JSON.parse(stored)
-      : AVAILABLE_EXTENSIONS.map((e) => e.name);
+    return stored ? JSON.parse(stored) : DEFAULT_TOOLBAR_EXTENSIONS;
   });
 
   const extensions = useMemo(
     () =>
       AVAILABLE_EXTENSIONS.filter((e) =>
-        enabledExtensions.includes(e.name),
+        enabledExtensions.includes(e.name)
       ).map((e) => e.extension),
-    [enabledExtensions],
+    [enabledExtensions]
   );
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "tiptapExtensions",
-        JSON.stringify(enabledExtensions),
-      );
+      localStorage.setItem("tiptapExtensions", JSON.stringify(enabledExtensions));
     }
   }, [enabledExtensions]);
 
+  // --- Editor ---
   const editor = useEditor(
     {
       extensions,
       content: FAA_AC_TEMPLATE,
       autofocus: true,
-      // Avoid hydration issues during Next.js SSR
-      immediatelyRender: false,
       editorProps: {
         attributes: {
           class: "tiptap-content focus:outline-none w-full h-full",
         },
       },
     },
-    [extensions],
+    [extensions]
   );
 
   const setHeading = (level: number) => {
     editor?.chain().focus().toggleHeading({ level }).run();
   };
 
-  const toggleExtension = (name: string) => {
-    setEnabledExtensions((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
-    );
-  };
-
   const handleSave = () => {
     if (editor) {
       alert(editor.getHTML());
-      // Save HTML to backend as needed
+      // Integrate with your backend as needed.
     }
   };
+
+  // --- Toolbar Button (icon, command, active?) ---
+  const toolbarButton = (icon: any, command: () => void, active: boolean, title = "") => (
+    <button
+      type="button"
+      className={`px-2 py-1 rounded ${active ? "bg-indigo-100" : ""}`}
+      onClick={command}
+      title={title}
+    >
+      {icon}
+    </button>
+  );
+
+  // --- Dummy Version History (replace with actual integration) ---
+  const [showHistory, setShowHistory] = useState(false);
+  const DUMMY_HISTORY = [
+    { id: 1, label: "Draft - Jul 9, 8:00am" },
+    { id: 2, label: "AutoSave - Jul 8, 3:30pm" },
+    { id: 3, label: "Submitted - Jul 7, 12:15pm" }
+  ];
 
   if (!editor) return <div>Loading TipTap...</div>;
 
   return (
     <div className="fixed inset-0 z-30 bg-white flex flex-col">
       {/* Toolbar */}
-      <header className="flex gap-2 items-center bg-gray-100 px-6 py-3 border-b">
+      <header className="flex items-center gap-2 bg-gray-100 px-6 py-3 border-b w-full">
         <h1 className="text-xl font-bold mr-6">TipTap Editor</h1>
-        <div className="flex gap-3 mr-6">
-          {AVAILABLE_EXTENSIONS.map((ext) => (
-            <label key={ext.name} className="flex items-center gap-1 text-sm">
-              <input
-                type="checkbox"
-                checked={enabledExtensions.includes(ext.name)}
-                onChange={() => toggleExtension(ext.name)}
-              />
-              {ext.name}
-            </label>
-          ))}
-        </div>
-        <div className="relative">
+
+        {/* Formatting toolbar */}
+        <div className="flex items-center gap-1">
           <select
             value={
               editor.isActive("heading", { level: 1 })
@@ -163,7 +184,7 @@ function TiptapEditorPage() {
               else if (val === "h2") setHeading(2);
               else if (val === "h3") setHeading(3);
             }}
-            className="rounded border px-2 py-1 mr-3"
+            className="rounded border px-2 py-1"
             aria-label="Formatting"
           >
             <option value="p">Paragraph</option>
@@ -171,95 +192,95 @@ function TiptapEditorPage() {
             <option value="h2">Heading 2</option>
             <option value="h3">Heading 3</option>
           </select>
+          {toolbarButton(<Bold className="w-4 h-4" />, () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"), "Bold")}
+          {toolbarButton(<Italic className="w-4 h-4" />, () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"), "Italic")}
+          {toolbarButton(<UnderlineIcon className="w-4 h-4" />, () => editor.chain().focus().toggleUnderline().run(), editor.isActive("underline"), "Underline")}
+          {toolbarButton(<Strikethrough className="w-4 h-4" />, () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"), "Strikethrough")}
+          {toolbarButton(<Code className="w-4 h-4" />, () => editor.chain().focus().toggleCode().run(), editor.isActive("code"), "Inline Code")}
+          {toolbarButton(<Quote className="w-4 h-4" />, () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"), "Blockquote")}
+          {toolbarButton(<List className="w-4 h-4" />, () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"), "Bullet List")}
+          {toolbarButton(<ListOrdered className="w-4 h-4" />, () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"), "Numbered List")}
+          {toolbarButton(<Undo2 className="w-4 h-4" />, () => editor.chain().focus().undo().run(), false, "Undo")}
+          {toolbarButton(<Redo2 className="w-4 h-4" />, () => editor.chain().focus().redo().run(), false, "Redo")}
+          <button
+            onClick={handleSave}
+            className="ml-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            Save
+          </button>
         </div>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("bold") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          title="Bold"
-        >
-          <Bold className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("italic") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          title="Italic"
-        >
-          <Italic className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("underline") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          title="Underline"
-        >
-          <UnderlineIcon className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("strike") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          title="Strikethrough"
-        >
-          <Strikethrough className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("code") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          title="Inline Code"
-        >
-          <Code className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("blockquote") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          title="Blockquote"
-        >
-          <Quote className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("bulletList") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          title="Bullet List"
-        >
-          <List className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className={`px-2 py-1 rounded ${editor.isActive("orderedList") ? "bg-indigo-100" : ""}`}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          title="Numbered List"
-        >
-          <ListOrdered className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className="px-2 py-1 rounded"
-          onClick={() => editor.chain().focus().undo().run()}
-          title="Undo"
-          disabled={!editor.can().undo()}
-        >
-          <Undo2 className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          className="px-2 py-1 rounded"
-          onClick={() => editor.chain().focus().redo().run()}
-          title="Redo"
-          disabled={!editor.can().redo()}
-        >
-          <Redo2 className="w-4 h-4" />
-        </button>
-        <button
-          onClick={handleSave}
-          className="ml-auto px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Save
-        </button>
+
+        {/* Spacer */}
+        <div className="flex-1"></div>
+
+        {/* Extensions menu (hidden, only advanced users) */}
+        <div className="relative">
+          <button
+            onClick={() => setShowExtensionMenu(!showExtensionMenu)}
+            className="px-3 py-1 border rounded bg-gray-50 hover:bg-gray-200 flex items-center gap-1"
+            title="Manage Extensions"
+          >
+            Extensions <ChevronDown className="w-4 h-4" />
+          </button>
+          {showExtensionMenu && (
+            <div className="absolute right-0 mt-2 bg-white shadow-lg border rounded p-4 z-50 max-h-72 overflow-y-auto w-64">
+              <div className="mb-2 font-semibold">Enabled Extensions</div>
+              {AVAILABLE_EXTENSIONS.map((ext) => (
+                <label key={ext.name} className="flex items-center gap-2 text-sm my-1">
+                  <input
+                    type="checkbox"
+                    checked={enabledExtensions.includes(ext.name)}
+                    onChange={() => {
+                      setEnabledExtensions((prev) =>
+                        prev.includes(ext.name)
+                          ? prev.filter((n) => n !== ext.name)
+                          : [...prev, ext.name]
+                      );
+                    }}
+                  />
+                  {ext.name}
+                </label>
+              ))}
+              <button
+                className="mt-2 text-xs px-2 py-1 rounded bg-gray-200"
+                onClick={() => setShowExtensionMenu(false)}
+              >
+                Close
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Version History */}
+        <div className="relative ml-4">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="px-3 py-1 border rounded bg-gray-50 hover:bg-gray-200 flex items-center gap-1"
+            title="Version History"
+          >
+            <Clock className="w-4 h-4" />
+            History
+            {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showHistory && (
+            <div className="absolute right-0 mt-2 bg-white shadow-lg border rounded p-2 z-50 w-56">
+              <div className="mb-2 font-semibold">Version History</div>
+              <ul>
+                {DUMMY_HISTORY.map((v) => (
+                  <li key={v.id} className="py-1 border-b last:border-none text-xs">
+                    {v.label}
+                  </li>
+                ))}
+              </ul>
+              <button
+                className="mt-2 text-xs px-2 py-1 rounded bg-gray-200"
+                onClick={() => setShowHistory(false)}
+              >
+                Close
+              </button>
+            </div>
+          )}
+        </div>
       </header>
       {/* Editor */}
       <main className="flex-1 overflow-auto">
@@ -269,7 +290,6 @@ function TiptapEditorPage() {
   );
 }
 
-// Disable SSR to prevent hydration errors with TipTap
-export default dynamic(() => Promise.resolve(TiptapEditorPage), {
-  ssr: false,
-});
+// Disable SSR for Next.js hydration issues
+export default dynamic(() => Promise.resolve(TiptapEditorPage), { ssr: false });
+
