@@ -144,8 +144,8 @@ select = ["E", "F", "W", "C90", "I"]
 # ───────────────────────────── static typing (mypy) ───────────────────────────
 [tool.mypy]
 python_version         = "3.12"
-strict                 = false
-ignore_errors          = true
+strict                 = true
+ignore_errors          = false
 packages               = ["docuflow"]
 plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
 
