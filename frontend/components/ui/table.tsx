@@ -10,10 +10,7 @@ export function Table({
   return (
     <div className="w-full overflow-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
       <table
-        className={cn(
-          "min-w-full border-collapse text-sm",
-          className
-        )}
+        className={cn("min-w-full border-collapse text-sm", className)}
         {...props}
       />
     </div>
@@ -25,7 +22,10 @@ export function TableHeader({
   ...props
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead className={cn("bg-gray-50 dark:bg-gray-900", className)} {...props} />
+    <thead
+      className={cn("bg-gray-50 dark:bg-gray-900", className)}
+      {...props}
+    />
   );
 }
 
@@ -34,7 +34,10 @@ export function TableBody({
   ...props
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <tbody className={cn("divide-y divide-gray-100 dark:divide-gray-800", className)} {...props} />
+    <tbody
+      className={cn("divide-y divide-gray-100 dark:divide-gray-800", className)}
+      {...props}
+    />
   );
 }
 
@@ -46,7 +49,7 @@ export function TableRow({
     <tr
       className={cn(
         "hover:bg-indigo-50 dark:hover:bg-gray-900/60 transition-colors",
-        className
+        className,
       )}
       {...props}
     />
@@ -61,7 +64,7 @@ export function TableHead({
     <th
       className={cn(
         "px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200",
-        className
+        className,
       )}
       {...props}
     />
@@ -76,7 +79,7 @@ export function TableCell({
     <td
       className={cn(
         "px-4 py-3 align-middle text-gray-900 dark:text-gray-100",
-        className
+        className,
       )}
       {...props}
     />

@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea"; // create a textarea component if you don't have one
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 interface Review {
   id: string;
@@ -20,7 +27,9 @@ export default function ProjectReviewPage() {
   const { id } = router.query;
   const [reviews, setReviews] = useState<Review[]>([]);
   const [newComment, setNewComment] = useState("");
-  const [newStatus, setNewStatus] = useState<"pending" | "approved" | "rejected">("pending");
+  const [newStatus, setNewStatus] = useState<
+    "pending" | "approved" | "rejected"
+  >("pending");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,9 +80,7 @@ export default function ProjectReviewPage() {
       <div className="max-w-2xl mx-auto space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl font-bold">
-              Project Review
-            </CardTitle>
+            <CardTitle className="text-xl font-bold">Project Review</CardTitle>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -82,7 +89,7 @@ export default function ProjectReviewPage() {
                 <Textarea
                   id="review-comment"
                   value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
+                  onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Your feedback or question"
                   rows={3}
                   required
@@ -93,7 +100,7 @@ export default function ProjectReviewPage() {
                 <select
                   id="status"
                   value={newStatus}
-                  onChange={e => setNewStatus(e.target.value as any)}
+                  onChange={(e) => setNewStatus(e.target.value as any)}
                   className="border rounded px-2 py-1"
                 >
                   <option value="pending">Pending</option>
@@ -111,7 +118,9 @@ export default function ProjectReviewPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Review History</CardTitle>
+            <CardTitle className="text-lg font-semibold">
+              Review History
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -127,14 +136,19 @@ export default function ProjectReviewPage() {
                 {reviews.map((review) => (
                   <TableRow key={review.id}>
                     <TableCell>{review.reviewer}</TableCell>
-                    <TableCell className="capitalize">{review.status}</TableCell>
+                    <TableCell className="capitalize">
+                      {review.status}
+                    </TableCell>
                     <TableCell>{review.comment}</TableCell>
                     <TableCell>{review.created.slice(0, 10)}</TableCell>
                   </TableRow>
                 ))}
                 {reviews.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground"
+                    >
                       No reviews yet.
                     </TableCell>
                   </TableRow>
@@ -147,4 +161,3 @@ export default function ProjectReviewPage() {
     </div>
   );
 }
-

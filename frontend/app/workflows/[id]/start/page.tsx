@@ -52,7 +52,7 @@ export default function StartWorkflowPage({ params }: Props) {
           <Input
             id="title"
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter document title"
             required
           />
@@ -60,7 +60,7 @@ export default function StartWorkflowPage({ params }: Props) {
         <div className="space-y-2">
           <Label>Attach a file (Word)</Label>
           <UploadDropzone
-            onDrop={files => handleFileChange(files[0] || null)}
+            onDrop={(files) => handleFileChange(files[0] || null)}
             accept=".doc,.docx"
           />
           {file && (
@@ -78,14 +78,8 @@ export default function StartWorkflowPage({ params }: Props) {
             </div>
           )}
         </div>
-        {error && (
-          <div className="text-red-600 text-sm">{error}</div>
-        )}
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={loading || !title}
-        >
+        {error && <div className="text-red-600 text-sm">{error}</div>}
+        <Button type="submit" className="w-full" disabled={loading || !title}>
           {loading ? "Starting..." : "Start Workflow"}
         </Button>
       </form>

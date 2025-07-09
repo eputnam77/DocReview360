@@ -4,7 +4,13 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCounterStore } from "@/state/useStore";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -28,10 +34,12 @@ export default function Home() {
             {isLoading
               ? "Loading ping..."
               : error
-              ? "Failed to load ping."
-              : data}
+                ? "Failed to load ping."
+                : data}
           </p>
-          <p className="text-gray-600">Current count: <span className="font-mono font-bold">{count}</span></p>
+          <p className="text-gray-600">
+            Current count: <span className="font-mono font-bold">{count}</span>
+          </p>
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button onClick={increment} variant="default" className="gap-2">

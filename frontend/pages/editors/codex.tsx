@@ -42,7 +42,10 @@ export default function CodexEditorPage() {
     });
 
     return () => {
-      if (ejInstance.current && typeof ejInstance.current.destroy === "function") {
+      if (
+        ejInstance.current &&
+        typeof ejInstance.current.destroy === "function"
+      ) {
         ejInstance.current.destroy();
         ejInstance.current = null;
       }
@@ -61,8 +64,12 @@ export default function CodexEditorPage() {
     <div className="fixed inset-0 z-30 bg-white flex flex-col">
       <header className="flex items-center gap-2 bg-gray-100 px-6 py-3 border-b">
         <h1 className="text-xl font-bold mr-6">CodeX Editor (Editor.js)</h1>
-        <span className="text-gray-500 text-sm">Headings • Lists • Blockquote</span>
-        <Button className="ml-auto" onClick={handleSave}>Save</Button>
+        <span className="text-gray-500 text-sm">
+          Headings • Lists • Blockquote
+        </span>
+        <Button className="ml-auto" onClick={handleSave}>
+          Save
+        </Button>
       </header>
       <main className="flex-1 overflow-auto p-0">
         <div

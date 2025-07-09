@@ -28,8 +28,12 @@ export default function LoginPage() {
       <Card className="w-full max-w-md mx-4 shadow-2xl">
         <CardHeader className="space-y-1 text-center">
           <LogIn className="mx-auto h-10 w-10 text-indigo-600" />
-          <CardTitle className="text-2xl font-bold">Sign in to DocuFlow</CardTitle>
-          <CardDescription>Welcome back! Enter your credentials.</CardDescription>
+          <CardTitle className="text-2xl font-bold">
+            Sign in to DocuFlow
+          </CardTitle>
+          <CardDescription>
+            Welcome back! Enter your credentials.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleLogin} autoComplete="on">

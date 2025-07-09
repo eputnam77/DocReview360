@@ -1,16 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -56,7 +46,11 @@ type Stats = {
 type StatusData = { name: string; value: number };
 type UserLeaderboard = { user: string; projects: number };
 type Activity = { date: string; actions: number };
-type Log = { timestamp: string; action: string; metadata?: { user?: string; project?: string } };
+type Log = {
+  timestamp: string;
+  action: string;
+  metadata?: { user?: string; project?: string };
+};
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats>({
@@ -89,7 +83,7 @@ export default function AdminDashboardPage() {
           completed: 13,
           overdue: 3,
           active: 10,
-        })
+        }),
       );
 
     // Status chart data
@@ -118,10 +112,26 @@ export default function AdminDashboardPage() {
 
     // Recent log/audit feed
     setLogs([
-      { timestamp: "2025-07-04T16:10", action: "Approved project", metadata: { user: "Jane Doe", project: "AC-002" } },
-      { timestamp: "2025-07-03T14:20", action: "Created project", metadata: { user: "Alice Lee", project: "AC-005" } },
-      { timestamp: "2025-07-02T10:00", action: "Uploaded document", metadata: { user: "John Smith", project: "AC-001" } },
-      { timestamp: "2025-07-01T09:00", action: "Assigned reviewer", metadata: { user: "Team Beta", project: "AC-004" } },
+      {
+        timestamp: "2025-07-04T16:10",
+        action: "Approved project",
+        metadata: { user: "Jane Doe", project: "AC-002" },
+      },
+      {
+        timestamp: "2025-07-03T14:20",
+        action: "Created project",
+        metadata: { user: "Alice Lee", project: "AC-005" },
+      },
+      {
+        timestamp: "2025-07-02T10:00",
+        action: "Uploaded document",
+        metadata: { user: "John Smith", project: "AC-001" },
+      },
+      {
+        timestamp: "2025-07-01T09:00",
+        action: "Assigned reviewer",
+        metadata: { user: "Team Beta", project: "AC-004" },
+      },
     ]);
   }, []);
 
@@ -142,7 +152,9 @@ export default function AdminDashboardPage() {
         <Icon className={`w-10 h-10 ${color || "text-indigo-600"}`} />
         <div>
           <p className="text-3xl font-bold leading-none">{value}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {label}
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -157,10 +169,30 @@ export default function AdminDashboardPage() {
 
       {/* KPI Row */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={FolderOpen} label="Projects" value={stats.projects} color="text-indigo-600" />
-        <StatCard icon={Users2} label="Users" value={stats.users} color="text-emerald-600" />
-        <StatCard icon={FileText} label="Documents" value={stats.documents} color="text-cyan-600" />
-        <StatCard icon={Clock} label="Active Workflows" value={stats.active} color="text-yellow-600" />
+        <StatCard
+          icon={FolderOpen}
+          label="Projects"
+          value={stats.projects}
+          color="text-indigo-600"
+        />
+        <StatCard
+          icon={Users2}
+          label="Users"
+          value={stats.users}
+          color="text-emerald-600"
+        />
+        <StatCard
+          icon={FileText}
+          label="Documents"
+          value={stats.documents}
+          color="text-cyan-600"
+        />
+        <StatCard
+          icon={Clock}
+          label="Active Workflows"
+          value={stats.active}
+          color="text-yellow-600"
+        />
       </div>
 
       {/* Admin Visuals */}
@@ -183,7 +215,10 @@ export default function AdminDashboardPage() {
                   label={({ name, value }) => `${name}: ${value}`}
                 >
                   {statusData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                    <Cell
+                      key={`cell-${idx}`}
+                      fill={COLORS[idx % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -247,10 +282,14 @@ export default function AdminDashboardPage() {
                     </span>
                     <span className="font-medium">{l.action}</span>
                     {l.metadata?.user && (
-                      <span className="ml-2 text-indigo-600">@{l.metadata.user}</span>
+                      <span className="ml-2 text-indigo-600">
+                        @{l.metadata.user}
+                      </span>
                     )}
                     {l.metadata?.project && (
-                      <span className="ml-2 text-teal-600">{l.metadata.project}</span>
+                      <span className="ml-2 text-teal-600">
+                        {l.metadata.project}
+                      </span>
                     )}
                   </li>
                 ))}
@@ -272,7 +311,9 @@ export default function AdminDashboardPage() {
                   <li key={u.user} className="flex items-center gap-2">
                     <span className="font-semibold">{idx + 1}.</span>
                     <span className="flex-1">{u.user}</span>
-                    <span className="text-indigo-700">{u.projects} projects</span>
+                    <span className="text-indigo-700">
+                      {u.projects} projects
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -283,4 +324,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-

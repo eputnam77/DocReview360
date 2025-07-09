@@ -1,16 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -52,7 +42,12 @@ type Stats = {
 };
 type StatusData = { name: string; value: number };
 type Activity = { date: string; actions: number };
-type Assignment = { id: string; title: string; status: string; updated: string };
+type Assignment = {
+  id: string;
+  title: string;
+  status: string;
+  updated: string;
+};
 type Review = { id: string; project: string; status: string; updated: string };
 
 export default function UserDashboardPage() {
@@ -97,15 +92,45 @@ export default function UserDashboardPage() {
     ]);
     // Assignments list
     setAssignments([
-      { id: "AC-101", title: "Policy Update", status: "In Progress", updated: "2025-07-04" },
-      { id: "AC-102", title: "Compliance Review", status: "Completed", updated: "2025-07-02" },
-      { id: "AC-103", title: "Draft SOP", status: "Assigned", updated: "2025-07-01" },
-      { id: "AC-104", title: "Incident Report", status: "Overdue", updated: "2025-07-03" },
+      {
+        id: "AC-101",
+        title: "Policy Update",
+        status: "In Progress",
+        updated: "2025-07-04",
+      },
+      {
+        id: "AC-102",
+        title: "Compliance Review",
+        status: "Completed",
+        updated: "2025-07-02",
+      },
+      {
+        id: "AC-103",
+        title: "Draft SOP",
+        status: "Assigned",
+        updated: "2025-07-01",
+      },
+      {
+        id: "AC-104",
+        title: "Incident Report",
+        status: "Overdue",
+        updated: "2025-07-03",
+      },
     ]);
     // Reviews list
     setReviews([
-      { id: "R-201", project: "AC-101", status: "Pending", updated: "2025-07-04" },
-      { id: "R-202", project: "AC-103", status: "Approved", updated: "2025-07-02" },
+      {
+        id: "R-201",
+        project: "AC-101",
+        status: "Pending",
+        updated: "2025-07-04",
+      },
+      {
+        id: "R-202",
+        project: "AC-103",
+        status: "Approved",
+        updated: "2025-07-02",
+      },
     ]);
   }, []);
 
@@ -143,10 +168,30 @@ export default function UserDashboardPage() {
 
       {/* KPIs */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users2} label="Assigned" value={stats.assigned} color="text-indigo-600" />
-        <StatCard icon={Clock} label="In Progress" value={stats.inProgress} color="text-orange-600" />
-        <StatCard icon={CheckCircle2} label="Completed" value={stats.completed} color="text-emerald-600" />
-        <StatCard icon={BarChart2} label="Overdue" value={stats.overdue} color="text-red-600" />
+        <StatCard
+          icon={Users2}
+          label="Assigned"
+          value={stats.assigned}
+          color="text-indigo-600"
+        />
+        <StatCard
+          icon={Clock}
+          label="In Progress"
+          value={stats.inProgress}
+          color="text-orange-600"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label="Completed"
+          value={stats.completed}
+          color="text-emerald-600"
+        />
+        <StatCard
+          icon={BarChart2}
+          label="Overdue"
+          value={stats.overdue}
+          color="text-red-600"
+        />
       </div>
 
       {/* Visuals */}
@@ -169,7 +214,10 @@ export default function UserDashboardPage() {
                   label={({ name, value }) => `${name}: ${value}`}
                 >
                   {statusData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                    <Cell
+                      key={`cell-${idx}`}
+                      fill={COLORS[idx % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -188,7 +236,12 @@ export default function UserDashboardPage() {
                 <XAxis dataKey="date" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Line type="monotone" dataKey="actions" stroke="#6366f1" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="actions"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -217,14 +270,16 @@ export default function UserDashboardPage() {
                       {a.id}
                     </span>
                     <span className="flex-1 ml-4">{a.title}</span>
-                    <span className={`rounded px-2 py-1 text-xs font-semibold
-                      ${a.status === "Completed"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : a.status === "Overdue"
-                        ? "bg-red-100 text-red-700"
-                        : a.status === "In Progress"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-indigo-100 text-indigo-700"
+                    <span
+                      className={`rounded px-2 py-1 text-xs font-semibold
+                      ${
+                        a.status === "Completed"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : a.status === "Overdue"
+                            ? "bg-red-100 text-red-700"
+                            : a.status === "In Progress"
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
                       {a.status}
@@ -235,7 +290,9 @@ export default function UserDashboardPage() {
                   </li>
                 ))}
                 {assignments.length === 0 && (
-                  <li className="text-muted-foreground">No assignments found.</li>
+                  <li className="text-muted-foreground">
+                    No assignments found.
+                  </li>
                 )}
               </ul>
             </CardContent>
@@ -257,12 +314,14 @@ export default function UserDashboardPage() {
                       {r.id}
                     </span>
                     <span className="flex-1 ml-4">{r.project}</span>
-                    <span className={`rounded px-2 py-1 text-xs font-semibold
-                      ${r.status === "Approved"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : r.status === "Pending"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-indigo-100 text-indigo-700"
+                    <span
+                      className={`rounded px-2 py-1 text-xs font-semibold
+                      ${
+                        r.status === "Approved"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : r.status === "Pending"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
                       {r.status}
@@ -283,4 +342,3 @@ export default function UserDashboardPage() {
     </div>
   );
 }
-

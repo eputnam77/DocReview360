@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: number; // 0-100
-  max?: number;   // default 100
+  max?: number; // default 100
 }
 
 export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
@@ -21,7 +21,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         aria-valuemax={100}
         className={cn(
           "relative h-3 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800",
-          className
+          className,
         )}
         {...props}
       >
@@ -31,7 +31,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         />
       </div>
     );
-  }
+  },
 );
 
 Progress.displayName = "Progress";
