@@ -29,7 +29,7 @@ Then in a separate terminal start the React UI (Node 18+):
 npm install --legacy-peer-deps --prefix frontend  # only once
 npm run dev --prefix frontend
 ```
-Open `http://localhost:3000/` and sign in with `admin/admin` to reach the React dashboard.
+Open `http://localhost:3000/` and sign in with `admin/admin` to reach the projects page.
 
 ### GitHub Codespaces
 
@@ -37,9 +37,9 @@ Run these commands in a Codespace terminal. When the server starts, expose port
 8000 in the **Ports** panel and click **Open in Browser** to reach the login
 page.
 
-## 4. Explore the dashboard
+## 4. Explore the projects page
 
-After logging in you land on a small dashboard. It lists links to the classic editor, the richer document editor, the review tracker and the project creation form. Widget counts and a compact project table give you a quick overview. The editors still do not save documents but show how future editing might look.
+After logging in you're taken straight to the projects page. It lists your projects in a sortable table and includes a **Create New Project** button. Links to the editors, review tracker and interactive dashboard remain available from the navigation.
 
 ## 5. Next steps
 

@@ -23,9 +23,9 @@ def test_login_flow() -> None:
         follow_redirects=False,
     )
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/reviewtrackertable"
+    assert resp.headers["location"] == "/projects"
     cookie = resp.cookies.get("session")
     assert cookie == "admin"
 
-    # follow redirect should normally load the review tracker table page
+    # follow redirect should normally load the projects page
     # (omitted here as the frontend route is handled by Next.js)

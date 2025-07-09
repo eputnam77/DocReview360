@@ -659,7 +659,7 @@ async def root(request: Request) -> HTMLResponse:
 async def login(request: Request, username: str = Form(...), password: str = Form(...)) -> Response:
     """Simple credential check for admin user."""
     if username == "admin" and password == "admin":
-        response = RedirectResponse("/reviewtrackertable", status_code=303)
+        response = RedirectResponse("/projects", status_code=303)
         response.set_cookie("session", "admin")
         log_event("login", user=username)
         return response
