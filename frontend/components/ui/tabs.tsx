@@ -47,7 +47,7 @@ export function TabsList({
     <div
       className={cn(
         "inline-flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800",
-        className
+        className,
       )}
       role="tablist"
       {...props}
@@ -59,11 +59,7 @@ export interface TabsTriggerProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   value: string;
 }
-export function TabsTrigger({
-  value,
-  className,
-  ...props
-}: TabsTriggerProps) {
+export function TabsTrigger({ value, className, ...props }: TabsTriggerProps) {
   const ctx = React.useContext(TabsContext);
   if (!ctx) throw new Error("TabsTrigger must be used within Tabs");
   const isActive = ctx.value === value;
@@ -80,15 +76,14 @@ export function TabsTrigger({
         isActive
           ? "bg-white dark:bg-gray-900 shadow text-indigo-600"
           : "text-gray-600 hover:text-indigo-700 dark:text-gray-300 dark:hover:text-indigo-400",
-        className
+        className,
       )}
       {...props}
     />
   );
 }
 
-export interface TabsContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
   value: string;
 }
 export function TabsContent({

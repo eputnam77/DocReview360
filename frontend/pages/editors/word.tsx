@@ -7,7 +7,9 @@ import React from "react";
  */
 export default function WordEditorPage() {
   // URL to a public .docx file (must be publicly accessible)
-  const docUrl = encodeURIComponent("https://file-examples.com/wp-content/uploads/2017/02/file-sample_100kB.docx");
+  const docUrl = encodeURIComponent(
+    "https://file-examples.com/wp-content/uploads/2017/02/file-sample_100kB.docx",
+  );
 
   // Use Office Online Viewer for public files
   const embedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${docUrl}`;
@@ -21,16 +23,19 @@ export default function WordEditorPage() {
           width="100%"
           height="600"
           frameBorder={0}
-          style={{ border: "1px solid #ccc", borderRadius: "0.75rem", background: "#fff" }}
+          style={{
+            border: "1px solid #ccc",
+            borderRadius: "0.75rem",
+            background: "#fff",
+          }}
           allowFullScreen
           title="MS Word Document"
         ></iframe>
         <p className="text-sm text-gray-500 mt-3">
-          This is a live view of a Word document using the free Microsoft Office Online Viewer.  
-          To allow **editing**, see the instructions below.
+          This is a live view of a Word document using the free Microsoft Office
+          Online Viewer. To allow **editing**, see the instructions below.
         </p>
       </div>
     </div>
   );
 }
-

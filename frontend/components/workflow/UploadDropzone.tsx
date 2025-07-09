@@ -38,7 +38,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         onChange?.(file);
       }
     },
-    [onChange, maxSizeMB]
+    [onChange, maxSizeMB],
   );
 
   // Drag events
@@ -54,7 +54,9 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         role="button"
         className={cn(
           "flex h-36 cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed transition-colors",
-          dragActive ? "border-purple-600 bg-purple-50" : "border-muted bg-muted/40"
+          dragActive
+            ? "border-purple-600 bg-purple-50"
+            : "border-muted bg-muted/40",
         )}
         onClick={openFileDialog}
         onKeyDown={(e) => e.key === "Enter" && openFileDialog()}

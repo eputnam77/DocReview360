@@ -21,13 +21,13 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
     <Card
       className={cn(
         "group relative h-40 cursor-pointer transition-shadow hover:shadow-md",
-        className
+        className,
       )}
       tabIndex={0}
       role="button"
       aria-label={template.title}
       onClick={onClick}
-      onKeyDown={e => {
+      onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") onClick?.();
       }}
     >
@@ -55,4 +55,3 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
 };
 
 export default TemplateCard;
-

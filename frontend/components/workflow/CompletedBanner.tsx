@@ -18,10 +18,13 @@ const CompletedBanner: React.FC<CompletedBannerProps> = ({
   // Format completion date if provided
   let completedText = "";
   if (workflowName && completedAt) {
-    completedText = `${workflowName} – ${new Date(completedAt).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    })}`;
+    completedText = `${workflowName} – ${new Date(completedAt).toLocaleString(
+      undefined,
+      {
+        dateStyle: "medium",
+        timeStyle: "short",
+      },
+    )}`;
   }
 
   return (

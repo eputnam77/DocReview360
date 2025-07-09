@@ -23,7 +23,7 @@ export default function ProjectList() {
   const [sortKey, setSortKey] = useState<keyof Project | "number">("number");
 
   useEffect(() => {
-    fetch("/api/projects")  // <-- Use /api/projects for Next.js API, or your real endpoint
+    fetch("/api/projects") // <-- Use /api/projects for Next.js API, or your real endpoint
       .then((r) => r.json())
       .then(setProjects)
       .catch(() => setProjects([]));
@@ -47,9 +47,13 @@ export default function ProjectList() {
       <Table className="min-w-full text-sm">
         <TableHeader>
           <TableRow>
-            <TableHead onClick={() => setSortKey("number")}>Document #</TableHead>
+            <TableHead onClick={() => setSortKey("number")}>
+              Document #
+            </TableHead>
             <TableHead onClick={() => setSortKey("name")}>Title</TableHead>
-            <TableHead onClick={() => setSortKey("user")}>Assigned To</TableHead>
+            <TableHead onClick={() => setSortKey("user")}>
+              Assigned To
+            </TableHead>
             <TableHead>Status</TableHead>
             <TableHead onClick={() => setSortKey("created")}>Updated</TableHead>
           </TableRow>
@@ -71,5 +75,3 @@ export default function ProjectList() {
     </div>
   );
 }
-
-
