@@ -24,7 +24,7 @@ DocuFlow helps you organise documents, run simple approval workflows and keep tr
    npm run dev --prefix frontend
    ```
 5. **Open <http://localhost:3000/>** and sign in with `admin/admin`.
-   The React dashboard loads at port 3000 and fetches data from the API on port 8000.
+   The projects page loads at port 3000 and fetches data from the API on port 8000.
 
 ### GitHub Codespaces
 
@@ -67,7 +67,7 @@ docuflow approval request --project "My first project" --user bob
 docuflow export pdf --project "My first project" --out build/project.pdf
 ```
 
-Reload the dashboard and you will see the document listed with its approval
+Reload the projects page and you will see the document listed with its approval
 status. The quick turnaround gives a fresh-doc scent that highlights how light
 the workflow can be.
 

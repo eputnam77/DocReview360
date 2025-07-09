@@ -6,13 +6,13 @@ The user interface contains a handful of simple pages that demonstrate the overa
 
 Visit `/` and sign in with the credentials you created in the configuration file (the defaults are `admin/admin`). If the details are wrong, an error message appears above the form.
 
-## Dashboard
+## Projects page
 
-After logging in you are greeted with a friendly welcome message. The dashboard now includes quick links to every demo page along with widget counts and a small project table. Use these links to open the editors, create a new project or check the review tracker. A button also opens the automatically generated API documentation.
+After logging in you're redirected to the projects page. It lists your projects in a sortable table with a **Create New Project** button. Quick links to the editors, review tracker and dashboard remain available from the navigation.
 
 ## Create Project
 
-The project creation page lets you submit a new project identifier and name. Once submitted you return to the dashboard.
+The project creation page lets you submit a new project identifier and name. Once submitted you return to the projects page.
 
 ## Editor
 

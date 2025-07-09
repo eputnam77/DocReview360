@@ -2,16 +2,16 @@
 
 This walkthrough helps you explore DocuFlow from the perspective of a new user. You will log in, open the editor, add reviewers and approve documents. The guide also explains how to configure the application for different environments.
 
-## 1. Access the dashboard
+## 1. Access the projects page
 
 1. Start the server with `uvicorn docuflow.api:app --reload`.
 2. Open `http://127.0.0.1:8000/` in your browser.
 3. Sign in with the credentials from your `docuflow.yml` file (the defaults are `admin/admin`).
-4. The dashboard greets you and provides links to the editor and API docs.
+4. The projects page greets you and provides links to the editor and API docs.
 
 ## 2. Open the document editor
 
-1. From the dashboard click **Editor**.
+1. From the projects page click **Editor**.
 2. A rich text field appears where you can type or paste content. This preview uses the Tiptap editor.
 3. Edits are currently stored in memory to show how future versions might behave.
 
@@ -52,7 +52,7 @@ Together these capabilities make it easier to integrate DocuFlow into your exist
 
 ## 6. Example workflow
 
-Below is a short end-to-end walkthrough using the CLI and dashboard together:
+Below is a short end-to-end walkthrough using the CLI and projects page together:
 
 1. Create a new project:
    ```bash
@@ -71,5 +71,5 @@ Below is a short end-to-end walkthrough using the CLI and dashboard together:
    ```bash
    docuflow export pdf --project "Demo Project" --out demo.pdf
    ```
-5. Check the dashboard to download the generated PDF and confirm the project status.
+5. Check the projects page to download the generated PDF and confirm the project status.
 
