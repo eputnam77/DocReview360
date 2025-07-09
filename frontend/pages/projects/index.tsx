@@ -8,21 +8,24 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Extended Project interface with all needed fields
+// The Project type: extend as needed
 interface Project {
-  id: string;                  // System-generated, e.g., UUID or short id
-  number: string | number;     // Document number, e.g., AC-123
-  type: string;                // Document type (Order, AC, SOP, etc.)
-  title: string;               // Document title
-  status: string;              // Status string (e.g., In Progress, Complete)
-  progress: number;            // 0-100 (percent complete)
-  updated?: string;            // Last updated date
+  id: string;
+  number: string | number;
+  type: string;
+  title: string;
+  status: string;
+  progress: number;
+  updated?: string;
+  user?: string;
 }
 
-// Example/demo data
+// Example/demo projects
 const DEMO_PROJECTS: Project[] = [
   {
     id: "123e-ac-101",
@@ -32,6 +35,7 @@ const DEMO_PROJECTS: Project[] = [
     status: "In Progress",
     progress: 40,
     updated: "2025-07-04",
+    user: "Jane Doe",
   },
   {
     id: "123e-ac-102",
@@ -41,6 +45,7 @@ const DEMO_PROJECTS: Project[] = [
     status: "Complete",
     progress: 100,
     updated: "2025-07-02",
+    user: "Jane Doe",
   },
   {
     id: "123e-ac-103",
@@ -50,6 +55,7 @@ const DEMO_PROJECTS: Project[] = [
     status: "Draft",
     progress: 10,
     updated: "2025-07-01",
+    user: "Jane Doe",
   },
   {
     id: "123e-ac-104",
@@ -59,8 +65,36 @@ const DEMO_PROJECTS: Project[] = [
     status: "Review",
     progress: 70,
     updated: "2025-07-03",
+    user: "Jane Doe",
   },
 ];
+
+// --- Simple stat cards (copied style from dashboard) ---
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: number;
+  color?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-4 p-6">
+        <Icon className={`w-8 h-8 ${color || "text-indigo-600"}`} />
+        <div>
+          <p className="text-xl font-bold leading-none">{value}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {label}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function ProgressBar({ value }: { value: number }) {
   const pct = Math.max(0, Math.min(100, value || 0));
@@ -89,12 +123,35 @@ export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
 
+  // Demo: replace "Jane Doe" with the current user's real name (from session, etc.)
+  const currentUser = "Jane Doe";
+
   useEffect(() => {
     fetch("/api/projects")
       .then((r) => r.json())
-      .then((data: Project[]) => setProjects(data.length > 0 ? data : DEMO_PROJECTS))
-      .catch(() => setProjects(DEMO_PROJECTS));
+      .then((data: Project[]) =>
+        setProjects(
+          (data.length > 0 ? data : DEMO_PROJECTS).filter(
+            (p) => !p.user || p.user === currentUser
+          )
+        )
+      )
+      .catch(() =>
+        setProjects(DEMO_PROJECTS.filter((p) => p.user === currentUser))
+      );
   }, []);
+
+  // Calculate simple stats for this user
+  const statAssigned = projects.length;
+  const statInProgress = projects.filter(
+    (p) => p.status.toLowerCase() === "in progress"
+  ).length;
+  const statCompleted = projects.filter(
+    (p) => p.status.toLowerCase() === "complete"
+  ).length;
+  const statOverdue = projects.filter(
+    (p) => p.status.toLowerCase() === "overdue"
+  ).length;
 
   const sorted = [...projects].sort((a, b) => {
     const av = (a as any)[sortKey] ?? "";
@@ -107,30 +164,98 @@ export default function ProjectList() {
     <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold flex items-center gap-2">Projects</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          Projects Assigned to Me
+        </h1>
         <Button asChild>
           <Link href="/projects/new">Create New Project</Link>
         </Button>
+      </div>
+
+      {/* KPI Stat Row */}
+      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-4 max-w-4xl">
+        <StatCard
+          icon={Users2}
+          label="Assigned"
+          value={statAssigned}
+          color="text-indigo-600"
+        />
+        <StatCard
+          icon={Clock}
+          label="In Progress"
+          value={statInProgress}
+          color="text-orange-600"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label="Completed"
+          value={statCompleted}
+          color="text-emerald-600"
+        />
+        <StatCard
+          icon={BarChart2}
+          label="Overdue"
+          value={statOverdue}
+          color="text-red-600"
+        />
       </div>
 
       {/* Project Table */}
       <Table className="min-w-full text-sm rounded-lg overflow-hidden bg-white">
         <TableHeader>
           <TableRow>
-            <TableHead onClick={() => setSortKey("id")} className="cursor-pointer">Document Id</TableHead>
-            <TableHead onClick={() => setSortKey("number")} className="cursor-pointer">Document #</TableHead>
-            <TableHead onClick={() => setSortKey("type")} className="cursor-pointer">Document Type</TableHead>
-            <TableHead onClick={() => setSortKey("title")} className="cursor-pointer">Document Title</TableHead>
-            <TableHead onClick={() => setSortKey("status")} className="cursor-pointer">Status</TableHead>
+            <TableHead
+              onClick={() => setSortKey("id")}
+              className="cursor-pointer"
+            >
+              Document Id
+            </TableHead>
+            <TableHead
+              onClick={() => setSortKey("number")}
+              className="cursor-pointer"
+            >
+              Document #
+            </TableHead>
+            <TableHead
+              onClick={() => setSortKey("type")}
+              className="cursor-pointer"
+            >
+              Document Type
+            </TableHead>
+            <TableHead
+              onClick={() => setSortKey("title")}
+              className="cursor-pointer"
+            >
+              Document Title
+            </TableHead>
+            <TableHead
+              onClick={() => setSortKey("status")}
+              className="cursor-pointer"
+            >
+              Status
+            </TableHead>
             <TableHead>Progress</TableHead>
-            <TableHead onClick={() => setSortKey("updated")} className="cursor-pointer">Updated</TableHead>
+            <TableHead
+              onClick={() => setSortKey("updated")}
+              className="cursor-pointer"
+            >
+              Updated
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sorted.map((p) => (
-            <TableRow key={p.id} className="border-t last:border-none hover:bg-gray-50">
+            <TableRow
+              key={p.id}
+              className="border-t last:border-none hover:bg-gray-50"
+            >
               <TableCell className="font-mono text-xs">
-                <Link className="underline text-indigo-700" href={`/projects/${p.id}`}>{p.id}</Link>
+                <Link
+                  className="underline text-indigo-700"
+                  href={`/projects/${p.id}`}
+                >
+                  {p.id}
+                </Link>
               </TableCell>
               <TableCell>{p.number}</TableCell>
               <TableCell>{p.type}</TableCell>
@@ -145,6 +270,8 @@ export default function ProjectList() {
                       ? "bg-blue-100 text-blue-800"
                       : p.status === "Draft"
                       ? "bg-yellow-100 text-yellow-800"
+                      : p.status === "Overdue"
+                      ? "bg-red-100 text-red-800"
                       : "bg-gray-100 text-gray-700"
                   )}
                 >
