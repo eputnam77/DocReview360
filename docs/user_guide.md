@@ -23,6 +23,10 @@ The configuration file contains an `editor` setting. Supported values include `t
 2. Set `editor: toast` (or another option) and restart the server.
 3. The next time you open the editor the new tool loads.
 
+Optional TipTap extensions can be discovered and managed at runtime. See
+the [plugin guide](tiptap-plugins.md) for details on registering or disabling
+wrappers.
+
 ## 3. Add a reviewer and request approval
 
 1. Use the API endpoint `POST /approvals` to create an approval request. Provide the document ID and the reviewer name.
