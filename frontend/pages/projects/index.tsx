@@ -18,6 +18,38 @@ interface Project {
   created?: string;
 }
 
+// Example data used when the API returns nothing.
+const DEMO_PROJECTS: Project[] = [
+  {
+    id: "AC-101",
+    name: "Policy Update",
+    number: 101,
+    user: "Jane Doe",
+    created: "2025-07-04",
+  },
+  {
+    id: "AC-102",
+    name: "Compliance Review",
+    number: 102,
+    user: "Jane Doe",
+    created: "2025-07-02",
+  },
+  {
+    id: "AC-103",
+    name: "Draft SOP",
+    number: 103,
+    user: "Jane Doe",
+    created: "2025-07-01",
+  },
+  {
+    id: "AC-104",
+    name: "Incident Report",
+    number: 104,
+    user: "Jane Doe",
+    created: "2025-07-03",
+  },
+];
+
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project | "number">("number");
@@ -25,8 +57,10 @@ export default function ProjectList() {
   useEffect(() => {
     fetch("/api/projects") // <-- Use /api/projects for Next.js API, or your real endpoint
       .then((r) => r.json())
-      .then(setProjects)
-      .catch(() => setProjects([]));
+      .then((data: Project[]) => {
+        setProjects(data.length > 0 ? data : DEMO_PROJECTS);
+      })
+      .catch(() => setProjects(DEMO_PROJECTS));
   }, []);
 
   const sorted = [...projects].sort((a, b) => {
