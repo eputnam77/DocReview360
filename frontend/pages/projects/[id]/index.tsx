@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
+import { Users2, CheckCircle2, Clock, BarChart2, FileEdit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -24,27 +24,24 @@ interface Project {
   user?: string;
   editor?: "tiptap" | "toast" | "codex" | "word";
 }
-
 interface LogEntry {
   timestamp: string;
   action: string;
   metadata?: Record<string, any>;
 }
-
 interface Workflow {
   id: string;
   phase: string;
   steps?: { name: string; status: string; }[];
 }
-
 interface Approval {
   id: string;
   reviewer: string;
-  state: string;
+  state: "pending" | "approved" | "overdue" | string;
   documensoSigId?: string;
 }
 
-// --- Demo Data (replace with real) ---
+// --- Demo Data ---
 const DEMO_PROJECT: Project = {
   id: "123e-ac-101",
   number: "AC-101",
@@ -58,7 +55,7 @@ const DEMO_PROJECT: Project = {
 };
 const DEMO_WORKFLOW: Workflow = {
   id: "wf-101",
-  phase: "Drafting",
+  phase: "Review",
   steps: [
     { name: "Draft", status: "complete" },
     { name: "Review", status: "active" },
@@ -69,16 +66,22 @@ const DEMO_WORKFLOW: Workflow = {
 const DEMO_APPROVALS: Approval[] = [
   { id: "appr-1", reviewer: "Jane Doe", state: "pending", documensoSigId: "sig-123" },
   { id: "appr-2", reviewer: "John Smith", state: "approved" },
+  { id: "appr-3", reviewer: "Jill Admin", state: "overdue" },
+];
+const DEMO_LOGS: LogEntry[] = [
+  { timestamp: "2025-07-04", action: "Draft created" },
+  { timestamp: "2025-07-04", action: "Initial review started" },
+  { timestamp: "2025-07-05", action: "Draft updated" },
 ];
 
-// --- Components ---
+// --- UI Helpers ---
 function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color?: string }) {
   return (
     <Card>
-      <CardContent className="flex items-center gap-4 p-6">
-        <Icon className={`w-8 h-8 ${color || "text-indigo-600"}`} />
+      <CardContent className="flex items-center gap-4 p-5">
+        <Icon className={`w-7 h-7 ${color || "text-indigo-600"}`} />
         <div>
-          <p className="text-xl font-bold leading-none">{value}</p>
+          <p className="text-lg font-bold leading-none">{value}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
         </div>
       </CardContent>
@@ -143,16 +146,11 @@ export default function ProjectDetailsPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    // Simulate async fetch
     setTimeout(() => {
       setProject(DEMO_PROJECT); // Replace with real fetch(`/api/projects/${id}`)
       setWorkflow(DEMO_WORKFLOW);
       setApprovals(DEMO_APPROVALS);
-      setLogs([
-        { timestamp: "2025-07-04", action: "Draft created" },
-        { timestamp: "2025-07-04", action: "Initial review started" },
-        { timestamp: "2025-07-05", action: "Draft updated" },
-      ]);
+      setLogs(DEMO_LOGS);
       setLoading(false);
     }, 300);
   }, [id]);
@@ -163,94 +161,113 @@ export default function ProjectDetailsPage() {
   const editor = project.editor ?? "tiptap";
   const editDocUrl = `/editors/${editor}?projectId=${id}&returnTo=/projects/${id}`;
 
-  // --- Status KPI row
-  const statAssigned = 1;
-  const statCompleted = project.status === "Complete" ? 1 : 0;
-  const statInProgress = project.status === "In Progress" ? 1 : 0;
-  const statOverdue = project.status === "Overdue" ? 1 : 0;
+  // Review KPI stats
+  const assigned = approvals.length;
+  const approved = approvals.filter(a => a.state === "approved").length;
+  const pending = approvals.filter(a => a.state === "pending").length;
+  const overdue = approvals.filter(a => a.state === "overdue").length;
 
   return (
     <div className="p-8 space-y-8">
-      {/* Header: Document Info Table */}
+
+      {/* --- Project Details Table (horizontal) --- */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Project Details</CardTitle>
+          <CardTitle className="text-xl font-bold flex items-center gap-2">
+            Project Details
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table className="mb-0">
-            <TableBody>
-              <TableRow>
-                <TableHead>Document Id</TableHead>
-                <TableCell>{project.id}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableHead>Document #</TableHead>
-                <TableCell>{project.number}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableHead>Document Type</TableHead>
-                <TableCell>{project.type}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableHead>Document Title</TableHead>
-                <TableCell>{project.title}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableHead>Status</TableHead>
-                <TableCell>
-                  <span className={cn(
-                    "px-2 py-1 rounded text-xs font-medium",
-                    project.status === "Complete"
-                      ? "bg-green-100 text-green-800"
-                      : project.status === "In Progress"
-                      ? "bg-blue-100 text-blue-800"
-                      : project.status === "Draft"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : project.status === "Overdue"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-700"
-                  )}>
-                    {project.status}
-                  </span>
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableHead>Progress</TableHead>
-                <TableCell className="min-w-[100px] w-32">
-                  <ProgressBar value={project.progress} />
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableHead>Last Updated</TableHead>
-                <TableCell>{project.updated?.slice(0, 10) ?? ""}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <Table className="min-w-full text-sm">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Document Id</TableHead>
+                  <TableHead>Document #</TableHead>
+                  <TableHead>Document Type</TableHead>
+                  <TableHead>Document Title</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-mono">{project.id}</TableCell>
+                  <TableCell>{project.number}</TableCell>
+                  <TableCell>{project.type}</TableCell>
+                  <TableCell>{project.title}</TableCell>
+                  <TableCell>
+                    <span className={cn(
+                      "px-2 py-1 rounded text-xs font-medium",
+                      project.status === "Complete"
+                        ? "bg-green-100 text-green-800"
+                        : project.status === "In Progress"
+                        ? "bg-blue-100 text-blue-800"
+                        : project.status === "Draft"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : project.status === "Overdue"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-700"
+                    )}>
+                      {project.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{project.updated?.slice(0, 10) ?? ""}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Status KPI Stat Row */}
-      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-4 max-w-2xl">
-        <StatCard icon={Users2} label="Assigned" value={statAssigned} color="text-indigo-600" />
-        <StatCard icon={Clock} label="In Progress" value={statInProgress} color="text-orange-600" />
-        <StatCard icon={CheckCircle2} label="Completed" value={statCompleted} color="text-emerald-600" />
-        <StatCard icon={BarChart2} label="Overdue" value={statOverdue} color="text-red-600" />
+      {/* --- Review Stats --- */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
+        <StatCard icon={Users2} label="Assigned" value={assigned} color="text-indigo-600" />
+        <StatCard icon={CheckCircle2} label="Approved" value={approved} color="text-emerald-600" />
+        <StatCard icon={Clock} label="Pending" value={pending} color="text-orange-600" />
+        <StatCard icon={BarChart2} label="Overdue" value={overdue} color="text-red-600" />
       </div>
 
-      {/* Workflow Progress */}
-      {workflow && (
+      {/* --- Workflow & Progress --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Workflow Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <WorkflowSteps steps={workflow.steps} />
-            <p className="text-xs text-gray-500 mt-1">Current Phase: {workflow.phase}</p>
+            <WorkflowSteps steps={workflow?.steps} />
+            <p className="text-xs text-gray-500 mt-1">Current Phase: {workflow?.phase}</p>
           </CardContent>
         </Card>
-      )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Overall Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="pt-2">
+              <ProgressBar value={project.progress} />
+              <div className="text-xs mt-2 text-gray-500">{project.progress}% complete</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Approvals Table */}
+      {/* --- Edit/View Document (prominent) --- */}
+      <div className="flex justify-center">
+        <Button
+          asChild
+          className="text-lg px-8 py-4 rounded-lg shadow-lg bg-indigo-600 hover:bg-indigo-700"
+        >
+          <Link href={editDocUrl} className="flex items-center gap-2">
+            <FileEdit className="w-6 h-6" />
+            {editor === "tiptap" || editor === "toast" || editor === "codex"
+              ? "Edit Document"
+              : "View Document"}
+          </Link>
+        </Button>
+      </div>
+
+      {/* --- Approvals Table --- */}
       {approvals.length > 0 && (
         <Card>
           <CardHeader>
@@ -276,6 +293,8 @@ export default function ProjectDetailsPage() {
                           ? "bg-green-100 text-green-800"
                           : a.state === "pending"
                           ? "bg-blue-100 text-blue-800"
+                          : a.state === "overdue"
+                          ? "bg-red-100 text-red-800"
                           : "bg-gray-100 text-gray-700"
                       )}>
                         {a.state}
@@ -309,7 +328,7 @@ export default function ProjectDetailsPage() {
         </Card>
       )}
 
-      {/* Audit History */}
+      {/* --- Audit History --- */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Audit History</CardTitle>
@@ -324,11 +343,6 @@ export default function ProjectDetailsPage() {
           </ul>
         </CardContent>
       </Card>
-
-      {/* Edit Document Button */}
-      <Button asChild>
-        <Link href={editDocUrl}>Edit Document</Link>
-      </Button>
     </div>
   );
 }
