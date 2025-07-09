@@ -1,6 +1,7 @@
 // frontend/components/ui/button.tsx
 
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -12,6 +13,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
     | "danger"
     | "ghost";
   size?: "sm" | "md" | "lg";
+  asChild?: boolean;
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -20,15 +22,17 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       className,
       variant = "default",
       size = "md",
+      asChild = false,
       type = "button",
       children,
       ...props
     },
     ref,
   ) => {
+    const Comp = asChild ? Slot : "button";
     return (
-      <button
-        type={type}
+      <Comp
+        {...(asChild ? {} : { type })}
         ref={ref}
         className={cn(
           "inline-flex items-center justify-center rounded-md font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:pointer-events-none",
@@ -54,7 +58,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {children}
-      </button>
+      </Comp>
     );
   },
 );

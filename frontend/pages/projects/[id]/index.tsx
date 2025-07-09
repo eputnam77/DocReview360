@@ -36,6 +36,7 @@ export default function ProjectDetails() {
   const router = useRouter();
   const { id } = router.query;
   const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -43,10 +44,12 @@ export default function ProjectDetails() {
 
   useEffect(() => {
     if (!id) return;
+    setLoading(true);
     fetch(`/api/projects/${id}`)
-      .then((r) => r.json())
-      .then(setProject)
-      .catch(() => setProject(null));
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setProject(data))
+      .catch(() => setProject(null))
+      .finally(() => setLoading(false));
     fetch(`/api/projects/${id}/workflow`)
       .then((r) => r.json())
       .then((wf: Workflow) => {
@@ -94,7 +97,8 @@ export default function ProjectDetails() {
     }
   };
 
-  if (!project) return <p className="p-4">Loading…</p>;
+  if (loading) return <p className="p-4">Loading…</p>;
+  if (!project) return <p className="p-4">Project not found.</p>;
 
   const editor = project.editor ?? "tiptap";
   const editDocUrl = `/editors/${editor}?projectId=${id}&returnTo=/projects/${id}`;
