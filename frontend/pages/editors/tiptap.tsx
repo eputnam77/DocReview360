@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -62,7 +63,7 @@ const AVAILABLE_EXTENSIONS = [
 // Import the TipTap-specific CSS
 import "@/styles/tiptap.css";
 
-export default function TiptapEditorPage() {
+function TiptapEditorPage() {
   const [enabledExtensions, setEnabledExtensions] = useState<string[]>(() => {
     if (typeof window === "undefined")
       return AVAILABLE_EXTENSIONS.map((e) => e.name);
@@ -94,6 +95,8 @@ export default function TiptapEditorPage() {
       extensions,
       content: FAA_AC_TEMPLATE,
       autofocus: true,
+      // Avoid hydration issues during Next.js SSR
+      immediatelyRender: false,
       editorProps: {
         attributes: {
           class: "tiptap-content focus:outline-none w-full h-full",
@@ -262,3 +265,8 @@ export default function TiptapEditorPage() {
     </div>
   );
 }
+
+// Disable SSR to prevent hydration errors with TipTap
+export default dynamic(() => Promise.resolve(TiptapEditorPage), {
+  ssr: false,
+});
