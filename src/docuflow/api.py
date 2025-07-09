@@ -71,6 +71,7 @@ from .documents import (
 )
 from .exporter import export_document
 from .logs import LogEntry, log_event, query_logs
+from .messages import render
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .rbac import require_role
@@ -203,7 +204,11 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
     project = ProjectModel(**body.model_dump())
     add_project(project)
-    log_event("create_project", user=project.user, project=project.id)
+    log_event(
+        render("create_project", user=project.user or "", project_id=project.id),
+        user=project.user,
+        project=project.id,
+    )
     return project
 
 
@@ -257,7 +262,12 @@ async def import_document_endpoint(
         priority=priority,
     )
     log_event(
-        "import_document",
+        render(
+            "import_docx",
+            user=user or "",
+            project_id=project or "",
+            filename=file.filename,
+        ),
         user=user,
         project=project,
         filename=file.filename,
@@ -274,7 +284,14 @@ async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
         document = import_tiptap_document(body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    log_event("import_tiptap", document=document.id)
+    log_event(
+        render(
+            "convert_tiptap",
+            project_id=document.project or "",
+        ),
+        document=document.id,
+        project=document.project,
+    )
     return document
 
 
@@ -623,7 +640,10 @@ async def documenso_webhook(payload: dict) -> Response:
 async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
     token_resp = await auth.login_for_access_token(form_data)
-    log_event("login", user=form_data.username)
+    log_event(
+        render("login", user=form_data.username),
+        user=form_data.username,
+    )
     return token_resp
 
 
@@ -661,7 +681,10 @@ async def login(request: Request, username: str = Form(...), password: str = For
     if username == "admin" and password == "admin":
         response = RedirectResponse("/projects", status_code=303)
         response.set_cookie("session", "admin")
-        log_event("login", user=username)
+        log_event(
+            render("login", user=username),
+            user=username,
+        )
         return response
     return templates.TemplateResponse(
         "login.html", {"request": request, "error": "Invalid credentials"}, status_code=400
