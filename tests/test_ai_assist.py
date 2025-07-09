@@ -49,3 +49,48 @@ async def test_rewrite_validation() -> None:
 async def test_summarize_validation() -> None:
     with pytest.raises(ValueError):
         await ai_assist.summarize_text("")
+
+
+@pytest.mark.asyncio
+async def test_call_openai_remote(monkeypatch):
+    class DummyResp:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {"choices": [{"message": {"content": "Hi"}}]}
+
+    class DummyClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def post(self, *args, **kwargs):
+            return DummyResp()
+
+    monkeypatch.setattr(ai_assist, "OPENAI_KEY", "k")
+    monkeypatch.setattr(ai_assist.httpx, "AsyncClient", lambda timeout=10: DummyClient())
+
+    result = await ai_assist._call_openai("ping")
+    assert result == "Hi"
+
+
+@pytest.mark.asyncio
+async def test_call_openai_error(monkeypatch):
+    class DummyClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def post(self, *args, **kwargs):
+            raise ai_assist.httpx.HTTPError("fail")
+
+    monkeypatch.setattr(ai_assist, "OPENAI_KEY", "k")
+    monkeypatch.setattr(ai_assist.httpx, "AsyncClient", lambda timeout=10: DummyClient())
+
+    with pytest.raises(RuntimeError):
+        await ai_assist._call_openai("boom")
