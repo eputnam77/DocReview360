@@ -11,6 +11,7 @@ The project currently lacks guidance on where to place documentation templates a
 * Create a `.dev/templates/` directory containing placeholder `README.md`, `API_DOCS.md`, and `CHANGELOG.md` files.
 * Provide empty configuration files for TypeScript (`tsconfig.json`), Rust (`Cargo.toml`), and Go (`go.mod`) to prepare for multi‑language support.
 * Ensure `pyproject.toml` excludes `.dev*` and test files from distribution and targets Python 3.12.
+* Include sample configuration files `docuflow.yaml` and `docker-compose.yml` in the repository root for local testing.
 * Adopt a clear top‑level layout so contributors know where each language lives:
 
 ```text
