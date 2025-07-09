@@ -579,13 +579,19 @@ async def sign_document(
     doc_id: str,
     user: str = Form(...),
     workflow: str | None = Form(None),
+    approval: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a Documenso signature request for ``doc_id``.
 
     Returns both the signature ``id`` and a ``url`` that a client should
     redirect the user to for signing.
     """
-    sig_id, url = request_signature(doc_id, user, workflow)
+    sig_id, url = request_signature(
+        doc_id,
+        user,
+        workflow,
+        approval_id=approval,
+    )
     return {"id": sig_id, "url": url}
 
 
