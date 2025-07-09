@@ -12,6 +12,8 @@ from zipfile import ZipFile
 
 from pydantic import BaseModel
 
+from . import fts
+
 
 class DocumentModel(BaseModel):
     """Simple representation of a document with revision history."""
@@ -94,6 +96,7 @@ def import_document(
     from . import search as search_module
 
     search_module.add_document(document)
+    fts.index_document(doc_id, content)
     return document
 
 
@@ -121,6 +124,7 @@ def update_document(
     from . import search as search_module
 
     search_module.search_index.remove_document(doc_id)
+    fts.remove_document(doc_id)
 
     old_content = document.content
     document.history.append(old_content)
@@ -133,6 +137,7 @@ def update_document(
 
     # Re-index the updated document
     search_module.add_document(document)
+    fts.index_document(doc_id, document.content)
 
     return document
 

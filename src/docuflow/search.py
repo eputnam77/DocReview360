@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from pydantic import BaseModel
 
+from . import fts
 from .documents import DocumentModel, documents
 
 
@@ -213,11 +214,10 @@ def search(
     if not terms:
         candidate_ids = set(documents.keys())
     else:
-        candidate_ids: Set[str] | None = None
-        for term in terms:
-            ids = search_index.index.get(term, set())
-            candidate_ids = ids if candidate_ids is None else candidate_ids & ids
-        candidate_ids = candidate_ids or set()
+        try:
+            candidate_ids = set(fts.search(" ".join(terms)))
+        except Exception:
+            candidate_ids = set()
 
     results: List[DocumentModel] = []
     for doc_id in candidate_ids:
