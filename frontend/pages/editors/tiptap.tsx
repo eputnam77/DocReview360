@@ -37,7 +37,10 @@ import {
 import FAA_AC_TEMPLATE from "@/data/tiptapTemplates/faa_ac_template";
 
 const AVAILABLE_EXTENSIONS = [
-  { name: "StarterKit", extension: StarterKit },
+  {
+    name: "StarterKit",
+    extension: StarterKit.configure({ history: false }),
+  },
   { name: "Underline", extension: Underline },
   { name: "Document", extension: DocumentExtension },
   { name: "Paragraph", extension: Paragraph },

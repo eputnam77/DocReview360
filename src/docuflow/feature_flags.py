@@ -22,9 +22,12 @@ class FeatureFlags:
             url=url, app_name="docuflow", custom_headers={"Authorization": api_key}
         )
         self.client.initialize_client()
+        self._logged = False
 
     def is_enabled(self, name: str, context: dict[str, Any] | None = None) -> bool:
         """Return True if ``name`` flag is enabled."""
         result = self.client.is_enabled(name, context or {})
-        record_task_completion(139)
+        if not self._logged:
+            record_task_completion(139)
+            self._logged = True
         return bool(result)
