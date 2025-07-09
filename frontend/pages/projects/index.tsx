@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DEMO_PROJECTS } from "@/data";
 
 // The Project type: extend as needed
 interface Project {
@@ -24,50 +25,6 @@ interface Project {
   updated?: string;
   user?: string;
 }
-
-// Example/demo projects
-const DEMO_PROJECTS: Project[] = [
-  {
-    id: "123e-ac-101",
-    number: "AC-101",
-    type: "Advisory Circular",
-    title: "Policy Update",
-    status: "In Progress",
-    progress: 40,
-    updated: "2025-07-04",
-    user: "Jane Doe",
-  },
-  {
-    id: "123e-ac-102",
-    number: "AC-102",
-    type: "Order",
-    title: "Compliance Review",
-    status: "Complete",
-    progress: 100,
-    updated: "2025-07-02",
-    user: "Jane Doe",
-  },
-  {
-    id: "123e-ac-103",
-    number: "AC-103",
-    type: "SOP",
-    title: "Draft SOP",
-    status: "Draft",
-    progress: 10,
-    updated: "2025-07-01",
-    user: "Jane Doe",
-  },
-  {
-    id: "123e-ac-104",
-    number: "AC-104",
-    type: "Incident Report",
-    title: "Incident Report",
-    status: "Review",
-    progress: 70,
-    updated: "2025-07-03",
-    user: "Jane Doe",
-  },
-];
 
 // --- Simple stat cards (copied style from dashboard) ---
 function StatCard({
