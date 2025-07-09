@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import FAA_AC_TEMPLATE from "@/data/codexTemplates/faa_ac_template";
 
@@ -19,7 +20,7 @@ if (typeof window !== "undefined") {
   Quote = require("@editorjs/quote").default;
 }
 
-export default function CodexEditorPage() {
+function CodexEditorPage() {
   const ejInstance = useRef<any>(null);
   const holder = useRef<HTMLDivElement>(null);
 
@@ -82,3 +83,8 @@ export default function CodexEditorPage() {
     </div>
   );
 }
+
+// Disable SSR to avoid editor initialization on the server
+export default dynamic(() => Promise.resolve(CodexEditorPage), {
+  ssr: false,
+});
