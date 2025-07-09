@@ -37,7 +37,7 @@ import {
   Redo2,
   ChevronDown,
   ChevronUp,
-  Clock
+  Clock,
 } from "lucide-react";
 import FAA_AC_TEMPLATE from "@/data/tiptapTemplates/faa_ac_template";
 import "@/styles/tiptap.css";
@@ -85,7 +85,7 @@ const DEFAULT_TOOLBAR_EXTENSIONS = [
   "BulletList",
   "OrderedList",
   "ListItem",
-  "HardBreak"
+  "HardBreak",
 ];
 
 function TiptapEditorPage() {
@@ -100,14 +100,17 @@ function TiptapEditorPage() {
   const extensions = useMemo(
     () =>
       AVAILABLE_EXTENSIONS.filter((e) =>
-        enabledExtensions.includes(e.name)
+        enabledExtensions.includes(e.name),
       ).map((e) => e.extension),
-    [enabledExtensions]
+    [enabledExtensions],
   );
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("tiptapExtensions", JSON.stringify(enabledExtensions));
+      localStorage.setItem(
+        "tiptapExtensions",
+        JSON.stringify(enabledExtensions),
+      );
     }
   }, [enabledExtensions]);
 
@@ -123,7 +126,7 @@ function TiptapEditorPage() {
         },
       },
     },
-    [extensions]
+    [extensions],
   );
 
   const setHeading = (level: number) => {
@@ -138,7 +141,12 @@ function TiptapEditorPage() {
   };
 
   // --- Toolbar Button (icon, command, active?) ---
-  const toolbarButton = (icon: any, command: () => void, active: boolean, title = "") => (
+  const toolbarButton = (
+    icon: any,
+    command: () => void,
+    active: boolean,
+    title = "",
+  ) => (
     <button
       type="button"
       className={`px-2 py-1 rounded ${active ? "bg-indigo-100" : ""}`}
@@ -154,7 +162,7 @@ function TiptapEditorPage() {
   const DUMMY_HISTORY = [
     { id: 1, label: "Draft - Jul 9, 8:00am" },
     { id: 2, label: "AutoSave - Jul 8, 3:30pm" },
-    { id: 3, label: "Submitted - Jul 7, 12:15pm" }
+    { id: 3, label: "Submitted - Jul 7, 12:15pm" },
   ];
 
   if (!editor) return <div>Loading TipTap...</div>;
@@ -192,16 +200,66 @@ function TiptapEditorPage() {
             <option value="h2">Heading 2</option>
             <option value="h3">Heading 3</option>
           </select>
-          {toolbarButton(<Bold className="w-4 h-4" />, () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"), "Bold")}
-          {toolbarButton(<Italic className="w-4 h-4" />, () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"), "Italic")}
-          {toolbarButton(<UnderlineIcon className="w-4 h-4" />, () => editor.chain().focus().toggleUnderline().run(), editor.isActive("underline"), "Underline")}
-          {toolbarButton(<Strikethrough className="w-4 h-4" />, () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"), "Strikethrough")}
-          {toolbarButton(<Code className="w-4 h-4" />, () => editor.chain().focus().toggleCode().run(), editor.isActive("code"), "Inline Code")}
-          {toolbarButton(<Quote className="w-4 h-4" />, () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"), "Blockquote")}
-          {toolbarButton(<List className="w-4 h-4" />, () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"), "Bullet List")}
-          {toolbarButton(<ListOrdered className="w-4 h-4" />, () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"), "Numbered List")}
-          {toolbarButton(<Undo2 className="w-4 h-4" />, () => editor.chain().focus().undo().run(), false, "Undo")}
-          {toolbarButton(<Redo2 className="w-4 h-4" />, () => editor.chain().focus().redo().run(), false, "Redo")}
+          {toolbarButton(
+            <Bold className="w-4 h-4" />,
+            () => editor.chain().focus().toggleBold().run(),
+            editor.isActive("bold"),
+            "Bold",
+          )}
+          {toolbarButton(
+            <Italic className="w-4 h-4" />,
+            () => editor.chain().focus().toggleItalic().run(),
+            editor.isActive("italic"),
+            "Italic",
+          )}
+          {toolbarButton(
+            <UnderlineIcon className="w-4 h-4" />,
+            () => editor.chain().focus().toggleUnderline().run(),
+            editor.isActive("underline"),
+            "Underline",
+          )}
+          {toolbarButton(
+            <Strikethrough className="w-4 h-4" />,
+            () => editor.chain().focus().toggleStrike().run(),
+            editor.isActive("strike"),
+            "Strikethrough",
+          )}
+          {toolbarButton(
+            <Code className="w-4 h-4" />,
+            () => editor.chain().focus().toggleCode().run(),
+            editor.isActive("code"),
+            "Inline Code",
+          )}
+          {toolbarButton(
+            <Quote className="w-4 h-4" />,
+            () => editor.chain().focus().toggleBlockquote().run(),
+            editor.isActive("blockquote"),
+            "Blockquote",
+          )}
+          {toolbarButton(
+            <List className="w-4 h-4" />,
+            () => editor.chain().focus().toggleBulletList().run(),
+            editor.isActive("bulletList"),
+            "Bullet List",
+          )}
+          {toolbarButton(
+            <ListOrdered className="w-4 h-4" />,
+            () => editor.chain().focus().toggleOrderedList().run(),
+            editor.isActive("orderedList"),
+            "Numbered List",
+          )}
+          {toolbarButton(
+            <Undo2 className="w-4 h-4" />,
+            () => editor.chain().focus().undo().run(),
+            false,
+            "Undo",
+          )}
+          {toolbarButton(
+            <Redo2 className="w-4 h-4" />,
+            () => editor.chain().focus().redo().run(),
+            false,
+            "Redo",
+          )}
           <button
             onClick={handleSave}
             className="ml-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
@@ -226,7 +284,10 @@ function TiptapEditorPage() {
             <div className="absolute right-0 mt-2 bg-white shadow-lg border rounded p-4 z-50 max-h-72 overflow-y-auto w-64">
               <div className="mb-2 font-semibold">Enabled Extensions</div>
               {AVAILABLE_EXTENSIONS.map((ext) => (
-                <label key={ext.name} className="flex items-center gap-2 text-sm my-1">
+                <label
+                  key={ext.name}
+                  className="flex items-center gap-2 text-sm my-1"
+                >
                   <input
                     type="checkbox"
                     checked={enabledExtensions.includes(ext.name)}
@@ -234,7 +295,7 @@ function TiptapEditorPage() {
                       setEnabledExtensions((prev) =>
                         prev.includes(ext.name)
                           ? prev.filter((n) => n !== ext.name)
-                          : [...prev, ext.name]
+                          : [...prev, ext.name],
                       );
                     }}
                   />
@@ -260,14 +321,21 @@ function TiptapEditorPage() {
           >
             <Clock className="w-4 h-4" />
             History
-            {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showHistory ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
           {showHistory && (
             <div className="absolute right-0 mt-2 bg-white shadow-lg border rounded p-2 z-50 w-56">
               <div className="mb-2 font-semibold">Version History</div>
               <ul>
                 {DUMMY_HISTORY.map((v) => (
-                  <li key={v.id} className="py-1 border-b last:border-none text-xs">
+                  <li
+                    key={v.id}
+                    className="py-1 border-b last:border-none text-xs"
+                  >
                     {v.label}
                   </li>
                 ))}
@@ -292,4 +360,3 @@ function TiptapEditorPage() {
 
 // Disable SSR for Next.js hydration issues
 export default dynamic(() => Promise.resolve(TiptapEditorPage), { ssr: false });
-

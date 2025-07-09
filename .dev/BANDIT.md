@@ -244,7 +244,7 @@ Test results:
    Location: src/docuflow/api.py:655:43
 654	    """Simple credential check for admin user."""
 655	    if username == "admin" and password == "admin":
-656	        response = RedirectResponse("/reviewtrackertable", status_code=303)
+656	        response = RedirectResponse("/projects", status_code=303)
 
 --------------------------------------------------
 >> Issue: [B106:hardcoded_password_funcarg] Possible hardcoded password: 'bearer'
