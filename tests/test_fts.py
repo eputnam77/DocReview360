@@ -16,3 +16,10 @@ def test_fts_invalid_input() -> None:
         fts.index_document("", "x")
     with pytest.raises(ValueError):
         fts.search("")
+
+
+def test_fts_remove_document() -> None:
+    fts.clear()
+    fts.index_document("a", "hello")
+    fts.remove_document("a")
+    assert fts.search("hello") == []

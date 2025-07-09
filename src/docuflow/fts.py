@@ -35,6 +35,13 @@ def search(query: str) -> List[str]:
     return [row[0] for row in rows]
 
 
+def remove_document(doc_id: str) -> None:
+    """Remove a document from the index."""
+    if not doc_id:
+        raise ValueError("doc_id required")
+    _conn.execute("DELETE FROM docs WHERE id = ?", (doc_id,))
+
+
 def clear() -> None:
     """Remove all indexed documents."""
     _conn.execute("DELETE FROM docs")
