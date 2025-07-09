@@ -43,6 +43,7 @@ from .archive import (
 from .archive import (
     archive_document as archive_doc,
 )
+from .cache import cache_get, cache_set
 from .comments import CommentModel, add_comment, list_comments
 from .doc_types import (
     DocumentTypeModel,
@@ -195,8 +196,19 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 @app.get("/projects", response_model=list[ProjectModel])
 async def list_projects_endpoint() -> list[ProjectModel]:
-    """Return all known projects."""
-    return list_projects()
+    """Return all known projects with simple caching."""
+    cached = cache_get("projects")
+    if cached:
+        try:
+            if isinstance(cached, bytes):
+                cached = cached.decode()
+            data = json.loads(cached)
+            return [ProjectModel.model_validate(p) for p in data]
+        except Exception:
+            pass
+    projects_list = list_projects()
+    cache_set("projects", json.dumps([p.model_dump() for p in projects_list]), ttl=30)
+    return projects_list
 
 
 @app.post("/projects", status_code=201, response_model=ProjectModel)
@@ -204,6 +216,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
     project = ProjectModel(**body.model_dump())
     add_project(project)
+    cache_set("projects", json.dumps([p.model_dump() for p in list_projects()]), ttl=30)
     log_event(
         render("create_project", user=project.user or "", project_id=project.id),
         user=project.user,
@@ -253,14 +266,32 @@ async def import_document_endpoint(
     priority: int | None = Form(None),
 ) -> DocumentModel:
     """Import a DOCX or Markdown file and store it as a document."""
-    data = await file.read()
-    document = import_document(
-        file.filename,
-        data,
-        project=project,
-        user=user,
-        priority=priority,
-    )
+    import tempfile
+
+    temp = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            temp.write(chunk)
+        temp.flush()
+        temp.seek(0)
+        data = temp.read()
+        document = import_document(
+            file.filename,
+            data,
+            project=project,
+            user=user,
+            priority=priority,
+        )
+    finally:
+        temp.close()
+        try:
+            Path(temp.name).unlink(missing_ok=True)
+        except Exception:
+            pass
+    cache_set("documents", json.dumps([d.model_dump() for d in list_docs()]), ttl=30)
     log_event(
         render(
             "import_docx",
@@ -292,13 +323,25 @@ async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
         document=document.id,
         project=document.project,
     )
+    cache_set("documents", json.dumps([d.model_dump() for d in list_docs()]), ttl=30)
     return document
 
 
 @app.get("/documents", response_model=list[DocumentModel])
 async def list_documents_endpoint() -> list[DocumentModel]:
-    """Return all imported documents."""
-    return list_docs()
+    """Return all imported documents with caching."""
+    cached = cache_get("documents")
+    if cached:
+        try:
+            if isinstance(cached, bytes):
+                cached = cached.decode()
+            data = json.loads(cached)
+            return [DocumentModel.model_validate(d) for d in data]
+        except Exception:
+            pass
+    docs_list = list_docs()
+    cache_set("documents", json.dumps([d.model_dump() for d in docs_list]), ttl=30)
+    return docs_list
 
 
 @app.get("/documents/{doc_id}", response_model=DocumentModel)
@@ -314,7 +357,9 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
 async def update_document_endpoint(doc_id: str, document: DocumentModel) -> DocumentModel:
     """Update a document's content and save the previous version."""
     try:
-        return update_document(doc_id, document.content, priority=document.priority)
+        updated = update_document(doc_id, document.content, priority=document.priority)
+        cache_set("documents", json.dumps([d.model_dump() for d in list_docs()]), ttl=30)
+        return updated
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -809,10 +854,13 @@ async def internal_status_endpoint() -> dict[str, int]:
 async def dashboard_stream(websocket: WebSocket) -> None:
     """Send dashboard data periodically over a websocket."""
     await websocket.accept()
+    previous: list[dict[str, Any]] | None = None
     try:
         while True:
             data = [entry.model_dump() for entry in dashboard_data()]
-            await websocket.send_json(data)
+            if data != previous:
+                await websocket.send_json(data)
+                previous = data
             await asyncio.sleep(1)
     except WebSocketDisconnect:
         pass
