@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from pathlib import Path
 
 from celery import Celery
@@ -19,7 +20,9 @@ async def launch_flower(app: Celery, port: int = 5555, work_dir: str | Path = ".
         f"--port={port}",
         cwd=str(work_dir),
     )
-    await asyncio.sleep(0.5)
+    sleep_result = asyncio.sleep(0.5)
+    if inspect.isawaitable(sleep_result):
+        await sleep_result
     if proc.returncode is not None:
         raise RuntimeError("flower failed to start")
     record_task_completion(136)
