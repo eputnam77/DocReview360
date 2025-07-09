@@ -11,6 +11,7 @@ let EditorJS: any = null;
 let Header: any = null;
 let List: any = null;
 let Quote: any = null;
+let Delimiter: any = null;
 
 if (typeof window !== "undefined") {
   const EJ = require("@editorjs/editorjs");
@@ -18,6 +19,7 @@ if (typeof window !== "undefined") {
   Header = require("@editorjs/header").default;
   List = require("@editorjs/list").default;
   Quote = require("@editorjs/quote").default;
+  Delimiter = require("@editorjs/delimiter").default;
 }
 
 function CodexEditorPage() {
@@ -35,6 +37,7 @@ function CodexEditorPage() {
         header: Header,
         list: List,
         quote: Quote,
+        delimiter: Delimiter,
       },
       data: FAA_AC_TEMPLATE, // FAA Advisory Circular template
       onReady: () => {
