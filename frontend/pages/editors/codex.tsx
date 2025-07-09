@@ -16,10 +16,18 @@ let Delimiter: any = null;
 if (typeof window !== "undefined") {
   const EJ = require("@editorjs/editorjs");
   EditorJS = EJ.default ?? EJ;
-  Header = require("@editorjs/header").default;
-  List = require("@editorjs/list").default;
-  Quote = require("@editorjs/quote").default;
-  Delimiter = require("@editorjs/delimiter").default;
+
+  const H = require("@editorjs/header");
+  Header = H.default ?? H;
+
+  const L = require("@editorjs/list");
+  List = L.default ?? L;
+
+  const Q = require("@editorjs/quote");
+  Quote = Q.default ?? Q;
+
+  const D = require("@editorjs/delimiter");
+  Delimiter = D.default ?? D;
 }
 
 function CodexEditorPage() {
