@@ -1,11 +1,11 @@
 """Implementation for task 42."""
 
-from ..markreview import apply_markreview
+from ..pandiff import format_change_bars
 from . import record_task_completion
 
 
 def task42() -> str:
-    """Return a sample MarkReview diff."""
-    diff = apply_markreview("old", "new line")
+    """Return a sample change-bar diff."""
+    lines = format_change_bars("old", "new line")
     record_task_completion(42)
-    return diff
+    return "\n".join(lines)

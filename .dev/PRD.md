@@ -56,7 +56,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 3. **ONLYOFFICE Docs** connector for full DOCX fidelity. ([onlyoffice.com][2])
 4. **XML block editor** (Monaco-based) for strictly structured specs.
 
-* Real-time autosave, dual-view (rich & source), Pandiff diffing, MarkReview-style change bars.
+* Real-time autosave, dual-view (rich & source), Pandiff diffing, TipTap change bars.
 
 ### 3.3 Workflow & Approvals
 
