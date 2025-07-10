@@ -57,7 +57,7 @@ export default function WorkflowDetailPage() {
             <p className="text-gray-500 text-sm mt-1">{workflow.description}</p>
           </div>
           <Button asChild>
-            <a href={`/workflows/${workflow.id}/edit`}>
+            <a href="/workflows/edit">
               <Edit3 className="w-5 h-5 mr-2" />
               Edit Workflow
             </a>
