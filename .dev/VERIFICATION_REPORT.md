@@ -24,7 +24,7 @@
 - **Priority management with temporary reassignment** and expiry checks【F:src/docuflow/search.py†L146-L167】【F:tests/test_task13.py†L11-L30】.
 - **Document numbering engine** tracks per-project sequences【F:src/docuflow/documents.py†L34-L46】【F:tests/test_task22.py†L1-L9】.
 - **Version history utilities** expose previous revisions with retrieval helpers【F:src/docuflow/documents.py†L117-L136】【F:tests/test_task41.py†L1-L15】.
-- **MarkReview change-bars** generate diff output for PDF workflows【F:src/docuflow/markreview.py†L8-L22】【F:tests/test_task42.py†L1-L5】.
+- **Change-bar rendering** generates diff output for PDF workflows【F:src/docuflow/pandiff.py†L33-L58】【F:tests/test_task42.py†L1-L6】.
 - **MFA authentication helper** validates OTP codes【F:src/docuflow/auth.py†L44-L63】【F:tests/test_task43.py†L1-L8】.
 - **Compliance report generator** emits PDF bytes for audits【F:src/docuflow/security_compliance.py†L21-L29】【F:tests/test_task44.py†L1-L6】.
 - **Observability stack launcher** returns Prometheus and Grafana URLs【F:src/docuflow/monitoring.py†L31-L40】【F:tests/test_task45.py†L1-L5】.
