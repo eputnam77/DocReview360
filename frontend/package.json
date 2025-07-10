@@ -48,7 +48,8 @@
     "shadcn-ui": "^0.4.0",
     "tailwind-merge": "^2.2.2",
     "tailwindcss": "^3.4.0",
-    "zustand": "^4.5.2"
+    "zustand": "^4.5.2",
+    "critters": "^0.0.25"
   },
   "devDependencies": {
     "@types/node": "24.0.10",
