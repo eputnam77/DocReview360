@@ -170,6 +170,25 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | **165** | **Persistent Sidebar** | • Add global layout wrapper that renders `Sidebar` on every page.<br>• Update `_app.tsx` or layout component to include sidebar left of main content. | FE • P1 | 1 d | Navigate to `/dashboard` or `/projects` and sidebar remains visible. <br>See `tests/e2e/features/task165.feature` |
 | **166** | **User-scoped projects & dashboards** | • Backend `/api/projects` and dashboard endpoints filter by authenticated user.<br>• Remove hard-coded `currentUser` constant; rely on session info.<br>• Integration tests confirm user separation. | Backend • P2 | 2 d | See `tests/e2e/features/task166.feature` |
 | 167 | Remove MarkReview references | Strip all mentions of “MarkReview” from docs and code; rely on a TipTap extension for change bars and track changes. | Docs • P1 | 1 d | `grep -R "MarkReview"` returns no hits. |
+| 168 | Temporary demo database | • Add SQLite option for demos with CRUD for projects, users, documents, workflows, reviewers. | Backend • P1 | 2 d | Restart demo → data persists. |
+| 169 | Setup wizard options | • Extend `docuflow init` and UI wizard to select editors, auth, and DB type. | Setup • P1 | 2 d | Wizard outputs working `.env`. |
+| 170 | Reference docs in projects | • Upload or link reference documents per project; show download links. | PM, Editor | 2 d | Upload file → reference link visible. |
+| 171 | Workflow selection on new project | • Project creation wizard lists workflow templates and previews steps. | PM, Editor | 1 d | New project reflects chosen workflow. |
+| 172 | Project phase field | • Add `phase` column (FAA Review, Public Comment, etc.) editable via API and UI. | PM | 1 d | Update phase → API returns new value. |
+| 173 | Custom project types | • Admin page to create new project types affecting available fields and workflows. | Admin | 2 d | Added type appears in create wizard. |
+| 174 | Background docs on creation | • Allow uploading background documents during project setup, stored with main doc. | PM, Editor | 1 d | Background docs listed on project page. |
+| 175 | Rename to DocReview360 | • Replace “DocuFlow” with “DocReview360” in code, docs, and UI. | Docs • P1 | 2 d | `grep -R "DocuFlow"` shows none. |
+| 176 | Editable worksheets | • Worksheets like SC can be saved and later edited. | Editor | 1 d | Create worksheet → reopen and edit persists. |
+| 177 | Move project trash icon | • Position delete action after reviewer column instead of after “x.” | UI | 0.5 d | Layout screenshot matches design. |
+| 178 | Resort reviewers | • Enable drag-and-drop reordering of reviewers and persist order. | UI | 1 d | Reordered list stays after refresh. |
+| 179 | Field descriptions | • Add tooltip help text for form fields throughout the app. | FE | 1 d | Hover shows description text. |
+| 180 | Delayed status push | • Batch project status updates to API every 15 min via background job. | Backend • P2 | 1 d | Status posts observed on schedule. |
+| 181 | Okta login option | • Integrate Okta SSO with fallback email/password for dev. | Security | 2 d | Okta login succeeds; local auth works. |
+| 182 | AWS Bedrock integration | • Optional AI features via AWS Bedrock when API key set. | AI | 2 d | Bedrock API call returns response. |
+| 183 | Neural network analytics | • Prototype reviewer prediction and risk scoring model. | AI | 3 d | Analytics script outputs scores. |
+| 184 | Advanced dashboards | • Interactive charts for throughput and workload with export options. | Data | 3 d | Dashboard renders and exports CSV. |
+| 185 | Improved search | • Implement cross-project search with keyword filters. | Backend • P2 | 2 d | `/search?q=test` returns results. |
+| 186 | Evaluate Documenso | • Test Documenso signatures in workflow to determine fit. | PM | 1 d | Signature appears correctly in demo. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
@@ -183,6 +202,5 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 These sixteen tasks ensure that **anything executable via the admin CLI can also be done through the browser**, giving non-terminal users full self-service while still honouring RBAC and FedRAMP expectations.
 
 **Confidence** 0.42 — tasks mapped against prior backlog items; no functionality removed, only surfaced via UI.
-
 
 
