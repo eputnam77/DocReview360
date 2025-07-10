@@ -20,9 +20,10 @@ DocuFlow helps you organise documents, run simple approval workflows and keep tr
    ```
 4. **Start the React frontend** (requires Node 18+)
    ```bash
-   npm install --legacy-peer-deps --prefix frontend  # only once
+   npm install --legacy-peer-deps --prefix frontend  # install dependencies
    npm run dev --prefix frontend
    ```
+   If you see `Cannot find module 'critters'`, run the install command again to rebuild `node_modules`.
 5. **Open <http://localhost:3000/>** and sign in with `admin/admin`.
    The projects page loads at port 3000 and fetches data from the API on port 8000.
 

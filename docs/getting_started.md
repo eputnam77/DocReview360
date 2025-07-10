@@ -24,11 +24,12 @@ First start the FastAPI backend:
 ```bash
 uvicorn docuflow.api:app --reload
 ```
-Then in a separate terminal start the React UI (Node 18+):
+Then in a separate terminal set up and start the React UI (Node 18+):
 ```bash
-npm install --legacy-peer-deps --prefix frontend  # only once
+npm install --legacy-peer-deps --prefix frontend  # install dependencies
 npm run dev --prefix frontend
 ```
+If the second command reports `Cannot find module 'critters'`, run the install step again to rebuild the `node_modules` folder.
 Open `http://localhost:3000/` and sign in with `admin/admin` to reach the projects page.
 
 ### GitHub Codespaces
