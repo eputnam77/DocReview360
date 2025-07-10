@@ -26,6 +26,6 @@ class ImixsAdapter:
             except httpx.HTTPError as exc:  # pragma: no cover - network errors
                 raise RuntimeError("Imixs request failed") from exc
             record_task_completion(78)
-            return handle
+            return str(handle)
         record_task_completion(78)
         return f"imixs:{workflow_id}"

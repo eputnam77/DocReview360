@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Iterator
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.pool import StaticPool
 
 
 class Database:
@@ -22,7 +23,14 @@ class Database:
         if not url:
             raise ValueError("Database URL must be provided")
         self.url = url
-        self._engine: Engine = create_engine(url)
+        if url.startswith("sqlite"):
+            self._engine = create_engine(
+                url,
+                connect_args={"check_same_thread": False},
+                poolclass=StaticPool,
+            )
+        else:
+            self._engine = create_engine(url)
 
     def initialize(self) -> None:
         """Validate the connection by executing a lightweight query."""
@@ -30,7 +38,7 @@ class Database:
             conn.execute(text("SELECT 1"))
 
     @contextmanager
-    def session(self):
+    def session(self) -> Iterator[Any]:
         """Yield a connection context."""
         with self._engine.begin() as conn:
             yield conn

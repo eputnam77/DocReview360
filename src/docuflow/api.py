@@ -6,7 +6,7 @@ import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from fastapi import (
     Depends,
@@ -278,8 +278,9 @@ async def import_document_endpoint(
         temp.flush()
         temp.seek(0)
         data = temp.read()
+        filename = file.filename or "unknown"
         document = import_document(
-            file.filename,
+            filename,
             data,
             project=project,
             user=user,
@@ -297,11 +298,11 @@ async def import_document_endpoint(
             "import_docx",
             user=user or "",
             project_id=project or "",
-            filename=file.filename,
+            filename=filename,
         ),
         user=user,
         project=project,
-        filename=file.filename,
+        filename=filename,
     )
     return document
 
@@ -672,10 +673,10 @@ async def get_sign_status(sig_id: str) -> dict[str, str]:
 
 
 @app.post("/hooks/documenso", status_code=204, response_class=Response)
-async def documenso_webhook(payload: dict) -> Response:
+async def documenso_webhook(payload: dict[str, object]) -> Response:
     """Process Documenso webhook callbacks."""
     try:
-        process_webhook(payload)
+        process_webhook(cast(dict[str, str], payload))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return Response(status_code=204)
@@ -737,7 +738,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request) -> HTMLResponse:
+async def dashboard(request: Request) -> Response:
     """Placeholder dashboard displayed after login."""
     if request.cookies.get("session") != "admin":
         return RedirectResponse("/", status_code=303)

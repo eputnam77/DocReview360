@@ -31,7 +31,7 @@ async def _call_openai(prompt: str) -> str:
     except httpx.HTTPError as exc:  # pragma: no cover - network errors
         raise RuntimeError("OpenAI request failed") from exc
     data = resp.json()
-    return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    return str(data.get("choices", [{}])[0].get("message", {}).get("content", "")).strip()
 
 
 async def rewrite_text(text: str) -> str:

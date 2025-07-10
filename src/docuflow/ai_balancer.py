@@ -27,7 +27,7 @@ def assign_job() -> str:
     """Return worker with the fewest active jobs."""
     if not _workers:
         raise RuntimeError("no workers registered")
-    worker = min(_workers, key=_workers.get)
+    worker = min(_workers, key=lambda k: _workers[k])
     _workers[worker] += 1
     return worker
 
