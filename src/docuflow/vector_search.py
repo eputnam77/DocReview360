@@ -12,7 +12,7 @@ import httpx
 OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")
 PGVECTOR_URL = os.getenv("PGVECTOR_URL")
 
-_vectors: Dict[str, List[float]] = {}
+_vectors: Dict[str, Tuple[Counter[str], int]] = {}
 _doc_freq: Dict[str, int] = defaultdict(int)
 _total_docs = 0
 
@@ -36,7 +36,7 @@ def index_document(doc_id: str, content: str) -> None:
     for term in tf:
         _doc_freq[term] += 1
     _total_docs += 1
-    _vectors[doc_id] = [tf, len(content.split())]
+    _vectors[doc_id] = (tf, len(content.split()))
 
     if OPENSEARCH_URL:
         try:

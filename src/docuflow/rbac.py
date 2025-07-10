@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, Set
+from typing import Callable, Iterable, Set
 
 from fastapi import Depends, HTTPException, status
 
@@ -27,7 +27,7 @@ def has_role(username: str, role: str) -> bool:
     return role in USER_ROLES.get(username, set())
 
 
-def require_role(role: str):
+def require_role(role: str) -> Callable[[auth.User], auth.User]:
     """Return a dependency ensuring the current user has ``role``."""
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:

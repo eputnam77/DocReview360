@@ -104,7 +104,7 @@ def signature_status(sig_id: str) -> str:
         try:
             resp = httpx.get(f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}", timeout=5)
             resp.raise_for_status()
-            return resp.json()["status"]
+            return str(resp.json()["status"])
         except httpx.HTTPError as exc:  # pragma: no cover - network failure
             raise RuntimeError("Documenso request failed") from exc
     try:
