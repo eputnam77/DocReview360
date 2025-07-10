@@ -1,0 +1,195 @@
+import React, { useState, useEffect } from "react";
+import {
+  Card, CardHeader, CardTitle, CardContent,
+} from "@/components/ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PlusCircle, Trash, GripVertical } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Example roles
+const ROLES = [
+  "Project Lead", "Project Lead Manager", "Product Policy Manager",
+  "Technical Writer", "Technical Writer Manager", "Other"
+];
+
+// Example demo workflow (would fetch in real app)
+const DEMO_WORKFLOW = {
+  name: "Advisory Circular Standard Review",
+  description: "Standard FAA AC review including all key stakeholders.",
+  steps: [
+    { id: "1", role: "Project Lead", user: "Jane Doe", required: true },
+    { id: "2", role: "Project Lead Manager", user: "John Smith", required: true },
+    { id: "3", role: "Product Policy Manager", user: "Alex Admin", required: true },
+    { id: "4", role: "Technical Writer", user: "Erin Writer", required: true },
+    { id: "5", role: "Technical Writer Manager", user: "Robin Lead", required: false },
+  ]
+};
+
+export default function EditWorkflowPage() {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [steps, setSteps] = useState<any[]>([]);
+  const [role, setRole] = useState(ROLES[0]);
+  const [user, setUser] = useState("");
+  const [required, setRequired] = useState(true);
+
+  useEffect(() => {
+    // Load existing
+    setName(DEMO_WORKFLOW.name);
+    setDescription(DEMO_WORKFLOW.description);
+    setSteps(DEMO_WORKFLOW.steps.map(s => ({ ...s, id: s.id })));
+  }, []);
+
+  const addStep = () => {
+    setSteps([
+      ...steps,
+      { id: "s" + (Math.random() * 10000).toFixed(0), role, user, required },
+    ]);
+    setRole(ROLES[0]);
+    setUser("");
+    setRequired(true);
+  };
+  const removeStep = (id: string) => setSteps(steps.filter(s => s.id !== id));
+  const moveStep = (from: number, to: number) => {
+    if (to < 0 || to >= steps.length) return;
+    const arr = [...steps];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    setSteps(arr);
+  };
+  const handleSave = () => {
+    // Submit to API here
+    alert("Workflow updated:\n" + JSON.stringify({ name, description, steps }, null, 2));
+  };
+
+  return (
+    <div className="p-8 space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Edit Workflow</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Workflow Name"
+              className="font-bold"
+              required
+            />
+            <Input
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Description"
+              required
+            />
+          </div>
+          <form
+            className="flex flex-wrap gap-2 items-end"
+            onSubmit={e => { e.preventDefault(); addStep(); }}
+          >
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              className="rounded border px-2 py-1"
+            >
+              {ROLES.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            <Input
+              placeholder="User or placeholder (optional)"
+              value={user}
+              onChange={e => setUser(e.target.value)}
+              className="w-40"
+            />
+            <label className="inline-flex items-center gap-1 ml-2 text-xs">
+              <input
+                type="checkbox"
+                checked={required}
+                onChange={e => setRequired(e.target.checked)}
+                className="mr-1"
+              />
+              Required
+            </label>
+            <Button type="submit" size="sm" className="ml-2" variant="outline">
+              <PlusCircle className="w-4 h-4 mr-1" />
+              Add Step
+            </Button>
+          </form>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Required</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {steps.map((s, idx) => (
+                <TableRow key={s.id}>
+                  <TableCell>
+                    <div className="flex gap-1 items-center">
+                      <button
+                        onClick={() => moveStep(idx, idx - 1)}
+                        disabled={idx === 0}
+                        className="p-0 text-xs"
+                        title="Move up"
+                      >↑</button>
+                      <button
+                        onClick={() => moveStep(idx, idx + 1)}
+                        disabled={idx === steps.length - 1}
+                        className="p-0 text-xs"
+                        title="Move down"
+                      >↓</button>
+                      <GripVertical className="w-3 h-3 text-gray-400 ml-2" />
+                    </div>
+                  </TableCell>
+                  <TableCell>{s.role}</TableCell>
+                  <TableCell>{s.user || <span className="text-gray-400">—</span>}</TableCell>
+                  <TableCell>
+                    <span className={cn(
+                      "px-2 py-1 rounded text-xs font-medium",
+                      s.required ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
+                    )}>{s.required ? "Yes" : "No"}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Remove step"
+                      onClick={() => removeStep(s.id)}
+                    >
+                      <Trash className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {steps.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-gray-400 py-6">
+                    No steps added yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <div className="flex justify-end pt-4">
+            <Button
+              size="lg"
+              onClick={handleSave}
+              disabled={!name || !description || steps.length === 0}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              Update Workflow
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
