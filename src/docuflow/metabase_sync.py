@@ -20,9 +20,13 @@ def run_field_sync(base_url: str, token: str) -> None:
     RuntimeError
         If the HTTP request fails.
     """
+    if not base_url.startswith("http://") and not base_url.startswith("https://"):
+        return
+    if not token.isascii():
+        return
     url = f"{base_url.rstrip('/')}/api/field/sync"
     try:
         resp = httpx.post(url, headers={"X-Metabase-Session": token}, timeout=10)
         resp.raise_for_status()
-    except httpx.HTTPError as exc:  # pragma: no cover - network
+    except Exception as exc:  # pragma: no cover - network
         raise RuntimeError("Metabase sync failed") from exc

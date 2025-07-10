@@ -10,7 +10,7 @@ from __future__ import annotations
 import sqlite3
 from typing import List
 
-_conn = sqlite3.connect(":memory:")
+_conn = sqlite3.connect(":memory:", check_same_thread=False)
 _conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5(id, content)")
 
 

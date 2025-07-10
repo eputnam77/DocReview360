@@ -199,6 +199,45 @@ def _match_all_terms(text: str, terms: list[str]) -> bool:
     return all(term in normalized for term in terms)
 
 
+def _candidate_ids(terms: list[str]) -> set[str]:
+    """Return document IDs potentially matching ``terms``."""
+    try:
+        candidates = set(fts.search(" ".join(terms)))
+    except Exception:
+        candidates = set()
+    for term in terms:
+        candidates.update(search_index.index.get(term, set()))
+    return candidates
+
+
+def _matches(
+    doc: DocumentModel,
+    terms: list[str],
+    *,
+    project: str | None,
+    user: str | None,
+    priority: int | None,
+    after: datetime | None,
+    before: datetime | None,
+) -> bool:
+    text = doc.content
+    if doc.project and doc.project in projects:
+        text += " " + projects[doc.project].name
+    if not _match_all_terms(text, terms):
+        return False
+    if project and doc.project != project:
+        return False
+    if user and doc.user != user:
+        return False
+    if priority is not None and doc.priority != priority:
+        return False
+    if after and (doc.date is None or doc.date < after):
+        return False
+    if before and (doc.date is None or doc.date > before):
+        return False
+    return True
+
+
 def search(
     query: str,
     *,
@@ -214,27 +253,23 @@ def search(
     if not terms:
         candidate_ids = set(documents.keys())
     else:
-        try:
-            candidate_ids = set(fts.search(" ".join(terms)))
-        except Exception:
-            candidate_ids = set()
+        candidate_ids = _candidate_ids(terms)
 
     results: List[DocumentModel] = []
     for doc_id in candidate_ids:
         doc = documents.get(doc_id)
         if doc is None:
             continue
-        if project and doc.project != project:
-            continue
-        if user and doc.user != user:
-            continue
-        if priority is not None and doc.priority != priority:
-            continue
-        if after and (doc.date is None or doc.date < after):
-            continue
-        if before and (doc.date is None or doc.date > before):
-            continue
-        results.append(doc)
+        if _matches(
+            doc,
+            terms,
+            project=project,
+            user=user,
+            priority=priority,
+            after=after,
+            before=before,
+        ):
+            results.append(doc)
 
     return results
 
