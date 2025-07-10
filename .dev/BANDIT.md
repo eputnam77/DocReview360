@@ -39,7 +39,6 @@ Files in scope (227):
 	src/docuflow/hr_sync.py (score: {SEVERITY: 0, CONFIDENCE: 0})
 	src/docuflow/iac_templates/__init__.py (score: {SEVERITY: 0, CONFIDENCE: 0})
 	src/docuflow/logs.py (score: {SEVERITY: 0, CONFIDENCE: 0})
-	src/docuflow/markreview.py (score: {SEVERITY: 0, CONFIDENCE: 0})
 	src/docuflow/metabase.py (score: {SEVERITY: 0, CONFIDENCE: 0})
 	src/docuflow/metabase_sync.py (score: {SEVERITY: 0, CONFIDENCE: 0})
 	src/docuflow/models.py (score: {SEVERITY: 0, CONFIDENCE: 0})
