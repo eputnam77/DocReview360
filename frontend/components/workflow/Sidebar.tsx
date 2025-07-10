@@ -11,12 +11,13 @@ import {
   Users2,
   BarChart2,
   Settings,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { icon: <Ticket className="h-4 w-4" />, label: "Tickets", href: "/tickets" },
-  { icon: <Inbox className="h-4 w-4" />, label: "Inboxes", href: "/inboxes" },
+  { icon: <Ticket className="h-4 w-4" />, label: "Projects", href: "/projects" },
+  { icon: <Inbox className="h-4 w-4" />, label: "Dashboards", href: "/dashboards" },
   {
     icon: <Workflow className="h-4 w-4" />,
     label: "Workflows",
@@ -26,17 +27,13 @@ const NAV = [
 ];
 
 const FOOTER = [
-  {
-    icon: <FileText className="h-4 w-4" />,
-    label: "Billing",
-    href: "/billing",
-  },
   { icon: <Users2 className="h-4 w-4" />, label: "Support", href: "/support" },
   {
     icon: <Settings className="h-4 w-4" />,
     label: "Integrations",
     href: "/integrations",
   },
+  { icon: <User className="h-4 w-4" />, label: "Profile", href: "/profile" },
 ];
 
 export default function Sidebar() {
@@ -70,11 +67,12 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="flex h-full w-56 flex-col border-r bg-white dark:bg-gray-950">
+    <aside className="flex h-screen w-56 flex-col border-r bg-white dark:bg-gray-950">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-5">
         <Sparkle className="h-6 w-6 text-purple-600" />
-        <span className="text-lg font-semibold">wrangle</span>
+        {/* Replace text with organization logo if available */}
+        <span className="text-lg font-semibold">DocReview360</span>
       </div>
 
       {/* Main nav */}
@@ -85,7 +83,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto space-y-1 px-2 pb-4">
+      <div className="mt-auto space-y-1 px-2 pb-4 pt-10">
         {FOOTER.map((item) => (
           <NavItem key={item.label} {...item} />
         ))}
