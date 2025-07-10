@@ -119,4 +119,6 @@ def render(name: str, **data: str) -> str:
     now = datetime.utcnow()
     data.setdefault("date", now.strftime("%Y-%m-%d"))
     data.setdefault("time", now.strftime("%H:%M"))
+    # avoid KeyError for optional placeholders like IP address
+    data.setdefault("ip_address", "unknown")
     return template.format(**data)
