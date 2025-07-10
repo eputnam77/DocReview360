@@ -55,3 +55,18 @@ def change_bars(old: str, new: str) -> List[Tuple[str, str]]:
         else:
             result.append(("unchanged", line[2:]))
     return result
+
+
+def format_change_bars(old: str, new: str) -> List[str]:
+    """Return human-readable change-bar diff lines."""
+
+    bars = change_bars(old, new)
+    output: List[str] = []
+    for action, line in bars:
+        if action == "added":
+            output.append(f"[+] {line}")
+        elif action == "removed":
+            output.append(f"[-] {line}")
+        else:
+            output.append(f"    {line}")
+    return output

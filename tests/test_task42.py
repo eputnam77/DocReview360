@@ -1,6 +1,6 @@
-from docuflow.markreview import apply_markreview
+from docuflow.pandiff import format_change_bars
 
 
-def test_apply_markreview() -> None:
-    diff = apply_markreview("line1", "line1\nnew")
-    assert "[+] new" in diff
+def test_format_change_bars() -> None:
+    lines = format_change_bars("line1", "line1\nnew")
+    assert "[+] new" in lines
