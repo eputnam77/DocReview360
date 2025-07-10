@@ -90,14 +90,17 @@
 - **Celery background tasks** now handle export and reindex operations【F:src/docuflow/celery_app.py†L57-L75】.
 - **Multiple editors** (Toast UI, ONLYOFFICE, XML, CodeX) referenced in PRD are missing; only TipTap stubs exist.
 - **Security hardening** (Keycloak MFA, FedRAMP backup schedule) is not configured beyond JWT demo auth.
+- **TipTap extension menu** stub renders checkboxes but UI wiring is skipped【F:src/docuflow/stubs/task163.py†L1-L16】【F:tests/test_task163.py†L1-L9】.
+- **Performance profiling audit** placeholder exists without metrics generation【F:src/docuflow/stubs/task164.py†L1-L9】【F:tests/test_task164.py†L1-L9】.
 
 ## ❌ Missing Features
+- **User‑scoped dashboards** still rely on a `currentUser` constant and lack session filtering【F:frontend/pages/projects/index.tsx†L84-L99】.
 ## Dev Gate Results
-- `ruff` completed with no issues【673d4b†L1-L2】.
-- `black --check` reported all files unchanged【54536d†L1-L2】.
-- `mypy --strict` passed on all files【6c64ae†L1-L2】.
-- `bandit` found 19 low-severity issues, no highs【769d0e†L1-L23】.
-- `pytest` ran 303 tests with coverage 90.46 %【44a8ab†L95-L98】.
+- `ruff` completed with no issues【354a3a†L1-L4】.
+- `black --check` reported all files unchanged【c7f1d4†L1-L2】.
+- `mypy --strict` failed due to missing typed decorators and plugins【d1e61f†L1-L33】.
+- `bandit` found 22 low-severity issues, no highs【e95577†L1-L20】.
+- `pytest` failed during collection with 256 errors【44fe49†L1-L21】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
@@ -109,10 +112,10 @@ Tasks 70‑155 are now all implemented through their corresponding modules. Exam
 
 **Quality summary**
 
-1. ✅ Test suite passes with coverage ≥90 %.
-2. ✅ Code follows ADR folder layout and Python best practices.
+1. ❌ Test suite failed with collection errors.
+2. ✅ Code follows ADR folder layout.
 3. ✅ Docstrings explain non‑obvious logic.
 4. ✅ Input validation and error handling implemented where appropriate.
-5. ✅ Features cross‑checked against PRD requirements.
+5. ⚠️ Features only partially verified against TASKS list.
 
-ready-for:verifier
+ready-for:builder
