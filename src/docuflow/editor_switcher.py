@@ -29,4 +29,4 @@ def render_editor(document: DocumentModel) -> str:
     module_name, class_name = target.split(":")
     module = importlib.import_module(module_name)
     cls = getattr(module, class_name)
-    return cls().open_document(document.id)
+    return str(cls().open_document(document.id))

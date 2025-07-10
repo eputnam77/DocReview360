@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import Any, List
 
 
 def check_grammar(text: str) -> List[str]:
@@ -15,6 +15,6 @@ def check_grammar(text: str) -> List[str]:
     return errors
 
 
-def register(registry) -> None:
+def register(registry: Any) -> None:
     """Register the grammar checker with the plugin registry."""
     registry.register("grammar-checker", check_grammar)

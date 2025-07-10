@@ -6,20 +6,20 @@ import os
 from typing import Any, Dict
 
 try:
-    import redis  # type: ignore
+    import redis as _redis
 except Exception:  # pragma: no cover - fallback when redis not installed
-    redis = None
+    _redis = None  # type: ignore[assignment]
 
 _cache: Dict[str, Any] = {}
-_client = None
+_client: Any | None = None
 
 
-def _get_client():
+def _get_client() -> Any | None:
     global _client
-    if _client is None and redis is not None:
+    if _client is None and _redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         try:
-            _client = redis.Redis.from_url(
+            _client = _redis.Redis.from_url(
                 url,
                 socket_connect_timeout=0.1,
                 socket_timeout=0.1,
