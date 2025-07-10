@@ -169,6 +169,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 164 | Performance profiling & optimization audit | • Measure API and page load times with a basic k6 & Lighthouse suite.<br>• Run Python and Next.js profilers to flag slow queries or renders.<br>• Produce follow-up recommendations for caching and indexing. | DevOps • P2 | 2 d | `docs/performance/analysis.md` lists top 5 bottlenecks and suggested fixes. |
 | **165** | **Persistent Sidebar** | • Add global layout wrapper that renders `Sidebar` on every page.<br>• Update `_app.tsx` or layout component to include sidebar left of main content. | FE • P1 | 1 d | Navigate to `/dashboard` or `/projects` and sidebar remains visible. <br>See `tests/e2e/features/task165.feature` |
 | **166** | **User-scoped projects & dashboards** | • Backend `/api/projects` and dashboard endpoints filter by authenticated user.<br>• Remove hard-coded `currentUser` constant; rely on session info.<br>• Integration tests confirm user separation. | Backend • P2 | 2 d | See `tests/e2e/features/task166.feature` |
+| 167 | Remove MarkReview references | Strip all mentions of “MarkReview” from docs and code; rely on a TipTap extension for change bars and track changes. | Docs • P1 | 1 d | `grep -R "MarkReview"` returns no hits. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
