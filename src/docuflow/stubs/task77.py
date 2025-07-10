@@ -26,6 +26,6 @@ class CamundaClient:
             except httpx.HTTPError as exc:  # pragma: no cover - network errors
                 raise RuntimeError("Camunda request failed") from exc
             record_task_completion(77)
-            return pid
+            return str(pid)
         record_task_completion(77)
         return f"started:{process_id}"

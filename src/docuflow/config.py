@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -26,12 +27,13 @@ class Config:
         if not path.exists():
             return None
         try:
-            data = yaml.safe_load(path.read_text()) or {}
+            raw = yaml.safe_load(path.read_text()) or {}
         except yaml.YAMLError as exc:  # pragma: no cover - yaml error is rare
             raise ValueError(f"Invalid YAML in {path}") from exc
-        if not isinstance(data, dict):
+        if not isinstance(raw, dict):
             raise ValueError(f"Invalid config structure in {path}")
-        return cls(**data)  # type: ignore[arg-type]
+        data: dict[str, Any] = raw
+        return cls(**data)
 
     def save(self, path: Path = CONFIG_FILE) -> None:
         """Persist this configuration to ``path`` creating directories as needed."""

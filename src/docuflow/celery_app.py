@@ -18,7 +18,7 @@ app = Celery("docuflow", broker=broker_url, backend=backend_url)
 app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
 
 
-@app.task(name="docuflow.echo")
+@app.task(name="docuflow.echo")  # type: ignore[misc]
 def echo(value: str) -> str:
     """Return ``value`` unchanged for testing purposes."""
     if not isinstance(value, str):
@@ -26,7 +26,7 @@ def echo(value: str) -> str:
     return value
 
 
-@app.task(name="docuflow.word_count")
+@app.task(name="docuflow.word_count")  # type: ignore[misc]
 def word_count(text: str) -> int:
     """Return the number of words in ``text``."""
     if not isinstance(text, str):
@@ -34,7 +34,7 @@ def word_count(text: str) -> int:
     return len(text.split())
 
 
-@app.task(name="docuflow.fetch_length")
+@app.task(name="docuflow.fetch_length")  # type: ignore[misc]
 def fetch_length(url: str) -> int:
     """Return the length of the response body from ``url``."""
     if not url.startswith(("http://", "https://")):
@@ -44,7 +44,7 @@ def fetch_length(url: str) -> int:
     return len(resp.text)
 
 
-@app.task(name="docuflow.quality_gate")
+@app.task(name="docuflow.quality_gate")  # type: ignore[misc]
 def quality_gate(text: str, weights: list[float] | None = None) -> float:
     """Return anomaly score for ``text`` using the provided model weights."""
     if weights is None:
@@ -55,7 +55,7 @@ def quality_gate(text: str, weights: list[float] | None = None) -> float:
     return 0.0 if passed else 1.0
 
 
-@app.task(name="docuflow.export_documents")
+@app.task(name="docuflow.export_documents")  # type: ignore[misc]
 def export_documents(doc_ids: list[str], fmt: str) -> bytes:
     """Return a ZIP archive for ``doc_ids`` in the given format.
 
@@ -80,7 +80,7 @@ def export_documents(doc_ids: list[str], fmt: str) -> bytes:
     return export_batch(docs, fmt)
 
 
-@app.task(name="docuflow.reindex_document")
+@app.task(name="docuflow.reindex_document")  # type: ignore[misc]
 def reindex_document(doc_id: str) -> None:
     """Reindex ``doc_id`` in the search index."""
 
@@ -93,7 +93,7 @@ def reindex_document(doc_id: str) -> None:
     search_index.add_document(doc)
 
 
-@app.task(name="docuflow.create_backup")
+@app.task(name="docuflow.create_backup")  # type: ignore[misc]
 def create_backup_task(path: str) -> str:
     """Create a compressed backup at ``path`` and return the location."""
 
@@ -104,7 +104,7 @@ def create_backup_task(path: str) -> str:
     return str(target)
 
 
-@app.task(name="docuflow.reindex_all")
+@app.task(name="docuflow.reindex_all")  # type: ignore[misc]
 def reindex_all() -> int:
     """Reindex all known documents and return the number processed."""
 

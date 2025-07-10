@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, Dict, cast
 
 from celery.schedules import crontab
 
@@ -13,13 +14,13 @@ from .celery_app import app
 from .stubs.task90 import create_backup as encrypt_backup
 
 
-def import_realm_file(path: str) -> dict:
+def import_realm_file(path: str) -> Dict[str, Any]:
     """Load a Keycloak realm JSON export from ``path``."""
     target = Path(path)
     data = json.loads(target.read_text())
     if "realm" not in data:
         raise ValueError("invalid realm export")
-    return data
+    return cast(Dict[str, Any], data)
 
 
 def enforce_mfa_login(username: str, password: str, otp: str) -> str:
@@ -27,7 +28,7 @@ def enforce_mfa_login(username: str, password: str, otp: str) -> str:
     return keycloak_mfa_login(username, password, otp)
 
 
-@app.task(name="docuflow.secure_backup")
+@app.task(name="docuflow.secure_backup")  # type: ignore[misc]
 def secure_backup(path: str) -> str:
     """Create and encrypt a daily backup."""
     backup = create_backup(Path(path))

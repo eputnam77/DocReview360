@@ -9,10 +9,10 @@ class WorkflowEditor:
     """Store nodes in memory for testing."""
 
     def __init__(self) -> None:
-        self.nodes: dict[str, dict] = {}
+        self.nodes: dict[str, dict[str, object]] = {}
         self.edges: list[tuple[str, str]] = []
 
-    def add_node(self, node_id: str, data: dict) -> None:
+    def add_node(self, node_id: str, data: dict[str, object]) -> None:
         """Insert a node into the diagram."""
         if not node_id:
             raise ValueError("node_id required")
