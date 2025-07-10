@@ -207,7 +207,11 @@ async def list_projects_endpoint() -> list[ProjectModel]:
         except Exception:
             pass
     projects_list = list_projects()
-    cache_set("projects", json.dumps([p.model_dump() for p in projects_list]), ttl=30)
+    cache_set(
+        "projects",
+        json.dumps([p.model_dump(mode="json") for p in projects_list]),
+        ttl=30,
+    )
     return projects_list
 
 
@@ -216,11 +220,16 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
     project = ProjectModel(**body.model_dump())
     add_project(project)
-    cache_set("projects", json.dumps([p.model_dump() for p in list_projects()]), ttl=30)
+    cache_set(
+        "projects",
+        json.dumps([p.model_dump(mode="json") for p in list_projects()]),
+        ttl=30,
+    )
     log_event(
-        render("create_project", user=project.user or "", project_id=project.id),
+        "create_project",
         user=project.user,
         project=project.id,
+        message=render("create_project", user=project.user or "", project_id=project.id),
     )
     return project
 
@@ -292,17 +301,22 @@ async def import_document_endpoint(
             Path(temp.name).unlink(missing_ok=True)
         except Exception:
             pass
-    cache_set("documents", json.dumps([d.model_dump() for d in list_docs()]), ttl=30)
+    cache_set(
+        "documents",
+        json.dumps([d.model_dump(mode="json") for d in list_docs()]),
+        ttl=30,
+    )
     log_event(
-        render(
+        "import_document",
+        user=user,
+        project=project,
+        filename=filename,
+        message=render(
             "import_docx",
             user=user or "",
             project_id=project or "",
             filename=filename,
         ),
-        user=user,
-        project=project,
-        filename=filename,
     )
     return document
 
@@ -317,14 +331,19 @@ async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     log_event(
-        render(
+        "convert_tiptap",
+        document=document.id,
+        project=document.project,
+        message=render(
             "convert_tiptap",
             project_id=document.project or "",
         ),
-        document=document.id,
-        project=document.project,
     )
-    cache_set("documents", json.dumps([d.model_dump() for d in list_docs()]), ttl=30)
+    cache_set(
+        "documents",
+        json.dumps([d.model_dump(mode="json") for d in list_docs()]),
+        ttl=30,
+    )
     return document
 
 
@@ -341,7 +360,11 @@ async def list_documents_endpoint() -> list[DocumentModel]:
         except Exception:
             pass
     docs_list = list_docs()
-    cache_set("documents", json.dumps([d.model_dump() for d in docs_list]), ttl=30)
+    cache_set(
+        "documents",
+        json.dumps([d.model_dump(mode="json") for d in docs_list]),
+        ttl=30,
+    )
     return docs_list
 
 
@@ -359,7 +382,11 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
     """Update a document's content and save the previous version."""
     try:
         updated = update_document(doc_id, document.content, priority=document.priority)
-        cache_set("documents", json.dumps([d.model_dump() for d in list_docs()]), ttl=30)
+        cache_set(
+            "documents",
+            json.dumps([d.model_dump(mode="json") for d in list_docs()]),
+            ttl=30,
+        )
         return updated
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -687,8 +714,9 @@ async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
     token_resp = await auth.login_for_access_token(form_data)
     log_event(
-        render("login", user=form_data.username),
+        "login",
         user=form_data.username,
+        message=render("login", user=form_data.username),
     )
     return token_resp
 
@@ -728,8 +756,9 @@ async def login(request: Request, username: str = Form(...), password: str = For
         response = RedirectResponse("/projects", status_code=303)
         response.set_cookie("session", "admin")
         log_event(
-            render("login", user=username),
+            "login",
             user=username,
+            message=render("login", user=username),
         )
         return response
     return templates.TemplateResponse(
