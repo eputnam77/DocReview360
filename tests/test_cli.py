@@ -2,8 +2,8 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from docuflow.cli import cli
-from docuflow.config import CONFIG_FILE
+from docreview360.cli import cli
+from docreview360.config import CONFIG_FILE
 
 
 def test_init_writes_config() -> None:

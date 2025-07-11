@@ -1,5 +1,5 @@
-from docuflow.documents import import_document, needs_rereview
-from docuflow.stubs.task49 import task49
+from docreview360.documents import import_document, needs_rereview
+from docreview360.stubs.task49 import task49
 
 
 def test_major_edit_triggers_rereview() -> None:

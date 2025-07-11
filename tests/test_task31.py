@@ -1,4 +1,4 @@
-from docuflow.notifications import add_template, send_email, sent_emails
+from docreview360.notifications import add_template, send_email, sent_emails
 
 
 def test_send_email() -> None:

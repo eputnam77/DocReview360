@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from docuflow import vector_search
+from docreview360 import vector_search
 
 
 def test_vector_search_ranking() -> None:

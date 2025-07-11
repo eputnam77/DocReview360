@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docuflow.stubs.task160 import task160
+from docreview360.stubs.task160 import task160
 
 
 def test_task160_components_bundle() -> None:

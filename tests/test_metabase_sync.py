@@ -1,7 +1,7 @@
 import httpx
 from httpx import Response
 
-from docuflow.metabase_sync import run_field_sync
+from docreview360.metabase_sync import run_field_sync
 
 
 def test_run_field_sync(monkeypatch) -> None:

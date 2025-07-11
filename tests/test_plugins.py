@@ -3,7 +3,7 @@ from types import ModuleType
 
 import pytest
 
-from docuflow.plugins import load_plugins, registry
+from docreview360.plugins import load_plugins, registry
 
 
 def test_load_plugins_success():

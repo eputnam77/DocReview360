@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 iac = SourceFileLoader(
-    "docuflow.iac_templates", "src/docuflow/iac_templates/__init__.py"
+    "docreview360.iac_templates", "src/docreview360/iac_templates/__init__.py"
 ).load_module()
 get_template = iac.get_template
 

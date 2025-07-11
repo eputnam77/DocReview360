@@ -1,4 +1,4 @@
-from docuflow.stubs.task23 import task23
+from docreview360.stubs.task23 import task23
 
 
 def test_task23_assistance() -> None:

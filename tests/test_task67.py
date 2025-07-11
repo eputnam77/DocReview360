@@ -1,7 +1,7 @@
 import pytest
 
-from docuflow.documents import DocumentModel
-from docuflow.exporter import export_document, set_guardrails
+from docreview360.documents import DocumentModel
+from docreview360.exporter import export_document, set_guardrails
 
 
 def test_guardrails_block_export() -> None:

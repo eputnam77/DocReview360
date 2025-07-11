@@ -1,4 +1,4 @@
-from docuflow.editor_loader import load_plugins
+from docreview360.editor_loader import load_plugins
 
 
 def test_load_plugins() -> None:

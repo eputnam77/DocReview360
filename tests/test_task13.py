@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from docuflow import search
+from docreview360 import search
 
 
 def test_priority_and_temp_assignment() -> None:

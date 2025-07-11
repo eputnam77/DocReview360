@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from docuflow.stubs.task96 import format_plugin_guide
+from docreview360.stubs.task96 import format_plugin_guide
 
 
 @given(st.text())

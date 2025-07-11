@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from docuflow.api import app
-from docuflow.logs import log_event
+from docreview360.api import app
+from docreview360.logs import log_event
 
 
 def test_log_websocket() -> None:

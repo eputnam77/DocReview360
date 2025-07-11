@@ -1,4 +1,4 @@
-from docuflow.stubs.task86 import has_trivy_step
+from docreview360.stubs.task86 import has_trivy_step
 
 
 def test_has_trivy_step() -> None:

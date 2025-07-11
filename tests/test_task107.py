@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docuflow.fann_model import load_weights, predict, save_weights, train_model
+from docreview360.fann_model import load_weights, predict, save_weights, train_model
 
 
 def test_train_and_predict(tmp_path: Path) -> None:

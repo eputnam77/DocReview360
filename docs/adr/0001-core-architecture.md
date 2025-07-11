@@ -9,7 +9,7 @@ services for search, task queues and storage.  Early ADRs live under `.dev/ADRs/
 this record summarises the agreed monorepo layout for end users.
 
 ## Decision
-- Source code resides in `src/` with the `docuflow` package.
+- Source code resides in `src/` with the `docreview360` package.
 - Automated tests live in `tests/`.
 - External services (future Rust or Go components) will live under `services/`.
 - Development-only artifacts remain under `.dev/`.

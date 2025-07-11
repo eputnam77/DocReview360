@@ -1,8 +1,8 @@
-from docuflow import status
-from docuflow.documents import documents, import_document
-from docuflow.logs import log_event, logs
-from docuflow.search import ProjectModel, add_project, projects
-from docuflow.workflows import create_workflow, workflows
+from docreview360 import status
+from docreview360.documents import documents, import_document
+from docreview360.logs import log_event, logs
+from docreview360.search import ProjectModel, add_project, projects
+from docreview360.workflows import create_workflow, workflows
 
 
 def test_status_counts() -> None:

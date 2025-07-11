@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from docuflow.security_compliance import should_purge, xor_decrypt, xor_encrypt
+from docreview360.security_compliance import should_purge, xor_decrypt, xor_encrypt
 
 
 def test_encrypt_decrypt_roundtrip() -> None:

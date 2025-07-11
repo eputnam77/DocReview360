@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from docuflow.cache import cache_get, cache_set, clear_cache
+from docreview360.cache import cache_get, cache_set, clear_cache
 
 
 @given(st.text())

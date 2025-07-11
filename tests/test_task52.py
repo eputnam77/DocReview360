@@ -1,4 +1,4 @@
-from docuflow.stubs.task52 import task52
+from docreview360.stubs.task52 import task52
 
 
 def test_task52_generates_template() -> None:

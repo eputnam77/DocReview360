@@ -2,7 +2,7 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import given
 
-hooks = pytest.importorskip("docuflow.git_hooks")
+hooks = pytest.importorskip("docreview360.git_hooks")
 
 
 @given(st.text())

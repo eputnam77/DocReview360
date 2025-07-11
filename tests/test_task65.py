@@ -1,4 +1,4 @@
-from docuflow.doc_types import document_types
+from docreview360.doc_types import document_types
 
 
 def test_sample_document_type_exists() -> None:

@@ -17,4 +17,4 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "docuflow.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "docreview360.api:app", "--host", "0.0.0.0", "--port", "8000"]

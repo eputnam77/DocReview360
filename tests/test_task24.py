@@ -1,5 +1,5 @@
-from docuflow import comments
-from docuflow.stubs.task24 import task24
+from docreview360 import comments
+from docreview360.stubs.task24 import task24
 
 
 def test_task24_comment_thread() -> None:

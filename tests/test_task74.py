@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from docuflow.search import ProjectModel, assign_temporary, projects
+from docreview360.search import ProjectModel, assign_temporary, projects
 
 
 def test_manager_approval_required() -> None:

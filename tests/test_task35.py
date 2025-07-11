@@ -1,7 +1,7 @@
 import pytest
 
-from docuflow import search, workflows
-from docuflow.project_init import create_project_with_validation
+from docreview360 import search, workflows
+from docreview360.project_init import create_project_with_validation
 
 
 def test_create_project_with_validation() -> None:

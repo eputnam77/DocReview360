@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow import search
+from docreview360 import search
 
 
 def test_saved_search_and_stats() -> None:

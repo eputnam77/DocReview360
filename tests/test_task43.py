@@ -1,4 +1,4 @@
-from docuflow import auth
+from docreview360 import auth
 
 
 def test_authenticate_mfa() -> None:
