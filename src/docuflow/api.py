@@ -195,9 +195,10 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
 @app.get("/projects", response_model=list[ProjectModel])
-async def list_projects_endpoint() -> list[ProjectModel]:
-    """Return all known projects with simple caching."""
-    cached = cache_get("projects")
+async def list_projects_endpoint(user: str | None = None) -> list[ProjectModel]:
+    """Return projects optionally filtered by user with simple caching."""
+    cache_key = f"projects-{user or 'all'}"
+    cached = cache_get(cache_key)
     if cached:
         try:
             if isinstance(cached, bytes):
@@ -206,9 +207,9 @@ async def list_projects_endpoint() -> list[ProjectModel]:
             return [ProjectModel.model_validate(p) for p in data]
         except Exception:
             pass
-    projects_list = list_projects()
+    projects_list = list_projects(user)
     cache_set(
-        "projects",
+        cache_key,
         json.dumps([p.model_dump(mode="json") for p in projects_list]),
         ttl=30,
     )
