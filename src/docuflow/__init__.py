@@ -47,6 +47,8 @@ __all__ = [
     "wasm_plugin",
     "pyo3_builder",
     "workflow_components",
+    "conversion",
+    "nemo_guardrails",
 ]
 
 from . import (
@@ -92,6 +94,8 @@ from . import (
     vector_search,
     wasm_plugin,
     workflow_components,
+    conversion,
+    nemo_guardrails,
     workflows,
     xml_editor,
 )
