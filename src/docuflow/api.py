@@ -18,6 +18,7 @@ from fastapi import (
     Response,
     UploadFile,
     WebSocket,
+    Header,
     WebSocketDisconnect,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -71,7 +72,7 @@ from .documents import (
     list_documents as list_docs,
 )
 from .exporter import export_document
-from .logs import LogEntry, log_event, query_logs
+from .logs import LogEntry, log_event, query_logs, log_stream
 from .messages import render
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
@@ -195,8 +196,11 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
 @app.get("/projects", response_model=list[ProjectModel])
-async def list_projects_endpoint(user: str | None = None) -> list[ProjectModel]:
+async def list_projects_endpoint(
+    user: str | None = None, x_user: str | None = Header(None)
+) -> list[ProjectModel]:
     """Return projects optionally filtered by user with simple caching."""
+    user = user or x_user
     cache_key = f"projects-{user or 'all'}"
     cached = cache_get(cache_key)
     if cached:
@@ -893,5 +897,17 @@ async def dashboard_stream(websocket: WebSocket) -> None:
                 await websocket.send_json(data)
                 previous = data
             await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        pass
+
+
+@app.websocket("/ws/logs")
+async def logs_stream(websocket: WebSocket) -> None:
+    """Stream log events to connected clients."""
+
+    await websocket.accept()
+    try:
+        async for entry in log_stream():
+            await websocket.send_json(entry.model_dump(mode="json"))
     except WebSocketDisconnect:
         pass
