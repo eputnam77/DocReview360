@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name            = "docuflow"
-version         = "0.1.0"
-description     = "tbd."
+version         = "0.1.1"
+description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
 requires-python = ">=3.12,<4"
 

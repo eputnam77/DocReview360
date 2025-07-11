@@ -169,11 +169,14 @@ def _expire_temp_assignment(project: ProjectModel) -> None:
         project.temp_until = None
 
 
-def list_projects() -> list[ProjectModel]:
-    """Return all projects."""
+def list_projects(user: str | None = None) -> list[ProjectModel]:
+    """Return projects optionally filtered by assigned user."""
+    result = []
     for proj in projects.values():
         _expire_temp_assignment(proj)
-    return list(projects.values())
+        if user is None or proj.user == user or proj.temp_user == user:
+            result.append(proj)
+    return result
 
 
 def overdue_high_priority() -> list[str]:

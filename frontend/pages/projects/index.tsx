@@ -80,22 +80,13 @@ export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
 
-  // Demo: replace "Jane Doe" with the current user's real name (from session, etc.)
-  const currentUser = "Jane Doe";
-
   useEffect(() => {
     fetch("/api/projects")
       .then((r) => r.json())
       .then((data: Project[]) =>
-        setProjects(
-          (data.length > 0 ? data : DEMO_PROJECTS).filter(
-            (p) => !p.user || p.user === currentUser
-          )
-        )
+        setProjects(data.length > 0 ? data : DEMO_PROJECTS)
       )
-      .catch(() =>
-        setProjects(DEMO_PROJECTS.filter((p) => p.user === currentUser))
-      );
+      .catch(() => setProjects(DEMO_PROJECTS));
   }, []);
 
   // Calculate simple stats for this user

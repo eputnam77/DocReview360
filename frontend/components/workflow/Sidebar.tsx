@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { icon: <Ticket className="h-4 w-4" />, label: "Projects", href: "/projects" },
-  { icon: <Inbox className="h-4 w-4" />, label: "Dashboards", href: "/dashboards" },
+  { icon: <Inbox className="h-4 w-4" />, label: "Dashboard", href: "/dashboard" },
   {
     icon: <Workflow className="h-4 w-4" />,
     label: "Workflows",
