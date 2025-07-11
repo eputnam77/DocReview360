@@ -1,6 +1,6 @@
-# DocuFlow Documentation
+# DocReview360 Documentation
 
-Welcome to the DocuFlow project. This site collects guides and references for running the prototype and exploring its features.
+Welcome to the DocReview360 project. This site collects guides and references for running the prototype and exploring its features.
 
 - [Getting Started](getting_started.md)
 - [CLI Reference](cli.md)
@@ -12,7 +12,7 @@ Welcome to the DocuFlow project. This site collects guides and references for ru
 
 ## Project features
 
-DocuFlow implements a small slice of the functionality described in the product requirements. The prototype demonstrates:
+DocReview360 implements a small slice of the functionality described in the product requirements. The prototype demonstrates:
 
 - In-memory project and document storage with sequential numbering
 - Import and export of Markdown and DOCX files

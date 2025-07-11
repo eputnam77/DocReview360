@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-DocuFlow is a new project with minimal code. We need a structure that separates
+DocReview360 is a new project with minimal code. We need a structure that separates
 source code from development assets and prepares for multi-language components.
 
 ## Decision

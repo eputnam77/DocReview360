@@ -1,6 +1,6 @@
 # Security Policy
 
-We take the security of DocuFlow seriously. Please report suspected
+We take the security of DocReview360 seriously. Please report suspected
 vulnerabilities so we can fix them quickly.
 
 ## Supported Versions

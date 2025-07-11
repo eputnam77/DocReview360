@@ -1,4 +1,4 @@
-"""FastAPI application exposing DocuFlow endpoints."""
+"""FastAPI application exposing DocReview360 endpoints."""
 
 from __future__ import annotations
 
@@ -13,12 +13,12 @@ from fastapi import (
     FastAPI,
     File,
     Form,
+    Header,
     HTTPException,
     Request,
     Response,
     UploadFile,
     WebSocket,
-    Header,
     WebSocketDisconnect,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -72,7 +72,7 @@ from .documents import (
     list_documents as list_docs,
 )
 from .exporter import export_document
-from .logs import LogEntry, log_event, query_logs, log_stream
+from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
@@ -190,7 +190,7 @@ class TextBody(BaseModel):
     text: str
 
 
-app = FastAPI(title="DocuFlow")
+app = FastAPI(title="DocReview360")
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 

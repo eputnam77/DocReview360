@@ -1,6 +1,6 @@
 # TipTap Plugin Development
 
-This short guide explains how DocuFlow's editor wrappers work.
+This short guide explains how DocReview360's editor wrappers work.
 
 Plugins export a loader function that registers toolbar actions or text
 transformations. Frontend code calls the REST endpoint `/api/plugins`

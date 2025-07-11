@@ -1,6 +1,6 @@
-# AI in the DocuFlow Workflow
+# AI in the DocReview360 Workflow
 
-DocuFlow includes lightweight AI helpers that speed up common tasks and keep your projects tidy. The utilities run locally so you can try them without extra services.
+DocReview360 includes lightweight AI helpers that speed up common tasks and keep your projects tidy. The utilities run locally so you can try them without extra services.
 
 ## Document insights
 

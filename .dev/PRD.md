@@ -1,18 +1,18 @@
-**DocuFlow — Consolidated Product Requirements Document (PRD)**
+**DocReview360 — Consolidated Product Requirements Document (PRD)**
 *(v 2025-07-04 — unified, de-duplicated, and aligned with best-in-class open-source tooling)*
 
 ---
 
 ## 0. Alternative “Turn-Key” Stack
 
-Before installing DocuFlow from source, agencies that prefer a largely pre-integrated suite can deploy **Alfresco Community (ECM) + ONLYOFFICE Docs Community (browser editors) + Camunda (BPMN engine) + Documenso (signatures)** in FedRAMP-eligible containers.
-This bundle already covers content storage, collaborative editing, process orchestration, and legally binding e-signatures, and DocuFlow can interact with it through its REST/GraphQL gateway. ([docs.alfresco.com][1], [onlyoffice.com][2], [camunda.com][3], [documenso.com][4])
+Before installing DocReview360 from source, agencies that prefer a largely pre-integrated suite can deploy **Alfresco Community (ECM) + ONLYOFFICE Docs Community (browser editors) + Camunda (BPMN engine) + Documenso (signatures)** in FedRAMP-eligible containers.
+This bundle already covers content storage, collaborative editing, process orchestration, and legally binding e-signatures, and DocReview360 can interact with it through its REST/GraphQL gateway. ([docs.alfresco.com][1], [onlyoffice.com][2], [camunda.com][3], [documenso.com][4])
 
 ---
 
 ## 1. Executive Summary
 
-DocuFlow is an open-source, web-first platform for drafting, reviewing, approving, publishing, and archiving complex documents (e.g., FAA ACs, policies, manuals). It combines:
+DocReview360 is an open-source, web-first platform for drafting, reviewing, approving, publishing, and archiving complex documents (e.g., FAA ACs, policies, manuals). It combines:
 
 | Pillar                 | Primary OSS Component(s)                                     | Purpose                          |
 | ---------------------- | ------------------------------------------------------------ | -------------------------------- |
@@ -172,7 +172,7 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 
 | Risk                       | Mitigation                                                            |
 | -------------------------- | --------------------------------------------------------------------- |
-| OSS project abandonment    | All third-party libs containerised; forks maintained in DocuFlow-org. |
+| OSS project abandonment    | All third-party libs containerised; forks maintained in DocReview360-org. |
 | Heavy BPMN engine overhead | Offer Imixs or built-in lightweight JSON state-machine.               |
 | Keycloak complexity        | Provide turnkey Helm chart with defaults & scripted realm import.     |
 

@@ -1,8 +1,8 @@
 # Getting Started
 
-This short guide walks you through the first steps with DocuFlow. It assumes Python and Git are already installed.
+This short guide walks you through the first steps with DocReview360. It assumes Python and Git are already installed.
 
-## 1. Install DocuFlow
+## 1. Install DocReview360
 
 ```bash
 pip install -e .

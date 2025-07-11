@@ -26,7 +26,7 @@ export default function Home() {
       <Card className="max-w-md w-full shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center text-indigo-700">
-            DocuFlow Demo
+            DocReview360 Demo
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">

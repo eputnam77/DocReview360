@@ -15,7 +15,7 @@ The project currently lacks guidance on where to place documentation templates a
 * Adopt a clear top‑level layout so contributors know where each language lives:
 
 ```text
-DocuFlow/
+DocReview360/
 ├── src/            # Python package `docuflow`
 ├── tests/          # Python tests
 ├── frontend/       # Next.js application (TypeScript)

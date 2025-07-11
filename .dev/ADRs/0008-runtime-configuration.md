@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-Developers need a simple way to tweak authentication, database and service options when running DocuFlow locally or deploying in different environments. A small YAML file already lives at the repository root but its purpose is undocumented.
+Developers need a simple way to tweak authentication, database and service options when running DocReview360 locally or deploying in different environments. A small YAML file already lives at the repository root but its purpose is undocumented.
 
 ## Decision
 * Use `docuflow.yaml` at the repository root as the default configuration file.
@@ -13,5 +13,5 @@ Developers need a simple way to tweak authentication, database and service optio
 * Provide `docker-compose.yml` for a local stack that reads the same configuration.
 
 ## Consequences
-* New environments only need to supply a customised YAML file to adapt DocuFlow.
+* New environments only need to supply a customised YAML file to adapt DocReview360.
 * The configuration approach stays lightweight without introducing a complex settings library.

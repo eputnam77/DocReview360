@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-DocuFlow contains a growing amount of end-user and developer documentation. Early ADRs mention placing docs in `docs/` but do not describe how user guides relate to the development records under `.dev/`. A clear policy helps new contributors find the right references and ensures the MkDocs site only contains user-facing material.
+DocReview360 contains a growing amount of end-user and developer documentation. Early ADRs mention placing docs in `docs/` but do not describe how user guides relate to the development records under `.dev/`. A clear policy helps new contributors find the right references and ensures the MkDocs site only contains user-facing material.
 
 ## Decision
 

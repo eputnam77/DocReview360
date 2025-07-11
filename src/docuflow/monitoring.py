@@ -1,4 +1,4 @@
-"""Basic observability helpers for DocuFlow.
+"""Basic observability helpers for DocReview360.
 
 The module exposes a minimal API to start a Prometheus metrics server and to
 enable Sentry error reporting.  These utilities keep the implementation light so
@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover - optional dependency missing
 from prometheus_client import Counter, start_http_server
 
 REQUEST_COUNTER = Counter(
-    "docuflow_requests_total", "Number of HTTP requests processed by DocuFlow"
+    "docuflow_requests_total", "Number of HTTP requests processed by DocReview360"
 )
 
 

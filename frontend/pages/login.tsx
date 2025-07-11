@@ -29,7 +29,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-1 text-center">
           <LogIn className="mx-auto h-10 w-10 text-indigo-600" />
           <CardTitle className="text-2xl font-bold">
-            Sign in to DocuFlow
+            Sign in to DocReview360
           </CardTitle>
           <CardDescription>
             Welcome back! Enter your credentials.
