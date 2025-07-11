@@ -12,29 +12,38 @@ import {
   BarChart2,
   Settings,
   User,
+  Key,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUserStore } from "@/state/user";
 
 const NAV = [
   { icon: <Ticket className="h-4 w-4" />, label: "Projects", href: "/projects" },
   { icon: <Inbox className="h-4 w-4" />, label: "Dashboard", href: "/dashboard" },
-  {
-    icon: <Workflow className="h-4 w-4" />,
-    label: "Workflows",
-    href: "/workflows",
-    active: true, // default for example
-  },
 ];
 
-const FOOTER = [
+const CONFIG = [
+  { icon: <Workflow className="h-4 w-4" />, label: "Workflows", href: "/workflows" },
+  { icon: <FileText className="h-4 w-4" />, label: "Document Types", href: "/document-types" },
+  { icon: <BarChart2 className="h-4 w-4" />, label: "Phases", href: "/phases" },
+  { icon: <FileText className="h-4 w-4" />, label: "Templates", href: "/templates" },
+  { icon: <Users2 className="h-4 w-4" />, label: "User Management", href: "/user-management" },
+  { icon: <Key className="h-4 w-4" />, label: "Permissions", href: "/permissions" },
+  { icon: <FileText className="h-4 w-4" />, label: "Audit Logs", href: "/audit-logs" },
+  { icon: <Settings className="h-4 w-4" />, label: "App Settings", href: "/app-settings" },
+  { icon: <FileText className="h-4 w-4" />, label: "Custom Fields", href: "/custom-fields" },
+];
+
+const SECONDARY = [
   { icon: <Users2 className="h-4 w-4" />, label: "Support", href: "/support" },
   {
     icon: <Settings className="h-4 w-4" />,
     label: "Integrations",
     href: "/integrations",
   },
-  { icon: <User className="h-4 w-4" />, label: "Profile", href: "/profile" },
 ];
+
+const PROFILE = { icon: <User className="h-4 w-4" />, label: "Profile", href: "/profile" };
 
 export default function Sidebar() {
   const router = useRouter();
@@ -66,6 +75,8 @@ export default function Sidebar() {
     </button>
   );
 
+  const isAdmin = useUserStore((s) => s.isAdmin);
+
   return (
     <aside className="flex h-screen w-56 flex-col border-r bg-white dark:bg-gray-950">
       {/* Logo */}
@@ -82,12 +93,36 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="mt-auto space-y-1 px-2 pb-4 pt-10">
-        {FOOTER.map((item) => (
+      <hr className="my-4" />
+
+      {/* Secondary */}
+      <div className="space-y-1 px-2">
+        {SECONDARY.map((item) => (
           <NavItem key={item.label} {...item} />
         ))}
       </div>
+
+      <hr className="my-4" />
+
+      <div className="px-2">
+        <NavItem {...PROFILE} />
+      </div>
+
+      {isAdmin && (
+        <>
+          <hr className="my-4" />
+          <div className="px-2 space-y-1">
+            <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+              <Settings className="h-4 w-4" />
+              <span>Configuration</span>
+            </div>
+            {CONFIG.map((item) => (
+              <NavItem key={item.label} {...item} />
+            ))}
+          </div>
+        </>
+      )}
+
     </aside>
   );
 }
