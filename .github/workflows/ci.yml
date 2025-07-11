@@ -35,12 +35,14 @@ jobs:
           poetry run black --check src tests
           poetry run mypy --strict src
           poetry run bandit -r src -lll --skip B101
+          poetry run pip-audit -r requirements.txt
           THRESHOLD=70
           if [ "$GITHUB_REF_NAME" = "main" ]; then THRESHOLD=90; fi
           poetry run pytest -q --cov=src --cov-fail-under=$THRESHOLD
           npx tsc --noEmit
           cargo check || true
           go vet ./...
+          if [ "$GITHUB_REF_NAME" = "main" ]; then mkdocs build --strict; fi
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@v0.12.0
         with:
