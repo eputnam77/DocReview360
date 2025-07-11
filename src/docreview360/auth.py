@@ -11,16 +11,18 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-SECRET_KEY = os.getenv("DOCUFLOW_SECRET_KEY", "secret-key")  # pragma: no cover
-ALGORITHM = os.getenv("DOCUFLOW_ALGORITHM", "HS256")  # pragma: no cover
+SECRET_KEY = os.getenv("DOCREVIEW360_SECRET_KEY", "secret-key")  # pragma: no cover
+ALGORITHM = os.getenv("DOCREVIEW360_ALGORITHM", "HS256")  # pragma: no cover
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("DOCUFLOW_ACCESS_EXPIRE_MINUTES", "30")
+    os.getenv("DOCREVIEW360_ACCESS_EXPIRE_MINUTES", "30")
 )  # pragma: no cover
 
 # separate secret for OIDC demonstration
-OIDC_SECRET_KEY = os.getenv("DOCUFLOW_OIDC_SECRET_KEY", "oidc-secret")  # pragma: no cover
-OIDC_ALGORITHM = os.getenv("DOCUFLOW_OIDC_ALGORITHM", "HS256")  # pragma: no cover
-OIDC_TOKEN_EXPIRE_MINUTES = int(os.getenv("DOCUFLOW_OIDC_EXPIRE_MINUTES", "30"))  # pragma: no cover
+OIDC_SECRET_KEY = os.getenv("DOCREVIEW360_OIDC_SECRET_KEY", "oidc-secret")  # pragma: no cover
+OIDC_ALGORITHM = os.getenv("DOCREVIEW360_OIDC_ALGORITHM", "HS256")  # pragma: no cover
+OIDC_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
+)  # pragma: no cover
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token")

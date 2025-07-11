@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from docuflow.archive import archive_document, archives
-from docuflow.documents import DocumentModel
-from docuflow.object_storage import download_file, upload_file
+from docreview360.archive import archive_document, archives
+from docreview360.documents import DocumentModel
+from docreview360.object_storage import download_file, upload_file
 
 
 def test_archive_writes_files(tmp_path: Path) -> None:

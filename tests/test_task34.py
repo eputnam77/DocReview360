@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow.ai_utils import create_validated_document
+from docreview360.ai_utils import create_validated_document
 
 
 def test_create_validated_document() -> None:

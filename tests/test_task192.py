@@ -1,4 +1,4 @@
-from docuflow.stubs.task192 import task192
+from docreview360.stubs.task192 import task192
 
 
 def test_task192_completed() -> None:

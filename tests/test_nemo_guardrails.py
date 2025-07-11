@@ -1,4 +1,4 @@
-from docuflow.nemo_guardrails import contains_pii
+from docreview360.nemo_guardrails import contains_pii
 
 
 def test_contains_pii() -> None:

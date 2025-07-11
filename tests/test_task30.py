@@ -1,6 +1,6 @@
 import httpx
 
-from docuflow.stubs.task30 import fetch_length_task, task30
+from docreview360.stubs.task30 import fetch_length_task, task30
 
 
 def test_task30_word_count() -> None:

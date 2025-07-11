@@ -1,4 +1,4 @@
-from docuflow.pandiff import format_change_bars
+from docreview360.pandiff import format_change_bars
 
 
 def test_format_change_bars() -> None:

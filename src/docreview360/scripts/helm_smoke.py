@@ -7,13 +7,13 @@ from pathlib import Path
 
 import httpx
 
-from docuflow.stubs import record_task_completion
+from docreview360.stubs import record_task_completion
 
 
 async def run() -> None:
     """Install the chart in KIND and run health checks."""
     chart_path = Path("helm")
-    subprocess.run(["helm", "install", "docuflow", str(chart_path)], check=True)
+    subprocess.run(["helm", "install", "docreview360", str(chart_path)], check=True)
     async with httpx.AsyncClient() as client:
         resp = await client.get("http://localhost/health", timeout=10)
         resp.raise_for_status()

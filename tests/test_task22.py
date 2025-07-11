@@ -1,5 +1,5 @@
-from docuflow import documents
-from docuflow.stubs.task22 import task22
+from docreview360 import documents
+from docreview360.stubs.task22 import task22
 
 
 def test_task22_sequence() -> None:

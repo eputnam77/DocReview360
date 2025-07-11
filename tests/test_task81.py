@@ -1,4 +1,4 @@
-from docuflow.stubs.task81 import AlfrescoClient
+from docreview360.stubs.task81 import AlfrescoClient
 
 
 def test_alfresco_upload_download() -> None:

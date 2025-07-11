@@ -1,4 +1,4 @@
-from docuflow.wasm_plugin import lint_text
+from docreview360.wasm_plugin import lint_text
 
 
 def test_lint_pass_fail() -> None:

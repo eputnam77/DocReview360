@@ -1,4 +1,4 @@
-from docuflow.accessibility import audit_html
+from docreview360.accessibility import audit_html
 
 
 def test_audit_html_detects_issues() -> None:

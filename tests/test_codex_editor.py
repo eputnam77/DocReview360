@@ -1,4 +1,4 @@
-from docuflow.codex_editor import CodeXEditor
+from docreview360.codex_editor import CodeXEditor
 
 
 def test_codex_editor_open() -> None:

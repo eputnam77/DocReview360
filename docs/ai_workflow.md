@@ -4,7 +4,7 @@ DocReview360 includes lightweight AI helpers that speed up common tasks and keep
 
 ## Document insights
 
-Functions in `docuflow.ai_utils` analyse text to suggest document types, detect anomalies and even recommend an export format. When you import or edit a file these helpers provide instant feedback so you know whether the content looks valid.
+Functions in `docreview360.ai_utils` analyse text to suggest document types, detect anomalies and even recommend an export format. When you import or edit a file these helpers provide instant feedback so you know whether the content looks valid.
 
 ## Workload balancer
 

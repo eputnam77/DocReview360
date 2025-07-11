@@ -1,4 +1,4 @@
-from docuflow.fed_numbering import can_toggle_numbering
+from docreview360.fed_numbering import can_toggle_numbering
 
 
 def test_can_toggle_numbering() -> None:

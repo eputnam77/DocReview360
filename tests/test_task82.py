@@ -1,4 +1,4 @@
-from docuflow.stubs.task82 import OpenSearchClient
+from docreview360.stubs.task82 import OpenSearchClient
 
 
 def test_index_and_search() -> None:

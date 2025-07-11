@@ -1,4 +1,4 @@
-from docuflow.ai_utils import add_feedback_template, generate_feedback
+from docreview360.ai_utils import add_feedback_template, generate_feedback
 
 
 def test_feedback_template_application() -> None:

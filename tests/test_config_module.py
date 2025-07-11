@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from docuflow.config import Config
+from docreview360.config import Config
 
 
 def test_config_roundtrip(tmp_path: Path) -> None:

@@ -14,15 +14,15 @@ This installs the package in editable mode so local changes are picked up immedi
 
 Run the interactive CLI wizard to generate a configuration file:
 ```bash
-docuflow init
+docreview360 init
 ```
-Answer the prompts about your preferred database, editor and other options. The resulting `docuflow.yml` sits in your working directory.
+Answer the prompts about your preferred database, editor and other options. The resulting `docreview360.yml` sits in your working directory.
 
 ## 3. Start the development servers
 
 First start the FastAPI backend:
 ```bash
-uvicorn docuflow.api:app --reload
+uvicorn docreview360.api:app --reload
 ```
 Then in a separate terminal set up and start the React UI (Node 18+):
 ```bash

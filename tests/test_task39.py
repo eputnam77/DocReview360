@@ -1,4 +1,4 @@
-from docuflow.logs import clear_logs, log_event, register_listener, unregister_listener
+from docreview360.logs import clear_logs, log_event, register_listener, unregister_listener
 
 
 def test_live_log_listener() -> None:

@@ -8,7 +8,7 @@ DocReview360 stores structured data for documents, projects and workflow approva
 
 ## Decision
 
-* Use SQLAlchemy models defined in `src/docuflow/models.py` as the single source of truth for table schemas.
+* Use SQLAlchemy models defined in `src/docreview360/models.py` as the single source of truth for table schemas.
 * Provide a minimal migration helper in `Database.migrate()` that executes `.sql` files located under `migrations/` and tracks them in a `schema_versions` table.
 * Avoid external frameworks like Alembic for now; the custom function keeps dependencies small and fits the project's simple schema.
 * Future contributors can replace this mechanism with Alembic or another tool if schema complexity grows.

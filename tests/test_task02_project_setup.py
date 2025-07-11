@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_pyproject_contains_project_metadata() -> None:
     data = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    assert data["project"]["name"] == "docuflow"
+    assert data["project"]["name"] == "docreview360"
     dev_deps = data["project"]["optional-dependencies"]["dev"]
     assert any(dep.startswith("pytest") for dep in dev_deps)
 

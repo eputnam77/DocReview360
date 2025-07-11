@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow import fts
+from docreview360 import fts
 
 
 def test_fts_basic_search() -> None:

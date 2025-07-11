@@ -1,4 +1,4 @@
-from docuflow.celery_app import quality_gate
+from docreview360.celery_app import quality_gate
 
 
 def test_quality_gate() -> None:

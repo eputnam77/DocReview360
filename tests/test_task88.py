@@ -1,5 +1,5 @@
-from docuflow import documents
-from docuflow.stubs.task88 import execute_query
+from docreview360 import documents
+from docreview360.stubs.task88 import execute_query
 
 
 def _seed() -> None:

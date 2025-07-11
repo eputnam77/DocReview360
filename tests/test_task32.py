@@ -1,5 +1,5 @@
-from docuflow.plugins import registry
-from docuflow.plugins_ui import render_plugin_table
+from docreview360.plugins import registry
+from docreview360.plugins_ui import render_plugin_table
 
 
 def dummy() -> None:

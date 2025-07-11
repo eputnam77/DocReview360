@@ -1,5 +1,5 @@
 site_name: DocReview360 Docs
-site_url: https://example.com/docuflow
+site_url: https://example.com/docreview360
 nav:
   - Home: index.md
   - Getting Started: getting_started.md

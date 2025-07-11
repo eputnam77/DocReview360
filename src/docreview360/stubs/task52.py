@@ -46,7 +46,7 @@ def generate_template(project_name: str) -> str:
     return template.strip()
 
 
-def task52(project_name: str = "docuflow") -> str:
+def task52(project_name: str = "docreview360") -> str:
     """Generate and return a Terraform template for ``project_name``."""
 
     record_task_completion(52)

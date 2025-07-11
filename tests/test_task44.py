@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow.security_compliance import generate_compliance_pdf
+from docreview360.security_compliance import generate_compliance_pdf
 
 
 def test_generate_compliance_pdf() -> None:

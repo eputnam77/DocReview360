@@ -1,4 +1,4 @@
-from docuflow.stubs.task84 import WorkflowEditor
+from docreview360.stubs.task84 import WorkflowEditor
 
 
 def test_editor_edges() -> None:

@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow.auth import keycloak_mfa_login
+from docreview360.auth import keycloak_mfa_login
 
 
 def test_keycloak_mfa_login_success() -> None:

@@ -4,12 +4,12 @@
 Accepted
 
 ## Context
-The project requires a flexible mechanism to extend editors, exporters and validation logic without changing core code. A light‑weight plugin registry already exists in `src/docuflow/plugins.py`, but the rationale has not been documented.
+The project requires a flexible mechanism to extend editors, exporters and validation logic without changing core code. A light‑weight plugin registry already exists in `src/docreview360/plugins.py`, but the rationale has not been documented.
 
 ## Decision
 * Adopt a central `PluginRegistry` that stores plugin callables by name and tracks their enabled or disabled state.
 * Expose a `load_plugins()` helper that imports modules providing a `register(registry)` function. This keeps plugin code decoupled from the core package.
-* Encourage optional plugins to live under `src/docuflow/plugins/` or separate packages discovered via configuration.
+* Encourage optional plugins to live under `src/docreview360/plugins/` or separate packages discovered via configuration.
 * Document plugin configuration in the README and provide basic tests covering registration and toggling.
 
 ## Consequences

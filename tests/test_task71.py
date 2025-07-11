@@ -1,4 +1,4 @@
-from docuflow.monitoring import open_dashboard
+from docreview360.monitoring import open_dashboard
 
 
 def test_open_dashboard_returns_url() -> None:

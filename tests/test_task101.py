@@ -1,4 +1,4 @@
-from docuflow.fed_numbering import apply_numbering
+from docreview360.fed_numbering import apply_numbering
 
 
 def test_apply_numbering() -> None:

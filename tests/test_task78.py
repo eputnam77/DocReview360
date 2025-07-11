@@ -1,4 +1,4 @@
-from docuflow.stubs.task78 import ImixsAdapter
+from docreview360.stubs.task78 import ImixsAdapter
 
 
 def test_start_workflow() -> None:

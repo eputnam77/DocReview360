@@ -1,5 +1,5 @@
-from docuflow.schedule_editor import load_schedules
-from docuflow.stubs.task149 import task149
+from docreview360.schedule_editor import load_schedules
+from docreview360.stubs.task149 import task149
 
 
 def test_task149_completed(tmp_path) -> None:

@@ -1,7 +1,7 @@
 import pytest
 
-from docuflow.settings_manager import load_settings
-from docuflow.stubs.task142 import task142
+from docreview360.settings_manager import load_settings
+from docreview360.stubs.task142 import task142
 
 
 def test_task142_completed(tmp_path) -> None:

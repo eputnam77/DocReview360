@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from docuflow.backup_utils import create_backup, restore_backup
-from docuflow.documents import documents, import_document
-from docuflow.logs import clear_logs, log_event, logs
+from docreview360.backup_utils import create_backup, restore_backup
+from docreview360.documents import documents, import_document
+from docreview360.logs import clear_logs, log_event, logs
 
 
 def test_backup_roundtrip(tmp_path: Path) -> None:
