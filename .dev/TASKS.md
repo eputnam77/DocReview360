@@ -196,6 +196,10 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 191 | Fix sidebar dashboard link | • Update sidebar link to `/dashboard`; remove broken `/dashboards` path. | UI | 0.5 d | Clicking **Dashboard** opens main view. <br>See `tests/e2e/features/task191.feature` |
 | 192 | Configuration pages | • Admin-only **Configuration** section to manage doc types, phases, and templates. | Admin | 3 d | New types persist via API. <br>See `tests/e2e/features/task192.feature` |
 | 193 | Review notifications via email & chat | • Send project review requests via email, Microsoft Teams, Slack, or Jira webhooks. | Integration | 3 d | Reviewer receives notification link. <br>See `tests/e2e/features/task193.feature` |
+| 194 | Replace start page placeholder call | • Implement real API POST `/api/workflows/{id}/start` in `StartWorkflowPage`.<br>• Handle success and error states. | FE | 1 d | Submitting form creates workflow entry in DB. |
+| 195 | Sendemail hook validations | • Edit `.git/hooks/sendemail-validate.sample` to run spell check, patch style, and series checks.<br>• Document required tools in `README.md`. | DevOps | 0.5 d | Hook blocks invalid patches when enabled. |
+| 196 | Update project description | • Replace `description = "tbd."` in `pyproject.toml` with a concise summary of DocuFlow.<br>• Bump package metadata version. | Docs | 0.2 d | `grep -n "tbd" pyproject.toml` returns nothing. |
+| 197 | Finalize FAA AC templates | • Replace `AC 20-XXX` and bracketed text with variables for document number, subject and date.<br>• Loading template fills in provided values. | FE | 1 d | New project wizard renders populated AC template. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
