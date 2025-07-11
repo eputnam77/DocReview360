@@ -6,15 +6,20 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
+ARG PORT=8000
+ENV PORT=${PORT}
+
 # Install runtime dependencies
 COPY pyproject.toml ./
+COPY poetry.lock ./
 COPY src ./src
-RUN pip install --upgrade pip && \
+RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/* && \
+    pip install --upgrade pip && \
     pip install . && \
-    pip install uvicorn
+    pip install uvicorn && \
+    npm install --prefix frontend && npm run build --prefix frontend
 
 # Copy the rest of the source
 COPY . .
-
-EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "docreview360.api:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE ${PORT}
+CMD ["sh", "-c", "uvicorn docreview360.api:app --host 0.0.0.0 --port ${PORT}"]
