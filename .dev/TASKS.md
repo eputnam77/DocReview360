@@ -189,6 +189,13 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 184 | Advanced dashboards | • Interactive charts for throughput and workload with export options. | Data | 3 d | Dashboard renders and exports CSV. <br>See `tests/e2e/features/task184.feature` |
 | 185 | Improved search | • Implement cross-project search with keyword filters. | Backend • P2 | 2 d | `/search?q=test` returns results. <br>See `tests/e2e/features/task185.feature` |
 | 186 | Evaluate Documenso | • Test Documenso signatures in workflow to determine fit. | PM | 1 d | Signature appears correctly in demo. <br>See `tests/e2e/features/task186.feature` |
+| 187 | Workflow page admin-only | • Restrict `/workflows` UI and API to role `admin`; update RBAC and route guards. | Security | 0.5 d | Non-admin sees 403; admin loads page. <br>See `tests/e2e/features/task187.feature` |
+| 188 | Profile page with settings | • New route `/profile` showing current user info from `/api/users/me`; form to update preferences. | FE | 1 d | Edit settings → toast confirms save. <br>See `tests/e2e/features/task188.feature` |
+| 189 | Dashboard visibility toggles | • Allow users and admins to show/hide dashboard widgets; defaults on. | FE | 2 d | Toggle off widget → dashboard hides it. <br>See `tests/e2e/features/task189.feature` |
+| 190 | Manager dashboard | • Add dashboard route for `manager` role mirroring admin widgets for now. | FE | 1 d | Manager login shows new dashboard. <br>See `tests/e2e/features/task190.feature` |
+| 191 | Fix sidebar dashboard link | • Update sidebar link to `/dashboard`; remove broken `/dashboards` path. | UI | 0.5 d | Clicking **Dashboard** opens main view. <br>See `tests/e2e/features/task191.feature` |
+| 192 | Configuration pages | • Admin-only **Configuration** section to manage doc types, phases, and templates. | Admin | 3 d | New types persist via API. <br>See `tests/e2e/features/task192.feature` |
+| 193 | Review notifications via email & chat | • Send project review requests via email, Microsoft Teams, Slack, or Jira webhooks. | Integration | 3 d | Reviewer receives notification link. <br>See `tests/e2e/features/task193.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
