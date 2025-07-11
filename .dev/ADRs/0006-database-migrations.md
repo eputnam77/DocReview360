@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-DocuFlow stores structured data for documents, projects and workflow approvals. The existing code ships a small SQLAlchemy wrapper and a set of models but no explicit record of how migrations are handled. We need a lightweight approach that works for the prototype without adding heavy dependencies.
+DocReview360 stores structured data for documents, projects and workflow approvals. The existing code ships a small SQLAlchemy wrapper and a set of models but no explicit record of how migrations are handled. We need a lightweight approach that works for the prototype without adding heavy dependencies.
 
 ## Decision
 

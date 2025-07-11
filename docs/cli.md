@@ -1,6 +1,6 @@
 # CLI Reference
 
-DocuFlow ships with a single entry point called `docuflow`. The command wraps a few sub‑commands implemented with a friendly wizard style.
+DocReview360 ships with a single entry point called `docuflow`. The command wraps a few sub‑commands implemented with a friendly wizard style.
 
 ## init
 

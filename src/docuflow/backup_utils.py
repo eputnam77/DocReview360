@@ -1,4 +1,4 @@
-"""Utilities for creating and restoring DocuFlow backups."""
+"""Utilities for creating and restoring DocReview360 backups."""
 
 from __future__ import annotations
 

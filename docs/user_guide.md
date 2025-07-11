@@ -1,6 +1,6 @@
 # User Guide
 
-This walkthrough helps you explore DocuFlow from the perspective of a new user. You will log in, open the editor, add reviewers and approve documents. The guide also explains how to configure the application for different environments.
+This walkthrough helps you explore DocReview360 from the perspective of a new user. You will log in, open the editor, add reviewers and approve documents. The guide also explains how to configure the application for different environments.
 
 ## 1. Access the projects page
 
@@ -35,7 +35,7 @@ wrappers.
 
 ## 4. Configure your environment
 
-DocuFlow stores its settings in `docuflow.yml`. Run the `init` wizard or edit the file to change:
+DocReview360 stores its settings in `docuflow.yml`. Run the `init` wizard or edit the file to change:
 
 - `database`: `postgres`, `mysql` or `sqlite`
 - `storage`: path or bucket for the object storage plugin
@@ -48,7 +48,7 @@ After modifying the file, restart the server so the changes take effect.
 - **GraphQL read layer**: query projects and documents with `execute_query` in `docuflow.graphql_api`.
 - **File storage plugin**: store files in any compatible object storage via `upload_file`.
 
-Together these capabilities make it easier to integrate DocuFlow into your existing tools and workflows.
+Together these capabilities make it easier to integrate DocReview360 into your existing tools and workflows.
 
 ## 6. Example workflow
 

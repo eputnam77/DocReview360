@@ -1,4 +1,4 @@
-"""Authentication utilities for DocuFlow."""
+"""Authentication utilities for DocReview360."""
 
 from __future__ import annotations
 

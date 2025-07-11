@@ -1,6 +1,6 @@
 # Usage Scenarios
 
-The following examples show how DocuFlow could fit into day‑to‑day work. The prototype is intentionally small but these flows highlight what is possible.
+The following examples show how DocReview360 could fit into day‑to‑day work. The prototype is intentionally small but these flows highlight what is possible.
 
 ## Collaborating on a draft
 1. A user imports a Markdown file using `POST /documents/import`.

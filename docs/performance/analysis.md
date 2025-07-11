@@ -1,6 +1,6 @@
 # Performance Profiling & Optimization Audit
 
-This short report captures the current performance pain points in DocuFlow. We ran k6 against the API and used Lighthouse on the Next.js frontend. We also sampled the Python backend with `cProfile` and the React profiler.
+This short report captures the current performance pain points in DocReview360. We ran k6 against the API and used Lighthouse on the Next.js frontend. We also sampled the Python backend with `cProfile` and the React profiler.
 
 ## Methodology
 

@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Doc-type conversion helpers."""
+
+from __future__ import annotations
 
 import re
 

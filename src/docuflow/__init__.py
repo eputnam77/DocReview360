@@ -1,4 +1,4 @@
-"""DocuFlow core package."""
+"""DocReview360 core package."""
 
 __all__ = [
     "placeholder",
@@ -63,6 +63,7 @@ from . import (
     comments,
     config,
     contextual_help,
+    conversion,
     doc_types,
     documents,
     editor_loader,
@@ -77,6 +78,7 @@ from . import (
     metabase,
     models,
     monitoring,
+    nemo_guardrails,
     notifications,
     onlyoffice_editor,
     plugins,
@@ -94,8 +96,6 @@ from . import (
     vector_search,
     wasm_plugin,
     workflow_components,
-    conversion,
-    nemo_guardrails,
     workflows,
     xml_editor,
 )
