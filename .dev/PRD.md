@@ -48,6 +48,8 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Custom document types / categories** with import-export.
 * **Template engine**: Markdown, TipTap JSON, DOCX, XML.
 * **Type conversion wizard** (e.g., AC → Policy) preserving numbering & metadata.
+* **Template & Doc-Type Manager UI** for uploading golden Markdown templates, editing in Monaco, and generating derivatives.
+* **Per-document linter & numbering toggles** with one-click migration to the latest template version.
 
 ### 3.2 Editors
 
@@ -63,6 +65,8 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **BPMN templates** editable by admins in a React Flow canvas; end-users see a Wrangle-style linear checklist. ([reactflow.dev][7])
 * **Camunda** as default engine; **Imixs-Workflow** supported for lighter installs. ([camunda.com][3], [imixs.org][8])
 * Dynamic reviewer add/remove within configured guard-rails.
+* **Workflow Designer UI** lets project managers clone BPMN templates and adjust SLAs per project.
+* **Documenso approval button** exposes e-signature steps directly in project pages.
 * **Documenso** signatures bound to workflow state; cryptographically verified. ([documenso.com][4])
 
 ### 3.4 Collaboration
@@ -76,6 +80,9 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **OpenSearch** cluster for full-text & vector queries. ([opensearch.org][9])
 * **Metabase** for ad-hoc BI and KPI dashboards. ([metabase.com][10])
 * Structured, ISO-8601 logs (INFO-ERROR-CRITICAL) exposed via Grafana Loki or OpenSearch Dashboards.
+* Interactive dashboards with project filters and export options.
+* Sortable project tracker table linking to per-project details.
+* Saved search queries and real-time log viewer.
 
 ### 3.6 Export & Archival
 
@@ -88,6 +95,17 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Keycloak** OIDC/SAML with MFA. ([keycloak.org][11])
 * RBAC down to field-level; CSP, CSRF, JWT rotation.
 * FedRAMP Moderate controls mapped; daily encrypted backups.
+### 3.8 Setup & Administration
+
+* **First-run setup wizard** guides initial DB, auth, storage and editor configuration.
+* **Global Settings** panel with tabs for general, auth, storage, email, plugins and backup.
+* **Plugin Marketplace** installs discoverable packages from PyPI in one click.
+* **Backup/Restore panel** triggers Celery tasks and monitors progress.
+* **Environment switcher** toggles dev/stage/prod endpoints with color cues.
+* **RBAC role editor** exposes a permission matrix per role.
+* **Scheduled task cron editor** manages Celery Beat schedules.
+* **Downloadable CLI profile** lets users fetch `docuflow.env` from the UI.
+* **Admin-less project creation wizard** for non-admin authors.
 
 ---
 
@@ -109,6 +127,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 * Docker-compose (dev) → Helm charts (prod, EKS/AKS).
 * GitHub Actions CI, Terraform IaC, Trivy image scanning.
+* In-browser Terraform plan viewer with OPA policy checks.
 
 ---
 
@@ -144,8 +163,8 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 | ------- | ----------------------------------------------------------- |
 | Q3 2025 | Core CRUD, TipTap, Keycloak, OpenSearch, basic Camunda flow |
 | Q4 2025 | Documenso integration, multi-editor support, AI helpers     |
-| Q1 2026 | Export/Archival pipeline, Metabase dashboards, FedRAMP SSP  |
-| Q2 2026 | Marketplace for third-party plugins, full multi-tenant SaaS |
+| Q1 2026 | Export/Archival pipeline, interactive dashboards, setup wizard and admin panels |
+| Q2 2026 | Plugin marketplace, environment switcher, RBAC editor, multi-tenant SaaS |
 
 ---
 
