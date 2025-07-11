@@ -6,13 +6,9 @@ import {
   Sparkle,
   Ticket,
   Inbox,
-  Workflow,
-  FileText,
   Users2,
-  BarChart2,
   Settings,
   User,
-  Key,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
@@ -22,25 +18,8 @@ const NAV = [
   { icon: <Inbox className="h-4 w-4" />, label: "Dashboard", href: "/dashboard" },
 ];
 
-const CONFIG = [
-  { icon: <Workflow className="h-4 w-4" />, label: "Workflows", href: "/workflows" },
-  { icon: <FileText className="h-4 w-4" />, label: "Document Types", href: "/document-types" },
-  { icon: <BarChart2 className="h-4 w-4" />, label: "Phases", href: "/phases" },
-  { icon: <FileText className="h-4 w-4" />, label: "Templates", href: "/templates" },
-  { icon: <Users2 className="h-4 w-4" />, label: "User Management", href: "/user-management" },
-  { icon: <Key className="h-4 w-4" />, label: "Permissions", href: "/permissions" },
-  { icon: <FileText className="h-4 w-4" />, label: "Audit Logs", href: "/audit-logs" },
-  { icon: <Settings className="h-4 w-4" />, label: "App Settings", href: "/app-settings" },
-  { icon: <FileText className="h-4 w-4" />, label: "Custom Fields", href: "/custom-fields" },
-];
-
 const SECONDARY = [
   { icon: <Users2 className="h-4 w-4" />, label: "Support", href: "/support" },
-  {
-    icon: <Settings className="h-4 w-4" />,
-    label: "Integrations",
-    href: "/integrations",
-  },
 ];
 
 const PROFILE = { icon: <User className="h-4 w-4" />, label: "Profile", href: "/profile" };
@@ -111,14 +90,12 @@ export default function Sidebar() {
       {isAdmin && (
         <>
           <hr className="my-4" />
-          <div className="px-2 space-y-1">
-            <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
-              <Settings className="h-4 w-4" />
-              <span>Configuration</span>
-            </div>
-            {CONFIG.map((item) => (
-              <NavItem key={item.label} {...item} />
-            ))}
+          <div className="px-2">
+            <NavItem
+              icon={<Settings className="h-4 w-4" />}
+              label="Configuration"
+              href="/settings"
+            />
           </div>
         </>
       )}
