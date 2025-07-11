@@ -9,7 +9,7 @@ def test_login_flow() -> None:
     # initial page should show login form
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "Login to DocuFlow" in resp.text
+    assert "Login to DocReview360" in resp.text
 
     # invalid credentials stay on login page
     resp = client.post("/login", data={"username": "bad", "password": "bad"})

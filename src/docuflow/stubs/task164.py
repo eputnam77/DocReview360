@@ -2,8 +2,8 @@
 
 from time import perf_counter
 
-from ..stubs import record_task_completion
 from ..search import list_projects
+from ..stubs import record_task_completion
 
 
 def analyze_performance(iterations: int = 100) -> str:

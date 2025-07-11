@@ -1,6 +1,6 @@
 # Patch and Upgrade Process
 
-This guide outlines the security patch flow used by the DocuFlow project.
+This guide outlines the security patch flow used by the DocReview360 project.
 
 ## Overview
 

@@ -1,4 +1,4 @@
-"""SQLAlchemy models for DocuFlow."""
+"""SQLAlchemy models for DocReview360."""
 
 from __future__ import annotations
 

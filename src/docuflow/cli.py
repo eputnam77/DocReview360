@@ -1,4 +1,4 @@
-"""Command line interface for DocuFlow configuration wizard."""
+"""Command line interface for DocReview360 configuration wizard."""
 
 from __future__ import annotations
 

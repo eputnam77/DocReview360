@@ -1,6 +1,6 @@
-# DocuFlow
+# DocReview360
 
-DocuFlow helps you organise documents, run simple approval workflows and keep track of your projects. The prototype ships with a small web API, a tiny frontend and a one-command CLI wizard. It is intentionally lightweight so you can explore the features and decide how they fit your own process.
+DocReview360 helps you organise documents, run simple approval workflows and keep track of your projects. The prototype ships with a small web API, a tiny frontend and a one-command CLI wizard. It is intentionally lightweight so you can explore the features and decide how they fit your own process.
 
 ## Quick start
 
@@ -53,7 +53,7 @@ Head over to the [documentation](https://example.com/docuflow) for a full tour o
 
 ## Usage example
 
-The following short session shows how a new user might work with DocuFlow. After
+The following short session shows how a new user might work with DocReview360. After
 starting the server open a second terminal and run:
 
 ```bash
@@ -89,7 +89,7 @@ Running the app inside containers is a handy way to share it on a server or your
    ```bash
    docker compose up
    ```
-   This command starts Postgres, OpenSearch, Redis and the DocuFlow services.
+   This command starts Postgres, OpenSearch, Redis and the DocReview360 services.
 
 If you need to deploy on a remote host, tag the image with your registry name and push it:
 
@@ -98,4 +98,4 @@ docker tag docuflow:latest registry.example.com/docuflow:1.0.0
 docker push registry.example.com/docuflow:1.0.0
 ```
 
-Update your server or container orchestration tool to pull the new image and your DocuFlow instance will be online.
+Update your server or container orchestration tool to pull the new image and your DocReview360 instance will be online.

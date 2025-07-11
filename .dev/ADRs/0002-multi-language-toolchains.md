@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-While DocuFlow is primarily a Python project, some features like the web UI or
+While DocReview360 is primarily a Python project, some features like the web UI or
 performance-critical plugins may benefit from other languages. We want to keep
 the repository ready for those additions without forcing them today.
 
