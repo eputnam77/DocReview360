@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from docuflow.metabase import MetabaseClient, load_dashboards
+from docreview360.metabase import MetabaseClient, load_dashboards
 
 
 def test_get_chart() -> None:

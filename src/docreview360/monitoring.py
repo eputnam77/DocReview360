@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover - optional dependency missing
 from prometheus_client import Counter, start_http_server
 
 REQUEST_COUNTER = Counter(
-    "docuflow_requests_total", "Number of HTTP requests processed by DocReview360"
+    "docreview360_requests_total", "Number of HTTP requests processed by DocReview360"
 )
 
 

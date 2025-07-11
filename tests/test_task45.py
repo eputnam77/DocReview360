@@ -1,4 +1,4 @@
-from docuflow.monitoring import start_observability_stack
+from docreview360.monitoring import start_observability_stack
 
 
 def test_start_observability_stack() -> None:

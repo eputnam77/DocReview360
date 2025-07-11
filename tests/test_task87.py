@@ -1,4 +1,4 @@
-from docuflow.stubs.task87 import render_chart
+from docreview360.stubs.task87 import render_chart
 
 
 def test_render_chart() -> None:

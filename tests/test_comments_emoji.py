@@ -1,4 +1,4 @@
-from docuflow.comments import add_comment, list_comments
+from docreview360.comments import add_comment, list_comments
 
 
 def test_mentions_and_emoji() -> None:

@@ -1,4 +1,4 @@
-from docuflow.ai_balancer import (
+from docreview360.ai_balancer import (
     assign_job,
     complete_job,
     current_load,

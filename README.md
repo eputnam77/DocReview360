@@ -11,12 +11,12 @@ DocReview360 helps you organise documents, run simple approval workflows and kee
    ```
 2. **Create a configuration file**
    ```bash
-   docuflow init
+   docreview360 init
    ```
-   The wizard asks for your preferred database, editor and other options then stores them in `docuflow.yml`.
+   The wizard asks for your preferred database, editor and other options then stores them in `docreview360.yml`.
 3. **Start the backend API**
    ```bash
-   uvicorn docuflow.api:app --reload
+   uvicorn docreview360.api:app --reload
    ```
 4. **Start the React frontend** (requires Node 18+)
    ```bash
@@ -48,7 +48,7 @@ The API is a learning tool. Endpoints return dummy data but illustrate how proje
 - Simple plugin system for editors and exporters
 - Minimal authentication flow with a login form, dashboard and project creation page
 
-Head over to the [documentation](https://example.com/docuflow) for a full tour of the API, CLI options and UI navigation tips. The
+Head over to the [documentation](https://example.com/docreview360) for a full tour of the API, CLI options and UI navigation tips. The
 [architecture overview](docs/adr/0001-core-architecture.md) describes how the backend, frontend and future services fit together.
 
 ## Usage example
@@ -58,14 +58,14 @@ starting the server open a second terminal and run:
 
 ```bash
 # create a project and upload a document
-docuflow project create "My first project"
-docuflow document add --project "My first project" README.md
+docreview360 project create "My first project"
+docreview360 document add --project "My first project" README.md
 
 # request approval from a team member
-docuflow approval request --project "My first project" --user bob
+docreview360 approval request --project "My first project" --user bob
 
 # export the document to PDF using the default plugin
-docuflow export pdf --project "My first project" --out build/project.pdf
+docreview360 export pdf --project "My first project" --out build/project.pdf
 ```
 
 Reload the projects page and you will see the document listed with its approval
@@ -78,11 +78,11 @@ Running the app inside containers is a handy way to share it on a server or your
 
 1. **Build the image**
    ```bash
-   docker build -t docuflow:latest .
+   docker build -t docreview360:latest .
    ```
 2. **Launch the container on its own**
    ```bash
-   docker run -d -p 8000:8000 docuflow:latest
+   docker run -d -p 8000:8000 docreview360:latest
    ```
    Visit <http://localhost:8000/> to confirm everything works.
 3. **Run the full stack**
@@ -94,8 +94,8 @@ Running the app inside containers is a handy way to share it on a server or your
 If you need to deploy on a remote host, tag the image with your registry name and push it:
 
 ```bash
-docker tag docuflow:latest registry.example.com/docuflow:1.0.0
-docker push registry.example.com/docuflow:1.0.0
+docker tag docreview360:latest registry.example.com/docreview360:1.0.0
+docker push registry.example.com/docreview360:1.0.0
 ```
 
 Update your server or container orchestration tool to pull the new image and your DocReview360 instance will be online.

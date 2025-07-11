@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 
-from docuflow.api import app
+from docreview360.api import app
 
 scenarios("../features")
 

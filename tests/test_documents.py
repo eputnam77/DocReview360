@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from docuflow.api import app
-from docuflow.documents import autosave_document, import_document
+from docreview360.api import app
+from docreview360.documents import autosave_document, import_document
 
 
 def test_import_and_edit_document() -> None:
@@ -42,8 +42,8 @@ def test_autosave_document() -> None:
     assert doc.content == "new"
     assert doc.history == ["original"]
     # cleanup to avoid side effects
-    from docuflow import documents as doc_module
-    from docuflow import search as search_module
+    from docreview360 import documents as doc_module
+    from docreview360 import search as search_module
 
     search_module.search_index.remove_document(doc.id)
     del doc_module.documents[doc.id]

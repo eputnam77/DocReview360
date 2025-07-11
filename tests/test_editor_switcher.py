@@ -1,7 +1,7 @@
 import pytest
 
-from docuflow.documents import DocumentModel, set_document_editor
-from docuflow.editor_switcher import render_editor
+from docreview360.documents import DocumentModel, set_document_editor
+from docreview360.editor_switcher import render_editor
 
 
 def test_render_default_editor() -> None:
@@ -12,7 +12,7 @@ def test_render_default_editor() -> None:
 
 def test_render_switched_editor() -> None:
     doc = DocumentModel(id="2", content="hi")
-    from docuflow.documents import documents
+    from docreview360.documents import documents
 
     documents[doc.id] = doc
     set_document_editor(doc.id, "toast")

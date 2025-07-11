@@ -1,4 +1,4 @@
-from docuflow.stubs.task77 import CamundaClient
+from docreview360.stubs.task77 import CamundaClient
 
 
 def test_start_process() -> None:

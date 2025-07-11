@@ -1,4 +1,4 @@
-from docuflow.stubs.task164 import analyze_performance
+from docreview360.stubs.task164 import analyze_performance
 
 
 def test_task164_performance_analysis() -> None:

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from sqlalchemy import inspect, text
 
-from docuflow.database import Database
+from docreview360.database import Database
 
 
 def test_sql_migrations(tmp_path: Path) -> None:

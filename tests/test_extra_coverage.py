@@ -1,4 +1,4 @@
-from docuflow.logs import clear_logs, export_logs, log_event
+from docreview360.logs import clear_logs, export_logs, log_event
 
 
 def test_export_logs_counts() -> None:

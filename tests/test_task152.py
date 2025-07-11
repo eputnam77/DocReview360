@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow.stubs.task152 import task152
+from docreview360.stubs.task152 import task152
 
 
 def test_task152_small_diff() -> None:

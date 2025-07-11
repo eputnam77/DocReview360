@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docuflow.stubs.task146 import task146
+from docreview360.stubs.task146 import task146
 
 
 def test_task146_completed(tmp_path) -> None:

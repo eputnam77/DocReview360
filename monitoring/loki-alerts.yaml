@@ -1,8 +1,8 @@
 groups:
-  - name: docuflow-logs
+  - name: docreview360-logs
     rules:
       - alert: HighErrorRate
-        expr: rate({app="docuflow"}|~"ERROR"[5m]) > 5
+        expr: rate({app="docreview360"}|~"ERROR"[5m]) > 5
         for: 10m
         labels:
           severity: critical

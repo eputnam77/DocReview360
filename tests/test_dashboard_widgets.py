@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from docuflow.api import app
-from docuflow.search import ProjectModel, add_project
+from docreview360.api import app
+from docreview360.search import ProjectModel, add_project
 
 
 def test_dashboard_widgets_endpoint() -> None:

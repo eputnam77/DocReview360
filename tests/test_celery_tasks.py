@@ -1,8 +1,8 @@
 import pytest
 
-from docuflow.celery_app import export_documents, reindex_document
-from docuflow.documents import DocumentModel, documents
-from docuflow.search import search_index
+from docreview360.celery_app import export_documents, reindex_document
+from docreview360.documents import DocumentModel, documents
+from docreview360.search import search_index
 
 
 def test_export_documents() -> None:

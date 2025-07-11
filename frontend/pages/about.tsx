@@ -48,10 +48,10 @@ export default function AboutPage() {
             <p>
               For questions, feedback, or support, please email{" "}
               <a
-                href="mailto:support@docuflow.example.com"
+                href="mailto:support@docreview360.example.com"
                 className="text-indigo-700 underline"
               >
-                support@docuflow.example.com
+                support@docreview360.example.com
               </a>
               .
             </p>

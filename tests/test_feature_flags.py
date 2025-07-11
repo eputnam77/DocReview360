@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow import feature_flags
+from docreview360 import feature_flags
 
 
 class DummyClient:

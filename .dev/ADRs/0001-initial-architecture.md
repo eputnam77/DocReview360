@@ -9,7 +9,7 @@ source code from development assets and prepares for multi-language components.
 
 ## Decision
 
-* Use **Python** as the primary backend, placing packages under `src/docuflow`.
+* Use **Python** as the primary backend, placing packages under `src/docreview360`.
 * Store tests in `tests/` and documentation in `docs/`.
 * Keep development workflow files in `.dev/` so they're excluded from
   distribution packages.

@@ -1,7 +1,7 @@
 import pytest
 from celery import Celery
 
-from docuflow import flower
+from docreview360 import flower
 
 
 @pytest.mark.asyncio

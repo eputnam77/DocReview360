@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from docuflow.celery_app import app
-from docuflow.security_hardening import (
+from docreview360.celery_app import app
+from docreview360.security_hardening import (
     enable_fedramp_backup,
     enforce_mfa_login,
     import_realm_file,
@@ -34,7 +34,7 @@ def test_enable_fedramp_backup(tmp_path: Path) -> None:
     dest = tmp_path / "b.gz"
     enable_fedramp_backup(str(dest))
     schedule = app.conf.beat_schedule["fedramp_backup"]
-    assert schedule["task"] == "docuflow.secure_backup"
+    assert schedule["task"] == "docreview360.secure_backup"
     # run task to ensure it works
     result = secure_backup(dest)
     assert Path(result).exists()

@@ -3,7 +3,7 @@
 import hashlib
 import hmac
 
-DEFAULT_SECRET = "docuflow"
+DEFAULT_SECRET = "docreview360"
 
 
 def create_signature(data: str, secret: str = DEFAULT_SECRET) -> str:

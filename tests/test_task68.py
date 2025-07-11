@@ -1,4 +1,4 @@
-from docuflow.workflows import advance_workflow, create_workflow, register_bot
+from docreview360.workflows import advance_workflow, create_workflow, register_bot
 
 
 def test_a2_bot_callback_called() -> None:

@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from docuflow.stubs.task128 import task128
+from docreview360.stubs.task128 import task128
 
 
 @given(st.none())

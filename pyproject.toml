@@ -4,7 +4,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name            = "docuflow"
+name            = "docreview360"
 version         = "0.1.1"
 description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
@@ -38,7 +38,7 @@ name  = "Eric Putnam"
 email = "info@example.com"
 
 [project.scripts]
-docuflow = "docuflow.cli:cli"
+docreview360 = "docreview360.cli:cli"
 
 # ───────────────────────────── optional deps buckets ───────────────────────────
 [project.optional-dependencies]
@@ -122,9 +122,9 @@ where = ["src"]
 exclude = ["tests*", ".dev*"]
 
 [tool.setuptools.package-data]
-"docuflow.styles" = ["*.md"]
-"docuflow.templates" = ["*.html"]
-"docuflow.iac_templates" = ["*.tf"]
+"docreview360.styles" = ["*.md"]
+"docreview360.templates" = ["*.html"]
+"docreview360.iac_templates" = ["*.tf"]
 "*" = ["*.txt", "*.md", "*.yaml", "*.yml"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
@@ -147,7 +147,7 @@ select = ["E", "F", "W", "C90", "I"]
 python_version         = "3.12"
 strict                 = true
 ignore_errors          = false
-packages               = ["docuflow"]
+packages               = ["docreview360"]
 plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
 
 [[tool.mypy.overrides]]
@@ -180,7 +180,7 @@ markers = [
 
 # ──────────────────────── security scanning (Bandit) ──────────────────────────
 [tool.bandit]
-targets      = ["src/docuflow"]
+targets      = ["src/docreview360"]
 exclude_dirs = ["tests", ".venv", "build", "dist"]
 skips        = ["B101", "B110", "B311"]
 
@@ -191,11 +191,11 @@ shell    = ["os.system", "subprocess.Popen"]
 
 [tool.coverage.run]
 omit = [
-  "src/docuflow/templates/*",
-  "src/docuflow/styles/*",
-  "src/docuflow/stubs/*",
-  "src/docuflow/scripts/*",
-  "src/docuflow/records.py",
+  "src/docreview360/templates/*",
+  "src/docreview360/styles/*",
+  "src/docreview360/stubs/*",
+  "src/docreview360/scripts/*",
+  "src/docreview360/records.py",
 ]
 
 

@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from docuflow.backup_panel import create_backup_async, schedule_daily_backup
-from docuflow.celery_app import app
-from docuflow.documents import documents, import_document
-from docuflow.logs import log_event, logs
+from docreview360.backup_panel import create_backup_async, schedule_daily_backup
+from docreview360.celery_app import app
+from docreview360.documents import documents, import_document
+from docreview360.logs import log_event, logs
 
 
 def test_create_backup_async(tmp_path: Path) -> None:

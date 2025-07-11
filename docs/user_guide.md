@@ -4,9 +4,9 @@ This walkthrough helps you explore DocReview360 from the perspective of a new us
 
 ## 1. Access the projects page
 
-1. Start the server with `uvicorn docuflow.api:app --reload`.
+1. Start the server with `uvicorn docreview360.api:app --reload`.
 2. Open `http://127.0.0.1:8000/` in your browser.
-3. Sign in with the credentials from your `docuflow.yml` file (the defaults are `admin/admin`).
+3. Sign in with the credentials from your `docreview360.yml` file (the defaults are `admin/admin`).
 4. The projects page greets you and provides links to the editor and API docs.
 
 ## 2. Open the document editor
@@ -19,7 +19,7 @@ This walkthrough helps you explore DocReview360 from the perspective of a new us
 
 The configuration file contains an `editor` setting. Supported values include `tiptap`, `toast` and `word`.
 
-1. Run `docuflow init` to regenerate the file or edit it manually.
+1. Run `docreview360 init` to regenerate the file or edit it manually.
 2. Set `editor: toast` (or another option) and restart the server.
 3. The next time you open the editor the new tool loads.
 
@@ -35,7 +35,7 @@ wrappers.
 
 ## 4. Configure your environment
 
-DocReview360 stores its settings in `docuflow.yml`. Run the `init` wizard or edit the file to change:
+DocReview360 stores its settings in `docreview360.yml`. Run the `init` wizard or edit the file to change:
 
 - `database`: `postgres`, `mysql` or `sqlite`
 - `storage`: path or bucket for the object storage plugin
@@ -45,7 +45,7 @@ After modifying the file, restart the server so the changes take effect.
 
 ## 5. Explore the latest features
 
-- **GraphQL read layer**: query projects and documents with `execute_query` in `docuflow.graphql_api`.
+- **GraphQL read layer**: query projects and documents with `execute_query` in `docreview360.graphql_api`.
 - **File storage plugin**: store files in any compatible object storage via `upload_file`.
 
 Together these capabilities make it easier to integrate DocReview360 into your existing tools and workflows.
@@ -56,20 +56,20 @@ Below is a short end-to-end walkthrough using the CLI and projects page together
 
 1. Create a new project:
    ```bash
-   docuflow project create "Demo Project"
+   docreview360 project create "Demo Project"
    ```
 2. Upload a document and open it in the editor:
    ```bash
-   docuflow document add --project "Demo Project" docs/index.md
+   docreview360 document add --project "Demo Project" docs/index.md
    ```
    Refresh your browser to see the file listed.
 3. Request an approval from a team member:
    ```bash
-   docuflow approval request --project "Demo Project" --user alice
+   docreview360 approval request --project "Demo Project" --user alice
    ```
 4. Once approved, export the document to PDF:
    ```bash
-   docuflow export pdf --project "Demo Project" --out demo.pdf
+   docreview360 export pdf --project "Demo Project" --out demo.pdf
    ```
 5. Check the projects page to download the generated PDF and confirm the project status.
 

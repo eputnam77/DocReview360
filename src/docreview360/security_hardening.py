@@ -28,7 +28,7 @@ def enforce_mfa_login(username: str, password: str, otp: str) -> str:
     return keycloak_mfa_login(username, password, otp)
 
 
-@app.task(name="docuflow.secure_backup")  # type: ignore[misc]
+@app.task(name="docreview360.secure_backup")  # type: ignore[misc]
 def secure_backup(path: str) -> str:
     """Create and encrypt a daily backup."""
     backup = create_backup(Path(path))
@@ -44,7 +44,7 @@ def enable_fedramp_backup(path: str) -> None:
     """Schedule encrypted daily backups required by FedRAMP."""
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["fedramp_backup"] = {
-        "task": "docuflow.secure_backup",
+        "task": "docreview360.secure_backup",
         "schedule": crontab(hour=1, minute=0),
         "args": (path,),
     }

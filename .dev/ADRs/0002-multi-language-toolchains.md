@@ -12,7 +12,7 @@ the repository ready for those additions without forcing them today.
 
 * Include minimal configuration files for TypeScript (`tsconfig.json`), Rust
   (`Cargo.toml`), and Go (`go.mod`).
-* Each configuration declares the package name `docuflow` and basic compiler
+* Each configuration declares the package name `docreview360` and basic compiler
   settings.
 * No actual source code is required yet; these files serve as placeholders for
   future scaffolding.

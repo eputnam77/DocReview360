@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow import pandiff
+from docreview360 import pandiff
 
 
 def test_compute_diff_validation() -> None:

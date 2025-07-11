@@ -1,6 +1,6 @@
 import httpx
 
-from docuflow.metabase import fetch_card_csv, fetch_dashboards
+from docreview360.metabase import fetch_card_csv, fetch_dashboards
 
 
 def test_fetch_dashboards(monkeypatch):

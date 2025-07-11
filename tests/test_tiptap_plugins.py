@@ -1,5 +1,5 @@
-from docuflow.tiptap import markdown_to_tiptap
-from docuflow.tiptap_plugins import lint_template_plugin, numbering_plugin
+from docreview360.tiptap import markdown_to_tiptap
+from docreview360.tiptap_plugins import lint_template_plugin, numbering_plugin
 
 
 def test_lint_template_plugin() -> None:

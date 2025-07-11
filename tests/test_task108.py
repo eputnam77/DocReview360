@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docuflow.pyo3_builder import build_stub_wheel
+from docreview360.pyo3_builder import build_stub_wheel
 
 
 def test_build_stub_wheel(tmp_path: Path) -> None:

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docuflow.stubs.task56 import task56
+from docreview360.stubs.task56 import task56
 
 
 def test_task56_upload(tmp_path: Path) -> None:

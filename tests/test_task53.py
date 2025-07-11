@@ -1,4 +1,4 @@
-from docuflow.stubs.task53 import task53
+from docreview360.stubs.task53 import task53
 
 
 def test_task53_diff() -> None:

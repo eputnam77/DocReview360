@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow.notifications import TEMPLATES, add_template, send_email, sent_emails
+from docreview360.notifications import TEMPLATES, add_template, send_email, sent_emails
 
 
 def test_add_template_validation() -> None:

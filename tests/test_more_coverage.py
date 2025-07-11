@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-import docuflow.ai_utils as ai
-from docuflow.doc_types import (
+import docreview360.ai_utils as ai
+from docreview360.doc_types import (
     DocumentTypeModel,
     export_document_types,
     update_document_type,

@@ -2,7 +2,7 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import given
 
-util = pytest.importorskip("docuflow.deploy")
+util = pytest.importorskip("docreview360.deploy")
 
 
 @given(st.integers())

@@ -1,8 +1,8 @@
 import pytest
 
-from docuflow.search import projects
-from docuflow.stubs.task151 import task151
-from docuflow.workflows import get_workflow
+from docreview360.search import projects
+from docreview360.stubs.task151 import task151
+from docreview360.workflows import get_workflow
 
 
 def test_task151_completed() -> None:

@@ -1,4 +1,4 @@
-from docuflow.stubs.task162 import render_progress_view
+from docreview360.stubs.task162 import render_progress_view
 
 
 def test_task162_progress_view() -> None:
