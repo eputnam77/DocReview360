@@ -11,7 +11,7 @@ CONFIG_FILE = Path("docuflow.yaml")
 
 @dataclass
 class Config:
-    """Configuration options for DocuFlow."""
+    """Configuration options for DocReview360."""
 
     database: str
     editor: str

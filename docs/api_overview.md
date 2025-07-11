@@ -1,6 +1,6 @@
 # API Overview
 
-DocuFlow exposes a JSON API that lets you manage projects, documents and approvals. The interactive documentation is available at `/docs` once the server is running. Below is a short summary of the main endpoints.
+DocReview360 exposes a JSON API that lets you manage projects, documents and approvals. The interactive documentation is available at `/docs` once the server is running. Below is a short summary of the main endpoints.
 
 ## Projects
 - `GET /projects` – list all projects

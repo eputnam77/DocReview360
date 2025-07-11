@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-DocuFlow integrates a Python FastAPI backend, a React/Next.js front end, and auxiliary
+DocReview360 integrates a Python FastAPI backend, a React/Next.js front end, and auxiliary
 services for search, task queues and storage.  Early ADRs live under `.dev/ADRs/` but
 this record summarises the agreed monorepo layout for end users.
 
@@ -19,7 +19,7 @@ The following C4 container diagram illustrates the high level design.
 
 ```mermaid
 graph TD
-    subgraph DocuFlow
+    subgraph DocReview360
         A[React UI]\nNext.js
         B[API Server]\nFastAPI
         C[Database]\nPostgreSQL

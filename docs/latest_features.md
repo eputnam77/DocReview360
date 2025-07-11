@@ -1,10 +1,10 @@
 # Latest Features
 
-This guide introduces the most recent additions to DocuFlow and walks you through common tasks. It assumes you have already followed the [Getting Started](getting_started.md) steps.
+This guide introduces the most recent additions to DocReview360 and walks you through common tasks. It assumes you have already followed the [Getting Started](getting_started.md) steps.
 
 ## GraphQL Read Layer
 
-DocuFlow now ships with a lightweight GraphQL API. You can query projects and documents using standard GraphQL syntax. The helper function `execute_query` lives in `docuflow.graphql_api` and provides read‑only access.
+DocReview360 now ships with a lightweight GraphQL API. You can query projects and documents using standard GraphQL syntax. The helper function `execute_query` lives in `docuflow.graphql_api` and provides read‑only access.
 
 Example:
 
