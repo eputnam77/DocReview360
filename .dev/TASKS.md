@@ -200,6 +200,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 195 | Sendemail hook validations | • Edit `.git/hooks/sendemail-validate.sample` to run spell check, patch style, and series checks.<br>• Document required tools in `README.md`. | DevOps | 0.5 d | Hook blocks invalid patches when enabled. |
 | 196 | Update project description | • Replace `description = "tbd."` in `pyproject.toml` with a concise summary of DocuFlow.<br>• Bump package metadata version. | Docs | 0.2 d | `grep -n "tbd" pyproject.toml` returns nothing. |
 | 197 | Finalize FAA AC templates | • Replace `AC 20-XXX` and bracketed text with variables for document number, subject and date.<br>• Loading template fills in provided values. | FE | 1 d | New project wizard renders populated AC template. |
+| 198 | Dockerfile deployment compatibility | • Update Dockerfile to install backend and frontend deps, run the front-end build, and expose the dynamic `$PORT` used by free-tier platforms.<br>• Document provisioning of environment vars and Postgres on Render, Heroku, Fly.io and Railway. | DevOps • P2 | 1 d | Demo deploy uses provided platform port without code changes. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
