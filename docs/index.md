@@ -8,6 +8,7 @@ Welcome to the DocReview360 project. This site collects guides and references fo
 - [API Overview](api_overview.md)
 - [Usage Scenarios](scenarios.md)
 - [Developer Guide](developer.md)
+- [Deployment](deployment.md)
 - [AI Workflow](ai_workflow.md)
 
 ## Project features
