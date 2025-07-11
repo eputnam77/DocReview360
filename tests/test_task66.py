@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from docuflow.api import app
+from docreview360.api import app
 
 
 def test_ranked_search_and_export() -> None:

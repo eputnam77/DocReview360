@@ -3,7 +3,7 @@ from types import ModuleType
 
 from fastapi.testclient import TestClient
 
-from docuflow.api import app
+from docreview360.api import app
 
 
 def create_dummy_plugin(name: str) -> str:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from docuflow.stubs import record_task_completion
+from docreview360.stubs import record_task_completion
 
 
 def run() -> None:

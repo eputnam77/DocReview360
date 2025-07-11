@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docuflow.fann_corpus import curate_corpus, export_corpus
+from docreview360.fann_corpus import curate_corpus, export_corpus
 
 
 def test_curate_corpus() -> None:

@@ -2,7 +2,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from sqlalchemy import text
 
-from docuflow.database import Database
+from docreview360.database import Database
 
 
 @given(st.none())

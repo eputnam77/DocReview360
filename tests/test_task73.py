@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from docuflow.notifications import notify_overdue_projects, sent_emails
-from docuflow.search import ProjectModel, overdue_high_priority, projects
+from docreview360.notifications import notify_overdue_projects, sent_emails
+from docreview360.search import ProjectModel, overdue_high_priority, projects
 
 
 def test_overdue_high_priority_detection() -> None:

@@ -1,4 +1,4 @@
-from docuflow.stubs.task79 import OnlyofficeConnector
+from docreview360.stubs.task79 import OnlyofficeConnector
 
 
 def test_open_document() -> None:

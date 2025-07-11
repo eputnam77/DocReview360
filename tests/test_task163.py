@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow.stubs.task163 import render_extension_menu
+from docreview360.stubs.task163 import render_extension_menu
 
 
 def test_task163_extension_menu_placeholder() -> None:

@@ -10,7 +10,7 @@ def task141(path: Path | None = None) -> None:
     """Run the first-run setup wizard with sample values."""
 
     run_setup(
-        database="sqlite:///docuflow.db",
+        database="sqlite:///docreview360.db",
         keycloak_url="https://keycloak.local",
         editor="tiptap",
         storage="minio",

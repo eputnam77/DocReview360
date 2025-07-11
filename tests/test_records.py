@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docuflow.records import sync_to_sharepoint
+from docreview360.records import sync_to_sharepoint
 
 
 def test_sync_to_sharepoint(tmp_path: Path) -> None:

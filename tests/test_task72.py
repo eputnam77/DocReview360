@@ -1,4 +1,4 @@
-from docuflow.ai_utils import detect_anomalies
+from docreview360.ai_utils import detect_anomalies
 
 
 def test_anomaly_detection() -> None:

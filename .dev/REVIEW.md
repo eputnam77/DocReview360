@@ -1,7 +1,7 @@
 ## Code Review
 
 ### Integration Risks
-- Default secrets in `src/docuflow/auth.py` are populated from environment variables but fall back to insecure values.
+- Default secrets in `src/docreview360/auth.py` are populated from environment variables but fall back to insecure values.
 - Projects, documents and workflows rely on in-memory dictionaries without locking or persistence. This limits scalability and durability.
 - Plugin loading uses dynamic import with minimal validation, which may raise runtime errors if modules are missing.
 

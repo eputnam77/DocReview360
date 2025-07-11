@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-CONFIG_FILE = Path("docuflow.yaml")
+CONFIG_FILE = Path("docreview360.yaml")
 
 
 @dataclass

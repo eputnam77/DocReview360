@@ -6,7 +6,7 @@ This short report captures the current performance pain points in DocReview360. 
 
 1. **k6 API test** hitting `/projects` and `/documents` with 50 virtual users for 30 seconds.
 2. **Lighthouse audit** on `http://localhost:3000/` in a headless Chrome browser.
-3. **Python profiling** with `python -m cProfile -m docuflow.api` during typical workflow usage.
+3. **Python profiling** with `python -m cProfile -m docreview360.api` during typical workflow usage.
 4. **Next.js profiling** using the React Developer Tools extension while navigating between pages.
 
 ## Findings

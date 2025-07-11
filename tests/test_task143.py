@@ -1,6 +1,6 @@
 import pytest
 
-from docuflow.stubs.task143 import task143
+from docreview360.stubs.task143 import task143
 
 
 def test_task143_completed(tmp_path) -> None:
@@ -12,14 +12,14 @@ def test_task143_completed(tmp_path) -> None:
 def test_template_listing(tmp_path) -> None:
     path = tmp_path / "templates" / "sample.md"
     result = task143(path=path)
-    from docuflow.template_manager import list_templates
+    from docreview360.template_manager import list_templates
 
     names = list_templates(result.parent)
     assert names == ["sample"]
 
 
 def test_save_template_validation(tmp_path) -> None:
-    from docuflow.template_manager import save_template
+    from docreview360.template_manager import save_template
 
     with pytest.raises(ValueError):
         save_template("", "text", root=tmp_path)

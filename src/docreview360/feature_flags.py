@@ -19,7 +19,7 @@ class FeatureFlags:
         if UnleashClient is None:
             raise RuntimeError("UnleashClient not installed")
         self.client = UnleashClient(
-            url=url, app_name="docuflow", custom_headers={"Authorization": api_key}
+            url=url, app_name="docreview360", custom_headers={"Authorization": api_key}
         )
         self.client.initialize_client()
         self._logged = False

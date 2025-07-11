@@ -1,5 +1,5 @@
-from docuflow.documents import DocumentModel
-from docuflow.stubs.task27 import task27, task27_preview
+from docreview360.documents import DocumentModel
+from docreview360.stubs.task27 import task27, task27_preview
 
 
 def test_task27_batch_export_and_preview() -> None:

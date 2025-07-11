@@ -1,4 +1,4 @@
-from docuflow.records_keeper import create_archival_folder
+from docreview360.records_keeper import create_archival_folder
 
 
 def test_create_archival_folder(tmp_path) -> None:

@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from docuflow.celery_app import create_backup_task, reindex_all
-from docuflow.documents import DocumentModel, documents
-from docuflow.search import search_index
+from docreview360.celery_app import create_backup_task, reindex_all
+from docreview360.documents import DocumentModel, documents
+from docreview360.search import search_index
 
 
 def test_create_backup_task(tmp_path: Path) -> None:

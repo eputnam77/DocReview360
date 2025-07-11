@@ -104,7 +104,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Environment switcher** toggles dev/stage/prod endpoints with color cues.
 * **RBAC role editor** exposes a permission matrix per role.
 * **Scheduled task cron editor** manages Celery Beat schedules.
-* **Downloadable CLI profile** lets users fetch `docuflow.env` from the UI.
+* **Downloadable CLI profile** lets users fetch `docreview360.env` from the UI.
 * **Admin-less project creation wizard** for non-admin authors.
 
 ---

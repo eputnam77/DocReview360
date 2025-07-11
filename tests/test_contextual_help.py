@@ -1,4 +1,4 @@
-from docuflow.contextual_help import get_help, register_help, tooltip_html
+from docreview360.contextual_help import get_help, register_help, tooltip_html
 
 
 def test_help_registry() -> None:

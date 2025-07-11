@@ -1,4 +1,4 @@
-from docuflow.stubs.task85 import apply_preferences
+from docreview360.stubs.task85 import apply_preferences
 
 
 def test_apply_preferences() -> None:

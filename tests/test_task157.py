@@ -1,4 +1,4 @@
-from docuflow.xml_editor import XMLEditor
+from docreview360.xml_editor import XMLEditor
 
 
 def test_xml_editor_open() -> None:

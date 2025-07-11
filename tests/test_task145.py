@@ -2,7 +2,7 @@ import subprocess
 
 import pytest
 
-from docuflow.stubs.task145 import task145
+from docreview360.stubs.task145 import task145
 
 
 def test_task145_completed(monkeypatch) -> None:
@@ -18,7 +18,7 @@ def test_task145_completed(monkeypatch) -> None:
 
 def test_install_plugin_validation(monkeypatch) -> None:
     monkeypatch.setattr(subprocess, "check_call", lambda *a, **k: None)
-    from docuflow.plugin_marketplace import install_plugin
+    from docreview360.plugin_marketplace import install_plugin
 
     with pytest.raises(ValueError):
         install_plugin("")

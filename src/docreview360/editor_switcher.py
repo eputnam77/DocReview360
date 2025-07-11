@@ -9,10 +9,10 @@ from .documents import DocumentModel
 # Map editor names to ``module:class`` paths
 EDITOR_PLUGINS = {
     "tiptap": None,
-    "toast": "docuflow.toast_editor:ToastEditor",
-    "onlyoffice": "docuflow.onlyoffice_editor:OnlyofficeConnector",
-    "xml": "docuflow.xml_editor:XMLEditor",
-    "codex": "docuflow.codex_editor:CodeXEditor",
+    "toast": "docreview360.toast_editor:ToastEditor",
+    "onlyoffice": "docreview360.onlyoffice_editor:OnlyofficeConnector",
+    "xml": "docreview360.xml_editor:XMLEditor",
+    "codex": "docreview360.codex_editor:CodeXEditor",
 }
 
 

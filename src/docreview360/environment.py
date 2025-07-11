@@ -32,6 +32,6 @@ def switch_environment(name: str, path: Path = ENV_FILE) -> str:
     data = load_envs(path)
     if name not in data:
         raise KeyError(name)
-    os.environ["DOCUFLOW_ENV"] = name
+    os.environ["DOCREVIEW360_ENV"] = name
     record_task_completion(147)
     return data[name]["url"]

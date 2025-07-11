@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from docuflow.hr_sync import sync_temp_reassignments
-from docuflow.search import ProjectModel, projects
+from docreview360.hr_sync import sync_temp_reassignments
+from docreview360.search import ProjectModel, projects
 
 
 def test_sync_temp_reassignments() -> None:

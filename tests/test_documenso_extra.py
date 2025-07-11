@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from docuflow import documenso
+from docreview360 import documenso
 
 
 def test_documenso_error_handling() -> None:

@@ -1,14 +1,14 @@
 # CLI Reference
 
-DocReview360 ships with a single entry point called `docuflow`. The command wraps a few sub‑commands implemented with a friendly wizard style.
+DocReview360 ships with a single entry point called `docreview360`. The command wraps a few sub‑commands implemented with a friendly wizard style.
 
 ## init
 
 ```
-docuflow init [OPTIONS]
+docreview360 init [OPTIONS]
 ```
 
-Interactive wizard that generates `docuflow.yml`.
+Interactive wizard that generates `docreview360.yml`.
 
 ### Options
 

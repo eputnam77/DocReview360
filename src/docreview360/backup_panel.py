@@ -11,7 +11,7 @@ from .celery_app import app
 from .stubs import record_task_completion
 
 
-@app.task(name="docuflow.create_backup_async")  # type: ignore[misc]
+@app.task(name="docreview360.create_backup_async")  # type: ignore[misc]
 def create_backup_async(path: str) -> str:
     """Create a backup asynchronously and return the path."""
     target = str(create_backup(Path(path)))
@@ -29,7 +29,7 @@ def schedule_daily_backup(path: str) -> None:
     """Configure a daily Celery beat task creating backups."""
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["daily_backup"] = {
-        "task": "docuflow.create_backup",
+        "task": "docreview360.create_backup",
         "schedule": crontab(hour=2, minute=0),
         "args": (path,),
     }

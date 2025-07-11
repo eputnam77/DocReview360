@@ -2,7 +2,7 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
-from docuflow.api import app
+from docreview360.api import app
 
 
 def _doc_ids(resp):
@@ -32,7 +32,7 @@ def test_search_supports_project_name_and_date_filter() -> None:
     client = TestClient(app)
 
     # Create a project explicitly
-    from docuflow import search as search_module
+    from docreview360 import search as search_module
 
     search_module.add_project(search_module.ProjectModel(id="p2", name="Very Secret Project"))
 
@@ -45,7 +45,7 @@ def test_search_supports_project_name_and_date_filter() -> None:
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
 
-    from docuflow import documents as doc_module
+    from docreview360 import documents as doc_module
 
     old_date = datetime(2020, 1, 1)
     doc_module.documents[doc_id].date = old_date

@@ -1,4 +1,4 @@
-from docuflow import placeholder
+from docreview360 import placeholder
 
 
 def test_placeholder() -> None:

@@ -1,4 +1,4 @@
-from docuflow.monitoring import init_observability
+from docreview360.monitoring import init_observability
 
 
 def test_init_observability_prometheus_only() -> None:
