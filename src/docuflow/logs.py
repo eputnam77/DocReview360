@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional
+import asyncio
 
 from pydantic import BaseModel
 
@@ -18,6 +19,23 @@ class LogEntry(BaseModel):
 logs: List[LogEntry] = []
 alerts: List[tuple[str, Callable[[LogEntry], None]]] = []
 _listeners: List[Callable[[LogEntry], None]] = []
+
+
+async def log_stream() -> AsyncIterator[LogEntry]:
+    """Yield log entries as they are recorded."""
+
+    queue: asyncio.Queue[LogEntry] = asyncio.Queue()
+
+    def _enqueue(entry: LogEntry) -> None:
+        queue.put_nowait(entry)
+
+    register_listener(_enqueue)
+    try:
+        while True:
+            entry = await queue.get()
+            yield entry
+    finally:
+        unregister_listener(_enqueue)
 
 
 def register_alert(pattern: str, callback: Callable[[LogEntry], None]) -> None:
