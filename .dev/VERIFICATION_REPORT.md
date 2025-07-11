@@ -100,16 +100,16 @@
 - **Real-time log viewer** from PRD §3.5 not found in codebase.
 - **NeMo‑Guardrails middleware** for PII/style checks has no implementation.
 ## Dev Gate Results
-- `ruff` reported import sorting errors
-- `black --check` reported all files unchanged
+- `ruff` passed with no issues
+- `black --check` confirmed consistent formatting
 - `mypy --strict` succeeded
 - `bandit` found 22 low-severity issues
 - `pytest` passed with 91% coverage
 ## 📋 Recommended Next Steps
-1. Complete editor plugins and wrappers.
-2. Expand security configuration to include Keycloak MFA and backup policies.
+1. Finalize editor integrations (Toast UI, ONLYOFFICE, XML) and hook up numbering menu.
+2. Harden security with Keycloak MFA and scheduled encrypted backups.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
-4. Resolve ruff import ordering issues.
+4. Build user-scoped dashboards, concurrent editing support, log viewer and NeMo Guardrails.
 
 
 Tasks 70‑155 are now all implemented through their corresponding modules. Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs, feature-flag wrapper and UI parity utilities.
