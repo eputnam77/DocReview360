@@ -95,12 +95,16 @@
 
 ## ❌ Missing Features
 - **User‑scoped dashboards** still rely on a `currentUser` constant and lack session filtering【F:frontend/pages/projects/index.tsx†L84-L99】.
+- **Doc-type conversion wizard** described in PRD §3.1 is absent; no `convert_ac_to_order` helper exists.
+- **Concurrent editing / CRDT** support is missing entirely.
+- **Real-time log viewer** from PRD §3.5 not found in codebase.
+- **NeMo‑Guardrails middleware** for PII/style checks has no implementation.
 ## Dev Gate Results
-- `ruff` completed with no issues【354a3a†L1-L4】.
-- `black --check` reported all files unchanged【c7f1d4†L1-L2】.
-- `mypy --strict` failed due to missing typed decorators and plugins【d1e61f†L1-L33】.
-- `bandit` found 22 low-severity issues, no highs【e95577†L1-L20】.
-- `pytest` failed during collection with 256 errors【44fe49†L1-L21】.
+- `ruff` completed with no issues【2d37f4†L1-L4】.
+- `black --check` reported all files unchanged【c35922†L1-L5】.
+- `mypy --strict` failed due to missing pydantic plugin【fdcb15†L1-L5】.
+- `bandit` command not found so no scan run【2a7ab2†L1-L4】.
+- `pytest` failed during collection with 271 errors【698e81†L1-L21】.
 
 ## 📋 Recommended Next Steps
 1. Complete editor plugins and wrappers.
