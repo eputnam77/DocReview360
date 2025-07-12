@@ -46,6 +46,7 @@ from .archive import (
 )
 from .cache import cache_get, cache_set
 from .comments import CommentModel, add_comment, list_comments
+from .config import CONFIG_FILE, Config
 from .doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -188,6 +189,18 @@ class TextBody(BaseModel):
     """Simple text payload for AI endpoints."""
 
     text: str
+
+
+class ConfigPayload(BaseModel):
+    """Configuration parameters for integrations."""
+
+    database: str
+    editor: str
+    cms: str
+    auth: str
+    host: str = "127.0.0.1"
+    port: int = 8000
+    debug: bool = False
 
 
 app = FastAPI(title="DocReview360")
@@ -911,3 +924,23 @@ async def logs_stream(websocket: WebSocket) -> None:
             await websocket.send_json(entry.model_dump(mode="json"))
     except WebSocketDisconnect:
         pass
+
+
+@app.get("/config", response_model=ConfigPayload)
+async def get_config_endpoint() -> ConfigPayload:
+    """Return the current application configuration."""
+    cfg = Config.load(CONFIG_FILE)
+    if cfg is None:
+        cfg = Config(database="sqlite", editor="tiptap", cms="none", auth="oidc")
+    return ConfigPayload(**cfg.__dict__)
+
+
+@app.put("/config", response_model=ConfigPayload)
+async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
+    """Persist a new configuration."""
+    cfg = Config(**payload.model_dump())
+    try:
+        cfg.save(CONFIG_FILE)
+    except OSError as exc:  # pragma: no cover - filesystem errors
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return payload
