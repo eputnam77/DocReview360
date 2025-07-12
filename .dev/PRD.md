@@ -88,6 +88,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 * One-click multi-format export: PDF, DOCX, HTML, Markdown, XML.
 * Archive tiers: TipTap JSON (source) → Markdown (portable) → PDF (immutable).
+* GitHub integration to push/pull documents for versioned review and long-term archival.
 * NeMo-Guardrails middleware for PII/style conformance before publish.
 
 ### 3.7 Security & Compliance

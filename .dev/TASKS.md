@@ -197,6 +197,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 195 | Sendemail hook validations | • Edit `.git/hooks/sendemail-validate.sample` to run spell check, patch style, and series checks.<br>• Document required tools in `README.md`. | DevOps | 0.5 d | Hook blocks invalid patches when enabled.<br>See `tests/property/test_task195_property.py` |
 | 196 | Update project description | • Replace `description = "tbd."` in `pyproject.toml` with a concise summary of DocReview360.<br>• Bump package metadata version. | Docs | 0.2 d | `grep -n "tbd" pyproject.toml` returns nothing.<br>See `tests/property/test_task196_property.py` |
 | 197 | Dockerfile deployment compatibility | • Update Dockerfile to install backend and frontend deps, run the front-end build, and expose the dynamic `$PORT` used by free-tier platforms.<br>• Document provisioning of environment vars and Postgres on Render, Heroku, Fly.io and Railway. | DevOps • P2 | 1 d | Demo deploy uses provided platform port without code changes.<br>See `tests/property/test_task198_property.py` |
+| 198 | GitHub doc storage sync | • Allow pushing and pulling documents to a GitHub repository for versioned reviews and archival.<br>• Branch selection and webhook refresh. | Integration • P3 | 2 d | Commit to GitHub updates project doc; pull shows latest commit.<br>See `tests/e2e/features/task198.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
