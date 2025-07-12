@@ -24,7 +24,7 @@ def _get_client() -> Any | None:
                 socket_connect_timeout=0.1,
                 socket_timeout=0.1,
             )
-            _client.ping()
+            _client.ping()  # type: ignore[attr-defined]
         except Exception:  # pragma: no cover - redis unreachable
             _client = None
     return _client
