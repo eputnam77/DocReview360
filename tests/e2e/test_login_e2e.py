@@ -3,8 +3,8 @@ import time
 from typing import Iterator
 
 import pytest
-from playwright.sync_api import Page
 import uvicorn
+from playwright.sync_api import Page
 
 from docreview360.api import app
 
