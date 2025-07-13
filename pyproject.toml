@@ -31,6 +31,7 @@ dependencies = [
   "redis>=5.0",
   "graphene>=3.3",
   "prometheus-client>=0.20",
+  "uvicorn>=0.35.0",
 ]
 
 [[project.authors]]
@@ -66,6 +67,7 @@ test = [
   "pytest-playwright>=0.4",
   "playwright>=1.44",
   "mutmut>=2.4",
+  "uvicorn>=0.35.0",
 ]
 
 # security scanning
@@ -92,6 +94,7 @@ dev = [
   "semgrep>=1.123.0",
   "pip-audit>=2.7",
   "pre-commit>=3.7",
+  "uvicorn>=0.35.0",
 ]
 
 # ───────────────────────────── poetry dependency groups ─────────────────────────────
@@ -109,6 +112,7 @@ semgrep = ">=1.123.0"
 pip-audit = ">=2.7"
 pre-commit = ">=3.7"
 pytest-asyncio = ">=0.23"
+uvicorn = ">=0.35.0"
 
 # ──────────────────────────── package discovery ───────────────────────────────
 
