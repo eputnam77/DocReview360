@@ -28,7 +28,7 @@ repos:
         pass_filenames: false
       - id: semgrep
         name: semgrep
-        entry: semgrep --config p/ci
+        entry: semgrep --config auto --disable-version-check --metrics=off
         language: system
         pass_filenames: false
       - id: pytest

@@ -151,7 +151,6 @@ select = ["E", "F", "W", "C90", "I"]
 python_version         = "3.12"
 strict                 = true
 ignore_errors          = false
-packages               = ["docreview360"]
 plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
 
 [[tool.mypy.overrides]]
