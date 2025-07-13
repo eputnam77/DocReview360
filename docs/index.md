@@ -22,7 +22,7 @@ DocReview360 implements a small slice of the functionality described in the prod
 - Minimal authentication flow with login, projects page and project creation page
 - Built-in observability helpers exposing Prometheus metrics and optional Sentry reporting
 
-Pull requests are welcome! Please run the test suite with `pytest` and the linters before submitting changes.
+Pull requests are welcome! Please run the unit tests with `pytest` and the end-to-end suite with `pytest -m e2e` before submitting changes.
 
 - [User Guide](user_guide.md)
 - [Latest Features](latest_features.md)
