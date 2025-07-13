@@ -1,3 +1,5 @@
+from _pytest.monkeypatch import MonkeyPatch
+
 from docreview360.monitoring import init_observability
 
 
@@ -7,7 +9,7 @@ def test_init_observability_prometheus_only() -> None:
     assert cfg["prometheus"].startswith("http://localhost:")
 
 
-def test_init_observability_with_env_sentry(monkeypatch) -> None:
+def test_init_observability_with_env_sentry(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("SENTRY_DSN", "http://public@localhost/1")
     cfg = init_observability(port=None)
     assert cfg["sentry"] == "enabled"

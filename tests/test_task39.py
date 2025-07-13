@@ -1,10 +1,16 @@
-from docreview360.logs import clear_logs, log_event, register_listener, unregister_listener
+from docreview360.logs import (
+    LogEntry,
+    clear_logs,
+    log_event,
+    register_listener,
+    unregister_listener,
+)
 
 
 def test_live_log_listener() -> None:
     received = []
 
-    def callback(entry) -> None:
+    def callback(entry: LogEntry) -> None:
         received.append(entry.action)
 
     register_listener(callback)

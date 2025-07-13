@@ -1,11 +1,11 @@
-from docreview360.logs import clear_logs, log_event
+from docreview360.logs import LogEntry, clear_logs, log_event
 from docreview360.stubs.task75 import register_log_alert
 
 
 def test_alert_triggered_on_pattern() -> None:
     triggered = []
 
-    def cb(entry):
+    def cb(entry: LogEntry) -> None:
         triggered.append(entry.action)
 
     register_log_alert("error", cb)
