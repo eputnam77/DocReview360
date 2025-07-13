@@ -1,8 +1,5 @@
-## Dev Gate Results - 2025-07-08T18:05:55Z
+## Dev Gate Results - 2025-07-13T09:55:39Z
 
-- **ruff**: passed
-- **black**: passed
-- **mypy**: failed – missing `pydantic` plugin
-- **bandit**: passed
-- **pytest**: failed – `ModuleNotFoundError: fastapi` (214 errors)
+- **mypy**: failed – see logs for 238 errors (example: `ModuleNotFoundError: 'uvicorn'`)
+- **pytest**: failed – `ModuleNotFoundError: uvicorn` (5 errors during collection)
 - **coverage**: not computed due to test failures
