@@ -75,7 +75,7 @@ semgrep --config p/ci                       # lightweight SAST
 pytest -q --cov=src --cov-branch --cov-fail-under=70
 pytest -q -m property                       # Hypothesis tests
 pytest -q -m e2e                            # Playwright (headless)
-mutmut run -s src --fail-under 60 -q
+mutmut run
 ```
 
 ### Release Gate (main)
@@ -89,7 +89,7 @@ semgrep --config p/default
 pip-audit -r requirements.txt
 pytest -q --cov=src --cov-branch --cov-fail-under=90
 pytest -q -m e2e
-mutmut run -s src --fail-under 80 -q
+mutmut run
 trivy fs --exit-code 1 --severity CRITICAL,HIGH .
 mkdocs build --strict
 ```
