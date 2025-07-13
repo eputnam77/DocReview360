@@ -32,4 +32,8 @@ def test_login_flow(page: Page, live_server: str) -> None:
     page.click('button[type="submit"]')
     page.wait_for_url(live_server + "/projects")
     assert page.url.endswith("/projects")
-    assert page.content().startswith("[")
+    # the projects endpoint returns JSON wrapped in a <pre> element when
+    # requested via Playwright. Extract the text content and check it is
+    # valid JSON.
+    text = page.text_content("pre")
+    assert text is not None and text.startswith("[")
