@@ -18,3 +18,35 @@ repos:
     hooks:
       - id: bandit
         args: ["-lll", "-r", "src"]
+  - repo: local
+    hooks:
+      - id: pip-audit
+        name: pip-audit
+        entry: pip-audit -r requirements.txt
+        language: system
+        pass_filenames: false
+      - id: semgrep
+        name: semgrep
+        entry: semgrep --config p/ci
+        language: system
+        pass_filenames: false
+      - id: pytest
+        name: pytest
+        entry: pytest -q --cov=src --cov-branch --cov-fail-under=70
+        language: system
+        pass_filenames: false
+      - id: pytest-property
+        name: pytest-property
+        entry: pytest -q -m property
+        language: system
+        pass_filenames: false
+      - id: pytest-e2e
+        name: pytest-e2e
+        entry: pytest -q -m e2e
+        language: system
+        pass_filenames: false
+      - id: mutmut
+        name: mutmut
+        entry: mutmut run
+        language: system
+        pass_filenames: false
