@@ -187,6 +187,17 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 
 ---
 
+## 10. Quality & Testing Requirements
+
+Full end-to-end (E2E) tests must verify the entire user journey—from the
+`docreview360` CLI commands that bootstrap a project to the browser-based
+workflows. The Playwright suite spins up the FastAPI server, drives a real
+browser and exercises background services. The CI pipeline installs the
+Playwright browsers and runs `pytest -m e2e` in headless mode so regressions are
+caught before release.
+
+---
+
 ### References
 
 TipTap editor ([github.com][5]) Toast UI Editor ([github.com][6]) Documenso ([documenso.com][4]) Camunda ([camunda.com][3]) Imixs-Workflow ([imixs.org][8]) Metabase ([metabase.com][10]) Keycloak ([keycloak.org][11]) OpenSearch ([opensearch.org][9]) Alfresco Community ([docs.alfresco.com][1]) ONLYOFFICE Docs ([onlyoffice.com][2]) React Flow ([reactflow.dev][7])

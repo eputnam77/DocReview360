@@ -99,3 +99,21 @@ docker push registry.example.com/docreview360:1.0.0
 ```
 
 Update your server or container orchestration tool to pull the new image and your DocReview360 instance will be online.
+
+## Running Tests
+
+1. **Install development dependencies and browsers**
+   ```bash
+   pip install -e .[dev]
+   playwright install
+   ```
+2. **Run the full test suite**
+   ```bash
+   pre-commit run --all-files
+   ```
+   This runs Ruff, Black, MyPy and the unit tests.
+3. **Run end-to-end tests only**
+   ```bash
+   pytest -m e2e
+   ```
+   The tests start a local server and drive a headless browser via Playwright.
