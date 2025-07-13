@@ -108,6 +108,14 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Downloadable CLI profile** lets users fetch `docreview360.env` from the UI.
 * **Admin-less project creation wizard** for non-admin authors.
 
+### 3.9 AI Chat Bot
+
+* **Conversational assistant** accessible from the dashboard.
+* Queries the project database (projects, assignments, workflow state) to answer
+  questions like “who is assigned to X project?” or “what’s the status of X?”.
+* Pluggable retrieval pipeline for additional knowledge sources (e.g., docs,
+  support tickets).
+
 ---
 
 ## 4. Technical Architecture
