@@ -7,6 +7,8 @@
 
 #### `pre-commit run --all-files`
 
+`pre-commit run --all-files`
+
 (.venv) PS C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\DocReview360> pre-commit run --all-files
 ruff.....................................................................Passed
 black....................................................................Passed
@@ -369,39 +371,6 @@ pytest...................................................................
 
 
 
-
-tests/test_task197.py: 1 warning
-tests/test_task198.py: 1 warning
-tests/test_task20.py: 1 warning
-tests/test_task21.py: 1 warning
-tests/test_task26.py: 1 warning
-tests/test_task27.py: 2 warnings
-tests/test_task30.py: 2 warnings
-tests/test_task37.py: 1 warning
-tests/test_task38.py: 1 warning
-tests/test_task39.py: 2 warnings
-tests/test_task40.py: 1 warning
-tests/test_task46.py: 1 warning
-tests/test_task47.py: 1 warning
-tests/test_task49.py: 1 warning
-tests/test_task50.py: 1 warning
-tests/test_task51.py: 1 warning
-tests/test_task52.py: 1 warning
-tests/test_task53.py: 1 warning
-tests/test_task54.py: 1 warning
-tests/test_task56.py: 1 warning
-tests/test_task57.py: 1 warning
-tests/test_task58.py: 1 warning
-tests/test_task60.py: 1 warning
-tests/test_task62.py: 1 warning
-tests/test_task63.py: 1 warning
-tests/test_task64.py: 1 warning
-tests/test_task66.py: 2 warnings
-tests/test_task70.py: 1 warning
-tests/test_task75.py: 2 warnings
-tests/test_task76.py: 1 warning
-tests/test_task77.py: 1 warning
-tests/test_task78.py: 1 warning
 tests/test_task79.py: 1 warning
 tests/test_task80.py: 2 warnings
 tests/test_task81.py: 1 warning
@@ -448,6 +417,12 @@ tests/test_task66.py: 2 warnings
   C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\DocReview360\src\docreview360\documents.py:91: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     date=datetime.utcnow(),
 
+tests/property/test_task52_property.py::test_task52_property
+  C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\hypothesis\internal\cache.py:87: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001BF8D3BF970>
+    @property
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
 tests/test_ai_assist.py: 7 warnings
 tests/test_flower.py: 3 warnings
 tests/test_task135.py: 1 warning
@@ -489,9 +464,15 @@ tests/test_task17.py::test_archival_workflow
   C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\DocReview360\src\docreview360\archive.py:47: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     timestamp=datetime.utcnow(),
 
-tests/test_db_migrations.py::test_sql_migrations
-  C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\sqlalchemy\sql\base.py:1590: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001CAA9FB3010>
-    return iter([col for _, col, _ in self._collection])
+tests/test_docker_compose.py::test_docker_compose_services
+  C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\yaml\scanner.py:286: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001BF8EEC0130>
+    for level in list(self.possible_simple_keys):
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_docker_compose.py::test_docker_compose_services
+  C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\yaml\scanner.py:286: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001BF8EEC2110>
+    for level in list(self.possible_simple_keys):
   Enable tracemalloc to get traceback where the object was allocated.
   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
 
@@ -529,8 +510,8 @@ tests/test_login.py::test_login_flow
     warnings.warn(
 
 tests/test_models.py::test_models_crud
-  C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:1384: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001CAB200C4F0>      
-    def __getattr__(self, key: str) -> Any:
+  C:\Users\ericp\AppData\Local\Programs\Python\Python313\Lib\weakref.py:428: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001BF8D8966B0>
+    self.data[ref(key, self._remove)] = value
   Enable tracemalloc to get traceback where the object was allocated.
   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
 
@@ -538,6 +519,12 @@ tests/test_records_keeper.py::test_create_archival_folder
 tests/test_task58.py::test_task58_returns_none
   C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\DocReview360\src\docreview360\records_keeper.py:18: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     date_part = datetime.utcnow().strftime("%Y%m%d")
+
+tests/test_sign_approval.py::test_sign_approval_flow
+  C:\Users\ericp\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py:835: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001BF8D8944F0>
+    def new_event_loop():
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
 
 tests/test_task07.py::test_oidc_token_flow
 tests/test_token.py::test_oidc_flow
@@ -721,15 +708,9 @@ src\docreview360\workflows.py                   41      3      8      2    90%
 src\docreview360\xml_editor.py                   8      1      2      1    80%
 ------------------------------------------------------------------------------
 TOTAL                                         2657    242    548    119    88%
-C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\_pytest\unraisableexception.py:33: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001CAA9FB0C70>
-  gc.collect()
-ResourceWarning: Enable tracemalloc to get the object allocation traceback
-C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\_pytest\unraisableexception.py:33: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001CAB200E5C0>
-  gc.collect()
-ResourceWarning: Enable tracemalloc to get the object allocation traceback
 Required test coverage of 70% reached. Total coverage: 88.05%
 ================================= Hypothesis ==================================
-`git apply .hypothesis\patches\2025-07-13--ab838ceb.patch` to add failing examples to your code.
+`git apply .hypothesis\patches\2025-07-13--df91a69c.patch` to add failing examples to your code.
 =========================== short test summary info ===========================
 FAILED tests/property/test_task63_property.py::test_cache_roundtrip - hypothe...
 FAILED tests/test_ai_assist.py::test_ai_rewrite_endpoint - RuntimeError: This...
@@ -752,7 +733,7 @@ ERROR tests/e2e/test_cli_config_e2e.py::test_cli_init_and_config[chromium] - ...
 ERROR tests/e2e/test_cli_seed_e2e.py::test_cli_seed_creates_sample[chromium]
 ERROR tests/e2e/test_login_e2e.py::test_login_flow[chromium] - playwright._im...
 ERROR tests/e2e/test_workflow_e2e.py::test_workflow_end_to_end[chromium] - pl...
-16 failed, 359 passed, 2 skipped, 968 warnings, 5 errors in 96.93s (0:01:36)
+16 failed, 359 passed, 2 skipped, 971 warnings, 5 errors in 22.15s
 
 pytest-property..........................................................Failed
 - hook id: pytest-property
@@ -795,7 +776,7 @@ tests\e2e\test_workflow_e2e.py:25
   <frozen importlib._bootstrap>:530: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.15; use exec_module() instead
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-1 skipped, 381 deselected, 9 warnings in 1.21s
+1 skipped, 381 deselected, 9 warnings in 1.16s
 
 pytest-e2e...............................................................Failed
 - hook id: pytest-e2e
@@ -805,7 +786,7 @@ EEEEE                                                                    [100%]
 =================================== ERRORS ====================================
 _____________ ERROR at setup of test_approval_lifecycle[chromium] _____________
 
-launch_browser = <function launch_browser.<locals>.launch at 0x0000016C726FAAC0>
+launch_browser = <function launch_browser.<locals>.launch at 0x000002C3E973EAC0>
 
     @pytest.fixture(scope="session")
     def browser(launch_browser: Callable[[], Browser]) -> Generator[Browser, None, None]:
@@ -825,8 +806,8 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     return await self._connection.wrap_api_call(
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-self = <playwright._impl._connection.Connection object at 0x0000016C7266FB60>
-cb = <function Channel.send.<locals>.<lambda> at 0x0000016C726F8B80>
+self = <playwright._impl._connection.Connection object at 0x000002C3E96AFB60>
+cb = <function Channel.send.<locals>.<lambda> at 0x000002C3E973CB80>
 is_internal = False, title = None
 
     async def wrap_api_call(
@@ -858,7 +839,7 @@ E           \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u
 ..\.venv\Lib\site-packages\playwright\_impl\_connection.py:558: Error
 ____________ ERROR at setup of test_cli_init_and_config[chromium] _____________
 
-launch_browser = <function launch_browser.<locals>.launch at 0x0000016C726FAAC0>
+launch_browser = <function launch_browser.<locals>.launch at 0x000002C3E973EAC0>
 
     @pytest.fixture(scope="session")
     def browser(launch_browser: Callable[[], Browser]) -> Generator[Browser, None, None]:
@@ -878,8 +859,8 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     return await self._connection.wrap_api_call(
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-self = <playwright._impl._connection.Connection object at 0x0000016C7266FB60>
-cb = <function Channel.send.<locals>.<lambda> at 0x0000016C726F8B80>
+self = <playwright._impl._connection.Connection object at 0x000002C3E96AFB60>
+cb = <function Channel.send.<locals>.<lambda> at 0x000002C3E973CB80>
 is_internal = False, title = None
 
     async def wrap_api_call(
@@ -913,7 +894,7 @@ E           \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u
 ERROR:    [Errno 10048] error while attempting to bind on address ('127.0.0.1', 8000): [winerror 10048] only one usage of each socket address (protocol/network address/port) is normally permitted
 __________ ERROR at setup of test_cli_seed_creates_sample[chromium] ___________
 
-launch_browser = <function launch_browser.<locals>.launch at 0x0000016C726FAAC0>
+launch_browser = <function launch_browser.<locals>.launch at 0x000002C3E973EAC0>
 
     @pytest.fixture(scope="session")
     def browser(launch_browser: Callable[[], Browser]) -> Generator[Browser, None, None]:
@@ -933,8 +914,8 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     return await self._connection.wrap_api_call(
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-self = <playwright._impl._connection.Connection object at 0x0000016C7266FB60>
-cb = <function Channel.send.<locals>.<lambda> at 0x0000016C726F8B80>
+self = <playwright._impl._connection.Connection object at 0x000002C3E96AFB60>
+cb = <function Channel.send.<locals>.<lambda> at 0x000002C3E973CB80>
 is_internal = False, title = None
 
     async def wrap_api_call(
@@ -968,7 +949,7 @@ E           \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u
 ERROR:    [Errno 10048] error while attempting to bind on address ('127.0.0.1', 8000): [winerror 10048] only one usage of each socket address (protocol/network address/port) is normally permitted
 _________________ ERROR at setup of test_login_flow[chromium] _________________
 
-launch_browser = <function launch_browser.<locals>.launch at 0x0000016C726FAAC0>
+launch_browser = <function launch_browser.<locals>.launch at 0x000002C3E973EAC0>
 
     @pytest.fixture(scope="session")
     def browser(launch_browser: Callable[[], Browser]) -> Generator[Browser, None, None]:
@@ -988,8 +969,8 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     return await self._connection.wrap_api_call(
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-self = <playwright._impl._connection.Connection object at 0x0000016C7266FB60>
-cb = <function Channel.send.<locals>.<lambda> at 0x0000016C726F8B80>
+self = <playwright._impl._connection.Connection object at 0x000002C3E96AFB60>
+cb = <function Channel.send.<locals>.<lambda> at 0x000002C3E973CB80>
 is_internal = False, title = None
 
     async def wrap_api_call(
@@ -1023,7 +1004,7 @@ E           \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u
 ERROR:    [Errno 10048] error while attempting to bind on address ('127.0.0.1', 8000): [winerror 10048] only one usage of each socket address (protocol/network address/port) is normally permitted
 ____________ ERROR at setup of test_workflow_end_to_end[chromium] _____________
 
-launch_browser = <function launch_browser.<locals>.launch at 0x0000016C726FAAC0>
+launch_browser = <function launch_browser.<locals>.launch at 0x000002C3E973EAC0>
 
     @pytest.fixture(scope="session")
     def browser(launch_browser: Callable[[], Browser]) -> Generator[Browser, None, None]:
@@ -1043,8 +1024,8 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     return await self._connection.wrap_api_call(
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-self = <playwright._impl._connection.Connection object at 0x0000016C7266FB60>
-cb = <function Channel.send.<locals>.<lambda> at 0x0000016C726F8B80>
+self = <playwright._impl._connection.Connection object at 0x000002C3E96AFB60>
+cb = <function Channel.send.<locals>.<lambda> at 0x000002C3E973CB80>
 is_internal = False, title = None
 
     async def wrap_api_call(
@@ -1347,7 +1328,7 @@ ERROR tests/e2e/test_cli_config_e2e.py::test_cli_init_and_config[chromium] - ...
 ERROR tests/e2e/test_cli_seed_e2e.py::test_cli_seed_creates_sample[chromium]
 ERROR tests/e2e/test_login_e2e.py::test_login_flow[chromium] - playwright._im...
 ERROR tests/e2e/test_workflow_e2e.py::test_workflow_end_to_end[chromium] - pl...
-1 skipped, 376 deselected, 13 warnings, 5 errors in 6.95s
+1 skipped, 376 deselected, 13 warnings, 5 errors in 6.99s
 
 mutmut...................................................................Failed
 - hook id: mutmut
