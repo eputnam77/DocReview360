@@ -4,10 +4,21 @@ This short guide explains how to run the project in a local environment.
 
 ## Installation
 
+Create and activate a virtual environment, then install the development
+dependencies listed in `pyproject.toml`:
+
 ```bash
+python -m venv .venv
+source .venv/bin/activate  # on Windows use .venv\Scripts\activate
+python -m pip install --upgrade pip
 pip install -e .[dev]
 pre-commit install
 ```
+
+The repository also provides ``requirements.txt`` and ``requirements-dev.txt``
+files for use with ``pip``. They are generated from the ``pyproject`` but may
+lag behind the lock file, so ``pip install -e .[dev]`` is the most reliable way
+to pull in the current dependencies.
 
 ## Running Tests
 
