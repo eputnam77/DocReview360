@@ -200,6 +200,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 198 | GitHub doc storage sync | • Allow pushing and pulling documents to a GitHub repository for versioned reviews and archival.<br>• Branch selection and webhook refresh. | Integration • P3 | 2 d | Commit to GitHub updates project doc; pull shows latest commit.<br>See `tests/e2e/features/task198.feature` |
 | 199 | Playwright E2E baseline | • Install browsers with `playwright install`.<br>• Write tests for CLI init, login and document creation.<br>• Fixtures start the server automatically. | QA • P1 | 2 d | `pytest -m e2e` passes locally and in CI. |
 | 200 | E2E CI job & docs | • Add GitHub Actions step to run Playwright suite headlessly.<br>• Document setup in `docs/developer.md` and `README.md`. | DevOps • P1 | 1 d | CI job green; docs show `playwright install` and test commands. |
+| 201 | AI chat bot for project queries | • Conversational UI embedded in the dashboard.<br>• Bot uses project DB tables to answer “status of X” and “who is assigned to X?”. | AI • P3 | 4 d | Ask bot about a project and receive correct status. <br>See `tests/e2e/features/task201.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
