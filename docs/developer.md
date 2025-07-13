@@ -29,6 +29,18 @@ pre-commit run --all-files
 pytest --cov=src
 ```
 
+The end-to-end tests rely on Playwright. Install the browser binaries once with:
+
+```bash
+playwright install
+```
+
+Then run the E2E suite separately:
+
+```bash
+pytest -m e2e
+```
+
 ## Database Migrations
 
 The :class:`docreview360.database.Database` class supports raw SQL migrations. Place

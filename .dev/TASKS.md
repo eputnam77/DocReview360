@@ -198,6 +198,8 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 196 | Update project description | • Replace `description = "tbd."` in `pyproject.toml` with a concise summary of DocReview360.<br>• Bump package metadata version. | Docs | 0.2 d | `grep -n "tbd" pyproject.toml` returns nothing.<br>See `tests/property/test_task196_property.py` |
 | 197 | Dockerfile deployment compatibility | • Update Dockerfile to install backend and frontend deps, run the front-end build, and expose the dynamic `$PORT` used by free-tier platforms.<br>• Document provisioning of environment vars and Postgres on Render, Heroku, Fly.io and Railway. | DevOps • P2 | 1 d | Demo deploy uses provided platform port without code changes.<br>See `tests/property/test_task198_property.py` |
 | 198 | GitHub doc storage sync | • Allow pushing and pulling documents to a GitHub repository for versioned reviews and archival.<br>• Branch selection and webhook refresh. | Integration • P3 | 2 d | Commit to GitHub updates project doc; pull shows latest commit.<br>See `tests/e2e/features/task198.feature` |
+| 199 | Playwright E2E baseline | • Install browsers with `playwright install`.<br>• Write tests for CLI init, login and document creation.<br>• Fixtures start the server automatically. | QA • P1 | 2 d | `pytest -m e2e` passes locally and in CI. |
+| 200 | E2E CI job & docs | • Add GitHub Actions step to run Playwright suite headlessly.<br>• Document setup in `docs/developer.md` and `README.md`. | DevOps • P1 | 1 d | CI job green; docs show `playwright install` and test commands. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---

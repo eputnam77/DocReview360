@@ -38,10 +38,22 @@ Run these commands in a Codespace terminal. When the server starts, expose port
 8000 in the **Ports** panel and click **Open in Browser** to reach the login
 page.
 
-## 4. Explore the projects page
+## 4. Run the tests
+
+Install the development dependencies and Playwright browsers, then execute the suite:
+
+```bash
+pip install -e .[dev]
+playwright install
+pre-commit run --all-files
+pytest -m e2e
+```
+The last command launches a headless browser to verify the workflow.
+
+## 5. Explore the projects page
 
 After logging in you're taken straight to the projects page. It lists your projects in a sortable table and includes a **Create New Project** button. Links to the editors, review tracker and interactive dashboard remain available from the navigation.
 
-## 5. Next steps
+## 6. Next steps
 
 Try importing a Markdown file, run a search query and create a dummy approval via the API. These simple examples show how projects, documents and approvals interact.
