@@ -202,6 +202,12 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 199 | Playwright E2E baseline | • Install browsers with `playwright install`.<br>• Write tests for CLI init, login and document creation.<br>• Fixtures start the server automatically. | QA • P1 | 2 d | `pytest -m e2e` passes locally and in CI. |
 | 200 | E2E CI job & docs | • Add GitHub Actions step to run Playwright suite headlessly.<br>• Document setup in `docs/developer.md` and `README.md`. | DevOps • P1 | 1 d | CI job green; docs show `playwright install` and test commands. |
 | 201 | AI chat bot for project queries | • Conversational UI embedded in the dashboard.<br>• Bot uses project DB tables to answer “status of X” and “who is assigned to X?”. | AI • P3 | 4 d | Ask bot about a project and receive correct status. <br>See `tests/e2e/features/task201.feature` |
+| 202 | In-app documentation page | • Add `/docs` route served by Next.js; update Support menu to link to docs. | Docs | 0.5 d | Docs page loads and Support link works. |
+| 203 | Enhanced integrations page | • Redesign integrations UI and fetch/save config via `/config` endpoint. | Admin | 1 d | Updating integrations shows save confirmation. |
+| 204 | Phases configuration page | • Admin page `/configuration/phases` to manage project phases. | Admin | 1 d | Creating and editing phases persists via API. |
+| 205 | Approval comment editing | • Allow reviewers to edit approval comments inline on project page. | FE | 1 d | Edit comment updates without reload. |
+| 206 | Single sign status polling test | • Regression test ensures `/api/sign/status` called once. | QA | 0.5 d | Test passes without duplicate requests. |
+| 207 | Project form phase & workflow fields | • Add Phase and Workflow selects with default mapping on project creation. | FE | 1 d | Form requires both fields; defaults update with doc type. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---

@@ -50,6 +50,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Type conversion wizard** (e.g., AC → Policy) preserving numbering & metadata.
 * **Template & Doc-Type Manager UI** for uploading golden Markdown templates, editing in Monaco, and generating derivatives.
 * **Per-document linter & numbering toggles** with one-click migration to the latest template version.
+* **Project form includes Phase & Workflow fields** with defaults mapped from document type.
 
 ### 3.2 Editors
 
@@ -68,6 +69,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Workflow Designer UI** lets project managers clone BPMN templates and adjust SLAs per project.
 * **Documenso approval button** exposes e-signature steps directly in project pages.
 * **Documenso** signatures bound to workflow state; cryptographically verified. ([documenso.com][4])
+* **Editable approval comments** so reviewers can update their remarks after signing.
 
 ### 3.4 Collaboration
 
@@ -82,6 +84,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * Structured, ISO-8601 logs (INFO-ERROR-CRITICAL) exposed via Grafana Loki or OpenSearch Dashboards.
 * Interactive dashboards with project filters and export options.
 * Sortable project tracker table linking to per-project details.
+* **Document types in progress** widget shows counts of active projects per type.
 * Saved search queries and real-time log viewer.
 
 ### 3.6 Export & Archival
@@ -107,6 +110,9 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Scheduled task cron editor** manages Celery Beat schedules.
 * **Downloadable CLI profile** lets users fetch `docreview360.env` from the UI.
 * **Admin-less project creation wizard** for non-admin authors.
+* **Phases configuration page** allows admins to manage workflow phases.
+* **Integrations settings page** redesigned for easier configuration via `/config`.
+* **In-app docs page** reachable from the Support menu.
 
 ### 3.9 AI Chat Bot
 
