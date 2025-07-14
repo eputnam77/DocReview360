@@ -273,6 +273,45 @@ export default function ProjectDetailsPage() {
       )
     );
   };
+  const handleSignApproval = async (approval: Approval) => {
+    try {
+      let sigId = approval.documensoSigId;
+      let url = "";
+      if (!sigId) {
+        const resp = await fetch(`/approvals/${approval.id}/sign`, { method: "POST" });
+        const data = await resp.json();
+        sigId = data.id;
+        url = data.url;
+        setApprovals(prev => prev.map(a => a.id === approval.id ? { ...a, documensoSigId: sigId } : a));
+      }
+      if (!url) {
+        url = `/documenso/${sigId}?return=/projects/${id}`;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+      const poll = async () => {
+        try {
+          const res = await fetch(`/sign/${sigId}`);
+          const status = (await res.json()).status as string;
+          if (status === "signed") {
+            setApprovals(prev =>
+              prev.map(a =>
+                a.id === approval.id
+                  ? { ...a, state: "approved", signedAt: new Date().toISOString(), documensoSigId: sigId }
+                  : a
+              )
+            );
+          } else {
+            setTimeout(poll, 2000);
+          }
+        } catch {
+          setTimeout(poll, 2000);
+        }
+      };
+      poll();
+    } catch (err) {
+      alert("Failed to start signing flow");
+    }
+  };
   const handleAddReviewer = () => {
     if (!newReviewer.reviewer || !newReviewer.email) return;
     setApprovals([
@@ -568,20 +607,13 @@ export default function ProjectDetailsPage() {
                   </TableCell>
                   <TableCell className="space-x-1">
                     {a.state !== "approved" && (
-                      <>
-                        <Button size="sm" variant="secondary">Approve (API)</Button>
-                        {a.documensoSigId && (
-                          <Button asChild size="sm" variant="outline">
-                            <Link
-                              href={`/documenso/${a.documensoSigId}?return=/projects/${id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Sign in Documenso
-                            </Link>
-                          </Button>
-                        )}
-                      </>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSignApproval(a)}
+                      >
+                        Sign & Approve
+                      </Button>
                     )}
                     {a.state === "approved" && (
                       <Button
