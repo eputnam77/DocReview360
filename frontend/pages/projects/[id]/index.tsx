@@ -58,9 +58,9 @@ interface DispoComment {
 // --- Demo Data ---
 const DEMO_PROJECT: Project = {
   id: "123e-ac-101",
-  number: "AC-101",
+  number: "AC 20-197",
   type: "Advisory Circular",
-  title: "Policy Update",
+  title: "Turbine Engine and Airframe Sensor Icing Compliance",
   status: "In Progress",
   progress: 40,
   updated: "2025-07-04",
