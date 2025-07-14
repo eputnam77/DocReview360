@@ -530,7 +530,7 @@ export default function ProjectDetailsPage() {
                         {a.documensoSigId && (
                           <Button asChild size="sm" variant="outline">
                             <Link
-                              href={`/documentso/${a.documensoSigId}?returnTo=/projects/${id}`}
+                              href={`/documenso/${a.documensoSigId}?return=/projects/${id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
