@@ -10,7 +10,18 @@ import {
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users2, CheckCircle2, Clock, BarChart2, FileEdit, Mail, Trash, PlusCircle } from "lucide-react";
+import {
+  Users2,
+  CheckCircle2,
+  Clock,
+  BarChart2,
+  FileEdit,
+  Mail,
+  Trash,
+  PlusCircle,
+  Eye,
+  Download,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 
@@ -55,6 +66,12 @@ interface DispoComment {
   comment: string;
   change: string;
   disposition: string;
+}
+interface RefDoc {
+  name: string;
+  url: string;
+  type: string;
+  file?: File;
 }
 
 // --- Demo Data ---
@@ -134,9 +151,22 @@ const DEMO_DISPO_COMMENTS: DispoComment[] = [
     disposition: "Deferred"
   },
 ];
-const DEMO_REFERENCE_DOCS: string[] = [
-  "Requirements.pdf",
-  "Draft_v1.docx",
+const DEMO_REFERENCE_DOCS: RefDoc[] = [
+  {
+    name: "Requirements.pdf",
+    url: "https://file-examples.com/wp-content/uploads/2017/10/file-sample_150kB.pdf",
+    type: "pdf",
+  },
+  {
+    name: "Draft_v1.docx",
+    url: "https://file-examples.com/wp-content/uploads/2017/02/file-sample_100kB.docx",
+    type: "docx",
+  },
+  {
+    name: "Sample.txt",
+    url: "/sample.txt",
+    type: "txt",
+  },
 ];
 
 // --- UI Helpers ---
@@ -219,7 +249,7 @@ export default function ProjectDetailsPage() {
     change: "",
     disposition: "",
   });
-  const [referenceDocs, setReferenceDocs] = useState<string[]>([]);
+  const [referenceDocs, setReferenceDocs] = useState<RefDoc[]>([]);
   const [newRefFile, setNewRefFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -352,13 +382,34 @@ export default function ProjectDetailsPage() {
   };
 
   // Reference Documents helpers
-  const handleRemoveRefDoc = (name: string) => {
-    setReferenceDocs(referenceDocs.filter((n) => n !== name));
+  const handleRemoveRefDoc = (doc: RefDoc) => {
+    if (doc.file) {
+      URL.revokeObjectURL(doc.url);
+    }
+    setReferenceDocs(referenceDocs.filter((d) => d !== doc));
   };
   const handleAddRefDoc = () => {
     if (!newRefFile) return;
-    setReferenceDocs([...referenceDocs, newRefFile.name]);
+    const url = URL.createObjectURL(newRefFile);
+    const ext = newRefFile.name.split(".").pop()?.toLowerCase() || "";
+    setReferenceDocs([
+      ...referenceDocs,
+      { name: newRefFile.name, url, type: ext, file: newRefFile },
+    ]);
     setNewRefFile(null);
+  };
+  const handleViewRefDoc = (doc: RefDoc) => {
+    const viewUrl = `/viewer?type=${doc.type}&url=${encodeURIComponent(doc.url)}`;
+    window.open(viewUrl, "_blank", "noopener,noreferrer");
+  };
+  const handleDownloadRefDoc = (doc: RefDoc) => {
+    const link = document.createElement("a");
+    link.href = doc.url;
+    link.download = doc.name;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   return (
@@ -483,17 +534,35 @@ export default function ProjectDetailsPage() {
             <Button type="submit" size="sm" disabled={!newRefFile}>Add</Button>
           </form>
           <ul className="list-disc pl-5 space-y-1 text-sm">
-            {referenceDocs.map((name) => (
-              <li key={name} className="flex items-center justify-between">
-                <span>{name}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  title="Remove file"
-                  onClick={() => handleRemoveRefDoc(name)}
-                >
-                  <Trash className="w-4 h-4" />
-                </Button>
+            {referenceDocs.map((doc) => (
+              <li key={doc.url} className="flex items-center justify-between gap-2">
+                <span>{doc.name}</span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="View file"
+                    onClick={() => handleViewRefDoc(doc)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Download file"
+                    onClick={() => handleDownloadRefDoc(doc)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Remove file"
+                    onClick={() => handleRemoveRefDoc(doc)}
+                  >
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </div>
               </li>
             ))}
             {referenceDocs.length === 0 && (
