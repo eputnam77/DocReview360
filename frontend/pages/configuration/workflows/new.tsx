@@ -1,32 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const ROLES = [
-  "Project Lead", "Project Lead Manager", "Product Policy Manager",
-  "Technical Writer", "Technical Writer Manager", "Other"
-];
 
 export default function NewWorkflowPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<any[]>([]);
-  const [role, setRole] = useState(ROLES[0]);
+  const [role, setRole] = useState("");
+  const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [docType, setDocType] = useState<string | undefined>(undefined);
   const [user, setUser] = useState("");
   const [required, setRequired] = useState(true);
 
+  useEffect(() => {
+    fetch("/api/document-types")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => setDocTypes(data.map((d) => d.name)))
+      .catch(() => setDocTypes([]));
+  }, []);
+
   const addStep = () => {
+    if (!role.trim()) return;
     setSteps([
       ...steps,
       { id: "s" + (Math.random() * 10000).toFixed(0), role, user, required },
     ]);
-    setRole(ROLES[0]);
+    setRole("");
     setUser("");
     setRequired(true);
   };
@@ -41,9 +54,37 @@ export default function NewWorkflowPage() {
     setSteps(arr);
   };
 
-  const handleSave = () => {
-    // Submit to API here
-    alert("Workflow saved:\n" + JSON.stringify({ name, description, steps }, null, 2));
+  const handleSave = async () => {
+    const payload = { name, description, steps };
+    // naive demo submission
+    await fetch("/api/workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+
+    if (docType) {
+      try {
+        const res = await fetch(`/api/document-types/${docType}`);
+        if (res.ok) {
+          const doc = await res.json();
+          const workflow = Array.isArray(doc.workflow) ? doc.workflow : [];
+          if (!workflow.includes(name)) workflow.push(name);
+          await fetch(`/api/document-types/${docType}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...doc, workflow }),
+          });
+        }
+      } catch {
+        // ignore errors in demo
+      }
+    }
+
+    alert(
+      "Workflow saved:\n" +
+        JSON.stringify({ name, description, steps, docType }, null, 2)
+    );
   };
 
   return (
@@ -68,20 +109,32 @@ export default function NewWorkflowPage() {
               required
             />
           </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Select value={docType} onValueChange={setDocType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Attach Document Type (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {docTypes.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Add Step Form */}
           <form
             className="flex flex-wrap gap-2 items-end"
             onSubmit={e => { e.preventDefault(); addStep(); }}
           >
-            <select
+            <Input
               value={role}
               onChange={e => setRole(e.target.value)}
-              className="rounded border px-2 py-1"
-            >
-              {ROLES.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
+              placeholder="User role"
+              className="w-48"
+            />
             <Input
               placeholder="User or placeholder (optional)"
               value={user}
