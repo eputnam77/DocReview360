@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,31 @@ const DOCUMENT_TYPES = [
   "Release Notes",
 ];
 
+const PHASES = ["Proposed", "Public Comment", "Final Issuance"];
+
+const WORKFLOWS = [
+  "Advisory Circular Standard Review",
+  "Employee Onboarding",
+];
+
+const DEFAULT_WORKFLOW_MAP: Record<string, Record<string, string>> = {
+  Proposed: {
+    "Advisory Circular": "Advisory Circular Standard Review",
+    "Policy Statement": "Employee Onboarding",
+    "Release Notes": "Employee Onboarding",
+  },
+  "Public Comment": {
+    "Advisory Circular": "Advisory Circular Standard Review",
+    "Policy Statement": "Employee Onboarding",
+    "Release Notes": "Employee Onboarding",
+  },
+  "Final Issuance": {
+    "Advisory Circular": "Advisory Circular Standard Review",
+    "Policy Statement": "Employee Onboarding",
+    "Release Notes": "Employee Onboarding",
+  },
+};
+
 export default function NewProjectPage() {
   const router = useRouter();
   // Document Number is provided by the user. The immutable Document ID will be
@@ -26,16 +51,31 @@ export default function NewProjectPage() {
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
   const [docType, setDocType] = useState<string | undefined>(undefined);
+  const [phase, setPhase] = useState<string | undefined>(undefined);
+  const [workflow, setWorkflow] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const manualWorkflow = useRef(false);
+
+  useEffect(() => {
+    manualWorkflow.current = false;
+  }, [docType, phase]);
+
+  useEffect(() => {
+    if (!manualWorkflow.current && docType && phase) {
+      const def = DEFAULT_WORKFLOW_MAP[phase]?.[docType];
+      if (def) setWorkflow(def);
+    }
+  }, [docType, phase]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!docNumber.trim() || !title.trim() || !docType) {
+    if (!docNumber.trim() || !title.trim() || !docType || !phase || !workflow) {
       setError("Please fill all required fields.");
       return;
     }
@@ -52,6 +92,8 @@ export default function NewProjectPage() {
     formData.append("title", title);
     formData.append("sme", sme);
     formData.append("docType", docType);
+    if (phase) formData.append("phase", phase);
+    if (workflow) formData.append("workflow", workflow);
     formData.append("description", description);
     files.forEach((f) => formData.append("files", f));
 
@@ -118,6 +160,42 @@ export default function NewProjectPage() {
                 {DOCUMENT_TYPES.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="phase">Phase *</Label>
+            <Select value={phase} onValueChange={setPhase}>
+              <SelectTrigger id="phase">
+                <SelectValue placeholder="Select a phase" />
+              </SelectTrigger>
+              <SelectContent>
+                {PHASES.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="workflow">Workflow *</Label>
+            <Select
+              value={workflow}
+              onValueChange={(v) => {
+                manualWorkflow.current = true;
+                setWorkflow(v);
+              }}
+            >
+              <SelectTrigger id="workflow">
+                <SelectValue placeholder="Select a workflow" />
+              </SelectTrigger>
+              <SelectContent>
+                {WORKFLOWS.map((w) => (
+                  <SelectItem key={w} value={w}>
+                    {w}
                   </SelectItem>
                 ))}
               </SelectContent>
