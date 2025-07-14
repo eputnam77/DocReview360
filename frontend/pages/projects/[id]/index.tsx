@@ -303,16 +303,28 @@ export default function ProjectDetailsPage() {
       )
     );
   };
+  const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "");
+
   const handleSignApproval = async (approval: Approval) => {
     try {
       let sigId = approval.documensoSigId;
       let url = "";
       if (!sigId) {
-        const resp = await fetch(`/approvals/${approval.id}/sign`, { method: "POST" });
+        const form = new FormData();
+        form.append("user", slugify(approval.reviewer));
+        form.append("approval", approval.id);
+        const resp = await fetch(`/sign/${project!.id}`, {
+          method: "POST",
+          body: form,
+        });
         const data = await resp.json();
         sigId = data.id;
         url = data.url;
-        setApprovals(prev => prev.map(a => a.id === approval.id ? { ...a, documensoSigId: sigId } : a));
+        setApprovals(prev =>
+          prev.map(a =>
+            a.id === approval.id ? { ...a, documensoSigId: sigId } : a
+          )
+        );
       }
       if (!url) {
         url = `/documenso/${sigId}?return=/projects/${id}`;
@@ -326,7 +338,12 @@ export default function ProjectDetailsPage() {
             setApprovals(prev =>
               prev.map(a =>
                 a.id === approval.id
-                  ? { ...a, state: "approved", signedAt: new Date().toISOString(), documensoSigId: sigId }
+                  ? {
+                      ...a,
+                      state: "approved",
+                      signedAt: new Date().toISOString(),
+                      documensoSigId: sigId,
+                    }
                   : a
               )
             );
@@ -338,7 +355,7 @@ export default function ProjectDetailsPage() {
         }
       };
       poll();
-    } catch (err) {
+    } catch {
       alert("Failed to start signing flow");
     }
   };
