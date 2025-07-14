@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ class ApprovalModel(BaseModel):
     reviewer: str
     state: str = "pending"
     signature: Optional[str] = None
+    signed_at: Optional[str] = None
 
 
 approvals: Dict[str, ApprovalModel] = {}
@@ -51,6 +53,10 @@ def update_approval_state(
     approval = approvals[approval_id]
     approval.state = state
     approval.signature = signature
+    if state == "approved":
+        approval.signed_at = datetime.utcnow().isoformat()
+    else:
+        approval.signed_at = None
     if state == "approved":
         wf = workflows.get(approval.workflow)
         project_id = wf.project if wf else ""
