@@ -27,7 +27,7 @@ export default function NewProjectPage() {
   const [sme, setSme] = useState("");
   const [docType, setDocType] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,8 +39,8 @@ export default function NewProjectPage() {
       setError("Please fill all required fields.");
       return;
     }
-    if (!file) {
-      setError("Please upload a document file.");
+    if (files.length === 0) {
+      setError("Please upload at least one file.");
       return;
     }
 
@@ -53,7 +53,7 @@ export default function NewProjectPage() {
     formData.append("sme", sme);
     formData.append("docType", docType);
     formData.append("description", description);
-    formData.append("file", file);
+    files.forEach((f) => formData.append("files", f));
 
     try {
       const res = await fetch("/api/projects", {
@@ -133,12 +133,13 @@ export default function NewProjectPage() {
             />
           </div>
           <div>
-            <Label>Upload Document File (.docx, .pdf, .txt) *</Label>
+            <Label>Upload Reference Files (.docx, .pdf, .txt)</Label>
             <UploadDropzone
-              value={file}
-              onChange={setFile}
+              value={files}
+              onChange={(f) => setFiles(Array.isArray(f) ? f : f ? [f] : [])}
               accept=".docx,.pdf,.txt"
               maxSizeMB={20}
+              multiple
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}

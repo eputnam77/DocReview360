@@ -6,10 +6,11 @@ import { UploadCloud, X, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UploadDropzoneProps {
-  value?: File | null;
-  onChange?: (file: File | null) => void;
+  value?: File | File[] | null;
+  onChange?: (file: File | File[] | null) => void;
   accept?: string; // e.g., "image/*,.pdf"
   maxSizeMB?: number;
+  multiple?: boolean;
 }
 
 const UploadDropzone: React.FC<UploadDropzoneProps> = ({
@@ -17,6 +18,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   onChange,
   accept = "*",
   maxSizeMB = 10,
+  multiple = false,
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,15 +32,22 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (files && files.length) {
-        const file = files[0];
-        if (file.size > maxSizeMB * 1024 * 1024) {
+        const fileArr = Array.from(files);
+        const valid = fileArr.filter(
+          (f) => f.size <= maxSizeMB * 1024 * 1024,
+        );
+        if (valid.length !== fileArr.length) {
           alert(`File exceeds ${maxSizeMB} MB limit.`);
           return;
         }
-        onChange?.(file);
+        if (multiple) {
+          onChange?.(valid);
+        } else {
+          onChange?.(valid[0]);
+        }
       }
     },
-    [onChange, maxSizeMB],
+    [onChange, maxSizeMB, multiple],
   );
 
   // Drag events
@@ -78,15 +87,21 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
       >
         <UploadCloud className="mb-2 h-7 w-7 text-purple-500" />
         <span className="text-sm font-medium">
-          {value ? "Replace file" : "Click to upload or drag & drop"}
+          {Array.isArray(value)
+            ? value.length
+              ? "Add more files"
+              : "Click to upload or drag & drop"
+            : value
+            ? "Replace file"
+            : "Click to upload or drag & drop"}
         </span>
         <span className="text-xs text-muted-foreground">
           {`Max ${maxSizeMB}MB • Allowed: ${accept}`}
         </span>
       </div>
 
-      {/* Show selected file */}
-      {value && (
+      {/* Show selected file(s) */}
+      {value && !Array.isArray(value) && (
         <div className="mt-3 flex items-center justify-between rounded-md border px-3 py-2 text-sm bg-white">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -106,6 +121,35 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         </div>
       )}
 
+      {Array.isArray(value) && value.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {value.map((f, idx) => (
+            <li
+              key={idx}
+              className="flex items-center justify-between rounded-md border px-3 py-2 text-sm bg-white"
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span>{f.name}</span>
+                <span className="ml-2 text-muted-foreground">
+                  ({(f.size / 1024 / 1024).toFixed(2)} MB)
+                </span>
+              </div>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-red-600"
+                aria-label="Remove file"
+                onClick={() =>
+                  onChange?.(value.filter((_, i) => i !== idx))
+                }
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* Hidden native input */}
       <input
         ref={inputRef}
@@ -114,6 +158,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
         tabIndex={-1}
+        {...(multiple ? { multiple: true } : {})}
       />
     </>
   );
