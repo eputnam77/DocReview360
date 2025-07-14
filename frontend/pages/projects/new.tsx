@@ -23,7 +23,9 @@ const DOCUMENT_TYPES = [
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const [docId, setDocId] = useState("");
+  // Document Number is provided by the user. The immutable Document ID will be
+  // generated server-side when the project is created.
+  const [docNumber, setDocNumber] = useState("");
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
   const [docType, setDocType] = useState<string | undefined>(undefined);
@@ -36,7 +38,7 @@ export default function NewProjectPage() {
     e.preventDefault();
     setError(null);
 
-    if (!docId.trim() || !title.trim() || !docType) {
+    if (!docNumber.trim() || !title.trim() || !docType) {
       setError("Please fill all required fields.");
       return;
     }
@@ -49,7 +51,7 @@ export default function NewProjectPage() {
 
     // Use FormData for file upload
     const formData = new FormData();
-    formData.append("docId", docId);
+    formData.append("docNumber", docNumber);
     formData.append("title", title);
     formData.append("sme", sme);
     formData.append("docType", docType);
@@ -81,11 +83,11 @@ export default function NewProjectPage() {
           encType="multipart/form-data"
         >
           <div>
-            <Label htmlFor="docId">Document ID *</Label>
+            <Label htmlFor="docNumber">Document Number *</Label>
             <Input
-              id="docId"
-              value={docId}
-              onChange={(e) => setDocId(e.target.value)}
+              id="docNumber"
+              value={docNumber}
+              onChange={(e) => setDocNumber(e.target.value)}
               placeholder="E.g., AC 120-76E"
               required
             />
