@@ -14,11 +14,8 @@ import UploadDropzone from "@/components/workflow/UploadDropzone";
 
 const DOCUMENT_TYPES = [
   "Advisory Circular",
-  "Order",
-  "Policy",
-  "Memo",
-  "Report",
-  "Other",
+  "Policy Statement",
+  "Release Notes",
 ];
 
 export default function NewProjectPage() {
