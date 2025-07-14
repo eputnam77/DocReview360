@@ -37,7 +37,7 @@ export default function WorkflowList() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Workflows</h1>
         <Button asChild>
-          <Link href="/workflows/new">Create Workflow</Link>
+          <Link href="/configuration/workflows/new">Create Workflow</Link>
         </Button>
       </div>
       <Table className="min-w-full text-sm">
@@ -53,7 +53,7 @@ export default function WorkflowList() {
           {workflows.map((w) => (
             <TableRow key={w.id} className="border-t last:border-none hover:bg-gray-50">
               <TableCell className="font-mono text-xs">
-                <Link href={`/workflows/${w.id}`} className="underline text-indigo-700">
+                <Link href={`/configuration/workflows/${w.id}`} className="underline text-indigo-700">
                   {w.id}
                 </Link>
               </TableCell>
