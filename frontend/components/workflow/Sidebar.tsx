@@ -19,7 +19,11 @@ const NAV = [
 ];
 
 const SECONDARY = [
-  { icon: <Users2 className="h-4 w-4" />, label: "Support", href: "/support" },
+  {
+    icon: <Users2 className="h-4 w-4" />,
+    label: "Support",
+    href: "/docs/",
+  },
 ];
 
 const PROFILE = { icon: <User className="h-4 w-4" />, label: "Profile", href: "/profile" };
