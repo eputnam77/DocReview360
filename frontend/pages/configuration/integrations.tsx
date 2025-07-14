@@ -38,9 +38,9 @@ export default function IntegrationsPage() {
   const [config, setConfig] = useState<Config | null>(null);
 
   useEffect(() => {
-    fetch("/api/config")
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => {
+    fetch("/config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (data) setConfig(data);
       })
       .catch(() => {});
@@ -59,14 +59,14 @@ export default function IntegrationsPage() {
 
   const handleSave = async () => {
     if (!config) return;
-    const resp = await fetch("/api/config", {
+    const resp = await fetch("/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
     });
     if (resp.ok) {
       alert(
-        "Configuration saved. Changing integrations may require a restart and could cause data loss."
+        "Configuration saved. Changing integrations may require a restart and could cause data loss.",
       );
     } else {
       alert("Failed to save configuration");
@@ -92,7 +92,10 @@ export default function IntegrationsPage() {
       <div className="space-y-4 max-w-sm">
         <div className="space-y-2">
           <Label>Database</Label>
-          <Select value={config.database} onValueChange={(v) => update("database", v)}>
+          <Select
+            value={config.database}
+            onValueChange={(v) => update("database", v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select a database" />
             </SelectTrigger>
@@ -107,7 +110,10 @@ export default function IntegrationsPage() {
         </div>
         <div className="space-y-2">
           <Label>Document Editor</Label>
-          <Select value={config.editor} onValueChange={(v) => update("editor", v)}>
+          <Select
+            value={config.editor}
+            onValueChange={(v) => update("editor", v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select an editor" />
             </SelectTrigger>
@@ -137,7 +143,12 @@ export default function IntegrationsPage() {
         </div>
         <div className="space-y-2">
           <Label>Auth Provider</Label>
-          <Input value={config.auth} readOnly disabled className="bg-gray-100" />
+          <Input
+            value={config.auth}
+            readOnly
+            disabled
+            className="bg-gray-100"
+          />
           <p className="text-xs text-gray-500">Change via CLI if required</p>
         </div>
         <Button onClick={handleSave}>Save Changes</Button>
@@ -155,4 +166,3 @@ export default function IntegrationsPage() {
     </div>
   );
 }
-
