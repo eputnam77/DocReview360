@@ -42,6 +42,7 @@ interface Approval {
   email: string;
   state: "pending" | "approved" | "overdue" | string;
   statusDate: string;
+  signedAt?: string;
   comments?: string;
   documensoSigId?: string;
 }
@@ -79,9 +80,32 @@ const DEMO_WORKFLOW: Workflow = {
   ],
 };
 const DEMO_APPROVALS: Approval[] = [
-  { id: "appr-1", reviewer: "Jane Doe", email: "jane@example.com", state: "pending", statusDate: "2025-07-04", documensoSigId: "sig-123", comments: "Please check the legal cites." },
-  { id: "appr-2", reviewer: "John Smith", email: "john@example.com", state: "approved", statusDate: "2025-07-05", comments: "Approved, no changes needed." },
-  { id: "appr-3", reviewer: "Jill Admin", email: "jill@example.com", state: "overdue", statusDate: "2025-07-06", comments: "" },
+  {
+    id: "appr-1",
+    reviewer: "Jane Doe",
+    email: "jane@example.com",
+    state: "pending",
+    statusDate: "2025-07-04",
+    documensoSigId: "sig-123",
+    comments: "Please check the legal cites.",
+  },
+  {
+    id: "appr-2",
+    reviewer: "John Smith",
+    email: "john@example.com",
+    state: "approved",
+    statusDate: "2025-07-05",
+    signedAt: "2025-07-05T14:30:00Z",
+    comments: "Approved, no changes needed.",
+  },
+  {
+    id: "appr-3",
+    reviewer: "Jill Admin",
+    email: "jill@example.com",
+    state: "overdue",
+    statusDate: "2025-07-06",
+    comments: "",
+  },
 ];
 const DEMO_LOGS: LogEntry[] = [
   { timestamp: "2025-07-04", action: "Draft created" },
@@ -240,6 +264,15 @@ export default function ProjectDetailsPage() {
     setApprovals(approvals.filter((a) => a.id !== id));
     setSelectedApprovals((prev) => prev.filter((aid) => aid !== id));
   };
+  const handleResetApproval = (id: string) => {
+    setApprovals((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? { ...a, state: "pending", statusDate: new Date().toISOString().slice(0, 10), signedAt: undefined }
+          : a
+      )
+    );
+  };
   const handleAddReviewer = () => {
     if (!newReviewer.reviewer || !newReviewer.email) return;
     setApprovals([
@@ -250,6 +283,7 @@ export default function ProjectDetailsPage() {
         email: newReviewer.email,
         state: "pending",
         statusDate: new Date().toISOString().slice(0, 10),
+        signedAt: undefined,
         comments: "",
       },
     ]);
@@ -483,6 +517,7 @@ export default function ProjectDetailsPage() {
                 <TableHead>Send to Reviewer</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Status Date</TableHead>
+                <TableHead>Signed At</TableHead>
                 <TableHead>Actions</TableHead>
                 <TableHead>Comments</TableHead>
               </TableRow>
@@ -504,6 +539,7 @@ export default function ProjectDetailsPage() {
                       variant="ghost"
                       title="Send email"
                       onClick={() => handleSendEmail(a)}
+                      disabled={a.state === "approved"}
                     >
                       <Mail className="w-5 h-5" />
                     </Button>
@@ -523,6 +559,13 @@ export default function ProjectDetailsPage() {
                     </span>
                   </TableCell>
                   <TableCell>{a.statusDate}</TableCell>
+                  <TableCell>
+                    {a.state === "approved" ? (
+                      <span>{a.signedAt}</span>
+                    ) : (
+                      <span className="text-gray-400">–</span>
+                    )}
+                  </TableCell>
                   <TableCell className="space-x-1">
                     {a.state !== "approved" && (
                       <>
@@ -539,6 +582,16 @@ export default function ProjectDetailsPage() {
                           </Button>
                         )}
                       </>
+                    )}
+                    {a.state === "approved" && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleResetApproval(a.id)}
+                        title="Reset signature"
+                      >
+                        Reset
+                      </Button>
                     )}
                     <Button
                       size="icon"
