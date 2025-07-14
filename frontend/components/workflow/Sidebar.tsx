@@ -94,7 +94,7 @@ export default function Sidebar() {
             <NavItem
               icon={<Settings className="h-4 w-4" />}
               label="Configuration"
-              href="/settings"
+              href="/configuration"
             />
           </div>
         </>
