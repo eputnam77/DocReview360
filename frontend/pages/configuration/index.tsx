@@ -17,55 +17,55 @@ import {
 const CONFIG_ITEMS = [
   {
     label: "Workflows",
-    href: "/workflows",
+    href: "/configuration/workflows",
     icon: <Workflow className="w-6 h-6 text-indigo-600" />,
     desc: "Set up and manage workflow templates."
   },
   {
     label: "Document Types",
-    href: "/document-types",
+    href: "/configuration/document-types",
     icon: <FileText className="w-6 h-6 text-blue-500" />,
     desc: "Define and edit document types used in projects."
   },
   {
     label: "Phases",
-    href: "/phases",
+    href: "/configuration/phases",
     icon: <Repeat className="w-6 h-6 text-cyan-500" />,
     desc: "Customize workflow phases for document review."
   },
   {
     label: "Templates",
-    href: "/templates",
+    href: "/configuration/templates",
     icon: <Layers className="w-6 h-6 text-violet-500" />,
     desc: "Maintain reusable content templates."
   },
   {
     label: "User Management",
-    href: "/user-management",
+    href: "/configuration/user-management",
     icon: <Users className="w-6 h-6 text-orange-500" />,
     desc: "Add, remove, and manage user accounts."
   },
   {
     label: "Permissions",
-    href: "/permissions",
+    href: "/configuration/permissions",
     icon: <Key className="w-6 h-6 text-yellow-500" />,
     desc: "Control access and roles for users."
   },
   {
     label: "Audit Logs",
-    href: "/audit-logs",
+    href: "/configuration/audit-logs",
     icon: <BookA className="w-6 h-6 text-lime-600" />,
     desc: "Review system activity and history."
   },
   {
     label: "App Settings",
-    href: "/app-settings",
+    href: "/configuration/app-settings",
     icon: <Settings2 className="w-6 h-6 text-gray-600" />,
     desc: "Configure global app preferences."
   },
   {
     label: "Integrations",
-    href: "/integrations",
+    href: "/configuration/integrations",
     icon: <Puzzle className="w-6 h-6 text-pink-500" />,
     desc: "Connect with other tools and platforms."
   },
