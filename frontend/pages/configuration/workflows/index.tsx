@@ -13,13 +13,26 @@ import { Button } from "@/components/ui/button";
 interface Workflow {
   id: string;
   name: string;
+  description?: string;
   usage: number;
   updated: string;
 }
 
 const DEMO_WORKFLOWS: Workflow[] = [
-  { id: "ac-std", name: "Advisory Circular Standard Review", usage: 12, updated: "2025-07-06" },
-  { id: "hr-onboarding", name: "Employee Onboarding", usage: 7, updated: "2025-06-20" },
+  {
+    id: "ac-std",
+    name: "Advisory Circular Standard Review",
+    description: "Standard FAA AC review including all key stakeholders.",
+    usage: 12,
+    updated: "2025-07-06",
+  },
+  {
+    id: "hr-onboarding",
+    name: "Employee Onboarding",
+    description: "Onboarding workflow for new hires.",
+    usage: 7,
+    updated: "2025-06-20",
+  },
 ];
 
 export default function WorkflowList() {
@@ -45,6 +58,7 @@ export default function WorkflowList() {
           <TableRow>
             <TableHead>ID</TableHead>
             <TableHead>Name</TableHead>
+            <TableHead>Description</TableHead>
             <TableHead>Usage</TableHead>
             <TableHead>Updated</TableHead>
           </TableRow>
@@ -58,13 +72,14 @@ export default function WorkflowList() {
                 </Link>
               </TableCell>
               <TableCell>{w.name}</TableCell>
+              <TableCell>{w.description}</TableCell>
               <TableCell>{w.usage}</TableCell>
               <TableCell>{w.updated}</TableCell>
             </TableRow>
           ))}
           {workflows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-gray-400 py-6">
+              <TableCell colSpan={5} className="text-center text-gray-400 py-6">
                 No workflows found.
               </TableCell>
             </TableRow>
