@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users2, CheckCircle2, Clock, BarChart2, FileEdit, Mail, Trash, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import UploadDropzone from "@/components/workflow/UploadDropzone";
 
 // --- Types ---
 interface Project {
@@ -109,6 +110,10 @@ const DEMO_DISPO_COMMENTS: DispoComment[] = [
     disposition: "Deferred"
   },
 ];
+const DEMO_REFERENCE_DOCS: string[] = [
+  "Requirements.pdf",
+  "Draft_v1.docx",
+];
 
 // --- UI Helpers ---
 function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color?: string }) {
@@ -190,6 +195,8 @@ export default function ProjectDetailsPage() {
     change: "",
     disposition: "",
   });
+  const [referenceDocs, setReferenceDocs] = useState<string[]>([]);
+  const [newRefFile, setNewRefFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Demo fetch logic
@@ -201,6 +208,7 @@ export default function ProjectDetailsPage() {
       setWorkflow(DEMO_WORKFLOW);
       setApprovals(DEMO_APPROVALS);
       setDispoComments(DEMO_DISPO_COMMENTS);
+      setReferenceDocs(DEMO_REFERENCE_DOCS);
       setLogs(DEMO_LOGS);
       setLoading(false);
     }, 300);
@@ -268,6 +276,16 @@ export default function ProjectDetailsPage() {
       change: "",
       disposition: "",
     });
+  };
+
+  // Reference Documents helpers
+  const handleRemoveRefDoc = (name: string) => {
+    setReferenceDocs(referenceDocs.filter((n) => n !== name));
+  };
+  const handleAddRefDoc = () => {
+    if (!newRefFile) return;
+    setReferenceDocs([...referenceDocs, newRefFile.name]);
+    setNewRefFile(null);
   };
 
   return (
@@ -369,6 +387,48 @@ export default function ProjectDetailsPage() {
           </Link>
         </Button>
       </div>
+
+      {/* --- Reference Documents --- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Reference Documents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-2 mb-4"
+            onSubmit={e => {
+              e.preventDefault();
+              handleAddRefDoc();
+            }}
+          >
+            <UploadDropzone
+              value={newRefFile}
+              onChange={setNewRefFile}
+              accept=".docx,.pdf,.txt"
+              maxSizeMB={20}
+            />
+            <Button type="submit" size="sm" disabled={!newRefFile}>Add</Button>
+          </form>
+          <ul className="list-disc pl-5 space-y-1 text-sm">
+            {referenceDocs.map((name) => (
+              <li key={name} className="flex items-center justify-between">
+                <span>{name}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  title="Remove file"
+                  onClick={() => handleRemoveRefDoc(name)}
+                >
+                  <Trash className="w-4 h-4" />
+                </Button>
+              </li>
+            ))}
+            {referenceDocs.length === 0 && (
+              <li className="text-gray-400">No reference documents uploaded.</li>
+            )}
+          </ul>
+        </CardContent>
+      </Card>
 
       {/* --- Approvals Table --- */}
       <Card>
