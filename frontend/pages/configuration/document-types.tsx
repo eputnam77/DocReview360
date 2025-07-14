@@ -14,7 +14,8 @@ import { Pencil, Trash } from "lucide-react";
 interface DocType {
   id: string;
   name: string;
-  workflow?: string;
+  workflow?: string[];
+  template?: string;
 }
 
 const DEMO_TYPES: DocType[] = [
@@ -32,7 +33,18 @@ export default function DocumentTypesPage() {
   useEffect(() => {
     fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: DocType[]) => setTypes(data.length ? data : DEMO_TYPES))
+      .then((data: any[]) =>
+        setTypes(
+          data.length
+            ? data.map((d) => ({
+                id: d.name,
+                name: d.name,
+                template: d.template,
+                workflow: d.workflow,
+              }))
+            : DEMO_TYPES
+        )
+      )
       .catch(() => setTypes(DEMO_TYPES));
   }, []);
 
@@ -141,7 +153,9 @@ export default function DocumentTypesPage() {
                 </Button>
               </TableCell>
               <TableCell>
-                {t.workflow || <span className="text-gray-400">—</span>}
+                {t.workflow && t.workflow.length
+                  ? t.workflow.join(", ")
+                  : <span className="text-gray-400">—</span>}
               </TableCell>
             </TableRow>
           ))}
