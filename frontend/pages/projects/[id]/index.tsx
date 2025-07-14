@@ -11,6 +11,13 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Users2,
   CheckCircle2,
   Clock,
@@ -238,6 +245,10 @@ export default function ProjectDetailsPage() {
   const [selectedApprovals, setSelectedApprovals] = useState<string[]>([]);
   const [showAddReviewer, setShowAddReviewer] = useState(false);
   const [newReviewer, setNewReviewer] = useState({ reviewer: "", email: "" });
+  const [commentEditor, setCommentEditor] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
   const [dispoComments, setDispoComments] = useState<DispoComment[]>([]);
   const [showAddComment, setShowAddComment] = useState(false);
   const [newComment, setNewComment] = useState<Omit<DispoComment, "id">>({
@@ -377,14 +388,67 @@ export default function ProjectDetailsPage() {
     setNewReviewer({ reviewer: "", email: "" });
   };
 
+  const handleOpenCommentEditor = (approval: Approval) => {
+    setCommentEditor({ id: approval.id, text: approval.comments || "" });
+  };
+
+  const handleSaveComment = () => {
+    if (!commentEditor) return;
+    setApprovals(prev =>
+      prev.map(a =>
+        a.id === commentEditor.id ? { ...a, comments: commentEditor.text } : a
+      )
+    );
+    const reviewer = approvals.find(a => a.id === commentEditor.id)?.reviewer;
+    setLogs(prev => [
+      ...prev,
+      {
+        timestamp: new Date().toISOString(),
+        action: `Updated approval comment for ${reviewer}`,
+      },
+    ]);
+    setCommentEditor(null);
+  };
+
+  const handleDeleteComment = () => {
+    if (!commentEditor) return;
+    setApprovals(prev =>
+      prev.map(a =>
+        a.id === commentEditor.id ? { ...a, comments: "" } : a
+      )
+    );
+    const reviewer = approvals.find(a => a.id === commentEditor.id)?.reviewer;
+    setLogs(prev => [
+      ...prev,
+      {
+        timestamp: new Date().toISOString(),
+        action: `Deleted approval comment for ${reviewer}`,
+      },
+    ]);
+    setCommentEditor(null);
+  };
+
   // Disposition Comments helpers
   const handleRemoveComment = (id: string) => {
+    const comment = dispoComments.find(c => c.id === id);
     setDispoComments(dispoComments.filter((c) => c.id !== id));
+    setLogs(prev => [
+      ...prev,
+      {
+        timestamp: new Date().toISOString(),
+        action: `Deleted disposition comment by ${comment?.reviewer || "unknown"}`,
+      },
+    ]);
   };
   const handleAddComment = () => {
-    setDispoComments([
-      ...dispoComments,
-      { ...newComment, id: "c" + (Math.random() * 100000).toFixed(0) },
+    const comment = { ...newComment, id: "c" + (Math.random() * 100000).toFixed(0) };
+    setDispoComments([...dispoComments, comment]);
+    setLogs(prev => [
+      ...prev,
+      {
+        timestamp: new Date().toISOString(),
+        action: `Added disposition comment by ${comment.reviewer}`,
+      },
     ]);
     setShowAddComment(false);
     setNewComment({
@@ -481,6 +545,7 @@ export default function ProjectDetailsPage() {
           </div>
         </CardContent>
       </Card>
+
 
       {/* --- Review Stats --- */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
@@ -720,13 +785,57 @@ export default function ProjectDetailsPage() {
                       <Trash className="w-5 h-5" />
                     </Button>
                   </TableCell>
-                  <TableCell className="max-w-xs">{a.comments || <span className="text-gray-400">–</span>}</TableCell>
+                  <TableCell className="max-w-xs">
+                    <div className="flex items-start gap-1">
+                      <span className="flex-1 truncate">
+                        {a.comments || <span className="text-gray-400">–</span>}
+                      </span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title={a.comments ? "Edit comment" : "Add comment"}
+                        onClick={() => handleOpenCommentEditor(a)}
+                      >
+                        <FileEdit className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {commentEditor && (
+        <Dialog open onOpenChange={(open) => !open && setCommentEditor(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Comment</DialogTitle>
+            </DialogHeader>
+            <textarea
+              className="w-full border rounded p-2 mt-2"
+              rows={5}
+              value={commentEditor.text}
+              onChange={(e) =>
+                setCommentEditor({ ...commentEditor, text: e.target.value })
+              }
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteComment}
+              >
+                Delete
+              </Button>
+              <Button type="button" onClick={handleSaveComment}>
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* --- Document Comments & Disposition Table --- */}
       <Card>
