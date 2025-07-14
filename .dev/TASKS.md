@@ -186,6 +186,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 183 | Neural network analytics | • Prototype reviewer prediction and risk scoring model. | AI | 3 d | Analytics script outputs scores. <br>See `tests/property/test_task183_property.py` |
 | 184 | Advanced dashboards | • Interactive charts for throughput and workload with export options. | Data | 3 d | Dashboard renders and exports CSV. <br>See `tests/e2e/features/task184.feature` |
 | 185 | Improved search | • Implement cross-project search with keyword filters. | Backend • P2 | 2 d | `/search?q=test` returns results. <br>See `tests/e2e/features/task185.feature` |
+| 186 | Document types in progress | • Dashboard widget counting active projects per document type. | Data | 1 d | Counts update with dataset; screenshot baseline. <br>See `tests/e2e/features/task186.feature` |
 | 187 | Workflow page admin-only | • Restrict `/workflows` UI and API to role `admin`; update RBAC and route guards. | Security | 0.5 d | Non-admin sees 403; admin loads page. <br>See `tests/e2e/features/task187.feature` |
 | 188 | Profile page with settings | • New route `/profile` showing current user info from `/api/users/me`; form to update preferences. | FE | 1 d | Edit settings → toast confirms save. <br>See `tests/e2e/features/task188.feature` |
 | 189 | Dashboard visibility toggles | • Allow users and admins to show/hide dashboard widgets; defaults on. | FE | 2 d | Toggle off widget → dashboard hides it. <br>See `tests/e2e/features/task189.feature` |
