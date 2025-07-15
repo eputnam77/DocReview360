@@ -5,6 +5,9 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
+import json
+
+from .cache import cache_get, cache_set
 
 from pydantic import BaseModel
 
@@ -250,8 +253,29 @@ def search(
     after: datetime | None = None,
     before: datetime | None = None,
 ) -> List[DocumentModel]:
-    """Return documents matching the query and optional filters."""
+    """Return documents matching the query and optional filters.
+
+    Results are cached via :mod:`docreview360.cache` to avoid repeated
+    computation. The cache key includes all filter parameters so callers
+    receive up‑to‑date results when any input changes. Cached entries expire
+    after 30 seconds.
+    """
     search_counter[query] += 1
+    cache_key = (
+        f"search-core-{query}-{project or ''}-{user or ''}-"
+        f"{priority if priority is not None else ''}-"
+        f"{after.isoformat() if after else ''}-"
+        f"{before.isoformat() if before else ''}"
+    )
+    cached = cache_get(cache_key)
+    if cached:
+        try:
+            if isinstance(cached, bytes):
+                cached = cached.decode()
+            data = json.loads(cached)
+            return [DocumentModel.model_validate(d) for d in data]
+        except Exception:  # pragma: no cover - fallback to recompute
+            pass
     terms = _normalize(query).split()
     if not terms:
         candidate_ids = set(documents.keys())
@@ -274,6 +298,11 @@ def search(
         ):
             results.append(doc)
 
+    cache_set(
+        cache_key,
+        json.dumps([d.model_dump(mode="json") for d in results]),
+        ttl=30,
+    )
     return results
 
 
