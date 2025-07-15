@@ -20,7 +20,7 @@ async def run() -> None:
     record_task_completion(137)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import asyncio
 
     asyncio.run(run())

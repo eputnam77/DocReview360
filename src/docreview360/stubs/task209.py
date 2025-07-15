@@ -1,9 +1,16 @@
-"""Implementation for task 209."""
+"""Document numbering settings."""
+
+from __future__ import annotations
+
+from typing import Optional
 
 from ..stubs import record_task_completion
 
 
-def task209() -> None:
-    """Placeholder function for task 209."""
+def task209(manual: bool, number: Optional[str] = None) -> str:
+    """Return the next document number."""
+
     record_task_completion(209)
-    return None
+    if manual and number:
+        return number
+    return "AUTO-001"

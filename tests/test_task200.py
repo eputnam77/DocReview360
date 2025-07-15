@@ -1,9 +1,9 @@
-import pytest
+from pathlib import Path
 
 from docreview360.stubs.task200 import task200
 
 
-def test_task200_placeholder() -> None:
-    """Placeholder failing test for task 200."""
-    task200()
-    pytest.fail("Task 200 not implemented")
+def test_task200_checks_docs() -> None:
+    """Verify the README mentions Playwright setup."""
+
+    assert task200(Path("README.md"))
