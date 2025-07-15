@@ -44,7 +44,7 @@ from .archive import (
 from .archive import (
     archive_document as archive_doc,
 )
-from .cache import cache_get, cache_set
+from .cache import cache_get, cache_set, clear_cache
 from .comments import CommentModel, add_comment, list_comments
 from .config import CONFIG_FILE, Config
 from .doc_types import (
@@ -416,6 +416,8 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
             json.dumps([d.model_dump(mode="json") for d in list_docs()]),
             ttl=30,
         )
+        # Clear cached search results so subsequent queries reflect the update
+        clear_cache()
         return updated
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
