@@ -1,4 +1,5 @@
 import httpx
+import pytest
 
 from docreview360.stubs.task30 import fetch_length_task, task30
 
@@ -7,8 +8,8 @@ def test_task30_word_count() -> None:
     assert task30("hello world") == 2
 
 
-def test_task30_fetch_length(monkeypatch) -> None:
-    def fake_get(url: str, timeout: int = 5):
+def test_task30_fetch_length(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get(url: str, timeout: int = 5) -> object:
         class Resp:
             text = "ok"
 

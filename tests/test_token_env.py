@@ -1,11 +1,12 @@
 import importlib
 
+import pytest
 from jose import jwt
 
 import docreview360.auth as auth
 
 
-def test_env_secret_key(monkeypatch) -> None:
+def test_env_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_SECRET_KEY", "custom")
     importlib.reload(auth)
     token = auth.create_access_token({"sub": "bob"})

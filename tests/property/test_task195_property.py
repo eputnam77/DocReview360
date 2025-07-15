@@ -6,5 +6,5 @@ hooks = pytest.importorskip("docreview360.git_hooks")
 
 
 @given(st.text())
-def test_validate_patch_does_not_crash(patch):
+def test_validate_patch_does_not_crash(patch: str) -> None:
     hooks.validate_patch(patch)
