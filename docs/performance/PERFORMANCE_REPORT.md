@@ -11,6 +11,8 @@ The recent profiling runs (k6, Lighthouse, cProfile, py-spy and React Profiler) 
 - Dependencies: None
 - Priority: P1 (quick win)
 - ready-for:builder
+- Status: implemented via ``cache_get``/``cache_set`` in
+  ``docreview360.search.search``.
 
 ## Review Needed
 
