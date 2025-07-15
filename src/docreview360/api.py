@@ -208,6 +208,16 @@ app = FastAPI(title="DocReview360")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
+@app.get("/users/me")
+async def current_user_endpoint(x_user: str | None = Header(None)) -> dict[str, Any]:
+    """Return information about the current user.
+
+    The frontend uses this endpoint to hydrate the global user store. In a real
+    deployment this would rely on session middleware or OIDC claims.
+    """
+    return {"username": x_user or "demo", "is_admin": True}
+
+
 @app.get("/projects", response_model=list[ProjectModel])
 async def list_projects_endpoint(
     user: str | None = None, x_user: str | None = Header(None)
