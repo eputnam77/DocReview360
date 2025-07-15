@@ -16,28 +16,28 @@ import {
 // List of configuration sections
 const CONFIG_ITEMS = [
   {
-    label: "Workflows",
-    href: "/configuration/workflows",
-    icon: <Workflow className="w-6 h-6 text-indigo-600" />,
-    desc: "Set up and manage workflow templates."
-  },
-  {
     label: "Document Types",
     href: "/configuration/document-types",
     icon: <FileText className="w-6 h-6 text-blue-500" />,
-    desc: "Define and edit document types used in projects."
+    desc: "Define and edit document types used in projects.",
   },
   {
     label: "Phases",
     href: "/configuration/phases",
     icon: <Repeat className="w-6 h-6 text-cyan-500" />,
-    desc: "Customize workflow phases for document review."
+    desc: "Customize workflow phases for document review.",
+  },
+  {
+    label: "Workflows",
+    href: "/configuration/workflows",
+    icon: <Workflow className="w-6 h-6 text-indigo-600" />,
+    desc: "Set up and manage workflow templates.",
   },
   {
     label: "Templates",
     href: "/configuration/templates",
     icon: <Layers className="w-6 h-6 text-violet-500" />,
-    desc: "Maintain reusable content templates."
+    desc: "Maintain reusable content templates.",
   },
   {
     label: "User Management",
