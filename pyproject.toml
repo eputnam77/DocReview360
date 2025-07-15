@@ -129,6 +129,7 @@ exclude = ["tests*", ".dev*"]
 "docreview360.styles" = ["*.md"]
 "docreview360.templates" = ["*.html"]
 "docreview360.iac_templates" = ["*.tf"]
+"docreview360" = ["py.typed"]
 "*" = ["*.txt", "*.md", "*.yaml", "*.yml"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
