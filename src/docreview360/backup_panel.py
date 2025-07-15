@@ -18,7 +18,7 @@ def create_backup_async(path: str) -> str:
     return target
 
 
-app.task(name="docreview360.create_backup_async")(create_backup_async)
+create_backup_async = app.task(name="docreview360.create_backup_async")(create_backup_async)
 
 
 def restore_backup_async(path: str) -> None:
