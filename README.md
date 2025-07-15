@@ -114,6 +114,20 @@ Update your server or container orchestration tool to pull the new image and you
    This runs Ruff, Black, MyPy and the unit tests.
 3. **Run end-to-end tests only**
    ```bash
-   pytest -m e2e
+  pytest -m e2e
    ```
    The tests start a local server and drive a headless browser via Playwright.
+
+## Git send-email hook
+
+If you contribute via `git send-email` you can enable an optional validation
+hook. Copy `scripts/sendemail-validate.sample` to `.git/hooks/sendemail-validate`
+and make it executable:
+
+```bash
+cp scripts/sendemail-validate.sample .git/hooks/sendemail-validate
+chmod +x .git/hooks/sendemail-validate
+```
+
+The hook relies on `codespell` and `gitlint` to check spelling and patch style
+before invoking a light-weight validator in `docreview360.git_hooks`.

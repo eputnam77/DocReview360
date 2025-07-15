@@ -5,7 +5,9 @@ from __future__ import annotations
 from ..stubs import record_task_completion
 
 try:  # pragma: no cover - optional dependency
-    from playwright import __version__ as playwright_version
+    import importlib
+
+    playwright_version = importlib.import_module("playwright").__version__
 except Exception:  # pragma: no cover - Playwright not installed
     playwright_version = ""
 
@@ -20,4 +22,4 @@ def task199() -> str:
     """
 
     record_task_completion(199)
-    return playwright_version
+    return str(playwright_version)
