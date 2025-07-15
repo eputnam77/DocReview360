@@ -9,6 +9,15 @@ import {
   Users2,
   Settings,
   User,
+  Workflow,
+  FileText,
+  Repeat,
+  Layers,
+  Users,
+  Key,
+  BookA,
+  Settings2,
+  Puzzle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
@@ -28,6 +37,54 @@ const SECONDARY = [
     icon: <Inbox className="h-4 w-4" />,
     label: "Logs",
     href: "/logs",
+  },
+];
+
+const CONFIG = [
+  {
+    icon: <Workflow className="h-4 w-4" />,
+    label: "Workflows",
+    href: "/configuration/workflows",
+  },
+  {
+    icon: <FileText className="h-4 w-4" />,
+    label: "Document Types",
+    href: "/configuration/document-types",
+  },
+  {
+    icon: <Repeat className="h-4 w-4" />,
+    label: "Phases",
+    href: "/configuration/phases",
+  },
+  {
+    icon: <Layers className="h-4 w-4" />,
+    label: "Templates",
+    href: "/configuration/templates",
+  },
+  {
+    icon: <Users className="h-4 w-4" />,
+    label: "User Management",
+    href: "/configuration/user-management",
+  },
+  {
+    icon: <Key className="h-4 w-4" />,
+    label: "Permissions",
+    href: "/configuration/permissions",
+  },
+  {
+    icon: <BookA className="h-4 w-4" />,
+    label: "Audit Logs",
+    href: "/configuration/audit-logs",
+  },
+  {
+    icon: <Settings2 className="h-4 w-4" />,
+    label: "App Settings",
+    href: "/configuration/app-settings",
+  },
+  {
+    icon: <Puzzle className="h-4 w-4" />,
+    label: "Integrations",
+    href: "/configuration/integrations",
   },
 ];
 
@@ -99,12 +156,14 @@ export default function Sidebar() {
       {isAdmin && (
         <>
           <hr className="my-4" />
-          <div className="px-2">
-            <NavItem
-              icon={<Settings className="h-4 w-4" />}
-              label="Configuration"
-              href="/configuration"
-            />
+          <div className="px-2 space-y-1">
+            <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+              <Settings className="h-4 w-4" />
+              <span>Configuration</span>
+            </div>
+            {CONFIG.map((item) => (
+              <NavItem key={item.label} {...item} />
+            ))}
           </div>
         </>
       )}
