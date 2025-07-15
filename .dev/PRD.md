@@ -52,6 +52,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Multi-format templates**: administrators may create templates in JSON, HTML, or DOCX and input the raw text or upload a file through the UI.
 * **Per-document linter & numbering toggles** with one-click migration to the latest template version.
 * **Project form includes Phase & Workflow fields** with defaults mapped from document type.
+* **Message templates** for review requests, approvals and rejections. Templates store text used by email or chat notifications with placeholders for `{project_link}`, `{user}` and `{comments}`.
 
 ### 3.2 Editors
 
