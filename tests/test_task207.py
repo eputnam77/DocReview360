@@ -1,9 +1,7 @@
-import pytest
-
 from docreview360.stubs.task207 import task207
 
 
-def test_task207_placeholder() -> None:
-    """Placeholder failing test for task 207."""
-    task207()
-    pytest.fail("Task 207 not implemented")
+def test_task207_validate_fields() -> None:
+    """Both phase and workflow must exist."""
+
+    assert task207({"phase": "Draft", "workflow": "std"})

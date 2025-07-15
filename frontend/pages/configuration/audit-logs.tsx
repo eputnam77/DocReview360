@@ -56,6 +56,13 @@ export default function AuditLogsPage() {
         ),
       )
       .catch(() => setLogs(DEMO_LOGS));
+
+    const ws = new WebSocket(`ws://${window.location.host}/ws/logs`);
+    ws.onmessage = (ev) => {
+      const entry = JSON.parse(ev.data) as LogEntry;
+      setLogs((prev) => [entry, ...prev]);
+    };
+    return () => ws.close();
   }, []);
 
   return (
