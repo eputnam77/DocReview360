@@ -11,7 +11,8 @@ except Exception:  # pragma: no cover - fallback when redis not installed
     _redis = None  # type: ignore[assignment]
 
 _cache: Dict[str, Any] = {}
-_client: Any | None | bool = None
+_UNREACHABLE = object()
+_client: Any | None | object = None
 
 
 def _get_client() -> Any | None:
@@ -19,15 +20,16 @@ def _get_client() -> Any | None:
     if _client is None and _redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         try:
-            _client = _redis.Redis.from_url(
+            client = _redis.Redis.from_url(
                 url,
                 socket_connect_timeout=0.1,
                 socket_timeout=0.1,
             )
-            _client.ping()
+            client.ping()
+            _client = client
         except Exception:  # pragma: no cover - redis unreachable
-            _client = False
-    if _client is False:
+            _client = _UNREACHABLE
+    if _client is _UNREACHABLE:
         return None
     return _client
 
