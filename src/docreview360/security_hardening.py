@@ -28,7 +28,6 @@ def enforce_mfa_login(username: str, password: str, otp: str) -> str:
     return keycloak_mfa_login(username, password, otp)
 
 
-@app.task(name="docreview360.secure_backup")
 def secure_backup(path: str) -> str:
     """Create and encrypt a daily backup."""
     backup = create_backup(Path(path))
@@ -38,6 +37,9 @@ def secure_backup(path: str) -> str:
         data = fh.read()
     encrypt_backup(backup, data)
     return str(backup)
+
+
+app.task(name="docreview360.secure_backup")(secure_backup)
 
 
 def enable_fedramp_backup(path: str) -> None:

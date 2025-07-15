@@ -1,6 +1,5 @@
 import httpx
 import pytest
-
 from docreview360 import documenso
 
 
@@ -15,8 +14,12 @@ def test_documenso_error_handling() -> None:
     assert documenso.signature_status(sig_id) == "signed"
 
 
-def test_documenso_remote(monkeypatch) -> None:
-    def fake_post(url: str, json: dict | None = None, timeout: int | None = None) -> httpx.Response:
+def test_documenso_remote(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_post(
+        url: str,
+        json: dict[str, object] | None = None,
+        timeout: int | None = None,
+    ) -> httpx.Response:
         req = httpx.Request("POST", url)
         if url.endswith("complete"):
             return httpx.Response(200, request=req)
