@@ -84,3 +84,24 @@ def export_logs() -> List[LogEntry]:
 def clear_logs() -> None:
     """Remove all stored logs (useful for tests)."""
     logs.clear()
+
+
+async def watch_logs(callback: Callable[[LogEntry], None]) -> None:
+    """Invoke ``callback`` for each new log entry.
+
+    This helper provides a minimal real-time log viewer suitable for
+    CLI tools or simple dashboards. It relies on ``log_stream`` and
+    ensures the callback is only executed while the consumer awaits
+    events. Usage example::
+
+        async def printer(entry: LogEntry) -> None:
+            print(entry.action)
+
+        await watch_logs(printer)
+    """
+
+    async for entry in log_stream():
+        try:
+            callback(entry)
+        except Exception:  # pragma: no cover - defensive
+            pass
