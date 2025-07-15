@@ -21,3 +21,13 @@ For details on how we triage and patch dependencies see the
 Our CI pipeline runs **Bandit** and **pip-audit** on every commit to detect
 common issues. Containers are also scanned with Trivy and Grype as described in
 the patch guide.
+
+## Patch Policy
+
+If **pip-audit** or our nightly security workflow flags a high-severity vulnerability we issue a hotfix within **48 hours**. Medium issues are addressed in the next regular release.
+
+## Disclosure Guidance
+
+We encourage responsible disclosure. Please avoid posting public issues for new vulnerabilities until we have published a fix. Coordinate with us at [security@example.com](mailto:security@example.com).
+
+Refer to [.dev/BANDIT.md](.dev/BANDIT.md) for the latest automated scan results.
