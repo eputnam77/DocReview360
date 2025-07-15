@@ -25,7 +25,7 @@ def echo(value: str) -> str:
     return value
 
 
-app.task(name="docreview360.echo")(echo)
+echo = app.task(name="docreview360.echo")(echo)
 
 
 def word_count(text: str) -> int:
@@ -35,7 +35,7 @@ def word_count(text: str) -> int:
     return len(text.split())
 
 
-app.task(name="docreview360.word_count")(word_count)
+word_count = app.task(name="docreview360.word_count")(word_count)
 
 
 def fetch_length(url: str) -> int:
@@ -47,7 +47,7 @@ def fetch_length(url: str) -> int:
     return len(resp.text)
 
 
-app.task(name="docreview360.fetch_length")(fetch_length)
+fetch_length = app.task(name="docreview360.fetch_length")(fetch_length)
 
 
 def quality_gate(text: str, weights: list[float] | None = None) -> float:
