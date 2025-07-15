@@ -24,6 +24,11 @@ const SECONDARY = [
     label: "Support",
     href: "/docs/",
   },
+  {
+    icon: <Inbox className="h-4 w-4" />,
+    label: "Logs",
+    href: "/logs",
+  },
 ];
 
 const PROFILE = { icon: <User className="h-4 w-4" />, label: "Profile", href: "/profile" };
