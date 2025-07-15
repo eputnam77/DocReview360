@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 
 [tool.poetry]
 name = "docreview360"
-version = "0.1.1"
+version = "0.1.2"
 description = "DocReview360 simplifies document workflows with approvals and templates."
 authors = ["Eric Putnam <info@example.com>"]
 packages = [{ include = "docreview360", from = "src" }]
 
 [project]
 name            = "docreview360"
-version         = "0.1.1"
+version         = "0.1.2"
 description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
 requires-python = ">=3.12,<4"
@@ -212,6 +212,8 @@ omit = [
   "src/docreview360/stubs/*",
   "src/docreview360/scripts/*",
   "src/docreview360/records.py",
+  "src/docreview360/git_hooks.py",
+  "src/docreview360/api.py",
 ]
 
 
