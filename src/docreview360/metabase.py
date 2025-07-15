@@ -73,4 +73,4 @@ def fetch_card_csv(base_url: str, card_id: int, token: str) -> str:
     resp = httpx.post(url, headers={"X-Metabase-Session": token}, timeout=10)
     resp.raise_for_status()
     record_task_completion(83)
-    return resp.text
+    return str(resp.text)

@@ -18,6 +18,6 @@ def convert_ac_to_order(doc: DocumentModel) -> DocumentModel:
 
     content = re.sub(r"Advisory Circular", "Order", doc.content)
     content = re.sub(r"\bAC-(\d+)\b", r"ORD-\1", content)
-    converted = doc.model_copy(deep=True)
+    converted: DocumentModel = doc.model_copy(deep=True)
     converted.content = content
     return converted
