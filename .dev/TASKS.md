@@ -210,6 +210,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 207 | Project form phase & workflow fields | • Add Phase and Workflow selects with default mapping on project creation. | FE | 1 d | Form requires both fields; defaults update with doc type. |
 | 208 | Template pages restructure | • Move `templates.tsx` to `/configuration/templates/{index,new,edit}.tsx`.<br>• New and edit allow entering JSON, HTML, or DOCX template content. | FE | 1 d | `/configuration/templates` lists templates; creating a new one works. |
 | 209 | Document numbering setting | • In Global Settings, admins choose between sequential document numbers or manual entry per project. Document ID stays 32-char hex but numbers like "AC 20.11" and "PS-20.1191" can be entered. | Admin | 1 d | Switch to manual mode → project form lets user specify document numbers; sequential mode still auto-increments. |
+| 210 | Approval comment notifications | • Notify project owner whenever a reviewer adds or updates approval comments. | FE | 0.5 d | Saving a comment triggers a visible alert to the owner. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---

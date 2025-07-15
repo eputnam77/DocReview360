@@ -28,6 +28,9 @@ import {
   PlusCircle,
   Eye,
   Download,
+  Check,
+  X,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
@@ -316,6 +319,18 @@ export default function ProjectDetailsPage() {
   };
   const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "");
 
+  const handleNotifyOwner = (reviewer: string) => {
+    if (!project?.user) return;
+    alert(`Notified ${project.user} that ${reviewer} left feedback.`);
+    setLogs(prev => [
+      ...prev,
+      {
+        timestamp: new Date().toISOString(),
+        action: `Notified ${project.user} of comments from ${reviewer}`,
+      },
+    ]);
+  };
+
   const handleSignApproval = async (approval: Approval) => {
     try {
       let sigId = approval.documensoSigId;
@@ -370,6 +385,25 @@ export default function ProjectDetailsPage() {
       alert("Failed to start signing flow");
     }
   };
+
+  const handleRejectApproval = (id: string) => {
+    const reviewer = approvals.find(a => a.id === id)?.reviewer || "";
+    setApprovals(prev =>
+      prev.map(a =>
+        a.id === id
+          ? { ...a, state: "rejected", statusDate: new Date().toISOString().slice(0, 10) }
+          : a
+      )
+    );
+    alert(`Document returned to ${project?.user || "owner"} with comments.`);
+    setLogs(prev => [
+      ...prev,
+      {
+        timestamp: new Date().toISOString(),
+        action: `Approval by ${reviewer} rejected and sent back`,
+      },
+    ]);
+  };
   const handleAddReviewer = () => {
     if (!newReviewer.reviewer || !newReviewer.email) return;
     setApprovals([
@@ -407,6 +441,9 @@ export default function ProjectDetailsPage() {
         action: `Updated approval comment for ${reviewer}`,
       },
     ]);
+    if (reviewer) {
+      handleNotifyOwner(reviewer);
+    }
     setCommentEditor(null);
   };
 
@@ -729,7 +766,7 @@ export default function ProjectDetailsPage() {
                       variant="ghost"
                       title="Send email"
                       onClick={() => handleSendEmail(a)}
-                      disabled={a.state === "approved"}
+                      disabled={a.state !== "pending"}
                     >
                       <Mail className="w-5 h-5" />
                     </Button>
@@ -739,6 +776,8 @@ export default function ProjectDetailsPage() {
                       "px-2 py-1 rounded text-xs font-medium",
                       a.state === "approved"
                         ? "bg-green-100 text-green-800"
+                        : a.state === "rejected"
+                        ? "bg-yellow-100 text-yellow-800"
                         : a.state === "pending"
                         ? "bg-blue-100 text-blue-800"
                         : a.state === "overdue"
@@ -757,23 +796,34 @@ export default function ProjectDetailsPage() {
                     )}
                   </TableCell>
                   <TableCell className="space-x-1">
-                    {a.state !== "approved" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleSignApproval(a)}
-                      >
-                        Sign & Approve
-                      </Button>
+                    {a.state === "pending" && (
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="Sign & Approve"
+                          onClick={() => handleSignApproval(a)}
+                        >
+                          <Check className="w-5 h-5 text-green-600" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="Reject and return"
+                          onClick={() => handleRejectApproval(a.id)}
+                        >
+                          <X className="w-5 h-5 text-red-600" />
+                        </Button>
+                      </>
                     )}
-                    {a.state === "approved" && (
+                    {(a.state === "approved" || a.state === "rejected") && (
                       <Button
-                        size="sm"
-                        variant="destructive"
+                        size="icon"
+                        variant="ghost"
+                        title="Reset"
                         onClick={() => handleResetApproval(a.id)}
-                        title="Reset signature"
                       >
-                        Reset
+                        <RotateCcw className="w-5 h-5" />
                       </Button>
                     )}
                     <Button

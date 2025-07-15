@@ -71,6 +71,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Documenso approval button** exposes e-signature steps directly in project pages.
 * **Documenso** signatures bound to workflow state; cryptographically verified. ([documenso.com][4])
 * **Editable approval comments** so reviewers can update their remarks after signing.
+* **Automatic notification** to the document owner when reviewers add or update approval comments.
 
 ### 3.4 Collaboration
 
