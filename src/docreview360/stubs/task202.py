@@ -1,9 +1,12 @@
-"""Implementation for task 202."""
+"""In-app documentation page utilities."""
+
+from __future__ import annotations
 
 from ..stubs import record_task_completion
 
 
-def task202() -> None:
-    """Placeholder function for task 202."""
+def task202() -> str:
+    """Return HTML snippet used for the docs route."""
+
     record_task_completion(202)
-    return None
+    return "<h1>Documentation</h1>"

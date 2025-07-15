@@ -1,9 +1,17 @@
-"""Implementation for task 203."""
+"""Integrations page helpers."""
+
+from __future__ import annotations
+
+from typing import Any, Dict
 
 from ..stubs import record_task_completion
 
 
-def task203() -> None:
-    """Placeholder function for task 203."""
+def task203(existing: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Return a configuration dictionary merged with ``existing``."""
+
     record_task_completion(203)
-    return None
+    base = {"github": True, "slack": False}
+    if existing:
+        base.update(existing)
+    return base

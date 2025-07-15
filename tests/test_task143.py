@@ -23,3 +23,9 @@ def test_save_template_validation(tmp_path) -> None:
 
     with pytest.raises(ValueError):
         save_template("", "text", root=tmp_path)
+
+
+def test_list_templates_empty(tmp_path) -> None:
+    from docreview360.template_manager import list_templates
+
+    assert list_templates(tmp_path) == []
