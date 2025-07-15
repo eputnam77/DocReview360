@@ -28,7 +28,7 @@ def enforce_mfa_login(username: str, password: str, otp: str) -> str:
     return keycloak_mfa_login(username, password, otp)
 
 
-@app.task(name="docreview360.secure_backup")  # type: ignore[misc]
+@app.task(name="docreview360.secure_backup")
 def secure_backup(path: str) -> str:
     """Create and encrypt a daily backup."""
     backup = create_backup(Path(path))
