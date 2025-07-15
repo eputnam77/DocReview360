@@ -1,23 +1,24 @@
 import sys
 from types import ModuleType
-
-from fastapi.testclient import TestClient
+from typing import Callable, cast
 
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def create_dummy_plugin(name: str) -> str:
     mod = ModuleType(f"{name}_plugin")
 
-    def register(reg):
-        reg.register(name, lambda: name)
+    def register(reg: object) -> None:
+        register_fn = cast("Callable[[str, Callable[[], str]], None]", getattr(reg, "register"))
+        register_fn(name, lambda: name)
 
-    mod.register = register
+    mod.register = register  # type: ignore[attr-defined]
     sys.modules[mod.__name__] = mod
     return mod.__name__
 
 
-def test_plugin_management_cycle():
+def test_plugin_management_cycle() -> None:
     client = TestClient(app)
 
     module_name = create_dummy_plugin("dummy")
