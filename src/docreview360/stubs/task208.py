@@ -9,4 +9,8 @@ def task208() -> list[str]:
     """Return new template page route hierarchy."""
 
     record_task_completion(208)
-    return ["/configuration/templates/index", "/configuration/templates/new", "/configuration/templates/edit"]
+    return [
+        "/configuration/templates/index",
+        "/configuration/templates/new",
+        "/configuration/templates/edit",
+    ]
