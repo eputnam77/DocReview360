@@ -488,8 +488,21 @@ async def search_documents(
     after: datetime | None = None,
     before: datetime | None = None,
 ) -> list[DocumentModel]:
-    """Return documents matching a full text query."""
-    return search(
+    """Return documents matching a full text query with basic caching."""
+    cache_key = (
+        f"search-{q}-{project or ''}-{user or ''}-{priority or ''}-"
+        f"{after.isoformat() if after else ''}-{before.isoformat() if before else ''}"
+    )
+    cached = cache_get(cache_key)
+    if cached:
+        try:
+            if isinstance(cached, bytes):
+                cached = cached.decode()
+            data = json.loads(cached)
+            return [DocumentModel.model_validate(d) for d in data]
+        except Exception:
+            pass
+    results = search(
         q,
         project=project,
         user=user,
@@ -497,12 +510,19 @@ async def search_documents(
         after=after,
         before=before,
     )
+    cache_set(
+        cache_key,
+        json.dumps([d.model_dump(mode="json") for d in results]),
+        ttl=30,
+    )
+    return results
 
 
 @app.get("/search/export")
 async def export_search_results(q: str, fmt: str = "json") -> Response:
     """Return search results in JSON or CSV with ranking and snippets."""
-    results = ranked_search(q)
+    docs = await search_documents(q)
+    results = ranked_search(q, docs)
     rows = [{"id": r["document"].id, "snippet": r["snippet"], "score": r["score"]} for r in results]
     if fmt == "csv":
         output = "id,snippet,score\n" + "\n".join(
