@@ -9,8 +9,9 @@ interface UserState {
 }
 
 export const useUserStore = create<UserState>((set) => ({
-  isAdmin: true,
-  username: "demo",
+  // Defaults are unauthenticated until initialize() fetches the session
+  isAdmin: false,
+  username: "",
   setAdmin: (value) => set({ isAdmin: value }),
   setUsername: (name) => set({ username: name }),
   async initialize() {
