@@ -1342,3 +1342,11 @@ Traceback (most recent call last):
   File "C:\Users\ericp\Documents\Vengeance Coding and Script Files\DocReview360\.venv\Lib\site-packages\mutmut\__main__.py", line 9, in <module>
     import resource
 ModuleNotFoundError: No module named 'resource'
+## Dev Gate Results - 2025-07-15T20:13:15Z
+- **mypy**: failed – `src/docreview360/cache.py:27: error: Item "bool" of "Any | bool" has no attribute "ping"`
+- **bandit**: passed – 0 high severity issues
+- **semgrep**: failed – blocked from downloading `p/ci` ruleset
+- **pytest**: passed – 397 tests passed (90% coverage)
+- **pytest (property)**: passed – 1 skipped, 399 deselected
+- **pytest (e2e)**: passed – 1 skipped, 399 deselected
+- **mutmut**: aborted – run interrupted
