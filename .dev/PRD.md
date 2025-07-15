@@ -112,6 +112,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Downloadable CLI profile** lets users fetch `docreview360.env` from the UI.
 * **Admin-less project creation wizard** for non-admin authors.
 * **Phases configuration page** allows admins to manage workflow phases.
+* **Document numbering options** let admins choose sequential numbering or manual entry per project. Document IDs remain 32-character hex strings (e.g., "AC 20.11", "PS-20.1191").
 * **Integrations settings page** redesigned for easier configuration via `/config`.
 * **In-app docs page** reachable from the Support menu.
 
