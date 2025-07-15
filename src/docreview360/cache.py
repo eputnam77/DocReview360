@@ -11,7 +11,7 @@ except Exception:  # pragma: no cover - fallback when redis not installed
     _redis = None  # type: ignore[assignment]
 
 _cache: Dict[str, Any] = {}
-_client: Any | None = None
+_client: Any | None | bool = None
 
 
 def _get_client() -> Any | None:
@@ -26,7 +26,9 @@ def _get_client() -> Any | None:
             )
             _client.ping()
         except Exception:  # pragma: no cover - redis unreachable
-            _client = None
+            _client = False
+    if _client is False:
+        return None
     return _client
 
 
