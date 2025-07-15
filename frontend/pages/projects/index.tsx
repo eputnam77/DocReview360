@@ -83,9 +83,11 @@ export default function ProjectList() {
   const username = useUserStore((s) => s.username);
 
   useEffect(() => {
-    fetch("/api/projects", {
-      headers: { "X-User": username },
-    })
+    const headers: Record<string, string> = {};
+    if (username) {
+      headers["X-User"] = username;
+    }
+    fetch("/api/projects", { headers })
       .then((r) => r.json())
       .then((data: Project[]) =>
         setProjects(data.length > 0 ? data : DEMO_PROJECTS)

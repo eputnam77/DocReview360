@@ -224,7 +224,7 @@ async def list_projects_endpoint(
     user: str | None = None, x_user: str | None = Header(None)
 ) -> list[ProjectModel]:
     """Return projects optionally filtered by user with simple caching."""
-    user = user or x_user
+    user = (user or x_user) or None
     cache_key = f"projects-{user or 'all'}"
     cached = cache_get(cache_key)
     if cached:
