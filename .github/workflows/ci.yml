@@ -26,8 +26,9 @@ jobs:
           go-version: '1.22'
       - name: Install dependencies
         run: |
-          pip install poetry
-          poetry install --with dev
+          pip install uv poetry
+          poetry install --with dev --sync
+          uv pip sync
           npm ci --prefix frontend || true
       - name: Run quality gate
         run: |
