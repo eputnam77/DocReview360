@@ -105,6 +105,7 @@ from .workflows import (
     assign_reviewer,
     create_workflow,
     get_workflow,
+    start_workflow,
     workflows,
 )
 
@@ -621,6 +622,21 @@ async def get_workflow_endpoint(wf_id: str) -> WorkflowModel:
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return wf
+
+
+@app.post("/workflows/{wf_id}/start", response_model=WorkflowModel)
+async def start_workflow_endpoint(
+    wf_id: str,
+    title: str = Form(...),
+    file: UploadFile | None = File(None),
+) -> WorkflowModel:
+    """Start a workflow by uploading a document."""
+
+    wf = get_workflow(wf_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    data = await file.read() if file else None
+    return start_workflow(wf_id, title, data)
 
 
 @app.post("/workflows/{wf_id}/assign", response_model=WorkflowModel)

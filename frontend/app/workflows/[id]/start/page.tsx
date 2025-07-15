@@ -21,14 +21,18 @@ export default function StartWorkflowPage({ params }: Props) {
     setLoading(true);
     setError(null);
     try {
-      // TODO: replace with real API call
-      // For now, just log and reset
-      console.log("Start workflow:", {
-        workflowId: params.id,
-        title,
-        file,
+      const formData = new FormData();
+      formData.append("title", title);
+      if (file) {
+        formData.append("file", file);
+      }
+      const resp = await fetch(`/api/workflows/${params.id}/start`, {
+        method: "POST",
+        body: formData,
       });
-      // Reset after "success"
+      if (!resp.ok) {
+        throw new Error("request failed");
+      }
       setTitle("");
       setFile(null);
     } catch (err: any) {
