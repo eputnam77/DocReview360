@@ -208,6 +208,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 205 | Approval comment editing | • Allow reviewers to edit approval comments inline on project page. | FE | 1 d | Edit comment updates without reload. |
 | 206 | Single sign status polling test | • Regression test ensures `/api/sign/status` called once. | QA | 0.5 d | Test passes without duplicate requests. |
 | 207 | Project form phase & workflow fields | • Add Phase and Workflow selects with default mapping on project creation. | FE | 1 d | Form requires both fields; defaults update with doc type. |
+| 208 | Template pages restructure | • Move `templates.tsx` to `/configuration/templates/{index,new,edit}.tsx`.<br>• New and edit allow entering JSON, HTML, or DOCX template content. | FE | 1 d | `/configuration/templates` lists templates; creating a new one works. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
