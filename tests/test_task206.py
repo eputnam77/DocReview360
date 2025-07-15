@@ -1,9 +1,15 @@
-import pytest
-
 from docreview360.stubs.task206 import task206
 
 
-def test_task206_placeholder() -> None:
-    """Placeholder failing test for task 206."""
-    task206()
-    pytest.fail("Task 206 not implemented")
+def test_task206_single_call() -> None:
+    """Ensure callable executed exactly once."""
+
+    called = 0
+
+    def check() -> str:
+        nonlocal called
+        called += 1
+        return "ok"
+
+    result = task206(check)
+    assert result == "ok" and called == 1

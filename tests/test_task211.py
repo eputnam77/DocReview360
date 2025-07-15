@@ -1,9 +1,9 @@
-import pytest
-
 from docreview360.stubs.task211 import task211
 
 
-def test_task211_placeholder() -> None:
-    """Placeholder failing test for task 211."""
-    task211()
-    pytest.fail("Task 211 not implemented")
+def test_task211_store_template() -> None:
+    """Template should be added to store."""
+
+    store = {}
+    result = task211(store, "hello", "hi")
+    assert result["hello"] == "hi"

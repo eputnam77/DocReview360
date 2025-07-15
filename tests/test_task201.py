@@ -1,9 +1,7 @@
-import pytest
-
 from docreview360.stubs.task201 import task201
 
 
-def test_task201_placeholder() -> None:
-    """Placeholder failing test for task 201."""
-    task201()
-    pytest.fail("Task 201 not implemented")
+def test_task201_chat_bot() -> None:
+    """Chat bot should answer simple queries."""
+
+    assert "on track" in task201("status of project")

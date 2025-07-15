@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEMO_PROJECTS } from "@/data";
+import { useUserStore } from "@/state/user";
 
 // The Project type: extend as needed
 interface Project {
@@ -79,15 +80,18 @@ function ProgressBar({ value }: { value: number }) {
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
+  const username = useUserStore((s) => s.username);
 
   useEffect(() => {
-    fetch("/api/projects")
+    fetch("/api/projects", {
+      headers: { "X-User": username },
+    })
       .then((r) => r.json())
       .then((data: Project[]) =>
         setProjects(data.length > 0 ? data : DEMO_PROJECTS)
       )
       .catch(() => setProjects(DEMO_PROJECTS));
-  }, []);
+  }, [username]);
 
   // Calculate simple stats for this user
   const statAssigned = projects.length;
