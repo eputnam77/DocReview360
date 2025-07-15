@@ -73,6 +73,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Documenso** signatures bound to workflow state; cryptographically verified. ([documenso.com][4])
 * **Editable approval comments** so reviewers can update their remarks after signing.
 * **Automatic notification** to the document owner when reviewers add or update approval comments.
+* **Confirmation pop-ups** appear before a user resets their approval or removes a reviewer from the approvals list.
 
 ### 3.4 Collaboration
 

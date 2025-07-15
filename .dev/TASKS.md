@@ -213,6 +213,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 210 | Approval comment notifications | • Notify project owner whenever a reviewer adds or updates approval comments. | FE | 0.5 d | Saving a comment triggers a visible alert to the owner.<br>See `tests/e2e/features/task210.feature` |
 | 211 | Message template management | • Extend `/configuration/templates` to also handle **message templates** used for review requests, approvals and rejections.<br>• Fields: name, channel (email/teams/slack), content with `{project_link}`, `{user}`, `{comments}` tokens. | Admin | 2 d | Creating a message template via UI persists via API.<br>See `tests/e2e/features/task211.feature` |
 | 212 | Notification templates applied | • Review request emails and chat messages render using the configured templates.<br>• Approval and rejection events send messages that include reviewer name and optional comments. | Integration | 1 d | Approving or rejecting a document triggers the expected message text.<br>See `tests/e2e/features/task212.feature` |
+| 213 | Approval reset confirmation | • Display a confirmation modal when a user resets their approval or removes a reviewer from a project. | FE | 0.5 d | Canceling leaves approval intact; confirming completes the action.<br>See `tests/e2e/features/task213.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
