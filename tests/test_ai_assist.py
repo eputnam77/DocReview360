@@ -1,3 +1,6 @@
+from types import TracebackType
+from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -6,7 +9,7 @@ from docreview360.api import app
 
 
 @pytest.mark.asyncio
-async def test_ai_rewrite_endpoint(monkeypatch) -> None:
+async def test_ai_rewrite_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_call(text: str) -> str:
         return "rewritten"
 
@@ -20,7 +23,7 @@ async def test_ai_rewrite_endpoint(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_ai_summarize_endpoint(monkeypatch) -> None:
+async def test_ai_summarize_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_sum(text: str) -> str:
         return "summary"
 
@@ -52,22 +55,27 @@ async def test_summarize_validation() -> None:
 
 
 @pytest.mark.asyncio
-async def test_call_openai_remote(monkeypatch):
+async def test_call_openai_remote(monkeypatch: pytest.MonkeyPatch) -> None:
     class DummyResp:
         def raise_for_status(self) -> None:
             pass
 
-        def json(self) -> dict:
+        def json(self) -> dict[str, Any]:
             return {"choices": [{"message": {"content": "Hi"}}]}
 
     class DummyClient:
-        async def __aenter__(self):
+        async def __aenter__(self) -> "DummyClient":
             return self
 
-        async def __aexit__(self, exc_type, exc, tb):
+        async def __aexit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> None:
             pass
 
-        async def post(self, *args, **kwargs):
+        async def post(self, *args: Any, **kwargs: Any) -> DummyResp:
             return DummyResp()
 
     monkeypatch.setattr(ai_assist, "OPENAI_KEY", "k")
@@ -78,15 +86,20 @@ async def test_call_openai_remote(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_call_openai_error(monkeypatch):
+async def test_call_openai_error(monkeypatch: pytest.MonkeyPatch) -> None:
     class DummyClient:
-        async def __aenter__(self):
+        async def __aenter__(self) -> "DummyClient":
             return self
 
-        async def __aexit__(self, exc_type, exc, tb):
+        async def __aexit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> None:
             pass
 
-        async def post(self, *args, **kwargs):
+        async def post(self, *args: Any, **kwargs: Any) -> None:
             raise ai_assist.httpx.HTTPError("fail")
 
     monkeypatch.setattr(ai_assist, "OPENAI_KEY", "k")
