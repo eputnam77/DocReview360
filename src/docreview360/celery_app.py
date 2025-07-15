@@ -18,7 +18,6 @@ app = Celery("docreview360", broker=broker_url, backend=backend_url)
 app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
 
 
-@app.task(name="docreview360.echo")
 def echo(value: str) -> str:
     """Return ``value`` unchanged for testing purposes."""
     if not isinstance(value, str):
@@ -26,7 +25,9 @@ def echo(value: str) -> str:
     return value
 
 
-@app.task(name="docreview360.word_count")
+app.task(name="docreview360.echo")(echo)
+
+
 def word_count(text: str) -> int:
     """Return the number of words in ``text``."""
     if not isinstance(text, str):
@@ -34,7 +35,9 @@ def word_count(text: str) -> int:
     return len(text.split())
 
 
-@app.task(name="docreview360.fetch_length")
+app.task(name="docreview360.word_count")(word_count)
+
+
 def fetch_length(url: str) -> int:
     """Return the length of the response body from ``url``."""
     if not url.startswith(("http://", "https://")):
@@ -44,7 +47,9 @@ def fetch_length(url: str) -> int:
     return len(resp.text)
 
 
-@app.task(name="docreview360.quality_gate")
+app.task(name="docreview360.fetch_length")(fetch_length)
+
+
 def quality_gate(text: str, weights: list[float] | None = None) -> float:
     """Return anomaly score for ``text`` using the provided model weights."""
     if weights is None:
@@ -55,7 +60,9 @@ def quality_gate(text: str, weights: list[float] | None = None) -> float:
     return 0.0 if passed else 1.0
 
 
-@app.task(name="docreview360.export_documents")
+app.task(name="docreview360.quality_gate")(quality_gate)
+
+
 def export_documents(doc_ids: list[str], fmt: str) -> bytes:
     """Return a ZIP archive for ``doc_ids`` in the given format.
 
@@ -80,7 +87,9 @@ def export_documents(doc_ids: list[str], fmt: str) -> bytes:
     return export_batch(docs, fmt)
 
 
-@app.task(name="docreview360.reindex_document")
+app.task(name="docreview360.export_documents")(export_documents)
+
+
 def reindex_document(doc_id: str) -> None:
     """Reindex ``doc_id`` in the search index."""
 
@@ -93,7 +102,9 @@ def reindex_document(doc_id: str) -> None:
     search_index.add_document(doc)
 
 
-@app.task(name="docreview360.create_backup")
+app.task(name="docreview360.reindex_document")(reindex_document)
+
+
 def create_backup_task(path: str) -> str:
     """Create a compressed backup at ``path`` and return the location."""
 
@@ -104,7 +115,9 @@ def create_backup_task(path: str) -> str:
     return str(target)
 
 
-@app.task(name="docreview360.reindex_all")
+app.task(name="docreview360.create_backup")(create_backup_task)
+
+
 def reindex_all() -> int:
     """Reindex all known documents and return the number processed."""
 
@@ -113,3 +126,6 @@ def reindex_all() -> int:
         search_index.add_document(doc)
         count += 1
     return count
+
+
+app.task(name="docreview360.reindex_all")(reindex_all)

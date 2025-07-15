@@ -1,11 +1,13 @@
-from fastapi.testclient import TestClient
+from pathlib import Path
 
+import pytest
 from docreview360 import api as api_mod
 from docreview360 import config as conf_mod
 from docreview360.config import Config
+from fastapi.testclient import TestClient
 
 
-def test_get_and_update_config(tmp_path, monkeypatch) -> None:
+def test_get_and_update_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cfg_path = tmp_path / "conf.yaml"
     monkeypatch.setattr(conf_mod, "CONFIG_FILE", cfg_path)
     monkeypatch.setattr(api_mod, "CONFIG_FILE", cfg_path)

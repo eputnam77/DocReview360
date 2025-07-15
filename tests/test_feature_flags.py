@@ -1,20 +1,19 @@
 import pytest
-
 from docreview360 import feature_flags
 
 
 class DummyClient:
-    def __init__(self, url: str, app_name: str, custom_headers: dict):
+    def __init__(self, url: str, app_name: str, custom_headers: dict[str, str]):
         self.flags: set[str] = set()
 
     def initialize_client(self) -> None:
         pass
 
-    def is_enabled(self, name: str, context: dict | None = None) -> bool:
+    def is_enabled(self, name: str, context: dict[str, object] | None = None) -> bool:
         return name in self.flags
 
 
-def test_feature_flag_enabled(monkeypatch) -> None:
+def test_feature_flag_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[int] = []
     monkeypatch.setattr(feature_flags, "UnleashClient", DummyClient)
     monkeypatch.setattr(feature_flags, "record_task_completion", lambda x: calls.append(x))
@@ -26,7 +25,7 @@ def test_feature_flag_enabled(monkeypatch) -> None:
     assert calls == [139]
 
 
-def test_feature_flags_missing(monkeypatch) -> None:
+def test_feature_flags_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(feature_flags, "UnleashClient", None)
     with pytest.raises(RuntimeError):
         feature_flags.FeatureFlags("u", "k")

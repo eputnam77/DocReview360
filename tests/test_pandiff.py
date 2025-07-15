@@ -1,11 +1,12 @@
-import pytest
+from typing import cast
 
+import pytest
 from docreview360 import pandiff
 
 
 def test_compute_diff_validation() -> None:
     with pytest.raises(ValueError):
-        pandiff.compute_diff(1, "text")
+        pandiff.compute_diff(cast(str, 1), "text")
 
 
 def test_change_bars() -> None:
