@@ -1,10 +1,11 @@
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
+
 from docreview360 import api as api_mod
 from docreview360 import config as conf_mod
 from docreview360.config import Config
-from fastapi.testclient import TestClient
 
 
 def test_get_and_update_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
