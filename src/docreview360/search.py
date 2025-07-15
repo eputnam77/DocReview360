@@ -277,10 +277,10 @@ def search(
     return results
 
 
-def ranked_search(query: str) -> List[dict[str, Any]]:
+def ranked_search(query: str, docs: list[DocumentModel] | None = None) -> List[dict[str, Any]]:
     """Return search results with simple ranking and preview snippets."""
     terms = _normalize(query).split()
-    base = search(query)
+    base = docs if docs is not None else search(query)
 
     def score(doc: DocumentModel) -> int:
         return sum(doc.content.lower().count(t) for t in terms)
