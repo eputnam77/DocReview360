@@ -99,12 +99,18 @@
 - **Concurrent editing / CRDT** support is missing entirely.
 - **Real-time log viewer** from PRD §3.5 not found in codebase.
 - **NeMo‑Guardrails middleware** for PII/style checks has no implementation.
+- **AI chat bot** for project queries not implemented.
+- **In-app documentation page** missing
 ## Dev Gate Results
 - `ruff` passed with no issues
 - `black --check` confirmed consistent formatting
-- `mypy --strict` succeeded
+- `mypy --strict` reported 96 errors
 - `bandit` found 22 low-severity issues
-- `pytest` passed with 91% coverage
+`semgrep` could not run (blocked network access)
+- `pytest` failed during collection (288 errors)
+`pytest -m property` failed (288 errors)
+`pytest -m e2e` failed (288 errors)
+`mutmut run` aborted during mutant generation
 ## 📋 Recommended Next Steps
 1. Finalize editor integrations (Toast UI, ONLYOFFICE, XML) and hook up numbering menu.
 2. Harden security with Keycloak MFA and scheduled encrypted backups.
@@ -116,10 +122,16 @@ Tasks 70‑155 are now all implemented through their corresponding modules. Exam
 
 **Quality summary**
 
-1. ✅ Test suite passed with coverage 91%.
+1. ❌ Test suite failed; coverage not available.
 2. ✅ Code follows ADR folder layout.
 3. ✅ Docstrings explain non‑obvious logic.
 4. ✅ Input validation and error handling implemented where appropriate.
 5. ⚠️ Features only partially verified against TASKS list.
 
 ready-for:builder
+
+## Network access
+Some requests were blocked due to network access restrictions. Consider granting access in environment settings.
+- `semgrep.dev`: via `semgrep`
+- `metrics.semgrep.dev`: via `semgrep`
+
