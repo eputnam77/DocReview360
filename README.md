@@ -19,9 +19,11 @@ DocReview360 helps you organise documents, run simple approval workflows and kee
    uvicorn docreview360.api:app --reload
    ```
 4. **Start the React frontend** (requires Node 18+)
+   Change into the `frontend` directory before installing dependencies and running the development server:
    ```bash
-   npm install --legacy-peer-deps --prefix frontend  # install dependencies
-   npm run dev --prefix frontend
+   cd frontend
+   npm install --legacy-peer-deps  # install dependencies
+   npm run dev
    ```
    If you see `Cannot find module 'critters'`, run the install command again to rebuild `node_modules`.
 5. **Open <http://localhost:3000/>** and sign in with `admin/admin`.
