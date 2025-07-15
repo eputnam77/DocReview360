@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -14,6 +14,7 @@ class WorkflowModel(BaseModel):
     phase: str
     phases: List[str]
     reviewers: List[str] = []
+    document: Optional[str] = None
 
 
 workflows: Dict[str, WorkflowModel] = {}
@@ -64,4 +65,19 @@ def advance_workflow(wf_id: str) -> WorkflowModel:
         workflow.phase = workflow.phases[idx + 1]
     for cb in bot_callbacks:
         cb(workflow)
+    return workflow
+
+
+def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> WorkflowModel:
+    """Attach a document to the workflow and mark it as started."""
+
+    from .documents import import_document
+
+    workflow = workflows[wf_id]
+    filename = title if title.endswith((".md", ".doc", ".docx")) else f"{title}.md"
+    content = data or b"-"
+    document = import_document(filename, content, project=workflow.project)
+    workflow.document = document.id
+    if workflow.phases:
+        workflow.phase = workflow.phases[0]
     return workflow
