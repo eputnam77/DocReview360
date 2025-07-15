@@ -49,6 +49,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Template engine**: Markdown, TipTap JSON, DOCX, XML.
 * **Type conversion wizard** (e.g., AC → Policy) preserving numbering & metadata.
 * **Template & Doc-Type Manager UI** for uploading golden Markdown templates, editing in Monaco, and generating derivatives.
+* **Multi-format templates**: administrators may create templates in JSON, HTML, or DOCX and input the raw text or upload a file through the UI.
 * **Per-document linter & numbering toggles** with one-click migration to the latest template version.
 * **Project form includes Phase & Workflow fields** with defaults mapped from document type.
 
