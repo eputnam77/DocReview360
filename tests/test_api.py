@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
+from docreview360.workflows import create_workflow
 
 
 def test_list_projects() -> None:
@@ -41,3 +42,12 @@ def test_metrics_and_audit_endpoints() -> None:
     resp4 = client.get("/logs")
     assert resp3.status_code == 200
     assert resp3.json() == resp4.json()
+
+
+def test_start_workflow_endpoint() -> None:
+    client = TestClient(app)
+    wf = create_workflow("p194", ["draft", "review"])
+    resp = client.post(f"/workflows/{wf.id}/start", data={"title": "t"})
+    assert resp.status_code == 200
+    assert resp.json()["id"] == wf.id
+    assert resp.json()["document"]
