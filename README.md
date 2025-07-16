@@ -6,6 +6,8 @@ DocReview360 helps you organise documents, run simple approval workflows and kee
 
 1. **Install the package and web server**
    ```bash
+   python -m venv .venv
+   source .venv/bin/activate    # On Windows use .venv\Scripts\activate
    pip install -e .
    pip install uvicorn
    ```
