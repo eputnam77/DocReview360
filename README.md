@@ -4,32 +4,57 @@ DocReview360 helps you organise documents, run simple approval workflows and kee
 
 ## Quick start
 
-1. **Install the package and web server**
+1. **Create and activate a virtual environment**
+
    ```bash
    python -m venv .venv
-   source .venv/bin/activate    # On Windows use .venv\Scripts\activate
-   pip install -e .
-   pip install uvicorn
+   # On Unix/macOS:
+   source .venv/bin/activate
+   # On Windows:
+   .venv\Scripts\activate
    ```
-2. **Create a configuration file**
+
+2. **Install the backend and web server**
+
+   ```bash
+   pip install -e .           # Install the package in editable mode
+   pip install uvicorn        # Web server for local development
+   ```
+
+3. **Configure the application**
+
+   Run the CLI wizard to set up your config:
+
    ```bash
    docreview360 init
    ```
-   The wizard asks for your preferred database, editor and other options then stores them in `docreview360.yml`.
-3. **Start the backend API**
+
+   * Answer the prompts about your preferred database, editor, and other options.
+   * The config is saved as `docreview360.yml` in your current directory.
+
+4. **Start the backend API server**
+
    ```bash
    uvicorn docreview360.api:app --reload
    ```
-4. **Start the React frontend** (requires Node 18+)
-   Change into the `frontend` directory before installing dependencies and running the development server:
+
+   This launches the FastAPI backend on port 8000.
+
+5. **Set up and run the React frontend (Node.js 18+ required)**
+
    ```bash
    cd frontend
-   npm install --legacy-peer-deps  # install dependencies
+   npm install --legacy-peer-deps
    npm run dev
    ```
-   If you see `Cannot find module 'critters'`, run the install command again to rebuild `node_modules`.
-5. **Open <http://localhost:3000/>** and sign in with `admin/admin`.
-   The projects page loads at port 3000 and fetches data from the API on port 8000.
+
+   If you see `Cannot find module 'critters'`, just run `npm install --legacy-peer-deps` again.
+
+6. **Open the app**
+
+   Go to [http://localhost:3000/](http://localhost:3000/) in your browser.
+   Sign in with `admin/admin` (default login).
+   The frontend runs on port 3000 and communicates with the API at port 8000.
 
 ### GitHub Codespaces
 
