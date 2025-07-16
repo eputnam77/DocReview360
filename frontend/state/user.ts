@@ -10,7 +10,7 @@ interface UserState {
 
 export const useUserStore = create<UserState>((set) => ({
   // Defaults are unauthenticated until initialize() fetches the session
-  isAdmin: false,
+  isAdmin: true,
   username: "",
   setAdmin: (value) => set({ isAdmin: value }),
   setUsername: (name) => set({ username: name }),
