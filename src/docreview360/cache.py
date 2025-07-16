@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
+
+if TYPE_CHECKING:  # pragma: no cover - for static typing only
+    from redis import Redis
 
 try:
     import redis as _redis
@@ -12,7 +15,7 @@ except Exception:  # pragma: no cover - fallback when redis not installed
 
 _cache: Dict[str, Any] = {}
 _UNREACHABLE = object()
-_client: Any | None | object = None
+_client: "Redis[Any]" | None | object = None
 
 
 def _get_client() -> Any | None:
@@ -20,7 +23,7 @@ def _get_client() -> Any | None:
     if _client is None and _redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         try:
-            client = _redis.Redis.from_url(
+            client: "Redis[Any]" = _redis.Redis.from_url(
                 url,
                 socket_connect_timeout=0.1,
                 socket_timeout=0.1,
