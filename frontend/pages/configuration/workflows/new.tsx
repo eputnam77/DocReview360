@@ -133,7 +133,7 @@ export default function NewWorkflowPage() {
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Short summary of this workflow"
                 required
-                aria-required="true"
+                aria-required="false"
               />
               <div className="text-xs text-gray-500 mt-1">Describe what this workflow does.</div>
             </div>
@@ -177,11 +177,11 @@ export default function NewWorkflowPage() {
                   id="role"
                   value={role}
                   onChange={e => setRole(e.target.value)}
-                  placeholder="e.g., Reviewer"
+                  placeholder="e.g., Manager"
                   className="w-full"
                   required
                 />
-                <div className="text-xs text-gray-500 mt-1">Role assigned for this step (e.g., Approver, Reviewer).</div>
+                <div className="text-xs text-gray-500 mt-1">Role assigned for this step (e.g., Manager, Reviewer).</div>
               </div>
               <div>
                 <label htmlFor="user" className="block mb-1 text-sm font-medium">
