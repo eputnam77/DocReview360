@@ -1,6 +1,6 @@
-from docreview360.documents import import_document, documents
-from docreview360.search import search, search_index
 from docreview360.cache import clear_cache
+from docreview360.documents import documents, import_document
+from docreview360.search import search, search_index
 
 
 def test_search_caches_results() -> None:
@@ -30,6 +30,7 @@ def test_search_cache_handles_bytes() -> None:
     search("hello")
     key = "search-core-hello---"
     from json import dumps
+
     from docreview360.cache import cache_set
 
     cache_set(key, dumps([{"id": doc.id, "content": "cached"}]).encode(), ttl=30)

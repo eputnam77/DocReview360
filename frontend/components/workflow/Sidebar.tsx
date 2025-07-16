@@ -33,11 +33,6 @@ const SECONDARY = [
     label: "Support",
     href: "/docs/",
   },
-  {
-    icon: <Inbox className="h-4 w-4" />,
-    label: "Logs",
-    href: "/logs",
-  },
 ];
 
 const CONFIG = [
@@ -70,6 +65,11 @@ const CONFIG = [
     icon: <Key className="h-4 w-4" />,
     label: "Permissions",
     href: "/configuration/permissions",
+  },
+  {
+    icon: <Inbox className="h-4 w-4" />,
+    label: "Logs",
+    href: "/logs",
   },
   {
     icon: <BookA className="h-4 w-4" />,

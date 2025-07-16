@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+import json
 import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
-import json
-
-from .cache import cache_get, cache_set
 
 from pydantic import BaseModel
 
 from . import fts
+from .cache import cache_get, cache_set
 from .documents import DocumentModel, documents
 
 
