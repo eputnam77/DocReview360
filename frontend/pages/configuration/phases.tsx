@@ -18,7 +18,7 @@ interface Phase {
 }
 
 const DEMO_PHASES: Phase[] = [
-  { id: "phase-proposed", name: "Proposed" },
+  { id: "phase-faa", name: "FAA Review" },
   { id: "phase-comment", name: "Public Comment" },
   { id: "phase-final", name: "Final Issuance" },
 ];
