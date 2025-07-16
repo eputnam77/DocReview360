@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,21 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
+const SUPPORTED_FORMATS = [
+  { value: "DOCX", label: "Word DOCX (.docx)" },
+  { value: "HTML", label: "HTML (.html)" },
+  { value: "JSON", label: "JSON (.json)" },
+  { value: "XML", label: "XML (.xml)" },
+  { value: "TXT", label: "Plain Text / Markdown (.txt, .md)" },
+];
+
+// Demo fallback
 const DEMO_TEMPLATE = {
   id: "tpl1",
   name: "AC Template",
   docType: "Advisory Circular",
-  format: "JSON",
-  content: "{}",
+  format: "HTML",
+  content: "<h1>Title Here</h1><p>Content goes here...</p>",
 };
 
 export default function EditTemplatePage() {
@@ -25,10 +34,13 @@ export default function EditTemplatePage() {
 
   const [name, setName] = useState("");
   const [docType, setDocType] = useState("");
-  const [format, setFormat] = useState("JSON");
+  const [format, setFormat] = useState(SUPPORTED_FORMATS[0].value);
   const [content, setContent] = useState("");
   const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load doc types and template data
   useEffect(() => {
     fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
@@ -36,32 +48,86 @@ export default function EditTemplatePage() {
       .catch(() => setDocTypes([]));
 
     if (id) {
-      // replace with real fetch
+      // Replace with real API call: `/api/templates/${id}`
+      // For demo, populate with static data
       setName(DEMO_TEMPLATE.name);
       setDocType(DEMO_TEMPLATE.docType);
-      setFormat((DEMO_TEMPLATE as any).format);
-      setContent((DEMO_TEMPLATE as any).content);
+      setFormat(DEMO_TEMPLATE.format || SUPPORTED_FORMATS[0].value);
+      setContent(DEMO_TEMPLATE.content || "");
     }
   }, [id]);
 
-  const handleSave = () => {
-    const payload = { id, name, docType, format, content };
-    fetch(`/api/templates/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
+  // File handling for editable text-based templates
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
+    setFile(selected || null);
 
-    alert("Template updated:\n" + JSON.stringify(payload, null, 2));
+    // Preview text for supported text formats
+    if (
+      selected &&
+      ["txt", "md", "json", "xml", "html"].includes(
+        selected.name.split(".").pop()?.toLowerCase() || ""
+      )
+    ) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setContent(event.target?.result as string);
+      };
+      reader.readAsText(selected);
+    } else if (selected) {
+      setContent("");
+    }
+  };
+
+  const handleSave = async () => {
+    let formData: FormData | undefined;
+    let payload: any = { id, name, docType, format };
+
+    if (file) {
+      formData = new FormData();
+      formData.append("file", file);
+      formData.append("id", String(id));
+      formData.append("name", name);
+      formData.append("docType", docType);
+      formData.append("format", format);
+      if (content && ["TXT", "HTML", "JSON", "XML"].includes(format)) {
+        formData.append("content", content);
+      }
+    } else {
+      payload.content = content;
+    }
+
+    if (formData) {
+      await fetch(`/api/templates/${id}`, {
+        method: "PUT",
+        body: formData,
+      });
+    } else {
+      await fetch(`/api/templates/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    alert(
+      "Template updated:\n" +
+        JSON.stringify({ id, name, docType, format, file: file?.name, content: content ? "(see content)" : undefined }, null, 2)
+    );
+    // Optionally, redirect back to index
+    // router.push("/configuration/templates");
   };
 
   return (
     <div className="p-8 space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Edit Template</CardTitle>
+          <CardTitle className="text-2xl font-bold">Edit Document Template</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="text-gray-600 text-sm mb-2">
+            Update the template for any supported editor (Word, HTML, etc.). You may upload a new file or edit the template content.
+          </div>
           <div className="grid md:grid-cols-2 gap-4">
             <Input
               placeholder="Template Name"
@@ -86,18 +152,44 @@ export default function EditTemplatePage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="JSON">JSON</SelectItem>
-                <SelectItem value="HTML">HTML</SelectItem>
-                <SelectItem value="DOCX">DOCX</SelectItem>
+                {SUPPORTED_FORMATS.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    {f.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-          <textarea
-            className="w-full h-40 border rounded p-2"
-            placeholder="Template content"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
+
+          {/* Upload or paste */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium mb-1">Upload New Template File (optional)</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".docx,.html,.json,.xml,.txt,.md"
+              onChange={handleFileChange}
+            />
+            <div className="text-xs text-gray-500">
+              Upload a file to update this template (DOCX, HTML, JSON, XML, TXT, MD). For Word, upload .docx. For TipTap/Toast/Codex, use HTML or JSON.
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Edit Template Content
+            </label>
+            <textarea
+              className="w-full h-40 border rounded p-2"
+              placeholder="Paste or edit template content here. For Word, leave blank and upload .docx file."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              {format === "DOCX"
+                ? "For Word templates, upload a .docx file. Text content is ignored."
+                : "For HTML/JSON/XML/TXT, you can paste or edit the template here, or upload a file instead."}
+            </div>
+          </div>
           <Button
             size="lg"
             onClick={handleSave}
