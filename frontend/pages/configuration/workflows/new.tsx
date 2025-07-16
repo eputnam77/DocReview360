@@ -1,17 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,17 +13,12 @@ export default function NewWorkflowPage() {
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<any[]>([]);
   const [role, setRole] = useState("");
-  const [docTypes, setDocTypes] = useState<string[]>([]);
-  const [docType, setDocType] = useState<string | undefined>(undefined);
+  // Demo document types for now
+  const [docTypes] = useState(["Advisory Circular", "Policy Statement"]);
+  const [docTypesSelected, setDocTypesSelected] = useState<string[]>([]);
   const [user, setUser] = useState("");
   const [required, setRequired] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/document-types")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => setDocTypes(data.map((d) => d.name)))
-      .catch(() => setDocTypes([]));
-  }, []);
 
   const addStep = () => {
     if (!role.trim()) return;
@@ -62,7 +50,7 @@ export default function NewWorkflowPage() {
       body: JSON.stringify(payload),
     }).catch(() => {});
 
-    if (docType) {
+    for (const docType of docTypesSelected) {
       try {
         const res = await fetch(`/api/document-types/${docType}`);
         if (res.ok) {
@@ -82,7 +70,7 @@ export default function NewWorkflowPage() {
 
     alert(
       "Workflow saved:\n" +
-        JSON.stringify({ name, description, steps, docType }, null, 2)
+        JSON.stringify({ name, description, steps, docTypesSelected }, null, 2)
     );
   };
 
@@ -98,7 +86,7 @@ export default function NewWorkflowPage() {
           <div className="mb-4 p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-sm">
             <ol className="list-decimal pl-5 space-y-1">
               <li>Enter a workflow name and description.</li>
-              <li>Select a document type to attach (optional).</li>
+              <li>Select one or more document types to attach (optional).</li>
               <li>
                 Add one or more workflow steps below. Each step defines a user role, an optional user, and whether the step is required.
               </li>
@@ -137,25 +125,29 @@ export default function NewWorkflowPage() {
             </div>
           </div>
 
-          {/* Attach Document Type */}
+          {/* Attach Multiple Document Types */}
           <div className="mt-4 md:w-1/2">
-            <label className="block mb-1 font-medium" htmlFor="attach-doc-type">
-              Attach Document Type (optional)
+            <label className="block mb-1 font-medium" htmlFor="attach-doc-types">
+              Attach Document Types (optional)
             </label>
-            <Select value={docType} onValueChange={setDocType}>
-              <SelectTrigger id="attach-doc-type">
-                <SelectValue placeholder="Choose a document type" />
-              </SelectTrigger>
-              <SelectContent>
-                {docTypes.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              id="attach-doc-types"
+              multiple
+              value={docTypesSelected}
+              onChange={e => {
+                const selected = Array.from(e.target.selectedOptions, opt => opt.value);
+                setDocTypesSelected(selected);
+              }}
+              className="w-full rounded border px-2 py-2 text-base"
+            >
+              {docTypes.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
             <div className="text-xs text-gray-500 mt-1">
-              Link this workflow to a document type, if applicable.
+              Hold Ctrl (Windows) or Command (Mac) to select multiple document types.
             </div>
           </div>
 
