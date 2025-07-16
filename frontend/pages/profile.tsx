@@ -20,8 +20,8 @@ interface Profile {
   jobTitle: string;
   department: string;
   timeZone: string;
-  dashboards: string[];
-  permissions: string[];
+  dashboards?: string[];
+  permissions?: string[];
   notificationEmail: boolean;
   notificationSMS: boolean;
   twoFA: boolean;
@@ -74,9 +74,15 @@ export default function ProfilePage() {
     fetch("/api/profile")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) setProfile(data);
+        if (data) setProfile({
+          ...profile,
+          ...data,
+          dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
+          permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
+        });
       })
       .catch(() => {});
+    // eslint-disable-next-line
   }, []);
 
   const updateField = (key: keyof Profile, value: any) =>
@@ -96,6 +102,10 @@ export default function ProfilePage() {
     setPassword("");
     setPasswordConfirm("");
   };
+
+  // Safeguard for undefined permissions/dashboards
+  const userDashboards = Array.isArray(profile.dashboards) ? profile.dashboards : [];
+  const userPermissions = Array.isArray(profile.permissions) ? profile.permissions : [];
 
   return (
     <div className="p-8 space-y-8 max-w-3xl">
@@ -201,9 +211,9 @@ export default function ProfilePage() {
             Your current default dashboard:
           </div>
           <div className="bg-gray-50 border rounded px-4 py-2 mb-2 font-semibold">
-            {profile.dashboards.length === 0
+            {userDashboards.length === 0
               ? <span className="text-gray-400">No dashboard set</span>
-              : DASHBOARD_CHOICES.filter(d => profile.dashboards.includes(d.id))
+              : DASHBOARD_CHOICES.filter(d => userDashboards.includes(d.id))
                   .map(d => d.label).join(", ")
             }
           </div>
@@ -222,9 +232,9 @@ export default function ProfilePage() {
             Your current system role(s):
           </div>
           <div className="bg-gray-50 border rounded px-4 py-2 mb-2 font-semibold">
-            {profile.permissions.length === 0
+            {userPermissions.length === 0
               ? <span className="text-gray-400">No role assigned</span>
-              : PERMISSION_CHOICES.filter(p => profile.permissions.includes(p.id))
+              : PERMISSION_CHOICES.filter(p => userPermissions.includes(p.id))
                   .map(p => p.label).join(", ")
             }
           </div>
