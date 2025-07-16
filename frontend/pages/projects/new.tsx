@@ -18,11 +18,11 @@ const DOCUMENT_TYPES = [
   "Release Notes",
 ];
 
-const PHASES = ["Proposed", "Public Comment", "Final Issuance"];
+const PHASES = ["FAA Review", "Public Comment", "Final Issuance"];
 
 const WORKFLOWS = [
-  "Advisory Circular Standard Review",
-  "Employee Onboarding",
+  "FAA Review",
+  "Public Comment",
 ];
 
 const DEFAULT_WORKFLOW_MAP: Record<string, Record<string, string>> = {
