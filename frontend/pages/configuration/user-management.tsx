@@ -11,24 +11,35 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash } from "lucide-react";
 
+// --- System role choices, update as needed ---
+const ROLE_CHOICES = [
+  { id: "admin", label: "Administrator" },
+  { id: "pm", label: "Program/Project Manager" },
+  { id: "user", label: "User (Contributor)" },
+  { id: "reviewer", label: "Reviewer" },
+  { id: "editor", label: "Editor" },
+  { id: "viewer", label: "Viewer (Read-only)" },
+];
+
 interface User {
   id: string;
   username: string;
-  role?: string;
+  roles: string[]; // Now supports multiple roles
 }
 
+// --- Demo users ---
 const DEMO_USERS: User[] = [
-  { id: "u1", username: "admin", role: "Administrator" },
-  { id: "u2", username: "jane", role: "Editor" },
+  { id: "u1", username: "admin", roles: ["admin"] },
+  { id: "u2", username: "jane", roles: ["editor"] },
 ];
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [newName, setNewName] = useState("");
-  const [newRole, setNewRole] = useState("");
+  const [newRoles, setNewRoles] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editRole, setEditRole] = useState("");
+  const [editRoles, setEditRoles] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/users")
@@ -39,7 +50,11 @@ export default function UserManagementPage() {
             ? data.map((u) => ({
                 id: u.id || u.username,
                 username: u.username,
-                role: u.role,
+                roles: Array.isArray(u.roles)
+                  ? u.roles
+                  : typeof u.role === "string"
+                  ? [u.role]
+                  : [],
               }))
             : DEMO_USERS,
         )
@@ -54,11 +69,11 @@ export default function UserManagementPage() {
       {
         id: "u-" + Date.now().toString(),
         username: newName.trim(),
-        role: newRole.trim() || undefined,
+        roles: newRoles.length ? newRoles : [],
       },
     ]);
     setNewName("");
-    setNewRole("");
+    setNewRoles([]);
   };
 
   const removeUser = (id: string) =>
@@ -67,7 +82,7 @@ export default function UserManagementPage() {
   const startEdit = (u: User) => {
     setEditingId(u.id);
     setEditName(u.username);
-    setEditRole(u.role || "");
+    setEditRoles(u.roles || []);
   };
 
   const saveEdit = (id: string) => {
@@ -75,24 +90,28 @@ export default function UserManagementPage() {
     setUsers(
       users.map((u) =>
         u.id === id
-          ? { ...u, username: editName.trim(), role: editRole.trim() || undefined }
+          ? { ...u, username: editName.trim(), roles: editRoles }
           : u,
       ),
     );
     setEditingId(null);
     setEditName("");
-    setEditRole("");
+    setEditRoles([]);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
-    setEditRole("");
+    setEditRoles([]);
   };
 
+  // --- Render ---
   return (
     <div className="p-8 space-y-6">
-      <h1 className="text-2xl font-bold">User Management</h1>
+      <h1 className="text-2xl font-bold mb-2">User Management</h1>
+      <div className="text-gray-600 text-sm mb-4">
+        Add users and assign one or more roles. Each role determines the user's access and permissions within the system.
+      </div>
       <form
         className="flex flex-wrap gap-2 items-end"
         onSubmit={(e) => {
@@ -106,12 +125,24 @@ export default function UserManagementPage() {
           onChange={(e) => setNewName(e.target.value)}
           className="max-w-xs"
         />
-        <Input
-          placeholder="Role"
-          value={newRole}
-          onChange={(e) => setNewRole(e.target.value)}
-          className="max-w-xs"
-        />
+        <div>
+          <label className="block text-xs font-semibold mb-1">Role(s)</label>
+          <select
+            multiple
+            value={newRoles}
+            onChange={(e) => {
+              const options = Array.from(e.target.selectedOptions, o => o.value);
+              setNewRoles(options);
+            }}
+            className="border rounded p-1 min-w-[180px] h-[38px]"
+          >
+            {ROLE_CHOICES.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <Button type="submit" size="sm">
           Add
         </Button>
@@ -120,7 +151,7 @@ export default function UserManagementPage() {
         <TableHeader>
           <TableRow>
             <TableHead>Username</TableHead>
-            <TableHead>Role</TableHead>
+            <TableHead>Roles</TableHead>
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
           </TableRow>
@@ -139,15 +170,32 @@ export default function UserManagementPage() {
                   u.username
                 )}
               </TableCell>
-              <TableCell className="min-w-[150px]">
+              <TableCell className="min-w-[200px]">
                 {editingId === u.id ? (
-                  <Input
-                    value={editRole}
-                    onChange={(e) => setEditRole(e.target.value)}
-                    className="h-8"
-                  />
+                  <select
+                    multiple
+                    value={editRoles}
+                    onChange={(e) => {
+                      const options = Array.from(e.target.selectedOptions, o => o.value);
+                      setEditRoles(options);
+                    }}
+                    className="border rounded p-1 min-w-[180px] h-[38px]"
+                  >
+                    {ROLE_CHOICES.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
-                  u.role || <span className="text-gray-400">—</span>
+                  u.roles && u.roles.length
+                    ? u.roles
+                        .map(
+                          (rid) =>
+                            ROLE_CHOICES.find((r) => r.id === rid)?.label || rid,
+                        )
+                        .join(", ")
+                    : <span className="text-gray-400">—</span>
                 )}
               </TableCell>
               <TableCell className="w-28">
@@ -192,6 +240,10 @@ export default function UserManagementPage() {
           )}
         </TableBody>
       </Table>
+      <div className="mt-6 text-xs text-gray-500 max-w-2xl">
+        <strong>Tip:</strong> Each user can have one or more roles, which control their access throughout the system.
+        Assign roles carefully. Use the Permissions page to define what each role can do.
+      </div>
     </div>
   );
 }
