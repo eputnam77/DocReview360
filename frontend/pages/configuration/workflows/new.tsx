@@ -15,7 +15,6 @@ import {
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-
 export default function NewWorkflowPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -94,25 +93,60 @@ export default function NewWorkflowPage() {
           <CardTitle className="text-2xl font-bold">Create New Workflow</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-4">
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Workflow Name"
-              className="font-bold"
-              required
-            />
-            <Input
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Description"
-              required
-            />
+
+          {/* On-screen instructions */}
+          <div className="mb-4 p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-sm">
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>Enter a workflow name and description.</li>
+              <li>Select a document type to attach (optional).</li>
+              <li>
+                Add one or more workflow steps below. Each step defines a user role, an optional user, and whether the step is required.
+              </li>
+              <li>Arrange steps in the order they should occur. When finished, click "Save Workflow".</li>
+            </ol>
           </div>
+
+          {/* Workflow name & description */}
           <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1 font-medium" htmlFor="workflow-name">
+                Workflow Name <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="workflow-name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="e.g., Policy Approval"
+                className="font-bold"
+                required
+                aria-required="true"
+              />
+              <div className="text-xs text-gray-500 mt-1">Give your workflow a clear, descriptive name.</div>
+            </div>
+            <div>
+              <label className="block mb-1 font-medium" htmlFor="workflow-desc">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="workflow-desc"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Short summary of this workflow"
+                required
+                aria-required="true"
+              />
+              <div className="text-xs text-gray-500 mt-1">Describe what this workflow does.</div>
+            </div>
+          </div>
+
+          {/* Attach Document Type */}
+          <div className="mt-4 md:w-1/2">
+            <label className="block mb-1 font-medium" htmlFor="attach-doc-type">
+              Attach Document Type (optional)
+            </label>
             <Select value={docType} onValueChange={setDocType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Attach Document Type (optional)" />
+              <SelectTrigger id="attach-doc-type">
+                <SelectValue placeholder="Choose a document type" />
               </SelectTrigger>
               <SelectContent>
                 {docTypes.map((t) => (
@@ -122,39 +156,71 @@ export default function NewWorkflowPage() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="text-xs text-gray-500 mt-1">
+              Link this workflow to a document type, if applicable.
+            </div>
           </div>
 
           {/* Add Step Form */}
-          <form
-            className="flex flex-wrap gap-2 items-end"
-            onSubmit={e => { e.preventDefault(); addStep(); }}
-          >
-            <Input
-              value={role}
-              onChange={e => setRole(e.target.value)}
-              placeholder="User role"
-              className="w-48"
-            />
-            <Input
-              placeholder="User or placeholder (optional)"
-              value={user}
-              onChange={e => setUser(e.target.value)}
-              className="w-40"
-            />
-            <label className="inline-flex items-center gap-1 ml-2 text-xs">
-              <input
-                type="checkbox"
-                checked={required}
-                onChange={e => setRequired(e.target.checked)}
-                className="mr-1"
-              />
-              Required
-            </label>
-            <Button type="submit" size="sm" className="ml-2" variant="outline">
-              <PlusCircle className="w-4 h-4 mr-1" />
-              Add Step
-            </Button>
-          </form>
+          <div className="mt-8">
+            <div className="font-semibold mb-2">Add Workflow Step</div>
+            <form
+              className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end"
+              onSubmit={e => { e.preventDefault(); addStep(); }}
+              aria-label="Add workflow step"
+            >
+              <div>
+                <label htmlFor="role" className="block mb-1 text-sm font-medium">
+                  User Role <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="role"
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                  placeholder="e.g., Reviewer"
+                  className="w-full"
+                  required
+                />
+                <div className="text-xs text-gray-500 mt-1">Role assigned for this step (e.g., Approver, Reviewer).</div>
+              </div>
+              <div>
+                <label htmlFor="user" className="block mb-1 text-sm font-medium">
+                  User <span className="text-gray-400">(optional)</span>
+                </label>
+                <Input
+                  id="user"
+                  placeholder="Assign user or leave blank"
+                  value={user}
+                  onChange={e => setUser(e.target.value)}
+                  className="w-full"
+                />
+                <div className="text-xs text-gray-500 mt-1">Assign a specific user, or leave blank for any user in this role.</div>
+              </div>
+              <div>
+                <label htmlFor="required" className="block mb-1 text-sm font-medium">
+                  Required?
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  <input
+                    id="required"
+                    type="checkbox"
+                    checked={required}
+                    onChange={e => setRequired(e.target.checked)}
+                    className="mr-1"
+                  />
+                  <span className="text-sm">This step is required</span>
+                </label>
+                <div className="text-xs text-gray-500 mt-1">Uncheck if this step is optional in the workflow.</div>
+              </div>
+              <div className="flex items-end">
+                <Button type="submit" size="sm" className="w-full" variant="outline">
+                  <PlusCircle className="w-4 h-4 mr-1" />
+                  Add Step
+                </Button>
+              </div>
+            </form>
+          </div>
+
           {/* Steps Table */}
           <Table>
             <TableHeader>
