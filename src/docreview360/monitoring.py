@@ -8,13 +8,17 @@ that tests do not require any external services.
 from __future__ import annotations
 
 import os
-from typing import Dict
+from types import ModuleType
+from typing import Dict, Optional, cast
+
+from prometheus_client import Counter, start_http_server
 
 try:
-    import sentry_sdk
+    import sentry_sdk as _sentry_sdk
 except Exception:  # pragma: no cover - optional dependency missing
-    sentry_sdk = None
-from prometheus_client import Counter, start_http_server
+    _sentry_sdk = None  # type: ignore[assignment]
+
+sentry_sdk: Optional[ModuleType] = cast(Optional[ModuleType], _sentry_sdk)
 
 REQUEST_COUNTER = Counter(
     "docreview360_requests_total", "Number of HTTP requests processed by DocReview360"
