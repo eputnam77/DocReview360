@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "@/components/ui/card";
@@ -14,10 +14,26 @@ export default function NewWorkflowPage() {
   const [steps, setSteps] = useState<any[]>([]);
   const [role, setRole] = useState("");
   // Demo document types for now
-  const [docTypes] = useState(["Advisory Circular", "Policy Statement"]);
+  const [docTypes, setDocTypes] = useState<string[]>([
+    "Advisory Circular",
+    "Policy Statement",
+  ]);
   const [docTypesSelected, setDocTypesSelected] = useState<string[]>([]);
   const [user, setUser] = useState("");
   const [required, setRequired] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/document-types")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => {
+        if (Array.isArray(data) && data.length) {
+          setDocTypes(data.map((d) => (typeof d === "string" ? d : d.name)));
+        }
+      })
+      .catch(() => {
+        // keep demo types on error
+      });
+  }, []);
 
 
   const addStep = () => {
