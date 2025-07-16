@@ -20,16 +20,16 @@ interface Workflow {
 
 const DEMO_WORKFLOWS: Workflow[] = [
   {
-    id: "ac-std",
-    name: "Advisory Circular Standard Review",
-    description: "Standard FAA AC review including all key stakeholders.",
+    id: "faa-review",
+    name: "FAA Review",
+    description: "Routing workflow for FAA review.",
     usage: 12,
     updated: "2025-07-06",
   },
   {
-    id: "hr-onboarding",
-    name: "Employee Onboarding",
-    description: "Onboarding workflow for new hires.",
+    id: "pub-comment",
+    name: "Public Comment",
+    description: "Routing workflow for Public Comment.",
     usage: 7,
     updated: "2025-06-20",
   },
