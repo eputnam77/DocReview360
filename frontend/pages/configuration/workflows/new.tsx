@@ -116,7 +116,7 @@ export default function NewWorkflowPage() {
                 id="workflow-name"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g., Policy Approval"
+                placeholder="e.g., Public Comment"
                 className="font-bold"
                 required
                 aria-required="true"
@@ -125,15 +125,13 @@ export default function NewWorkflowPage() {
             </div>
             <div>
               <label className="block mb-1 font-medium" htmlFor="workflow-desc">
-                Description <span className="text-red-500">*</span>
+                Description (optional)
               </label>
               <Input
                 id="workflow-desc"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Short summary of this workflow"
-                required
-                aria-required="false"
               />
               <div className="text-xs text-gray-500 mt-1">Describe what this workflow does.</div>
             </div>
