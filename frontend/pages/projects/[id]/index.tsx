@@ -252,6 +252,13 @@ export default function ProjectDetailsPage() {
     id: string;
     text: string;
   } | null>(null);
+  const [dispoEditor, setDispoEditor] = useState<{
+    id: string;
+    comment: string;
+    change: string;
+    disposition: string;
+    reviewer: string;
+  } | null>(null);
   const [dispoComments, setDispoComments] = useState<DispoComment[]>([]);
   const [showAddComment, setShowAddComment] = useState(false);
   const [newComment, setNewComment] = useState<Omit<DispoComment, "id">>({
@@ -497,6 +504,46 @@ export default function ProjectDetailsPage() {
       change: "",
       disposition: "",
     });
+  };
+
+  const handleOpenDispoEditor = (comment: DispoComment) => {
+    setDispoEditor({
+      id: comment.id,
+      comment: comment.comment,
+      change: comment.change,
+      disposition: comment.disposition,
+      reviewer: comment.reviewer,
+    });
+  };
+
+  const handleSaveDispoComment = () => {
+    if (!dispoEditor) return;
+    setDispoComments(prev =>
+      prev.map(c =>
+        c.id === dispoEditor.id
+          ? {
+              ...c,
+              comment: dispoEditor.comment,
+              change: dispoEditor.change,
+              disposition: dispoEditor.disposition,
+            }
+          : c,
+      ),
+    );
+    setLogs(prev => [
+      ...prev,
+      {
+        timestamp: new Date().toISOString(),
+        action: `Updated disposition comment by ${dispoEditor.reviewer}`,
+      },
+    ]);
+    setDispoEditor(null);
+  };
+
+  const handleDeleteDispoComment = () => {
+    if (!dispoEditor) return;
+    handleRemoveComment(dispoEditor.id);
+    setDispoEditor(null);
   };
 
   // Reference Documents helpers
@@ -1005,6 +1052,14 @@ export default function ProjectDetailsPage() {
                     <Button
                       size="icon"
                       variant="ghost"
+                      title="Edit Comment"
+                      onClick={() => handleOpenDispoEditor(c)}
+                    >
+                      <FileEdit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
                       title="Remove Comment"
                       onClick={() => handleRemoveComment(c.id)}
                     >
@@ -1024,6 +1079,56 @@ export default function ProjectDetailsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {dispoEditor && (
+        <Dialog open onOpenChange={(open) => !open && setDispoEditor(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Comment</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <textarea
+                className="w-full border rounded p-2"
+                rows={3}
+                value={dispoEditor.comment}
+                onChange={(e) =>
+                  setDispoEditor({ ...dispoEditor, comment: e.target.value })
+                }
+              />
+              <textarea
+                className="w-full border rounded p-2"
+                rows={3}
+                value={dispoEditor.change}
+                onChange={(e) =>
+                  setDispoEditor({ ...dispoEditor, change: e.target.value })
+                }
+              />
+              <Input
+                placeholder="Disposition"
+                value={dispoEditor.disposition}
+                onChange={(e) =>
+                  setDispoEditor({
+                    ...dispoEditor,
+                    disposition: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteDispoComment}
+              >
+                Delete
+              </Button>
+              <Button type="button" onClick={handleSaveDispoComment}>
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* --- Audit History --- */}
       <Card>
