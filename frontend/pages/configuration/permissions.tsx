@@ -11,6 +11,33 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash } from "lucide-react";
 
+// --- Define roles and actions ---
+const ROLE_CHOICES = [
+  { id: "admin", label: "Administrator" },
+  { id: "pm", label: "Program/Project Manager" },
+  { id: "user", label: "User (Contributor)" },
+  { id: "reviewer", label: "Reviewer" },
+  { id: "editor", label: "Editor" },
+  { id: "viewer", label: "Viewer (Read-only)" },
+];
+
+const ACTION_CHOICES = [
+  { id: "create_project", label: "Create Project" },
+  { id: "delete_project", label: "Delete Project" },
+  { id: "manage_users", label: "Manage Users" },
+  { id: "assign_roles", label: "Assign Roles" },
+  { id: "add_document", label: "Add Document" },
+  { id: "edit_document", label: "Edit Document" },
+  { id: "delete_document", label: "Delete Document" },
+  { id: "view_document", label: "View Document" },
+  { id: "comment_document", label: "Comment on Document" },
+  { id: "review_document", label: "Review Document" },
+  { id: "approve_document", label: "Approve Document" },
+  { id: "reject_document", label: "Reject Document" },
+  { id: "manage_workflows", label: "Manage Workflows" },
+  { id: "view_audit_log", label: "View Audit Log" },
+];
+
 interface Permission {
   id: string;
   role: string;
@@ -18,9 +45,13 @@ interface Permission {
   allowed: boolean;
 }
 
+// --- Example permissions for initial view ---
 const DEMO_PERMISSIONS: Permission[] = [
   { id: "admin-delete_project", role: "admin", action: "delete_project", allowed: true },
   { id: "pm-delete_project", role: "pm", action: "delete_project", allowed: false },
+  { id: "user-view_document", role: "user", action: "view_document", allowed: true },
+  { id: "reviewer-approve_document", role: "reviewer", action: "approve_document", allowed: true },
+  { id: "viewer-edit_document", role: "viewer", action: "edit_document", allowed: false },
 ];
 
 export default function PermissionsPage() {
@@ -90,7 +121,10 @@ export default function PermissionsPage() {
 
   return (
     <div className="p-8 space-y-6">
-      <h1 className="text-2xl font-bold">Permissions</h1>
+      <h1 className="text-2xl font-bold mb-1">Permissions Management</h1>
+      <div className="text-gray-600 text-sm mb-4">
+        Define which roles are allowed to perform which actions in the system. For example, only administrators may delete projects, but all users may view documents.
+      </div>
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
@@ -98,19 +132,33 @@ export default function PermissionsPage() {
           addPermission();
         }}
       >
-        <Input
-          placeholder="Role"
-          value={newRole}
-          onChange={(e) => setNewRole(e.target.value)}
-          className="max-w-xs"
-        />
-        <Input
-          placeholder="Action"
-          value={newAction}
-          onChange={(e) => setNewAction(e.target.value)}
-          className="max-w-xs"
-        />
-        <label className="flex items-center gap-1 text-sm">
+        <div>
+          <label className="block text-xs font-semibold mb-1">Role</label>
+          <select
+            className="border rounded p-1"
+            value={newRole}
+            onChange={(e) => setNewRole(e.target.value)}
+          >
+            <option value="">Choose role…</option>
+            {ROLE_CHOICES.map((r) => (
+              <option key={r.id} value={r.id}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1">Action</label>
+          <select
+            className="border rounded p-1"
+            value={newAction}
+            onChange={(e) => setNewAction(e.target.value)}
+          >
+            <option value="">Choose action…</option>
+            {ACTION_CHOICES.map((a) => (
+              <option key={a.id} value={a.id}>{a.label}</option>
+            ))}
+          </select>
+        </div>
+        <label className="flex items-center gap-1 text-sm ml-2">
           <input
             type="checkbox"
             checked={newAllowed}
@@ -135,8 +183,12 @@ export default function PermissionsPage() {
         <TableBody>
           {perms.map((p) => (
             <TableRow key={p.id}>
-              <TableCell className="font-mono">{p.role}</TableCell>
-              <TableCell>{p.action}</TableCell>
+              <TableCell className="font-mono">
+                {ROLE_CHOICES.find(r => r.id === p.role)?.label || p.role}
+              </TableCell>
+              <TableCell>
+                {ACTION_CHOICES.find(a => a.id === p.action)?.label || p.action}
+              </TableCell>
               <TableCell className="text-center">
                 {editingId === p.id ? (
                   <input
@@ -192,6 +244,15 @@ export default function PermissionsPage() {
           )}
         </TableBody>
       </Table>
+      <div className="mt-6 text-xs text-gray-500 max-w-2xl">
+        <strong>Tip:</strong> Roles and actions above are examples and can be tailored to your organization. 
+        <ul className="list-disc pl-5 mt-1">
+          <li>Administrators manage all settings, users, and data.</li>
+          <li>Program/Project Managers handle project lifecycle and workflows.</li>
+          <li>Reviewers and editors participate in document reviews and edits.</li>
+          <li>General users and viewers have limited, controlled access.</li>
+        </ul>
+      </div>
     </div>
   );
 }
