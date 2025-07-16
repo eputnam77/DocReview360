@@ -541,9 +541,6 @@ export default function ProjectDetailsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600 text-sm mb-2">
-            Review the key attributes for this project. These details are read-only and provided for your reference.
-          </p>
           <div className="overflow-x-auto">
             <Table className="min-w-full text-sm">
               <TableHeader>
@@ -603,7 +600,7 @@ export default function ProjectDetailsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 text-sm mb-2">
-              The workflow steps below show which phase your document is currently in. Watch as your document moves from draft to published.
+              The workflow steps below show which phase your document is currently in.
             </p>
             <WorkflowSteps steps={workflow?.steps} />
             <p className="text-xs text-gray-500 mt-1">Current Phase: {workflow?.phase}</p>
@@ -638,9 +635,6 @@ export default function ProjectDetailsPage() {
               : "View Document"}
           </Link>
         </Button>
-        <div className="text-xs text-gray-500 mt-1">
-          Click above to edit or view the main document using your selected editor.
-        </div>
       </div>
 
       {/* --- Reference Documents --- */}
@@ -650,7 +644,7 @@ export default function ProjectDetailsPage() {
         </CardHeader>
         <CardContent>
           <p className="text-gray-600 text-sm mb-3">
-            Attach any supporting files or reference materials needed for this project, such as background documents, templates, or annotated drafts. These will be available to all reviewers and editors.
+            Attach any supporting files or reference materials needed for this project, such as background documents or annotated drafts.
           </p>
           <form
             className="space-y-2 mb-4"
@@ -665,9 +659,6 @@ export default function ProjectDetailsPage() {
               accept=".docx,.pdf,.txt"
               maxSizeMB={20}
             />
-            <div className="text-xs text-gray-500">
-              Accepted file types: PDF, Word, TXT. Maximum size: 20MB.
-            </div>
             <Button type="submit" size="sm" disabled={!newRefFile}>Add</Button>
           </form>
           <ul className="list-disc pl-5 space-y-1 text-sm">
@@ -719,9 +710,10 @@ export default function ProjectDetailsPage() {
         </CardHeader>
         <CardContent>
           <p className="text-gray-600 text-sm mb-3">
-            Approvals track which users are responsible for reviewing or approving this document. Add reviewers, monitor their status, and communicate directly from this section.
-            Click the send email icon to send the document to the reviewer. Use the checkboxes to send the document to multiple reviewers.
-            Click the checkmark to approve the document, the X to reject, the reset icon to remove your approval, or the trash can to remove the reviewer.
+            Manage who reviews or approves this document. 
+            Add reviewers, track their status, and send notifications with the email icon. 
+            Use checkboxes to select multiple reviewers. 
+            Click the checkmark to approve, X to reject, reset to remove approval, or trash to remove a reviewer.
           </p>
           {showAddReviewer && (
             <form
@@ -920,7 +912,7 @@ export default function ProjectDetailsPage() {
         </CardHeader>
         <CardContent>
           <p className="text-gray-600 text-sm mb-3">
-            Use this section to log detailed reviewer comments and how each was addressed. Record the page/paragraph reference, the comment or concern, the suggested change, and the final disposition.
+            Log detailed reviewer comments and how each was addressed.
           </p>
           {showAddComment && (
             <form
@@ -1039,9 +1031,6 @@ export default function ProjectDetailsPage() {
           <CardTitle className="text-lg font-semibold">Audit History</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600 text-sm mb-2">
-            This log records all major workflow actions, such as status changes and comment updates, providing a full trace of project activity.
-          </p>
           <ul className="list-disc pl-5 text-sm">
             {logs.map((l, idx) => (
               <li key={idx}>
