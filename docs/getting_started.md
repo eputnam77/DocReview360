@@ -2,60 +2,68 @@
 
 This short guide walks you through the first steps with DocReview360. It assumes Python and Git are already installed.
 
-## 1. Install DocReview360
+1. **Create and activate a virtual environment**
 
-```bash
-pip install -e .
-pip install uvicorn
-```
-This installs the package in editable mode so local changes are picked up immediately and provides the web server used during development.
+   ```bash
+   python -m venv .venv
+   # On Unix/macOS:
+   source .venv/bin/activate
+   # On Windows:
+   .venv\Scripts\activate
+   ```
 
-## 2. Configure the application
+2. **Install the backend and web server**
 
-Run the interactive CLI wizard to generate a configuration file:
-```bash
-docreview360 init
-```
-Answer the prompts about your preferred database, editor and other options. The resulting `docreview360.yml` sits in your working directory.
+   ```bash
+   pip install -e .           # Install the package in editable mode
+   pip install uvicorn        # Web server for local development
+   ```
 
-## 3. Start the development servers
+3. **Configure the application**
 
-First start the FastAPI backend:
-```bash
-uvicorn docreview360.api:app --reload
-```
-Then in a separate terminal set up and start the React UI (Node 18+).
-Change into the `frontend` directory before running the commands:
-```bash
-cd frontend
-npm install --legacy-peer-deps  # install dependencies
-npm run dev
-```
-If the second command reports `Cannot find module 'critters'`, run the install step again to rebuild the `node_modules` folder.
-Open `http://localhost:3000/` and sign in with `admin/admin` to reach the projects page.
+   Run the CLI wizard to set up your config:
 
-### GitHub Codespaces
+   ```bash
+   docreview360 init
+   ```
+
+   * Answer the prompts about your preferred database, editor, and other options.
+   * The config is saved as `docreview360.yml` in your current directory.
+
+4. **Start the backend API server**
+
+   ```bash
+   uvicorn docreview360.api:app --reload
+   ```
+
+   This launches the FastAPI backend on port 8000.
+
+5. **Set up and run the React frontend (Node.js 18+ required)**
+
+   ```bash
+   cd frontend
+   npm install --legacy-peer-deps
+   npm run dev
+   ```
+
+   If you see `Cannot find module 'critters'`, just run `npm install --legacy-peer-deps` again.
+
+6. **Open the app**
+
+   Go to [http://localhost:3000/](http://localhost:3000/) in your browser.
+   Sign in with `admin/admin` (default login).
+   The frontend runs on port 3000 and communicates with the API at port 8000.
+
+## GitHub Codespaces
 
 Run these commands in a Codespace terminal. When the server starts, expose port
 8000 in the **Ports** panel and click **Open in Browser** to reach the login
 page.
 
-## 4. Run the tests
-
-Install the development dependencies and Playwright browsers, then execute the suite:
-
-```bash
-pip install -e .[dev]
-playwright install
-pre-commit run --all-files
-pytest -m e2e
-```
-The last command launches a headless browser to verify the workflow.
-
-## 5. Explore the projects page
+## Explore the projects page
 
 After logging in you're taken straight to the projects page. It lists your projects in a sortable table and includes a **Create New Project** button. Links to the editors, review tracker and interactive dashboard remain available from the navigation.
 
-## 6. Next steps
+## Next steps
 
 Try importing a Markdown file, run a search query and create a dummy approval via the API. These simple examples show how projects, documents and approvals interact.
