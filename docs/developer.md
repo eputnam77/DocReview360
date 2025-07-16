@@ -2,44 +2,38 @@
 
 This short guide explains how to run the project in a local environment.
 
-## Installation
+1. **Create and activate a virtual environment**
 
-Create and activate a virtual environment, then install the development
-dependencies listed in `pyproject.toml`:
+   ```bash
+   python -m venv .venv
+   # On Unix/macOS:
+   source .venv/bin/activate
+   # On Windows:
+   .venv\Scripts\activate
+   ```
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # on Windows use .venv\Scripts\activate
-python -m pip install --upgrade pip
-pip install -e .[dev]
-pre-commit install
-```
+2. **Install development tools**
 
-The repository also provides ``requirements.txt`` and ``requirements-dev.txt``
-files for use with ``pip``. They are generated from the ``pyproject`` but may
-lag behind the lock file, so ``pip install -e .[dev]`` is the most reliable way
-to pull in the current dependencies.
+  ```bash
+  pip install -e .[dev]
+  pre-commit install
+  ```
 
-## Running Tests
+3. **Testing**
 
-Run all linters and the test suite with coverage using:
+  Run code checks and tests:
 
-```bash
-pre-commit run --all-files
-pytest --cov=src
-```
+  ```bash
+  pre-commit run --all-files
+  pytest --cov=src
+  ```
 
-The end-to-end tests rely on Playwright. Install the browser binaries once with:
+4. **End-to-end testing (with Playwright)**
 
-```bash
-playwright install
-```
-
-Then run the E2E suite separately:
-
-```bash
-pytest -m e2e
-```
+  ```bash
+  playwright install
+  pytest -m e2e
+  ```
 
 ## Database Migrations
 
