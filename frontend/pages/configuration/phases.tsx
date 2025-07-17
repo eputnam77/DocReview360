@@ -46,28 +46,55 @@ export default function PhasesPage() {
       .catch(() => setPhases(DEMO_PHASES));
   }, []);
 
-  const addPhase = () => {
+  const addPhase = async () => {
     if (!newName.trim()) return;
-    setPhases([
-      ...phases,
-      { id: "ph-" + Date.now().toString(), name: newName.trim() },
-    ]);
+    const body = { name: newName.trim() };
+    try {
+      const r = await fetch("/api/phases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) {
+        const created = await r.json();
+        setPhases([...phases, { id: created.name, name: created.name }]);
+      }
+    } catch {
+      setPhases([
+        ...phases,
+        { id: "ph-" + Date.now().toString(), name: body.name },
+      ]);
+    }
     setNewName("");
   };
 
-  const removePhase = (id: string) =>
+  const removePhase = async (id: string) => {
     setPhases(phases.filter((p) => p.id !== id));
+    try {
+      await fetch(`/api/phases/${id}`, { method: "DELETE" });
+    } catch {
+      // ignore network errors in demo mode
+    }
+  };
 
   const startEdit = (p: Phase) => {
     setEditingId(p.id);
     setEditName(p.name);
   };
 
-  const saveEdit = (id: string) => {
+  const saveEdit = async (id: string) => {
     if (!editName.trim()) return;
-    setPhases(
-      phases.map((p) => (p.id === id ? { ...p, name: editName.trim() } : p)),
-    );
+    const body = { name: editName.trim() };
+    setPhases(phases.map((p) => (p.id === id ? { ...p, name: body.name } : p)));
+    try {
+      await fetch(`/api/phases/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // ignore network errors in demo mode
+    }
     setEditingId(null);
     setEditName("");
   };
