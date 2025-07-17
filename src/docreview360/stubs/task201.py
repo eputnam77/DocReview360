@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ..stubs import record_task_completion
 from ..chat_bot import answer_question
+from ..stubs import record_task_completion
 
 
 async def task201(question: str) -> str:
