@@ -1,29 +1,29 @@
 ## Code Review
 
 ### Integration Risks
-- Default secrets in `src/docreview360/auth.py` are populated from environment variables but fall back to insecure values.
-- Projects, documents and workflows rely on in-memory dictionaries without locking or persistence. This limits scalability and durability.
-- Plugin loading uses dynamic import with minimal validation, which may raise runtime errors if modules are missing.
+- Default secrets in `src/docreview360/auth.py` still fall back to insecure values if environment variables are missing.
+- Projects and documents live in in-memory dictionaries. Without persistence or locks this can corrupt data under concurrent access.
+- Plugins are loaded via dynamic import with little validation so missing modules cause runtime errors.
 
 ### Performance
-- Search and document management iterate over in-memory data structures, which will slow down as the dataset grows.
-- Document parsing in `documents.py` performs naive XML handling and may struggle with large or complex DOCX files.
-- WebSocket update loops lack back-pressure and could overwhelm the browser during heavy activity.
+- Search and workflow operations iterate over large in-memory lists which will degrade as data grows.
+- Document parsing uses naive XML handling in `documents.py` and will struggle with complex DOCX files.
+- WebSocket updates run in a tight loop without back-pressure and could overwhelm the browser on busy projects.
 
 ### Maintainability
-- The codebase is mostly modular but several modules store state globally, complicating testing and future refactoring.
-- Many modules have sparse docstrings and comments.
-- Test suite emits hundreds of warnings which could hide real issues.
+- Several modules store global state, complicating tests and future refactors.
+- The codebase lacks docstrings in many areas and test output shows hundreds of warnings that hide issues.
 
 ### PRD Coverage
-- Features covering tasks 1–28 from `.dev/TASKS.md` are implemented and tested, matching the initial PRD scope.
-- Later tasks (e.g. advanced plugins and HR integrations) are present only as stubs and noted as incomplete in `VERIFICATION_REPORT.md`.
+- `.dev/VERIFICATION_REPORT.md` confirms that tasks 1‑155 are implemented and tested, covering the core MVP and many optional features.
+- Remaining tasks (e.g. concurrent editing, NeMo Guardrails, advanced dashboards) are noted as missing.
 
 ### Mandatory Fixes
-- Replace fallback secrets in `auth.py` with required environment variables or secure configuration management.
-- Introduce locking or database-backed stores for projects and documents to avoid data loss and concurrency issues.
+- Replace insecure secret defaults in `auth.py` with required environment configuration.
+- Introduce database-backed stores or locking for projects and documents to avoid data loss and concurrency bugs.
 
 ### Optional Improvements
-- Expand documentation for the API and configuration options.
-- Persist search and workflow data in a real database for scalability.
-- Address test warnings and add type hints to improve code clarity.
+- Expand user and developer documentation and reduce test warnings.
+- Persist search indexes and workflow data in a real database for scalability.
+
+ready-for:builder
