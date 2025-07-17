@@ -185,8 +185,9 @@ jobs:
 uv venv "3.12"              # or "3.11" for compatibility work
 
 # install locked dependencies
-poetry install --sync        # generates poetry.lock if missing
-uv pip sync                  # reproduce lock inside venv
+poetry install               # generates poetry.lock if missing
+poetry sync                  # remove extras not in the lock file
+uv pip sync pyproject.toml   # reproduce lock inside venv
 
 # enable pre‑commit hooks (Ruff / Black / MyPy / etc.)
 pre-commit install

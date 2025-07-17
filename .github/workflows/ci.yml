@@ -27,8 +27,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv poetry
-          poetry install --with dev --sync
-          uv pip sync
+          poetry install --with dev
+          poetry sync --with dev
+          uv pip sync pyproject.toml
           npm ci --prefix frontend || true
       - name: Run quality gate
         run: |
