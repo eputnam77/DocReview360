@@ -36,3 +36,18 @@ def test_approval_lifecycle() -> None:
 
     resp = client.get("/approvals", params={"workflow": wf_id})
     assert any(a["id"] == appr_id for a in resp.json())
+
+
+def test_reset_approval() -> None:
+    """reset_approval should revert approval state when confirmed."""
+
+    from docreview360.approvals import create_approval, reset_approval
+
+    appr = create_approval("wf1", "bob")
+    appr.state = "approved"
+    assert reset_approval(appr.id, True)
+    assert appr.state == "pending"
+
+    appr.state = "approved"
+    assert not reset_approval(appr.id, False)
+    assert appr.state == "approved"
