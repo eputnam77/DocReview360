@@ -26,6 +26,7 @@ def _run(cmd: list[str], cwd: Path) -> None:
     """Run a git command in ``cwd`` ensuring success."""
     subprocess.run(cmd, cwd=cwd, check=True)
 
+
 def push_document(doc: Path, repo: Path, branch: str = "main", remote: Path | None = None) -> str:
     """Commit ``doc`` to ``repo`` and return the commit hash.
 

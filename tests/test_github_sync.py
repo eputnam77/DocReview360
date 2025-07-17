@@ -1,5 +1,5 @@
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 from docreview360.github_sync import pull_document, push_document
 
@@ -7,7 +7,10 @@ from docreview360.github_sync import pull_document, push_document
 def test_push_and_pull_document(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     remote = tmp_path / "remote.git"
-    _run = lambda cmd, cwd=None: subprocess.run(cmd, cwd=cwd, check=True)
+
+    def _run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
+        return subprocess.run(cmd, cwd=cwd, check=True)
+
     _run(["git", "init", "--bare", remote.as_posix()])
     doc = tmp_path / "a.txt"
     doc.write_text("hi")
