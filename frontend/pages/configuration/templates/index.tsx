@@ -46,8 +46,14 @@ export default function TemplatesIndex() {
       .catch(() => setTemplates(DEMO_TEMPLATES));
   }, []);
 
-  const removeTemplate = (id: string) =>
+  const removeTemplate = async (id: string) => {
     setTemplates(templates.filter((t) => t.id !== id));
+    try {
+      await fetch(`/api/templates/${id}`, { method: "DELETE" });
+    } catch {
+      // ignore network errors in demo mode
+    }
+  };
 
   const handleDownload = (tpl: Template) => {
     // If you have a download URL, use it; else, just alert for demo
