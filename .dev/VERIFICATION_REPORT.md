@@ -79,7 +79,12 @@
 - **Template migration helper** applies new versions when diffs are small【F:src/docreview360/stubs/task152.py†L1-L18】【F:tests/test_task152.py†L1-L14】.
  - **CLI profile generator** outputs base64 env files for download【F:src/docreview360/stubs/task153.py†L1-L17】【F:tests/test_task153.py†L1-L14】.
  - **Workflow UI components bundle** exports sidebar and badges【F:frontend/components/workflow/index.ts†L1-L4】【F:tests/test_task160.py†L1-L23】.
- - **Start Workflow page** renders an upload form using new React route【F:frontend/app/workflows/[id]/start/page.tsx†L1-L28】【F:tests/test_task161.py†L1-L10】.
+- **Start Workflow page** renders an upload form using new React route【F:frontend/app/workflows/[id]/start/page.tsx†L1-L28】【F:tests/test_task161.py†L1-L10】.
+- **Sidebar link fixed** so Dashboard route points to `/dashboard`【F:frontend/components/workflow/Sidebar.tsx†L18-L21】.
+- **Workflow start API endpoint** accepts document uploads and returns a workflow model【F:src/docreview360/api.py†L666-L678】.
+- **Project description updated** with concise summary【F:pyproject.toml†L7-L10】.
+- **Dockerfile builds frontend and exposes `$PORT` for platform deploys【F:Dockerfile†L9-L26】.
+- **In-app documentation page** embeds project docs at `/docs` route【F:frontend/pages/docs/index.tsx†L1-L13】.
  - **Workflow Progress view** shows progress sidebar and step badges【F:frontend/app/instances/[id]/page.tsx†L1-L26】【F:tests/test_task162.py†L1-L8】.
 - **GraphQL explorer HTML** returns an embedded GraphiQL widget【F:src/docreview360/stubs/task154.py†L1-L23】【F:tests/test_task154.py†L1-L6】.
 - **Terraform plan parser** lists resource actions for a plan diff【F:src/docreview360/stubs/task155.py†L1-L23】【F:tests/test_task155.py†L1-L14】.
@@ -97,6 +102,10 @@
 - **Security hardening** (Keycloak MFA, FedRAMP backup schedule) is not configured beyond JWT demo auth.
 - **TipTap extension menu** stub renders checkboxes but UI wiring is skipped【F:src/docreview360/stubs/task163.py†L1-L16】【F:tests/test_task163.py†L1-L9】.
 - **Performance profiling audit** placeholder exists without metrics generation【F:src/docreview360/stubs/task164.py†L1-L9】【F:tests/test_task164.py†L1-L9】.
+- **Profile page, dashboard toggles and manager dashboard** exist only as stub utilities without React routes【F:src/docreview360/stubs/task188.py†L1-L9】【F:src/docreview360/stubs/task189.py†L1-L9】【F:src/docreview360/stubs/task190.py†L1-L9】.
+- **Configuration pages** show a menu but lack forms to persist types, phases or templates【F:frontend/pages/configuration/index.tsx†L1-L44】.
+- **Review notifications via chat/email** stubbed with no integrations configured【F:src/docreview360/stubs/task193.py†L1-L15】.
+- **GitHub doc storage sync**, **Playwright baseline** and **AI chat bot** remain unimplemented stubs【F:src/docreview360/stubs/task198.py†L1-L14】【F:tests/e2e/test_login_e2e.py†L1-L30】【F:src/docreview360/stubs/task201.py†L1-L9】.
 
 ## ❌ Missing Features
 - **User‑scoped dashboards** still rely on a `currentUser` constant and lack session filtering【F:frontend/pages/projects/index.tsx†L84-L99】.
@@ -104,7 +113,6 @@
 - **Real-time log viewer** from PRD §3.5 not found in codebase.
 - **NeMo‑Guardrails middleware** for PII/style checks has no implementation.
 - **AI chat bot** for project queries not implemented.
-- **In-app documentation page** missing
 ## Dev Gate Results
 - `ruff` passed with no issues
 - `black --check` confirmed consistent formatting
@@ -120,6 +128,7 @@
 2. Harden security with Keycloak MFA and scheduled encrypted backups.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 4. Build user-scoped dashboards, concurrent editing support, log viewer and NeMo Guardrails.
+5. Implement remaining stub tasks 188‑215 and expand integration tests.
 
 
 Tasks 70‑155 are now all implemented through their corresponding modules. Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs, feature-flag wrapper and UI parity utilities.
