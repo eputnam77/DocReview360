@@ -50,6 +50,7 @@ from .archive import (
 from .cache import cache_get, cache_set, clear_cache
 from .comments import CommentModel, add_comment, list_comments
 from .config import CONFIG_FILE, Config
+from .dashboard_prefs import get_visibility, set_visibility
 from .doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -81,6 +82,7 @@ from .messages import render
 from .nemo_guardrails import contains_pii
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
+from .profile import get_preferences, update_preferences
 from .rbac import require_role
 from .reporting import (
     DashboardEntry,
@@ -225,6 +227,34 @@ async def current_user_endpoint(x_user: str | None = Header(None)) -> dict[str, 
     deployment this would rely on session middleware or OIDC claims.
     """
     return {"username": x_user or "demo", "is_admin": True}
+
+
+class PreferencePayload(BaseModel):
+    """Input model for updating user preferences."""
+
+    dark_mode: bool | None = None
+    reduce_motion: bool | None = None
+
+
+@app.get("/profile")
+async def get_profile(x_user: str | None = Header(None)) -> dict[str, Any]:
+    """Return profile information for the current user."""
+
+    if not x_user:
+        raise HTTPException(status_code=401, detail="Missing user")
+    return {"username": x_user, "preferences": get_preferences(x_user)}
+
+
+@app.put("/profile")
+async def update_profile(
+    body: PreferencePayload, x_user: str | None = Header(None)
+) -> dict[str, Any]:
+    """Persist profile preference updates."""
+
+    if not x_user:
+        raise HTTPException(status_code=401, detail="Missing user")
+    prefs = {k: v for k, v in body.model_dump().items() if v is not None}
+    return {"username": x_user, "preferences": update_preferences(x_user, prefs)}
 
 
 @app.get("/projects", response_model=list[ProjectModel])
@@ -961,6 +991,43 @@ async def get_dashboard_data() -> list[DashboardEntry]:
 async def get_widget_counts() -> dict[str, int]:
     """Return assignment and approval counts for dashboard widgets."""
     return widget_counts()
+
+
+class VisibilityPayload(BaseModel):
+    """Dashboard widget visibility options."""
+
+    stats: bool | None = None
+    status: bool | None = None
+    activity: bool | None = None
+    logs: bool | None = None
+
+
+@app.get("/dashboard/visibility")
+async def get_visibility_endpoint(x_user: str | None = Header(None)) -> dict[str, bool]:
+    """Return saved visibility settings for the user."""
+
+    if not x_user:
+        raise HTTPException(status_code=401, detail="Missing user")
+    return get_visibility(x_user)
+
+
+@app.put("/dashboard/visibility")
+async def update_visibility_endpoint(
+    body: VisibilityPayload, x_user: str | None = Header(None)
+) -> dict[str, bool]:
+    """Persist user visibility preferences."""
+
+    if not x_user:
+        raise HTTPException(status_code=401, detail="Missing user")
+    data = {k: v for k, v in body.model_dump().items() if v is not None}
+    return set_visibility(x_user, data)
+
+
+@app.get("/dashboard/manager", response_model=list[DashboardEntry])
+async def manager_dashboard_endpoint() -> list[DashboardEntry]:
+    """Return dashboard data for manager role."""
+
+    return dashboard_data()
 
 
 @app.get("/status/public")
