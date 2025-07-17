@@ -1,0 +1,6 @@
+rules:
+  - id: dummy-rule
+    pattern: "TODO"
+    message: "Found TODO"
+    languages: [python]
+    severity: INFO
