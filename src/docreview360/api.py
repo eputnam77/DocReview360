@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
@@ -74,9 +75,10 @@ from .documents import (
 from .documents import (
     list_documents as list_docs,
 )
-from .exporter import export_document
+from .exporter import export_document, set_guardrails
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
+from .nemo_guardrails import contains_pii
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .rbac import require_role
@@ -208,6 +210,9 @@ class ConfigPayload(BaseModel):
 
 app = FastAPI(title="DocReview360")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
+    # Activate NeMo Guardrails PII checker when explicitly enabled
+    set_guardrails(contains_pii)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
