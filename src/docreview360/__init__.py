@@ -51,6 +51,7 @@ __all__ = [
     "workflow_components",
     "conversion",
     "nemo_guardrails",
+    "chat_bot",
 ]
 
 from . import (
@@ -91,6 +92,7 @@ from . import (
     pyo3_builder,
     rbac,
     reporting,
+    chat_bot,
     search,
     security_hardening,
     security_utils,
