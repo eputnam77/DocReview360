@@ -17,6 +17,7 @@ DocReview360 helps you organise documents, run simple approval workflows and kee
 2. **Install the backend and web server**
 
    ```bash
+   pip install --upgrade pip
    pip install -e .           # Install the package in editable mode
    pip install uvicorn        # Web server for local development
    ```
