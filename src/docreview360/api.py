@@ -571,6 +571,15 @@ async def ai_summarize_endpoint(body: TextBody) -> dict[str, str]:
     return {"result": summary}
 
 
+@app.post("/chat")
+async def chat_bot_endpoint(body: TextBody) -> dict[str, str]:
+    """Return an answer from the simple chat bot."""
+    from .chat_bot import answer_question
+
+    answer = await answer_question(body.text)
+    return {"result": answer}
+
+
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
 async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel:
     """Create a new document type."""
