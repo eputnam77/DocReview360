@@ -2,6 +2,16 @@
 
 This short guide walks you through the first steps with DocReview360. It assumes Python and Git are already installed.
 
+## Prerequisites
+
+Install [`uv`](https://github.com/astral-sh/uv) and [`Poetry`](https://python-poetry.org/) with `pip` or `pipx`:
+
+```bash
+pip install uv poetry
+# or
+pipx install uv poetry
+```
+
 1. **Create and activate a virtual environment**
 
    ```bash

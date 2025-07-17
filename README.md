@@ -2,6 +2,16 @@
 
 DocReview360 helps you organise documents, run simple approval workflows and keep track of your projects. The prototype ships with a small web API, a tiny frontend and a one-command CLI wizard. It is intentionally lightweight so you can explore the features and decide how they fit your own process.
 
+## Prerequisites
+
+Install [`uv`](https://github.com/astral-sh/uv) and [`Poetry`](https://python-poetry.org/) first:
+
+```bash
+pip install uv poetry
+# or
+pipx install uv poetry
+```
+
 ## Quick start
 
 1. **Create and activate a virtual environment**
