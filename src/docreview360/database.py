@@ -76,7 +76,13 @@ class Database:
                 name = file.name
                 if name in applied:
                     continue
-                conn.execute(text(file.read_text()))
+                # sqlite's driver only allows executing one statement at a time
+                # so we split the migration file on semicolons and run each
+                # non-empty command separately. This keeps migration files
+                # portable between SQLite and Postgres.
+                statements = [s.strip() for s in file.read_text().split(";") if s.strip()]
+                for stmt in statements:
+                    conn.execute(text(stmt))
                 conn.execute(
                     text("INSERT INTO schema_versions (filename) VALUES (:name)"),
                     {"name": name},
