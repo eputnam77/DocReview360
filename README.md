@@ -152,8 +152,9 @@ Update your server or container orchestration tool to pull the new image and you
 ## Git send-email hook
 
 If you contribute via `git send-email` you can enable an optional validation
-hook. Copy `scripts/sendemail-validate.sample` to `.git/hooks/sendemail-validate`
-and make it executable:
+hook. Copy `scripts/sendemail-validate.sample` (also mirrored under
+`.git/hooks/sendemail-validate.sample`) to `.git/hooks/sendemail-validate` and
+make it executable:
 
 ```bash
 cp scripts/sendemail-validate.sample .git/hooks/sendemail-validate
