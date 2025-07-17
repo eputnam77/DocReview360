@@ -31,6 +31,8 @@ The recent profiling runs (k6, Lighthouse, cProfile, py-spy and React Profiler) 
 - Dependencies: None
 - Priority: P2
 - ready-for:builder
+- Status: implemented via ``FastAPI.add_middleware`` in
+  ``docreview360.api``.
 
 ### Recommendation: Use dynamic imports for editor packages
 - Expected Impact: Moderate (smaller frontend bundle)
