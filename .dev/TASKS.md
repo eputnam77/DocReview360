@@ -214,6 +214,8 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 211 | Message template management | • Extend `/configuration/templates` to also handle **message templates** used for review requests, approvals and rejections.<br>• Fields: name, channel (email/teams/slack), content with `{project_link}`, `{user}`, `{comments}` tokens. | Admin | 2 d | Creating a message template via UI persists via API.<br>See `tests/e2e/features/task211.feature` |
 | 212 | Notification templates applied | • Review request emails and chat messages render using the configured templates.<br>• Approval and rejection events send messages that include reviewer name and optional comments. | Integration | 1 d | Approving or rejecting a document triggers the expected message text.<br>See `tests/e2e/features/task212.feature` |
 | 213 | Approval reset confirmation | • Display a confirmation modal when a user resets their approval or removes a reviewer from a project. | FE | 0.5 d | Canceling leaves approval intact; confirming completes the action.<br>See `tests/e2e/features/task213.feature` |
+| 214 | Template linkage to doc types | • `/configuration/templates/new` allows selecting a Document Type when creating or editing a template. API stores `default_template_id` on the type record. | Admin | 1 d | Creating an Advisory Circular template links it to the AC doc type.<br>See `tests/e2e/features/task214.feature` |
+| 215 | Auto‑apply template on new project | • Project creation automatically populates the initial document with the doc type's template content. TipTap loads this on first open. | Integration | 1 d | New AC project shows Advisory Circular template without manual import.<br>See `tests/e2e/features/task215.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
@@ -224,7 +226,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 * **Route guards:** Use the existing `useAuth()` + `hasRole(role)` combinator; **never** hide URLs from the SPA router—guard them at server and client.
 * **Feature flags (#139):** Wrap experimental UI parity items (e.g., in-browser Terraform viewer) with `unleash` flags so you can dark-launch.
 
-These sixteen tasks ensure that **anything executable via the admin CLI can also be done through the browser**, giving non-terminal users full self-service while still honouring RBAC and FedRAMP expectations.
+These eighteen tasks ensure that **anything executable via the admin CLI can also be done through the browser**, giving non-terminal users full self-service while still honouring RBAC and FedRAMP expectations.
 
 **Confidence** 0.42 — tasks mapped against prior backlog items; no functionality removed, only surfaced via UI.
 
