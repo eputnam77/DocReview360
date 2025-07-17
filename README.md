@@ -158,5 +158,4 @@ cp scripts/sendemail-validate.sample .git/hooks/sendemail-validate
 chmod +x .git/hooks/sendemail-validate
 ```
 
-The hook relies on `codespell` and `gitlint` to check spelling and patch style
-before invoking a light-weight validator in `docreview360.git_hooks`.
+The hook relies on `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. Install them with `pip install -e .[dev]`.

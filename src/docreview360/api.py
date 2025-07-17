@@ -21,6 +21,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
@@ -205,6 +206,7 @@ class ConfigPayload(BaseModel):
 
 
 app = FastAPI(title="DocReview360")
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
