@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from ..stubs import record_task_completion
-
-_ANSWERS = {
-    "status": "All projects are on track.",
-    "who": "The current assignee is Alice.",
-}
+from ..chat_bot import answer_question
 
 
-def task201(question: str) -> str:
+async def task201(question: str) -> str:
     """Return a canned response for ``question``.
 
     Parameters
@@ -20,7 +16,4 @@ def task201(question: str) -> str:
     """
 
     record_task_completion(201)
-    for key, answer in _ANSWERS.items():
-        if key in question.lower():
-            return answer
-    return "I don't know."
+    return await answer_question(question)
