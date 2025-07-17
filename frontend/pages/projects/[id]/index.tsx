@@ -412,6 +412,127 @@ function AddCommentModal({
   );
 }
 
+// Edit-comment modal
+function EditCommentModal({
+  open,
+  onClose,
+  comment,
+  onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  comment: DispoComment | null;
+  onSave: (c: DispoComment) => void;
+}) {
+  const [form, setForm] = useState<DispoComment | null>(comment);
+  useEffect(() => setForm(comment), [comment]);
+  if (!form) return null;
+  const disabled = !form.reviewer || !form.comment;
+  const handleSave = () => {
+    onSave(form);
+    onClose();
+  };
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit Comment</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Input
+            placeholder="Reviewer"
+            value={form.reviewer}
+            onChange={(e) => setForm({ ...form, reviewer: e.target.value })}
+          />
+          <Input
+            placeholder="Routing"
+            value={form.routing}
+            onChange={(e) => setForm({ ...form, routing: e.target.value })}
+          />
+          <Input
+            type="email"
+            placeholder="Email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+          <Input
+            placeholder="Page/Para"
+            value={form.pagePara}
+            onChange={(e) => setForm({ ...form, pagePara: e.target.value })}
+          />
+          <textarea
+            className="col-span-full border rounded p-2 min-h-[72px]"
+            placeholder="Comment / Rationale"
+            value={form.comment}
+            onChange={(e) => setForm({ ...form, comment: e.target.value })}
+          />
+          <textarea
+            className="col-span-full border rounded p-2 min-h-[72px]"
+            placeholder="Recommended Change"
+            value={form.change}
+            onChange={(e) => setForm({ ...form, change: e.target.value })}
+          />
+          <Input
+            placeholder="Disposition"
+            value={form.disposition}
+            onChange={(e) => setForm({ ...form, disposition: e.target.value })}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={disabled} onClick={handleSave}>
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Reply modal
+function ReplyModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (text: string) => void;
+}) {
+  const [txt, setTxt] = useState("");
+  const disabled = !txt;
+  const handlePost = () => {
+    onSubmit(txt);
+    setTxt("");
+    onClose();
+  };
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Reply</DialogTitle>
+        </DialogHeader>
+        <textarea
+          className="w-full border rounded p-2 text-sm"
+          rows={4}
+          value={txt}
+          onChange={(e) => setTxt(e.target.value)}
+        />
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={disabled} onClick={handlePost}>
+            Post
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Add-reply popover
 function ReplyInput({ onSubmit }: { onSubmit: (text: string) => void }) {
   const [txt, setTxt] = useState("");
@@ -505,6 +626,8 @@ export default function ProjectDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddComment, setShowAddComment] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [editComment, setEditComment] = useState<DispoComment | null>(null);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
 
   // ▼ permission based on logged in user
   const username = useUserStore((s) => s.username);
@@ -580,6 +703,9 @@ export default function ProjectDetailsPage() {
           : d,
       ),
     );
+
+  const saveComment = (c: DispoComment) =>
+    setDispos((prev) => prev.map((d) => (d.id === c.id ? c : d)));
 
   const updateDecision = (cid: string, val: "Accepted" | "Rejected" | "Deferred" | "") =>
     setDispos((prev) =>
@@ -1066,7 +1192,7 @@ export default function ProjectDetailsPage() {
                                         active &&
                                           "bg-indigo-50 dark:bg-gray-800",
                                       )}
-                                      onClick={() => alert("Edit")}
+                                  onClick={() => setEditComment(d)}
                                     >
                                       {" "}
                                       <FileEdit className="w-4 h-4 inline mr-2" />{" "}
@@ -1098,9 +1224,17 @@ export default function ProjectDetailsPage() {
                             )}
                             <Menu.Item>
                               {({ active }) => (
-                                <ReplyInput
-                                  onSubmit={(txt) => addReply(d.id, txt)}
-                                />
+                                <button
+                                  className={classNames(
+                                    "w-full px-3 py-2 text-left text-sm",
+                                    active &&
+                                      "bg-indigo-50 dark:bg-gray-800",
+                                  )}
+                                  onClick={() => setReplyTo(d.id)}
+                                >
+                                  {" "}
+                                  <MessageSquarePlus className="w-4 h-4 inline mr-2" /> Reply
+                                </button>
                               )}
                             </Menu.Item>
                           </RowMenu>
@@ -1178,6 +1312,17 @@ export default function ProjectDetailsPage() {
         open={showAddComment}
         onClose={() => setShowAddComment(false)}
         onAdd={addComment}
+      />
+      <EditCommentModal
+        open={editComment !== null}
+        onClose={() => setEditComment(null)}
+        comment={editComment}
+        onSave={saveComment}
+      />
+      <ReplyModal
+        open={replyTo !== null}
+        onClose={() => setReplyTo(null)}
+        onSubmit={(txt) => replyTo && addReply(replyTo, txt)}
       />
       <VersionDrawer
         open={showVersions}
