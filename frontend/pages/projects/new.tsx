@@ -12,6 +12,10 @@ import {
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 
+function FieldGate({ when, children }: { when: boolean; children: React.ReactNode }) {
+  return when ? <>{children}</> : null;
+}
+
 const DOCUMENT_TYPES = [
   "Advisory Circular",
   "Policy Statement",
@@ -57,6 +61,7 @@ export default function NewProjectPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const manualWorkflow = useRef(false);
 
@@ -71,16 +76,22 @@ export default function NewProjectPage() {
     }
   }, [docType, phase]);
 
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!docType) errs.docType = "Required";
+    if (!docNumber.trim()) errs.docNumber = "Required";
+    if (!title.trim()) errs.title = "Required";
+    if (!phase) errs.phase = "Required";
+    if (!workflow) errs.workflow = "Required";
+    if (files.length === 0) errs.files = "Upload at least one";
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (!docNumber.trim() || !title.trim() || !docType || !phase || !workflow) {
-      setError("Please fill all required fields.");
-      return;
-    }
-    if (files.length === 0) {
-      setError("Please upload at least one file.");
+    if (!validate()) {
       return;
     }
 
@@ -122,35 +133,6 @@ export default function NewProjectPage() {
           encType="multipart/form-data"
         >
           <div>
-            <Label htmlFor="docNumber">Document Number *</Label>
-            <Input
-              id="docNumber"
-              value={docNumber}
-              onChange={(e) => setDocNumber(e.target.value)}
-              placeholder="E.g., AC 120-76E"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="title">Document Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title of the document"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="sme">Subject Matter Expert (SME)</Label>
-            <Input
-              id="sme"
-              value={sme}
-              onChange={(e) => setSme(e.target.value)}
-              placeholder="Optional"
-            />
-          </div>
-          <div>
             <Label htmlFor="docType">Document Type *</Label>
             <Select value={docType} onValueChange={setDocType}>
               <SelectTrigger id="docType">
@@ -164,6 +146,37 @@ export default function NewProjectPage() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.docType && (
+              <p className="text-sm text-red-600">{fieldErrors.docType}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="docNumber">Document Number *</Label>
+            <Input
+              id="docNumber"
+              value={docNumber}
+              onChange={(e) => setDocNumber(e.target.value)}
+              onBlur={validate}
+              placeholder="E.g., AC 120-76E"
+              aria-invalid={!!fieldErrors.docNumber}
+            />
+            {fieldErrors.docNumber && (
+              <p className="text-sm text-red-600">{fieldErrors.docNumber}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="title">Document Title *</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={validate}
+              placeholder="Title of the document"
+              aria-invalid={!!fieldErrors.title}
+            />
+            {fieldErrors.title && (
+              <p className="text-sm text-red-600">{fieldErrors.title}</p>
+            )}
           </div>
           <div>
             <Label htmlFor="phase">Phase *</Label>
@@ -179,37 +192,63 @@ export default function NewProjectPage() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.phase && (
+              <p className="text-sm text-red-600">{fieldErrors.phase}</p>
+            )}
           </div>
-          <div>
-            <Label htmlFor="workflow">Workflow *</Label>
-            <Select
-              value={workflow}
-              onValueChange={(v) => {
-                manualWorkflow.current = true;
-                setWorkflow(v);
-              }}
-            >
-              <SelectTrigger id="workflow">
-                <SelectValue placeholder="Select a workflow" />
-              </SelectTrigger>
-              <SelectContent>
-                {WORKFLOWS.map((w) => (
-                  <SelectItem key={w} value={w}>
-                    {w}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Project description (optional)"
-            />
-          </div>
+          <FieldGate when={!!docType && !!phase}>
+            <div>
+              <Label htmlFor="workflow">Workflow *</Label>
+              <Select
+                value={workflow}
+                disabled={!docType || !phase}
+                onValueChange={(v) => {
+                  manualWorkflow.current = true;
+                  setWorkflow(v);
+                }}
+              >
+                <SelectTrigger id="workflow">
+                  <SelectValue placeholder="Select a workflow" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WORKFLOWS.map((w) => (
+                    <SelectItem key={w} value={w}>
+                      {w}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Suggested based on '{docType}' in '{phase}' phase.
+              </p>
+              {fieldErrors.workflow && (
+                <p className="text-sm text-red-600">{fieldErrors.workflow}</p>
+              )}
+            </div>
+          </FieldGate>
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm text-gray-600">
+              Additional details (optional)
+            </summary>
+            <div className="pt-3 space-y-4">
+              <div>
+                <Label htmlFor="sme">Subject Matter Expert (SME) <span className="text-gray-500">(optional)</span></Label>
+                <Input
+                  id="sme"
+                  value={sme}
+                  onChange={(e) => setSme(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description <span className="text-gray-500">(optional)</span></Label>
+                <Input
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </div>
+          </details>
           <div>
             <Label>Upload Reference Files (.docx, .pdf, .txt)</Label>
             <UploadDropzone
