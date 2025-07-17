@@ -25,6 +25,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
 from pydantic import BaseModel
 
 from . import auth, reporting
@@ -849,6 +850,18 @@ async def dashboard(request: Request) -> Response:
     if request.cookies.get("session") != "admin":
         return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
+
+
+@app.get("/help", response_class=HTMLResponse)
+async def help_page() -> HTMLResponse:  # pragma: no cover - thin wrapper
+    """Display a lightweight help page rendered from Markdown."""
+    doc_path = Path(__file__).resolve().parent.parent.parent / "docs" / "getting_started.md"
+    try:
+        text = doc_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:  # pragma: no cover - unexpected
+        raise HTTPException(status_code=500, detail="Unable to load documentation") from exc
+    html = MarkdownIt().render(text)
+    return HTMLResponse(html)
 
 
 @app.get("/admin/panel")
