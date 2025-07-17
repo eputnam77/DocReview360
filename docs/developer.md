@@ -5,17 +5,15 @@ This short guide explains how to run the project in a local environment.
 1. **Create and activate a virtual environment**
 
    ```bash
-   python -m venv .venv
-   # On Unix/macOS:
-   source .venv/bin/activate
-   # On Windows:
-   .venv\Scripts\activate
+   uv venv 3.12
+   source 3.12/bin/activate
    ```
 
 2. **Install development tools**
 
   ```bash
-  pip install -e .[dev]
+  poetry install --sync
+  uv pip sync
   pre-commit install
   ```
 
