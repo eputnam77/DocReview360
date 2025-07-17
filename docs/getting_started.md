@@ -15,6 +15,7 @@ This short guide walks you through the first steps with DocReview360. It assumes
 2. **Install the backend and web server**
 
    ```bash
+   pip install --upgrade pip
    pip install -e .           # Install the package in editable mode
    pip install uvicorn        # Web server for local development
    ```
