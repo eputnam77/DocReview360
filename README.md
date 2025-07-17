@@ -105,6 +105,8 @@ the workflow can be.
 
 Running the app inside containers is a handy way to share it on a server or your favourite cloud provider. The repository already contains a `Dockerfile` and a `docker-compose.yml` so you can start quickly.
 
+See `docs/deployment.md` for platform-specific notes about environment variables and database setup on Render, Heroku, Fly.io and Railway.
+
 1. **Build the image**
    ```bash
    docker build -t docreview360:latest .
