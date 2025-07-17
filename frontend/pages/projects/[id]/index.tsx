@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
+import { useUserStore } from "@/state/user";
 
 // ---------------------------------------------------------------------------
 // 1 ▲ Types
@@ -65,10 +66,10 @@ interface Project {
   number: string | number;
   type: string;
   title: string;
+  owner: string;
   status: "Draft" | "In Progress" | "Complete" | "Overdue";
   progress: number;
   updated?: string;
-  user?: string;
   editor?: "tiptap" | "toast" | "codex" | "word";
 }
 interface LogEntry {
@@ -109,6 +110,7 @@ interface DispoComment {
   comment: string;
   change: string;
   disposition: string;
+  decision?: "Accepted" | "Rejected" | "Deferred" | "";
   replies?: Reply[];
 }
 interface RefDoc {
@@ -135,7 +137,7 @@ const DEMO_PROJECT: Project = {
   status: "In Progress",
   progress: 40,
   updated: "2025-07-04",
-  user: "Jane Doe",
+  owner: "Jane Doe",
   editor: "tiptap",
 };
 const DEMO_WORKFLOW: Workflow = {
@@ -177,6 +179,7 @@ const DEMO_DISPO_COMMENTS: DispoComment[] = [
     comment: "Clarify regulatory reference.",
     change: "Rewrite as: 'per 14 CFR 21.8…'",
     disposition: "Accepted",
+    decision: "Accepted",
     replies: [
       {
         id: "r1",
@@ -319,9 +322,9 @@ function AddCommentModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onAdd: (c: Omit<DispoComment, "id">) => void;
+  onAdd: (c: Omit<DispoComment, "id" | "decision">) => void;
 }) {
-  const [form, setForm] = useState<Omit<DispoComment, "id">>({
+  const [form, setForm] = useState<Omit<DispoComment, "id" | "decision">>({
     reviewer: "",
     routing: "",
     email: "",
@@ -343,6 +346,7 @@ function AddCommentModal({
       comment: "",
       change: "",
       disposition: "",
+      // decision left blank for lead to fill
     });
   };
 
@@ -502,8 +506,11 @@ export default function ProjectDetailsPage() {
   const [showAddComment, setShowAddComment] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
 
-  // ▼ permission (stub)
-  const canEdit = true; // integrate with auth later
+  // ▼ permission based on logged in user
+  const username = useUserStore((s) => s.username);
+  const isAdmin = useUserStore((s) => s.isAdmin);
+  const isOwner = project?.owner === username;
+  const canEdit = isOwner || isAdmin;
 
   // ▼ fetch demo data
   useEffect(() => {
@@ -544,10 +551,15 @@ export default function ProjectDetailsPage() {
           .map((x) => x.email)
           .join(", "),
     );
-  const addComment = (c: Omit<DispoComment, "id">) =>
+  const addComment = (c: Omit<DispoComment, "id" | "decision">) =>
     setDispos([
       ...dispos,
-      { ...c, id: "c" + Math.random().toString(36).slice(2), replies: [] },
+      {
+        ...c,
+        id: "c" + Math.random().toString(36).slice(2),
+        replies: [],
+        decision: "",
+      },
     ]);
   const addReply = (cid: string, text: string) =>
     setDispos((prev) =>
@@ -569,6 +581,52 @@ export default function ProjectDetailsPage() {
       ),
     );
 
+  const updateDecision = (cid: string, val: "Accepted" | "Rejected" | "Deferred" | "") =>
+    setDispos((prev) =>
+      prev.map((d) => (d.id === cid ? { ...d, decision: val } : d)),
+    );
+
+  const advancePhase = () => {
+    if (!workflow?.steps) return;
+    const idx = workflow.steps.findIndex((s) => s.status === "active");
+    if (idx === -1 || idx >= workflow.steps.length - 1) return;
+    const steps = workflow.steps.map((s, i) => {
+      if (i < idx + 1) return { ...s, status: "complete" };
+      if (i === idx + 1) return { ...s, status: "active" };
+      return { ...s, status: "pending" };
+    });
+    setWorkflow({ ...workflow, steps, phase: steps[idx + 1].name });
+  };
+
+  const sendReminder = () => {
+    const emails = approvals
+      .filter((a) => a.state === "pending" || a.state === "overdue")
+      .map((a) => a.email);
+    alert("Reminder sent to: " + emails.join(", "));
+  };
+
+  const exportRaci = () => {
+    if (!project) return;
+    const rows = [
+      ["Task", "Accountable", "Responsible", "Consulted", "Informed"],
+      [
+        "Approval & signature",
+        project.owner,
+        approvals.map((a) => a.reviewer).join(";"),
+        "Writer",
+        "Ops",
+      ],
+    ];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `raci-${project.id}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // ▼ save optimistic / autosave demo (debounce)
   const autosave = useCallback(() => {
     console.info("autosave stub");
@@ -577,6 +635,17 @@ export default function ProjectDetailsPage() {
     const id = setTimeout(autosave, 1500);
     return () => clearTimeout(id);
   }, [approvals, dispos, autosave]);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    const overdue = approvals.filter((a) => a.state === "overdue");
+    if (overdue.length > 0) {
+      alert(
+        "Escalation: overdue approvals - " +
+          overdue.map((o) => o.reviewer).join(", "),
+      );
+    }
+  }, [approvals, isOwner]);
 
   if (loading) return <p className="p-4">Loading…</p>;
   if (!project) return <p className="p-4">Project not found.</p>;
@@ -599,18 +668,31 @@ export default function ProjectDetailsPage() {
             <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
               {project.status}
             </span>
+            <span className="hidden md:inline ml-4">Accountable: {project.owner}</span>
           </div>
-          <div className="w-36 shrink-0">
-            <ProgBar value={project.progress} />
+          <div className="flex items-center gap-2">
+            <div className="w-36 shrink-0">
+              <ProgBar value={project.progress} />
+            </div>
+            {isOwner && (
+              <>
+                <Button size="sm" onClick={advancePhase}>
+                  <RotateCcw className="w-4 h-4 mr-1" /> Advance Phase
+                </Button>
+                <Button size="sm" onClick={exportRaci}>
+                  <Download className="w-4 h-4 mr-1" /> RACI CSV
+                </Button>
+              </>
+            )}
+            <Button
+              size="icon"
+              variant="ghost"
+              title="Version timeline"
+              onClick={() => setShowVersions(true)}
+            >
+              <History className="w-5 h-5" />
+            </Button>
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            title="Version timeline"
-            onClick={() => setShowVersions(true)}
-          >
-            <History className="w-5 h-5" />
-          </Button>
         </div>
 
         {/* DETAILS SECTION */}
@@ -643,6 +725,7 @@ export default function ProjectDetailsPage() {
                             <TableHead>#</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead>Title</TableHead>
+                            <TableHead>Owner</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Updated</TableHead>
                           </TableRow>
@@ -655,6 +738,7 @@ export default function ProjectDetailsPage() {
                             <TableCell>{project.number}</TableCell>
                             <TableCell>{project.type}</TableCell>
                             <TableCell>{project.title}</TableCell>
+                            <TableCell>{project.owner}</TableCell>
                             <TableCell>{project.status}</TableCell>
                             <TableCell>{project.updated}</TableCell>
                           </TableRow>
@@ -770,9 +854,16 @@ export default function ProjectDetailsPage() {
 
         {/* APPROVALS SECTION */}
         <section id="approvals" className="space-y-6">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Users2 className="w-5 h-5" /> Approvals
-          </h2>
+          <div className="flex justify-between items-center">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Users2 className="w-5 h-5" /> Approvals
+            </h2>
+            {isOwner && (
+              <Button size="sm" onClick={sendReminder}>
+                <Mail className="w-4 h-4 mr-1" /> Remind Pending
+              </Button>
+            )}
+          </div>
           <Card>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -921,6 +1012,7 @@ export default function ProjectDetailsPage() {
                     <TableHead>Page/Para</TableHead>
                     <TableHead>Comment</TableHead>
                     <TableHead>Change</TableHead>
+                    <TableHead>Decision</TableHead>
                     <TableHead>Disposition</TableHead>
                     <TableHead />
                   </TableRow>
@@ -939,6 +1031,27 @@ export default function ProjectDetailsPage() {
                         </TableCell>
                         <TableCell className="max-w-xs truncate">
                           {d.change}
+                        </TableCell>
+                        <TableCell>
+                          {isOwner ? (
+                            <select
+                              className="border rounded px-1 text-sm"
+                              value={d.decision || ""}
+                              onChange={(e) =>
+                                updateDecision(
+                                  d.id,
+                                  e.target.value as "Accepted" | "Rejected" | "Deferred" | "",
+                                )
+                              }
+                            >
+                              <option value="">--</option>
+                              <option value="Accepted">Accepted</option>
+                              <option value="Rejected">Rejected</option>
+                              <option value="Deferred">Deferred</option>
+                            </select>
+                          ) : (
+                            d.decision || "—"
+                          )}
                         </TableCell>
                         <TableCell>{d.disposition}</TableCell>
                         <TableCell className="text-right min-w-[60px]">
@@ -1000,7 +1113,7 @@ export default function ProjectDetailsPage() {
                           className="bg-gray-50 dark:bg-gray-800/40"
                         >
                           <TableCell
-                            colSpan={7}
+                            colSpan={8}
                             className="pl-12 text-sm text-gray-600 dark:text-gray-300 py-2"
                           >
                             <span className="font-semibold mr-2">
