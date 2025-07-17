@@ -48,27 +48,55 @@ export default function DocumentTypesPage() {
       .catch(() => setTypes(DEMO_TYPES));
   }, []);
 
-  const addType = () => {
+  const addType = async () => {
     if (!newName.trim()) return;
-    setTypes([
-      ...types,
-      { id: "dt-" + Date.now().toString(), name: newName.trim() },
-    ]);
+    const body = { name: newName.trim() };
+    try {
+      const r = await fetch("/api/document-types", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) {
+        const created = await r.json();
+        setTypes([...types, { id: created.name, name: created.name }]);
+      }
+    } catch {
+      setTypes([
+        ...types,
+        { id: "dt-" + Date.now().toString(), name: body.name },
+      ]);
+    }
     setNewName("");
   };
 
-  const removeType = (id: string) => setTypes(types.filter((t) => t.id !== id));
+  const removeType = async (id: string) => {
+    setTypes(types.filter((t) => t.id !== id));
+    try {
+      await fetch(`/api/document-types/${id}`, { method: "DELETE" });
+    } catch {
+      // ignore network errors in demo mode
+    }
+  };
 
   const startEdit = (t: DocType) => {
     setEditingId(t.id);
     setEditName(t.name);
   };
 
-  const saveEdit = (id: string) => {
+  const saveEdit = async (id: string) => {
     if (!editName.trim()) return;
-    setTypes(
-      types.map((t) => (t.id === id ? { ...t, name: editName.trim() } : t)),
-    );
+    const body = { name: editName.trim() };
+    setTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t)));
+    try {
+      await fetch(`/api/document-types/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // ignore network errors in demo mode
+    }
     setEditingId(null);
     setEditName("");
   };
