@@ -1,3 +1,4 @@
+"use client";
 // frontend/app/instances/[id]/page.tsx
 import React from "react";
 import {
