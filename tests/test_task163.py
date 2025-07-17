@@ -1,5 +1,3 @@
-import pytest
-
 from docreview360.stubs.task163 import render_extension_menu
 
 
