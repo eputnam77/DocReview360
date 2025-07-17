@@ -76,3 +76,19 @@ def update_approval_state(
                 project=project_id,
             )
     return approval
+
+
+def reset_approval(approval_id: str, confirm: bool) -> bool:
+    """Reset the state of an approval to ``pending`` if confirmed."""
+
+    from .stubs.task213 import task213
+
+    def _do_reset() -> None:
+        approval = approvals.get(approval_id)
+        if approval is None:
+            raise KeyError("approval not found")
+        approval.state = "pending"
+        approval.signature = None
+        approval.signed_at = None
+
+    return task213(confirm, _do_reset)
