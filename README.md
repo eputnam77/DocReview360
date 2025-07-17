@@ -24,8 +24,9 @@ pipx install uv poetry
 2. **Install dependencies**
 
    ```bash
-   poetry install --sync
-   uv pip sync
+   poetry install
+   poetry sync
+   uv pip sync pyproject.toml
    pre-commit install  # optional git hooks
    ```
 
@@ -143,8 +144,9 @@ Update your server or container orchestration tool to pull the new image and you
 
 1. **Install development dependencies and browsers**
    ```bash
-   poetry install --sync
-   uv pip sync
+   poetry install
+   poetry sync
+   uv pip sync pyproject.toml
    playwright install
    ```
 2. **Run the full test suite**
@@ -170,4 +172,4 @@ cp scripts/sendemail-validate.sample .git/hooks/sendemail-validate
 chmod +x .git/hooks/sendemail-validate
 ```
 
-The hook relies on `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. It also runs `gitlint --staged` to validate a patch series. Install these tools with `poetry install --sync && uv pip sync`.
+The hook relies on `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. It also runs `gitlint --staged` to validate a patch series. Install these tools with `poetry install && poetry sync && uv pip sync pyproject.toml`.
