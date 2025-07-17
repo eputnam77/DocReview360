@@ -40,7 +40,6 @@ import {
   Clock,
 } from "lucide-react";
 import FAA_AC_TEMPLATE from "@/data/tiptapTemplates/faa_ac_template";
-import "@/styles/tiptap.css";
 
 // --- Extension Management ---
 const AVAILABLE_EXTENSIONS = [
