@@ -13,11 +13,12 @@ ENV PORT=${PORT}
 COPY pyproject.toml ./
 COPY poetry.lock ./
 COPY src ./src
+COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/* && \
     pip install --upgrade pip && \
     pip install . && \
     pip install uvicorn && \
-    npm install --prefix frontend && npm run build --prefix frontend
+    npm ci --prefix frontend && npm run build --prefix frontend
 
 # Copy the rest of the source
 COPY . .
