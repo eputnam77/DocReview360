@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import FAA_AC_TEMPLATE from "@/data/codexTemplates/faa_ac_template";
 
 // Import the CodeX-specific CSS for spacing, headings, etc.
-import "@/styles/codex.css";
 
 // Only import Editor.js tools on client
 let EditorJS: any = null;
