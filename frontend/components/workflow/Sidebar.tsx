@@ -9,6 +9,7 @@ import {
   Users2,
   Settings,
   User,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
@@ -23,6 +24,11 @@ const SECONDARY = [
     icon: <Users2 className="h-4 w-4" />,
     label: "Support",
     href: "/docs/",
+  },
+  {
+    icon: <FileText className="h-4 w-4" />,
+    label: "Logs",
+    href: "/logs",
   },
 ];
 
