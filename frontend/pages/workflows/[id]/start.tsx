@@ -1,3 +1,4 @@
+"use client";
 // frontend/app/workflows/[id]/start/page.tsx
 
 import React, { useState } from "react";
