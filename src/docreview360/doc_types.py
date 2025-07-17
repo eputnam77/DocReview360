@@ -10,11 +10,12 @@ from pydantic import BaseModel, ValidationError
 
 
 class DocumentTypeModel(BaseModel):
-    """Schema for document types."""
+    """Schema for document types with optional default template linkage."""
 
     name: str
     template: str
     workflow: List[str] = []
+    default_template_id: str | None = None
 
 
 document_types: Dict[str, DocumentTypeModel] = {}
