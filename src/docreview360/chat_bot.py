@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 """Simple AI chat bot helpers."""
 
-import re
-from typing import Optional
+from __future__ import annotations
 
+import re
 from .search import projects
 from .workflows import workflows
 
