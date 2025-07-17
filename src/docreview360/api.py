@@ -211,6 +211,9 @@ class ConfigPayload(BaseModel):
 
 
 app = FastAPI(title="DocReview360")
+# Enable compression for large responses as recommended by the
+# performance profiling report. ``minimum_size`` avoids wasting
+# CPU cycles on tiny payloads.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
