@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from .settings_manager import load_settings, update_setting
 
@@ -16,7 +16,8 @@ def get_preferences(user: str) -> Dict[str, Any]:
         Username to load preferences for.
     """
     settings = load_settings()
-    return settings.get(f"prefs_{user}", {})
+    stored = settings.get(f"prefs_{user}", {})
+    return cast(Dict[str, Any], stored)
 
 
 def update_preferences(user: str, prefs: Dict[str, Any]) -> Dict[str, Any]:
