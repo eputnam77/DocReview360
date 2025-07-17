@@ -22,8 +22,9 @@ pipx install uv poetry
 2. **Install the backend and web server**
 
    ```bash
-   poetry install --sync
-   uv pip sync
+   poetry install
+   poetry sync
+   uv pip sync pyproject.toml
    pre-commit install  # optional git hooks
    ```
 
