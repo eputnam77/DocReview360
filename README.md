@@ -7,19 +7,16 @@ DocReview360 helps you organise documents, run simple approval workflows and kee
 1. **Create and activate a virtual environment**
 
    ```bash
-   python -m venv .venv
-   # On Unix/macOS:
-   source .venv/bin/activate
-   # On Windows:
-   .venv\Scripts\activate
+   uv venv 3.12
+   source 3.12/bin/activate
    ```
 
-2. **Install the backend and web server**
+2. **Install dependencies**
 
    ```bash
-   pip install --upgrade pip
-   pip install -e .           # Install the package in editable mode
-   pip install uvicorn        # Web server for local development
+   poetry install --sync
+   uv pip sync
+   pre-commit install  # optional git hooks
    ```
 
 3. **Configure the application**
@@ -136,7 +133,8 @@ Update your server or container orchestration tool to pull the new image and you
 
 1. **Install development dependencies and browsers**
    ```bash
-   pip install -e .[dev]
+   poetry install --sync
+   uv pip sync
    playwright install
    ```
 2. **Run the full test suite**
@@ -162,4 +160,4 @@ cp scripts/sendemail-validate.sample .git/hooks/sendemail-validate
 chmod +x .git/hooks/sendemail-validate
 ```
 
-The hook relies on `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. It also runs `gitlint --staged` to validate a patch series. Install these tools with `pip install -e .[dev]`.
+The hook relies on `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. It also runs `gitlint --staged` to validate a patch series. Install these tools with `poetry install --sync && uv pip sync`.

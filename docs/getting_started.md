@@ -5,19 +5,16 @@ This short guide walks you through the first steps with DocReview360. It assumes
 1. **Create and activate a virtual environment**
 
    ```bash
-   python -m venv .venv
-   # On Unix/macOS:
-   source .venv/bin/activate
-   # On Windows:
-   .venv\Scripts\activate
+   uv venv 3.12
+   source 3.12/bin/activate
    ```
 
 2. **Install the backend and web server**
 
    ```bash
-   pip install --upgrade pip
-   pip install -e .           # Install the package in editable mode
-   pip install uvicorn        # Web server for local development
+   poetry install --sync
+   uv pip sync
+   pre-commit install  # optional git hooks
    ```
 
 3. **Configure the application**
