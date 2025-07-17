@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import {
@@ -7,7 +7,14 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,11 +38,15 @@ import {
   Check,
   X,
   RotateCcw,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
+import { Menu, Transition } from "@headlessui/react";
 
-// --- Types ---
+/**
+ * Types -------------------------------------------------------------------
+ */
 interface Project {
   id: string;
   number: string | number;
@@ -55,13 +66,13 @@ interface LogEntry {
 interface Workflow {
   id: string;
   phase: string;
-  steps?: { name: string; status: string; }[];
+  steps?: { name: string; status: "complete" | "active" | "pending" }[];
 }
 interface Approval {
   id: string;
   reviewer: string;
   email: string;
-  state: "pending" | "approved" | "overdue" | string;
+  state: "pending" | "approved" | "overdue" | "rejected" | string;
   statusDate: string;
   signedAt?: string;
   comments?: string;
@@ -84,7 +95,9 @@ interface RefDoc {
   file?: File;
 }
 
-// --- Demo Data ---
+/**
+ * Demo data (replace with API calls) --------------------------------------
+ */
 const DEMO_PROJECT: Project = {
   id: "123e-ac-101",
   number: "AC 20-197",
@@ -148,7 +161,7 @@ const DEMO_DISPO_COMMENTS: DispoComment[] = [
     pagePara: "2/3.1",
     comment: "Clarify regulatory reference.",
     change: "Rewrite as: 'per 14 CFR 21.8...'",
-    disposition: "Accepted"
+    disposition: "Accepted",
   },
   {
     id: "c2",
@@ -158,7 +171,7 @@ const DEMO_DISPO_COMMENTS: DispoComment[] = [
     pagePara: "5/6.2",
     comment: "Consider splitting into two paragraphs.",
     change: "Break up 6.2 for clarity.",
-    disposition: "Deferred"
+    disposition: "Deferred",
   },
 ];
 const DEMO_REFERENCE_DOCS: RefDoc[] = [
@@ -172,44 +185,29 @@ const DEMO_REFERENCE_DOCS: RefDoc[] = [
     url: "https://file-examples.com/wp-content/uploads/2017/02/file-sample_100kB.docx",
     type: "docx",
   },
-  {
-    name: "Sample.txt",
-    url: "/sample.txt",
-    type: "txt",
-  },
 ];
 
-// --- UI Helpers ---
-function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color?: string }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <Icon className={`w-7 h-7 ${color || "text-indigo-600"}`} />
-        <div>
-          <p className="text-lg font-bold leading-none">{value}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+/**
+ * Utility helpers ---------------------------------------------------------
+ */
+function slugify(str: string) {
+  return str.toLowerCase().replace(/\s+/g, "");
 }
 
-function ProgressBar({ value }: { value: number }) {
-  const pct = Math.max(0, Math.min(100, value || 0));
-  const status =
-    pct === 100
-      ? "bg-green-500"
-      : pct >= 70
-      ? "bg-blue-500"
-      : pct > 0
-      ? "bg-yellow-400"
-      : "bg-gray-300";
+function ProgBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
   return (
-    <div className="w-full bg-gray-200 rounded-full h-3">
+    <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3">
       <div
         className={cn(
-          "h-3 rounded-full transition-all duration-200",
-          status
+          "h-3 rounded-full transition-all",
+          pct === 100
+            ? "bg-green-500"
+            : pct >= 70
+            ? "bg-blue-500"
+            : pct > 0
+            ? "bg-yellow-400"
+            : "bg-gray-400"
         )}
         style={{ width: `${pct}%` }}
       />
@@ -217,934 +215,453 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-function WorkflowSteps({ steps }: { steps: Workflow["steps"] }) {
+function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color: string }) {
   return (
-    <div className="flex items-center gap-3 my-2">
-      {steps?.map((step, idx) => (
-        <span key={step.name} className={cn(
-          "px-2 py-1 rounded text-xs font-medium",
-          step.status === "complete"
-            ? "bg-green-100 text-green-800"
-            : step.status === "active"
-            ? "bg-blue-100 text-blue-800"
-            : "bg-gray-100 text-gray-700"
-        )}>
-          {step.name}
-          {idx < (steps.length - 1) && <span className="mx-2 text-gray-400">→</span>}
-        </span>
+    <Card className="shadow-sm">
+      <CardContent className="flex items-center gap-4 p-4">
+        <Icon className={cn("w-7 h-7", color)} />
+        <div>
+          <p className="text-base font-bold leading-none">{value}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WorkflowStepper({ steps }: { steps?: Workflow["steps"] }) {
+  if (!steps?.length) return null;
+  return (
+    <ol className="flex items-center gap-0.5 text-sm">
+      {steps.map((s, idx) => (
+        <li key={s.name} className="flex items-center gap-0.5">
+          <span
+            className={cn(
+              "w-6 h-6 flex items-center justify-center rounded-full border text-xs font-semibold",
+              s.status === "complete" && "bg-green-500 border-green-500 text-white",
+              s.status === "active" && "bg-blue-500 border-blue-500 text-white animate-pulse",
+              s.status === "pending" && "bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"
+            )}
+          >
+            {idx + 1}
+          </span>
+          <span className="ml-1 mr-3 whitespace-nowrap">{s.name}</span>
+        </li>
       ))}
+    </ol>
+  );
+}
+
+/**
+ * 3‑dot menu component for row actions ------------------------------------
+ */
+function RowMenu({ children }: { children: React.ReactNode }) {
+  return (
+    <Menu as="div" className="relative inline-block text-left">
+      <Menu.Button className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <MoreHorizontal className="w-4 h-4" />
+      </Menu.Button>
+      <Transition
+        enter="transition duration-100 ease-out"
+        enterFrom="transform scale-95 opacity-0"
+        enterTo="transform scale-100 opacity-100"
+        leave="transition duration-75 ease-out"
+        leaveFrom="transform scale-100 opacity-100"
+        leaveTo="transform scale-95 opacity-0"
+      >
+        <Menu.Items className="absolute z-10 right-0 mt-2 w-44 origin-top-right rounded-md bg-white dark:bg-gray-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+          {children}
+        </Menu.Items>
+      </Transition>
+    </Menu>
+  );
+}
+
+/**
+ * Sticky section nav -------------------------------------------------------
+ */
+const sections = [
+  { id: "details", label: "Details" },
+  { id: "approvals", label: "Approvals" },
+  { id: "comments", label: "Comments" },
+  { id: "history", label: "History" },
+];
+function StickyNav() {
+  return (
+    <nav className="sticky top-0 z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-700">
+      <ul className="flex gap-4 px-8 py-2 text-sm font-medium overflow-x-auto">
+        {sections.map((s) => (
+          <li key={s.id}>
+            <a href={`#${s.id}`} className="text-gray-600 dark:text-gray-300 hover:text-indigo-600">
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/**
+ * Bulk action bar ----------------------------------------------------------
+ */
+function BulkBar({ count, onEmail }: { count: number; onEmail: () => void }) {
+  if (count === 0) return null;
+  return (
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-lg rounded-full px-4 py-2 flex items-center gap-4">
+      <span className="text-sm font-medium">{count} selected</span>
+      <Button size="sm" onClick={onEmail}>
+        <Mail className="w-4 h-4 mr-1" /> Email selected
+      </Button>
     </div>
   );
 }
 
-// --- Main Page ---
+/**
+ * -------------------------------------------------------------------------
+ * Main page
+ * -------------------------------------------------------------------------
+ */
 export default function ProjectDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
+
+  // state ------------------------------------------------------------------
   const [project, setProject] = useState<Project | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [selectedApprovals, setSelectedApprovals] = useState<string[]>([]);
-  const [showAddReviewer, setShowAddReviewer] = useState(false);
-  const [newReviewer, setNewReviewer] = useState({ reviewer: "", email: "" });
-  const [commentEditor, setCommentEditor] = useState<{
-    id: string;
-    text: string;
-  } | null>(null);
-  const [dispoEditor, setDispoEditor] = useState<{
-    id: string;
-    comment: string;
-    change: string;
-    disposition: string;
-    reviewer: string;
-  } | null>(null);
-  const [dispoComments, setDispoComments] = useState<DispoComment[]>([]);
-  const [showAddComment, setShowAddComment] = useState(false);
-  const [newComment, setNewComment] = useState<Omit<DispoComment, "id">>({
-    reviewer: "",
-    routing: "",
-    email: "",
-    pagePara: "",
-    comment: "",
-    change: "",
-    disposition: "",
-  });
+  const [selected, setSelected] = useState<string[]>([]);
   const [referenceDocs, setReferenceDocs] = useState<RefDoc[]>([]);
-  const [newRefFile, setNewRefFile] = useState<File | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [dispoComments, setDispoComments] = useState<DispoComment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Demo fetch logic
+  // fetch demo -------------------------------------------------------------
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     setTimeout(() => {
-      setProject(DEMO_PROJECT); // Replace with real fetch(`/api/projects/${id}`)
+      setProject(DEMO_PROJECT);
       setWorkflow(DEMO_WORKFLOW);
       setApprovals(DEMO_APPROVALS);
-      setDispoComments(DEMO_DISPO_COMMENTS);
       setReferenceDocs(DEMO_REFERENCE_DOCS);
+      setDispoComments(DEMO_DISPO_COMMENTS);
       setLogs(DEMO_LOGS);
       setLoading(false);
     }, 300);
   }, [id]);
 
+  // memo helpers -----------------------------------------------------------
+  const reviewStats = useMemo(() => {
+    const assigned = approvals.length;
+    const approved = approvals.filter((a) => a.state === "approved").length;
+    const pending = approvals.filter((a) => a.state === "pending").length;
+    const overdue = approvals.filter((a) => a.state === "overdue").length;
+    return { assigned, approved, pending, overdue };
+  }, [approvals]);
+
+  const editor = project?.editor ?? "tiptap";
+  const editDocUrl = `/editors/${editor}?projectId=${id}&returnTo=/projects/${id}`;
+
+  // bulk email handler -----------------------------------------------------
+  const handleBulkEmail = () => {
+    const emails = approvals.filter((a) => selected.includes(a.id)).map((a) => a.email);
+    alert(`Would send bulk email to: ${emails.join(", ")}`);
+  };
+
+  // ui mutation helpers (kept minimal for brevity) -------------------------
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
   if (loading) return <p className="p-4">Loading…</p>;
   if (!project) return <p className="p-4">Project not found.</p>;
 
-  const editor = project.editor ?? "tiptap";
-  const editDocUrl = `/editors/${editor}?projectId=${id}&returnTo=/projects/${id}`;
-
-  // Review KPI stats
-  const assigned = approvals.length;
-  const approved = approvals.filter(a => a.state === "approved").length;
-  const pending = approvals.filter(a => a.state === "pending").length;
-  const overdue = approvals.filter(a => a.state === "overdue").length;
-
-  // Approval Table helpers
-  const handleSelectApproval = (id: string, checked: boolean) => {
-    setSelectedApprovals((prev) =>
-      checked ? [...prev, id] : prev.filter((aid) => aid !== id)
-    );
-  };
-  const handleSendEmail = (approval: Approval) => {
-    // Integrate your real email send logic here.
-    alert(`Email sent to ${approval.email} for review.`);
-  };
-  const handleRemoveReviewer = (id: string) => {
-    setApprovals(approvals.filter((a) => a.id !== id));
-    setSelectedApprovals((prev) => prev.filter((aid) => aid !== id));
-  };
-  const handleResetApproval = (id: string) => {
-    setApprovals((prev) =>
-      prev.map((a) =>
-        a.id === id
-          ? { ...a, state: "pending", statusDate: new Date().toISOString().slice(0, 10), signedAt: undefined }
-          : a
-      )
-    );
-  };
-  const slugify = (name: string) => name.toLowerCase().replace(/\s+/g, "");
-
-  const handleNotifyOwner = (reviewer: string) => {
-    if (!project?.user) return;
-    alert(`Notified ${project.user} that ${reviewer} left feedback.`);
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        action: `Notified ${project.user} of comments from ${reviewer}`,
-      },
-    ]);
-  };
-
-  const handleSignApproval = async (approval: Approval) => {
-    try {
-      let sigId = approval.documensoSigId;
-      let url = "";
-      if (!sigId) {
-        const form = new FormData();
-        form.append("user", slugify(approval.reviewer));
-        form.append("approval", approval.id);
-        const resp = await fetch(`/sign/${project!.id}`, {
-          method: "POST",
-          body: form,
-        });
-        const data = await resp.json();
-        sigId = data.id;
-        url = data.url;
-        setApprovals(prev =>
-          prev.map(a =>
-            a.id === approval.id ? { ...a, documensoSigId: sigId } : a
-          )
-        );
-      }
-      if (!url) {
-        url = `/documenso/${sigId}?return=/projects/${id}`;
-      }
-      window.open(url, "_blank", "noopener,noreferrer");
-      const poll = async () => {
-        try {
-          const res = await fetch(`/sign/${sigId}`);
-          const status = (await res.json()).status as string;
-          if (status === "signed") {
-            setApprovals(prev =>
-              prev.map(a =>
-                a.id === approval.id
-                  ? {
-                      ...a,
-                      state: "approved",
-                      signedAt: new Date().toISOString(),
-                      documensoSigId: sigId,
-                    }
-                  : a
-              )
-            );
-          } else {
-            setTimeout(poll, 2000);
-          }
-        } catch {
-          setTimeout(poll, 2000);
-        }
-      };
-      poll();
-    } catch {
-      alert("Failed to start signing flow");
-    }
-  };
-
-  const handleRejectApproval = (id: string) => {
-    const reviewer = approvals.find(a => a.id === id)?.reviewer || "";
-    setApprovals(prev =>
-      prev.map(a =>
-        a.id === id
-          ? { ...a, state: "rejected", statusDate: new Date().toISOString().slice(0, 10) }
-          : a
-      )
-    );
-    alert(`Document returned to ${project?.user || "owner"} with comments.`);
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        action: `Approval by ${reviewer} rejected and sent back`,
-      },
-    ]);
-  };
-  const handleAddReviewer = () => {
-    if (!newReviewer.reviewer || !newReviewer.email) return;
-    setApprovals([
-      ...approvals,
-      {
-        id: "appr-" + (Math.random() * 100000).toFixed(0),
-        reviewer: newReviewer.reviewer,
-        email: newReviewer.email,
-        state: "pending",
-        statusDate: new Date().toISOString().slice(0, 10),
-        signedAt: undefined,
-        comments: "",
-      },
-    ]);
-    setShowAddReviewer(false);
-    setNewReviewer({ reviewer: "", email: "" });
-  };
-
-  const handleOpenCommentEditor = (approval: Approval) => {
-    setCommentEditor({ id: approval.id, text: approval.comments || "" });
-  };
-
-  const handleSaveComment = () => {
-    if (!commentEditor) return;
-    setApprovals(prev =>
-      prev.map(a =>
-        a.id === commentEditor.id ? { ...a, comments: commentEditor.text } : a
-      )
-    );
-    const reviewer = approvals.find(a => a.id === commentEditor.id)?.reviewer;
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        action: `Updated approval comment for ${reviewer}`,
-      },
-    ]);
-    if (reviewer) {
-      handleNotifyOwner(reviewer);
-    }
-    setCommentEditor(null);
-  };
-
-  const handleDeleteComment = () => {
-    if (!commentEditor) return;
-    setApprovals(prev =>
-      prev.map(a =>
-        a.id === commentEditor.id ? { ...a, comments: "" } : a
-      )
-    );
-    const reviewer = approvals.find(a => a.id === commentEditor.id)?.reviewer;
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        action: `Deleted approval comment for ${reviewer}`,
-      },
-    ]);
-    setCommentEditor(null);
-  };
-
-  // Disposition Comments helpers
-  const handleRemoveComment = (id: string) => {
-    const comment = dispoComments.find(c => c.id === id);
-    setDispoComments(dispoComments.filter((c) => c.id !== id));
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        action: `Deleted disposition comment by ${comment?.reviewer || "unknown"}`,
-      },
-    ]);
-  };
-  const handleAddComment = () => {
-    const comment = { ...newComment, id: "c" + (Math.random() * 100000).toFixed(0) };
-    setDispoComments([...dispoComments, comment]);
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        action: `Added disposition comment by ${comment.reviewer}`,
-      },
-    ]);
-    setShowAddComment(false);
-    setNewComment({
-      reviewer: "",
-      routing: "",
-      email: "",
-      pagePara: "",
-      comment: "",
-      change: "",
-      disposition: "",
-    });
-  };
-
-  const handleOpenDispoEditor = (comment: DispoComment) => {
-    setDispoEditor({
-      id: comment.id,
-      comment: comment.comment,
-      change: comment.change,
-      disposition: comment.disposition,
-      reviewer: comment.reviewer,
-    });
-  };
-
-  const handleSaveDispoComment = () => {
-    if (!dispoEditor) return;
-    setDispoComments(prev =>
-      prev.map(c =>
-        c.id === dispoEditor.id
-          ? {
-              ...c,
-              comment: dispoEditor.comment,
-              change: dispoEditor.change,
-              disposition: dispoEditor.disposition,
-            }
-          : c,
-      ),
-    );
-    setLogs(prev => [
-      ...prev,
-      {
-        timestamp: new Date().toISOString(),
-        action: `Updated disposition comment by ${dispoEditor.reviewer}`,
-      },
-    ]);
-    setDispoEditor(null);
-  };
-
-  const handleDeleteDispoComment = () => {
-    if (!dispoEditor) return;
-    handleRemoveComment(dispoEditor.id);
-    setDispoEditor(null);
-  };
-
-  // Reference Documents helpers
-  const handleRemoveRefDoc = (doc: RefDoc) => {
-    if (doc.file) {
-      URL.revokeObjectURL(doc.url);
-    }
-    setReferenceDocs(referenceDocs.filter((d) => d !== doc));
-  };
-  const handleAddRefDoc = () => {
-    if (!newRefFile) return;
-    const url = URL.createObjectURL(newRefFile);
-    const ext = newRefFile.name.split(".").pop()?.toLowerCase() || "";
-    setReferenceDocs([
-      ...referenceDocs,
-      { name: newRefFile.name, url, type: ext, file: newRefFile },
-    ]);
-    setNewRefFile(null);
-  };
-  const handleViewRefDoc = (doc: RefDoc) => {
-    const viewUrl = `/viewer?type=${doc.type}&url=${encodeURIComponent(doc.url)}`;
-    window.open(viewUrl, "_blank", "noopener,noreferrer");
-  };
-  const handleDownloadRefDoc = (doc: RefDoc) => {
-    const link = document.createElement("a");
-    link.href = doc.url;
-    link.download = doc.name;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
-
   return (
-    <div className="p-8 space-y-8">
+    <>
+      {/* sticky nav */}
+      <StickyNav />
 
-      {/* --- Project Details Table (horizontal) --- */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-bold flex items-center gap-2">
-            Project Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table className="min-w-full text-sm">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Document Id</TableHead>
-                  <TableHead>Document #</TableHead>
-                  <TableHead>Document Type</TableHead>
-                  <TableHead>Document Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-mono">{project.id}</TableCell>
-                  <TableCell>{project.number}</TableCell>
-                  <TableCell>{project.type}</TableCell>
-                  <TableCell>{project.title}</TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
-                      project.status === "Complete"
-                        ? "bg-green-100 text-green-800"
-                        : project.status === "In Progress"
-                        ? "bg-blue-100 text-blue-800"
-                        : project.status === "Draft"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : project.status === "Overdue"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-700"
-                    )}>
-                      {project.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{project.updated?.slice(0, 10) ?? ""}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+      <div className="p-8 space-y-10">
+        {/* header summary (sticky) */}
+        <div className="sticky top-12 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-700 py-2 px-4 flex items-center justify-between">
+          <div className="space-x-2 text-sm text-gray-600 dark:text-gray-300">
+            <span className="font-mono">{project.number}</span>
+            <span>•</span>
+            <span>{project.title}</span>
+            <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
+              {project.status}
+            </span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="w-40"><ProgBar value={project.progress} /></div>
+        </div>
 
+        {/* ---------------------------------------------------------------- */}
+        <section id="details" className="space-y-8">
+          <Card className="max-w-full overflow-x-auto">
+            <CardHeader>
+              <CardTitle>Project Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table className="min-w-[600px] text-sm">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>#</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-mono">{project.id}</TableCell>
+                    <TableCell>{project.number}</TableCell>
+                    <TableCell>{project.type}</TableCell>
+                    <TableCell>{project.title}</TableCell>
+                    <TableCell>{project.status}</TableCell>
+                    <TableCell>{project.updated}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-      {/* --- Review Stats --- */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
-        <StatCard icon={Users2} label="Assigned" value={assigned} color="text-indigo-600" />
-        <StatCard icon={CheckCircle2} label="Approved" value={approved} color="text-emerald-600" />
-        <StatCard icon={Clock} label="Pending" value={pending} color="text-orange-600" />
-        <StatCard icon={BarChart2} label="Overdue" value={overdue} color="text-red-600" />
-      </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl">
+            <StatCard icon={Users2} label="Assigned" value={reviewStats.assigned} color="text-indigo-600" />
+            <StatCard icon={CheckCircle2} label="Approved" value={reviewStats.approved} color="text-emerald-600" />
+            <StatCard icon={Clock} label="Pending" value={reviewStats.pending} color="text-orange-600" />
+            <StatCard icon={BarChart2} label="Overdue" value={reviewStats.overdue} color="text-red-600" />
+          </div>
 
-      {/* --- Workflow & Progress --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Workflow Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm mb-2">
-              The workflow steps below show which phase your document is currently in.
-            </p>
-            <WorkflowSteps steps={workflow?.steps} />
-            <p className="text-xs text-gray-500 mt-1">Current Phase: {workflow?.phase}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Overall Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm mb-2">
-              This bar displays the percentage of overall completion for this document's review workflow.
-            </p>
-            <div className="pt-2">
-              <ProgressBar value={project.progress} />
-              <div className="text-xs mt-2 text-gray-500">{project.progress}% complete</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Workflow</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <WorkflowStepper steps={workflow?.steps} />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Current phase: {workflow?.phase}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Overall Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProgBar value={project.progress} />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{project.progress}% complete</p>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* --- Edit/View Document (prominent) --- */}
-      <div className="flex justify-center">
-        <Button
-          asChild
-          className="text-lg px-8 py-4 rounded-lg shadow-lg bg-indigo-600 hover:bg-indigo-700"
-        >
-          <Link href={editDocUrl} className="flex items-center gap-2">
-            <FileEdit className="w-6 h-6" />
-            {editor === "tiptap" || editor === "toast" || editor === "codex"
-              ? "Edit Document"
-              : "View Document"}
-          </Link>
-        </Button>
-      </div>
+          <div className="flex justify-center">
+            <Button asChild className="text-lg px-6 py-3 rounded-lg shadow-lg">
+              <Link href={editDocUrl}>
+                <FileEdit className="w-5 h-5 mr-2" />
+                {editor === "word" ? "View" : "Edit"} Document
+              </Link>
+            </Button>
+          </div>
+        </section>
 
-      {/* --- Reference Documents --- */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Reference Documents</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600 text-sm mb-3">
-            Attach any supporting files or reference materials needed for this project, such as background documents or annotated drafts.
-          </p>
-          <form
-            className="space-y-2 mb-4"
-            onSubmit={e => {
-              e.preventDefault();
-              handleAddRefDoc();
-            }}
-          >
-            <UploadDropzone
-              value={newRefFile}
-              onChange={setNewRefFile}
-              accept=".docx,.pdf,.txt"
-              maxSizeMB={20}
-            />
-            <Button type="submit" size="sm" disabled={!newRefFile}>Add</Button>
-          </form>
-          <ul className="list-disc pl-5 space-y-1 text-sm">
-            {referenceDocs.map((doc) => (
-              <li key={doc.url} className="flex items-center justify-between gap-2">
-                <span>{doc.name}</span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="View file"
-                    onClick={() => handleViewRefDoc(doc)}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Download file"
-                    onClick={() => handleDownloadRefDoc(doc)}
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Remove file"
-                    onClick={() => handleRemoveRefDoc(doc)}
-                  >
-                    <Trash className="w-4 h-4" />
-                  </Button>
-                </div>
-              </li>
-            ))}
-            {referenceDocs.length === 0 && (
-              <li className="text-gray-400">No reference documents uploaded.</li>
-            )}
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* --- Approvals Table --- */}
-      <Card>
-        <CardHeader className="flex flex-row justify-between items-center">
-          <CardTitle className="text-lg font-semibold">Approvals</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => setShowAddReviewer((v) => !v)}>
-            <PlusCircle className="w-4 h-4 mr-2" /> Add Reviewer
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600 text-sm mb-3">
-            Manage who reviews or approves this document. 
-            Add reviewers, track their status, and send notifications with the email icon. 
-            Use checkboxes to select multiple reviewers. 
-            Click the checkmark to approve, X to reject, reset to remove approval, or trash to remove a reviewer.
-          </p>
-          {showAddReviewer && (
-            <form
-              className="flex items-center gap-2 mb-4"
-              onSubmit={e => {
-                e.preventDefault();
-                handleAddReviewer();
-              }}
-            >
-              <Input
-                placeholder="Reviewer Name"
-                value={newReviewer.reviewer}
-                onChange={e => setNewReviewer(r => ({ ...r, reviewer: e.target.value }))}
-                className="max-w-xs"
-                required
-              />
-              <Input
-                type="email"
-                placeholder="Email Address"
-                value={newReviewer.email}
-                onChange={e => setNewReviewer(r => ({ ...r, email: e.target.value }))}
-                className="max-w-xs"
-                required
-              />
-              <Button type="submit" size="sm">Add</Button>
-            </form>
-          )}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <input
-                    type="checkbox"
-                    checked={selectedApprovals.length === approvals.length && approvals.length > 0}
-                    onChange={e =>
-                      setSelectedApprovals(
-                        e.target.checked ? approvals.map(a => a.id) : []
-                      )
-                    }
-                  />
-                </TableHead>
-                <TableHead>Reviewer</TableHead>
-                <TableHead>Send to Reviewer</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Status Date</TableHead>
-                <TableHead>Signed At</TableHead>
-                <TableHead>Actions</TableHead>
-                <TableHead>Comments</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {approvals.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={selectedApprovals.includes(a.id)}
-                      onChange={e => handleSelectApproval(a.id, e.target.checked)}
-                    />
-                  </TableCell>
-                  <TableCell>{a.reviewer}</TableCell>
-                  <TableCell>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title="Send email"
-                      onClick={() => handleSendEmail(a)}
-                      disabled={a.state !== "pending"}
-                    >
-                      <Mail className="w-5 h-5" />
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
-                      a.state === "approved"
-                        ? "bg-green-100 text-green-800"
-                        : a.state === "rejected"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : a.state === "pending"
-                        ? "bg-blue-100 text-blue-800"
-                        : a.state === "overdue"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-700"
-                    )}>
-                      {a.state}
-                    </span>
-                  </TableCell>
-                  <TableCell>{a.statusDate}</TableCell>
-                  <TableCell>
-                    {a.state === "approved" ? (
-                      <span>{a.signedAt}</span>
-                    ) : (
-                      <span className="text-gray-400">–</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="space-x-1">
-                    {a.state === "pending" && (
-                      <>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          title="Sign & Approve"
-                          onClick={() => handleSignApproval(a)}
+        {/* ---------------------------------------------------------------- */}
+        <section id="approvals" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Approvals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table className="overflow-x-auto">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all reviewers"
+                        checked={selected.length === approvals.length && approvals.length > 0}
+                        onChange={(e) =>
+                          setSelected(e.target.checked ? approvals.map((a) => a.id) : [])
+                        }
+                      />
+                    </TableHead>
+                    <TableHead>Reviewer</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Comments</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {approvals.map((a) => (
+                    <TableRow key={a.id} className="group">
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(a.id)}
+                          onChange={() => toggleSelect(a.id)}
+                          aria-label={`Select ${a.reviewer}`}
+                        />
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{a.reviewer}</TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded-full text-xs font-semibold capitalize",
+                            {
+                              approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+                              pending: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+                              overdue: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+                              rejected: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+                            }[a.state as keyof typeof a]
+                          )}
                         >
-                          <Check className="w-5 h-5 text-green-600" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          title="Reject and return"
-                          onClick={() => handleRejectApproval(a.id)}
-                        >
-                          <X className="w-5 h-5 text-red-600" />
-                        </Button>
-                      </>
-                    )}
-                    {(a.state === "approved" || a.state === "rejected") && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="Reset"
-                        onClick={() => handleResetApproval(a.id)}
-                      >
-                        <RotateCcw className="w-5 h-5" />
-                      </Button>
-                    )}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title="Remove Reviewer"
-                      onClick={() => handleRemoveReviewer(a.id)}
-                    >
-                      <Trash className="w-5 h-5" />
-                    </Button>
-                  </TableCell>
-                  <TableCell className="max-w-xs">
-                    <div className="flex items-start gap-1">
-                      <span className="flex-1 truncate">
-                        {a.comments || <span className="text-gray-400">–</span>}
-                      </span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title={a.comments ? "Edit comment" : "Add comment"}
-                        onClick={() => handleOpenCommentEditor(a)}
-                      >
-                        <FileEdit className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                          {a.state}
+                        </span>
+                      </TableCell>
+                      <TableCell>{a.statusDate}</TableCell>
+                      <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
+                        {a.comments || "—"}
+                      </TableCell>
+                      <TableCell className="text-right min-w-[60px]">
+                        <RowMenu>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                className={cn(
+                                  "w-full px-3 py-2 text-left text-sm",
+                                  active && "bg-indigo-50 dark:bg-gray-800"
+                                )}
+                                onClick={() => alert("Sign/approve")}
+                              >
+                                <Check className="w-4 h-4 mr-2 inline" /> Sign / Approve
+                              </button>
+                            )}
+                          </Menu.Item>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                className={cn(
+                                  "w-full px-3 py-2 text-left text-sm",
+                                  active && "bg-indigo-50 dark:bg-gray-800"
+                                )}
+                                onClick={() => alert("Send email")}
+                              >
+                                <Mail className="w-4 h-4 mr-2 inline" /> Send Email
+                              </button>
+                            )}
+                          </Menu.Item>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                className={cn(
+                                  "w-full px-3 py-2 text-left text-sm text-red-600",
+                                  active && "bg-indigo-50 dark:bg-gray-800"
+                                )}
+                                onClick={() => alert("Remove reviewer")}
+                              >
+                                <Trash className="w-4 h-4 mr-2 inline" /> Remove
+                              </button>
+                            )}
+                          </Menu.Item>
+                        </RowMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </section>
 
-      {commentEditor && (
-        <Dialog open onOpenChange={(open) => !open && setCommentEditor(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Comment</DialogTitle>
-            </DialogHeader>
-            <textarea
-              className="w-full border rounded p-2 mt-2"
-              rows={5}
-              value={commentEditor.text}
-              onChange={(e) =>
-                setCommentEditor({ ...commentEditor, text: e.target.value })
-              }
-            />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDeleteComment}
-              >
-                Delete
-              </Button>
-              <Button type="button" onClick={handleSaveComment}>
-                Save
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+        {/* bulk bar */}
+        <BulkBar count={selected.length} onEmail={handleBulkEmail} />
 
-      {/* --- Document Comments & Disposition Table --- */}
-      <Card>
-        <CardHeader className="flex flex-row justify-between items-center">
-          <CardTitle className="text-lg font-semibold">Document Comments and Disposition</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => setShowAddComment((v) => !v)}>
-            <PlusCircle className="w-4 h-4 mr-2" /> Add Comment
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600 text-sm mb-3">
-            Log detailed reviewer comments and how each was addressed.
-          </p>
-          {showAddComment && (
-            <form
-              className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4"
-              onSubmit={e => {
-                e.preventDefault();
-                handleAddComment();
-              }}
-            >
-              <Input
-                placeholder="Reviewer Name"
-                value={newComment.reviewer}
-                onChange={e => setNewComment(r => ({ ...r, reviewer: e.target.value }))}
-                className="col-span-1"
-                required
-              />
-              <Input
-                placeholder="Routing"
-                value={newComment.routing}
-                onChange={e => setNewComment(r => ({ ...r, routing: e.target.value }))}
-                className="col-span-1"
-                required
-              />
-              <Input
-                type="email"
-                placeholder="Email"
-                value={newComment.email}
-                onChange={e => setNewComment(r => ({ ...r, email: e.target.value }))}
-                className="col-span-1"
-                required
-              />
-              <Input
-                placeholder="Page/Para #"
-                value={newComment.pagePara}
-                onChange={e => setNewComment(r => ({ ...r, pagePara: e.target.value }))}
-                className="col-span-1"
-                required
-              />
-              <Input
-                placeholder="Comment/Rationale"
-                value={newComment.comment}
-                onChange={e => setNewComment(r => ({ ...r, comment: e.target.value }))}
-                className="col-span-1 md:col-span-2"
-                required
-              />
-              <Input
-                placeholder="Recommended Change"
-                value={newComment.change}
-                onChange={e => setNewComment(r => ({ ...r, change: e.target.value }))}
-                className="col-span-1 md:col-span-2"
-                required
-              />
-              <Input
-                placeholder="Disposition"
-                value={newComment.disposition}
-                onChange={e => setNewComment(r => ({ ...r, disposition: e.target.value }))}
-                className="col-span-1"
-                required
-              />
-              <Button type="submit" className="col-span-1 md:col-span-4 mt-1">Add</Button>
-              <span className="col-span-1 md:col-span-4 text-xs text-gray-500 mt-1">
-                All fields are required. Please provide enough detail for each comment and disposition.
-              </span>
-            </form>
-          )}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Reviewer Name</TableHead>
-                <TableHead>Routing</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Page/Para #</TableHead>
-                <TableHead>Comment/Rationale</TableHead>
-                <TableHead>Recommended Change</TableHead>
-                <TableHead>Disposition</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dispoComments.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.reviewer}</TableCell>
-                  <TableCell>{c.routing}</TableCell>
-                  <TableCell>{c.email}</TableCell>
-                  <TableCell>{c.pagePara}</TableCell>
-                  <TableCell className="max-w-xs">{c.comment}</TableCell>
-                  <TableCell className="max-w-xs">{c.change}</TableCell>
-                  <TableCell>{c.disposition}</TableCell>
-                  <TableCell>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title="Edit Comment"
-                      onClick={() => handleOpenDispoEditor(c)}
-                    >
-                      <FileEdit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title="Remove Comment"
-                      onClick={() => handleRemoveComment(c.id)}
-                    >
-                      <Trash className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {dispoComments.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-400 py-6">
-                    No comments added.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        {/* ---------------------------------------------------------------- */}
+        <section id="comments" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Comments & Disposition</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table className="text-sm overflow-x-auto">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reviewer</TableHead>
+                    <TableHead>Routing</TableHead>
+                    <TableHead>Page/Para</TableHead>
+                    <TableHead>Comment</TableHead>
+                    <TableHead>Change</TableHead>
+                    <TableHead>Disposition</TableHead>
+                    <TableHead className="min-w-[60px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dispoComments.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell>{c.reviewer}</TableCell>
+                      <TableCell>{c.routing}</TableCell>
+                      <TableCell>{c.pagePara}</TableCell>
+                      <TableCell className="max-w-xs truncate">{c.comment}</TableCell>
+                      <TableCell className="max-w-xs truncate">{c.change}</TableCell>
+                      <TableCell>{c.disposition}</TableCell>
+                      <TableCell className="text-right">
+                        <RowMenu>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                className={cn(
+                                  "w-full px-3 py-2 text-left text-sm",
+                                  active && "bg-indigo-50 dark:bg-gray-800"
+                                )}
+                                onClick={() => alert("Edit comment")}
+                              >
+                                <FileEdit className="w-4 h-4 mr-2 inline" /> Edit
+                              </button>
+                            )}
+                          </Menu.Item>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                className={cn(
+                                  "w-full px-3 py-2 text-left text-sm text-red-600",
+                                  active && "bg-indigo-50 dark:bg-gray-800"
+                                )}
+                                onClick={() => alert("Delete comment")}
+                              >
+                                <Trash className="w-4 h-4 mr-2 inline" /> Delete
+                              </button>
+                            )}
+                          </Menu.Item>
+                        </RowMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </section>
 
-      {dispoEditor && (
-        <Dialog open onOpenChange={(open) => !open && setDispoEditor(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Comment</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              <textarea
-                className="w-full border rounded p-2"
-                rows={3}
-                value={dispoEditor.comment}
-                onChange={(e) =>
-                  setDispoEditor({ ...dispoEditor, comment: e.target.value })
-                }
-              />
-              <textarea
-                className="w-full border rounded p-2"
-                rows={3}
-                value={dispoEditor.change}
-                onChange={(e) =>
-                  setDispoEditor({ ...dispoEditor, change: e.target.value })
-                }
-              />
-              <Input
-                placeholder="Disposition"
-                value={dispoEditor.disposition}
-                onChange={(e) =>
-                  setDispoEditor({
-                    ...dispoEditor,
-                    disposition: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDeleteDispoComment}
-              >
-                Delete
-              </Button>
-              <Button type="button" onClick={handleSaveDispoComment}>
-                Save
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* --- Audit History --- */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Audit History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc pl-5 text-sm">
-            {logs.map((l, idx) => (
-              <li key={idx}>
-                {l.timestamp.slice(0, 10)} – {l.action}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
+        {/* ---------------------------------------------------------------- */}
+        <section id="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Audit History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc pl-5 text-sm space-y-1">
+                {logs.map((l, i) => (
+                  <li key={i}>
+                    {l.timestamp} – {l.action}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </>
   );
 }
