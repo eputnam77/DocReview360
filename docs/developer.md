@@ -2,6 +2,16 @@
 
 This short guide explains how to run the project in a local environment.
 
+## Prerequisites
+
+Install [`uv`](https://github.com/astral-sh/uv) and [`Poetry`](https://python-poetry.org/) with `pip` or `pipx`:
+
+```bash
+pip install uv poetry
+# or
+pipx install uv poetry
+```
+
 1. **Create and activate a virtual environment**
 
    ```bash
