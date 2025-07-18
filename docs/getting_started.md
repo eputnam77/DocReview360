@@ -42,6 +42,7 @@ pipx install uv poetry
    # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
    ```
 
+   When testing, refer to secrets in `tests/conftest.py`.
    Run the CLI wizard to set up your config:
 
    ```bash
@@ -51,7 +52,7 @@ pipx install uv poetry
    * Answer the prompts about your preferred database, editor, and other options.
    * The config is saved as `docreview360.yml` in your current directory.
 
-4. **Start the backend API server**
+5. **Start the backend API server**
 
    ```bash
    uvicorn docreview360.api:app --reload
@@ -59,7 +60,7 @@ pipx install uv poetry
 
    This launches the FastAPI backend on port 8000.
 
-5. **Set up and run the React frontend (Node.js 18+ required)**
+6. **Set up and run the React frontend (Node.js 18+ required)**
 
    ```bash
    cd frontend
@@ -69,7 +70,7 @@ pipx install uv poetry
 
    If you see `Cannot find module 'critters'`, just run `npm install --legacy-peer-deps` again.
 
-6. **Open the app**
+7. **Open the app**
 
    Go to [http://localhost:3000/](http://localhost:3000/) in your browser.
    Sign in with `admin/admin` (default login).
