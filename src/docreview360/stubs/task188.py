@@ -15,8 +15,8 @@ def task188() -> bool:
         return False
     resp = client.put(
         "/profile",
-        json={"dark_mode": True},
+        json={"theme": "dark"},
         headers={"X-User": "bob"},
     )
     record_task_completion(188)
-    return resp.status_code == 200 and resp.json()["preferences"]["dark_mode"]
+    return resp.status_code == 200 and resp.json()["preferences"]["theme"] == "dark"
