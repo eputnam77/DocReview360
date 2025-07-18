@@ -985,15 +985,17 @@ async def get_summary_csv() -> Response:
 
 
 @app.get("/reports/dashboard", response_model=list[DashboardEntry])
-async def get_dashboard_data() -> list[DashboardEntry]:
+async def get_dashboard_data(x_user: str | None = Header(None)) -> list[DashboardEntry]:
     """Return per-project data for dashboard widgets."""
-    return dashboard_data()
+
+    return dashboard_data(x_user)
 
 
 @app.get("/dashboard/widgets")
-async def get_widget_counts() -> dict[str, int]:
+async def get_widget_counts(x_user: str | None = Header(None)) -> dict[str, int]:
     """Return assignment and approval counts for dashboard widgets."""
-    return widget_counts()
+
+    return widget_counts(x_user)
 
 
 class VisibilityPayload(BaseModel):
@@ -1048,11 +1050,13 @@ async def internal_status_endpoint() -> dict[str, int]:
 @app.websocket("/ws/dashboard")
 async def dashboard_stream(websocket: WebSocket) -> None:
     """Send dashboard data periodically over a websocket."""
+
     await websocket.accept()
+    user = websocket.query_params.get("user")
     previous: list[dict[str, Any]] | None = None
     try:
         while True:
-            data = [entry.model_dump() for entry in dashboard_data()]
+            data = [entry.model_dump() for entry in dashboard_data(user)]
             if data != previous:
                 await websocket.send_json(data)
                 previous = data
