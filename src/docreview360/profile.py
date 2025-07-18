@@ -6,6 +6,9 @@ from typing import Any, Dict, cast
 
 from .settings_manager import load_settings, update_setting
 
+VALID_THEMES = {"system", "light", "dark"}
+"""Allowed theme values for appearance preferences."""
+
 
 def get_preferences(user: str) -> Dict[str, Any]:
     """Return stored preferences for ``user``.
@@ -31,6 +34,13 @@ def update_preferences(user: str, prefs: Dict[str, Any]) -> Dict[str, Any]:
         Mapping of preference keys to values.
     """
     current = get_preferences(user)
-    current.update({k: bool(v) for k, v in prefs.items()})
+    cleaned: Dict[str, Any] = {}
+    for key, val in prefs.items():
+        if key == "theme":
+            if isinstance(val, str) and val in VALID_THEMES:
+                cleaned[key] = val
+        elif key == "reduce_motion":
+            cleaned[key] = bool(val)
+    current.update(cleaned)
     update_setting(f"prefs_{user}", current)
     return current

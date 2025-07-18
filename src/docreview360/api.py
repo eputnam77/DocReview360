@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from fastapi import (
     Depends,
@@ -236,7 +236,7 @@ async def current_user_endpoint(x_user: str | None = Header(None)) -> dict[str, 
 class PreferencePayload(BaseModel):
     """Input model for updating user preferences."""
 
-    dark_mode: bool | None = None
+    theme: Literal["system", "light", "dark"] | None = None
     reduce_motion: bool | None = None
 
 
