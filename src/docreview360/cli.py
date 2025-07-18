@@ -24,6 +24,11 @@ def cli() -> None:
     prompt=True,
 )
 @click.option(
+    "--database-url",
+    type=str,
+    help="SQLAlchemy database URL. Defaults based on --database if omitted.",
+)
+@click.option(
     "--editor",
     type=click.Choice(["tiptap"], case_sensitive=False),
     default="tiptap",
@@ -66,6 +71,7 @@ def init(
     host: str,
     port: int,
     debug: bool,
+    database_url: str | None,
     seed: bool,
     config_path: str,
 ) -> None:
@@ -87,8 +93,21 @@ def init(
     if not (0 < port < 65536):
         raise click.BadParameter("Port must be between 1 and 65535")
 
+    if database_url is None:
+        if database == "sqlite":
+            database_url = "sqlite:///docreview360.db"
+        elif database == "postgres":
+            database_url = (
+                "postgresql+psycopg://docreview360:docreview360@localhost:5432/" "docreview360"
+            )
+        else:
+            database_url = (
+                "mysql+pymysql://docreview360:docreview360@localhost:3306/" "docreview360"
+            )
+
     config = Config(
         database=database,
+        database_url=database_url,
         editor=editor,
         cms=cms,
         auth=auth,
