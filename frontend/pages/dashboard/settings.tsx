@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useUserStore } from "@/state/user";
 
 interface Visibility {
   stats: boolean;
@@ -16,21 +17,24 @@ export default function DashboardSettingsPage() {
     activity: true,
     logs: true,
   });
+  const username = useUserStore((s) => s.username);
 
   useEffect(() => {
-    fetch("/dashboard/visibility", { headers: { "X-User": "bob" } })
+    if (!username) return;
+    fetch("/dashboard/visibility", { headers: { "X-User": username } })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setVis(d))
       .catch(() => {});
-  }, []);
+  }, [username]);
 
   const toggle = (k: keyof Visibility) =>
     setVis((v) => ({ ...v, [k]: !v[k] }));
 
   const save = () => {
+    if (!username) return;
     fetch("/dashboard/visibility", {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-User": "bob" },
+      headers: { "Content-Type": "application/json", "X-User": username },
       body: JSON.stringify(vis),
     }).catch(() => {});
   };
