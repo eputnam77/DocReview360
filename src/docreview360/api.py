@@ -79,7 +79,7 @@ from .documents import (
 from .exporter import export_document, set_guardrails
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
-from .nemo_guardrails import contains_pii
+from .nemo_guardrails import GuardrailsMiddleware, contains_pii
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .profile import get_preferences, update_preferences
@@ -218,6 +218,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
+    app.add_middleware(GuardrailsMiddleware, checker=contains_pii)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
