@@ -38,11 +38,18 @@ def generate_summary() -> SummaryReport:
     )
 
 
-def dashboard_data() -> list[DashboardEntry]:
-    """Return per-project dashboard metrics."""
+def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
+    """Return per-project dashboard metrics.
+
+    When ``user`` is provided the results are scoped to projects assigned to
+    that user either permanently or temporarily.
+    """
+
     data: list[DashboardEntry] = []
     for project in projects.values():
         _expire_temp_assignment(project)
+        if user and project.user != user and project.temp_user != user:
+            continue
         doc_count = sum(1 for d in documents.values() if d.project == project.id)
         wf = next((w for w in workflows.values() if w.project == project.id), None)
         pending = sum(
@@ -63,11 +70,20 @@ def dashboard_data() -> list[DashboardEntry]:
     return data
 
 
-def widget_counts() -> dict[str, int]:
-    """Return counts used by dashboard widgets."""
-    assigned = sum(1 for p in projects.values() if p.user or p.temp_user)
-    active = sum(1 for p in projects.values() if p.temp_user)
-    pending = sum(1 for a in approvals.values() if a.state == "pending")
+def widget_counts(user: str | None = None) -> dict[str, int]:
+    """Return counts used by dashboard widgets.
+
+    If ``user`` is provided the counts are restricted to that user.
+    """
+
+    if user is None:
+        assigned = sum(1 for p in projects.values() if p.user or p.temp_user)
+        active = sum(1 for p in projects.values() if p.temp_user)
+        pending = sum(1 for a in approvals.values() if a.state == "pending")
+    else:
+        assigned = sum(1 for p in projects.values() if p.user == user or p.temp_user == user)
+        active = sum(1 for p in projects.values() if p.temp_user == user)
+        pending = sum(1 for a in approvals.values() if a.state == "pending" and a.reviewer == user)
     return {"assigned": assigned, "active": active, "pending_approvals": pending}
 
 
