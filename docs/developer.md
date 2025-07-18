@@ -28,7 +28,19 @@ pipx install uv poetry
   pre-commit install
   ```
 
-3. **Testing**
+3. **Set authentication secrets**
+
+   ```bash
+   export DOCREVIEW360_SECRET_KEY=your-secret
+   export DOCREVIEW360_ALGORITHM=HS256
+   export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+   export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
+   export DOCREVIEW360_OIDC_ALGORITHM=HS256
+   export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+   # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
+   ```
+
+4. **Testing**
 
   Run code checks and tests:
 
@@ -37,7 +49,7 @@ pipx install uv poetry
   pytest --cov=src
   ```
 
-4. **End-to-end testing (with Playwright)**
+5. **End-to-end testing (with Playwright)**
 
   ```bash
   playwright install
