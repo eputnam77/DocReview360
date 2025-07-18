@@ -11,12 +11,12 @@ workflow but not how dependencies are installed.
 
 ## Decision
 * `poetry.lock` stores all Python dependencies.
-* `uv pip sync pyproject.toml` installs packages according to the lock file both
+* `uv pip install -r pyproject.toml --extra dev` installs packages according to the lock file both
   locally and in CI.
 * A small `[tool.poetry]` table exists in `pyproject.toml` for Poetry
   compatibility.
-* The GitHub Actions workflow installs `uv`, runs `poetry install` and
-  `poetry sync`, then executes `uv pip sync pyproject.toml` before the quality
+* The GitHub Actions workflow installs `uv`, runs `poetry install --with dev` and
+  `poetry sync --with dev`, then executes `uv pip install -r pyproject.toml --extra dev` before the quality
   gate.
 
 ## Consequences
