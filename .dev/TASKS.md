@@ -219,6 +219,9 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 216 | Project watchlist | • Projects list a star icon. Clicking it toggles the current user's watch status in `/api/watchlist`. | FE | 1 d | Starred projects appear on a My Watchlist page.<br>See `tests/e2e/features/task216.feature` |
 | 217 | Project Lead field default | • Rename "Subject Matter Expert" to "Project Lead" across forms. New projects default this field to the logged‑in user but allow change. | FE | 0.5 d | Creating a project preselects the creator yet another user can be chosen.<br>See `tests/e2e/features/task217.feature` |
 | 218 | Writers can send for review | • Update RBAC so Authors share the permission with Project Leads to send documents for review and reply to comments. | Backend | 1 d | Writer role initiates a review and responds to a comment successfully.<br>See `tests/e2e/features/task218.feature` |
+| 219 | Login.gov SAML integration | • Implement Login.gov as a Keycloak broker.<br>• Update login screen to select provider. | Security | 2 d | Login.gov account authenticates successfully.<br>See `tests/e2e/features/task219.feature` |
+| 220 | HID Global PIV/CAC login | • Support smartcard authentication via HID Global service with fallback to password. | Security | 3 d | PIV/CAC login issues a valid session.<br>See `tests/e2e/features/task220.feature` |
+| 221 | Auth0 login option | • Integrate Auth0 OIDC provider and admin toggle. | Security | 2 d | Auth0 login succeeds; provider toggle persists.<br>See `tests/e2e/features/task221.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
