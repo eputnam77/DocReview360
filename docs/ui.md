@@ -38,4 +38,8 @@ Clicking a document number opens a details view with metadata and recent audit m
 
 The dashboard now reads data from `/metrics/summary` and `/api/audit`. A dropdown lets you filter audit messages by project so you can focus on recent activity. Counts for projects, documents and approvals update live.
 
+## Global Search
+
+A search bar appears at the top of the sidebar. Enter any term and press **Enter** to open the Search page. Queries run against all projects and documents so you can quickly find related content from anywhere in the interface.
+
 Use your browser's back button or the navigation links to move between pages.
