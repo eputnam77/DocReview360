@@ -25,6 +25,7 @@ interface Profile {
   notificationEmail: boolean;
   notificationSMS: boolean;
   twoFA: boolean;
+  theme: "system" | "light" | "dark";
 }
 
 const DASHBOARD_CHOICES = [
@@ -66,6 +67,7 @@ export default function ProfilePage() {
     notificationEmail: true,
     notificationSMS: false,
     twoFA: false,
+    theme: "system",
   });
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -79,6 +81,7 @@ export default function ProfilePage() {
           ...data,
           dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
           permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
+          theme: ["system", "light", "dark"].includes(data.theme) ? data.theme : "system",
         });
       })
       .catch(() => {});
@@ -199,6 +202,24 @@ export default function ProfilePage() {
               ))}
             </select>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Label>Theme</Label>
+          <select
+            className="w-full border rounded p-2 mt-1"
+            value={profile.theme}
+            onChange={(e) => updateField("theme", e.target.value as Profile["theme"])}
+          >
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
         </CardContent>
       </Card>
 

@@ -1,11 +1,11 @@
-"""UI preference helper for dark mode and reduced motion."""
+"""UI preference helper for theme and motion settings."""
 
 from __future__ import annotations
 
 from . import record_task_completion
 
 
-def apply_preferences(dark_mode: bool, reduce_motion: bool) -> dict[str, bool]:
+def apply_preferences(theme: str, reduce_motion: bool) -> dict[str, object]:
     """Return the selected preference flags."""
     record_task_completion(85)
-    return {"dark_mode": dark_mode, "reduce_motion": reduce_motion}
+    return {"theme": theme, "reduce_motion": reduce_motion}
