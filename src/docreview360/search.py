@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -73,18 +74,21 @@ search_index = SearchIndex()
 projects = search_index.projects
 saved_searches: Dict[str, SavedSearch] = {}
 search_counter: Counter[str] = Counter()
+project_lock = threading.Lock()
 
 
 def next_project_number() -> int:
     """Return the next sequential project number."""
-    num = search_index._next_project_number
-    search_index._next_project_number += 1
-    return num
+    with project_lock:
+        num = search_index._next_project_number
+        search_index._next_project_number += 1
+        return num
 
 
 def add_project(project: ProjectModel) -> None:
     """Store a project in memory."""
-    search_index.add_project(project)
+    with project_lock:
+        search_index.add_project(project)
 
 
 def add_document(document: DocumentModel) -> None:
@@ -131,17 +135,19 @@ def search_stats() -> Dict[str, int]:
 
 def get_project(project_id: str) -> ProjectModel | None:
     """Return a project and handle expired temporary assignments."""
-    project = projects.get(project_id)
-    if project is not None:
-        _expire_temp_assignment(project)
-    return project
+    with project_lock:
+        project = projects.get(project_id)
+        if project is not None:
+            _expire_temp_assignment(project)
+        return project
 
 
 def set_project_priority(project_id: str, priority: int) -> ProjectModel:
     """Update a project's priority level."""
-    project = projects[project_id]
-    project.priority = priority
-    return project
+    with project_lock:
+        project = projects[project_id]
+        project.priority = priority
+        return project
 
 
 TEMP_ASSIGN_MAX_DAYS = 30
@@ -156,39 +162,43 @@ def assign_temporary(
     temporary assignment.  Long assignments beyond ``TEMP_ASSIGN_MAX_DAYS``
     require ``approved`` to be ``True``.
     """
-    project = projects[project_id]
-    if (until - datetime.utcnow()).days > TEMP_ASSIGN_MAX_DAYS and not approved:
-        raise ValueError("Manager approval required for long assignment")
-    project.temp_user = user
-    project.temp_until = until
-    return project
+    with project_lock:
+        project = projects[project_id]
+        if (until - datetime.utcnow()).days > TEMP_ASSIGN_MAX_DAYS and not approved:
+            raise ValueError("Manager approval required for long assignment")
+        project.temp_user = user
+        project.temp_until = until
+        return project
 
 
 def _expire_temp_assignment(project: ProjectModel) -> None:
     """Clear ``project.temp_user`` when the temporary period has ended."""
     if project.temp_user and project.temp_until and datetime.utcnow() >= project.temp_until:
-        project.temp_user = None
-        project.temp_until = None
+        with project_lock:
+            project.temp_user = None
+            project.temp_until = None
 
 
 def list_projects(user: str | None = None) -> list[ProjectModel]:
     """Return projects optionally filtered by assigned user."""
-    result = []
-    for proj in projects.values():
-        _expire_temp_assignment(proj)
-        if user is None or proj.user == user or proj.temp_user == user:
-            result.append(proj)
-    return result
+    with project_lock:
+        result = []
+        for proj in projects.values():
+            _expire_temp_assignment(proj)
+            if user is None or proj.user == user or proj.temp_user == user:
+                result.append(proj)
+        return result
 
 
 def overdue_high_priority() -> list[str]:
     """Return IDs of high priority projects that are overdue."""
-    alerts: list[str] = []
-    for proj in projects.values():
-        _expire_temp_assignment(proj)
-        if proj.priority >= 5 and proj.created < datetime.utcnow() - timedelta(days=14):
-            alerts.append(proj.id)
-    return alerts
+    with project_lock:
+        alerts: list[str] = []
+        for proj in projects.values():
+            _expire_temp_assignment(proj)
+            if proj.priority >= 5 and proj.created < datetime.utcnow() - timedelta(days=14):
+                alerts.append(proj.id)
+        return alerts
 
 
 def _normalize(text: str) -> str:
@@ -211,7 +221,8 @@ def _candidate_ids(terms: list[str]) -> set[str]:
     except Exception:
         candidates = set()
     for term in terms:
-        candidates.update(search_index.index.get(term, set()))
+        with project_lock:
+            candidates.update(search_index.index.get(term, set()))
     return candidates
 
 
@@ -227,7 +238,8 @@ def _matches(
 ) -> bool:
     text = doc.content
     if doc.project and doc.project in projects:
-        text += " " + projects[doc.project].name
+        with project_lock:
+            text += " " + projects[doc.project].name
     if not _match_all_terms(text, terms):
         return False
     if project and doc.project != project:

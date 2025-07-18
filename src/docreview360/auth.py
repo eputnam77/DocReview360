@@ -11,18 +11,24 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-SECRET_KEY = os.getenv("DOCREVIEW360_SECRET_KEY", "secret-key")  # pragma: no cover
-ALGORITHM = os.getenv("DOCREVIEW360_ALGORITHM", "HS256")  # pragma: no cover
-ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("DOCREVIEW360_ACCESS_EXPIRE_MINUTES", "30")
-)  # pragma: no cover
+
+def _require_env(name: str) -> str:
+    """Return the value of ``name`` or raise a ``RuntimeError`` if missing."""
+
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"{name} environment variable required")
+    return value
+
+
+SECRET_KEY = _require_env("DOCREVIEW360_SECRET_KEY")
+ALGORITHM = _require_env("DOCREVIEW360_ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(_require_env("DOCREVIEW360_ACCESS_EXPIRE_MINUTES"))
 
 # separate secret for OIDC demonstration
-OIDC_SECRET_KEY = os.getenv("DOCREVIEW360_OIDC_SECRET_KEY", "oidc-secret")  # pragma: no cover
-OIDC_ALGORITHM = os.getenv("DOCREVIEW360_OIDC_ALGORITHM", "HS256")  # pragma: no cover
-OIDC_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
-)  # pragma: no cover
+OIDC_SECRET_KEY = _require_env("DOCREVIEW360_OIDC_SECRET_KEY")
+OIDC_ALGORITHM = _require_env("DOCREVIEW360_OIDC_ALGORITHM")
+OIDC_TOKEN_EXPIRE_MINUTES = int(_require_env("DOCREVIEW360_OIDC_EXPIRE_MINUTES"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token")
