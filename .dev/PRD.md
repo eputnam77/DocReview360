@@ -54,6 +54,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Project form includes Phase & Workflow fields** with defaults mapped from document type.
 * **Document types can link to a default content template**. When a project is created using that type, the associated template is automatically loaded into the editor the first time the document is opened.
 * **Message templates** for review requests, approvals and rejections. Templates store text used by email or chat notifications with placeholders for `{project_link}`, `{user}` and `{comments}`.
+* **Project Lead field** replaces “Subject Matter Expert”. It defaults to the logged-in user on project creation but can be changed before saving.
 
 ### 3.2 Editors
 
@@ -75,12 +76,14 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Editable approval comments** so reviewers can update their remarks after signing.
 * **Automatic notification** to the document owner when reviewers add or update approval comments.
 * **Confirmation pop-ups** appear before a user resets their approval or removes a reviewer from the approvals list.
+* **Project leads and technical writers can send documents for review and respond to comments.**
 
 ### 3.4 Collaboration
 
 * Inline comments, threads, mentions, emoji reactions.
 * Concurrent editing with conflict-resolution.
 * AI helpers (Prompt-Engine, SynthLang, ruv-FANN anomaly alerts).
+* **Project Watchlist** lets any user star a project to follow its progress.
 
 ### 3.5 Search, Dashboards & Logs
 
