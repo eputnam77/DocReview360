@@ -1095,14 +1095,17 @@ export default function ProjectDetailsPage() {
                       {canEdit && (
                         <TableCell className="text-right">
                           <RowMenu>
-                            <Menu.Item>
-                              {({ active }) => (
+                            <Menu.Item as={Fragment}>
+                              {({ active, close }) => (
                                 <button
                                   className={classNames(
                                     "w-full px-3 py-2 text-left text-sm",
                                     active && "bg-indigo-50 dark:bg-gray-800",
                                   )}
-                                  onClick={() => signApproval(a.id)}
+                                  onClick={() => {
+                                    close();
+                                    signApproval(a.id);
+                                  }}
                                 >
                                   {" "}
                                   <Check className="w-4 h-4 inline mr-2" /> Sign
