@@ -37,6 +37,11 @@ jobs:
           poetry run black --check src tests
           poetry run mypy --strict src
           poetry run bandit -r src -lll --skip B101
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            poetry run semgrep --config p/default
+          else
+            poetry run semgrep --config p/ci
+          fi
           poetry run pip-audit -r requirements.txt
           THRESHOLD=70
           if [ "$GITHUB_REF_NAME" = "main" ]; then THRESHOLD=90; fi
