@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from .config import CONFIG_FILE, Config
+from .database import default_url
 
 
 @click.group()
@@ -94,16 +95,7 @@ def init(
         raise click.BadParameter("Port must be between 1 and 65535")
 
     if database_url is None:
-        if database == "sqlite":
-            database_url = "sqlite:///docreview360.db"
-        elif database == "postgres":
-            database_url = (
-                "postgresql+psycopg://docreview360:docreview360@localhost:5432/" "docreview360"
-            )
-        else:
-            database_url = (
-                "mysql+pymysql://docreview360:docreview360@localhost:3306/" "docreview360"
-            )
+        database_url = default_url(database)
 
     config = Config(
         database=database,
