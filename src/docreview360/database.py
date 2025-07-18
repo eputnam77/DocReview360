@@ -10,6 +10,17 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import StaticPool
 
 
+def default_url(database: str) -> str:
+    """Return a default SQLAlchemy URL for the given backend."""
+    if database == "sqlite":
+        return "sqlite:///docreview360.db"
+    if database == "postgres":
+        return "postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360"
+    if database == "mysql":
+        return "mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360"
+    raise ValueError(f"Unsupported database '{database}'")
+
+
 class Database:
     """Simple wrapper providing a consistent database interface.
 

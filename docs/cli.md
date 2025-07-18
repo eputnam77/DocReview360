@@ -25,3 +25,9 @@ Interactive wizard that generates `docreview360.yml`.
 | `--config-path PATH` | Where to write the configuration file. |
 
 All options are prompted interactively so you can simply press Enter to accept the defaults. The resulting file records your choices and can be modified later.
+
+If `--database-url` is omitted the wizard uses driver-specific defaults:
+
+- Postgres → `postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360`
+- MySQL → `mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360`
+- SQLite → `sqlite:///docreview360.db`
