@@ -112,23 +112,25 @@
 - **Concurrent editing / CRDT** support is missing entirely.
 - **Real-time log viewer** from PRD §3.5 not found in codebase.
 - **NeMo‑Guardrails middleware** for PII/style checks has no implementation.
-- **AI chat bot** for project queries not implemented.
+- **AI chat bot** exists only in stub form and lacks retrieval pipeline.
+- **Authentication tasks 219‑223 (Login.gov, PIV/CAC, Auth0, theme switch, converter page)** remain unimplemented.
+- **Task 218 Writer review permissions** not implemented.
 ## Dev Gate Results
 - `ruff` passed with no issues
 - `black --check` confirmed consistent formatting
- - `mypy --strict` failed: no .py files found in tests
- - `bandit` found 25 low-severity issues
+- `mypy --strict` failed: no .py files found in tests
+- `bandit` found 29 low-severity issues
 `semgrep` could not run (blocked network access)
- - `pytest` failed during collection (294 errors)
-`pytest -m property` failed (294 errors)
-`pytest -m e2e` failed (294 errors)
+ - `pytest` failed during collection (302 errors)
+`pytest -m property` failed (302 errors)
+`pytest -m e2e` failed (302 errors)
 `mutmut run` aborted during mutant generation
 ## 📋 Recommended Next Steps
 1. Finalize editor integrations (Toast UI, ONLYOFFICE, XML) and hook up numbering menu.
 2. Harden security with Keycloak MFA and scheduled encrypted backups.
 3. Flesh out end-to-end scenarios and publish Metabase dashboard examples.
 4. Build user-scoped dashboards, concurrent editing support, log viewer and NeMo Guardrails.
-5. Implement remaining stub tasks 188‑215 and expand integration tests.
+5. Implement tasks 216‑223 and expand integration tests to raise coverage.
 
 
 Tasks 70‑155 are now all implemented through their corresponding modules. Examples include the SharePoint records sync, HR API reassignment helper, BPMN editor stubs and the Trivy/Grype scan script, along with the new patch-flow docs, feature-flag wrapper and UI parity utilities.
