@@ -222,8 +222,8 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 219 | Login.gov SAML integration | • Implement Login.gov as a Keycloak broker.<br>• Update login screen to select provider. | Security | 2 d | Login.gov account authenticates successfully.<br>See `tests/e2e/features/task219.feature` |
 | 220 | HID Global PIV/CAC login | • Support smartcard authentication via HID Global service with fallback to password. | Security | 3 d | PIV/CAC login issues a valid session.<br>See `tests/e2e/features/task220.feature` |
 | 221 | Auth0 login option | • Integrate Auth0 OIDC provider and admin toggle. | Security | 2 d | Auth0 login succeeds; provider toggle persists.<br>See `tests/e2e/features/task221.feature` |
-| 222 | Light and Dark mode | • Add Light and Dark Mode Support, and system default, to user profile in UI. | FE | 2 d |  |
-| 223 | Converter page | Page where users can upload docx and convert or merge files to make available in project. | Integration | 2 d |  |
+| 222 | Light and Dark mode | • Add Light and Dark Mode Support, and system default, to user profile in UI. | FE | 2 d | See `tests/e2e/features/task222.feature` |
+| 223 | Converter page | Page where users can upload docx and convert or merge files to make available in project. | Integration | 2 d | See `tests/e2e/features/task223.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
