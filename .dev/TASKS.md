@@ -216,6 +216,9 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 213 | Approval reset confirmation | • Display a confirmation modal when a user resets their approval or removes a reviewer from a project. | FE | 0.5 d | Canceling leaves approval intact; confirming completes the action.<br>See `tests/e2e/features/task213.feature` |
 | 214 | Template linkage to doc types | • `/configuration/templates/new` allows selecting a Document Type when creating or editing a template. API stores `default_template_id` on the type record. | Admin | 1 d | Creating an Advisory Circular template links it to the AC doc type.<br>See `tests/e2e/features/task214.feature` |
 | 215 | Auto‑apply template on new project | • Project creation automatically populates the initial document with the doc type's template content. TipTap loads this on first open. | Integration | 1 d | New AC project shows Advisory Circular template without manual import.<br>See `tests/e2e/features/task215.feature` |
+| 216 | Project watchlist | • Projects list a star icon. Clicking it toggles the current user's watch status in `/api/watchlist`. | FE | 1 d | Starred projects appear on a My Watchlist page.<br>See `tests/e2e/features/task216.feature` |
+| 217 | Project Lead field default | • Rename "Subject Matter Expert" to "Project Lead" across forms. New projects default this field to the logged‑in user but allow change. | FE | 0.5 d | Creating a project preselects the creator yet another user can be chosen.<br>See `tests/e2e/features/task217.feature` |
+| 218 | Writers can send for review | • Update RBAC so Authors share the permission with Project Leads to send documents for review and reply to comments. | Backend | 1 d | Writer role initiates a review and responds to a comment successfully.<br>See `tests/e2e/features/task218.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
