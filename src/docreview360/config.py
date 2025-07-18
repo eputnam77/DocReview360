@@ -14,10 +14,10 @@ class Config:
     """Configuration options for DocReview360."""
 
     database: str
-    database_url: str | None = None
     editor: str
     cms: str
     auth: str
+    database_url: str | None = None
     host: str = "127.0.0.1"
     port: int = 8000
     debug: bool = False
