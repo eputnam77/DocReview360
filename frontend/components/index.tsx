@@ -49,6 +49,7 @@ export { default as ProgressSidebar } from "./workflow/ProgressSidebar";
 export { default as StepStatusBadge } from "./workflow/StepStatusBadge";
 export { default as CompletedBanner } from "./workflow/CompletedBanner";
 export { default as UploadDropzone } from "./workflow/UploadDropzone";
+export { default as SearchBar } from "./SearchBar";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";

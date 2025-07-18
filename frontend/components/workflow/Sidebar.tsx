@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
+import SearchBar from "../SearchBar";
 
 const NAV = [
   { icon: <Ticket className="h-4 w-4" />, label: "Projects", href: "/projects" },
@@ -74,6 +75,8 @@ export default function Sidebar() {
         {/* Replace text with organization logo if available */}
         <span className="text-lg font-semibold">DocReview360</span>
       </div>
+
+      <SearchBar />
 
       {/* Main nav */}
       <nav className="flex flex-col gap-1 px-2">
