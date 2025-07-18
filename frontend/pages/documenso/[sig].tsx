@@ -8,6 +8,7 @@ export default function DocumensoSign() {
   const router = useRouter();
   const { sig } = router.query as { sig: string };
   const returnTo = (router.query.return as string) || "/";
+  const approvalId = router.query.approval as string | undefined;
   const [signing, setSigning] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -15,6 +16,12 @@ export default function DocumensoSign() {
     setSigning(true);
     fetch(`/sign/${sig}/complete`, { method: "POST" })
       .then(() => {
+        if (approvalId) {
+          localStorage.setItem(
+            `approval-${approvalId}`,
+            new Date().toISOString(),
+          );
+        }
         setDone(true);
         setTimeout(() => router.push(returnTo), 1000);
       })

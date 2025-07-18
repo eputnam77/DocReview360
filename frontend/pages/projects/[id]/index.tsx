@@ -642,7 +642,17 @@ export default function ProjectDetailsPage() {
     setTimeout(() => {
       setProject(DEMO_PROJECT);
       setWorkflow(DEMO_WORKFLOW);
-      setApprovals(DEMO_APPROVALS);
+      const loaded = DEMO_APPROVALS.map((a) => {
+        const stored =
+          typeof window !== "undefined"
+            ? localStorage.getItem(`approval-${a.id}`)
+            : null;
+        if (stored) {
+          return { ...a, state: "approved", signedAt: stored };
+        }
+        return a;
+      });
+      setApprovals(loaded);
       setDispos(DEMO_DISPO_COMMENTS);
       setRefDocs(DEMO_REFERENCE_DOCS);
       setLogs(DEMO_LOGS);
@@ -729,6 +739,33 @@ export default function ProjectDetailsPage() {
       .filter((a) => a.state === "pending" || a.state === "overdue")
       .map((a) => a.email);
     alert("Reminder sent to: " + emails.join(", "));
+  };
+
+  const signApproval = (aid: string) => {
+    fetch(`/approvals/${aid}/sign`, { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => {
+        setApprovals((prev) =>
+          prev.map((a) =>
+            a.id === aid ? { ...a, documensoSigId: d.id } : a,
+          ),
+        );
+        router.push(d.url);
+      })
+      .catch(() => alert("Failed to start signing"));
+  };
+
+  const resetApprovalLocal = (aid: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(`approval-${aid}`);
+    }
+    setApprovals((prev) =>
+      prev.map((a) =>
+        a.id === aid
+          ? { ...a, state: "pending", signedAt: undefined, documensoSigId: undefined }
+          : a,
+      ),
+    );
   };
 
   const exportRaci = () => {
@@ -1012,7 +1049,7 @@ export default function ProjectDetailsPage() {
                     </TableHead>
                     <TableHead>Reviewer</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Signed At</TableHead>
                     <TableHead>Comments</TableHead>
                     {canEdit && <TableHead />}
                   </TableRow>
@@ -1047,7 +1084,11 @@ export default function ProjectDetailsPage() {
                           {a.state}
                         </span>
                       </TableCell>
-                      <TableCell>{a.statusDate}</TableCell>
+                      <TableCell>
+                        {a.signedAt
+                          ? new Date(a.signedAt).toLocaleString()
+                          : "—"}
+                      </TableCell>
                       <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
                         {a.comments || "—"}
                       </TableCell>
@@ -1061,11 +1102,26 @@ export default function ProjectDetailsPage() {
                                     "w-full px-3 py-2 text-left text-sm",
                                     active && "bg-indigo-50 dark:bg-gray-800",
                                   )}
-                                  onClick={() => alert("Sign")}
+                                  onClick={() => signApproval(a.id)}
                                 >
                                   {" "}
                                   <Check className="w-4 h-4 inline mr-2" /> Sign
                                   / Approve
+                                </button>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  className={classNames(
+                                    "w-full px-3 py-2 text-left text-sm",
+                                    active && "bg-indigo-50 dark:bg-gray-800",
+                                  )}
+                                  onClick={() => resetApprovalLocal(a.id)}
+                                >
+                                  {" "}
+                                  <RotateCcw className="w-4 h-4 inline mr-2" />
+                                  Reset
                                 </button>
                               )}
                             </Menu.Item>
