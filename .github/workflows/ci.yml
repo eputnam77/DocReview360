@@ -29,7 +29,7 @@ jobs:
           pip install uv poetry
           poetry install --with dev
           poetry sync --with dev
-          uv pip sync pyproject.toml
+          uv pip install -r pyproject.toml --extra dev
           npm ci --prefix frontend || true
       - name: Run quality gate
         run: |

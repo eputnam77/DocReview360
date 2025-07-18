@@ -14,11 +14,11 @@ reproducible installs across Linux and GitHub Actions.
 * Manage Python packages with **Poetry** and keep `poetry.lock` as the single
   source of truth.
 * Use `uv` to create virtual environments and synchronise dependencies via
-  `uv pip sync pyproject.toml` so local installs match the lock file.
+  `uv pip install -r pyproject.toml --extra dev` so local installs match the lock file.
 * Include a minimal `[tool.poetry]` section in `pyproject.toml` for
   compatibility while still using PEP 621 metadata.
-* Update the CI workflow to install `uv`, run `poetry install` followed by
-  `poetry sync`, then execute `uv pip sync pyproject.toml`.
+* Update the CI workflow to install `uv`, run `poetry install --with dev` followed by
+  `poetry sync --with dev`, then execute `uv pip install -r pyproject.toml --extra dev`.
 * Developers enable pre‑commit hooks after setting up the environment.
 
 ## Consequences
