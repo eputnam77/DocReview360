@@ -30,6 +30,18 @@ pipx install uv poetry
 
 3. **Configure the application**
 
+   Export the authentication secrets before running the wizard:
+
+   ```bash
+   export DOCREVIEW360_SECRET_KEY=your-secret
+   export DOCREVIEW360_ALGORITHM=HS256
+   export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+   export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
+   export DOCREVIEW360_OIDC_ALGORITHM=HS256
+   export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+   # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
+   ```
+
    Run the CLI wizard to set up your config:
 
    ```bash
