@@ -1,29 +1,31 @@
 ## Code Review
 
 ### Integration Risks
-- Default secrets in `src/docreview360/auth.py` still fall back to insecure values if environment variables are missing.
-- Projects and documents live in in-memory dictionaries. Without persistence or locks this can corrupt data under concurrent access.
-- Plugins are loaded via dynamic import with little validation so missing modules cause runtime errors.
+- Projects and search indexes still live purely in memory. Even with the new locks in `search.py` data will be lost on restart and concurrent writes could block the whole process.
+- Plugin discovery is dynamic and missing dependencies raise runtime errors.
+- The `sendemail-validate` hook depends on external tools (`codespell`, `gitlint`) which may not be installed in all environments.
 
 ### Performance
-- Search and workflow operations iterate over large in-memory lists which will degrade as data grows.
-- Document parsing uses naive XML handling in `documents.py` and will struggle with complex DOCX files.
-- WebSocket updates run in a tight loop without back-pressure and could overwhelm the browser on busy projects.
+- The search service tokenises every document into a Python `set`; as the number of documents grows lookups will slow down and consume memory.
+- Document parsing and export routines still read entire files into memory and use naive XML handling.
+- The watchlist helper introduced for Task 216 keeps all entries in a global dictionary without eviction.
 
 ### Maintainability
-- Several modules store global state, complicating tests and future refactors.
-- The codebase lacks docstrings in many areas and test output shows hundreds of warnings that hide issues.
+- Many stub modules exist for remaining TASKS; docstrings and type hints are inconsistent.
+- Global state across modules (projects, saved searches, watchlists) complicates testing.
+- Tests currently fail during collection which hides regressions.
 
 ### PRD Coverage
-- `.dev/VERIFICATION_REPORT.md` confirms that tasks 1‑155 are implemented and tested, covering the core MVP and many optional features.
-- Remaining tasks (e.g. concurrent editing, NeMo Guardrails, advanced dashboards) are noted as missing.
+- `.dev/VERIFICATION_REPORT.md` shows Tasks 1–155 fully implemented. Recent commits add stubs for Tasks 194–197 and implement watchlists and default lead behaviour (Tasks 216 & 217).
+- Remaining backlog items after Task 217 are still placeholders but referenced in tests.
 
 ### Mandatory Fixes
-- Replace insecure secret defaults in `auth.py` with required environment configuration.
-- Introduce database-backed stores or locking for projects and documents to avoid data loss and concurrency bugs.
+- Persist projects, documents and watchlists in a real database to prevent data loss and remove global locks.
+- Provide graceful failure/validation when plugins cannot be loaded.
 
 ### Optional Improvements
-- Expand user and developer documentation and reduce test warnings.
-- Persist search indexes and workflow data in a real database for scalability.
+- Profile search indexing and consider a dedicated search backend.
+- Add docstrings and strict typing across stub modules.
+- Document setup for the new send-email validation hook.
 
 ready-for:builder
