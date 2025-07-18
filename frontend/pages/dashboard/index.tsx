@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ChatBot } from "@/components";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -279,6 +280,8 @@ export default function MainDashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      {/* Simple project chat bot */}
+      <ChatBot />
     </div>
   );
 }
