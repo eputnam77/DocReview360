@@ -1,0 +1,34 @@
+from fastapi.testclient import TestClient
+
+from docreview360.api import app
+from docreview360.approvals import create_approval
+from docreview360.search import ProjectModel, add_project
+from docreview360.workflows import create_workflow
+
+
+def _setup() -> None:
+    add_project(ProjectModel(id="pA", name="A", user="alice"))
+    add_project(ProjectModel(id="pB", name="B", user="bob"))
+    wf_a = create_workflow("pA", ["draft"])
+    wf_b = create_workflow("pB", ["draft"])
+    create_approval(wf_a.id, reviewer="alice")
+    create_approval(wf_b.id, reviewer="bob")
+
+
+def test_dashboard_filtering_by_user() -> None:
+    _setup()
+    client = TestClient(app)
+
+    resp = client.get("/reports/dashboard", headers={"X-User": "alice"})
+    assert resp.status_code == 200
+    ids = [entry["id"] for entry in resp.json()]
+    assert ids == ["pA"]
+
+    resp = client.get("/dashboard/widgets", headers={"X-User": "alice"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["assigned"] == 1
+    assert data["pending_approvals"] == 1
+
+    resp = client.get("/dashboard/widgets", headers={"X-User": "bob"})
+    assert resp.json()["assigned"] == 1
