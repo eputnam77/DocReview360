@@ -51,6 +51,7 @@ __all__ = [
     "workflow_components",
     "conversion",
     "nemo_guardrails",
+    "GuardrailsMiddleware",
     "chat_bot",
 ]
 
