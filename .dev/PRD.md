@@ -105,6 +105,10 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 ### 3.7 Security & Compliance
 
 * **Keycloak** OIDC/SAML with MFA. ([keycloak.org][11])
+* **Login.gov** SAML broker for federal SSO. ([login.gov][12])
+* **Okta** SSO option for commercial orgs. ([okta.com][13])
+* **HID Global PIV/CAC** smartcard login. ([hidglobal.com][14])
+* **Auth0** OIDC provider for SaaS deployments. ([auth0.com][15])
 * RBAC down to field-level; CSP, CSRF, JWT rotation.
 * FedRAMP Moderate controls mapped; daily encrypted backups.
 ### 3.8 Setup & Administration
@@ -223,4 +227,4 @@ caught before release.
 
 ### References
 
-TipTap editor ([github.com][5]) Toast UI Editor ([github.com][6]) Documenso ([documenso.com][4]) Camunda ([camunda.com][3]) Imixs-Workflow ([imixs.org][8]) Metabase ([metabase.com][10]) Keycloak ([keycloak.org][11]) OpenSearch ([opensearch.org][9]) Alfresco Community ([docs.alfresco.com][1]) ONLYOFFICE Docs ([onlyoffice.com][2]) React Flow ([reactflow.dev][7])
+TipTap editor ([github.com][5]) Toast UI Editor ([github.com][6]) Documenso ([documenso.com][4]) Camunda ([camunda.com][3]) Imixs-Workflow ([imixs.org][8]) Metabase ([metabase.com][10]) Keycloak ([keycloak.org][11]) Login.gov ([login.gov][12]) Okta ([okta.com][13]) HID Global ([hidglobal.com][14]) Auth0 ([auth0.com][15]) OpenSearch ([opensearch.org][9]) Alfresco Community ([docs.alfresco.com][1]) ONLYOFFICE Docs ([onlyoffice.com][2]) React Flow ([reactflow.dev][7])
