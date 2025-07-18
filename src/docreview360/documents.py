@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime
 from difflib import SequenceMatcher
 from io import BytesIO
@@ -37,17 +38,21 @@ _re_review: set[str] = set()
 _next_document_number = 1
 _project_document_numbers: Dict[str, int] = {}
 
+# Guard shared document state in multithreaded scenarios
+document_lock = threading.Lock()
+
 
 def next_document_number(project: Optional[str] = None) -> int:
     """Return the next sequential document number for the project."""
-    if project:
-        current = _project_document_numbers.get(project, 0) + 1
-        _project_document_numbers[project] = current
-        return current
-    global _next_document_number
-    num = _next_document_number
-    _next_document_number += 1
-    return num
+    with document_lock:
+        if project:
+            current = _project_document_numbers.get(project, 0) + 1
+            _project_document_numbers[project] = current
+            return current
+        global _next_document_number
+        num = _next_document_number
+        _next_document_number += 1
+        return num
 
 
 def _extract_docx_text(data: bytes) -> str:
@@ -91,7 +96,8 @@ def import_document(
         date=datetime.utcnow(),
         priority=priority,
     )
-    documents[doc_id] = document
+    with document_lock:
+        documents[doc_id] = document
     # Index the document for search without creating an import cycle
     from . import search as search_module
 
@@ -126,14 +132,16 @@ def update_document(
     search_module.search_index.remove_document(doc_id)
     fts.remove_document(doc_id)
 
-    old_content = document.content
-    document.history.append(old_content)
-    document.content = content
-    if priority is not None:
-        document.priority = priority
+    with document_lock:
+        old_content = document.content
+        document.history.append(old_content)
+        document.content = content
+        if priority is not None:
+            document.priority = priority
 
     if SequenceMatcher(None, old_content, content).ratio() < 0.7:
-        _re_review.add(doc_id)
+        with document_lock:
+            _re_review.add(doc_id)
 
     # Re-index the updated document
     search_module.add_document(document)
@@ -159,7 +167,8 @@ def needs_rereview(doc_id: str) -> bool:
 
 def clear_rereview(doc_id: str) -> None:
     """Remove the re-review flag for ``doc_id``."""
-    _re_review.discard(doc_id)
+    with document_lock:
+        _re_review.discard(doc_id)
 
 
 def get_document_versions(doc_id: str) -> list[str]:

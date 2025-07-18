@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, cast
 
 if TYPE_CHECKING:  # pragma: no cover - for static typing only
     from redis import Redis
@@ -23,10 +23,13 @@ def _get_client() -> Any | None:
     if _client is None and _redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         try:
-            client: "Redis" = _redis.Redis.from_url(
-                url,
-                socket_connect_timeout=0.1,
-                socket_timeout=0.1,
+            client = cast(
+                "Redis",
+                _redis.Redis.from_url(
+                    url,
+                    socket_connect_timeout=0.1,
+                    socket_timeout=0.1,
+                ),
             )
             client.ping()
             _client = client
