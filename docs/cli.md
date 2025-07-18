@@ -15,6 +15,7 @@ Interactive wizard that generates `docreview360.yml`.
 | Option | Description |
 | ------ | ----------- |
 | `--database [postgres|mysql|sqlite]` | Choose the database backend. |
+| `--database-url TEXT` | SQLAlchemy connection string. |
 | `--editor [tiptap]` | Select the default editor. |
 | `--cms [none|local]` | CMS integration option. |
 | `--auth [oidc]` | Authentication provider. |
