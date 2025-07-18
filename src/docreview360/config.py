@@ -14,6 +14,7 @@ class Config:
     """Configuration options for DocReview360."""
 
     database: str
+    database_url: str | None = None
     editor: str
     cms: str
     auth: str
@@ -33,6 +34,8 @@ class Config:
         if not isinstance(raw, dict):
             raise ValueError(f"Invalid config structure in {path}")
         data: dict[str, Any] = raw
+        if "database_url" not in data:
+            data["database_url"] = None
         return cls(**data)
 
     def save(self, path: Path = CONFIG_FILE) -> None:
@@ -40,6 +43,7 @@ class Config:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            path.write_text(yaml.safe_dump(self.__dict__))
+            data = {k: v for k, v in self.__dict__.items() if v is not None}
+            path.write_text(yaml.safe_dump(data))
         except OSError as exc:
             raise OSError(f"Failed to write config to {path}") from exc

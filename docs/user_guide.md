@@ -38,6 +38,7 @@ wrappers.
 DocReview360 stores its settings in `docreview360.yml`. Run the `init` wizard or edit the file to change:
 
 - `database`: `postgres`, `mysql` or `sqlite`
+- `database_url`: SQLAlchemy connection string
 - `storage`: path or bucket for the object storage plugin
 - `cms`: enable integrations such as `local` or `none`
 

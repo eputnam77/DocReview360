@@ -23,6 +23,8 @@ def config_file(tmp_path_factory) -> Path:
             "init",
             "--database",
             "sqlite",
+            "--database-url",
+            "sqlite:///test.db",
             "--editor",
             "tiptap",
             "--cms",

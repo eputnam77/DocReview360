@@ -25,6 +25,8 @@ def seeded_config(tmp_path_factory: TempPathFactory) -> Path:
             "init",
             "--database",
             "sqlite",
+            "--database-url",
+            "sqlite:///test.db",
             "--editor",
             "tiptap",
             "--cms",

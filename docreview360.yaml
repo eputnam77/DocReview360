@@ -1,6 +1,7 @@
 auth: oidc
 cms: none
 database: postgres
+database_url: postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360
 debug: false
 editor: tiptap
 host: 127.0.0.1
