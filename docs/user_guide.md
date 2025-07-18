@@ -35,7 +35,19 @@ wrappers.
 
 ## 4. Configure your environment
 
-DocReview360 stores its settings in `docreview360.yml`. Run the `init` wizard or edit the file to change:
+DocReview360 stores its settings in `docreview360.yml`. Before running the wizard or the server, export the authentication secrets:
+
+```bash
+export DOCREVIEW360_SECRET_KEY=your-secret
+export DOCREVIEW360_ALGORITHM=HS256
+export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
+export DOCREVIEW360_OIDC_ALGORITHM=HS256
+export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+# Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
+```
+
+Run the `init` wizard or edit the file to change:
 
 - `database`: `postgres`, `mysql` or `sqlite`
 - `database_url`: SQLAlchemy connection string. If omitted when running
