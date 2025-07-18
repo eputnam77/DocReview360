@@ -61,13 +61,15 @@ class SearchIndex:
         tokens = _normalize(document.content).split()
         if document.project and document.project in self.projects:
             tokens += _normalize(self.projects[document.project].name).split()
-        for token in tokens:
-            self.index.setdefault(token, set()).add(document.id)
+        with index_lock:
+            for token in tokens:
+                self.index.setdefault(token, set()).add(document.id)
 
     def remove_document(self, doc_id: str) -> None:
         """Remove a document from the index."""
-        for ids in self.index.values():
-            ids.discard(doc_id)
+        with index_lock:
+            for ids in self.index.values():
+                ids.discard(doc_id)
 
 
 search_index = SearchIndex()
@@ -75,6 +77,7 @@ projects = search_index.projects
 saved_searches: Dict[str, SavedSearch] = {}
 search_counter: Counter[str] = Counter()
 project_lock = threading.Lock()
+index_lock = threading.Lock()
 
 
 def next_project_number() -> int:
@@ -221,7 +224,7 @@ def _candidate_ids(terms: list[str]) -> set[str]:
     except Exception:
         candidates = set()
     for term in terms:
-        with project_lock:
+        with index_lock:
             candidates.update(search_index.index.get(term, set()))
     return candidates
 
