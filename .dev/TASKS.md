@@ -224,6 +224,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 221 | Auth0 login option | • Integrate Auth0 OIDC provider and admin toggle. | Security | 2 d | Auth0 login succeeds; provider toggle persists.<br>See `tests/e2e/features/task221.feature` |
 | 222 | Light and Dark mode | • Add Light and Dark Mode Support, and system default, to user profile in UI. | FE | 2 d | See `tests/e2e/features/task222.feature` |
 | 223 | Tools page | Page where users find converter, doc checker, and other tools we import. | Integration | 2 d | See `tests/e2e/features/task223.feature` |
+| 224 | Resolve npm audit High CVEs | Upgrade `shadcn-ui` and `lodash.template` to fixed versions per npm audit report. | Frontend | 1 d | `npm audit` shows no high vulnerabilities.
 \*Effort ≈ focused business-days for one engineer.
 
 ---
