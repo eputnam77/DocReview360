@@ -223,7 +223,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 220 | HID Global PIV/CAC login | • Support smartcard authentication via HID Global service with fallback to password. | Security | 3 d | PIV/CAC login issues a valid session.<br>See `tests/e2e/features/task220.feature` |
 | 221 | Auth0 login option | • Integrate Auth0 OIDC provider and admin toggle. | Security | 2 d | Auth0 login succeeds; provider toggle persists.<br>See `tests/e2e/features/task221.feature` |
 | 222 | Light and Dark mode | • Add Light and Dark Mode Support, and system default, to user profile in UI. | FE | 2 d | See `tests/e2e/features/task222.feature` |
-| 223 | Converter page | Page where users can upload docx and convert or merge files to make available in project. | Integration | 2 d | See `tests/e2e/features/task223.feature` |
+| 223 | Tools page | Page where users find converter, doc checker, and other tools we import. | Integration | 2 d | See `tests/e2e/features/task223.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
@@ -235,7 +235,4 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 * **Feature flags (#139):** Wrap experimental UI parity items (e.g., in-browser Terraform viewer) with `unleash` flags so you can dark-launch.
 
 These eighteen tasks ensure that **anything executable via the admin CLI can also be done through the browser**, giving non-terminal users full self-service while still honouring RBAC and FedRAMP expectations.
-
-**Confidence** 0.42 — tasks mapped against prior backlog items; no functionality removed, only surfaced via UI.
-
 
