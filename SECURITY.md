@@ -18,9 +18,7 @@ For details on how we triage and patch dependencies see the
 
 ## Security Scans
 
-Our CI pipeline runs **Bandit** and **pip-audit** on every commit to detect
-common issues. Containers are also scanned with Trivy and Grype as described in
-the patch guide.
+Our CI pipeline runs **Bandit**, **pip-audit**, **npm audit**, **cargo-audit**, and **govulncheck**. Containers are scanned with Trivy and Grype when available.
 
 ## Patch Policy
 
@@ -31,3 +29,4 @@ If **pip-audit** or our nightly security workflow flags a high-severity vulnerab
 We encourage responsible disclosure. Please avoid posting public issues for new vulnerabilities until we have published a fix. Coordinate with us at [security@example.com](mailto:security@example.com).
 
 Refer to [.dev/BANDIT.md](.dev/BANDIT.md) for the latest automated scan results.
+Dependency-Check runs when the tool is available; network restrictions may skip this step.
