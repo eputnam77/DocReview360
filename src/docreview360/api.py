@@ -202,6 +202,7 @@ class ConfigPayload(BaseModel):
     """Configuration parameters for integrations."""
 
     database: str
+    database_url: str | None = None
     editor: str
     cms: str
     auth: str
