@@ -18,7 +18,7 @@ _UNREACHABLE = object()
 _client: "Redis" | None | object = None
 
 
-def _get_client() -> Any | None:
+def _get_client() -> "Redis" | None:
     global _client
     if _client is None and _redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
@@ -37,7 +37,7 @@ def _get_client() -> Any | None:
             _client = _UNREACHABLE
     if _client is _UNREACHABLE:
         return None
-    return _client
+    return cast("Redis | None", _client)
 
 
 def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
