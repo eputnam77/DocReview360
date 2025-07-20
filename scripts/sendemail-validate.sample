@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Simple git send-email validation hook.
 # Requires `codespell` and `gitlint` to be available in PATH.
+# This script mirrors `.git/hooks/sendemail-validate.sample` so contributors can
+# quickly enable the same checks locally.
 
 PATCH_FILE="$1"
 
