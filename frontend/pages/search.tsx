@@ -23,10 +23,11 @@ export default function SearchPage() {
   const { q } = router.query as { q?: string };
   const [query, setQuery] = useState(q || "");
   const [results, setResults] = useState<Result[]>([]);
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   useEffect(() => {
     if (!q) return;
-    fetch(`/search?q=${encodeURIComponent(q)}`)
+    fetch(`${API}/search?q=${encodeURIComponent(q)}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setResults(Array.isArray(data) ? data : []))
       .catch(() => setResults([]));
