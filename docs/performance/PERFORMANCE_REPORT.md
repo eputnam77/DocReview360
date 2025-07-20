@@ -11,18 +11,7 @@ The recent profiling runs (k6, Lighthouse, cProfile, py-spy and React Profiler) 
 - Dependencies: None
 - Priority: P1 (quick win)
 - ready-for:builder
-- Status: implemented via ``cache_get``/``cache_set`` in
-  ``docreview360.search.search``.
-
-## Review Needed
-
-### Recommendation: Add SQL indexes for frequent lookups
-- Expected Impact: Moderate (better DB performance)
-- Effort: Moderate
-- Breakage Risk: Moderate
-- Dependencies: Migration scripts
-- Priority: P2
-- ready-for:builder
+- Status: implemented via ``cache_get``/``cache_set`` in ``docreview360.search.search``.
 
 ### Recommendation: Enable GZipMiddleware in FastAPI
 - Expected Impact: Low (smaller responses)
@@ -31,8 +20,17 @@ The recent profiling runs (k6, Lighthouse, cProfile, py-spy and React Profiler) 
 - Dependencies: None
 - Priority: P2
 - ready-for:builder
-- Status: implemented via ``FastAPI.add_middleware`` in
-  ``docreview360.api``.
+- Status: implemented via ``FastAPI.add_middleware`` in ``docreview360.api``.
+
+## Deferred
+
+### Recommendation: Add SQL indexes for frequent lookups
+- Expected Impact: Moderate (better DB performance)
+- Effort: Moderate
+- Breakage Risk: Moderate
+- Dependencies: Migration scripts
+- Priority: P2
+- ready-for:builder
 
 ### Recommendation: Use dynamic imports for editor packages
 - Expected Impact: Moderate (smaller frontend bundle)
@@ -49,4 +47,3 @@ The recent profiling runs (k6, Lighthouse, cProfile, py-spy and React Profiler) 
 - Dependencies: Celery queue setup
 - Priority: P3
 - ready-for:builder
-
