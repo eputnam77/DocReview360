@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure Semgrep is available in CI environments
+python3 -m pip install semgrep >/dev/null
+
 NEXT_AGENT=""
 if [[ -n "${GITHUB_EVENT_NAME:-}" ]]; then
   echo "Detecting next agent from commit message"
