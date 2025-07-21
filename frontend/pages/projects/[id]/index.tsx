@@ -742,6 +742,11 @@ export default function ProjectDetailsPage() {
   };
 
   const signApproval = (aid: string) => {
+    const existing = approvals.find((a) => a.id === aid);
+    if (existing?.state === "approved") {
+      alert("Approval already completed.");
+      return;
+    }
     fetch(`/approvals/${aid}/sign`, { method: "POST" })
       .then((r) => r.json())
       .then((d) => {
