@@ -987,6 +987,34 @@ async def get_summary_csv() -> Response:
     return Response(reporting.summary_csv(), media_type="text/csv")
 
 
+@app.get("/reports/throughput", response_model=list[reporting.ThroughputEntry])
+async def throughput_endpoint(days: int = 7) -> list[reporting.ThroughputEntry]:
+    """Return approval throughput data."""
+
+    return reporting.throughput_data(days)
+
+
+@app.get("/reports/throughput.csv")
+async def throughput_csv_endpoint(days: int = 7) -> Response:
+    """CSV export of :func:`throughput_endpoint`."""
+
+    return Response(reporting.throughput_csv(days), media_type="text/csv")
+
+
+@app.get("/reports/workload", response_model=dict[str, int])
+async def workload_endpoint() -> dict[str, int]:
+    """Return workload counts per user."""
+
+    return reporting.workload_data()
+
+
+@app.get("/reports/workload.csv")
+async def workload_csv_endpoint() -> Response:
+    """CSV export of :func:`workload_endpoint`."""
+
+    return Response(reporting.workload_csv(), media_type="text/csv")
+
+
 @app.get("/reports/dashboard", response_model=list[DashboardEntry])
 async def get_dashboard_data(x_user: str | None = Header(None)) -> list[DashboardEntry]:
     """Return per-project data for dashboard widgets."""
@@ -999,6 +1027,13 @@ async def get_widget_counts(x_user: str | None = Header(None)) -> dict[str, int]
     """Return assignment and approval counts for dashboard widgets."""
 
     return widget_counts(x_user)
+
+
+@app.get("/dashboard/doc-types", response_model=dict[str, int])
+async def doc_type_counts_endpoint() -> dict[str, int]:
+    """Return active project counts grouped by document type."""
+
+    return reporting.doc_type_counts()
 
 
 class VisibilityPayload(BaseModel):

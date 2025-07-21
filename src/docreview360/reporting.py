@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from pydantic import BaseModel
 
 from .approvals import approvals
@@ -94,3 +96,59 @@ def summary_csv() -> str:
         "projects,documents,workflows,approvals\n"
         f"{summary.projects},{summary.documents},{summary.workflows},{summary.approvals}\n"
     )
+
+
+class ThroughputEntry(BaseModel):
+    """Daily approval counts used for throughput charts."""
+
+    date: str
+    approvals: int
+
+
+def throughput_data(days: int = 7) -> list[ThroughputEntry]:
+    """Return approvals completed per day for the last ``days`` days."""
+
+    cutoff = (datetime.utcnow() - timedelta(days=days - 1)).date()
+    counts: dict[str, int] = {}
+    for a in approvals.values():
+        if a.state == "approved" and a.signed_at:
+            day = datetime.fromisoformat(a.signed_at).date()
+            if day >= cutoff:
+                counts[str(day)] = counts.get(str(day), 0) + 1
+    return [ThroughputEntry(date=d, approvals=c) for d, c in sorted(counts.items())]
+
+
+def throughput_csv(days: int = 7) -> str:
+    """Return ``throughput_data`` as CSV string."""
+
+    rows = throughput_data(days)
+    lines = ["date,approvals"] + [f"{r.date},{r.approvals}" for r in rows]
+    return "\n".join(lines) + "\n"
+
+
+def workload_data() -> dict[str, int]:
+    """Return project counts per assigned user."""
+
+    counts: dict[str, int] = {}
+    for p in projects.values():
+        if p.user:
+            counts[p.user] = counts.get(p.user, 0) + 1
+    return counts
+
+
+def workload_csv() -> str:
+    """Return ``workload_data`` as CSV."""
+
+    data = workload_data()
+    lines = ["user,count"] + [f"{u},{c}" for u, c in data.items()]
+    return "\n".join(lines) + "\n"
+
+
+def doc_type_counts() -> dict[str, int]:
+    """Return active project counts grouped by document type."""
+
+    counts: dict[str, int] = {}
+    for p in projects.values():
+        if p.doc_type:
+            counts[p.doc_type] = counts.get(p.doc_type, 0) + 1
+    return counts
