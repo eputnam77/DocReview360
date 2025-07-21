@@ -11,7 +11,7 @@ this record summarises the agreed monorepo layout for end users.
 ## Decision
 - Source code resides in `src/` with the `docreview360` package.
 - Automated tests live in `tests/`.
-- External services (future Rust or Go components) will live under `services/`.
+- External services will live under `services/`.
 - Development-only artifacts remain under `.dev/`.
 - Continuous integration is defined in `.github/workflows/`.
 

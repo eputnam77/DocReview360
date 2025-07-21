@@ -16,14 +16,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
       - name: Install dependencies
         run: |
           pip install uv poetry
@@ -47,8 +39,6 @@ jobs:
           if [ "$GITHUB_REF_NAME" = "main" ]; then THRESHOLD=90; fi
           poetry run pytest -q --cov=src --cov-fail-under=$THRESHOLD
           npx tsc --noEmit
-          cargo check || true
-          go vet ./...
           if [ "$GITHUB_REF_NAME" = "main" ]; then mkdocs build --strict; fi
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@v0.12.0
