@@ -22,6 +22,7 @@ class ProjectModel(BaseModel):
     name: str
     number: int | None = None
     user: Optional[str] = None
+    doc_type: str | None = None
     priority: int = 0
     created: datetime = datetime.utcnow()
     temp_user: Optional[str] = None
