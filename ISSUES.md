@@ -1,14 +1,15 @@
 ## Test Run Summary
 
-Lock integrity checks failed:
-- `poetry lock --check` reported: *The option "--check" does not exist*.
-- `npm ci --dry-run` failed because no `package-lock.json` was present at repo root.
+Lock integrity checks:
+- `poetry check --lock` succeeded with warnings.
+- `pip-compile --dry-run` succeeded.
 
-Type checks failed:
-- `mypy src/docreview360` error: missing plugin `pydantic`.
-- `npx tsc --noEmit` produced numerous errors because dependencies were not installed.
+Type check failures:
+- `mypy src tests` reported 76 errors (see `/tmp/mypy.log`).
 
-Test suite failed to start:
-- `pytest` could not recognize coverage options, indicating `pytest-cov` missing.
+Test results:
+- `pytest` ran 197 tests with 2 skipped but coverage reports were not produced.
 
-No coverage report was generated.
+No HTML coverage report was generated.
+
+Label: `ready-for:builder`
