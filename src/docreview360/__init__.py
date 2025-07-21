@@ -108,6 +108,10 @@ from . import (
 )
 
 
-def placeholder() -> int:
-    """Return a constant used in placeholder tests."""
-    return 42
+def placeholder(multiplier: int = 1) -> int:
+    """Return ``42`` multiplied by ``multiplier``."""
+
+    if multiplier < 0:
+        raise ValueError("multiplier must be non-negative")
+
+    return 42 * multiplier
