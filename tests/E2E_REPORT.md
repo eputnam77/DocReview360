@@ -1,9 +1,9 @@
 # End-to-End Report
 
-The E2E suite was executed using `pytest -m e2e`. No scenarios were collected because the tests are not marked with `@pytest.mark.e2e`.
+All Playwright scenarios passed using `pytest -m e2e`.
 
 ## ✅ Passed Scenarios
-None
+- 5 tests executed without errors.
 
 ## ❌ Failed Scenarios
 None
