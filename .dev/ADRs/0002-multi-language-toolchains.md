@@ -10,8 +10,7 @@ the repository ready for those additions without forcing them today.
 
 ## Decision
 
-* Include minimal configuration files for TypeScript (`tsconfig.json`), Rust
-  (`Cargo.toml`), and Go (`go.mod`).
+* Include a minimal configuration file for TypeScript (`tsconfig.json`).
 * Each configuration declares the package name `docreview360` and basic compiler
   settings.
 * No actual source code is required yet; these files serve as placeholders for
@@ -19,6 +18,6 @@ the repository ready for those additions without forcing them today.
 
 ## Consequences
 
-* Developers can immediately start using the respective toolchains if needed.
-* Continuous integration will validate these files with `cargo check`, `go vet`,
-  or `npm run build` once real code exists.
+* Developers can immediately start using the TypeScript toolchain if needed.
+* Continuous integration will validate this file with `npm run build` once real
+  code exists.

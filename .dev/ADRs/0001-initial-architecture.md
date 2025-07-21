@@ -14,8 +14,8 @@ source code from development assets and prepares for multi-language components.
 * Keep development workflow files in `.dev/` so they're excluded from
   distribution packages.
 * Place continuous integration workflows under `.github/workflows/`.
-* Provide configuration placeholders for TypeScript (`tsconfig.json`), Rust
-  (`Cargo.toml`), and Go (`go.mod`) to support future extensions.
+* Provide a configuration placeholder for TypeScript (`tsconfig.json`) to
+  support future extensions.
 
 ## Consequences
 

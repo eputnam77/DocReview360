@@ -18,7 +18,7 @@ For details on how we triage and patch dependencies see the
 
 ## Security Scans
 
-Our CI pipeline runs **Bandit**, **pip-audit**, **npm audit**, **cargo-audit**, and **govulncheck**. Containers are scanned with Trivy and Grype when available.
+Our CI pipeline runs **Bandit**, **pip-audit**, and **npm audit**. Containers are scanned with Trivy and Grype when available.
 
 ## Patch Policy
 

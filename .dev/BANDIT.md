@@ -44,13 +44,4 @@ Files skipped (0):
 }
 ```
 
-## cargo audit
-```
-{"database":{"advisory-count":792,"last-commit":"babf308081c6c1ad21495aa3128957b14146e7cb","last-updated":"2025-07-18T21:48:13+02:00"},"lockfile":{"dependency-count":1},"settings":{"target_arch":[],"target_os":[],"severity":null,"ignore":[],"informational_warnings":["unmaintained","unsound","notice"]},"vulnerabilities":{"found":false,"count":0,"list":[]},"warnings":{}}```
-
-## govulncheck
-```
-No vulnerabilities found.
-```
-
 Dependency-Check was not executed due to missing tool installation (network restrictions).
