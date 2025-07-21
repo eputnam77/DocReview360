@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from docreview360.api import app
 from fastapi.testclient import TestClient
 from requests import Response  # type: ignore
+
+from docreview360.api import app
 
 
 def _doc_ids(resp: Response) -> set[str]:
