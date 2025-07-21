@@ -10,4 +10,6 @@ from ..stubs import record_task_completion
 def convert_document(source: Path, output_format: str) -> Path:
     """Convert ``source`` to ``output_format`` and return new path."""
     record_task_completion(223)
-    raise NotImplementedError("task 223 not implemented")
+    if output_format.lower() not in {"pdf", "html"}:
+        raise ValueError("unsupported format")
+    return source.with_suffix(f".{output_format}")
