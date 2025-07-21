@@ -112,6 +112,7 @@ from .workflows import (
     assign_reviewer,
     create_workflow,
     get_workflow,
+    list_workflows,
     start_workflow,
     workflows,
 )
@@ -162,6 +163,9 @@ class ProjectCreate(BaseModel):
     id: str
     name: str
     user: str | None = None
+    doc_type: str | None = None
+    phase: str | None = None
+    workflow: str | None = None
     priority: int = 0
 
 
@@ -293,6 +297,9 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
     project = ProjectModel(**body.model_dump())
     add_project(project)
+    if body.workflow:
+        wf = create_workflow(project.id, [body.workflow])
+        project.workflow = wf.id
     cache_set(
         "projects",
         json.dumps([p.model_dump(mode="json") for p in list_projects()]),
@@ -697,6 +704,12 @@ async def get_workflow_endpoint(wf_id: str) -> WorkflowModel:
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return wf
+
+
+@app.get("/workflows", response_model=list[WorkflowModel])
+async def list_workflows_endpoint(project: str | None = None) -> list[WorkflowModel]:
+    """Return workflows optionally filtered by project."""
+    return list_workflows(project)
 
 
 @app.post("/workflows/{wf_id}/start", response_model=WorkflowModel)
