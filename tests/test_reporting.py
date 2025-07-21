@@ -38,3 +38,14 @@ def test_reporting_endpoints() -> None:
     entry = next(e for e in entries if e["id"] == "r1")
     assert entry["docs"] == 1
     assert entry["phase"] == "start"
+
+    resp = client.get("/reports/throughput")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+    resp = client.get("/reports/workload")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), dict)
+
+    resp = client.get("/dashboard/doc-types")
+    assert resp.status_code == 200
