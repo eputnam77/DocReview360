@@ -4,6 +4,7 @@
 - Projects and search indexes still live purely in memory. Even with the new locks in `search.py` data will be lost on restart and concurrent writes could block the whole process.
 - Plugin discovery is dynamic and missing dependencies raise runtime errors.
 - The `sendemail-validate` hook depends on external tools (`codespell`, `gitlint`) which may not be installed in all environments.
+- The new `NEXT_PUBLIC_API_BASE` variable must be set at build time for Next.js. When unset, `fetch` falls back to relative URLs which only work when the API and frontend share a host.
 
 ### Performance
 - The search service tokenises every document into a Python `set`; as the number of documents grows lookups will slow down and consume memory.
@@ -17,7 +18,7 @@
 
 ### PRD Coverage
 - `.dev/VERIFICATION_REPORT.md` shows Tasks 1–155 fully implemented. Recent commits add stubs for Tasks 194–197 and implement watchlists and default lead behaviour (Tasks 216 & 217).
-- Remaining backlog items after Task 217 are still placeholders but referenced in tests.
+- The README now documents how to configure the frontend API base, satisfying the open architecture requirement from the PRD.
 
 ### Mandatory Fixes
 - Persist projects, documents and watchlists in a real database to prevent data loss and remove global locks.
