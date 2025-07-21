@@ -4,8 +4,14 @@ from __future__ import annotations
 
 from ..stubs import record_task_completion
 
+ALLOWED_ROLES = {"writer", "project_lead"}
+
 
 def send_for_review(role: str, document_id: str) -> bool:
-    """Return ``True`` when writers may send documents for review."""
+    """Return ``True`` when the ``role`` may send ``document_id`` for review."""
+
+    if not role or not document_id:
+        raise ValueError("role and document_id required")
+
     record_task_completion(218)
-    raise NotImplementedError("task 218 not implemented")
+    return role in ALLOWED_ROLES
