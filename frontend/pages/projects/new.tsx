@@ -97,21 +97,19 @@ export default function NewProjectPage() {
 
     setLoading(true);
 
-    // Use FormData for file upload
-    const formData = new FormData();
-    formData.append("docNumber", docNumber);
-    formData.append("title", title);
-    formData.append("sme", sme);
-    formData.append("docType", docType);
-    if (phase) formData.append("phase", phase);
-    if (workflow) formData.append("workflow", workflow);
-    formData.append("description", description);
-    files.forEach((f) => formData.append("files", f));
-
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: docNumber,
+          name: title,
+          user: sme || undefined,
+          doc_type: docType,
+          phase,
+          workflow,
+          description,
+        }),
       });
       if (!res.ok) throw new Error("Failed to create project");
       // Redirect to projects list or new project page
