@@ -12,4 +12,10 @@ def task190() -> bool:
     client = TestClient(app)
     resp = client.get("/dashboard/manager")
     record_task_completion(190)
-    return resp.status_code == 200 and isinstance(resp.json(), list)
+    data = resp.json()
+    return (
+        resp.status_code == 200
+        and "workload" in data
+        and "projects" in data
+        and isinstance(data["projects"], list)
+    )
