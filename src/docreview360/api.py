@@ -105,6 +105,7 @@ from .search import (
     set_project_priority,
 )
 from .status import internal_status, public_status
+from .stubs.task223 import convert_document
 from .workflows import (
     WorkflowModel,
     advance_workflow,
@@ -1097,3 +1098,14 @@ async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
     except OSError as exc:  # pragma: no cover - filesystem errors
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return payload
+
+
+@app.post("/tools/convert")
+async def convert_tool_endpoint(
+    output_format: str = Form(...), file: UploadFile = File(...)
+) -> dict[str, str]:
+    """Convert an uploaded document and return the filename."""
+
+    _ = await file.read()  # read file data but ignore for stub
+    dest = convert_document(Path(file.filename), output_format)
+    return {"filename": dest.name}

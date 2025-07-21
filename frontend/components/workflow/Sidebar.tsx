@@ -10,6 +10,7 @@ import {
   Settings,
   User,
   FileText,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
@@ -30,6 +31,11 @@ const SECONDARY = [
     icon: <FileText className="h-4 w-4" />,
     label: "Logs",
     href: "/logs",
+  },
+  {
+    icon: <Wrench className="h-4 w-4" />,
+    label: "Tools",
+    href: "/tools",
   },
 ];
 
