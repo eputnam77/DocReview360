@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from docreview360 import git_hooks
 
 
@@ -6,7 +8,7 @@ def test_validate_patch_clean() -> None:
     assert git_hooks.validate_patch(patch)
 
 
-def test_validate_patch_detects_issues(tmp_path) -> None:
+def test_validate_patch_detects_issues(tmp_path: Path) -> None:
     path = tmp_path / "p.patch"
     path.write_text("hello \tworld  \nveryveryverylongwordover20chars\n")
     patch = path.read_text()
