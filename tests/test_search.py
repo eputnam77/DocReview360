@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
+from fastapi.testclient import TestClient
+from requests import Response  # type: ignore
 
 
-def _doc_ids(resp):
+def _doc_ids(resp: Response) -> set[str]:
     return {doc["id"] for doc in resp.json()}
 
 
@@ -15,7 +15,7 @@ def test_search_returns_matching_document() -> None:
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", content, "text/markdown")},
-        data={"project": "p1", "user": "alice", "priority": 1},
+        data={"project": "p1", "user": "alice", "priority": "1"},
     )
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
@@ -40,7 +40,7 @@ def test_search_supports_project_name_and_date_filter() -> None:
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", content, "text/markdown")},
-        data={"project": "p2", "user": "bob", "priority": 2},
+        data={"project": "p2", "user": "bob", "priority": "2"},
     )
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
@@ -69,14 +69,14 @@ def test_search_multiword_user_and_priority_filters() -> None:
     resp = client.post(
         "/documents/import",
         files={"file": ("a.md", "Alpha Beta", "text/markdown")},
-        data={"project": "p3", "user": "alice", "priority": 2},
+        data={"project": "p3", "user": "alice", "priority": "2"},
     )
     doc_a = resp.json()["id"]
 
     resp = client.post(
         "/documents/import",
         files={"file": ("b.md", "Alpha Gamma", "text/markdown")},
-        data={"project": "p3", "user": "bob", "priority": 1},
+        data={"project": "p3", "user": "bob", "priority": "1"},
     )
     doc_b = resp.json()["id"]
 
@@ -86,7 +86,7 @@ def test_search_multiword_user_and_priority_filters() -> None:
     resp = client.get("/search", params={"q": "Alpha", "user": "bob"})
     assert _doc_ids(resp) == {doc_b}
 
-    resp = client.get("/search", params={"q": "Alpha", "priority": 2})
+    resp = client.get("/search", params={"q": "Alpha", "priority": "2"})
     assert _doc_ids(resp) == {doc_a}
 
 
@@ -96,7 +96,7 @@ def test_search_index_updates_after_edit() -> None:
     resp = client.post(
         "/documents/import",
         files={"file": ("c.md", "Old text", "text/markdown")},
-        data={"project": "p4", "user": "carol", "priority": 1},
+        data={"project": "p4", "user": "carol", "priority": "1"},
     )
     doc_id = resp.json()["id"]
 

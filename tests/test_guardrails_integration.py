@@ -1,7 +1,9 @@
 import importlib
 
+import pytest
 
-def test_guardrails_enabled(monkeypatch) -> None:
+
+def test_guardrails_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENABLE_GUARDRAILS", "1")
     module = importlib.import_module("docreview360.api")
     importlib.reload(module)
