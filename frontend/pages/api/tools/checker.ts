@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { IncomingForm } from "formidable";
 import type * as formidable from "formidable";
+import fs from "fs";
 import path from "path";
+import { execFile } from "child_process";
 
 export const config = {
   api: {
@@ -29,9 +31,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  // TODO: Replace placeholder with actual DocumentCheckerToolSandbox integration
-  const results = { message: "DocumentCheckerToolSandbox integration pending" };
-  const filename = path.basename(file.filepath);
+  const results = await runChecks(file.filepath);
+
+  const downloadsDir = path.join(process.cwd(), "frontend/public/downloads");
+  fs.mkdirSync(downloadsDir, { recursive: true });
+  const destPath = path.join(downloadsDir, path.basename(file.filepath));
+  await fs.promises.copyFile(file.filepath, destPath);
+  const filename = path.basename(destPath);
 
   res.status(200).json({ results, filename });
+}
+
+function runChecks(filePath: string): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const python = process.env.VENV_PYTHON || "python3";
+    const script = path.join(process.cwd(), "services", "document_checker", "__init__.py");
+    execFile(python, [script, filePath], { encoding: "utf8" }, (err, stdout, stderr) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout.trim()));
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
 }
