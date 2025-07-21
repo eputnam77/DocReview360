@@ -87,8 +87,11 @@ from .rbac import require_role
 from .reporting import (
     DashboardEntry,
     SummaryReport,
+    admin_dashboard,
     dashboard_data,
     generate_summary,
+    manager_dashboard,
+    user_dashboard,
     widget_counts,
 )
 from .search import (
@@ -1035,6 +1038,15 @@ async def get_dashboard_data(x_user: str | None = Header(None)) -> list[Dashboar
     return dashboard_data(x_user)
 
 
+@app.get("/dashboard/user", response_model=list[DashboardEntry])
+async def user_dashboard_endpoint(x_user: str | None = Header(None)) -> list[DashboardEntry]:
+    """Return dashboard data for the authenticated user."""
+
+    if not x_user:
+        raise HTTPException(status_code=401, detail="Missing user")
+    return user_dashboard(x_user)
+
+
 @app.get("/dashboard/widgets")
 async def get_widget_counts(x_user: str | None = Header(None)) -> dict[str, int]:
     """Return assignment and approval counts for dashboard widgets."""
@@ -1079,11 +1091,11 @@ async def update_visibility_endpoint(
     return set_visibility(x_user, data)
 
 
-@app.get("/dashboard/manager", response_model=list[DashboardEntry])
-async def manager_dashboard_endpoint() -> list[DashboardEntry]:
-    """Return dashboard data for manager role."""
+@app.get("/dashboard/manager")
+async def manager_dashboard_endpoint() -> dict[str, Any]:
+    """Return dashboard information for managers."""
 
-    return dashboard_data()
+    return manager_dashboard()
 
 
 @app.get("/status/public")
@@ -1096,6 +1108,13 @@ async def public_status_endpoint() -> dict[str, int]:
 async def internal_status_endpoint() -> dict[str, int]:
     """Return extended system status for admins."""
     return internal_status()
+
+
+@app.get("/dashboard/admin")
+async def admin_dashboard_endpoint() -> dict[str, Any]:
+    """Return system overview for administrators."""
+
+    return admin_dashboard()
 
 
 @app.websocket("/ws/dashboard")
