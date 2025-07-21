@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Any
 
 from pydantic import BaseModel
 
 from .approvals import approvals
 from .documents import documents
 from .search import _expire_temp_assignment, projects
+from .status import internal_status
 from .workflows import workflows
 
 
@@ -152,3 +154,21 @@ def doc_type_counts() -> dict[str, int]:
         if p.doc_type:
             counts[p.doc_type] = counts.get(p.doc_type, 0) + 1
     return counts
+
+
+def user_dashboard(user: str) -> list[DashboardEntry]:
+    """Return dashboard data scoped to ``user`` projects."""
+
+    return dashboard_data(user)
+
+
+def manager_dashboard() -> dict[str, Any]:
+    """Return workload overview and project metrics for managers."""
+
+    return {"workload": workload_data(), "projects": dashboard_data()}
+
+
+def admin_dashboard() -> dict[str, Any]:
+    """Return system health metrics and summary for administrators."""
+
+    return {"summary": generate_summary(), "status": internal_status()}

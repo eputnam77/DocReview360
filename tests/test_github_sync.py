@@ -8,7 +8,7 @@ def test_push_and_pull_document(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     remote = tmp_path / "remote.git"
 
-    def _run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
+    def _run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[bytes]:
         return subprocess.run(cmd, cwd=cwd, check=True)
 
     _run(["git", "init", "--bare", remote.as_posix()])
