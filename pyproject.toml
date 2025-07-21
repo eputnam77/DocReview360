@@ -162,7 +162,6 @@ python_version         = "3.12"
 strict                 = true
 ignore_errors          = false
 plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
-exclude                = ["tests/*"]
 
 [[tool.mypy.overrides]]
 module                 = [
@@ -182,9 +181,6 @@ module                 = [
 ]
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = ["tests", "tests.*"]
-ignore_errors = true
 
 # ───────────────────────────── pytest config ───────────────────────────────
 [tool.pytest.ini_options]
