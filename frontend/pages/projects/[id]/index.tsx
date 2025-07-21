@@ -635,29 +635,27 @@ export default function ProjectDetailsPage() {
   const isOwner = project?.owner === username;
   const canEdit = isOwner || isAdmin;
 
-  // ▼ fetch demo data
+  // ▼ fetch data from API
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    setTimeout(() => {
-      setProject(DEMO_PROJECT);
-      setWorkflow(DEMO_WORKFLOW);
-      const loaded = DEMO_APPROVALS.map((a) => {
-        const stored =
-          typeof window !== "undefined"
-            ? localStorage.getItem(`approval-${a.id}`)
-            : null;
-        if (stored) {
-          return { ...a, state: "approved", signedAt: stored };
+    fetch(`/api/projects/${id}`)
+      .then((r) => r.json())
+      .then(async (proj) => {
+        setProject(proj);
+        if (proj.workflow) {
+          const wfRes = await fetch(`/api/workflows/${proj.workflow}`);
+          if (wfRes.ok) setWorkflow(await wfRes.json());
+          const apRes = await fetch(
+            `/api/approvals?workflow=${proj.workflow}`,
+          );
+          if (apRes.ok) setApprovals(await apRes.json());
         }
-        return a;
-      });
-      setApprovals(loaded);
-      setDispos(DEMO_DISPO_COMMENTS);
-      setRefDocs(DEMO_REFERENCE_DOCS);
-      setLogs(DEMO_LOGS);
-      setLoading(false);
-    }, 300);
+        setDispos(DEMO_DISPO_COMMENTS);
+        setRefDocs(DEMO_REFERENCE_DOCS);
+        setLogs(DEMO_LOGS);
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   // ▼ review KPIs memo

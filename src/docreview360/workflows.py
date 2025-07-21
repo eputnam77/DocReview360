@@ -44,6 +44,13 @@ def get_workflow(wf_id: str) -> WorkflowModel | None:
     return workflows.get(wf_id)
 
 
+def list_workflows(project: str | None = None) -> list[WorkflowModel]:
+    """Return workflows optionally filtered by project."""
+    if project is None:
+        return list(workflows.values())
+    return [wf for wf in workflows.values() if wf.project == project]
+
+
 def assign_reviewer(wf_id: str, user: str) -> WorkflowModel:
     """Assign a reviewer to the workflow."""
     workflow = workflows[wf_id]
