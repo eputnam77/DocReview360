@@ -38,6 +38,7 @@ export {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
+export { ScrollArea } from "./ui/scroll-area";
 
 // Icons (barrel export from your icons folder)
 export * from "./icons";
