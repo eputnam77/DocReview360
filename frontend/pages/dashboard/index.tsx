@@ -21,6 +21,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+import { useDashboardVisibility } from "@/state/visibility";
 
 // Color palette for charts
 const COLORS = [
@@ -56,6 +57,7 @@ export default function MainDashboardPage() {
   const [activityData, setActivityData] = useState<Activity[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  const { vis } = useDashboardVisibility();
 
   // Simulated API calls — replace with your own endpoints!
   useEffect(() => {
@@ -149,6 +151,7 @@ export default function MainDashboardPage() {
       </h1>
 
       {/* KPI Row */}
+      {vis.stats && (
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={Users2}
@@ -175,10 +178,12 @@ export default function MainDashboardPage() {
           color="text-red-600"
         />
       </div>
+      )}
 
       {/* Visuals */}
       <div className="grid gap-8 md:grid-cols-2">
         {/* Pie Chart: Project Status */}
+        {vis.status && (
         <Card>
           <CardHeader>
             <CardTitle>Project Status</CardTitle>
@@ -207,7 +212,9 @@ export default function MainDashboardPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        )}
         {/* Line Chart: Activity */}
+        {vis.activity && (
         <Card>
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
@@ -228,9 +235,11 @@ export default function MainDashboardPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* Feed and Tabs */}
+      {vis.logs && (
       <Tabs defaultValue="projects" className="mt-6 space-y-4">
         <TabsList>
           <TabsTrigger value="projects">Project Feed</TabsTrigger>
@@ -280,6 +289,7 @@ export default function MainDashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      )}
       {/* Simple project chat bot */}
       <ChatBot />
     </div>

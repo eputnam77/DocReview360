@@ -1,43 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useUserStore } from "@/state/user";
-
-interface Visibility {
-  stats: boolean;
-  status: boolean;
-  activity: boolean;
-  logs: boolean;
-}
+import { useDashboardVisibility, Visibility } from "@/state/visibility";
 
 export default function DashboardSettingsPage() {
-  const [vis, setVis] = useState<Visibility>({
-    stats: true,
-    status: true,
-    activity: true,
-    logs: true,
-  });
-  const username = useUserStore((s) => s.username);
+  const { vis, setVis, save } = useDashboardVisibility();
 
-  useEffect(() => {
-    if (!username) return;
-    fetch("/dashboard/visibility", { headers: { "X-User": username } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setVis(d))
-      .catch(() => {});
-  }, [username]);
-
-  const toggle = (k: keyof Visibility) =>
+  const toggle = (k: keyof typeof vis) =>
     setVis((v) => ({ ...v, [k]: !v[k] }));
-
-  const save = () => {
-    if (!username) return;
-    fetch("/dashboard/visibility", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "X-User": username },
-      body: JSON.stringify(vis),
-    }).catch(() => {});
-  };
 
   return (
     <div className="p-8 space-y-4">
