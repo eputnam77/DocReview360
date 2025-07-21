@@ -11,6 +11,7 @@ export {
 } from "./ui/card";
 export { Button } from "./ui/button";
 export { Input } from "./ui/input";
+export { FileInput } from "./ui/file-input";
 export { Label } from "./ui/label";
 export {
   Select,
