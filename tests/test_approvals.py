@@ -1,6 +1,7 @@
-from fastapi.testclient import TestClient
+from datetime import datetime, timedelta
 
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def test_approval_lifecycle() -> None:
@@ -36,6 +37,29 @@ def test_approval_lifecycle() -> None:
 
     resp = client.get("/approvals", params={"workflow": wf_id})
     assert any(a["id"] == appr_id for a in resp.json())
+
+
+def test_due_date_updates() -> None:
+    client = TestClient(app)
+    wf = client.post(
+        "/workflows",
+        json={"project": "p2", "phases": ["draft"]},
+    ).json()
+    due = (datetime.utcnow() + timedelta(days=1)).isoformat()
+    resp = client.post(
+        "/approvals",
+        json={"workflow": wf["id"], "reviewer": "bob", "due_at": due},
+    )
+    assert resp.status_code == 201
+    appr = resp.json()
+    assert appr["due_at"] == due
+    new_due = (datetime.utcnow() + timedelta(days=2)).isoformat()
+    resp = client.put(
+        f"/approvals/{appr['id']}",
+        json={"state": "pending", "due_at": new_due},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["due_at"] == new_due
 
 
 def test_reset_approval() -> None:
