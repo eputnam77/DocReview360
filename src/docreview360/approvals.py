@@ -19,6 +19,7 @@ class ApprovalModel(BaseModel):
     workflow: str
     reviewer: str
     state: str = "pending"
+    due_at: datetime | None = None
     signature: Optional[str] = None
     signed_at: Optional[str] = None
 
@@ -26,10 +27,10 @@ class ApprovalModel(BaseModel):
 approvals: Dict[str, ApprovalModel] = {}
 
 
-def create_approval(workflow: str, reviewer: str) -> ApprovalModel:
+def create_approval(workflow: str, reviewer: str, due_at: datetime | None = None) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     approval_id = uuid4().hex
-    approval = ApprovalModel(id=approval_id, workflow=workflow, reviewer=reviewer)
+    approval = ApprovalModel(id=approval_id, workflow=workflow, reviewer=reviewer, due_at=due_at)
     approvals[approval_id] = approval
     return approval
 
@@ -47,12 +48,18 @@ def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
 
 
 def update_approval_state(
-    approval_id: str, state: str, signature: str | None = None
+    approval_id: str,
+    state: str,
+    signature: str | None = None,
+    *,
+    due_at: datetime | None = None,
 ) -> ApprovalModel:
     """Set approval state and optional digital signature placeholder."""
     approval = approvals[approval_id]
     approval.state = state
     approval.signature = signature
+    if due_at is not None:
+        approval.due_at = due_at
     if state == "approved":
         approval.signed_at = datetime.utcnow().isoformat()
     else:
