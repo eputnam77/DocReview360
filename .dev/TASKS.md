@@ -225,6 +225,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 222 | Light and Dark mode | • Add Light and Dark Mode Support, and system default, to user profile in UI. | FE | 2 d | See `tests/e2e/features/task222.feature` |
 | 223 | Tools page | Page where users find converter, doc checker, and other tools we import. | Integration | 2 d | See `tests/e2e/features/task223.feature` |
 | 224 | Resolve npm audit High CVEs | Upgrade `shadcn-ui` and `lodash.template` to fixed versions per npm audit report. | Frontend | 1 d | `npm audit` shows no high vulnerabilities.
+| 225 | Dashboards fetch live data | • Replace demo data in User, Manager and Admin dashboards with API calls (`/dashboard/user`, `/dashboard/manager`, `/dashboard/admin`).<br>• Remove `Simulated Data` code and use React Query for loading. | FE | 1 d | Refreshing dashboards hits the endpoints and displays real metrics. <br>See `tests/e2e/features/task225.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
