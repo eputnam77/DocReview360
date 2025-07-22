@@ -226,6 +226,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 223 | Tools page | Page where users find converter, doc checker, and other tools we import. | Integration | 2 d | See `tests/e2e/features/task223.feature` |
 | 224 | Resolve npm audit High CVEs | Upgrade `shadcn-ui` and `lodash.template` to fixed versions per npm audit report. | Frontend | 1 d | `npm audit` shows no high vulnerabilities.
 | 225 | Dashboards fetch live data | • Replace demo data in User, Manager and Admin dashboards with API calls (`/dashboard/user`, `/dashboard/manager`, `/dashboard/admin`).<br>• Remove `Simulated Data` code and use React Query for loading. | FE | 1 d | Refreshing dashboards hits the endpoints and displays real metrics. <br>See `tests/e2e/features/task225.feature` |
+| 226 | Reviewer due date column | • Add `due_at` field to approvals table and expose via `/api/approvals`.<br>• Projects → Approvals tab displays and allows editing the due date, highlighting overdue rows. | Integration | 1 d | Setting a due date persists and overdue approvals show warning style.<br>See `tests/e2e/features/task226.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
