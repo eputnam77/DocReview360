@@ -67,9 +67,13 @@ export default function ManagerDashboardPage() {
     "kpi", "status", "leaderboard", "activity", "deadlines", "reviews", "errors", "turnaround", "docTypes", "logs",
   ];
   const DEFAULT_VISIBLE = ["kpi", "status", "leaderboard", "activity", "deadlines", "reviews", "logs"];
-  const [visibleDashboards, setVisibleDashboards] = useState<string[]>(
-    () => JSON.parse(localStorage.getItem("visibleDashboards") || JSON.stringify(DEFAULT_VISIBLE))
-  );
+  const [visibleDashboards, setVisibleDashboards] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("visibleDashboards");
+      return stored ? JSON.parse(stored) : DEFAULT_VISIBLE;
+    }
+    return DEFAULT_VISIBLE;
+  });
   const toggleDashboard = (key: string) => {
     setVisibleDashboards((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
