@@ -7,6 +7,7 @@ This short guide walks you through the first steps with DocReview360. It assumes
 Install [`uv`](https://github.com/astral-sh/uv) and [`Poetry`](https://python-poetry.org/) with `pip` or `pipx`:
 
 ```bash
+pip install --upgrade pip
 pip install uv poetry
 # or
 pipx install uv poetry
