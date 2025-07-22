@@ -140,6 +140,7 @@ class ApprovalCreate(BaseModel):
 
     workflow: str
     reviewer: str
+    due_at: datetime | None = None
 
 
 class ApprovalUpdate(BaseModel):
@@ -147,6 +148,7 @@ class ApprovalUpdate(BaseModel):
 
     state: str
     signature: str | None = None
+    due_at: datetime | None = None
 
 
 class PluginModule(BaseModel):
@@ -786,7 +788,7 @@ async def advance_workflow_endpoint(wf_id: str) -> WorkflowModel:
 @app.post("/approvals", status_code=201, response_model=ApprovalModel)
 async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
     """Create an approval for a workflow."""
-    return create_approval(body.workflow, body.reviewer)
+    return create_approval(body.workflow, body.reviewer, due_at=body.due_at)
 
 
 @app.get("/approvals", response_model=list[ApprovalModel])
@@ -808,7 +810,12 @@ async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
 async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> ApprovalModel:
     """Update approval state and signature."""
     try:
-        return update_approval_state(approval_id, body.state, signature=body.signature)
+        return update_approval_state(
+            approval_id,
+            body.state,
+            signature=body.signature,
+            due_at=body.due_at,
+        )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
