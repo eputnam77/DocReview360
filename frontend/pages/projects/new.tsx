@@ -16,13 +16,6 @@ function FieldGate({ when, children }: { when: boolean; children: React.ReactNod
   return when ? <>{children}</> : null;
 }
 
-const DOCUMENT_TYPES = [
-  "Advisory Circular",
-  "Policy Statement",
-  "Release Notes",
-];
-
-const PHASES = ["FAA Review", "Public Comment", "Final Issuance"];
 
 const WORKFLOWS = [
   "FAA Review",
@@ -51,6 +44,8 @@ export default function NewProjectPage() {
   const router = useRouter();
   // Document Number is provided by the user. The immutable Document ID will be
   // generated server-side when the project is created.
+  const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [phases, setPhases] = useState<string[]>([]);
   const [docNumber, setDocNumber] = useState("");
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
@@ -64,6 +59,17 @@ export default function NewProjectPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const manualWorkflow = useRef(false);
+
+  useEffect(() => {
+    fetch("/api/document-types")
+      .then((r) => r.json())
+      .then((data) => setDocTypes(data.map((d: any) => d.name)))
+      .catch(() => setDocTypes([]));
+    fetch("/api/phases")
+      .then((r) => r.json())
+      .then(setPhases)
+      .catch(() => setPhases([]));
+  }, []);
 
   useEffect(() => {
     manualWorkflow.current = false;
@@ -137,7 +143,7 @@ export default function NewProjectPage() {
                 <SelectValue placeholder="Select a document type" />
               </SelectTrigger>
               <SelectContent>
-                {DOCUMENT_TYPES.map((type) => (
+                {docTypes.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
                   </SelectItem>
@@ -183,7 +189,7 @@ export default function NewProjectPage() {
                 <SelectValue placeholder="Select a phase" />
               </SelectTrigger>
               <SelectContent>
-                {PHASES.map((p) => (
+                {phases.map((p) => (
                   <SelectItem key={p} value={p}>
                     {p}
                   </SelectItem>
