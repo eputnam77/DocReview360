@@ -16,12 +16,13 @@ Interactive wizard that generates `docreview360.yml`.
 | ------ | ----------- |
 | `--database [postgres|mysql|sqlite]` | Choose the database backend. |
 | `--database-url TEXT` | SQLAlchemy connection string. |
-| `--editor [tiptap]` | Select the default editor. |
+| `--editor [tiptap]` | Select the document editor (TipTap by default). |
 | `--cms [none|local]` | CMS integration option. |
 | `--auth [oidc]` | Authentication provider. |
 | `--host TEXT` | API host address. |
 | `--port INTEGER` | API port number. |
 | `--debug / --no-debug` | Toggle debug mode. |
+| `--seed / --no-seed` | Create sample document files after setup. |
 | `--config-path PATH` | Where to write the configuration file. |
 
 All options are prompted interactively so you can simply press Enter to accept the defaults. The resulting file records your choices and can be modified later.
