@@ -1,6 +1,5 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def test_signature_flow() -> None:
@@ -11,7 +10,7 @@ def test_signature_flow() -> None:
     doc_id = resp.json()["id"]
     resp = client.post(
         f"/sign/{doc_id}",
-        data={"user": "alice", "workflow": None},
+        data={"user": "alice"},
     )
     assert resp.status_code == 200
     sig_id = resp.json()["id"]

@@ -1,10 +1,10 @@
-from fastapi.testclient import TestClient
-
+import pytest
 from docreview360 import documenso
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
-def test_sign_status_called_once(monkeypatch) -> None:
+def test_sign_status_called_once(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = 0
 
     def fake_status(sig_id: str) -> str:
