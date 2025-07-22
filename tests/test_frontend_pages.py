@@ -9,6 +9,6 @@ def test_react_pages_exist() -> None:
         "projects/new.tsx",
         "editors/tiptap.tsx",
         "viewer.tsx",
-        "logs.tsx",
+        "logs/index.tsx",
     ]:
         assert (Path("frontend/pages") / page).exists()

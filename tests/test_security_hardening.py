@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from docreview360.celery_app import app
 from docreview360.security_hardening import (
     enable_fedramp_backup,
@@ -36,5 +35,5 @@ def test_enable_fedramp_backup(tmp_path: Path) -> None:
     schedule = app.conf.beat_schedule["fedramp_backup"]
     assert schedule["task"] == "docreview360.secure_backup"
     # run task to ensure it works
-    result = secure_backup(dest)
+    result = secure_backup(str(dest))
     assert Path(result).exists()

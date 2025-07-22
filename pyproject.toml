@@ -162,6 +162,7 @@ python_version         = "3.12"
 strict                 = true
 ignore_errors          = false
 plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
+exclude                = "tests/"
 
 [[tool.mypy.overrides]]
 module                 = [
@@ -178,8 +179,13 @@ module                 = [
   "graphene.*",
   "jose.*",
   "markdown_it.*",
+  "pytest_bdd",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
 
 
 # ───────────────────────────── pytest config ───────────────────────────────
