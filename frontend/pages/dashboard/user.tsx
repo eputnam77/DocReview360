@@ -51,9 +51,13 @@ export default function UserDashboardPage() {
     "kpi", "status", "activity", "assignments", "reviews", "feedback", "comments", "deadlines", "docTypes", "errors", "collaborators",
   ];
   const DEFAULT_VISIBLE = ["kpi", "status", "activity", "assignments", "reviews", "deadlines", "feedback", "collaborators"];
-  const [visibleDashboards, setVisibleDashboards] = useState<string[]>(
-    () => JSON.parse(localStorage.getItem("visibleUserDashboards") || JSON.stringify(DEFAULT_VISIBLE))
-  );
+  const [visibleDashboards, setVisibleDashboards] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("visibleUserDashboards");
+      return stored ? JSON.parse(stored) : DEFAULT_VISIBLE;
+    }
+    return DEFAULT_VISIBLE;
+  });
   const toggleDashboard = (key: string) => {
     setVisibleDashboards((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
