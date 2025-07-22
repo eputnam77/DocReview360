@@ -80,6 +80,7 @@ from .exporter import export_document, set_guardrails
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .nemo_guardrails import GuardrailsMiddleware, contains_pii
+from .phases import add_phase, delete_phase, list_phases
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .profile import get_preferences, update_preferences
@@ -689,6 +690,40 @@ async def delete_document_type_endpoint(name: str) -> Response:
     """Remove an existing document type."""
     try:
         delete_document_type(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# Phase management
+# ---------------------------------------------------------------------------
+
+
+class PhaseModel(BaseModel):
+    """Simple phase schema."""
+
+    name: str
+
+
+@app.post("/phases", status_code=201, response_model=list[str])
+async def create_phase_endpoint(body: PhaseModel) -> list[str]:
+    """Create a new project phase."""
+    add_phase(body.name)
+    return list_phases()
+
+
+@app.get("/phases", response_model=list[str])
+async def list_phases_endpoint() -> list[str]:
+    """Return all configured phases."""
+    return list_phases()
+
+
+@app.delete("/phases/{name}", status_code=204, response_class=Response)
+async def delete_phase_endpoint(name: str) -> Response:
+    """Remove a phase by name."""
+    try:
+        delete_phase(name)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return Response(status_code=204)
