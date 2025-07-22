@@ -17,28 +17,6 @@ function FieldGate({ when, children }: { when: boolean; children: React.ReactNod
 }
 
 
-const WORKFLOWS = [
-  "FAA Review",
-  "Public Comment",
-];
-
-const DEFAULT_WORKFLOW_MAP: Record<string, Record<string, string>> = {
-  Proposed: {
-    "Advisory Circular": "Advisory Circular Standard Review",
-    "Policy Statement": "Employee Onboarding",
-    "Release Notes": "Employee Onboarding",
-  },
-  "Public Comment": {
-    "Advisory Circular": "Advisory Circular Standard Review",
-    "Policy Statement": "Employee Onboarding",
-    "Release Notes": "Employee Onboarding",
-  },
-  "Final Issuance": {
-    "Advisory Circular": "Advisory Circular Standard Review",
-    "Policy Statement": "Employee Onboarding",
-    "Release Notes": "Employee Onboarding",
-  },
-};
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -52,6 +30,8 @@ export default function NewProjectPage() {
   const [docType, setDocType] = useState<string | undefined>(undefined);
   const [phase, setPhase] = useState<string | undefined>(undefined);
   const [workflow, setWorkflow] = useState<string | undefined>(undefined);
+  const [workflows, setWorkflows] = useState<string[]>([]);
+  const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,6 +49,18 @@ export default function NewProjectPage() {
       .then((r) => r.json())
       .then(setPhases)
       .catch(() => setPhases([]));
+    fetch("/api/workflows")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setWorkflows(data.map((w: any) => w.name)))
+      .catch(() => setWorkflows([]));
+    const saved = localStorage.getItem("phaseWorkflowMap");
+    if (saved) {
+      try {
+        setPhaseMap(JSON.parse(saved));
+      } catch {
+        // ignore parse errors
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -76,11 +68,11 @@ export default function NewProjectPage() {
   }, [docType, phase]);
 
   useEffect(() => {
-    if (!manualWorkflow.current && docType && phase) {
-      const def = DEFAULT_WORKFLOW_MAP[phase]?.[docType];
+    if (!manualWorkflow.current && phase) {
+      const def = phaseMap[phase];
       if (def) setWorkflow(def);
     }
-  }, [docType, phase]);
+  }, [docType, phase, phaseMap]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -215,16 +207,14 @@ export default function NewProjectPage() {
                   <SelectValue placeholder="Select a workflow" />
                 </SelectTrigger>
                 <SelectContent>
-                  {WORKFLOWS.map((w) => (
+                  {workflows.map((w) => (
                     <SelectItem key={w} value={w}>
                       {w}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
-                Suggested based on '{docType}' in '{phase}' phase.
-              </p>
+              <p className="text-xs text-gray-500">Suggested by selected phase.</p>
               {fieldErrors.workflow && (
                 <p className="text-sm text-red-600">{fieldErrors.workflow}</p>
               )}
