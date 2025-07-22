@@ -6,15 +6,14 @@ from typing import Iterator
 import pytest
 import uvicorn
 from click.testing import CliRunner
-from playwright.sync_api import Page
-
 from docreview360 import config as cfg
 from docreview360.api import app
 from docreview360.cli import cli
+from playwright.sync_api import Page
 
 
 @pytest.fixture(scope="session")
-def config_file(tmp_path_factory) -> Path:
+def config_file(tmp_path_factory: pytest.TempPathFactory) -> Path:
     path = tmp_path_factory.mktemp("config") / "docreview360.yml"
     runner = CliRunner()
     result = runner.invoke(
