@@ -31,21 +31,29 @@ def cli() -> None:
 )
 @click.option(
     "--editor",
-    type=click.Choice(["tiptap"], case_sensitive=False),
+    type=click.Choice(["tiptap", "toast", "onlyoffice", "xml", "codex"], case_sensitive=False),
     default="tiptap",
     show_default=True,
     prompt=True,
 )
 @click.option(
     "--cms",
-    type=click.Choice(["none", "local"], case_sensitive=False),
+    type=click.Choice(["none", "local", "alfresco", "sharepoint"], case_sensitive=False),
     default="none",
     show_default=True,
     prompt=True,
 )
 @click.option(
     "--auth",
-    type=click.Choice(["oidc"], case_sensitive=False),
+    type=click.Choice(
+        [
+            "oidc",
+            "login.gov",
+            "auth0",
+            "pivcac",
+        ],
+        case_sensitive=False,
+    ),
     default="oidc",
     show_default=True,
     prompt=True,
