@@ -10,11 +10,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Phase {
   id: string;
   name: string;
-  workflow?: string[];
 }
 
 const DEMO_PHASES: Phase[] = [
@@ -28,6 +34,8 @@ export default function PhasesPage() {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [workflows, setWorkflows] = useState<string[]>([]);
+  const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/phases")
@@ -38,12 +46,23 @@ export default function PhasesPage() {
             ? data.map((d) => ({
                 id: d.name,
                 name: d.name,
-                workflow: d.workflow,
               }))
             : DEMO_PHASES,
         )
       )
       .catch(() => setPhases(DEMO_PHASES));
+    fetch("/api/workflows")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => setWorkflows(data.map((w) => w.name)))
+      .catch(() => setWorkflows([]));
+    const saved = localStorage.getItem("phaseWorkflowMap");
+    if (saved) {
+      try {
+        setPhaseMap(JSON.parse(saved));
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const addPhase = async () => {
@@ -102,6 +121,12 @@ export default function PhasesPage() {
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
+  };
+
+  const changeWorkflow = (phaseId: string, wf: string) => {
+    const updated = { ...phaseMap, [phaseId]: wf };
+    setPhaseMap(updated);
+    localStorage.setItem("phaseWorkflowMap", JSON.stringify(updated));
   };
 
   return (
@@ -179,11 +204,21 @@ export default function PhasesPage() {
                 </Button>
               </TableCell>
               <TableCell>
-                {p.workflow && p.workflow.length ? (
-                  p.workflow.join(", ")
-                ) : (
-                  <span className="text-gray-400">—</span>
-                )}
+                <Select
+                  value={phaseMap[p.id] || ""}
+                  onValueChange={(v) => changeWorkflow(p.id, v)}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workflows.map((w) => (
+                      <SelectItem key={w} value={w}>
+                        {w}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </TableCell>
             </TableRow>
           ))}
