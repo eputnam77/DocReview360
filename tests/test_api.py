@@ -1,11 +1,10 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.workflows import create_workflow
+from fastapi.testclient import TestClient
 
 
 def test_gzip_middleware() -> None:
-    assert any(m.cls.__name__ == "GZipMiddleware" for m in app.user_middleware)
+    assert any(getattr(m.cls, "__name__", "") == "GZipMiddleware" for m in app.user_middleware)
 
 
 def test_list_projects() -> None:
