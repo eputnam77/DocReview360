@@ -81,14 +81,15 @@ export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
   const username = useUserStore((s) => s.username);
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   useEffect(() => {
     const headers: Record<string, string> = {};
     if (username) {
       headers["X-User"] = username;
     }
-    fetch("/api/projects", { headers })
-      .then((r) => r.json())
+    fetch(`${API}/projects`, { headers })
+      .then((r) => (r.ok ? r.json() : []))
       .then((data: Project[]) =>
         setProjects(data.length > 0 ? data : DEMO_PROJECTS)
       )
