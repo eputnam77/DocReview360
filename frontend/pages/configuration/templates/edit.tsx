@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { API } from "@/lib/api";
 import {
   Select,
   SelectTrigger,
@@ -42,7 +43,7 @@ export default function EditTemplatePage() {
 
   // Load doc types and template data
   useEffect(() => {
-    fetch("/api/document-types")
+    fetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => setDocTypes(data.map((d) => d.name)))
       .catch(() => setDocTypes([]));
@@ -98,12 +99,12 @@ export default function EditTemplatePage() {
     }
 
     if (formData) {
-      await fetch(`/api/templates/${id}`, {
+      await fetch(`${API}/templates/${id}`, {
         method: "PUT",
         body: formData,
       });
     } else {
-      await fetch(`/api/templates/${id}`, {
+      await fetch(`${API}/templates/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

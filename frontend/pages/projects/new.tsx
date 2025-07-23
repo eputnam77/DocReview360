@@ -11,6 +11,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
+import { API } from "@/lib/api";
 
 function FieldGate({ when, children }: { when: boolean; children: React.ReactNode }) {
   return when ? <>{children}</> : null;
@@ -37,7 +38,6 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   const manualWorkflow = useRef(false);
 

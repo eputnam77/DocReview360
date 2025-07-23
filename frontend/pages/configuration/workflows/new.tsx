@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API } from "@/lib/api";
 
 export default function NewWorkflowPage() {
   const [name, setName] = useState("");
@@ -23,7 +24,7 @@ export default function NewWorkflowPage() {
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
-    fetch("/api/document-types")
+    fetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         if (Array.isArray(data) && data.length) {
@@ -60,7 +61,7 @@ export default function NewWorkflowPage() {
   const handleSave = async () => {
     const payload = { name, description, steps };
     // naive demo submission
-    await fetch("/api/workflows", {
+    await fetch(`${API}/workflows`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -68,12 +69,12 @@ export default function NewWorkflowPage() {
 
     for (const docType of docTypesSelected) {
       try {
-        const res = await fetch(`/api/document-types/${docType}`);
+        const res = await fetch(`${API}/document-types/${docType}`);
         if (res.ok) {
           const doc = await res.json();
           const workflow = Array.isArray(doc.workflow) ? doc.workflow : [];
           if (!workflow.includes(name)) workflow.push(name);
-          await fetch(`/api/document-types/${docType}`, {
+          await fetch(`${API}/document-types/${docType}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...doc, workflow }),

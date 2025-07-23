@@ -9,6 +9,7 @@ import {
   Label,
 } from "@/components";
 import { Avatar } from "@/components/ui/avatar";
+import { API } from "@/lib/api";
 
 // --- Types ---
 interface Profile {
@@ -71,7 +72,6 @@ export default function ProfilePage() {
   });
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   useEffect(() => {
     fetch(`${API}/profile`)
