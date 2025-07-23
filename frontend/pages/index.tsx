@@ -17,7 +17,8 @@ import { API } from "@/lib/api";
 export default function Home() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["ping"],
-    queryFn: () => fetch(`${API}/ping`).then((r) => r.text()),
+    // Use Next.js API route by default for the demo
+    queryFn: () => fetch("/api/ping").then((r) => r.text()),
   });
   const count = useCounterStore((s) => s.count);
   const increment = useCounterStore((s) => s.increment);
