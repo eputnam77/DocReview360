@@ -1216,5 +1216,5 @@ async def convert_tool_endpoint(
     """Convert an uploaded document and return the filename."""
 
     _ = await file.read()  # read file data but ignore for stub
-    dest = convert_document(Path(file.filename), output_format)
+    dest = convert_document(Path(file.filename or ""), output_format)
     return {"filename": dest.name}
