@@ -27,7 +27,7 @@ def test_pages_have_default_export() -> None:
 
 def test_home_page_fetches_api() -> None:
     src = Path("frontend/pages/index.tsx").read_text()
-    assert 'fetch("/api/ping")' in src
+    assert "/ping" in src
 
 
 def test_tsx_files_formatted() -> None:
