@@ -84,7 +84,7 @@ from .phases import add_phase, delete_phase, list_phases
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .profile import get_preferences, update_preferences
-from .rbac import require_role
+from .rbac import get_roles, require_role
 from .reporting import (
     DashboardEntry,
     SummaryReport,
@@ -258,7 +258,11 @@ async def get_profile(x_user: str | None = Header(None)) -> dict[str, Any]:
 
     if not x_user:
         raise HTTPException(status_code=401, detail="Missing user")
-    return {"username": x_user, "preferences": get_preferences(x_user)}
+    return {
+        "username": x_user,
+        "preferences": get_preferences(x_user),
+        "roles": sorted(get_roles(x_user)),
+    }
 
 
 @app.put("/profile")
@@ -1134,7 +1138,9 @@ async def update_visibility_endpoint(
 
 
 @app.get("/dashboard/manager")
-async def manager_dashboard_endpoint() -> dict[str, Any]:
+async def manager_dashboard_endpoint(
+    user: auth.User = Depends(require_role("manager")),
+) -> dict[str, Any]:
     """Return dashboard information for managers."""
 
     return manager_dashboard()
@@ -1153,7 +1159,9 @@ async def internal_status_endpoint() -> dict[str, int]:
 
 
 @app.get("/dashboard/admin")
-async def admin_dashboard_endpoint() -> dict[str, Any]:
+async def admin_dashboard_endpoint(
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
     """Return system overview for administrators."""
 
     return admin_dashboard()
