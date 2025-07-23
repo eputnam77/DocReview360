@@ -45,8 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 function runChecks(filePath: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const python = process.env.VENV_PYTHON || "python3";
-    const script = path.join(process.cwd(), "services", "document_checker", "__init__.py");
-    execFile(python, [script, filePath], { encoding: "utf8" }, (err, stdout, stderr) => {
+    const args = ["-m", "docreview360.document_checker", filePath];
+    execFile(python, args, { encoding: "utf8" }, (err, stdout, stderr) => {
       if (err) {
         reject(err);
         return;
