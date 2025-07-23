@@ -32,12 +32,13 @@ export default function ProjectReviewPage() {
   >("pending");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   // Fetch review history for this project
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`/api/projects/${id}/reviews`)
+    fetch(`${API}/projects/${id}/reviews`)
       .then((r) => r.json())
       .then((data) => setReviews(data))
       .catch(() => setReviews([]))
@@ -54,7 +55,7 @@ export default function ProjectReviewPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/projects/${id}/reviews`, {
+      const res = await fetch(`${API}/projects/${id}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
