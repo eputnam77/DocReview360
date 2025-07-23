@@ -11,6 +11,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
+import { API } from "@/lib/api";
 
 const DOCUMENT_TYPES = [
   "Advisory Circular",
@@ -36,7 +37,7 @@ export default function EditProjectPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`/api/projects/${id}`)
+    fetch(`${API}/projects/${id}`)
       .then((r) => r.json())
       .then((proj) => {
         setDocId(proj.docId || "");
@@ -70,7 +71,7 @@ export default function EditProjectPage() {
     if (file) formData.append("file", file);
 
     try {
-      const res = await fetch(`/api/projects/${id}`, {
+      const res = await fetch(`${API}/projects/${id}`, {
         method: "PUT",
         body: formData,
       });

@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash } from "lucide-react";
+import { API } from "@/lib/api";
 
 // --- System role choices, update as needed ---
 const ROLE_CHOICES = [
@@ -42,7 +43,7 @@ export default function UserManagementPage() {
   const [editRoles, setEditRoles] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch("/api/users")
+    fetch(`${API}/users`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setUsers(

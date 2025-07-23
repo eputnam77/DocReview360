@@ -9,6 +9,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { API } from "@/lib/api";
 
 interface Workflow {
   id: string;
@@ -39,7 +40,7 @@ export default function WorkflowList() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
 
   useEffect(() => {
-    fetch("/api/workflows")
+    fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Workflow[]) => setWorkflows(data.length ? data : DEMO_WORKFLOWS))
       .catch(() => setWorkflows(DEMO_WORKFLOWS));

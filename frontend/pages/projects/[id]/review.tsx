@@ -13,6 +13,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { API } from "@/lib/api";
 
 interface Review {
   id: string;
@@ -32,7 +33,6 @@ export default function ProjectReviewPage() {
   >("pending");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   // Fetch review history for this project
   useEffect(() => {

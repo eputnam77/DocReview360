@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { API } from "@/lib/api";
 import {
   Select,
   SelectTrigger,
@@ -28,7 +29,7 @@ export default function NewTemplatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/document-types")
+    fetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => setDocTypes(data.map((d) => d.name)))
       .catch(() => setDocTypes([]));
@@ -76,12 +77,12 @@ export default function NewTemplatePage() {
 
     // Save via FormData if a file is included, otherwise JSON
     if (formData) {
-      await fetch("/api/templates", {
+      await fetch(`${API}/templates`, {
         method: "POST",
         body: formData,
       });
     } else {
-      await fetch("/api/templates", {
+      await fetch(`${API}/templates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

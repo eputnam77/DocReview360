@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash } from "lucide-react";
+import { API } from "@/lib/api";
 
 // --- Define roles and actions ---
 const ROLE_CHOICES = [
@@ -63,7 +64,7 @@ export default function PermissionsPage() {
   const [editAllowed, setEditAllowed] = useState(true);
 
   useEffect(() => {
-    fetch("/api/rbac")
+    fetch(`${API}/rbac`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
