@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,64 +67,99 @@ export default function UserDashboardPage() {
     });
   };
 
-  // --- Simulated Data ---
-  useEffect(() => {
-    setStats({ assigned: 4, inProgress: 2, completed: 7, overdue: 1, documents: 12, approvals: 3 });
-    setStatusData([
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  const fallback = {
+    stats: { assigned: 4, inProgress: 2, completed: 7, overdue: 1, documents: 12, approvals: 3 },
+    status: [
       { name: "Assigned", value: 4 },
       { name: "In Progress", value: 2 },
       { name: "Completed", value: 7 },
       { name: "Overdue", value: 1 },
-    ]);
-    setActivityData([
+    ] as StatusData[],
+    activity: [
       { date: "2025-07-01", actions: 1 },
       { date: "2025-07-02", actions: 3 },
       { date: "2025-07-03", actions: 2 },
       { date: "2025-07-04", actions: 4 },
       { date: "2025-07-05", actions: 2 },
-    ]);
-    setAssignments([
+    ] as Activity[],
+    assignments: [
       { id: "AC-101", title: "Policy Update", status: "In Progress", updated: "2025-07-04" },
       { id: "AC-102", title: "Compliance Review", status: "Completed", updated: "2025-07-02" },
       { id: "AC-103", title: "Draft SOP", status: "Assigned", updated: "2025-07-01" },
       { id: "AC-104", title: "Incident Report", status: "Overdue", updated: "2025-07-03" },
-    ]);
-    setReviews([
+    ] as Assignment[],
+    reviews: [
       { id: "R-201", project: "AC-101", status: "Pending", updated: "2025-07-04" },
       { id: "R-202", project: "AC-103", status: "Approved", updated: "2025-07-02" },
-    ]);
-    setFeedbacks([
+    ] as Review[],
+    feedbacks: [
       { id: "F-01", message: "Great summary section!", from: "Team Lead", date: "2025-07-02", sentiment: "positive" },
       { id: "F-02", message: "Missing some regulatory context.", from: "SME", date: "2025-07-03", sentiment: "neutral" },
       { id: "F-03", message: "Formatting issues found.", from: "Reviewer", date: "2025-07-04", sentiment: "negative" },
-    ]);
-    setComments([
+    ] as Feedback[],
+    comments: [
       { id: "C-01", content: "Clarify para 2.2 for non-native speakers.", doc: "AC-101", date: "2025-07-02" },
       { id: "C-02", content: "Need to update references.", doc: "AC-103", date: "2025-07-03" },
-    ]);
-    setDeadlines([
+    ] as Comment[],
+    deadlines: [
       { id: "AC-101", doc: "Policy Update", due: "2025-07-07", daysLeft: 3 },
       { id: "AC-104", doc: "Incident Report", due: "2025-07-09", daysLeft: 5 },
-    ]);
-    setDocTypes([
+    ] as Deadline[],
+    docTypes: [
       { type: "AC", count: 5 },
       { type: "Order", count: 3 },
       { type: "Memo", count: 2 },
       { type: "TSO", count: 1 },
       { type: "Other", count: 1 },
-    ]);
-    setErrorStats([
+    ] as DocType[],
+    errors: [
       { type: "Formatting", count: 2 },
       { type: "Headings", count: 1 },
       { type: "Acronyms", count: 1 },
       { type: "Accessibility", count: 1 },
-    ]);
-    setCollaborators([
+    ] as ErrorStat[],
+    collaborators: [
       { name: "Jane Doe", role: "Tech Writer", projects: 3 },
       { name: "John Smith", role: "SME", projects: 2 },
       { name: "Alice Lee", role: "Reviewer", projects: 2 },
-    ]);
-  }, []);
+    ] as Collaborator[],
+  };
+
+  const { data, isError } = useQuery<any>({
+    queryKey: ["user-dashboard"],
+    queryFn: async () => {
+      const r = await fetch(`${API}/dashboard/user`);
+      return r.ok ? r.json() : null;
+    },
+  });
+
+  useEffect(() => {
+    if (Array.isArray(data) && data.length > 0) {
+      const docs = data.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
+      const approvals = data.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
+      setStats({
+        assigned: data.length,
+        inProgress: data.filter((p: any) => p.phase !== "done").length,
+        completed: data.filter((p: any) => p.phase === "done").length,
+        overdue: fallback.stats.overdue,
+        documents: docs,
+        approvals,
+      });
+    } else if (isError) {
+      setStats(fallback.stats);
+      setStatusData(fallback.status);
+      setActivityData(fallback.activity);
+      setAssignments(fallback.assignments);
+      setReviews(fallback.reviews);
+      setFeedbacks(fallback.feedbacks);
+      setComments(fallback.comments);
+      setDeadlines(fallback.deadlines);
+      setDocTypes(fallback.docTypes);
+      setErrorStats(fallback.errors);
+      setCollaborators(fallback.collaborators);
+    }
+  }, [data, isError]);
 
   // KPI Card
   const StatCard = ({

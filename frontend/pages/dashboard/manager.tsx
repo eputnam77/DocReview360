@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,63 +83,99 @@ export default function ManagerDashboardPage() {
     });
   };
 
-  // --- Simulated Data ---
-  useEffect(() => {
-    // API fetch stubs (replace with real endpoints)
-    setStats({ projects: 22, users: 14, documents: 75, approvals: 18, inProgress: 6, completed: 13, overdue: 3, active: 10 });
-    setStatusData([
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  const fallback = {
+    stats: { projects: 22, users: 14, documents: 75, approvals: 18, inProgress: 6, completed: 13, overdue: 3, active: 10 },
+    status: [
       { name: "In Progress", value: 6 },
       { name: "Completed", value: 13 },
       { name: "Overdue", value: 3 },
-    ]);
-    setUserLeaderboard([
+    ] as StatusData[],
+    leaderboard: [
       { user: "Jane Doe", projects: 7, workload: 5 },
       { user: "John Smith", projects: 5, workload: 7 },
       { user: "Alice Lee", projects: 4, workload: 4 },
       { user: "Team Beta", projects: 3, workload: 2 },
-    ]);
-    setActivityData([
+    ] as UserLeaderboard[],
+    activity: [
       { date: "2025-07-01", actions: 4 },
       { date: "2025-07-02", actions: 6 },
       { date: "2025-07-03", actions: 8 },
       { date: "2025-07-04", actions: 10 },
       { date: "2025-07-05", actions: 7 },
-    ]);
-    setLogs([
+    ] as Activity[],
+    logs: [
       { timestamp: "2025-07-04T16:10", action: "Approved project", metadata: { user: "Jane Doe", project: "AC-002" } },
       { timestamp: "2025-07-03T14:20", action: "Created project", metadata: { user: "Alice Lee", project: "AC-005" } },
       { timestamp: "2025-07-02T10:00", action: "Uploaded document", metadata: { user: "John Smith", project: "AC-001" } },
       { timestamp: "2025-07-01T09:00", action: "Assigned reviewer", metadata: { user: "Team Beta", project: "AC-004" } },
-    ]);
-    setDeadlines([
+    ] as Log[],
+    deadlines: [
       { project: "AC-002", due: "2025-07-07", daysLeft: 3, user: "Jane Doe" },
       { project: "AC-005", due: "2025-07-08", daysLeft: 4, user: "Alice Lee" },
       { project: "AC-001", due: "2025-07-09", daysLeft: 5, user: "John Smith" },
-    ]);
-    setErrorStats([
+    ] as Deadline[],
+    errors: [
       { type: "Formatting Error", count: 5 },
       { type: "Missing Heading", count: 3 },
       { type: "Accessibility", count: 2 },
       { type: "Incorrect Acronym", count: 1 },
-    ]);
-    setTurnarounds([
+    ] as ErrorStat[],
+    turnaround: [
       { phase: "Draft", avgDays: 5.2 },
       { phase: "Review", avgDays: 3.1 },
       { phase: "Approval", avgDays: 2.5 },
-    ]);
-    setDocTypes([
+    ] as Turnaround[],
+    docs: [
       { type: "AC", count: 30 },
       { type: "Order", count: 18 },
       { type: "Memo", count: 12 },
       { type: "TSO", count: 10 },
       { type: "Other", count: 5 },
-    ]);
-    setReviewStats([
+    ] as DocType[],
+    reviews: [
       { reviewer: "Jane Doe", pending: 2 },
       { reviewer: "John Smith", pending: 1 },
       { reviewer: "Team Beta", pending: 1 },
-    ]);
-  }, []);
+    ] as ReviewStat[],
+  };
+
+  const { data, isError } = useQuery<any>({
+    queryKey: ["manager-dashboard"],
+    queryFn: async () => {
+      const r = await fetch(`${API}/dashboard/manager`);
+      return r.ok ? r.json() : null;
+    },
+  });
+
+  useEffect(() => {
+    if (data) {
+      const projects = Array.isArray(data.projects) ? data.projects : [];
+      const docs = projects.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
+      const approvals = projects.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
+      setStats({
+        projects: projects.length,
+        users: Object.keys(data.workload ?? {}).length,
+        documents: docs,
+        approvals,
+        inProgress: projects.filter((p: any) => p.phase !== "done").length,
+        completed: projects.filter((p: any) => p.phase === "done").length,
+        overdue: fallback.stats.overdue,
+        active: projects.filter((p: any) => p.pending_approvals > 0).length,
+      });
+    } else if (isError) {
+      setStats(fallback.stats);
+      setStatusData(fallback.status);
+      setUserLeaderboard(fallback.leaderboard);
+      setActivityData(fallback.activity);
+      setLogs(fallback.logs);
+      setDeadlines(fallback.deadlines);
+      setErrorStats(fallback.errors);
+      setTurnarounds(fallback.turnaround);
+      setDocTypes(fallback.docs);
+      setReviewStats(fallback.reviews);
+    }
+  }, [data, isError]);
 
   // --- KPI Card ---
   const StatCard = ({

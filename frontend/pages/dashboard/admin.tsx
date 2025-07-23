@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,50 +63,83 @@ export default function AdminDashboardPage() {
     });
   };
 
-  // --- Simulated Data (replace with your endpoints!) ---
-  useEffect(() => {
-    setStats({ users: 38, documents: 182, activeSessions: 6, apiErrors: 2, failedLogins: 3, roles: 4 });
-    setLogs([
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  const fallback = {
+    stats: { users: 38, documents: 182, activeSessions: 6, apiErrors: 2, failedLogins: 3, roles: 4 },
+    logs: [
       { timestamp: "2025-07-04T16:10", action: "User created", metadata: { user: "Jane Doe", ip: "10.0.1.5" } },
       { timestamp: "2025-07-04T15:15", action: "Failed login", metadata: { user: "unknown", ip: "10.0.2.13" } },
       { timestamp: "2025-07-04T14:05", action: "API 500 error", metadata: { user: "Service", ip: "127.0.0.1" } },
       { timestamp: "2025-07-04T13:20", action: "Permission change", metadata: { user: "Admin", ip: "10.0.1.1" } },
-    ]);
-    setActivityData([
+    ] as Log[],
+    activity: [
       { date: "2025-07-01", actions: 8 },
       { date: "2025-07-02", actions: 12 },
       { date: "2025-07-03", actions: 10 },
       { date: "2025-07-04", actions: 13 },
       { date: "2025-07-05", actions: 9 },
-    ]);
-    setErrorStats([
+    ] as Activity[],
+    errors: [
       { type: "API Error", count: 2 },
       { type: "Login Failure", count: 3 },
       { type: "Permission Denied", count: 1 },
-    ]);
-    setApiMetrics([
+    ] as ErrorStat[],
+    metrics: [
       { endpoint: "/api/documents", requests: 320, errors: 1 },
       { endpoint: "/api/users", requests: 98, errors: 0 },
       { endpoint: "/api/auth", requests: 52, errors: 2 },
-    ]);
-    setRoleStats([
+    ] as APIMetric[],
+    roles: [
       { role: "Admin", count: 2 },
       { role: "Manager", count: 5 },
       { role: "Tech Writer", count: 18 },
       { role: "SME", count: 13 },
-    ]);
-    setSessionStats([
+    ] as RoleStat[],
+    sessions: [
       { id: "S1", user: "Jane Doe", ip: "10.0.1.5", active: true, started: "2025-07-04T15:01" },
       { id: "S2", user: "John Smith", ip: "10.0.2.13", active: true, started: "2025-07-04T15:10" },
       { id: "S3", user: "Alice Lee", ip: "10.0.2.55", active: true, started: "2025-07-04T15:30" },
-    ]);
-    setHealthStats([
+    ] as SessionStat[],
+    health: [
       { name: "Database", value: "OK", status: "ok" },
       { name: "API Server", value: "OK", status: "ok" },
       { name: "Worker", value: "Delayed", status: "warning" },
       { name: "Email Service", value: "Down", status: "down" },
-    ]);
-  }, []);
+    ] as HealthStat[],
+  };
+
+  const { data, isError } = useQuery<any>({
+    queryKey: ["admin-dashboard"],
+    queryFn: async () => {
+      const r = await fetch(`${API}/dashboard/admin`);
+      return r.ok ? r.json() : null;
+    },
+  });
+
+  useEffect(() => {
+    if (data) {
+      setStats({
+        users: data.summary?.projects ?? fallback.stats.users,
+        documents: data.summary?.documents ?? fallback.stats.documents,
+        activeSessions: data.status?.workflows ?? fallback.stats.activeSessions,
+        apiErrors: fallback.stats.apiErrors,
+        failedLogins: fallback.stats.failedLogins,
+        roles: fallback.stats.roles,
+      });
+    } else if (isError) {
+      setStats(fallback.stats);
+    }
+
+    if (!data && isError) {
+      setLogs(fallback.logs);
+      setActivityData(fallback.activity);
+      setErrorStats(fallback.errors);
+      setApiMetrics(fallback.metrics);
+      setRoleStats(fallback.roles);
+      setSessionStats(fallback.sessions);
+      setHealthStats(fallback.health);
+    }
+  }, [data, isError]);
 
   // KPI Card
   const StatCard = ({
