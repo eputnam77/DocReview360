@@ -1,85 +1,124 @@
 # DocReview360
 
-DocReview360 helps you organise documents, run simple approval workflows and keep track of your projects. The prototype ships with a small web API, a tiny frontend and a one-command CLI wizard. It is intentionally lightweight so you can explore the features and decide how they fit your own process.
+Lightweight document workflows—CLI, API, and React UI in one repo.
 
-## Prerequisites
+**DocReview360** lets teams organise files, route them through quick approval steps, and track status at a glance. The prototype ships with:
 
-Install [`uv`](https://github.com/astral-sh/uv) and [`Poetry`](https://python-poetry.org/) first:
+* a FastAPI backend
+* a minimal React/Next.js frontend
+* a single‑command CLI wizard (`docreview360 init`)
+
+so you can test everything locally and decide how it fits your process.
+
+---
+
+## ✨ Quick install (recommended)
+
+We use **pipx** for global tool shims, **uv** for ultra‑fast Python/venv work, and **Poetry ≥ 1.8** for lock‑file sync.
 
 ```bash
-pip install uv poetry
-# or
-pipx install uv poetry
+# 0  One‑time per machine ───────────────────────────────────────────────
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath                 # restart shell if PATH changed
+
+pipx install uv                            # uv CLI & resolver :contentReference[oaicite:0]{index=0}
+pipx install poetry                        # Poetry ≥1.8 (sync cmd) :contentReference[oaicite:1]{index=1}
+
+# 1  Per project ────────────────────────────────────────────────────────
+git clone https://github.com/eputnam77/DocReview360.git
+cd DocReview360
+
+# 2  Create & activate .venv (CPython 3.13) -----------------------------
+uv python install 3.13.0                   # downloads if missing :contentReference[oaicite:2]{index=2}
+uv venv --python 3.13.0                    # writes .venv/ by default
+source .venv/bin/activate                  # Windows: .venv\Scripts\activate
+
+# 3  Install deps at uv speed ------------------------------------------
+poetry config installer.executable uv      # once per machine
+poetry sync --with dev                     # mirrors poetry.lock (dev extras)
+
+# 4  Dev helpers --------------------------------------------------------
+pre-commit install                         # Git hooks
 ```
 
-## Quick start
+*(Need a plain‑Python fallback? See “🐍 Virtual‑env fallback” below.)*
 
-1. **Create and activate a virtual environment**
+---
 
-   ```bash
-   uv venv 3.12
-   source 3.12/bin/activate
-   ```
+## 🔑 Configure secrets
 
-2. **Install dependencies**
+```bash
+cp .env.example .env           # template included
+# or export variables directly:
+export DOCREVIEW360_SECRET_KEY=your-secret
+export DOCREVIEW360_ALGORITHM=HS256
+export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
+export DOCREVIEW360_OIDC_ALGORITHM=HS256
+export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+# Optional:
+# DOCREVIEW360_SIGNATURE_SECRET  (digital signatures)
+# NEXT_PUBLIC_API_BASE=http://localhost:8000  (frontend → backend)
+```
 
-   ```bash
-   poetry install --with dev
-   poetry sync --with dev
-   uv pip install -r pyproject.toml --extra dev
-   pre-commit install  # optional git hooks
-   ```
+Run the CLI wizard to generate `docreview360.yml`:
 
-3. **Configure the application**
+```bash
+docreview360 init
+```
 
-   Define a few authentication secrets before running the wizard or the server:
+---
 
-   ```bash
-   export DOCREVIEW360_SECRET_KEY=your-secret
-   export DOCREVIEW360_ALGORITHM=HS256
-   export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
-   export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
-   export DOCREVIEW360_OIDC_ALGORITHM=HS256
-   export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
-   # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
-   # Optional: set NEXT_PUBLIC_API_BASE=http://localhost:8000 for the React frontend when using a separate backend
-   ```
+## 🚀 Run the backend API
 
-   Then run the CLI wizard to set up your config:
+```bash
+uvicorn docreview360.api:app --reload --port 8000
+# FastAPI auto‑generates interactive docs at /docs :contentReference[oaicite:3]{index=3}
+```
 
-   ```bash
-   docreview360 init
-   ```
+The `--reload` flag auto‑reloads on code changes—handy in dev. ([Uvicorn][1])
 
-   * Answer the prompts about your preferred database, editor, and other options.
-   * The config is saved as `docreview360.yml` in your current directory.
+---
 
-4. **Start the backend API server**
+## 🖥️ Run the React frontend (Node 18+)
 
-   ```bash
-   uvicorn docreview360.api:app --reload
-   ```
+```bash
+cd frontend
+npm install --legacy-peer-deps
+cp .env.example .env           # set NEXT_PUBLIC_API_BASE if backend separate
+npm run dev
+```
 
-   This launches the FastAPI backend on port 8000.
+Open [http://localhost:3000/](http://localhost:3000/) and log in with **admin / admin**.
 
-5. **Set up and run the React frontend (Node.js 18+ required)**
+---
 
-   ```bash
-   cd frontend
-   npm install --legacy-peer-deps
-   # optional: configure the API base URL
-   cp .env.example .env
-   # .env should define NEXT_PUBLIC_API_BASE=http://localhost:8000 when the backend runs separately
-   npm run dev
-   ```
+## 🧪 Quality checks
 
-   If you see `Cannot find module 'critters'`, just run `npm install --legacy-peer-deps` again.
+```bash
+pre-commit run --all-files
+pytest --cov=src
+```
 
-6. **Open the app**
+---
 
-   Go to [http://localhost:3000/](http://localhost:3000/) in your browser.
-   Sign in with `admin/admin` (default login).
-   The frontend runs on port 3000 and communicates with the API at port 8000.
+## 🐍 Virtual‑env fallback (no uv)
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install poetry
+poetry install --with dev --sync   # --sync flag still works but is deprecated :contentReference[oaicite:5]{index=5}
+```
+
+---
+
+### About the requirements files
+
+`requirements*.txt` are generated for legacy tooling; `poetry sync` (or `pip install -e ".[dev]"`) remains the canonical way to keep dependencies in lock‑step with **pyproject.toml**.
+
+---
 
 ### GitHub Codespaces
 
