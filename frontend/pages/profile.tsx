@@ -71,9 +71,10 @@ export default function ProfilePage() {
   });
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   useEffect(() => {
-    fetch("/api/profile")
+    fetch(`${API}/profile`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) setProfile({
@@ -96,7 +97,7 @@ export default function ProfilePage() {
       alert("Passwords do not match!");
       return;
     }
-    fetch("/api/profile", {
+    fetch(`${API}/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...profile, password: password || undefined }),
