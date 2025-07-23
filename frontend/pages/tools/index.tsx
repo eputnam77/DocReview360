@@ -22,8 +22,8 @@ const TOOLS_ITEMS = [
     desc: "Validate documents against FAA style and accessibility rules.",
   },
   {
-    label: "Special Conditions Converter",
-    href: "/tools/checker",
+    label: "Special Conditions Doc Builder",
+    href: "/tools/sc_converter",
     icon: <Stamp className="w-6 h-6 text-rose-600" />,
     desc: "Generate legally formatted Special Conditions notices.",
   },
