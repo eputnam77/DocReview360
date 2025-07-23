@@ -34,8 +34,9 @@ uv venv --python 3.12.0                    # writes .venv/ by default
 source .venv/bin/activate                  # Windows: .venv\Scripts\activate
 
 # 3  Install deps at uv speed ------------------------------------------
-poetry config installer.executable uv      # once per machine
-poetry sync --with dev                     # mirrors poetry.lock (dev extras)
+poetry install                             # once per machine
+# or, if you need dev dependencies:
+poetry install --with dev
 
 # 4  Dev helpers --------------------------------------------------------
 pre-commit install                         # Git hooks
