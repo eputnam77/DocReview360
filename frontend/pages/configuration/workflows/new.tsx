@@ -13,11 +13,9 @@ export default function NewWorkflowPage() {
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<any[]>([]);
   const [role, setRole] = useState("");
-  // Demo document types for now
-  const [docTypes, setDocTypes] = useState<string[]>([
-    "Advisory Circular",
-    "Policy Statement",
-  ]);
+  // Demo document types used if API returns none
+  const DEMO_DOC_TYPES = ["Advisory Circular", "Policy Statement"];
+  const [docTypes, setDocTypes] = useState<string[]>(DEMO_DOC_TYPES);
   const [docTypesSelected, setDocTypesSelected] = useState<string[]>([]);
   const [user, setUser] = useState("");
   const [required, setRequired] = useState(true);
@@ -28,10 +26,12 @@ export default function NewWorkflowPage() {
       .then((data: any[]) => {
         if (Array.isArray(data) && data.length) {
           setDocTypes(data.map((d) => (typeof d === "string" ? d : d.name)));
+        } else {
+          setDocTypes(DEMO_DOC_TYPES);
         }
       })
       .catch(() => {
-        // keep demo types on error
+        setDocTypes(DEMO_DOC_TYPES);
       });
   }, []);
 
