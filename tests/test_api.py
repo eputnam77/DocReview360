@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.workflows import create_workflow
+from fastapi.testclient import TestClient
 
 
 def test_gzip_middleware() -> None:
@@ -55,3 +54,13 @@ def test_start_workflow_endpoint() -> None:
     assert resp.status_code == 200
     assert resp.json()["id"] == wf.id
     assert resp.json()["document"]
+
+
+def test_update_project_endpoint() -> None:
+    client = TestClient(app)
+    client.post("/projects", json={"id": "pedit", "name": "Old"})
+    resp = client.put("/projects/pedit", json={"name": "New", "user": "bob"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "New"
+    assert data["user"] == "bob"

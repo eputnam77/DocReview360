@@ -884,6 +884,14 @@ export default function ProjectDetailsPage() {
                     {open ? "" : "(collapsed)"}
                   </h2>
                 </Disclosure.Button>
+                <div className="text-right mt-2">
+                  <Link
+                    href={`/projects/${project.id}/edit`}
+                    className="text-sm text-blue-600 underline"
+                  >
+                    Edit Project
+                  </Link>
+                </div>
                 <Transition
                   show={open}
                   as={Fragment}

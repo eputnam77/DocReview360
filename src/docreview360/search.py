@@ -96,6 +96,25 @@ def add_project(project: ProjectModel) -> None:
         search_index.add_project(project)
 
 
+def update_project(
+    project_id: str,
+    *,
+    name: str | None = None,
+    user: str | None = None,
+    doc_type: str | None = None,
+) -> ProjectModel:
+    """Update basic fields of a project and return the updated model."""
+    with project_lock:
+        project = projects[project_id]
+        if name is not None:
+            project.name = name
+        if user is not None:
+            project.user = user
+        if doc_type is not None:
+            project.doc_type = doc_type
+        return project
+
+
 def add_document(document: DocumentModel) -> None:
     """Index a document for search."""
     search_index.add_document(document)
