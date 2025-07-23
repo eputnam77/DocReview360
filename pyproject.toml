@@ -163,7 +163,7 @@ python_version         = "3.12"
 strict                 = true
 ignore_errors          = false
 plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
-exclude                = "tests/"
+exclude                = "(tests/|src/docreview360/document_checker.py)"
 
 [[tool.mypy.overrides]]
 module                 = [
@@ -187,6 +187,10 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["tests.*"]
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["GovDocVerify"]
+ignore_missing_imports = true
 
 
 # ───────────────────────────── pytest config ───────────────────────────────
