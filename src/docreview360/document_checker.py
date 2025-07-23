@@ -2,17 +2,24 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 
-try:
-    from GovDocVerify import run_checks as _run_checks
-except Exception:  # pragma: no cover - optional dep
-    from services.document_checker import run_checks as _run_checks  # type: ignore
+if TYPE_CHECKING:  # pragma: no cover - type hints only
+    _RunChecks = Callable[[str], dict[str, Any]]
+    _run_checks: _RunChecks
+else:  # pragma: no cover - optional dependency
+    try:
+        from GovDocVerify import run_checks as _run_checks
+    except Exception:
+        from services.document_checker import run_checks as _run_checks  # type: ignore
 
 
 def run_checks(file_path: str | Path) -> dict[str, Any]:
     """Run document checks using GovDocVerify if available."""
-    return _run_checks(str(file_path))
+    result = _run_checks(str(file_path))
+    if not isinstance(result, dict):
+        return {}
+    return result
 
 
 if __name__ == "__main__":
