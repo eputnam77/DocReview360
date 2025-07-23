@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { API } from "@/lib/api";
 import {
   Card,
   CardHeader,
@@ -28,7 +29,7 @@ export default function CheckerPage() {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const res = await fetch("/api/tools/checker", { method: "POST", body: formData });
+    const res = await fetch(`${API}/tools/checker`, { method: "POST", body: formData });
 
     if (res.ok) {
       const data = await res.json();

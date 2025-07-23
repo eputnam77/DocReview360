@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash } from "lucide-react";
+import { API } from "@/lib/api";
 
 interface DocType {
   id: string;
@@ -31,7 +32,7 @@ export default function DocumentTypesPage() {
   const [editName, setEditName] = useState("");
 
   useEffect(() => {
-    fetch("/api/document-types")
+    fetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setTypes(
@@ -52,7 +53,7 @@ export default function DocumentTypesPage() {
     if (!newName.trim()) return;
     const body = { name: newName.trim() };
     try {
-      const r = await fetch("/api/document-types", {
+      const r = await fetch(`${API}/document-types`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -73,7 +74,7 @@ export default function DocumentTypesPage() {
   const removeType = async (id: string) => {
     setTypes(types.filter((t) => t.id !== id));
     try {
-      await fetch(`/api/document-types/${id}`, { method: "DELETE" });
+      await fetch(`${API}/document-types/${id}`, { method: "DELETE" });
     } catch {
       // ignore network errors in demo mode
     }
@@ -89,7 +90,7 @@ export default function DocumentTypesPage() {
     const body = { name: editName.trim() };
     setTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t)));
     try {
-      await fetch(`/api/document-types/${id}`, {
+      await fetch(`${API}/document-types/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

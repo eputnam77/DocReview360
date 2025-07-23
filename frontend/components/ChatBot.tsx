@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { API } from "@/lib/api";
 
 export default function ChatBot() {
   const [question, setQuestion] = useState("");
@@ -9,7 +10,7 @@ export default function ChatBot() {
 
   async function ask() {
     if (!question.trim()) return;
-    const resp = await fetch("/api/chat", {
+    const resp = await fetch(`${API}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: question }),
