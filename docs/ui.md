@@ -43,3 +43,18 @@ The dashboard now reads data from `/metrics/summary` and `/api/audit`. A dropdow
 A search bar appears at the top of the sidebar. Enter any term and press **Enter** to open the Search page. Queries run against all projects and documents so you can quickly find related content from anywhere in the interface.
 
 Use your browser's back button or the navigation links to move between pages.
+
+## Configuration Pages
+
+The **Configuration** menu groups pages that expose runtime settings. The
+**Integrations** section fetches the current values from the `/config` endpoint
+and displays what you selected during the `docreview360 init` wizard. Drop-down
+menus for the database backend, document editor and CMS integration show the
+saved value and list each supported option so you can switch if needed.
+Updating a field sends a `PUT /config` request which persists the changes to
+`docreview360.yaml`.
+
+If no configuration file exists the API returns sensible defaults so the page is
+never empty. This makes it easy to confirm your setup, see how the system is
+currently configured and adjust settings without guessing what was chosen during
+initial setup.
