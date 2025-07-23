@@ -6,6 +6,7 @@ import {
   CardContent,
   Button,
   Input,
+  FileInput,
   Label,
 } from "@/components";
 import { Avatar } from "@/components/ui/avatar";
@@ -72,6 +73,7 @@ export default function ProfilePage() {
   });
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [pictureFile, setPictureFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetch(`${API}/profile`)
@@ -92,6 +94,19 @@ export default function ProfilePage() {
   const updateField = (key: keyof Profile, value: any) =>
     setProfile((p) => ({ ...p, [key]: value }));
 
+  const handlePictureFile = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0] || null;
+    setPictureFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) =>
+        updateField("picture", ev.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = () => {
     if (password && password !== passwordConfirm) {
       alert("Passwords do not match!");
@@ -105,6 +120,7 @@ export default function ProfilePage() {
     alert("Profile saved (demo)");
     setPassword("");
     setPasswordConfirm("");
+    setPictureFile(null);
   };
 
   // Safeguard for undefined permissions/dashboards
@@ -133,7 +149,12 @@ export default function ProfilePage() {
                 onChange={(e) => updateField("picture", e.target.value)}
               />
               <div className="text-xs text-gray-500 mt-1">
-                Paste a link to your photo, or leave blank for initials.
+                Paste a link to your photo or upload an image below.
+              </div>
+              <Label className="block mb-1 mt-3">Or Upload Picture</Label>
+              <FileInput accept="image/*" onChange={handlePictureFile} />
+              <div className="text-xs text-gray-500 mt-1">
+                JPG, PNG or GIF up to a few MB.
               </div>
             </div>
           </div>
