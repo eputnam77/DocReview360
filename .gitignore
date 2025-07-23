@@ -17,6 +17,7 @@ venv/
 # Python caches and coverage
 __pycache__/
 .coverage
+coverage.xml
 
 # MkDocs build
 site/
