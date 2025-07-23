@@ -227,6 +227,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 224 | Resolve npm audit High CVEs | Upgrade `shadcn-ui` and `lodash.template` to fixed versions per npm audit report. | Frontend | 1 d | `npm audit` shows no high vulnerabilities.
 | 225 | Dashboards fetch live data | • Replace demo data in User, Manager and Admin dashboards with API calls (`/dashboard/user`, `/dashboard/manager`, `/dashboard/admin`).<br>• Remove `Simulated Data` code and use React Query for loading. | FE | 1 d | Refreshing dashboards hits the endpoints and displays real metrics. <br>See `tests/e2e/features/task225.feature` |
 | 226 | Reviewer due date column | • Add `due_at` field to approvals table and expose via `/api/approvals`.<br>• Projects → Approvals tab displays and allows editing the due date, highlighting overdue rows. | Integration | 1 d | Setting a due date persists and overdue approvals show warning style.<br>See `tests/e2e/features/task226.feature` |
+| 227 | Role-based dashboard routing | • On login, check roles and default to the appropriate dashboard: `/dashboard/admin`, `/dashboard/manager`, or `/dashboard/user`.<br>• Users may have multiple dashboards and can switch between them via a selector.<br>• Developer role can access all dashboards. | Integration | 2 d | Admin lands on admin dashboard; manager with project also sees user dashboard; developer sees all dashboards. <br>See `tests/e2e/features/task227.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
