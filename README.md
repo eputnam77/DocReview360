@@ -29,8 +29,8 @@ git clone https://github.com/eputnam77/DocReview360.git
 cd DocReview360
 
 # 2  Create & activate .venv (CPython 3.13) -----------------------------
-uv python install 3.13.0                   # downloads if missing :contentReference[oaicite:2]{index=2}
-uv venv --python 3.13.0                    # writes .venv/ by default
+uv python install 3.12.0                   # downloads if missing :contentReference[oaicite:2]{index=2}
+uv venv --python 3.12.0                    # writes .venv/ by default
 source .venv/bin/activate                  # Windows: .venv\Scripts\activate
 
 # 3  Install deps at uv speed ------------------------------------------
@@ -76,7 +76,7 @@ uvicorn docreview360.api:app --reload --port 8000
 # FastAPI auto‑generates interactive docs at /docs :contentReference[oaicite:3]{index=3}
 ```
 
-The `--reload` flag auto‑reloads on code changes—handy in dev. ([Uvicorn][1])
+The `--reload` flag auto‑reloads on code changes—handy in dev.
 
 ---
 
