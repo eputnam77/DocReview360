@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { API } from "@/lib/api";
 
 interface LogEntry {
   timestamp: string;
@@ -42,7 +43,7 @@ export default function AuditLogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   useEffect(() => {
-    fetch("/api/audit")
+    fetch(`${API}/audit`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: LogEntry[]) =>
         setLogs(

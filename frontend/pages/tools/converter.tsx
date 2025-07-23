@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API } from "@/lib/api";
 
 export default function ConverterPage() {
   const [result, setResult] = useState<string | null>(null);
@@ -6,7 +7,7 @@ export default function ConverterPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const res = await fetch("/api/tools/convert", {
+    const res = await fetch(`${API}/tools/convert`, {
       method: "POST",
       body: formData,
     });

@@ -42,7 +42,7 @@ pipx install uv poetry
    export DOCREVIEW360_OIDC_ALGORITHM=HS256
    export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
    # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
-   # Optional: NEXT_PUBLIC_API_BASE=http://localhost:8000 for the React frontend
+   # Optional: set NEXT_PUBLIC_API_BASE=http://localhost:8000 for the React frontend when using a separate backend
    ```
 
    Then run the CLI wizard to set up your config:
@@ -69,7 +69,7 @@ pipx install uv poetry
    npm install --legacy-peer-deps
    # optional: configure the API base URL
    cp .env.example .env
-   # .env contains NEXT_PUBLIC_API_BASE=http://localhost:8000
+   # .env should define NEXT_PUBLIC_API_BASE=http://localhost:8000 when the backend runs separately
    npm run dev
    ```
 

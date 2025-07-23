@@ -35,6 +35,7 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { Disclosure, Transition, Menu } from "@headlessui/react";
+import { API } from "@/lib/api";
 import {
   Users2,
   CheckCircle2,
@@ -628,7 +629,6 @@ export default function ProjectDetailsPage() {
   const [showVersions, setShowVersions] = useState(false);
   const [editComment, setEditComment] = useState<DispoComment | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   // ▼ permission based on logged in user
   const username = useUserStore((s) => s.username);

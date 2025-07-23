@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash } from "lucide-react";
+import { API } from "@/lib/api";
 
 // Known keys and value options for select fields and toggles
 const SETTING_DESCRIPTIONS: Record<string, string> = {
@@ -80,7 +81,7 @@ export default function AppSettingsPage() {
   const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
-    fetch("/api/config")
+    fetch(`${API}/config`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {

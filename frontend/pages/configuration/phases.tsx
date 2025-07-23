@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { API } from "@/lib/api";
 
 interface Phase {
   id: string;
@@ -38,7 +39,7 @@ export default function PhasesPage() {
   const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch("/api/phases")
+    fetch(`${API}/phases`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setPhases(
@@ -51,7 +52,7 @@ export default function PhasesPage() {
         )
       )
       .catch(() => setPhases(DEMO_PHASES));
-    fetch("/api/workflows")
+    fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => setWorkflows(data.map((w) => w.name)))
       .catch(() => setWorkflows([]));
@@ -69,7 +70,7 @@ export default function PhasesPage() {
     if (!newName.trim()) return;
     const body = { name: newName.trim() };
     try {
-      const r = await fetch("/api/phases", {
+      const r = await fetch(`${API}/phases`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -90,7 +91,7 @@ export default function PhasesPage() {
   const removePhase = async (id: string) => {
     setPhases(phases.filter((p) => p.id !== id));
     try {
-      await fetch(`/api/phases/${id}`, { method: "DELETE" });
+      await fetch(`${API}/phases/${id}`, { method: "DELETE" });
     } catch {
       // ignore network errors in demo mode
     }
@@ -106,7 +107,7 @@ export default function PhasesPage() {
     const body = { name: editName.trim() };
     setPhases(phases.map((p) => (p.id === id ? { ...p, name: body.name } : p)));
     try {
-      await fetch(`/api/phases/${id}`, {
+      await fetch(`${API}/phases/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

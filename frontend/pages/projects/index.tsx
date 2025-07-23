@@ -14,6 +14,7 @@ import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEMO_PROJECTS } from "@/data";
 import { useUserStore } from "@/state/user";
+import { API } from "@/lib/api";
 
 // The Project type: extend as needed
 interface Project {
@@ -81,7 +82,6 @@ export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
   const username = useUserStore((s) => s.username);
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   useEffect(() => {
     const headers: Record<string, string> = {};

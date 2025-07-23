@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UploadDropzone } from "@/components/workflow";
+import { API } from "@/lib/api";
 
 type Props = { params: { id: string } };
 
@@ -27,7 +28,7 @@ export default function StartWorkflowPage({ params }: Props) {
       if (file) {
         formData.append("file", file);
       }
-      const resp = await fetch(`/api/workflows/${params.id}/start`, {
+      const resp = await fetch(`${API}/workflows/${params.id}/start`, {
         method: "POST",
         body: formData,
       });

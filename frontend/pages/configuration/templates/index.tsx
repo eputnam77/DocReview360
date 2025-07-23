@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash, Eye, Download } from "lucide-react";
+import { API } from "@/lib/api";
 
 interface Template {
   id: string;
@@ -28,7 +29,7 @@ export default function TemplatesIndex() {
   const [templates, setTemplates] = useState<Template[]>([]);
 
   useEffect(() => {
-    fetch("/api/templates")
+    fetch(`${API}/templates`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setTemplates(
@@ -49,7 +50,7 @@ export default function TemplatesIndex() {
   const removeTemplate = async (id: string) => {
     setTemplates(templates.filter((t) => t.id !== id));
     try {
-      await fetch(`/api/templates/${id}`, { method: "DELETE" });
+      await fetch(`${API}/templates/${id}`, { method: "DELETE" });
     } catch {
       // ignore network errors in demo mode
     }
@@ -57,7 +58,7 @@ export default function TemplatesIndex() {
 
   const handleDownload = (tpl: Template) => {
     // If you have a download URL, use it; else, just alert for demo
-    window.open(`/api/templates/${tpl.id}/download`, "_blank");
+    window.open(`${API}/templates/${tpl.id}/download`, "_blank");
   };
 
   return (

@@ -12,11 +12,12 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { API } from "@/lib/api";
 
 export default function Home() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["ping"],
-    queryFn: () => fetch("/api/ping").then((r) => r.text()),
+    queryFn: () => fetch(`${API}/ping`).then((r) => r.text()),
   });
   const count = useCounterStore((s) => s.count);
   const increment = useCounterStore((s) => s.increment);
