@@ -107,6 +107,7 @@ from .search import (
     search,
     search_stats,
     set_project_priority,
+    update_project,
 )
 from .status import internal_status, public_status
 from .stubs.task223 import convert_document
@@ -173,6 +174,14 @@ class ProjectCreate(BaseModel):
     phase: str | None = None
     workflow: str | None = None
     priority: int = 0
+
+
+class ProjectUpdate(BaseModel):
+    """Fields allowed when updating a project."""
+
+    name: str | None = None
+    user: str | None = None
+    doc_type: str | None = None
 
 
 class CommentCreate(BaseModel):
@@ -330,6 +339,15 @@ async def get_project_endpoint(project_id: str) -> ProjectModel:
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@app.put("/projects/{project_id}", response_model=ProjectModel)
+async def update_project_endpoint(project_id: str, body: ProjectUpdate) -> ProjectModel:
+    """Update project fields like name, user or doc_type."""
+    try:
+        return update_project(project_id, name=body.name, user=body.user, doc_type=body.doc_type)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/projects/{project_id}/workflow", response_model=WorkflowModel)
