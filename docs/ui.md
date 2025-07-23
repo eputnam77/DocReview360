@@ -48,11 +48,13 @@ Use your browser's back button or the navigation links to move between pages.
 
 The **Configuration** menu groups pages that expose runtime settings. The
 **Integrations** section fetches the current values from the `/config` endpoint
-and displays what you selected during the `docreview360 init` wizard. Options
-for the database backend, document editor and CMS integration all show their
-saved values. Updating a field sends a `PUT /config` request which persists the
-changes to `docreview360.yaml`.
+and displays what you selected during the `docreview360 init` wizard. Drop-down
+menus for the database backend, document editor and CMS integration show the
+saved value and list each supported option so you can switch if needed.
+Updating a field sends a `PUT /config` request which persists the changes to
+`docreview360.yaml`.
 
 If no configuration file exists the API returns sensible defaults so the page is
-never empty. This makes it easy to confirm your setup or tweak settings without
-guessing what was chosen during the initial setup.
+never empty. This makes it easy to confirm your setup, see how the system is
+currently configured and adjust settings without guessing what was chosen during
+initial setup.
