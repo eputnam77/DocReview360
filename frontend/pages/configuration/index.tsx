@@ -58,12 +58,6 @@ const CONFIG_ITEMS = [
     desc: "Review system activity and history."
   },
   {
-    label: "App Settings",
-    href: "/configuration/app-settings",
-    icon: <Settings2 className="w-6 h-6 text-gray-600" />,
-    desc: "Configure global app preferences."
-  },
-  {
     label: "Integrations",
     href: "/configuration/integrations",
     icon: <Puzzle className="w-6 h-6 text-pink-500" />,
