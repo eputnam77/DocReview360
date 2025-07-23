@@ -22,6 +22,11 @@ def add_role(username: str, role: str) -> None:
     USER_ROLES.setdefault(username, set()).add(role)
 
 
+def get_roles(username: str) -> set[str]:
+    """Return all roles assigned to ``username``."""
+    return USER_ROLES.get(username, set())
+
+
 def has_role(username: str, role: str) -> bool:
     """Return ``True`` if ``username`` is assigned ``role``."""
     return role in USER_ROLES.get(username, set())

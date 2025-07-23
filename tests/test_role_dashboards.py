@@ -1,7 +1,8 @@
-from fastapi.testclient import TestClient
-
+from docreview360 import auth
 from docreview360.api import app
+from docreview360.rbac import add_role
 from docreview360.search import ProjectModel, add_project
+from fastapi.testclient import TestClient
 
 
 def _setup() -> None:
@@ -22,7 +23,12 @@ def test_user_dashboard_endpoint() -> None:
 def test_manager_dashboard_endpoint() -> None:
     _setup()
     client = TestClient(app)
-    resp = client.get("/dashboard/manager")
+    add_role("alice", "manager")
+    token = auth.create_access_token({"sub": "alice"})
+    resp = client.get(
+        "/dashboard/manager",
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "workload" in data and "projects" in data
@@ -30,7 +36,12 @@ def test_manager_dashboard_endpoint() -> None:
 
 def test_admin_dashboard_endpoint() -> None:
     client = TestClient(app)
-    resp = client.get("/dashboard/admin")
+    add_role("alice", "admin")
+    token = auth.create_access_token({"sub": "alice"})
+    resp = client.get(
+        "/dashboard/admin",
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "summary" in data and "status" in data
