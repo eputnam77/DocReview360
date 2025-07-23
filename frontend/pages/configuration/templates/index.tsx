@@ -20,13 +20,28 @@ interface Template {
   modified: string;
 }
 
+interface EmailTemplate {
+  name: string;
+  subject: string;
+  task?: string;
+}
+
 const DEMO_TEMPLATES: Template[] = [
   { id: "tpl1", name: "AC Template", docType: "Advisory Circular", format: "DOCX", modified: "2025-07-06" },
   { id: "tpl2", name: "Release Notes", docType: "Release Notes", format: "HTML", modified: "2025-07-05" },
 ];
 
+const DEMO_EMAILS: EmailTemplate[] = [
+  {
+    name: "review_request",
+    subject: "Review {document_title}",
+    task: "review",
+  },
+];
+
 export default function TemplatesIndex() {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
 
   useEffect(() => {
     fetch(`${API}/templates`)
@@ -47,10 +62,36 @@ export default function TemplatesIndex() {
       .catch(() => setTemplates(DEMO_TEMPLATES));
   }, []);
 
+  useEffect(() => {
+    fetch(`${API}/email-templates`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) =>
+        setEmailTemplates(
+          data.length
+            ? data.map((t) => ({
+                name: t.name,
+                subject: t.subject,
+                task: t.task,
+              }))
+            : DEMO_EMAILS,
+        ),
+      )
+      .catch(() => setEmailTemplates(DEMO_EMAILS));
+  }, []);
+
   const removeTemplate = async (id: string) => {
     setTemplates(templates.filter((t) => t.id !== id));
     try {
       await fetch(`${API}/templates/${id}`, { method: "DELETE" });
+    } catch {
+      // ignore network errors in demo mode
+    }
+  };
+
+  const removeEmail = async (name: string) => {
+    setEmailTemplates(emailTemplates.filter((t) => t.name !== name));
+    try {
+      await fetch(`${API}/email-templates/${name}`, { method: "DELETE" });
     } catch {
       // ignore network errors in demo mode
     }
@@ -137,9 +178,63 @@ export default function TemplatesIndex() {
         </TableBody>
       </Table>
       <div className="mt-4 text-xs text-gray-500">
-        Templates are used to standardize document creation for each document type and editor. 
+        Templates are used to standardize document creation for each document type and editor.
         <br />
         <b>Tip:</b> Click “Create Template” to add Word, HTML, JSON, or XML templates for your team to use.
+      </div>
+
+      <div className="mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <h2 className="text-2xl font-bold">Email Templates</h2>
+        <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Link href="/configuration/templates/new-email">+ New Email Template</Link>
+        </Button>
+      </div>
+
+      <Table className="min-w-full text-sm mt-4">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Subject</TableHead>
+            <TableHead>Task</TableHead>
+            <TableHead>Edit</TableHead>
+            <TableHead>Remove</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {emailTemplates.map((t) => (
+            <TableRow key={t.name} className="border-t last:border-none hover:bg-gray-50">
+              <TableCell>{t.name}</TableCell>
+              <TableCell>{t.subject}</TableCell>
+              <TableCell>{t.task || <span className="text-gray-400">—</span>}</TableCell>
+              <TableCell className="w-14">
+                <Button variant="ghost" size="icon" asChild>
+                  <Link href={`/configuration/templates/edit-email?id=${t.name}`} title="Edit">
+                    <Pencil className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </TableCell>
+              <TableCell className="w-14">
+                <Button variant="ghost" size="icon" title="Remove" onClick={() => removeEmail(t.name)}>
+                  <Trash className="w-4 h-4 text-red-600" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+          {emailTemplates.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center text-gray-400 py-10">
+                No email templates found.<br />
+                <Button asChild className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Link href="/configuration/templates/new-email">+ Add your first email template</Link>
+                </Button>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <div className="mt-4 text-xs text-gray-500">
+        Email templates are used for notifications throughout DocReview360.
+        Use variables like {"{reviewer}"} or {"{document_title}"} when composing messages.
       </div>
     </div>
   );
