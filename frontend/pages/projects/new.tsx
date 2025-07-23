@@ -37,19 +37,20 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   const manualWorkflow = useRef(false);
 
   useEffect(() => {
-    fetch("/api/document-types")
+    fetch(`${API}/document-types`)
       .then((r) => r.json())
       .then((data) => setDocTypes(data.map((d: any) => d.name)))
       .catch(() => setDocTypes([]));
-    fetch("/api/phases")
+    fetch(`${API}/phases`)
       .then((r) => r.json())
       .then(setPhases)
       .catch(() => setPhases([]));
-    fetch("/api/workflows")
+    fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setWorkflows(data.map((w: any) => w.name)))
       .catch(() => setWorkflows([]));
@@ -96,7 +97,7 @@ export default function NewProjectPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/projects", {
+      const res = await fetch(`${API}/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

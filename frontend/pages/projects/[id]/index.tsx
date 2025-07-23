@@ -628,6 +628,7 @@ export default function ProjectDetailsPage() {
   const [showVersions, setShowVersions] = useState(false);
   const [editComment, setEditComment] = useState<DispoComment | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
   // ▼ permission based on logged in user
   const username = useUserStore((s) => s.username);
@@ -639,18 +640,28 @@ export default function ProjectDetailsPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`/api/projects/${id}`)
-      .then((r) => r.json())
+    fetch(`${API}/projects/${id}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(async (proj) => {
         setProject(proj);
         if (proj.workflow) {
-          const wfRes = await fetch(`/api/workflows/${proj.workflow}`);
+          const wfRes = await fetch(`${API}/workflows/${proj.workflow}`);
           if (wfRes.ok) setWorkflow(await wfRes.json());
           const apRes = await fetch(
-            `/api/approvals?workflow=${proj.workflow}`,
+            `${API}/approvals?workflow=${proj.workflow}`,
           );
           if (apRes.ok) setApprovals(await apRes.json());
         }
+        setDispos(DEMO_DISPO_COMMENTS);
+        setRefDocs(DEMO_REFERENCE_DOCS);
+        setLogs(DEMO_LOGS);
+      })
+      .catch(() => {
+        const demo = getDemoProject(String(id));
+        if (demo) setProject(demo as Project);
+        else setProject(DEMO_PROJECT);
+        setWorkflow(DEMO_WORKFLOW);
+        setApprovals(DEMO_APPROVALS);
         setDispos(DEMO_DISPO_COMMENTS);
         setRefDocs(DEMO_REFERENCE_DOCS);
         setLogs(DEMO_LOGS);
@@ -745,7 +756,7 @@ export default function ProjectDetailsPage() {
       alert("Approval already completed.");
       return;
     }
-    fetch(`/approvals/${aid}/sign`, { method: "POST" })
+    fetch(`${API}/approvals/${aid}/sign`, { method: "POST" })
       .then((r) => r.json())
       .then((d) => {
         setApprovals((prev) =>
