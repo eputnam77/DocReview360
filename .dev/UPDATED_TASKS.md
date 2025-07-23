@@ -4,7 +4,7 @@
 | --- | -------------------------------- | ------ |
 | 195 | Sendemail hook validations       | Done   |
 | 196 | Update project description       | Done   |
-| 197 | Dockerfile deployment compatibility | Deferred |
+| 197 | Dockerfile deployment compatibility | Done |
 | 198 | GitHub doc storage sync          | Deferred |
 | 199 | Playwright E2E baseline          | Deferred |
 | 200 | E2E CI job & docs                | Deferred |
