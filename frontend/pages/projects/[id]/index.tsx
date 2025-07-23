@@ -58,6 +58,7 @@ import {
 import { cn } from "@/lib/utils";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 import { useUserStore } from "@/state/user";
+import { getDemoProject } from "@/data";
 
 // ---------------------------------------------------------------------------
 // 1 ▲ Types
