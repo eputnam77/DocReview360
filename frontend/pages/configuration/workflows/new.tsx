@@ -5,6 +5,13 @@ import {
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API } from "@/lib/api";
@@ -19,6 +26,9 @@ export default function NewWorkflowPage() {
   const [docTypes, setDocTypes] = useState<string[]>(DEMO_DOC_TYPES);
   const [docTypesSelected, setDocTypesSelected] = useState<string[]>([]);
   const [user, setUser] = useState("");
+  // Demo users if API call fails
+  const DEMO_USERS = ["admin", "jane"];
+  const [users, setUsers] = useState<string[]>(DEMO_USERS);
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
@@ -33,6 +43,26 @@ export default function NewWorkflowPage() {
       })
       .catch(() => {
         setDocTypes(DEMO_DOC_TYPES);
+      });
+  }, []);
+
+  // fetch users for lookup
+  useEffect(() => {
+    fetch(`${API}/users`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => {
+        if (Array.isArray(data) && data.length) {
+          setUsers(
+            data.map((u) =>
+              typeof u === "string" ? u : u.username || ""
+            ).filter(Boolean)
+          );
+        } else {
+          setUsers(DEMO_USERS);
+        }
+      })
+      .catch(() => {
+        setUsers(DEMO_USERS);
       });
   }, []);
 
@@ -194,13 +224,19 @@ export default function NewWorkflowPage() {
                 <label htmlFor="user" className="block mb-1 text-sm font-medium">
                   User <span className="text-gray-400">(optional)</span>
                 </label>
-                <Input
-                  id="user"
-                  placeholder="Assign user or leave blank"
-                  value={user}
-                  onChange={e => setUser(e.target.value)}
-                  className="w-full"
-                />
+                <Select value={user} onValueChange={setUser}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Assign user or leave blank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className="text-xs text-gray-500 mt-1">Assign a specific user, or leave blank for any user in this role.</div>
               </div>
               <div>
