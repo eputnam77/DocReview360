@@ -23,8 +23,11 @@ export default function NewProjectPage() {
   const router = useRouter();
   // Document Number is provided by the user. The immutable Document ID will be
   // generated server-side when the project is created.
-  const [docTypes, setDocTypes] = useState<string[]>([]);
-  const [phases, setPhases] = useState<string[]>([]);
+  const DEMO_DOC_TYPES = ["Advisory Circular", "Policy Statement", "Release Notes"];
+  const DEMO_PHASES = ["FAA Review", "Public Comment", "Final Issuance"];
+  const DEMO_WORKFLOWS = ["FAA Review", "Public Comment"];
+  const [docTypes, setDocTypes] = useState<string[]>(DEMO_DOC_TYPES);
+  const [phases, setPhases] = useState<string[]>(DEMO_PHASES);
   const [docNumber, setDocNumber] = useState("");
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
@@ -43,17 +46,35 @@ export default function NewProjectPage() {
 
   useEffect(() => {
     fetch(`${API}/document-types`)
-      .then((r) => r.json())
-      .then((data) => setDocTypes(data.map((d: any) => d.name)))
-      .catch(() => setDocTypes([]));
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) =>
+        setDocTypes(
+          data.length
+            ? data.map((d: any) => (typeof d === "string" ? d : d.name))
+            : DEMO_DOC_TYPES,
+        ),
+      )
+      .catch(() => setDocTypes(DEMO_DOC_TYPES));
     fetch(`${API}/phases`)
-      .then((r) => r.json())
-      .then(setPhases)
-      .catch(() => setPhases([]));
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) =>
+        setPhases(
+          data.length
+            ? data.map((d: any) => (typeof d === "string" ? d : d.name))
+            : DEMO_PHASES,
+        ),
+      )
+      .catch(() => setPhases(DEMO_PHASES));
     fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setWorkflows(data.map((w: any) => w.name)))
-      .catch(() => setWorkflows([]));
+      .then((data) =>
+        setWorkflows(
+          data.length
+            ? data.map((w: any) => (typeof w === "string" ? w : w.name))
+            : DEMO_WORKFLOWS,
+        ),
+      )
+      .catch(() => setWorkflows(DEMO_WORKFLOWS));
     const saved = localStorage.getItem("phaseWorkflowMap");
     if (saved) {
       try {
