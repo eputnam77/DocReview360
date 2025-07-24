@@ -15,6 +15,16 @@ import {
 } from "@/components/ui/table";
 import { API } from "@/lib/api";
 
+const DEMO_REVIEWS: Review[] = [
+  {
+    id: "r1",
+    reviewer: "Demo",
+    status: "approved",
+    comment: "Looks good",
+    created: new Date().toISOString(),
+  },
+];
+
 interface Review {
   id: string;
   reviewer: string;
@@ -39,9 +49,9 @@ export default function ProjectReviewPage() {
     if (!id) return;
     setLoading(true);
     fetch(`${API}/projects/${id}/reviews`)
-      .then((r) => r.json())
-      .then((data) => setReviews(data))
-      .catch(() => setReviews([]))
+      .then((r) => (r.ok ? r.json() : DEMO_REVIEWS))
+      .then((data) => setReviews(Array.isArray(data) ? data : DEMO_REVIEWS))
+      .catch(() => setReviews(DEMO_REVIEWS))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -61,7 +71,6 @@ export default function ProjectReviewPage() {
         body: JSON.stringify({
           comment: newComment,
           status: newStatus,
-          // reviewer: "current user", // Add current user if available
         }),
       });
       if (!res.ok) throw new Error("Failed to submit review");
@@ -70,6 +79,16 @@ export default function ProjectReviewPage() {
       setNewComment("");
       setNewStatus("pending");
     } catch (err) {
+      setReviews([
+        {
+          id: "offline-" + Date.now(),
+          reviewer: "You",
+          status: newStatus,
+          comment: newComment,
+          created: new Date().toISOString(),
+        },
+        ...reviews,
+      ]);
       setError((err as Error).message);
     } finally {
       setLoading(false);

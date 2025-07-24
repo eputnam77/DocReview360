@@ -54,23 +54,25 @@ const TIME_ZONES = [
   "Australia/Sydney",
 ];
 
+const DEMO_PROFILE: Profile = {
+  picture: "",
+  displayName: "Demo User",
+  email: "demo@example.com",
+  phone: "",
+  shorthand: "DU",
+  jobTitle: "Analyst",
+  department: "QA",
+  timeZone: "America/New_York",
+  dashboards: ["main"],
+  permissions: ["user"],
+  notificationEmail: true,
+  notificationSMS: false,
+  twoFA: false,
+  theme: "system",
+};
+
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile>({
-    picture: "",
-    displayName: "",
-    email: "",
-    phone: "",
-    shorthand: "",
-    jobTitle: "",
-    department: "",
-    timeZone: "",
-    dashboards: ["main"],
-    permissions: ["user"],
-    notificationEmail: true,
-    notificationSMS: false,
-    twoFA: false,
-    theme: "system",
-  });
+  const [profile, setProfile] = useState<Profile>({ ...DEMO_PROFILE });
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [pictureFile, setPictureFile] = useState<File | null>(null);
@@ -79,15 +81,19 @@ export default function ProfilePage() {
     fetch(`${API}/profile`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) setProfile({
-          ...profile,
-          ...data,
-          dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
-          permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
-          theme: ["system", "light", "dark"].includes(data.theme) ? data.theme : "system",
-        });
+        if (data) {
+          setProfile({
+            ...DEMO_PROFILE,
+            ...data,
+            dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
+            permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
+            theme: ["system", "light", "dark"].includes(data.theme) ? data.theme : "system",
+          });
+        } else {
+          setProfile(DEMO_PROFILE);
+        }
       })
-      .catch(() => {});
+      .catch(() => setProfile(DEMO_PROFILE));
     // eslint-disable-next-line
   }, []);
 
