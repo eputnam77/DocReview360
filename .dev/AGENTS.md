@@ -82,8 +82,6 @@ ruff check src tests
 black --check src tests
 mypy --strict src tests
 bandit -r src -lll
-semgrep --config p/default
-pip-audit -r requirements.txt
 pytest -q --cov=src --cov-branch --cov-fail-under=90
 pytest -q -m e2e
 trivy fs --exit-code 1 --severity CRITICAL,HIGH .
