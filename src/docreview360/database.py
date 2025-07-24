@@ -73,7 +73,7 @@ class Database:
     def _apply_sql_migrations(self, path: str | Path | None) -> None:
         """Execute raw SQL migrations if available."""
         if path is None:
-            path = Path(__file__).with_name("migrations")
+            path = Path(__file__).resolve().parents[2] / "migrations"
         path = Path(path)
         if not path.exists():
             return
