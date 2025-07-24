@@ -64,6 +64,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 4. **XML block editor** (Monaco-based) for strictly structured specs.
 
 * Real-time autosave, dual-view (rich & source), Pandiff diffing, TipTap change bars.
+* Custom TipTap extensions provide a slash-command menu, heading locks, indentation controls, draggable section nodes with structure validation, watermark overlays, optional MarkReview markup and Yjs-based collaboration.
 
 ### 3.3 Workflow & Approvals
 
