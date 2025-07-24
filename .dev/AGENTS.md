@@ -27,7 +27,6 @@
 | Container scanners        | **Trivy** (image & filesystem)                                            |
 | Docs generator            | **MkDocs‑Material** (`mkdocs build`)                                      |
 | Commit style              | **Conventional Commits**                                                  |
-| CI provider               | **GitHub Actions** *(experimental – see §5)*                              |
 
 > **Data flow**  Each agent works off the latest commit on its branch, communicates **only** via Issues / PRs, and acquires an `agent‑running` lock‑label to avoid concurrent pushes.
 
@@ -38,7 +37,7 @@
 | #  | Agent ID       | Purpose (one‑liner)                                                                             | Auto‑trigger condition               |
 | -- | -------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------ |
 | 0  | `planner`      | Parse **PRD.md** → create **TASKS.md** (epics → issues with A/C & labels).                      | manual                               |
-| 1  | `architect`    | Design folder layout, write ADRs, bootstrap Poetry + CI skeleton.                               | `planner` PR merged                  |
+| 1  | `architect`    | Design folder layout, write ADRs, bootstrap Poetry.                                             | `planner` PR merged                  |
 | 2  | `scaffolder`   | Generate skeleton code **and tests** for every open issue.                                      | `architect` PR merged                |
 | 3  | `scenario‑gen` | Convert acceptance criteria to Gherkin *.feature* files & Hypothesis strategies.                | new `ready` issue                    |
 | 4  | `verifier`     | Cross‑check **PRD.md** ↔ **TASKS.md** ↔ code; emit completeness report.                         | after `scenario‑gen`                 |
@@ -71,7 +70,6 @@ ruff check src tests
 black --check src tests
 mypy --strict src tests
 bandit -r src -lll --skip B101               # allow asserts early
-semgrep --config p/ci                       # lightweight SAST
 pytest -q --cov=src --cov-branch --cov-fail-under=70
 pytest -q -m property                       # Hypothesis tests
 pytest -q -m e2e                            # Playwright (headless)
