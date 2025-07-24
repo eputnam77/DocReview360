@@ -243,6 +243,14 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 240 | Refresh README setup steps | • Document `poetry install` and Python 3.12 environment in README; sync AGENTS.md gate instructions. | Docs | 0.25 d | README dev section shows the new commands. |
 | 241 | Instance migration CLI | • `docreview360 migrate --from <old-config> --to <new-config>` exports DB and storage, then imports into a fresh instance. Includes rollback instructions. | DevOps | 2 d | Run CLI on test data → new instance serves migrated projects.<br>See `tests/e2e/features/task241.feature` |
 | 242 | Migration helper link in Settings | • Settings page includes “Create New Instance” button opening docs for using the migration CLI. | Admin | 0.5 d | Button opens documentation modal without modifying config.<br>See `tests/e2e/features/task242.feature` |
+| 243 | TipTap slash-command palette | • Extension adds `/` menu using `@tiptap/suggestion` for quick node insertion. | FE | 0.5 d | Typing `/heading` inserts an H1.<br>See `tests/e2e/features/task243.feature` |
+| 244 | TipTap heading lock | • Prevent editing level 1–2 headings via keyboard shortcut filter. | FE | 0.5 d | Deleting H1/H2 is ignored.<br>See `tests/unit/test_task244.py` |
+| 245 | TipTap indentation controls | • Commands `indent` and `outdent` store level in `data-indent` attribute. | FE | 0.5 d | Paragraph indent toggles update attribute.<br>See `tests/unit/test_task245.py` |
+| 246 | TipTap section node & structure rules | • Draggable `section-node` block and validator rejecting consecutive headings. | FE | 0.5 d | Invalid structure prevented; sections drag to reorder.<br>See `tests/unit/test_task246.py` |
+| 247 | TipTap watermark overlay | • Optional watermark plugin displays semi-transparent text in editor background. | FE | 0.25 d | Setting watermark shows overlay text.<br>See `tests/unit/test_task247.py` |
+| 248 | TipTap MarkReview integration | • Wrapper loads optional `mark-review` package at runtime for comment markup. | FE | 0.25 d | Plugin loads when dependency installed.<br>See `tests/unit/test_task248.py` |
+| 249 | TipTap Yjs collaboration | • Lightweight Yjs + WebRTC provider; fails gracefully offline. | FE | 1 d | Two browsers sync edits live.<br>See `tests/e2e/features/task249.feature` |
+| 250 | Projects page demo fallback | • `/projects/new` loads sample data if API unreachable for offline demos. | FE | 0.25 d | Starting app without API still shows project form.<br>See `tests/e2e/features/task250.feature` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
