@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 import { API } from "@/lib/api";
+import { getDemoProject } from "@/data/demoProjects";
 
 const DOCUMENT_TYPES = [
   "Advisory Circular",
@@ -38,19 +39,27 @@ export default function EditProjectPage() {
     if (!id) return;
     setLoading(true);
     fetch(`${API}/projects/${id}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((proj) => {
         setDocId(proj.docId || "");
         setTitle(proj.title || "");
         setSme(proj.sme || "");
         setDocType(proj.docType || "");
         setDescription(proj.description || "");
-        setLoading(false);
       })
       .catch(() => {
-        setError("Could not load project.");
-        setLoading(false);
-      });
+        const demo = getDemoProject(String(id));
+        if (demo) {
+          setDocId(String(demo.number));
+          setTitle(demo.title);
+          setSme(demo.user || "");
+          setDocType(demo.type);
+          setDescription(demo.title);
+        } else {
+          setError("Could not load project.");
+        }
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
