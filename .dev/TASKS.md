@@ -238,6 +238,9 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 235 | Role visibility on profile | • Show all assigned roles and groups on `/profile` via `RoleBadge` components. | FE | 0.25 d | Snapshot test shows correct badges.<br>See `tests/e2e/features/task235.feature` |
 | 236 | Dashboard hydration fix | • Adjust dashboard components to avoid server/client markup mismatch. | FE | 0.25 d | Console shows no hydration warnings.<br>See `tests/e2e/features/task236.feature` |
 | 237 | Special Conditions tool link fix | • Update Tools page link to `/tools/sc-builder` and add placeholder page. | Docs | 0.25 d | Clicking link opens builder without 404.<br>See `tests/e2e/features/task237.feature` |
+| 238 | Remove docs workflow | • Delete `.github/workflows/docs.yml`; update README with instructions for local `mkdocs build`. | DevOps | 0.25 d | `mkdocs build --strict` runs locally; no docs workflow defined. |
+| 239 | Remove Codex router CI job | • Delete `.github/workflows/agents.yml` and document manual agent runs. | DevOps | 0.25 d | Pushing a branch does not trigger the Codex router action; README notes `codex run`. |
+| 240 | Refresh README setup steps | • Document `poetry install` and Python 3.12 environment in README; sync AGENTS.md gate instructions. | Docs | 0.25 d | README dev section shows the new commands. |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
