@@ -1,7 +1,7 @@
 # Code Review
 
 ## Summary
-This update fixes navigation under `/tools` and adds a placeholder **Special Conditions Doc Builder** page. The documentation lists this new tool and points to the private repository for the full implementation.
+This review audits API connections across all pages. Every page was checked for `fetch` calls and demo data fallbacks. Navigation under `/tools` was fixed and a placeholder **Special Conditions Doc Builder** page was added, with documentation pointing to the private repository.
 
 ## PRD Compliance
 - **Editable approval comments** implemented via `task205` stub returning the new text【F:src/docreview360/stubs/task205.py†L8-L12】.
@@ -54,67 +54,66 @@ The table below summarizes whether each Next.js page fetches data from the backe
 
 | Page | Uses API | Demo fallback |
 | --- | --- | --- |
-| _app | No | No |
-| about | No | No |
-| configuration/audit-logs | Yes | Yes |
-| configuration/document-types | Yes | Yes |
-| configuration/index | No | No |
-| configuration/integrations | Yes | No |
-| configuration/permissions | Yes | Yes |
-| configuration/phases | Yes | Yes |
-| configuration/templates/edit-email | Yes | Yes |
-| configuration/templates/edit | Yes | Yes |
-| configuration/templates/index | Yes | Yes |
-| configuration/templates/new-email | Yes | No |
-| configuration/templates/new | Yes | No |
-| configuration/user-management | Yes | Yes |
-| configuration/workflows/[id] | No | Yes |
-| configuration/workflows/edit | No | Yes |
-| configuration/workflows/index | Yes | Yes |
-| configuration/workflows/new | Yes | Yes |
-| custom-fields | No | No |
-| dashboard/admin | Yes | Yes |
-| dashboard/index | No | No |
-| dashboard/manager | Yes | Yes |
-| dashboard/project/[id] | No | No |
-| dashboard/settings | No | No |
-| dashboard/user | Yes | Yes |
-| docs/index | No | No |
-| documenso/[sig] | No | No |
-| editors/codex | No | No |
-| editors/tiptap | No | No |
-| editors/toast | No | No |
-| editors/word | No | No |
-| help | No | No |
-| index | Yes | No |
-| instances/[id] | No | No |
-| login | No | No |
-| logs/index | Yes | Yes |
-| privacy | No | No |
-| profile | Yes | No |
-| projects/[id]/edit | Yes | No |
-| projects/[id]/index | Yes | Yes |
-| projects/[id]/review | Yes | No |
-| projects/index | Yes | Yes |
-| projects/new | Yes | Yes |
-| reviews/[id] | No | No |
-| reviews/index | No | No |
-| search | Yes | No |
-| signup | No | No |
-| terms | No | No |
-| tools/checker | Yes | No |
-| tools/converter | Yes | No |
-| tools/index | No | No |
-| tools/sc_converter | No | No |
-| viewer | No | No |
-| workflows/[id]/start | Yes | No |
+| _app.tsx | No | No |
+| about.tsx | No | No |
+| configuration/audit-logs.tsx | Yes | Yes |
+| configuration/document-types.tsx | Yes | Yes |
+| configuration/index.tsx | No | No |
+| configuration/integrations.tsx | Yes | Yes |
+| configuration/permissions.tsx | Yes | Yes |
+| configuration/phases.tsx | Yes | Yes |
+| configuration/templates/edit-email.tsx | Yes | Yes |
+| configuration/templates/edit.tsx | Yes | Yes |
+| configuration/templates/index.tsx | Yes | Yes |
+| configuration/templates/new-email.tsx | Yes | No |
+| configuration/templates/new.tsx | Yes | No |
+| configuration/user-management.tsx | Yes | Yes |
+| configuration/workflows/[id].tsx | No | Yes |
+| configuration/workflows/edit.tsx | No | Yes |
+| configuration/workflows/index.tsx | Yes | Yes |
+| configuration/workflows/new.tsx | Yes | Yes |
+| custom-fields.tsx | No | No |
+| dashboard/admin.tsx | Yes | Yes |
+| dashboard/index.tsx | No | No |
+| dashboard/manager.tsx | Yes | Yes |
+| dashboard/project/[id].tsx | No | No |
+| dashboard/settings.tsx | No | No |
+| dashboard/user.tsx | Yes | Yes |
+| docs/index.tsx | No | No |
+| documenso/[sig].tsx | Yes | No |
+| editors/codex.tsx | No | No |
+| editors/tiptap.tsx | No | No |
+| editors/toast.tsx | No | No |
+| editors/word.tsx | No | No |
+| help.tsx | No | No |
+| index.tsx | Yes | No |
+| instances/[id].tsx | No | No |
+| login.tsx | No | No |
+| logs/index.tsx | Yes | Yes |
+| privacy.tsx | No | No |
+| profile.tsx | Yes | Yes |
+| projects/[id]/edit.tsx | Yes | No |
+| projects/[id]/index.tsx | Yes | Yes |
+| projects/[id]/review.tsx | Yes | Yes |
+| projects/index.tsx | Yes | Yes |
+| projects/new.tsx | Yes | Yes |
+| reviews/[id].tsx | No | No |
+| reviews/index.tsx | No | No |
+| search.tsx | Yes | Yes |
+| signup.tsx | No | No |
+| terms.tsx | No | No |
+| tools/checker.tsx | Yes | Yes |
+| tools/converter.tsx | Yes | Yes |
+| tools/index.tsx | No | No |
+| tools/sc_converter.tsx | No | No |
+| viewer.tsx | No | No |
+| workflows/[id]/start.tsx | Yes | No |
 
-Pages lacking demo fallbacks include `integrations`, `profile`, all editor pages and several tools. Dashboard pages now fetch from the API but only `admin`, `manager` and `user` dashboards provide fallback data. Because demo mode is part of the docs, missing fallbacks on these pages may confuse users when the API is unreachable.
+Pages missing demo fallbacks are `configuration/templates/new`, `configuration/templates/new-email`, `documenso/[sig]`, `index`, `projects/[id]/edit` and `workflows/[id]/start`. These pages show blank content if the API is offline.
 
 ### Review Notes
-- Many pages rely on live API calls without a demo fallback. Profile editing, project editing, project reviews and tools pages all fail silently if the API is offline.
-- The `integrations` page fetches `/config` but lacks any placeholder data when the request fails.
-- Only some configuration and dashboard pages include demo records.
+- API actions log to the backend via `log_event`. For instance creating a project logs `create_project` when saving【F:src/docreview360/api.py†L321-L331】.
+- The majority of configuration and dashboard pages provide demo data when requests fail, but the pages listed above still lack fallbacks.
 
 ### Conclusion
 🔴 **Blocking issues**
