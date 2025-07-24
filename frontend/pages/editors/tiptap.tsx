@@ -12,17 +12,19 @@ import TableHeader from "@tiptap/extension-table-header";
 import Image from "@tiptap/extension-image";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
-import SlashCommand from "../extensions/slash-command";
+import SlashCommand from "../../extensions/tiptapSlashCommand";
 import Lint from "../extensions/lint";
 import sanitizeHtml from "../utils/sanitize";
 import { TEMPLATES } from "../utils/templates";
 
 // Custom TipTap extensions
-import { tiptapHeadingLock } from "../extensions/tiptapHeadingLock";
-import { tiptapIndentation } from "../extensions/tiptapIndentation";
-import { tiptapSectionNode } from "../extensions/tiptapSectionNode";
-import { tiptapWatermark } from "../extensions/tiptapWatermark";
-import { tiptapMarkReview } from "../extensions/tiptapMarkReview";
+import { tiptapHeadingLock } from "../../extensions/tiptapHeadingLock";
+import { tiptapIndentation } from "../../extensions/tiptapIndentation";
+import { tiptapSectionNode } from "../../extensions/tiptapSectionNode";
+import { tiptapWatermark } from "../../extensions/tiptapWatermark";
+import { tiptapMarkReview } from "../../extensions/tiptapMarkReview";
+import { tiptapYjsCollab } from "../../extensions/tiptapYjsCollab";
+import { tiptapStructure } from "../../extensions/tiptapStructure";
 
 // Yjs for collaboration
 import * as Y from "yjs";
@@ -511,6 +513,7 @@ export default function TipTapEditorPage() {
             provider: webrtcProvider,
             user: { name: "You", color: "#3b82f6" },
           }),
+          tiptapYjsCollab(),
         );
       } else if (yDoc && provider) {
         base.push(
@@ -519,6 +522,7 @@ export default function TipTapEditorPage() {
             provider: provider,
             user: { name: "You", color: "#3b82f6" },
           }),
+          tiptapYjsCollab(),
         );
       }
     }
@@ -537,6 +541,7 @@ export default function TipTapEditorPage() {
     if (watermarkEnabled) {
       base.push(tiptapWatermark(watermarkText));
     }
+    base.push(tiptapStructure());
     return base;
     // eslint-disable-next-line
   }, [
