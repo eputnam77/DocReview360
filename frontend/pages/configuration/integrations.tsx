@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Pencil, Trash } from "lucide-react";
+import { API } from "@/lib/api";
 
 const DATABASES = ["postgres", "mysql", "sqlite"];
 const EDITORS = ["tiptap", "toast", "onlyoffice", "xml", "codex", "word"];
@@ -75,18 +76,32 @@ const EXTRA_INTEGRATIONS = [
   { label: "GitHub Sync", value: "Enabled" },
 ];
 
+const DEMO_CONFIG: Record<string, string | number | boolean> = {
+  database: "sqlite",
+  editor: "tiptap",
+  cms: "none",
+  auth: "oidc",
+  host: "localhost",
+  port: 8000,
+  debug: false,
+  email: "noreply@example.com",
+  upload_max_mb: 5,
+};
+
 export default function IntegrationsPage() {
-  const [config, setConfig] = useState<Record<string, string | number | boolean>>({});
+  const [config, setConfig] = useState<Record<string, string | number | boolean>>(DEMO_CONFIG);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
-    fetch("/config")
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((data) => setConfig(data))
-      .catch(() => {});
+    fetch(`${API}/config`)
+      .then((r) => (r.ok ? r.json() : DEMO_CONFIG))
+      .then((data) =>
+        setConfig(Object.keys(data || {}).length ? data : DEMO_CONFIG),
+      )
+      .catch(() => setConfig(DEMO_CONFIG));
   }, []);
 
   const update = (key: string, value: string | number | boolean) => {
@@ -100,17 +115,21 @@ export default function IntegrationsPage() {
   };
 
   const handleSave = async () => {
-    const resp = await fetch("/config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    });
-    if (resp.ok) {
-      alert(
-        "Configuration saved. Changing integrations may require a restart and could cause data loss.",
-      );
-    } else {
-      alert("Failed to save configuration");
+    try {
+      const resp = await fetch(`${API}/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      if (resp.ok) {
+        alert(
+          "Configuration saved. Changing integrations may require a restart and could cause data loss.",
+        );
+      } else {
+        alert("Failed to save configuration");
+      }
+    } catch {
+      alert("Failed to save configuration (offline demo)");
     }
   };
 

@@ -19,6 +19,11 @@ interface CheckResult {
   [key: string]: unknown;
 }
 
+const DEMO_RESULT: CheckResult = {
+  heading: "Missing H2",
+  accessibility: "alt text",
+};
+
 export default function CheckerPage() {
   const [result, setResult] = useState<CheckResult | null>(null);
   const [download, setDownload] = useState<string | null>(null);
@@ -29,14 +34,21 @@ export default function CheckerPage() {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const res = await fetch(`${API}/tools/checker`, { method: "POST", body: formData });
+    try {
+      const res = await fetch(`${API}/tools/checker`, { method: "POST", body: formData });
 
-    if (res.ok) {
-      const data = await res.json();
-      setResult(data.results);
-      setDownload(`/downloads/${data.filename}`);
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data.results);
+        setDownload(`/downloads/${data.filename}`);
+      } else {
+        setResult(DEMO_RESULT);
+      }
+    } catch {
+      setResult(DEMO_RESULT);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }
 
   return (
