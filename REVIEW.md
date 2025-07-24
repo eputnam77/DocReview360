@@ -47,3 +47,80 @@ Codex couldn't run certain commands due to environment limitations. Consider con
 - Document the `VENV_PYTHON` variable and link the Document Checker in the main docs.
 
 Label: `ready-for:builder`
+
+## API Wiring Audit
+
+The table below summarizes whether each Next.js page fetches data from the backend API and if it falls back to demo data when the request fails.
+
+| Page | Uses API | Demo fallback |
+| --- | --- | --- |
+| _app | No | No |
+| about | No | No |
+| configuration/audit-logs | Yes | Yes |
+| configuration/document-types | Yes | Yes |
+| configuration/index | No | No |
+| configuration/integrations | Yes | No |
+| configuration/permissions | Yes | Yes |
+| configuration/phases | Yes | Yes |
+| configuration/templates/edit-email | Yes | Yes |
+| configuration/templates/edit | Yes | Yes |
+| configuration/templates/index | Yes | Yes |
+| configuration/templates/new-email | Yes | No |
+| configuration/templates/new | Yes | No |
+| configuration/user-management | Yes | Yes |
+| configuration/workflows/[id] | No | Yes |
+| configuration/workflows/edit | No | Yes |
+| configuration/workflows/index | Yes | Yes |
+| configuration/workflows/new | Yes | Yes |
+| custom-fields | No | No |
+| dashboard/admin | Yes | Yes |
+| dashboard/index | No | No |
+| dashboard/manager | Yes | Yes |
+| dashboard/project/[id] | No | No |
+| dashboard/settings | No | No |
+| dashboard/user | Yes | Yes |
+| docs/index | No | No |
+| documenso/[sig] | No | No |
+| editors/codex | No | No |
+| editors/tiptap | No | No |
+| editors/toast | No | No |
+| editors/word | No | No |
+| help | No | No |
+| index | Yes | No |
+| instances/[id] | No | No |
+| login | No | No |
+| logs/index | Yes | Yes |
+| privacy | No | No |
+| profile | Yes | No |
+| projects/[id]/edit | Yes | No |
+| projects/[id]/index | Yes | Yes |
+| projects/[id]/review | Yes | No |
+| projects/index | Yes | Yes |
+| projects/new | Yes | Yes |
+| reviews/[id] | No | No |
+| reviews/index | No | No |
+| search | Yes | No |
+| signup | No | No |
+| terms | No | No |
+| tools/checker | Yes | No |
+| tools/converter | Yes | No |
+| tools/index | No | No |
+| tools/sc_converter | No | No |
+| viewer | No | No |
+| workflows/[id]/start | Yes | No |
+
+Pages lacking demo fallbacks include `integrations`, `profile`, all editor pages and several tools. Dashboard pages now fetch from the API but only `admin`, `manager` and `user` dashboards provide fallback data. Because demo mode is part of the docs, missing fallbacks on these pages may confuse users when the API is unreachable.
+
+### Review Notes
+- Many pages rely on live API calls without a demo fallback. Profile editing, project editing, project reviews and tools pages all fail silently if the API is offline.
+- The `integrations` page fetches `/config` but lacks any placeholder data when the request fails.
+- Only some configuration and dashboard pages include demo records.
+
+### Conclusion
+🔴 **Blocking issues**
+- Several pages lack demo data fallbacks despite API integrations. Users will see empty pages if the backend is unreachable.
+
+🟢 **Info**
+- API calls generally trigger server-side `log_event` entries, so status and audit logs work as expected when requests succeed.
+
+Label: `ready-for:builder`
