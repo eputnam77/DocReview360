@@ -1,13 +1,29 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  test:
+  dev-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.txt || true
-      - run: pip install -r requirements-dev.txt || true
-      - run: pytest -q
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --with dev
+      - name: Lint and test
+        run: |
+          poetry run ruff check src tests
+          poetry run black --check src tests
+          poetry run mypy --strict src tests
+          poetry run bandit -r src -lll --skip B101
+          poetry run pytest -q --cov=src --cov-branch --cov-fail-under=70
+

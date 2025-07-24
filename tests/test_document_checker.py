@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from docreview360.document_checker import run_checks
 
 pytest.importorskip("GovDocVerify", reason="GovDocVerify not installed")
