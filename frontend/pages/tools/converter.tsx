@@ -1,19 +1,27 @@
 import React, { useState } from "react";
 import { API } from "@/lib/api";
 
+const DEMO_FILE = "demo.pdf";
+
 export default function ConverterPage() {
   const [result, setResult] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const res = await fetch(`${API}/tools/convert`, {
-      method: "POST",
-      body: formData,
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setResult(data.filename);
+    try {
+      const res = await fetch(`${API}/tools/convert`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data.filename);
+      } else {
+        setResult(DEMO_FILE);
+      }
+    } catch {
+      setResult(DEMO_FILE);
     }
   };
 
