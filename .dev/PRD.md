@@ -114,7 +114,8 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 ### 3.8 Setup & Administration
 
 * **First-run setup wizard** guides initial DB, auth, storage and editor configuration.
-* **Global Settings** panel with tabs for general, auth, storage, email, plugins and backup.
+* **Core settings locked after onboarding**: chosen database engine and authentication provider become read-only once the wizard completes. Admins must spin up a new instance and migrate if they need to switch.
+* **Global Settings** panel with tabs for general, auth, storage, email, plugins and backup. Core values show a “Reinitialize to change” tooltip linking to migration docs.
 * **Plugin Marketplace** installs discoverable packages from PyPI in one click.
 * **Backup/Restore panel** triggers Celery tasks and monitors progress.
 * **Environment switcher** toggles dev/stage/prod endpoints with color cues.
@@ -126,6 +127,17 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Document numbering options** let admins choose sequential numbering or manual entry per project. Document IDs remain 32-character hex strings (e.g., "AC 20.11", "PS-20.1191").
 * **Integrations settings page** redesigned for easier configuration via `/config`.
 * **In-app docs page** reachable from the Support menu.
+* **Migration CLI (`docreview360 migrate`)** exports data from one instance and imports it into another, enabling safe reinitialisation when switching DB or auth backends.
+
+#### Configuration Change Decision Framework
+
+| Question | If “Yes” → Re-initialize | If “No” → Safe to toggle |
+| --- | --- | --- |
+| Does the change alter the **data store or schema**? | ✔ (DB engine, new auth schemas) | ✖ |
+| Could it **invalidate existing data** or require bulk migration? | ✔ | ✖ |
+| Does it alter the **security posture**? | Often ✔ | Possibly ✖ if minor |
+| Is it a **presentation or feature flag**? | ✖ | ✔ |
+| Is rollback **trivial** and state-free? | ✖ | ✔ |
 
 ### 3.9 AI Chat Bot
 
