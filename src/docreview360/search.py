@@ -1,3 +1,5 @@
+"""Naïve in-memory search index."""
+
 from __future__ import annotations
 
 import json
