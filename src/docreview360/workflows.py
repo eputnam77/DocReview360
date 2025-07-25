@@ -1,3 +1,5 @@
+"""Simplified workflow tracking models."""
+
 from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional
