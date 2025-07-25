@@ -1,3 +1,5 @@
+"""Validate documents using JSON rules."""
+
 from __future__ import annotations
 
 # mypy: ignore-errors

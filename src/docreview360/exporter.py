@@ -1,3 +1,5 @@
+"""Export documents to various formats."""
+
 from __future__ import annotations
 
 from html import escape
