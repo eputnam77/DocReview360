@@ -1,3 +1,5 @@
+"""Role-based access control helpers."""
+
 from __future__ import annotations
 
 from typing import Callable, Iterable, Set
