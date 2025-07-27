@@ -251,6 +251,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 248 | TipTap MarkReview integration | • Wrapper loads optional `mark-review` package at runtime for comment markup. | FE | 0.25 d | Plugin loads when dependency installed.<br>See `tests/unit/test_task248.py` |
 | 249 | TipTap Yjs collaboration | • Lightweight Yjs + WebRTC provider; fails gracefully offline. | FE | 1 d | Two browsers sync edits live.<br>See `tests/e2e/features/task249.feature` |
 | 250 | Projects page demo fallback | • `/projects/new` loads sample data if API unreachable for offline demos. | FE | 0.25 d | Starting app without API still shows project form.<br>See `tests/e2e/features/task250.feature` |
+| 251 | Persistent document store | • Replace the in-memory `documents` dict with SQLAlchemy models `Document` and `DocumentVersion`.<br>• Autosave writes each edit to PostgreSQL and appends the previous content to `DocumentVersion`. | Backend | 2 d | Editing a document then fetching `/documents/{id}/versions` shows the old text.<br>See `tests/unit/test_task251.py` |
 \*Effort ≈ focused business-days for one engineer.
 
 ---
