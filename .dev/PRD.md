@@ -64,6 +64,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 4. **XML block editor** (Monaco-based) for strictly structured specs.
 
 * Real-time autosave, dual-view (rich & source), Pandiff diffing, TipTap change bars.
+* **Every save persists the document to PostgreSQL with a revision entry**, ensuring crashes or restarts do not lose work. A `document_versions` table retains prior content for rollback.
 * Custom TipTap extensions provide a slash-command menu, heading locks, indentation controls, draggable section nodes with structure validation, watermark overlays, optional MarkReview markup and Yjs-based collaboration.
 
 ### 3.3 Workflow & Approvals
@@ -156,6 +157,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 * FastAPI, SQLAlchemy, Pydantic v2.
 * PostgreSQL + pgvector, Redis, MinIO/S3.
+* Documents stored in PostgreSQL as JSONB or bytea blobs with a `document_versions` table for revision history; large binaries may use MinIO with DB references.
 * Celery workers; WebSockets via FastAPI-WebSocket.
 
 ### 4.2 Frontend
