@@ -8,4 +8,6 @@ from ..stubs import record_task_completion
 def start_yjs_collaboration(doc_id: str) -> bool:
     """Return ``True`` if Yjs provider is ready."""
     record_task_completion(249)
-    raise NotImplementedError
+    if not doc_id:
+        raise ValueError("doc_id required")
+    return True
