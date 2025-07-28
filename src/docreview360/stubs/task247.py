@@ -10,4 +10,6 @@ from ..stubs import record_task_completion
 def apply_watermark(doc: Dict[str, Any], text: str) -> Dict[str, Any]:
     """Return ``doc`` with ``text`` overlay applied."""
     record_task_completion(247)
-    raise NotImplementedError
+    doc = dict(doc)
+    doc["watermark"] = text
+    return doc
