@@ -60,11 +60,22 @@ class Project(Base):
 class Document(Base):
     __tablename__ = "documents"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
     content: Mapped[str] = mapped_column(String)
 
     project: Mapped[Project] = relationship(back_populates="documents")
+    versions: Mapped[list["DocumentVersion"]] = relationship(back_populates="document")
+
+
+class DocumentVersion(Base):
+    __tablename__ = "document_versions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
+    content: Mapped[str] = mapped_column(String)
+
+    document: Mapped[Document] = relationship(back_populates="versions")
 
 
 class Workflow(Base):

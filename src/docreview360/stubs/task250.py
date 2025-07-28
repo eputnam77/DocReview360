@@ -10,4 +10,6 @@ from ..stubs import record_task_completion
 def load_projects(api_available: bool) -> List[Dict[str, Any]]:
     """Return projects list or sample data when API is unavailable."""
     record_task_completion(250)
-    raise NotImplementedError
+    if api_available:
+        return []
+    return [{"id": "demo", "name": "Sample Project"}]
