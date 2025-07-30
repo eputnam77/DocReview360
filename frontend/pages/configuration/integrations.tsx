@@ -21,7 +21,7 @@ import { Pencil, Trash } from "lucide-react";
 import { API } from "@/lib/api";
 
 const DATABASES = ["postgres", "mysql", "sqlite"];
-const EDITORS = ["tiptap", "toast", "onlyoffice", "xml", "codex", "word"];
+const EDITORS = ["tiptap", "onlyoffice", "xml", "word"];
 const CMS_OPTIONS = ["none", "local"];
 
 const SETTING_DESCRIPTIONS: Record<string, string> = {
@@ -39,8 +39,6 @@ const SETTING_DESCRIPTIONS: Record<string, string> = {
 const SELECT_OPTIONS: Record<string, { label: string; value: string }[]> = {
   editor: [
     { label: "TipTap", value: "tiptap" },
-    { label: "Toast", value: "toast" },
-    { label: "Codex", value: "codex" },
     { label: "Word", value: "word" },
   ],
   database: [

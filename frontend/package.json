@@ -39,8 +39,6 @@
     "@tiptap/extension-underline": "^2.25.0",
     "@tiptap/react": "^2.25.0",
     "@tiptap/starter-kit": "^2.25.0",
-    "@toast-ui/editor": "^3.2.2",
-    "@toast-ui/react-editor": "^3.2.3",
     "clsx": "^2.1.1",
     "critters": "^0.0.25",
     "formidable": "^3.5.4",

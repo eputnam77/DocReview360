@@ -21,9 +21,7 @@ export default function AboutPage() {
             <h2 className="text-xl font-semibold mt-4 mb-1">Key Features</h2>
             <ul className="list-disc pl-6 space-y-1 text-base">
               <li>Flexible workflow and project management</li>
-              <li>
-                Embedded editors: TipTap, Toast UI, CodeX, and Microsoft Word
-              </li>
+              <li>Embedded editors: TipTap and Microsoft Word</li>
               <li>Customizable approval routing and review cycles</li>
               <li>Full audit history and activity tracking</li>
               <li>Modern UI with accessibility and responsive design</li>
