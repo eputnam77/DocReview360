@@ -112,6 +112,13 @@ Clarification
 * GitHub integration to push/pull documents for versioned review and long-term archival.
 * NeMo-Guardrails middleware for PII/style conformance before publish.
 
+* **Automated Records Archiving** — When a final project reaches **PUBLISHED**, the system SHALL automatically:
+  1. Flatten the final DOCX and generate PDF/A.
+  2. Export the complete Documenso approvals list.
+  3. Package all artefacts in a BagIt-compliant ZIP, including checksums.
+  4. Upload the package to the agency records repository via REST and log the returned record ID.
+  5. Notify the SME and Records team on success, or flag `ARCHIVE_FAILED` with a manual retry option.
+
 ### 3.7 Security & Compliance
 
 * **Keycloak** OIDC/SAML with MFA.
