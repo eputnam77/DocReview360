@@ -3,23 +3,14 @@
 
 ---
 
-## 0. Alternative “Turn-Key” Stack
-
-Before installing DocReview360 from source, agencies that prefer a largely pre-integrated suite can deploy **Alfresco Community (ECM) + ONLYOFFICE Docs Community (browser editors) + Camunda (BPMN engine) + Documenso (signatures)** in FedRAMP-eligible containers.
-This bundle already covers content storage, collaborative editing, process orchestration, and legally binding e-signatures, and DocReview360 can interact with it through its REST/GraphQL gateway. ([docs.alfresco.com][1], [onlyoffice.com][2], [camunda.com][3], [documenso.com][4])
-
----
-
-## 1. Executive Summary
-
 DocReview360 is an open-source, web-first platform for drafting, reviewing, approving, publishing, and archiving complex documents (e.g., FAA ACs, policies, manuals). It combines:
 
 | Pillar                 | Primary OSS Component(s)                                     | Purpose                          |
 | ---------------------- | ------------------------------------------------------------ | -------------------------------- |
 | **Editing**            | TipTap (default), Toast UI Editor, ONLYOFFICE Docs connector | Rich-text / WYSIWYG / XML / DOCX |
-| **Workflow**           | Camunda or Imixs-Workflow                                    | BPMN-driven, stateful reviews    |
-| **Signatures**         | Documenso                                                    | Secure e-sign & audit trail      |
-| **Search & Analytics** | OpenSearch + Metabase                                        | Full-text & BI dashboards        |
+| **Workflow**           | Built-in JSON workflows | Simple state-machine reviews |
+| **Signatures**         | Documenso | Secure e-sign & audit trail      |
+| **Search & Analytics** | OpenSearch + Metabase | Full-text & BI dashboards        |
 | **AuthN/AuthZ**        | Keycloak                                                     | SSO, MFA, RBAC                   |
 | **UI Framework**       | React 18 + Next.js 14 & React Flow (admin only)              | Modern, node-based UX            |
 
@@ -69,10 +60,8 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 ### 3.3 Workflow & Approvals
 
-* **BPMN templates** editable by admins in a React Flow canvas; end-users see a Wrangle-style linear checklist. ([reactflow.dev][7])
-* **Camunda** as default engine; **Imixs-Workflow** supported for lighter installs. ([camunda.com][3], [imixs.org][8])
 * Dynamic reviewer add/remove within configured guard-rails.
-* **Workflow Designer UI** lets project managers clone BPMN templates and adjust SLAs per project.
+* **Workflow Designer UI** lets project managers clone workflow templates and adjust SLAs per project.
 * **Documenso approval button** exposes e-signature steps directly in project pages.
 * **Documenso** signatures bound to workflow state; cryptographically verified. ([documenso.com][4])
 * **Editable approval comments** so reviewers can update their remarks after signing.
@@ -204,7 +193,7 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 
 | Q       | Major Deliverable                                           |
 | ------- | ----------------------------------------------------------- |
-| Q3 2025 | Core CRUD, TipTap, Keycloak, OpenSearch, basic Camunda flow |
+| Q3 2025 | Core CRUD, TipTap, Keycloak, OpenSearch, basic workflow engine |
 | Q4 2025 | Documenso integration, multi-editor support, AI helpers     |
 | Q1 2026 | Export/Archival pipeline, interactive dashboards, setup wizard and admin panels |
 | Q2 2026 | Plugin marketplace, environment switcher, RBAC editor, multi-tenant SaaS |
@@ -216,7 +205,7 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 | Risk                       | Mitigation                                                            |
 | -------------------------- | --------------------------------------------------------------------- |
 | OSS project abandonment    | All third-party libs containerised; forks maintained in DocReview360-org. |
-| Heavy BPMN engine overhead | Offer Imixs or built-in lightweight JSON state-machine.               |
+| Workflow engine overhead | Use built-in lightweight JSON state-machine. |
 | Keycloak complexity        | Provide turnkey Helm chart with defaults & scripted realm import.     |
 
 ---
@@ -241,5 +230,5 @@ caught before release.
 ---
 
 ### References
+TipTap editor ([github.com][5])	Toast UI Editor ([github.com][6])	Documenso ([documenso.com][4])	Metabase ([metabase.com][10])	Keycloak ([keycloak.org][11])	Login.gov ([login.gov][12])	Okta ([okta.com][13])	HID Global ([hidglobal.com][14])	Auth0 ([auth0.com][15])	OpenSearch ([opensearch.org][9])	ONLYOFFICE Docs ([onlyoffice.com][2])	React Flow ([reactflow.dev][7])
 
-TipTap editor ([github.com][5]) Toast UI Editor ([github.com][6]) Documenso ([documenso.com][4]) Camunda ([camunda.com][3]) Imixs-Workflow ([imixs.org][8]) Metabase ([metabase.com][10]) Keycloak ([keycloak.org][11]) Login.gov ([login.gov][12]) Okta ([okta.com][13]) HID Global ([hidglobal.com][14]) Auth0 ([auth0.com][15]) OpenSearch ([opensearch.org][9]) Alfresco Community ([docs.alfresco.com][1]) ONLYOFFICE Docs ([onlyoffice.com][2]) React Flow ([reactflow.dev][7])
