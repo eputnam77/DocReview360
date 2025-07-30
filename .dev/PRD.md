@@ -7,7 +7,7 @@ DocReview360 is an open-source, web-first platform for drafting, reviewing, appr
 
 | Pillar                 | Primary OSS Component(s)                                     | Purpose                          |
 | ---------------------- | ------------------------------------------------------------ | -------------------------------- |
-| **Editing**            | TipTap (default), Toast UI Editor, ONLYOFFICE Docs connector | Rich-text / WYSIWYG / XML / DOCX |
+| **Editing**            | TipTap, Office Online embed for MS Word, ONLYOFFICE Docs viewer (default) | Rich-text / DOCX |
 | **Workflow**           | Built-in JSON workflows | Simple state-machine reviews |
 | **Signatures**         | Documenso | Secure e-sign & audit trail      |
 | **Search & Analytics** | OpenSearch + Metabase | Full-text & BI dashboards        |
@@ -50,9 +50,8 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 ### 3.2 Editors
 
 1. **TipTap** — headless ProseMirror framework, extensible via extensions. ([github.com][5])
-2. **Toast UI Editor** — dual Markdown/WYSIWYG modes. ([github.com][6])
-3. **ONLYOFFICE Docs** connector for full DOCX fidelity. ([onlyoffice.com][2])
-4. **XML block editor** (Monaco-based) for strictly structured specs.
+2. **Office Online** embed for MS Word documents.
+3. **ONLYOFFICE Docs** viewer for full DOCX fidelity. ([onlyoffice.com][2])
 
 * Real-time autosave, dual-view (rich & source), Pandiff diffing, TipTap change bars.
 * **Every save persists the document to PostgreSQL with a revision entry**, ensuring crashes or restarts do not lose work. A `document_versions` table retains prior content for rollback.
@@ -230,5 +229,5 @@ caught before release.
 ---
 
 ### References
-TipTap editor ([github.com][5])	Toast UI Editor ([github.com][6])	Documenso ([documenso.com][4])	Metabase ([metabase.com][10])	Keycloak ([keycloak.org][11])	Login.gov ([login.gov][12])	Okta ([okta.com][13])	HID Global ([hidglobal.com][14])	Auth0 ([auth0.com][15])	OpenSearch ([opensearch.org][9])	ONLYOFFICE Docs ([onlyoffice.com][2])	React Flow ([reactflow.dev][7])
+TipTap editor ([github.com][5])  Office Online ([office.com][16])	Documenso ([documenso.com][4])	Metabase ([metabase.com][10])	Keycloak ([keycloak.org][11])	Login.gov ([login.gov][12])	Okta ([okta.com][13])	HID Global ([hidglobal.com][14])	Auth0 ([auth0.com][15])	OpenSearch ([opensearch.org][9])	ONLYOFFICE Docs ([onlyoffice.com][2])	React Flow ([reactflow.dev][7])
 
