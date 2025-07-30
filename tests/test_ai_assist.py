@@ -2,10 +2,9 @@ from types import TracebackType
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
-
-from docreview360 import ai_assist
+from docreview360 import ai_assist, ai_utils
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 @pytest.mark.asyncio
@@ -107,3 +106,11 @@ async def test_call_openai_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(RuntimeError):
         await ai_assist._call_openai("boom")
+
+
+@pytest.mark.asyncio
+async def test_call_openai_with_synth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ai_utils, "synth_enabled", True)
+    result = await ai_assist._call_openai("This is a test")
+    assert result == "tst Ths"
+    monkeypatch.setattr(ai_utils, "synth_enabled", False)

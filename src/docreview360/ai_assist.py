@@ -6,6 +6,8 @@ import os
 
 import httpx
 
+from .ai_utils import synth_compress
+
 __all__ = [
     "_call_openai",
     "rewrite_text",
@@ -24,6 +26,7 @@ async def _call_openai(prompt: str) -> str:
     """
     if not prompt.strip():
         raise ValueError("prompt is required")
+    prompt = synth_compress(prompt)
     if not OPENAI_KEY:
         return " ".join(reversed(prompt.split()))
 
