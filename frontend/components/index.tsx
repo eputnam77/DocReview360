@@ -53,6 +53,7 @@ export { default as CompletedBanner } from "./workflow/CompletedBanner";
 export { default as UploadDropzone } from "./workflow/UploadDropzone";
 export { default as SearchBar } from "./SearchBar";
 export { default as ChatBot } from "./ChatBot";
+export { default as EnvironmentSwitcher } from "./EnvironmentSwitcher";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";
