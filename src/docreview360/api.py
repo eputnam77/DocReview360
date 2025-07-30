@@ -76,6 +76,7 @@ from .documents import (
 from .documents import (
     list_documents as list_docs,
 )
+from .environment import current_environment, load_envs, switch_environment
 from .exporter import export_document, set_guardrails
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
@@ -1268,3 +1269,19 @@ async def convert_tool_endpoint(
     _ = await file.read()  # read file data but ignore for stub
     dest = convert_document(Path(file.filename or ""), output_format)
     return {"filename": dest.name}
+
+
+@app.get("/environments")
+async def list_environments() -> dict[str, Any]:
+    """Return available environments and the current one."""
+    return {"current": current_environment(), "envs": load_envs()}
+
+
+@app.post("/environments/{name}")
+async def switch_env_endpoint(name: str) -> dict[str, str]:
+    """Switch the active environment and return its URL."""
+    try:
+        url = switch_environment(name)
+    except KeyError as exc:  # pragma: no cover - invalid env
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"url": url}
