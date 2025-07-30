@@ -53,7 +53,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Per-document linter & numbering toggles** with one-click migration to the latest template version.
 * **Project form includes Phase & Workflow fields** with defaults mapped from document type.
 * **Document types can link to a default content template**. When a project is created using that type, the associated template is automatically loaded into the editor the first time the document is opened.
-* **Message templates** for review requests, approvals and rejections. Templates store text used by email or chat notifications with placeholders for `{project_link}`, `{user}` and `{comments}`. All message/email templates are saved in the database.
+* **Message templates** drive email and chat notifications. The system ships with six built‑in email templates – **Review Request**, **Reminder: Review Due Soon**, **Overdue Escalation**, **Approval Confirmation**, **Feedback Provided**, and **Re‑Review Request**. Users may create additional templates and disable any they do not need, but the defaults cannot be removed. Templates support `{project_link}`, `{user}` and `{comments}` placeholders and are persisted in the database.
 * **Project Lead field** replaces “Subject Matter Expert”. It defaults to the logged-in user on project creation but can be changed before saving.
 
 ### 3.2 Editors
