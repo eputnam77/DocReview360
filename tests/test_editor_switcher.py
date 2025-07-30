@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.documents import DocumentModel, set_document_editor
 from docreview360.editor_switcher import render_editor
 
@@ -15,9 +14,9 @@ def test_render_switched_editor() -> None:
     from docreview360.documents import documents
 
     documents[doc.id] = doc
-    set_document_editor(doc.id, "toast")
+    set_document_editor(doc.id, "xml")
     html = render_editor(doc)
-    assert "toast-editor" in html
+    assert "xml-editor" in html
 
 
 def test_unknown_editor() -> None:

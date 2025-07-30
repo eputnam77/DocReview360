@@ -17,10 +17,10 @@ This walkthrough helps you explore DocReview360 from the perspective of a new us
 
 ### Changing the editor
 
-The configuration file contains an `editor` setting. Supported values include `tiptap`, `toast` and `word`.
+The configuration file contains an `editor` setting. Supported values include `tiptap` and `word`.
 
 1. Run `docreview360 init` to regenerate the file or edit it manually.
-2. Set `editor: toast` (or another option) and restart the server.
+2. Set `editor: tiptap` (or another option) and restart the server.
 3. The next time you open the editor the new tool loads.
 
 Optional TipTap extensions can be discovered and managed at runtime. See
