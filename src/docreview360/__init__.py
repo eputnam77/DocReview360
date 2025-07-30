@@ -55,6 +55,10 @@ __all__ = [
     "GuardrailsMiddleware",
     "chat_bot",
     "migration",
+    "login_gov",
+    "piv_cac",
+    "auth0_provider",
+    "okta",
 ]
 
 from . import (
@@ -63,6 +67,7 @@ from . import (
     approvals,
     archive,
     auth,
+    auth0_provider,
     celery_app,
     chat_bot,
     cli,
@@ -83,6 +88,7 @@ from . import (
     fts,
     git_hooks,
     hr_sync,
+    login_gov,
     logs,
     metabase,
     migration,
@@ -90,7 +96,9 @@ from . import (
     monitoring,
     nemo_guardrails,
     notifications,
+    okta,
     onlyoffice_editor,
+    piv_cac,
     plugins,
     plugins_ui,
     project_init,
