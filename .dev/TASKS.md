@@ -104,3 +104,25 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 110   | rF-5 Celery quality gate                                         | Task runs model on save.                                                                                                                                                | Backend • P2       | 1 d        | Score saved.                                                         |
 | 111   | Delegation table & approval logic                                | Add `Delegations` table (`principal_id`, `delegate_id`, `scope`, `start_date`, `end_date`, `proof_uri`). Approval queries include active delegates; cron warns on expiry and approvals record `actor_type`. | Backend • P2       | 3 d        | Unit test: delegate allowed only within date range. |
 | 112   | Delegate UI prompts & acting badge                                | On manager OOO event, suggest delegate; show “Acting for → Mgr Smith (until date)” badge when signing. Admins have “Sign as Acting” override. | FE • P2            | 3 d        | Cypress: suggestion and badge render. |
+| 113   | Approval comment edits & notifications | Edit after sign; send owner update email. | Backend • P2 | 2 d | Updated comment triggers email |
+| 114   | Approval removal confirmation | Modal confirm before resetting or removing reviewer. | FE • P2 | 1 d | Dialog prevents accidental removal |
+| 115   | Project watchlist | Star project to receive updates. | FE • P2 | 2 d | API returns starred list |
+| 116   | GitHub versioned doc sync | Push/pull docs for archival review. | DevOps • P3 | 2 d | GitHub repo shows commit |
+| 117   | Global settings panel | Tabs for auth, storage, email, plugins, backup. | FE • P2 | 3 d | Saving settings persists to DB |
+| 118   | Lock core settings after onboarding | DB and auth provider readonly after setup. | Backend • P2 | 2 d | Attempting change yields warning |
+| 119   | Plugin marketplace | Install packages from PyPI via UI. | FE • P3 | 3 d | New plugin listed after install |
+| 120   | Backup/Restore panel | Trigger Celery tasks and show progress. | DevOps • P3 | 3 d | Restore completes without errors |
+| 121   | Environment switcher | Toggle dev/stage/prod endpoints with color cues. | FE • P3 | 2 d | Switching updates base API URL |
+| 122   | RBAC role editor | Permission matrix editable per role. | FE • P3 | 3 d | Save roles reflects via API |
+| 123   | Scheduled task cron editor | Manage Celery Beat schedules via UI. | FE • P3 | 2 d | Cron expression saved |
+| 124   | Downloadable CLI profile | Fetch `docreview360.env` from settings page. | Backend • P2 | 1 d | File download works |
+| 125   | Admin-less project creation | Wizard for non-admin authors to start projects. | FE • P3 | 3 d | New project created without admin |
+| 126   | Phases configuration page | Admin CRUD for workflow phases. | Backend • P3 | 2 d | Phase appears in dropdown |
+| 127   | Document numbering options | Sequential or manual per project. | Backend • P3 | 2 d | Setting persists to DB |
+| 128   | Integrations settings page | Unified config at `/config` route. | FE • P3 | 2 d | Save updates environment vars |
+| 129   | In-app docs page | Static docs accessible from Support menu. | Docs • P3 | 1 d | Link loads docs page |
+| 130   | Migration CLI `docreview360 migrate` | Export/import data for reinitialisation. | DevOps • P3 | 2 d | Round-trip migration test |
+| 131   | Okta SSO option | OAuth2 login via Okta. | Security • P3 | 2 d | Okta login succeeds |
+| 132   | HID Global PIV/CAC login | Smartcard auth via PKI. | Security • P3 | 3 d | CAC certificate accepted |
+| 133   | Auth0 SaaS provider | OIDC integration for SaaS edition. | Security • P3 | 2 d | Auth0 login callback works |
+| 134   | Project form with Phase & Workflow defaults | Fields auto-set from doc type. | FE • P2 | 2 d | New project shows defaults |
