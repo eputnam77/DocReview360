@@ -36,7 +36,7 @@ The following table reflects the system’s **baseline role‑based access confi
 | Lock / publish a draft             |    ✔    |    ✔    |    ✔    |    —    |    —    |    —    |    —    |
 | Assign / remove reviewers          |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    —    |    —    |
 | Add project status comments        |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    —    |    —    |
-| Approve / sign documents           |    ✔    |    ✔    |  ✔ (own docs only)  |    ✔    |    —    |    ✔    |    —    |
+| Approve / sign documents           |    —    |    ✔ (own docs only)    |  ✔ (own docs only)  |    ✔ (own docs only)    |    —    |    ✔ (own docs only)    |    —    |
 | Add comments to project comments table |    ✔    |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    ✔    |
 | Delete projects                   |    ✔    |     —    |    —    |    —    |    —     |    —    |    —     |
 
