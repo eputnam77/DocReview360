@@ -6,6 +6,7 @@
 - **Document type CRUD** stored in-memory with validation【F:src/docreview360/doc_types.py†L1-L60】【F:tests/test_documents.py†L1-L40】.
 - **TipTap conversion helpers** import/export documents【F:src/docreview360/tiptap.py†L1-L55】【F:tests/test_tiptap.py†L1-L20】.
 - **Approval lifecycle** manages reviewer approvals【F:src/docreview360/approvals.py†L1-L38】【F:tests/test_approvals.py†L1-L38】.
+- **Migration CLI** exports and imports instance data【F:src/docreview360/cli.py†L132-L161】【F:tests/test_cli.py†L1-L39】.
 
 ## ⚠️ Partial
 - `ruff` reported 6 import-order/unused errors.【124f96†L1-L20】【2568c5†L1-L21】

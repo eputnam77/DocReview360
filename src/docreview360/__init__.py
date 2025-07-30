@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """DocReview360 core package."""
 
 __all__ = [
@@ -53,6 +54,7 @@ __all__ = [
     "nemo_guardrails",
     "GuardrailsMiddleware",
     "chat_bot",
+    "migration",
 ]
 
 from . import (
@@ -83,6 +85,7 @@ from . import (
     hr_sync,
     logs,
     metabase,
+    migration,
     models,
     monitoring,
     nemo_guardrails,

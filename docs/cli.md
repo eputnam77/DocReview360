@@ -32,3 +32,13 @@ If `--database-url` is omitted the wizard uses driver-specific defaults:
 - Postgres → `postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360`
 - MySQL → `mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360`
 - SQLite → `sqlite:///docreview360.db`
+
+## migrate
+
+```
+docreview360 migrate [export|import] PATH
+```
+
+Export or import an entire instance for migration. The command writes a gzip
+archive containing documents, logs and document types which can be restored on
+another environment.
