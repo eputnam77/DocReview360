@@ -68,6 +68,13 @@ Run the CLI wizard to generate `docreview360.yml`:
 docreview360 init
 ```
 
+To copy data between environments use the migration command:
+
+```bash
+docreview360 migrate export backup.gz
+docreview360 migrate import backup.gz
+```
+
 ---
 
 ## 🚀 Run the backend API
