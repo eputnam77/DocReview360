@@ -1,13 +1,15 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def test_reporting_endpoints() -> None:
     client = TestClient(app)
 
     # create project with workflow and document
-    resp = client.post("/projects", json={"id": "r1", "name": "Report", "user": "bob"})
+    resp = client.post(
+        "/projects",
+        json={"id": "r1", "name": "Report", "user": "bob", "doc_type": "sample"},
+    )
     assert resp.status_code == 201
 
     resp = client.post("/workflows", json={"project": "r1", "phases": ["start", "end"]})
@@ -49,3 +51,5 @@ def test_reporting_endpoints() -> None:
 
     resp = client.get("/dashboard/doc-types")
     assert resp.status_code == 200
+    counts = resp.json()
+    assert counts["sample"] >= 1

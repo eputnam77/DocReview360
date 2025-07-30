@@ -163,6 +163,14 @@ export default function ManagerDashboardPage() {
         overdue: fallback.stats.overdue,
         active: projects.filter((p: any) => p.pending_approvals > 0).length,
       });
+      fetch(`${API}/dashboard/doc-types`)
+        .then((r) => (r.ok ? r.json() : {}))
+        .then((dt) =>
+          setDocTypes(
+            Object.entries(dt).map(([type, count]) => ({ type, count }))
+          )
+        )
+        .catch(() => setDocTypes(fallback.docs));
     } else if (isError) {
       setStats(fallback.stats);
       setStatusData(fallback.status);
