@@ -11,6 +11,7 @@ import {
   BookA,
   Settings2,
   Puzzle,
+  PackagePlus,
 } from "lucide-react";
 
 // List of configuration sections
@@ -62,6 +63,12 @@ const CONFIG_ITEMS = [
     href: "/configuration/integrations",
     icon: <Puzzle className="w-6 h-6 text-pink-500" />,
     desc: "Connect with other tools and platforms."
+  },
+  {
+    label: "Plugin Marketplace",
+    href: "/configuration/plugin-marketplace",
+    icon: <PackagePlus className="w-6 h-6 text-fuchsia-500" />,
+    desc: "Install optional plugins from PyPI.",
   },
 ];
 
