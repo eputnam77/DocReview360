@@ -10,7 +10,6 @@ from .documents import DocumentModel
 EDITOR_PLUGINS = {
     "tiptap": None,
     "onlyoffice": "docreview360.onlyoffice_editor:OnlyofficeConnector",
-    "xml": "docreview360.xml_editor:XMLEditor",
 }
 
 

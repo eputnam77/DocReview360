@@ -14,9 +14,9 @@ def test_render_switched_editor() -> None:
     from docreview360.documents import documents
 
     documents[doc.id] = doc
-    set_document_editor(doc.id, "xml")
+    set_document_editor(doc.id, "onlyoffice")
     html = render_editor(doc)
-    assert "xml-editor" in html
+    assert "onlyoffice/2" in html
 
 
 def test_unknown_editor() -> None:

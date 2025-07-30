@@ -32,7 +32,7 @@ def cli() -> None:
 )
 @click.option(
     "--editor",
-    type=click.Choice(["tiptap", "onlyoffice", "xml"], case_sensitive=False),
+    type=click.Choice(["tiptap", "onlyoffice"], case_sensitive=False),
     default="tiptap",
     show_default=True,
     prompt=True,
