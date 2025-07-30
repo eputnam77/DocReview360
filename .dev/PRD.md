@@ -1,4 +1,5 @@
 **DocReview360 — Consolidated Product Requirements Document (PRD)**
+
 *(v 2025-07-04 — unified, de-duplicated, and aligned with best-in-class open-source tooling)*
 
 ---
@@ -10,9 +11,9 @@ DocReview360 is an open-source, web-first platform for drafting, reviewing, appr
 | **Editing**            | TipTap, Office Online embed for MS Word, ONLYOFFICE Docs viewer (default) | Rich-text / DOCX |
 | **Workflow**           | Built-in JSON workflows | Simple state-machine reviews |
 | **Signatures**         | Documenso | Secure e-sign & audit trail      |
-| **Search & Analytics** | OpenSearch + Metabase | Full-text & BI dashboards        |
+| **Search & Analytics** | OpenSearch + Metabase | Full-text & business intelligence dashboards        |
 | **AuthN/AuthZ**        | Keycloak                                                     | SSO, MFA, RBAC                   |
-| **UI Framework**       | React 18 + Next.js 14 & React Flow (admin only)              | Modern, node-based UX            |
+| **UI Framework**       | React 18 + Next.js 14 (admin only)              | Modern, node-based UX            |
 
 Each module is hot-swappable via a plugin contract, ensuring future tooling can be added without core rewrites.
 
@@ -20,15 +21,31 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 ---
 
-## 2. User Roles
+## 2. User Roles (Default)
 
-| Role                | Key Privileges                                         |
-| ------------------- | ------------------------------------------------------ |
-| **Admin**           | Configure auth, editors, templates, workflows, plugins |
-| **Project Manager** | Create projects, set phases, assign reviewers          |
-| **Author/Editor**   | Draft, import, convert, respond to comments            |
-| **Reviewer/SME**    | Inline comments, change-tracking, sign/approve         |
-| **Viewer**          | Read-only, download exports, view audit logs           |
+The following table reflects the system’s **baseline role‑based access configuration**. These settings are applied automatically when a new project or workspace is created. An Administrator may adjust, extend, or revoke any role or permission at any time to meet program‑specific or agency‑specific requirements.
+
+| Permission / Action                | **Admin** | **Editor** | **SME** | **Reviewer** | **Project Mgr** | **Manager** | **Observer**  |
+| ---------------------------------- | :-------: | :--------: | :-----: | :----------: | :-------------: | :---------: | :-----------: |
+| View dashboards & projects         |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
+| Create projects                    |    ✔    |    ✔    |    ✔    |    —    |    ✔ (metadata only)    |    —    |    —    |
+| Configure auth, templates, plugins |    ✔    |    —    |    —    |    —    |    —    |    —    |    —    |
+| Draft / edit documents in the UI   |    ✔    |    ✔    |    ✔    |    —    |    —    |    —    |    —    |
+| Download / upload Word documents   |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    —    |
+| Delete Word or TipTap documents    |    ✔    |    —    |    —    |    —    |    —    |    —    |    —    |
+| Lock / publish a draft             |    ✔    |    ✔    |    ✔    |    —    |    —    |    —    |    —    |
+| Assign / remove reviewers          |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    —    |    —    |
+| Add project status comments        |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    —    |    —    |
+| Approve / sign documents           |    ✔    |    ✔    |  ✔ (own docs only)  |    ✔    |    —    |    ✔    |    —    |
+| Add comments to project comments table |    ✔    |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    ✔    |
+| Delete projects                   |    ✔    |     —    |    —    |    —    |    —     |    —    |    —     |
+
+Clarification
+* Admin — May delete projects or documents, but should do so only in exceptional cases; most Federal records must be retained.
+* SME (Project Lead) — Owns the project, often creates it, and drafts the initial version. Signs only for projects where they are designated SME; otherwise acts as a Reviewer.
+* Reviewer — Non‑manager who can comment on and formally approve documents (e.g., attorneys, policy analysts, SMEs on other projects).
+* Project Manager — Creates placeholder projects; SMEs or Editors fill in the details.
+* Observer — Read‑only access; no active responsibilities within a project.
 
 ---
 
@@ -37,21 +54,20 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 ### 3.1 Document & Template Management
 
 * **Custom document types / categories** with import-export.
-* **Template engine**: Markdown, TipTap JSON, DOCX, XML.
+* **Template engine**: TipTap JSON, DOCX.
 * **Type conversion wizard** (e.g., AC → Policy) preserving numbering & metadata.
-* **Template & Doc-Type Manager UI** for uploading golden Markdown templates, editing in Monaco, and generating derivatives. Accessible via **Configuration → Templates**. All editor templates are persisted in the database for versioning.
-* **Multi-format templates**: administrators may create templates in JSON, HTML, or DOCX and input the raw text or upload a file through the UI. These templates are stored in the DB rather than on disk.
+* **Template & Doc-Type Manager UI** for uploading golden templates and generating derivatives. Accessible via **Configuration → Templates**. All editor templates are persisted in the database for versioning.
+* **Multi-format templates**: administrators may create templates in JSON, HTML, or DOCX and input the raw text or upload a file through the UI. These templates are stored in the DB.
 * **Per-document linter & numbering toggles** with one-click migration to the latest template version.
 * **Project form includes Phase & Workflow fields** with defaults mapped from document type.
 * **Document types can link to a default content template**. When a project is created using that type, the associated template is automatically loaded into the editor the first time the document is opened.
 * **Message templates** drive email and chat notifications. The system ships with six built‑in email templates – **Review Request**, **Reminder: Review Due Soon**, **Overdue Escalation**, **Approval Confirmation**, **Feedback Provided**, and **Re‑Review Request**. Users may create additional templates and disable any they do not need, but the defaults cannot be removed. Templates support `{project_link}`, `{user}` and `{comments}` placeholders and are persisted in the database.
-* **Project Lead field** replaces “Subject Matter Expert”. It defaults to the logged-in user on project creation but can be changed before saving.
 
 ### 3.2 Editors
 
-1. **TipTap** — headless ProseMirror framework, extensible via extensions. ([github.com][5])
+1. **TipTap** — headless ProseMirror framework, extensible via extensions.
 2. **Office Online** embed for MS Word documents.
-3. **ONLYOFFICE Docs** viewer for full DOCX fidelity. ([onlyoffice.com][2])
+3. **ONLYOFFICE Docs** viewer for full DOCX fidelity.
 
 * Real-time autosave, dual-view (rich & source), Pandiff diffing, TipTap change bars.
 * **Every save persists the document to PostgreSQL with a revision entry**, ensuring crashes or restarts do not lose work. A `document_versions` table retains prior content for rollback.
@@ -78,8 +94,8 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 ### 3.5 Search, Dashboards & Logs
 
-* **OpenSearch** cluster for full-text & vector queries. ([opensearch.org][9])
-* **Metabase** for ad-hoc BI and KPI dashboards. ([metabase.com][10])
+* **OpenSearch** cluster for full-text & vector queries.
+* **Metabase** for ad-hoc BI and KPI dashboards.
 * Structured, ISO-8601 logs (INFO-ERROR-CRITICAL) exposed via Grafana Loki or OpenSearch Dashboards.
 * Interactive dashboards with project filters and export options.
 * Sortable project tracker table linking to per-project details.
@@ -95,13 +111,14 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 ### 3.7 Security & Compliance
 
-* **Keycloak** OIDC/SAML with MFA. ([keycloak.org][11])
-* **Login.gov** SAML broker for federal SSO. ([login.gov][12])
-* **Okta** SSO option for commercial orgs. ([okta.com][13])
-* **HID Global PIV/CAC** smartcard login. ([hidglobal.com][14])
-* **Auth0** OIDC provider for SaaS deployments. ([auth0.com][15])
+* **Keycloak** OIDC/SAML with MFA.
+* **Login.gov** SAML broker for federal SSO.
+* **Okta** SSO option for commercial orgs.
+* **HID Global PIV/CAC** smartcard login.
+* **Auth0** OIDC provider for SaaS deployments.
 * RBAC down to field-level; CSP, CSRF, JWT rotation.
 * FedRAMP Moderate controls mapped; daily encrypted backups.
+
 ### 3.8 Setup & Administration
 
 * **First-run setup wizard** guides initial DB, auth, storage and editor configuration.
@@ -132,7 +149,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 
 ### 3.9 AI Chat Bot
 
-* **Conversational assistant** accessible from the dashboard.
+* Conversational assistant accessible from the dashboard.
 * Queries the project database (projects, assignments, workflow state) to answer
   questions like “who is assigned to X project?” or “what’s the status of X?”.
 * Pluggable retrieval pipeline for additional knowledge sources (e.g., docs,
@@ -169,8 +186,6 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 plugins/
  ├─ editors/
  │   └─ tiptap_docx_export.py
- ├─ workflow/
- │   └─ camunda_adapter.py
  ├─ auth/
  │   └─ keycloak_provider.py
  └─ ai/
@@ -226,9 +241,3 @@ workflows. The Playwright suite spins up the FastAPI server, drives a real
 browser and exercises background services. The CI pipeline installs the
 Playwright browsers and runs `pytest -m e2e` in headless mode so regressions are
 caught before release.
-
----
-
-### References
-TipTap editor ([github.com][5])  Office Online ([office.com][16])	Documenso ([documenso.com][4])	Metabase ([metabase.com][10])	Keycloak ([keycloak.org][11])	Login.gov ([login.gov][12])	Okta ([okta.com][13])	HID Global ([hidglobal.com][14])	Auth0 ([auth0.com][15])	OpenSearch ([opensearch.org][9])	ONLYOFFICE Docs ([onlyoffice.com][2])	React Flow ([reactflow.dev][7])
-
