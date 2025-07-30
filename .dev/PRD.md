@@ -62,6 +62,8 @@ Clarification
 * **Project form includes Phase & Workflow fields** with defaults mapped from document type.
 * **Document types can link to a default content template**. When a project is created using that type, the associated template is automatically loaded into the editor the first time the document is opened.
 * **Message templates** drive email and chat notifications. The system ships with six built‑in email templates – **Review Request**, **Reminder: Review Due Soon**, **Overdue Escalation**, **Approval Confirmation**, **Feedback Provided**, and **Re‑Review Request**. Users may create additional templates and disable any they do not need, but the defaults cannot be removed. Templates support `{project_link}`, `{user}` and `{comments}` placeholders and are persisted in the database.
+* **Document Checker** validates uploaded DOCX files for FAA style and accessibility, returning a corrected copy.
+* **Special Conditions Doc Builder** launches an external tool for generating legally formatted notices.
 
 ### 3.2 Editors
 
@@ -90,6 +92,7 @@ Clarification
 * Inline comments, threads, mentions, emoji reactions.
 * Concurrent editing with conflict-resolution.
 * AI helpers (Prompt-Engine, SynthLang, ruv-FANN anomaly alerts).
+* **AI workload balancer** distributes background jobs across workers.
 * **Project Watchlist** lets any user star a project to follow its progress.
 
 ### 3.5 Search, Dashboards & Logs
@@ -188,6 +191,8 @@ plugins/
  │   └─ tiptap_docx_export.py
  ├─ auth/
  │   └─ keycloak_provider.py
+ ├─ storage/
+ │   └─ minio_backend.py
  └─ ai/
      └─ ruv_fann_lint.py
 ```
@@ -198,7 +203,7 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 
 ## 6. UI & UX Principles
 
-* **Admin pages** expose React Flow modeller; **users never see nodes/edges** — they interact with step cards and progress bars.
+* **Admin pages** include a drag-and-drop workflow designer; users interact with step cards and progress bars.
 * Everything is keyboard accessible (WCAG 2.1 AA).
 * Dark-mode & reduced-motion preferences respected.
 
@@ -227,7 +232,7 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 
 ## 9. Future-Proofing
 
-* **GraphQL read layer** planned for 2026 to simplify ad-hoc integrations.
+* **GraphQL read layer** now provides basic query support; advanced features remain on the 2026 roadmap.
 * **Web-native CRDT** research for offline editing sync.
 * Optional migration path to **OpenSearch Serverless** when FedRAMP-High certified.
 
