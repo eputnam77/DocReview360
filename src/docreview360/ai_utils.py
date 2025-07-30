@@ -15,11 +15,24 @@ def apply_feedback_template(template: str, text: str) -> str:
 
 
 FEEDBACK_TEMPLATES: Dict[str, str] = {"default": "Feedback: {text}"}
+# Prompt-Engine templates
+PROMPT_TEMPLATES: Dict[str, str] = {"default": "{text}"}
 
 
 def add_feedback_template(name: str, template: str) -> None:
     """Register a new feedback template."""
     FEEDBACK_TEMPLATES[name] = template
+
+
+def add_prompt_template(name: str, template: str) -> None:
+    """Register a new prompt template for the Prompt-Engine."""
+    PROMPT_TEMPLATES[name] = template
+
+
+def render_prompt(name: str, **context: str) -> str:
+    """Return a prompt rendered with the given ``context``."""
+    tmpl = PROMPT_TEMPLATES.get(name, PROMPT_TEMPLATES["default"])
+    return tmpl.format(**context)
 
 
 def generate_feedback(name: str, text: str) -> str:
@@ -29,14 +42,26 @@ def generate_feedback(name: str, text: str) -> str:
 
 
 # SynthLang simulation
+SYNTH_STOP_WORDS = {
+    "the",
+    "and",
+    "is",
+    "a",
+    "an",
+    "of",
+    "in",
+    "to",
+}
 synth_enabled = False
 
 
 def synth_compress(text: str) -> str:
-    """Reduce token count by removing vowels when enabled."""
+    """Reduce token count by removing stop words and vowels when enabled."""
     if not synth_enabled:
         return text
-    return "".join(ch for ch in text if ch.lower() not in "aeiou")
+    words = [w for w in text.split() if w.lower() not in SYNTH_STOP_WORDS]
+    no_vowels = "".join(ch for ch in " ".join(words) if ch.lower() not in "aeiou")
+    return no_vowels
 
 
 def _fann_features(text: str) -> list[float]:
