@@ -66,6 +66,7 @@ Each module is hot-swappable via a plugin contract, ensuring future tooling can 
 * **Editable approval comments** so reviewers can update their remarks after signing.
 * **Automatic notification** to the document owner when reviewers add or update approval comments.
 * **Confirmation pop-ups** appear before a user resets their approval or removes a reviewer from the approvals list.
+* **Delegated sign-off** is data-driven: a `Delegations` table stores `principal_id`, `delegate_id`, `scope`, `start_date`, `end_date`, and `proof_uri`. Approval lookups include valid delegates; approvals record `actor_type` and a daily job emails upcoming expirations. If acting, the UI displays “Acting for → Mgr Smith (until 08 Aug 2025)”.
 * **Project leads and technical writers can send documents for review and respond to comments.**
 
 ### 3.4 Collaboration
