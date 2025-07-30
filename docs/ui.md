@@ -37,6 +37,7 @@ Clicking a document number opens a details view with metadata and recent audit m
 ## Interactive Dashboard
 
 The dashboard now reads data from `/metrics/summary` and `/api/audit`. A dropdown lets you filter audit messages by project so you can focus on recent activity. Counts for projects, documents and approvals update live.
+The **Document Type Breakdown** widget displays how many active projects exist for each document type. Data comes from `/dashboard/doc-types` and updates whenever projects are created.
 
 ## Global Search
 
