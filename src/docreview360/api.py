@@ -719,6 +719,30 @@ async def delete_document_type_endpoint(name: str) -> Response:
     return Response(status_code=204)
 
 
+@app.get("/plugin-marketplace")
+async def list_marketplace() -> list[str]:
+    """Return available plugins that can be installed."""
+    from .plugin_marketplace import list_available
+
+    return list_available()
+
+
+class MarketplaceInstall(BaseModel):
+    name: str
+
+
+@app.post("/plugin-marketplace/install")
+async def install_marketplace_plugin(body: MarketplaceInstall) -> dict[str, str]:
+    """Install a plugin from the marketplace."""
+    from .plugin_marketplace import install_plugin
+
+    try:
+        install_plugin(body.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"installed": body.name}
+
+
 # ---------------------------------------------------------------------------
 # Phase management
 # ---------------------------------------------------------------------------
