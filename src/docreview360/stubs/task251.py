@@ -10,7 +10,6 @@ from ..stubs import record_task_completion
 def save_document(session: Session, doc_id: str, content: str) -> bool:
     """Persist document edit and version history."""
     from sqlalchemy import text
-    from ..models import Document, DocumentVersion
 
     record_task_completion(251)
 
@@ -21,17 +20,13 @@ def save_document(session: Session, doc_id: str, content: str) -> bool:
     ).fetchone()
     if result is None:
         session.execute(
-            text(
-                "INSERT INTO documents (id, project_id, content) VALUES (:id, 0, :content)"
-            ),
+            text("INSERT INTO documents (id, project_id, content) VALUES (:id, 0, :content)"),
             {"id": doc_id, "content": content},
         )
         return True
 
     session.execute(
-        text(
-            "INSERT INTO document_versions (document_id, content) VALUES (:id, :prev)"
-        ),
+        text("INSERT INTO document_versions (document_id, content) VALUES (:id, :prev)"),
         {"id": doc_id, "prev": result[0]},
     )
     session.execute(
