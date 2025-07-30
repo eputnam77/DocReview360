@@ -78,6 +78,7 @@ DocReview360 exposes a JSON API that lets you manage projects, documents and app
 - `GET /reports/summary.csv` – download the summary report
 - `GET /reports/dashboard` – per-project dashboard data
 - `GET /dashboard/widgets` – assignment and approval counts
+- `GET /dashboard/doc-types` – active project counts by document type
 
 ## Configuration and Status
 - `GET /config` – return the current configuration
