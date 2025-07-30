@@ -112,6 +112,7 @@ from .search import (
 )
 from .status import internal_status, public_status
 from .stubs.task223 import convert_document
+from .watchlist import get_watchlist, toggle_watch
 from .workflows import (
     WorkflowModel,
     advance_workflow,
@@ -633,6 +634,22 @@ async def list_saved_searches_endpoint(user: str | None = None) -> list[search_m
 async def search_stats_endpoint() -> dict[str, int]:
     """Return counts of executed search queries."""
     return search_stats()
+
+
+class WatchBody(BaseModel):
+    user: str
+
+
+@app.post("/watchlist/{project_id}", status_code=201, response_model=list[str])
+async def toggle_watch_endpoint(project_id: str, body: WatchBody) -> list[str]:
+    """Toggle ``project_id`` for ``body.user`` and return the updated list."""
+    return toggle_watch(body.user, project_id)
+
+
+@app.get("/watchlist/{user}", response_model=list[str])
+async def get_watchlist_endpoint(user: str) -> list[str]:
+    """Return the watchlist for ``user``."""
+    return get_watchlist(user)
 
 
 @app.post("/ai/rewrite")
