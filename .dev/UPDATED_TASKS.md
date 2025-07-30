@@ -23,7 +23,7 @@
 | 213 | Approval reset confirmation      | Deferred |
 | 214 | Template linkage to doc types    | Deferred |
 | 215 | Auto-apply template on new project | Deferred |
-| 216 | Project watchlist                | Deferred |
+| 216 | Project watchlist                | Done |
 | 217 | SME field default                | Deferred |
 | 218 | Writers can send for review      | Deferred |
 | 219 | Login.gov SAML integration       | Deferred |
