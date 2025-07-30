@@ -32,3 +32,4 @@
 | 222 | Light and Dark mode              | Deferred |
 | 223 | Tools page                       | Done |
 | 224 | Resolve npm audit High CVEs      | Deferred |
+| 130 | Migration CLI `docreview360 migrate` | Done |
