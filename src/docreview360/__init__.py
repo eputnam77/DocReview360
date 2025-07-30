@@ -40,7 +40,6 @@ __all__ = [
     "metabase",
     "fed_numbering",
     "editor_loader",
-    "xml_editor",
     "onlyoffice_editor",
     "editor_switcher",
     "security_hardening",
@@ -113,7 +112,6 @@ from . import (
     watchlist,
     workflow_components,
     workflows,
-    xml_editor,
 )
 
 
