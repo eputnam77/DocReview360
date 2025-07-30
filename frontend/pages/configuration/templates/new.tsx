@@ -115,7 +115,7 @@ export default function NewTemplatePage() {
             </div>
             <ul className="list-disc ml-5 mt-2">
               <li>
-                <b>Format:</b> Choose a template format matching your editor (e.g., DOCX for Word, HTML/JSON for TipTap/Toast/Codex).
+                <b>Format:</b> Choose a template format matching your editor (e.g., DOCX for Word, HTML/JSON for TipTap).
               </li>
               <li>
                 <b>Upload a file</b> or <b>paste the template content</b> below.

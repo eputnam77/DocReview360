@@ -72,7 +72,7 @@ interface Project {
   status: "Draft" | "In Progress" | "Complete" | "Overdue";
   progress: number;
   updated?: string;
-  editor?: "tiptap" | "toast" | "codex" | "word";
+  editor?: "tiptap" | "word";
 }
 interface LogEntry {
   timestamp: string;
