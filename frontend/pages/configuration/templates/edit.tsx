@@ -172,7 +172,7 @@ export default function EditTemplatePage() {
               onChange={handleFileChange}
             />
             <div className="text-xs text-gray-500">
-              Upload a file to update this template (DOCX, HTML, JSON, XML, TXT, MD). For Word, upload .docx. For TipTap/Toast/Codex, use HTML or JSON.
+              Upload a file to update this template (DOCX, HTML, JSON, XML, TXT, MD). For Word, upload .docx. For TipTap, use HTML or JSON.
             </div>
           </div>
           <div>
