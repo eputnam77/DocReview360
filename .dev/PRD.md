@@ -144,6 +144,43 @@ The following table identifies two viable ways to track every DOCX revision.
 * **Delegated sign-off** is data-driven: a `Delegations` table stores `principal_id`, `delegate_id`, `scope`, `start_date`, `end_date`, and `proof_uri`. Approval lookups include valid delegates; approvals record `actor_type` and a daily job emails upcoming expirations. If acting, the UI displays “Acting for → Mgr Smith (until 08 Aug 2025)”.
 * **Project leads and technical writers can send documents for review and respond to comments.**
 
+#### 3.3.1 Special Conditions Intake (SC-Intake)
+
+**Scope**
+When a user creates a **Special Conditions** project, the system collects SC-specific metadata (e.g., affected product/type, regulatory basis, safety rationale summary, applicability scope, docket/ticket references).
+
+**UX Flow**
+
+* **Trigger**: In **New Project**, if **Doc Type = Special Conditions**, display an SC-Intake block.
+* **Choice**:
+  • **Answer now** → a short stepper with validated fields appears below the standard project fields.
+  • **Answer later** → create the project with SC-Intake status **INCOMPLETE** and show a persistent “Complete SC Intake” banner with a one-click link to the dedicated intake page.
+* **Dedicated Intake Page**: `/projects/{id}/sc-intake` with autosave and field-by-field validation.
+
+**Data Model**
+
+* Store responses as JSON in `projects.special_conditions` (JSONB) with a `sc_intake_status` enum: `INCOMPLETE | COMPLETE`.
+* Validate with a versioned JSON Schema `schemas/sc_intake_v1.json` (server-side).
+
+**Workflow Guards**
+
+* The following actions are **blocked** when `sc_intake_status = INCOMPLETE`:
+  *“Send for review”*, *“Generate Special Conditions Notice”*, *“Publish”*.
+* The guard shows which required fields are missing and links to the intake page.
+
+**Notifications**
+
+* On create with “Answer later,” assign the SME a system task **“Complete SC Intake”** and add it to “My Tasks”.
+* Optional reminder email after 3 business days (uses existing message template system).
+
+**Acceptance Criteria**
+
+* *AC-1* Creating a Special Conditions project offers **Answer now / Answer later**; both paths succeed.
+* *AC-2* If **Answer later**, project shows banner and a task for the SME until intake is complete.
+* *AC-3* Attempting to **Send for review / Generate Notice / Publish** with missing required SC fields blocks with a clear list of missing fields.
+* *AC-4* Completing intake flips status to **COMPLETE** and removes banner/task; guarded actions then proceed.
+* *AC-5* JSON Schema validation errors are shown inline and logged.
+
 ### 3.4 Collaboration
 
 * Inline comments, threads, mentions, emoji reactions.
