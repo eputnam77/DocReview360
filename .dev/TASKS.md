@@ -101,9 +101,9 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 107   | rF-2 Model train & export `.fann`                                | Cargo build, 95 % val accuracy.                                                                                                                                         | ML • P1            | 1 d        | File size < 5 MB.                                                    |
 | 108   | rF-3 PyO3 wheel via maturin                                      | `pip install ruv_fann-*.whl`.                                                                                                                                           | ML • P2            | 1 d        | Import works.                                                        |
 | 109   | rF-4 WASM plugin lint()                                          | wasm-bindgen, webgpu target.                                                                                                                                            | FE • P2            | 2 d        | Browser console OK.                                                  |
-| 110   | rF-5 Celery quality gate                                         | Task runs model on save.                                                                                                                                                | Backend • P2       | 1 d        | Score saved.                                                         |
-| 111   | Delegation table & approval logic                                | Add `Delegations` table (`principal_id`, `delegate_id`, `scope`, `start_date`, `end_date`, `proof_uri`). Approval queries include active delegates; cron warns on expiry and approvals record `actor_type`. | Backend • P2       | 3 d        | Unit test: delegate allowed only within date range. |
-| 112   | Delegate UI prompts & acting badge                                | On manager OOO event, suggest delegate; show “Acting for → Mgr Smith (until date)” badge when signing. Admins have “Sign as Acting” override. | FE • P2            | 3 d        | Cypress: suggestion and badge render. |
+| 110   | rF-5 Celery quality gate | Task runs model on save. | Backend • P2       | 1 d | Score saved.  |
+| 111   | Delegation table & approval logic | Add `Delegations` table (`principal_id`, `delegate_id`, `scope`, `start_date`, `end_date`, `proof_uri`). Approval queries include active delegates; cron warns on expiry and approvals record `actor_type`. | Backend • P2  | 3 d | Unit test: delegate allowed only within date range. |
+| 112   | Delegate UI prompts & acting badge | On manager OOO event, suggest delegate; show “Acting for → Mgr Smith (until date)” badge when signing. Admins have “Sign as Acting” override. | FE • P2 | 3 d | Cypress: suggestion and badge render. |
 | 113   | Approval comment edits & notifications | Edit after sign; send owner update email. | Backend • P2 | 2 d | Updated comment triggers email |
 | 114   | Approval removal confirmation | Modal confirm before resetting or removing reviewer. | FE • P2 | 1 d | Dialog prevents accidental removal |
 | 115   | Project watchlist | Star project to receive updates. | FE • P2 | 2 d | API returns starred list |
@@ -127,15 +127,15 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 133   | Auth0 SaaS provider | OIDC integration for SaaS edition. | Security • P3 | 2 d | Auth0 login callback works |
 | 134   | Project form with Phase & Workflow defaults | Fields auto-set from doc type. | FE • P2 | 2 d | New project shows defaults |
 | 135   | File-naming policy enforcement | Pattern config Off/Enforce/Auto-Rename; apply on upload & export. | Backend • P3 | 2 d | Wrong name returns 422 or renamed copy |
-| 136   | Document Checker for FAA style | Validate DOCX and fix accessibility issues. | Backend • P3 | 2 d | Unit test outputs corrected file |
-| 137   | Special Conditions Doc Builder | Launch external generator for notices. | Backend • P3 | 2 d | Generated notice matches template |
+| 136 | Integrate external “FAA-DocChecker” package    | • Add PyPI (or Git URL) requirement `faa_docchecker>=1.0.0` to `pyproject.toml`.<br>• Thin wrapper `src/docreview360/ext/faa_docchecker.py` with `validate(path: Path) -> CorrectedDoc`.<br>• Expose `/api/docx/check` (POST file) that streams the corrected DOCX back.<br>• No algorithm work—just import & wire. | Integration · P2 | 0.5 d | ① Dependency installs in CI.<br>② Hitting endpoint with bad DOCX returns corrected file (HTTP 200).        |
+| 137 | Integrate external “SC-Notice-Builder” package | • Add dependency `sc_notice_builder>=2.3.1`.<br>• Wrapper `src/docreview360/ext/sc_builder.py` with `build_notice(json_cfg) -> Path`.<br>• CLI passthrough: `docreview360 sc-build cfg.json`.<br>• Mount in UI: “Generate Special Conditions Notice” button calls backend and shows download. | Integration · P2 | 0.5 d | ① Command & button both produce notice that hashes equal template checksum.<br>② Smoke test < 3 s runtime. |
 | 138   | Document types in progress widget | Dashboard counts active projects per type. | FE • P3 | 2 d | Count matches DB query |
 | 139   | Sortable project tracker table | Table view with filters linking to projects. | FE • P3 | 3 d | Sorting updates rows correctly |
 | 140   | First-run setup wizard | Step-by-step initial DB/auth/storage/editor config. | FE • P2 | 3 d | Completing wizard persists settings |
 | 141   | AI Chat Bot | Conversational assistant querying project data. | AI • P3 | 3 d | "Status" query returns correct info |
 | 142   | Terraform plan viewer with OPA | Web UI shows `terraform plan` output and policy results. | DevOps • P3 | 2 d | Failing plan highlights policy breach |
 | 143   | Archival package format selector | Choose BagIt, METS, or Purview package on publish. | Backend • P3 | 3 d | Archive log records chosen type |
-| 144   | User role matrix update | Implement baseline roles in `rbac.yaml` and enforce via middleware. | Security • Must | 8 h | API test verifies permissions |
+| 144   | Default user role matrix update | Implement baseline roles in `rbac.yaml` and enforce via middleware. | Security • Must | 8 h | API test verifies permissions |
 | 145   | Template Manager UI | Admin page to upload and version templates, generating derivatives. | FE • Should | 16 h | Uploading DOCX appears in templates list |
 | 146   | Multi-format templates | Support JSON, HTML and DOCX templates stored in DB. | Backend • Should | 8 h | CRUD API creates each format |
 | 147   | Linter & numbering toggles | Per-document settings to enable/disable linter and numbering; offer one-click migration. | Backend • Should | 12 h | Toggle saves and migrates template |
@@ -148,5 +148,8 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 154   | Documenso approval button | Button on project page launches Documenso e-sign step tied to workflow. | FE • Should | 8 h | Click completes sign & updates state |
 | 155   | Dynamic reviewer management | Allow adding/removing reviewers within guard rails. | Backend • Should | 8 h | Invalid removal rejected |
 | 156   | Comment threads & emoji reactions | Support threaded comments with emoji reactions. | FE • Could | 12 h | Threaded view shows emoji counts |
-last_generated: 2025-07-31T15:20:48Z
+| 157 | End-to-End Playwright Suite      | Spin up stack with `docker-compose`, run CLI (`docreview360 init …`), drive browser, assert publish→archive flow. | QA · P1 | 5 d | `pytest -m e2e` green in CI; coverage ≥ 80 % |
+| 158 | Autosave + Crash-Recovery Guard  | Front-end debounce-save every 5 s; BE persists to `document_versions` with `is_autosave` flag. Auto-restore prompt on reload. | FE/BE · P1 | 3 d | Kill browser mid-edit → data loss = 0  |
+| 159 | Audit-Trail for File Auto-Rename | Emit `FileNameEvent` row when policy = “Enforce + Auto-Rename”; add `/api/audit/filename` GET. | Backend · P3  | 2 d | Unit test asserts row write on rename |
+
 
