@@ -126,4 +126,14 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 132   | HID Global PIV/CAC login | Smartcard auth via PKI. | Security • P3 | 3 d | CAC certificate accepted |
 | 133   | Auth0 SaaS provider | OIDC integration for SaaS edition. | Security • P3 | 2 d | Auth0 login callback works |
 | 134   | Project form with Phase & Workflow defaults | Fields auto-set from doc type. | FE • P2 | 2 d | New project shows defaults |
-last_generated: 2025-07-31T14:39:19Z
+| 135   | File-naming policy enforcement | Pattern config Off/Enforce/Auto-Rename; apply on upload & export. | Backend • P3 | 2 d | Wrong name returns 422 or renamed copy |
+| 136   | Document Checker for FAA style | Validate DOCX and fix accessibility issues. | Backend • P3 | 2 d | Unit test outputs corrected file |
+| 137   | Special Conditions Doc Builder | Launch external generator for notices. | Backend • P3 | 2 d | Generated notice matches template |
+| 138   | Document types in progress widget | Dashboard counts active projects per type. | FE • P3 | 2 d | Count matches DB query |
+| 139   | Sortable project tracker table | Table view with filters linking to projects. | FE • P3 | 3 d | Sorting updates rows correctly |
+| 140   | First-run setup wizard | Step-by-step initial DB/auth/storage/editor config. | FE • P2 | 3 d | Completing wizard persists settings |
+| 141   | AI Chat Bot | Conversational assistant querying project data. | AI • P3 | 3 d | "Status" query returns correct info |
+| 142   | Terraform plan viewer with OPA | Web UI shows `terraform plan` output and policy results. | DevOps • P3 | 2 d | Failing plan highlights policy breach |
+| 143   | Archival package format selector | Choose BagIt, METS, or Purview package on publish. | Backend • P3 | 3 d | Archive log records chosen type |
+last_generated: 2025-07-31T14:58:16Z
+
