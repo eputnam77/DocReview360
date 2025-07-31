@@ -244,6 +244,7 @@ The following table identifies two viable ways to track every DOCX revision.
 * PostgreSQL + pgvector, Redis, MinIO/S3.
 * Documents stored in PostgreSQL as JSONB or bytea blobs with a `document_versions` table for revision history; large binaries may use MinIO with DB references.
 * Celery workers; WebSockets via FastAPI-WebSocket.
+* GraphQL gateway – A read-only GraphQL endpoint (/graphql) proxies to REST/SQL for front-end flexibility. 2026 roadmap: add mutations, pagination, real-time subscriptions.
 
 ### 4.2 Frontend
 
@@ -256,6 +257,7 @@ The following table identifies two viable ways to track every DOCX revision.
 * Docker-compose (dev) → Helm charts (prod, EKS/AKS).
 * GitHub Actions CI, Terraform IaC, Trivy image scanning.
 * In-browser Terraform plan viewer with OPA policy checks.
+* Search back-end is BYO: self-managed OpenSearch today; optional OpenSearch Serverless once the service attains FedRAMP-High (see Future-Proofing).
 
 ---
 
