@@ -158,14 +158,14 @@ The following table identifies two viable ways to track every DOCX revision.
 | **Supported formats**   | 1. **BagIt ZIP**  <br> • Payload folder + `manifest-sha256.txt` per RFC 8493. <br> • `bag-info.txt` includes project ID, record schedule, checksum.  <br><br>2. **METS / PREMIS Submission Information Package (SIP)**  <br> • Root `mets.xml` conforming to METS 1.6 schema. <br> • PREMIS 3.0 events for each fixity check. <br> • Payload files in parallel directory.  <br><br>3. **Microsoft 365 Purview Export Package**  <br> • Applies only when the authoritative DOCX resides in SharePoint Online. <br> • System triggers Purview eDiscovery *Export*, stores returned ZIP plus `ExportKey.txt`. |
 | **Runtime behaviour**   | When a project transitions to **PUBLISHED**:  <br>1. Generate the chosen package.  <br>2. Validate fixity (BagIt `bagit.py --validate`; METS `metsValidator`; Purview checksum XML).  <br>3. Upload to the configured records repository.  <br>4. Write an entry to `Archives(doc_id, package_type, sha256, location_uri, timestamp)`.                                                                                                                                                                                                                                                                      |
 | **Acceptance criteria** | *AC-1* Administrator can select one of the three formats during workspace setup; UI prevents proceeding without a choice. <br>*AC-2* Publishing a project produces a package of the selected type and logs success. <br>*AC-3* Validation failure blocks archive, flags **ARCHIVE\_FAILED**, and emails Records Manager.                                                                                                                                                                                                                                                                                    |
-| **Rationale**           | Allows each FAA / DOT environment to align with its existing records workflow—simple BagIt, rich METS/PREMIS, or native Microsoft 365 export—without code changes.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Rationale**           | Allows each environment to align with its existing records workflow—simple BagIt, rich METS/PREMIS, or native Microsoft 365 export—without code changes.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
-* **Automated Records Archiving** — When a final project reaches **PUBLISHED**, the system SHALL automatically:
-  1. Flatten the final DOCX and generate PDF/A.
-  2. Export the complete Documenso approvals list.
-  3. Package all artefacts in a BagIt-compliant ZIP, including checksums.
-  4. Upload the package to the agency records repository via REST and log the returned record ID.
-  5. Notify the SME and Records team on success, or flag `ARCHIVE_FAILED` with a manual retry option.
+* **Automated Records Archiving** (BagIt example) — When a final project reaches **PUBLISHED**, the system automatically:
+  1. Flattens the final DOCX and generate PDF/A.
+  2. Exports the complete Documenso approvals list.
+  3. Packages all artifacts in a BagIt-compliant ZIP, including checksums.
+  4. Uploads the package to the agency records repository via REST and log the returned record ID.
+  5. Notifies the SME and Records team on success, or flag `ARCHIVE_FAILED` with a manual retry option.
 
 ### 3.7 Security & Compliance
 
