@@ -1,4 +1,4 @@
-**DocReview360 — Consolidated Product Requirements Document (PRD)**
+**DocReview360 — Product Requirements Document (PRD)**
 
 *(v July 3, 2025 — unified, de-duplicated, and aligned with best-in-class open-source tooling)*
 
