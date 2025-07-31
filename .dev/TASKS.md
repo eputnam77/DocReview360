@@ -135,5 +135,18 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 141   | AI Chat Bot | Conversational assistant querying project data. | AI • P3 | 3 d | "Status" query returns correct info |
 | 142   | Terraform plan viewer with OPA | Web UI shows `terraform plan` output and policy results. | DevOps • P3 | 2 d | Failing plan highlights policy breach |
 | 143   | Archival package format selector | Choose BagIt, METS, or Purview package on publish. | Backend • P3 | 3 d | Archive log records chosen type |
-last_generated: 2025-07-31T14:58:16Z
+| 144   | User role matrix update | Implement baseline roles in `rbac.yaml` and enforce via middleware. | Security • Must | 8 h | API test verifies permissions |
+| 145   | Template Manager UI | Admin page to upload and version templates, generating derivatives. | FE • Should | 16 h | Uploading DOCX appears in templates list |
+| 146   | Multi-format templates | Support JSON, HTML and DOCX templates stored in DB. | Backend • Should | 8 h | CRUD API creates each format |
+| 147   | Linter & numbering toggles | Per-document settings to enable/disable linter and numbering; offer one-click migration. | Backend • Should | 12 h | Toggle saves and migrates template |
+| 148   | Default template linkage | Document types define a default content template auto-loaded on first open. | Backend • Should | 6 h | Creating project loads template |
+| 149   | Message templates for notifications | Seed six default email templates with placeholders; CRUD UI. | Backend • Should | 10 h | Test email uses selected template |
+| 150   | Revision history panel | Track versions in `DocumentVersions` and allow diff/restore. | Backend • Must | 14 h | Restore previous draft via API |
+| 151   | SharePoint versioning toggle | Optional sync of document versions to SharePoint with Graph API. | Backend • Could | 16 h | Upload logs SP version ID |
+| 152   | TipTap extension pack | Slash menu, heading locks, draggable sections, watermark, Yjs collaboration. | FE • Could | 20 h | Two users edit concurrently with locks |
+| 153   | Workflow Designer UI | Visual designer to clone workflows and edit SLAs per project. | FE • Should | 16 h | Saving designer updates workflow |
+| 154   | Documenso approval button | Button on project page launches Documenso e-sign step tied to workflow. | FE • Should | 8 h | Click completes sign & updates state |
+| 155   | Dynamic reviewer management | Allow adding/removing reviewers within guard rails. | Backend • Should | 8 h | Invalid removal rejected |
+| 156   | Comment threads & emoji reactions | Support threaded comments with emoji reactions. | FE • Could | 12 h | Threaded view shows emoji counts |
+last_generated: 2025-07-31T15:20:48Z
 

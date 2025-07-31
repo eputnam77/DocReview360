@@ -20,3 +20,16 @@
 | Terraform plan viewer with OPA | Task 142 | | |
 | Archival package format selector | Task 143 | | |
 
+| User roles & permissions matrix | Task 144 | | |
+| Template Manager UI | Task 145 | | |
+| Multi-format templates stored in DB | Task 146 | | |
+| Linter & numbering per-document toggles | Task 147 | | |
+| Default template linkage | Task 148 | | |
+| Notification message templates | Task 149 | | |
+| Revision history & restore panel | Task 150 | | |
+| SharePoint versioning toggle | Task 151 | | |
+| TipTap extension pack with collaboration | Task 152 | | |
+| Workflow Designer UI | Task 153 | | |
+| Documenso approval button | Task 154 | | |
+| Dynamic reviewer management | Task 155 | | |
+| Comment threads & emoji reactions | Task 156 | | |
