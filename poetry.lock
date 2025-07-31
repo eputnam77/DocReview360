@@ -4748,4 +4748,4 @@ typing = ["mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4"
-content-hash = "23bd745971996192095cf37e0099baa04decea8dc996a3d588dd2bf0bc96af4f"
+content-hash = "bc6c2a8c70399930799f9b2f90ad4b3353387c3dc3e57c7be0024dc4b041c420"
