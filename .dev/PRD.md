@@ -1,6 +1,6 @@
 **DocReview360 — Consolidated Product Requirements Document (PRD)**
 
-*(v 2025-07-04 — unified, de-duplicated, and aligned with best-in-class open-source tooling)*
+*(v July 3, 2025 — unified, de-duplicated, and aligned with best-in-class open-source tooling)*
 
 ---
 
@@ -65,6 +65,42 @@ Clarification
 * **Document Checker** validates uploaded DOCX files for FAA style and accessibility, returning a corrected copy.
 * **Special Conditions Doc Builder** launches an external tool for generating legally formatted notices.
 
+#### 3.1.1 DOCX Revision History
+
+* Immutable DocumentVersions table
+* Draft-0 template rule
+* Revision-history UI panel (+ diff, restore)
+* SharePoint toggle behaviour
+
+#### 3.1.2 Storage Strategy (design note)
+
+The following table identifies two viable ways to track every DOCX revision.
+
+| Option                                                  | How it works                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Pros                                                                                                                                                                                    | Cons                                                                                                                                                                                                        |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A. In-app “Revision History” table**                  | • Every time a user uploads a DOCX, the backend stores the file under `project/{id}/v{n}.docx` and appends a row to **DocumentVersions** (`version`, `uploaded_by`, `uploaded_at`, `sha256`, `notes`).<br>• Draft 0 is the template delivered when the project is created; first user upload becomes Draft 1, and so on.<br>• UI: a **Revision History** panel (grid or timeline) under the Document tab showing version #, uploader, timestamp, download link, and an optional “Diff” button that runs OpenXmlPowerTools to create a redline against the prior version.                      | • No external dependency.<br>• Works offline and in air-gapped enclaves.<br>• Easy to tag “milestone” versions or restore an old draft.                                                 | • You own storage, backups, retention logic.<br>• Duplicate copies if the agency already uses SharePoint.                                                                                                   |
+| **B. SharePoint-native versioning via Microsoft Graph** | • Store the working DOCX in a SharePoint document library.<br>• Enable **major/minor versioning** (Library Settings → Versioning). SharePoint automatically creates `v1.0`, `v2.0`, … every check-in and captures who/when.<br>• Your app surfaces that history by calling `GET /drives/{drive-id}/items/{item-id}/versions` (Graph API) to pull the same metadata and expose it in your UI.<br>• Uploading a new draft is just `PUT /content` to the same driveItem; SharePoint bumps the version and keeps the delta. | • Records stay in the agency’s official repository with built-in retention & legal hold.<br>• No extra blob storage to manage.<br>• Users can co-author in Word for the web if desired. | • Requires SharePoint tenant access + OAuth (Graph) plumbing.<br>• Network latency; impossible in fully disconnected networks.<br>• Major/minor numbering (1.1, 1.2) may not map one-to-one with “Draft 3”. |
+
+##### Recommended path
+
+1. **Default to Option A** inside the tool so every deployment (even air-gapped) has a first-class revision table.
+2. **Add a “Connect to SharePoint” toggle** in Admin settings:
+   *If enabled*, the app writes/reads via Microsoft Graph **and** still records a shadow row in `DocumentVersions` table pointing to the SP version ID.
+   You can migrate later without losing history.
+
+##### Document versions
+
+> ```
+> DocumentVersions( id, project_id, version_int,
+>                   file_uri, uploaded_by, uploaded_at, sha256 )
+> ```
+>
+> * Draft 0 = generated template
+> * On each upload, increment `version_int`, store the file, and append a row.
+> * Expose a “Revision History” panel that lists version, uploader, timestamp, and provides:
+>   • Download link • “View diff” (redline vs previous) • Restore (privileged).
+> *If **SharePoint integration** is enabled, use the library’s native versioning (`driveItem/versions`) as the authoritative source and store its `versionId` in the table.*
+
 ### 3.2 Editors
 
 1. **TipTap** — headless ProseMirror framework, extensible via extensions.
@@ -111,6 +147,7 @@ Clarification
 * Archive tiers: TipTap JSON (source) → Markdown (portable) → PDF (immutable).
 * GitHub integration to push/pull documents for versioned review and long-term archival.
 * NeMo-Guardrails middleware for PII/style conformance before publish.
+* See DOCX versioning in 3.1.1.
 
 #### 3.6.1 Archival Package Format (Configurable)
 
@@ -176,62 +213,6 @@ Clarification
 * Pluggable retrieval pipeline for additional knowledge sources (e.g., docs,
   support tickets).
 
-### Two viable ways to track every DOCX revision
-
-| Option                                                  | How it works                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Pros                                                                                                                                                                                    | Cons                                                                                                                                                                                                        |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A. In-app “Revision History” table**                  | • Every time a user uploads a DOCX, the backend stores the file under `project/{id}/v{n}.docx` and appends a row to **DocumentVersions** (`version`, `uploaded_by`, `uploaded_at`, `sha256`, `notes`).<br>• Draft 0 is the template delivered when the project is created; first user upload becomes Draft 1, and so on.<br>• UI: a **Revision History** panel (grid or timeline) under the Document tab showing version #, uploader, timestamp, download link, and an optional “Diff” button that runs OpenXmlPowerTools to create a redline against the prior version.                      | • No external dependency.<br>• Works offline and in air-gapped enclaves.<br>• Easy to tag “milestone” versions or restore an old draft.                                                 | • You own storage, backups, retention logic.<br>• Duplicate copies if the agency already uses SharePoint.                                                                                                   |
-| **B. SharePoint-native versioning via Microsoft Graph** | • Store the working DOCX in a SharePoint document library.<br>• Enable **major/minor versioning** (Library Settings → Versioning). SharePoint automatically creates `v1.0`, `v2.0`, … every check-in and captures who/when. ([Microsoft Support][1])<br>• Your app surfaces that history by calling `GET /drives/{drive-id}/items/{item-id}/versions` (Graph API) to pull the same metadata and expose it in your UI. ([Microsoft Learn][2], [Microsoft Learn][3])<br>• Uploading a new draft is just `PUT /content` to the same driveItem; SharePoint bumps the version and keeps the delta. | • Records stay in the agency’s official repository with built-in retention & legal hold.<br>• No extra blob storage to manage.<br>• Users can co-author in Word for the web if desired. | • Requires SharePoint tenant access + OAuth (Graph) plumbing.<br>• Network latency; impossible in fully disconnected networks.<br>• Major/minor numbering (1.1, 1.2) may not map one-to-one with “Draft 3”. |
-
-### Recommended path
-
-1. **Default to Option A** inside the tool so every deployment (even air-gapped) has a first-class revision table.
-2. **Add a “Connect to SharePoint” toggle** in Admin settings:
-   *If enabled*, the app writes/reads via Microsoft Graph **and** still records a shadow row in `DocumentVersions` table pointing to the SP version ID.
-   You can migrate later without losing history.
-
-### PRD drop-in (new requirement)
-
-> **R-180 · DOCX Revision History**
-> *For every project, the system SHALL maintain an immutable revision table:*
->
-> ```
-> DocumentVersions( id, project_id, version_int,
->                   file_uri, uploaded_by, uploaded_at, sha256 )
-> ```
->
-> * Draft 0 = generated template
-> * On each upload, increment `version_int`, store the file, and append a row.
-> * Expose a “Revision History” panel that lists version, uploader, timestamp, and provides:
->   • Download link • “View diff” (redline vs previous) • Restore (privileged).
-> *If **SharePoint integration** is enabled, use the library’s native versioning (`driveItem/versions`) as the authoritative source and store its `versionId` in the table.*
-
-### Implementation snippets
-
-```python
-# increment version on upload
-v_prev = db.query(max(DocumentVersions.version_int)
-                  .filter_by(project_id=pid)).first() or 0
-v_new = v_prev + 1
-uri   = f"s3://docs/{pid}/v{v_new}.docx"
-upload_to_s3(uri, file_bytes)
-db.insert(DocumentVersions(pid, v_new, uri, user_id, now(), sha256(file_bytes)))
-```
-
-```typescript
-// Graph call for SharePoint
-GET /drives/{driveId}/items/{itemId}/versions
-// returns [{id:"1.0", lastModifiedBy:{user}, lastModifiedDateTime:"…"}]
-```
-
-### Why this meets Fed record-keeping needs
-
-* **Immutable trail** (each version kept, never overwritten).
-* **Who/when** captured in both the table *and* the audit log.
-* **Later archival** (R-170) can pull `latest(file_uri)` plus `DocumentVersions` to package in the BagIt ZIP.
-
-**Confidence level:** 0.80 – SharePoint versioning & Graph endpoints documented by Microsoft; OpenXmlPowerTools used to diff DOCX revisions. ([Microsoft Learn][2], [Microsoft Support][1])
-
 ---
 
 ## 4. Technical Architecture
@@ -287,10 +268,10 @@ Each plugin registers entry points (`setup.py`) so integrators can ship new edit
 
 | Q       | Major Deliverable                                           |
 | ------- | ----------------------------------------------------------- |
-| Q3 2025 | Core CRUD, TipTap, Keycloak, OpenSearch, basic workflow engine |
-| Q4 2025 | Documenso integration, multi-editor support, AI helpers     |
-| Q1 2026 | Export/Archival pipeline, interactive dashboards, setup wizard and admin panels |
-| Q2 2026 | Plugin marketplace, environment switcher, RBAC editor, multi-tenant SaaS |
+| Q1 2025 | Core CRUD, TipTap, Keycloak, OpenSearch, basic workflow engine |
+| Q2 2025 | Documenso integration, multi-editor support, AI helpers     |
+| Q3 2025 | Export/Archival pipeline, interactive dashboards, setup wizard and admin panels |
+| Q4 2025 | Plugin marketplace, environment switcher, RBAC editor, multi-tenant SaaS |
 
 ---
 
