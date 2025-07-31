@@ -148,8 +148,14 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 154   | Documenso approval button | Button on project page launches Documenso e-sign step tied to workflow. | FE • Should | 8 h | Click completes sign & updates state |
 | 155   | Dynamic reviewer management | Allow adding/removing reviewers within guard rails. | Backend • Should | 8 h | Invalid removal rejected |
 | 156   | Comment threads & emoji reactions | Support threaded comments with emoji reactions. | FE • Could | 12 h | Threaded view shows emoji counts |
-| 157 | End-to-End Playwright Suite      | Spin up stack with `docker-compose`, run CLI (`docreview360 init …`), drive browser, assert publish→archive flow. | QA · P1 | 5 d | `pytest -m e2e` green in CI; coverage ≥ 80 % |
+| 157 | End-to-End Playwright Suite   | Spin up stack with `docker-compose`, run CLI (`docreview360 init …`), drive browser, assert publish→archive flow. | QA · P1 | 5 d | `pytest -m e2e` green in CI; coverage ≥ 80 % |
 | 158 | Autosave + Crash-Recovery Guard  | Front-end debounce-save every 5 s; BE persists to `document_versions` with `is_autosave` flag. Auto-restore prompt on reload. | FE/BE · P1 | 3 d | Kill browser mid-edit → data loss = 0  |
 | 159 | Audit-Trail for File Auto-Rename | Emit `FileNameEvent` row when policy = “Enforce + Auto-Rename”; add `/api/audit/filename` GET. | Backend · P3  | 2 d | Unit test asserts row write on rename |
-
+| 160 | SC-Intake schema & storage  | Add `projects.special_conditions` (JSONB) and `projects.sc_intake_status` enum; add `schemas/sc_intake_v1.json`; server validator.  | Backend · P2     | 1 d    | Creating/patching SC JSON persists; invalid JSON rejected with schema errors. |
+| 161 | New Project form (SC conditional) | In New Project, when `Doc Type = Special Conditions`, render SC block with **Answer now / Answer later** choice and inline stepper. | FE · P2  | 1.5 d  | Both paths work; UI shows stepper fields and saves on submit.  |
+| 162 | SC-Intake page with autosave  | `/projects/{id}/sc-intake` page; autosave (debounce 1–2 s); inline schema error display.  | FE · P2  | 1 d    | Kill/reload browser mid-edit → data intact; inline errors shown.   |
+| 163 | Workflow guards for SC  | Block *Send for review*, *Generate Notice* (Task 137), *Publish* when intake incomplete; return list of missing required fields.   | Backend · P2     | 0.5 d  | API returns 422 with field list; UI displays guard message.  |
+| 164 | SME task + banner | Create system task “Complete SC Intake” on deferred path; project header banner until `COMPLETE`.   | FE/BE · P2   | 0.5 d  | Task appears in “My Tasks”; banner clears when complete.   |
+| 165 | Pre-fill SC Notice Builder  | Map SC-Intake JSON to Task **137** wrapper call; pass config object; show preview/download.   | Integration · P2 | 0.5 d  | Generated notice reflects intake fields; hash stable given same input.   |
+| 166 | E2E: SC paths   | Playwright scenario: create SC project (defer), guard fails send-for-review, complete intake, generate notice, publish.   | QA · P2    | 1 d  | `pytest -m e2e` passes end-to-end SC scenario.  |
 
