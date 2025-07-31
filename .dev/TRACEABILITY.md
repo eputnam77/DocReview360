@@ -32,3 +32,10 @@
 | Documenso approval button | Task 154 | | |
 | Dynamic reviewer management | Task 155 | | |
 | Comment threads & emoji reactions | Task 156 | | |
+| Special Condition (SC)-Intake schema & storage              | 160     | `src/docreview360/sc/schema.py`, migrations                                        | `tests/sc/test_schema.py`                                      |
+| New Project conditional Special Condition flow         | 161     | `frontend/pages/projects/new.tsx`                                                  | `cypress/e2e/sc_new_project.cy.ts`                             |
+| Dedicated Special Condition-Intake page                | 162     | `frontend/pages/projects/[id]/sc-intake.tsx`                                       | `cypress/e2e/sc_intake_page.cy.ts`                             |
+| Special Condition Workflow guards (review/notice/publish) | 163     | `src/docreview360/workflow/guards.py`                                              | `tests/sc/test_guards.py`                                      |
+| SME task + banner                       | 164     | `src/docreview360/tasks/system_tasks.py` · `frontend/components/ProjectBanner.tsx` | `tests/sc/test_system_task.py` · `cypress/e2e/sc_banner.cy.ts` |
+| Pre-fill Special Conditions Notice      | 165     | `src/docreview360/ext/sc_builder.py` (Task 137 integration)                        | `tests/sc/test_builder_prefill.py`                             |
+| E2E Special Condition scenario                         | 166     | —                                                                                  | `tests/e2e/test_sc_flow.py`                                    |
