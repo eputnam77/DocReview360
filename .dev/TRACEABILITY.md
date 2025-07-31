@@ -10,3 +10,13 @@
 | Project Watchlist feature | Task 115 | `src/docreview360/watchlist.py` | `tests/test_watchlist.py` |
 | AI workload balancer | Task 60 | `src/docreview360/ai_balancer.py` | `tests/test_task36.py` |
 | Structured log viewer | Task 21 | `src/docreview360/logs.py` | `tests/test_logs_page.py` |
+| Configurable file-naming policy | Task 135 | | |
+| FAA document checker | Task 136 | | |
+| Special Conditions notice builder | Task 137 | | |
+| Document types in progress widget | Task 138 | | |
+| Sortable project tracker table | Task 139 | | |
+| First-run setup wizard | Task 140 | | |
+| AI chat bot assistant | Task 141 | | |
+| Terraform plan viewer with OPA | Task 142 | | |
+| Archival package format selector | Task 143 | | |
+
