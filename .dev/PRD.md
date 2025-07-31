@@ -186,7 +186,15 @@ When a user creates a **Special Conditions** project, the system collects SC-spe
 * Inline comments, threads, mentions, emoji reactions.
 * Concurrent editing with conflict-resolution.
 * AI helpers (Prompt-Engine, SynthLang, ruv-FANN anomaly alerts).
-* **AI workload balancer** distributes background jobs across workers.
+* **AI workload balancer (admin-controlled)**
+  * (TBD) Toggle in Configuration ▸ App Settings / General / Integration ▸ AI Workload Balancer: Off / Suggest-Only / Auto-Assign.
+  * When On, a scheduled job analyses project priority vs. each technical writer’s workload.
+  * Rules:
+    * A writer may have ≤ 1 “High-Priority · Urgent” project at any time.
+    * A writer may have ≤ 12 active projects in total.
+    * Excess projects remain in the Backlog queue until writers free up.
+  * Blockers: “Assign” buttons grey out if a rule would be violated; tooltip explains why.
+  * Audit log records every auto-assignment and rule conflict.
 * **Project Watchlist** lets any user star a project to follow its progress.
 
 ### 3.5 Search, Dashboards & Logs
