@@ -8,7 +8,7 @@
 | TipTap editor MVP | Task 14 | `src/docreview360/tiptap.py` | `tests/test_tiptap.py` |
 | Approval subsystem | Task 15 | `src/docreview360/approvals.py` | `tests/test_approvals.py` |
 | Project Watchlist feature | Task 115 | `src/docreview360/watchlist.py` | `tests/test_watchlist.py` |
-| AI workload balancer | Task 60 | `src/docreview360/ai_balancer.py` | `tests/test_task36.py` |
+| AI Workload Balancer rules & toggle | 60 · 117 | `src/docreview360/ai/balancer.py` • `frontend/pages/settings/general.tsx` | `tests/ai/test_balancer_rules.py` • `cypress/e2e/settings_toggle.cy.ts` |
 | Structured log viewer | Task 21 | `src/docreview360/logs.py` | `tests/test_logs_page.py` |
 | Configurable file-naming policy | Task 135 | | |
 | Document Checker (FAA style) | Task 136 | `src/docreview360/ext/faa_docchecker.py` | `tests/test_ext_docchecker.py` |
