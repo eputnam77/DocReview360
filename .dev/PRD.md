@@ -101,6 +101,26 @@ The following table identifies two viable ways to track every DOCX revision.
 >   • Download link • “View diff” (redline vs previous) • Restore (privileged).
 > *If **SharePoint integration** is enabled, use the library’s native versioning (`driveItem/versions`) as the authoritative source and store its `versionId` in the table.*
 
+#### 3.1.3 File-Naming Policy Control
+
+| Field                   | Requirement                                                                                                                                                                                                                                                                                                                                       |                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **Title**               | **Configurable File-Naming Policy**                                                                                                                                                                                                                                                                                                               |                                       |
+| **Scope**               | Applies to *all* uploads/export actions for DOCX, PDF, JSON, and HTML artifacts.                                                                                                                                                                                                                                                                  |                                       |
+| **Admin UI**            | (TBD) *Configuration ▸ App Setings / Integrations ▸ File-Naming Policy* <br>Dropdown **Off / Enforce / Enforce + Auto-Rename**. <br>Text box for pattern (default: `{project_code}_{doc_type}_v{version}_{yyyyMMdd}.docx`).                                                                                                                                                     |                                       |
+| **Pattern syntax**      | Must support placeholders: `{project_code}`, `{doc_type}`, `{version}`, `{user_initials}`, `{yyyy}`, `{MM}`, `{dd}`.<br>Optional `snake`, `kebab`, or `camel` case flag.                                                                                                                                                                          |                                       |
+| **Runtime behaviour**   | • On upload/export the backend generates the expected filename.<br>• If *Enforce* and the user’s filename differs, return `HTTP 422` with the expected name.<br>• If *Enforce + Auto-Rename*, the system silently renames and stores the new name in `DocumentVersions.file_uri`.<br>• Duplicate names append `-1`, `-2`… with fixity hash check. |                                       |
+| **Validation**          | Regex guard against forbidden chars (\`\[<>:"/\\                                                                                                                                                                                                                                                                                                  | ?\*]\` Windows-safe); max length 128. |
+| **Audit trail**         | Writes `FileNameEvent(old_name, new_name, actor_id, timestamp)` if auto-rename occurs.                                                                                                                                                                                                                                                            |                                       |
+| **Acceptance criteria** | AC-1 Pattern field rejects invalid placeholders.<br>AC-2 Upload with wrong name bounces (or renames) per chosen mode.<br>AC-3 Exported BagIt/METS packages use the enforced name.                                                                                                                                                                 |                                       |
+##### Trade-off Knob
+
+| Mode                      | UX                                 | Risk                             |
+| ------------------------- | ---------------------------------- | -------------------------------- |
+| **Off**                   | Maximum flexibility                | Inconsistent finds.              |
+| **Enforce**               | User fixes name manually; explicit | Upload friction.                 |
+| **Enforce + Auto-Rename** | Seamless; log keeps trace          | Users may not notice the change. |
+
 ### 3.2 Editors
 
 1. **TipTap** — headless ProseMirror framework, extensible via extensions.
