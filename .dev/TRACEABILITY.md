@@ -7,3 +7,6 @@
 | Document types & Template CRUD | Task 13 | `src/docreview360/doc_types.py` | `tests/test_documents.py` |
 | TipTap editor MVP | Task 14 | `src/docreview360/tiptap.py` | `tests/test_tiptap.py` |
 | Approval subsystem | Task 15 | `src/docreview360/approvals.py` | `tests/test_approvals.py` |
+| Project Watchlist feature | Task 115 | `src/docreview360/watchlist.py` | `tests/test_watchlist.py` |
+| AI workload balancer | Task 60 | `src/docreview360/ai_balancer.py` | `tests/test_task36.py` |
+| Structured log viewer | Task 21 | `src/docreview360/logs.py` | `tests/test_logs_page.py` |
