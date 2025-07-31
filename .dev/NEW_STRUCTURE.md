@@ -20,4 +20,6 @@ The `migrations/` directory is now at the repository root so that
 `Database.migrate()` can pick up raw SQL files without packaging them.
 Workflows rely on `pyproject.toml` and `poetry.lock` as the single
 source of truth for Python dependencies. All packages are pinned to
-exact versions so environments reproduce deterministically.
+exact versions so environments reproduce deterministically. Continuous
+integration caches the `.venv` directory using the `poetry.lock` hash so
+subsequent runs are fast.
