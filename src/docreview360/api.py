@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, cast
 
+from dotenv import load_dotenv
 from fastapi import (
     Depends,
     FastAPI,
@@ -123,6 +124,9 @@ from .workflows import (
     start_workflow,
     workflows,
 )
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class WorkflowCreate(BaseModel):
@@ -986,8 +990,8 @@ async def read_current_oidc_user(
 async def root(request: Request) -> HTMLResponse:
     """Display login page or dashboard depending on session."""
     if request.cookies.get("session") == "admin":
-        return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
-    return templates.TemplateResponse("login.html", {"request": request})
+        return templates.TemplateResponse(request, "dashboard.html", {"user": "admin"})
+    return templates.TemplateResponse(request, "login.html")
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -1003,7 +1007,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
         )
         return response
     return templates.TemplateResponse(
-        "login.html", {"request": request, "error": "Invalid credentials"}, status_code=400
+        request, "login.html", {"error": "Invalid credentials"}, status_code=400
     )
 
 
@@ -1012,7 +1016,7 @@ async def dashboard(request: Request) -> Response:
     """Placeholder dashboard displayed after login."""
     if request.cookies.get("session") != "admin":
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": "admin"})
+    return templates.TemplateResponse(request, "dashboard.html", {"user": "admin"})
 
 
 @app.get("/help", response_class=HTMLResponse)

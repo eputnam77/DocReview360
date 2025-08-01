@@ -1,10 +1,12 @@
+from typing import Any
+
 from docreview360.stubs.task140 import task140
 
 
-def test_task140_completed(monkeypatch):
+def test_task140_completed(monkeypatch: Any) -> None:
     called = False
 
-    def fake_run():
+    def fake_run() -> None:
         nonlocal called
         called = True
 

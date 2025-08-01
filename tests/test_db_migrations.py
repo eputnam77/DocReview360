@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from sqlalchemy import inspect, text
-
 from docreview360.database import Database
+from sqlalchemy import inspect, text
 
 
 def test_sql_migrations(tmp_path: Path) -> None:

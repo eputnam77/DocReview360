@@ -1,7 +1,6 @@
 import subprocess
 
 import pytest
-
 from docreview360.stubs.task145 import task145
 
 

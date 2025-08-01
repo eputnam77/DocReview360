@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from docreview360 import search
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def test_dashboard_websocket() -> None:

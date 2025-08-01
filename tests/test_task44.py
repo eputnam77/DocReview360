@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.security_compliance import generate_compliance_pdf
 
 

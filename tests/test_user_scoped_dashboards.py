@@ -1,12 +1,19 @@
+from docreview360.api import app
+from docreview360.approvals import approvals, create_approval
+from docreview360.search import ProjectModel, add_project, projects
+from docreview360.workflows import create_workflow, workflows
 from fastapi.testclient import TestClient
 
-from docreview360.api import app
-from docreview360.approvals import create_approval
-from docreview360.search import ProjectModel, add_project
-from docreview360.workflows import create_workflow
+
+def _cleanup() -> None:
+    """Clear global state for clean test runs."""
+    projects.clear()
+    approvals.clear()
+    workflows.clear()
 
 
 def _setup() -> None:
+    _cleanup()  # Ensure clean state
     add_project(ProjectModel(id="pA", name="A", user="alice"))
     add_project(ProjectModel(id="pB", name="B", user="bob"))
     wf_a = create_workflow("pA", ["draft"])

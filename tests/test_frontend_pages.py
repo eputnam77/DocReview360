@@ -11,4 +11,4 @@ def test_react_pages_exist() -> None:
         "viewer.tsx",
         "logs/index.tsx",
     ]:
-        assert (Path("frontend/pages") / page).exists()
+        assert (Path("DocReview360/frontend/pages") / page).exists()

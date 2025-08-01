@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def test_frontend_skeleton() -> None:
-    pkg_file = Path("frontend/package.json")
+    pkg_file = Path("DocReview360/frontend/package.json")
     assert pkg_file.exists(), "package.json missing"
     data = json.loads(pkg_file.read_text())
     deps = data.get("dependencies", {})
@@ -15,5 +15,5 @@ def test_frontend_skeleton() -> None:
     assert "@tanstack/react-query" in deps
     assert "zustand" in deps
 
-    index_src = Path("frontend/pages/index.tsx").read_text()
+    index_src = Path("DocReview360/frontend/pages/index.tsx").read_text()
     assert "useCounterStore" in index_src

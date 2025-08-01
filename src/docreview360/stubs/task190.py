@@ -3,14 +3,23 @@
 from fastapi.testclient import TestClient
 
 from ..api import app
+from ..rbac import add_role
 from ..stubs import record_task_completion
 
 
 def task190() -> bool:
     """Verify manager dashboard returns data."""
 
+    # Set up authentication and manager role
+    add_role("alice", "manager")
     client = TestClient(app)
-    resp = client.get("/dashboard/manager")
+
+    # Create a token for alice (using the demo user from auth.py)
+    from .. import auth
+
+    token = auth.create_access_token({"sub": "alice"})
+
+    resp = client.get("/dashboard/manager", headers={"Authorization": f"Bearer {token}"})
     record_task_completion(190)
     data = resp.json()
     return (

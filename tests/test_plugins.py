@@ -1,37 +1,37 @@
 import sys
 from types import ModuleType
+from typing import Any
 
 import pytest
-
 from docreview360.plugins import load_plugins, registry
 
 
-def test_load_plugins_success():
+def test_load_plugins_success() -> None:
     mod = ModuleType("dummy_plugin")
 
-    def register(reg):
+    def register(reg: Any) -> None:
         reg.register("dummy", lambda: "ok")
 
-    mod.register = register
+    setattr(mod, "register", register)
     sys.modules[mod.__name__] = mod
 
     load_plugins([mod.__name__])
     assert "dummy" in registry.all()
 
 
-def test_load_plugins_no_register():
+def test_load_plugins_no_register() -> None:
     mod = ModuleType("bad_plugin")
     sys.modules[mod.__name__] = mod
     with pytest.raises(ValueError):
         load_plugins([mod.__name__])
 
 
-def test_load_plugins_import_error():
+def test_load_plugins_import_error() -> None:
     with pytest.raises(ImportError):
         load_plugins(["nonexistent.plugin"])
 
 
-def test_registry_enable_disable_cycle():
+def test_registry_enable_disable_cycle() -> None:
     registry.register("p1", lambda: 1)
 
     registry.disable("p1")

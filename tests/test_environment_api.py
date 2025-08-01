@@ -1,9 +1,12 @@
+from pathlib import Path
+from typing import Any
+
 from docreview360.api import app
 from docreview360.environment import add_environment
 from fastapi.testclient import TestClient
 
 
-def test_environment_list_and_switch(tmp_path, monkeypatch):
+def test_environment_list_and_switch(tmp_path: Path, monkeypatch: Any) -> None:
     path = tmp_path / "env.yaml"
     add_environment("dev", "http://dev", "green", path)
     add_environment("prod", "http://prod", "red", path)

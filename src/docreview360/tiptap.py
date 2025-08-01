@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 from uuid import uuid4
 
@@ -50,7 +50,7 @@ def import_tiptap_document(
         number=next_document_number(project),
         project=project,
         user=user,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
     )
     documents[doc_id] = document
     from . import search as search_module

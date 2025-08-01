@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
 from pydantic import BaseModel
@@ -58,7 +58,9 @@ def unregister_listener(callback: Callable[[LogEntry], None]) -> None:
 
 def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry:
     """Record a log entry and return it."""
-    entry = LogEntry(timestamp=datetime.utcnow(), action=action, user=user, metadata=metadata)
+    entry = LogEntry(
+        timestamp=datetime.now(timezone.utc), action=action, user=user, metadata=metadata
+    )
     logs.append(entry)
     for pattern, cb in alerts:
         if pattern in action:

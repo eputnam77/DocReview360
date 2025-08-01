@@ -1,6 +1,5 @@
 import httpx
 import pytest
-
 from docreview360 import vector_search
 
 
@@ -24,7 +23,7 @@ def test_vector_search_invalid() -> None:
 
 
 def test_vector_search_opensearch_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls = []
+    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
     def fake_post(*args: object, **kwargs: object) -> None:
         calls.append((args, kwargs))
@@ -38,7 +37,10 @@ def test_vector_search_opensearch_fallback(monkeypatch: pytest.MonkeyPatch) -> N
         def raise_for_status(self) -> None:  # pragma: no cover - no-op
             pass
 
-    monkeypatch.setattr(httpx, "put", lambda *a, **k: Dummy())
+    def fake_put(*args: object, **kwargs: object) -> Dummy:
+        return Dummy()
+
+    monkeypatch.setattr(httpx, "put", fake_put)
 
     vector_search.clear()
     vector_search.index_document("a", "alpha beta")
@@ -48,7 +50,7 @@ def test_vector_search_opensearch_fallback(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_vector_search_index_opensearch(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls = []
+    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
     def fake_put(*args: object, **kwargs: object) -> None:
         calls.append((args, kwargs))

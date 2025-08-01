@@ -4,9 +4,8 @@ from typing import Iterator
 
 import pytest
 import uvicorn
-from playwright.sync_api import Page
-
 from docreview360.api import app
+from playwright.sync_api import Page
 
 
 @pytest.fixture(scope="session")

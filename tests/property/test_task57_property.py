@@ -1,9 +1,8 @@
 from typing import Any
 
+from docreview360.stubs.task57 import task57
 from hypothesis import given
 from hypothesis import strategies as st
-
-from docreview360.stubs.task57 import task57
 
 
 @given(st.none())

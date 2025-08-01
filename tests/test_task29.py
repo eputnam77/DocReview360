@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.doc_types import (
     DocumentTypeModel,
     add_document_type,

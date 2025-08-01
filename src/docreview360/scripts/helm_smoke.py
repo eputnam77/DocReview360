@@ -6,7 +6,6 @@ import subprocess
 from pathlib import Path
 
 import httpx
-
 from docreview360.stubs import record_task_completion
 
 

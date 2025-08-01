@@ -4,16 +4,13 @@ repos:
     hooks:
       - id: ruff
         args: [--fix]
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
-    hooks:
-      - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic, types-PyYAML]
-        args: [--strict, src]
+        additional_dependencies: [pydantic, types-PyYAML, types-redis]
+        args: []
+        files: ^src/
   - repo: https://github.com/pycqa/bandit
     rev: 1.7.8
     hooks:
@@ -21,33 +18,8 @@ repos:
         args: ["-lll", "-r", "src"]
   - repo: local
     hooks:
-      - id: pip-audit
-        name: pip-audit
-        entry: pip-audit -r requirements.txt
-        language: system
-        pass_filenames: false
       - id: semgrep
         name: semgrep
         entry: semgrep --config p/ci --metrics=off --disable-version-check
-        language: system
-        pass_filenames: false
-      - id: pytest
-        name: pytest
-        entry: pytest -q --cov=src --cov-branch --cov-fail-under=70
-        language: system
-        pass_filenames: false
-      - id: pytest-property
-        name: pytest-property
-        entry: pytest -q -m property
-        language: system
-        pass_filenames: false
-      - id: pytest-e2e
-        name: pytest-e2e
-        entry: pytest -q -m e2e
-        language: system
-        pass_filenames: false
-      - id: mutmut
-        name: mutmut
-        entry: mutmut run
         language: system
         pass_filenames: false

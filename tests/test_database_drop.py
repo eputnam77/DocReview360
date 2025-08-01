@@ -1,6 +1,5 @@
-from sqlalchemy import inspect
-
 from docreview360.database import Database
+from sqlalchemy import inspect
 
 
 def test_drop_all() -> None:

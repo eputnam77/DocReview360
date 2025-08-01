@@ -7,7 +7,7 @@ import re
 import threading
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
 from pydantic import BaseModel
@@ -27,7 +27,7 @@ class ProjectModel(BaseModel):
     doc_type: str | None = None
     workflow: str | None = None
     priority: int = 0
-    created: datetime = datetime.utcnow()
+    created: datetime = datetime.now(UTC)
     temp_user: Optional[str] = None
     temp_until: datetime | None = None
 
@@ -39,7 +39,7 @@ class SavedSearch:
     id: str
     query: str
     user: str | None = None
-    created: datetime = datetime.utcnow()
+    created: datetime = datetime.now(UTC)
     count: int = 0
 
 
@@ -164,7 +164,7 @@ def get_project(project_id: str) -> ProjectModel | None:
     with project_lock:
         project = projects.get(project_id)
         if project is not None:
-            _expire_temp_assignment(project)
+            _expire_temp_assignment(project, lock_held=True)
         return project
 
 
@@ -190,19 +190,25 @@ def assign_temporary(
     """
     with project_lock:
         project = projects[project_id]
-        if (until - datetime.utcnow()).days > TEMP_ASSIGN_MAX_DAYS and not approved:
+        if (until - datetime.now(UTC)).days > TEMP_ASSIGN_MAX_DAYS and not approved:
             raise ValueError("Manager approval required for long assignment")
         project.temp_user = user
         project.temp_until = until
         return project
 
 
-def _expire_temp_assignment(project: ProjectModel) -> None:
+def _expire_temp_assignment(project: ProjectModel, *, lock_held: bool = False) -> None:
     """Clear ``project.temp_user`` when the temporary period has ended."""
-    if project.temp_user and project.temp_until and datetime.utcnow() >= project.temp_until:
-        with project_lock:
+    if project.temp_user and project.temp_until and datetime.now(UTC) >= project.temp_until:
+        if lock_held:
+            # Lock is already held by caller, modify directly
             project.temp_user = None
             project.temp_until = None
+        else:
+            # Acquire lock before modifying
+            with project_lock:
+                project.temp_user = None
+                project.temp_until = None
 
 
 def list_projects(user: str | None = None) -> list[ProjectModel]:
@@ -210,7 +216,7 @@ def list_projects(user: str | None = None) -> list[ProjectModel]:
     with project_lock:
         result = []
         for proj in projects.values():
-            _expire_temp_assignment(proj)
+            _expire_temp_assignment(proj, lock_held=True)
             if user is None or proj.user == user or proj.temp_user == user:
                 result.append(proj)
         return result
@@ -221,8 +227,8 @@ def overdue_high_priority() -> list[str]:
     with project_lock:
         alerts: list[str] = []
         for proj in projects.values():
-            _expire_temp_assignment(proj)
-            if proj.priority >= 5 and proj.created < datetime.utcnow() - timedelta(days=14):
+            _expire_temp_assignment(proj, lock_held=True)
+            if proj.priority >= 5 and proj.created < datetime.now(UTC) - timedelta(days=14):
                 alerts.append(proj.id)
         return alerts
 

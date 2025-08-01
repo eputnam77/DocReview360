@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, Mapping
 
 from .search import assign_temporary
@@ -28,7 +28,7 @@ def sync_temp_reassignments(records: Iterable[Mapping[str, str]]) -> int:
         except (KeyError, ValueError):
             # ignore malformed rows
             continue
-        if until <= datetime.utcnow():
+        if until <= datetime.now(timezone.utc):
             # skip expired assignments
             continue
         assign_temporary(project, user, until, approved=True)
