@@ -16,6 +16,7 @@ version         = "0.1.2"
 description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
 requires-python = ">=3.12,<4"
+license         = { text = "GPL-3.0-only" }
 
 dependencies = [
   "Jinja2==3.1.6",

@@ -376,3 +376,7 @@ chmod +x .git/hooks/sendemail-validate
 ```
 
 The hook relies on `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. It also runs `gitlint --staged` to validate a patch series. Install these tools with `poetry install --with dev && poetry sync --with dev && uv pip install -r pyproject.toml --extra dev`.
+
+## License
+
+DocReview360 is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html). See the LICENSE file for full details.
