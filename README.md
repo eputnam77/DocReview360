@@ -246,7 +246,7 @@ mutmut results
 pre-commit run --all-files        # Lint, format, type check, spellcheck, markdown, security
 pytest --cov=src                  # Unit tests with coverage
 bandit -r src -lll --skip B101    # Security scan (code)
-pip-audit                         # Security scan (dependencies)
+python scripts/run-pip-audit.py   # Security scan (dependencies) - handles local packages
 codespell src tests docs          # Spell check (if not running in pre-commit)
 docformatter -r src/              # (Optional) Docstring formatting
 mutmut run --paths-to-mutate src  # (Optional) Mutation testing
@@ -263,7 +263,7 @@ mutmut results
 | Black        | Code formatter              | `pre-commit run --all-files`                  |
 | Mypy         | Static type checking        | `pre-commit run --all-files`                  |
 | Bandit       | Security (code)             | `bandit -r src -lll --skip B101`              |
-| pip-audit    | Security (dependencies)     | `pip-audit` / `pip-audit -r requirements.txt` |
+| pip-audit    | Security (dependencies)     | `python scripts/run-pip-audit.py` / `pip-audit -r requirements.txt` |
 | Codespell    | Spell check                 | `codespell src tests docs`                    |
 | mdformat     | Markdown formatting/linting | `pre-commit run --all-files`                  |
 | docformatter | Docstring style (optional)  | `docformatter -r src/`                        |
