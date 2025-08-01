@@ -97,11 +97,24 @@ docreview360 migrate import backup.gz
 ## 🚀 Run the backend API
 
 ```bash
+# Ensure you're in the project root and virtual environment is activated
+cd DocReview360
+# source .venv/bin/activate  # On Mac/Linux
+# .venv\Scripts\activate     # On Windows
+
+# Start the backend server
 uvicorn docreview360.api:app --reload --port 8000
-# FastAPI auto‑generates interactive docs at /docs :contentReference[oaicite:3]{index=3}
 ```
 
-The `--reload` flag auto‑reloads on code changes—handy in dev.
+**Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with GovDocVerify.
+
+**Prerequisites:** Ensure you've configured the environment variables (see "🔑 Configure secrets" section above) or have a `.env` file in the project root.
+
+- **API Documentation:** FastAPI auto‑generates interactive docs at http://localhost:8000/docs
+- **Health Check:** Test the server at http://localhost:8000/health
+- **GovDocVerify Integration:** The document checker requires this backend to process files
+
+The `--reload` flag auto‑reloads on code changes—handy in development.
 
 ---
 
@@ -110,12 +123,31 @@ The `--reload` flag auto‑reloads on code changes—handy in dev.
 ```bash
 cd frontend
 npm install --legacy-peer-deps
-# Create .env file manually since .env.example doesn't exist
-echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env
+
+# Create environment file for frontend-backend communication
+# Choose the command for your operating system:
+
+# Windows PowerShell (recommended for Windows):
+Set-Content -Path .env.local -Value "NEXT_PUBLIC_API_BASE=http://localhost:8000"
+
+# Windows Command Prompt:
+# echo NEXT_PUBLIC_API_BASE=http://localhost:8000 > .env.local
+
+# Unix/Linux/macOS (bash/zsh):
+# cat > .env.local << 'EOF'
+# # Backend API base URL (required for GovDocVerify integration)
+# NEXT_PUBLIC_API_BASE=http://localhost:8000
+# EOF
+
+# Universal alternative (works on all platforms):
+# echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
+
 npm run dev
 ```
 
 Open [http://localhost:3000/](http://localhost:3000/) and log in with **admin / admin**.
+
+**Note:** The frontend requires the backend server to be running for full functionality (especially the document checker). Ensure the backend is started first.
 
 ---
 

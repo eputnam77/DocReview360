@@ -23,6 +23,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -238,6 +239,16 @@ class ConfigPayload(BaseModel):
 
 
 app = FastAPI(title="DocReview360")
+
+# Add CORS middleware to allow frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Enable compression for large responses as recommended by the
 # performance profiling report. ``minimum_size`` avoids wasting
 # CPU cycles on tiny payloads.
@@ -248,6 +259,12 @@ if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     app.add_middleware(GuardrailsMiddleware, checker=contains_pii)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+@app.get("/health")
+async def health_check() -> dict[str, str]:
+    """Health check endpoint for monitoring."""
+    return {"status": "healthy"}
 
 
 @app.get("/users/me")
