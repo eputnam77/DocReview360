@@ -1,4 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -7,18 +16,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Pencil, Trash } from "lucide-react";
 import { API } from "@/lib/api";
+import { Pencil, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const DATABASES = ["postgres", "mysql", "sqlite"];
 const EDITORS = ["tiptap", "onlyoffice", "xml", "word"];
@@ -151,7 +151,7 @@ export default function IntegrationsPage() {
         <div className="space-y-2">
           <Label>Database</Label>
           <Select
-            value={config.database}
+            value={String(config.database)}
             onValueChange={(v) => update("database", v)}
           >
             <SelectTrigger>
@@ -169,7 +169,7 @@ export default function IntegrationsPage() {
         <div className="space-y-2">
           <Label>Document Editor</Label>
           <Select
-            value={config.editor}
+            value={String(config.editor)}
             onValueChange={(v) => update("editor", v)}
           >
             <SelectTrigger>
@@ -186,7 +186,7 @@ export default function IntegrationsPage() {
         </div>
         <div className="space-y-2">
           <Label>CMS Integration</Label>
-          <Select value={config.cms} onValueChange={(v) => update("cms", v)}>
+          <Select value={String(config.cms)} onValueChange={(v) => update("cms", v)}>
             <SelectTrigger>
               <SelectValue placeholder="Select CMS option" />
             </SelectTrigger>
@@ -202,7 +202,7 @@ export default function IntegrationsPage() {
         <div className="space-y-2">
           <Label>Auth Provider</Label>
           <Input
-            value={config.auth}
+            value={String(config.auth)}
             readOnly
             disabled
             className="bg-gray-100"

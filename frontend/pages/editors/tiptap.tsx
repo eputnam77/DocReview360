@@ -1,34 +1,34 @@
-import React, { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
 import { EditorContent, useEditor } from "@tiptap/react";
+import dynamic from "next/dynamic";
+import React, { useMemo, useState } from "react";
 
 // Core Extensions
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import Table from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
-import Image from "@tiptap/extension-image";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import Image from "@tiptap/extension-image";
+import Table from "@tiptap/extension-table";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import TableRow from "@tiptap/extension-table-row";
+import Underline from "@tiptap/extension-underline";
+import StarterKit from "@tiptap/starter-kit";
+import TEMPLATES from "../../data/templates";
+import Lint from "../../extensions/lint";
 import SlashCommand from "../../extensions/tiptapSlashCommand";
-import Lint from "../extensions/lint";
-import sanitizeHtml from "../utils/sanitize";
-import { TEMPLATES } from "../utils/templates";
+import sanitizeHtml from "../../utils/sanitize";
 
 // Custom TipTap extensions
 import { tiptapHeadingLock } from "../../extensions/tiptapHeadingLock";
 import { tiptapIndentation } from "../../extensions/tiptapIndentation";
-import { tiptapSectionNode } from "../../extensions/tiptapSectionNode";
-import { tiptapWatermark } from "../../extensions/tiptapWatermark";
 import { tiptapMarkReview } from "../../extensions/tiptapMarkReview";
-import { tiptapYjsCollab } from "../../extensions/tiptapYjsCollab";
+import { tiptapSectionNode } from "../../extensions/tiptapSectionNode";
 import { tiptapStructure } from "../../extensions/tiptapStructure";
+import { tiptapWatermark } from "../../extensions/tiptapWatermark";
+import { tiptapYjsCollab } from "../../extensions/tiptapYjsCollab";
 
 // Yjs for collaboration
-import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
+import * as Y from "yjs";
 
 // Icons
 const Bold = dynamic(() => import("lucide-react").then((m) => m.Bold));
@@ -214,11 +214,11 @@ function Sidebar(props: SidebarProps) {
         <section>
           <div className="font-semibold mb-1">Templates</div>
           <ul className="space-y-1 text-sm">
-            {TEMPLATES.map((tpl) => (
-              <li key={tpl.filename}>
+            {TEMPLATES.filter(t => t.type === "tiptap" || t.type === "both").map(tpl => (
+              <li key={tpl.id}>
                 <button
                   className="text-indigo-700 underline"
-                  onClick={() => onTemplateLoad(tpl.filename)}
+                  onClick={() => onTemplateLoad(tpl.id)}
                 >
                   {tpl.label}
                 </button>
@@ -453,9 +453,9 @@ export default function TipTapEditorPage() {
       base.push(
         Lint.configure({
           rule: {
-            match: ({ tr }) => {
+            match: ({ tr }: { tr: any }) => {
               const issues: any[] = [];
-              tr.doc.descendants((node, pos) => {
+              tr.doc.descendants((node: any, pos: any) => {
                 // Heading check
                 if (node.type.name === "heading") {
                   const text = node.textContent || "";
@@ -480,7 +480,7 @@ export default function TipTapEditorPage() {
               });
               // Rule: Missing "1. Purpose." heading
               let foundPurpose = false;
-              tr.doc.descendants((node) => {
+              tr.doc.descendants((node: any) => {
                 if (
                   node.type.name === "heading" &&
                   /^1\. Purpose\./.test(node.textContent)

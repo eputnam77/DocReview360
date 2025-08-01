@@ -34,6 +34,15 @@ export default function EditProjectPage() {
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
+  // Handle file upload - convert File[] to File for single file uploads
+  const handleFileChange = (fileOrFiles: File | File[] | null) => {
+    if (Array.isArray(fileOrFiles)) {
+      setFile(fileOrFiles[0] || null);
+    } else {
+      setFile(fileOrFiles);
+    }
+  };
+
   // Fetch project details on mount
   useEffect(() => {
     if (!id) return;
@@ -157,7 +166,7 @@ export default function EditProjectPage() {
             <Label>Replace Document File (.docx, .pdf, .txt)</Label>
             <UploadDropzone
               value={file}
-              onChange={setFile}
+              onChange={handleFileChange}
               accept=".docx,.pdf,.txt"
               maxSizeMB={20}
             />

@@ -1,19 +1,15 @@
 // slash-command.ts
-import { Extension, mergeAttributes } from '@tiptap/core';
+import { Extension } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
 
-export interface SlashCommandOptions {
-  suggestion: Parameters<typeof Suggestion>[0];
-}
-
-export default Extension.create<SlashCommandOptions>({
+export default Extension.create({
   name: 'slash-command',
   addOptions() {
     return {
       suggestion: {
         char: '/',
         startOfLine: true,
-        command: ({ editor, range, props }) => {
+        command: ({ editor, range, props }: { editor: any; range: any; props: any }) => {
           // default: insert text
           editor
             .chain()

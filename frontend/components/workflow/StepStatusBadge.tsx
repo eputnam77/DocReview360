@@ -43,7 +43,7 @@ const StepStatusBadge: React.FC<StepStatusBadgeProps> = ({
 
   return (
     <Badge
-      variant="secondary"
+      variant="outline"
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium",
         config.color,

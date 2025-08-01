@@ -549,7 +549,7 @@ function ReplyInput({ onSubmit }: { onSubmit: (text: string) => void }) {
           <MessageSquarePlus className="w-4 h-4" /> Reply
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-3 w-72" align="end">
+      <PopoverContent className="p-3 w-72">
         <textarea
           className="w-full border rounded p-2 text-sm"
           rows={3}
@@ -737,9 +737,9 @@ export default function ProjectDetailsPage() {
     const idx = workflow.steps.findIndex((s) => s.status === "active");
     if (idx === -1 || idx >= workflow.steps.length - 1) return;
     const steps = workflow.steps.map((s, i) => {
-      if (i < idx + 1) return { ...s, status: "complete" };
-      if (i === idx + 1) return { ...s, status: "active" };
-      return { ...s, status: "pending" };
+      if (i < idx + 1) return { ...s, status: "complete" as const };
+      if (i === idx + 1) return { ...s, status: "active" as const };
+      return { ...s, status: "pending" as const };
     });
     setWorkflow({ ...workflow, steps, phase: steps[idx + 1].name });
   };

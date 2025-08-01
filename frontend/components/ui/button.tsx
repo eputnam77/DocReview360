@@ -12,7 +12,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
     | "outline"
     | "danger"
     | "ghost";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "icon";
   asChild?: boolean;
 };
 
@@ -53,6 +53,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           size === "sm" && "px-3 py-1 text-xs h-8",
           size === "md" && "px-4 py-2 text-sm h-10",
           size === "lg" && "px-5 py-3 text-base h-12",
+          size === "icon" && "h-10 w-10 p-0",
           className,
         )}
         {...props}

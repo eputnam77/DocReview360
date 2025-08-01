@@ -16,7 +16,13 @@ export default function StartWorkflowPage({ params }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = (f: File | null) => setFile(f);
+  const handleFileChange = (f: File | File[] | null) => {
+    if (Array.isArray(f)) {
+      setFile(f[0] || null);
+    } else {
+      setFile(f);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +72,7 @@ export default function StartWorkflowPage({ params }: Props) {
         <div className="space-y-2">
           <Label>Attach a file (Word)</Label>
           <UploadDropzone
-            onDrop={(files) => handleFileChange(files[0] || null)}
+            onChange={handleFileChange}
             accept=".doc,.docx"
           />
           {file && (

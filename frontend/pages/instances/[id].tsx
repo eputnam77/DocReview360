@@ -1,10 +1,9 @@
 "use client";
 // frontend/app/instances/[id]/page.tsx
-import React from "react";
 import {
-  ProgressSidebar,
-  CompletedBanner,
-  StepStatusBadge,
+    CompletedBanner,
+    ProgressSidebar,
+    StepStatusBadge,
 } from "@/components/workflow";
 import { MOCK_INSTANCE } from "@/data/mock";
 
@@ -22,7 +21,10 @@ export default function InstancePage({ params }: Props) {
 
       <div className="flex-1 p-6 space-y-6">
         {/* Completed Banner or summary */}
-        <CompletedBanner workflow={wf} />
+        <CompletedBanner
+          workflowName={wf.workflowName}
+          completedAt={wf.steps.find(s => s.status === "Completed")?.completedAt}
+        />
 
         {/* Steps Progress */}
         <section className="space-y-4">
@@ -31,7 +33,7 @@ export default function InstancePage({ params }: Props) {
               key={step.name}
               data-step={step.name}
               data-active={idx === wf.current}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition 
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition
                 ${
                   idx === wf.current
                     ? "bg-indigo-50 border-indigo-200 dark:bg-indigo-950/30"
