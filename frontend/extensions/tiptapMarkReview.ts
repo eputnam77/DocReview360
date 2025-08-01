@@ -9,13 +9,24 @@ export function tiptapMarkReview() {
   return Extension.create({
     name: "mark-review",
     async onCreate() {
+      // Check if we're in a browser environment and the package might be available
+      if (typeof window === 'undefined') {
+        console.warn("MarkReview: Skipping in SSR environment");
+        return;
+      }
+
       try {
-        const mod = await import("markreview");
-        if (mod.attach) {
+        // Use a more explicit approach with type assertion
+        const mod = await (eval('import("markreview")') as Promise<any>);
+        if (mod && mod.attach) {
           mod.attach(this.editor.view);
+          console.log("MarkReview: Successfully attached to editor");
+        } else {
+          console.warn("MarkReview: Package not available or attach method not found");
         }
       } catch (err) {
-        console.warn("MarkReview not available", err);
+        console.warn("MarkReview not available - package may need to be built or is not properly installed", err);
+        // Continue without the extension rather than failing
       }
     },
   });

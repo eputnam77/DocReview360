@@ -110,7 +110,8 @@ The `--reload` flag auto‑reloads on code changes—handy in dev.
 ```bash
 cd frontend
 npm install --legacy-peer-deps
-cp .env.example .env           # set NEXT_PUBLIC_API_BASE if backend separate
+# Create .env file manually since .env.example doesn't exist
+echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env
 npm run dev
 ```
 

@@ -14,22 +14,6 @@ import { Node as PMNode } from "prosemirror-model";
 export function tiptapIndentation() {
   return Extension.create({
     name: "indentation",
-    addCommands() {
-      return {
-        indent: () => ({ commands }) => {
-          return commands.updateAttributes("paragraph", (attrs: any) => ({
-            ...attrs,
-            "data-indent": ((attrs["data-indent"] as number) || 0) + 1,
-          }));
-        },
-        outdent: () => ({ commands }) => {
-          return commands.updateAttributes("paragraph", (attrs: any) => {
-            const level = ((attrs["data-indent"] as number) || 0) - 1;
-            return { ...attrs, "data-indent": Math.max(0, level) };
-          });
-        },
-      };
-    },
     addGlobalAttributes() {
       return [
         {

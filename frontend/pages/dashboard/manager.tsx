@@ -167,7 +167,7 @@ export default function ManagerDashboardPage() {
         .then((r) => (r.ok ? r.json() : {}))
         .then((dt) =>
           setDocTypes(
-            Object.entries(dt).map(([type, count]) => ({ type, count }))
+            Object.entries(dt).map(([type, count]) => ({ type, count: count as number }))
           )
         )
         .catch(() => setDocTypes(fallback.docs));

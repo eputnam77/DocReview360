@@ -31,12 +31,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const results = await runChecks(file.filepath);
+  // Use the correct property for file path
+  const filePath = (file as any).filepath || (file as any).path;
+  if (!filePath) {
+    res.status(400).json({ error: "Invalid file" });
+    return;
+  }
+
+  const results = await runChecks(filePath);
 
   const downloadsDir = path.join(process.cwd(), "frontend/public/downloads");
   fs.mkdirSync(downloadsDir, { recursive: true });
-  const destPath = path.join(downloadsDir, path.basename(file.filepath));
-  await fs.promises.copyFile(file.filepath, destPath);
+  const destPath = path.join(downloadsDir, path.basename(filePath));
+  await fs.promises.copyFile(filePath, destPath);
   const filename = path.basename(destPath);
 
   res.status(200).json({ results, filename });
