@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
@@ -46,7 +46,7 @@ def archive_document(
     record = ArchiveRecord(
         id=uuid4().hex,
         document_id=document.id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         metadata=metadata or {},
         markdown=md_bytes,
         html=html_bytes,

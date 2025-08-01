@@ -11,14 +11,14 @@ if TYPE_CHECKING:  # pragma: no cover - for static typing only
 try:
     import redis as _redis
 except Exception:  # pragma: no cover - fallback when redis not installed
-    _redis = None  # type: ignore[assignment]
+    _redis = None
 
 _cache: Dict[str, Any] = {}
 _UNREACHABLE = object()
-_client: "Redis" | None | object = None
+_client: "Redis | None | object" = None
 
 
-def _get_client() -> "Redis" | None:
+def _get_client() -> "Redis | None":
     global _client
     if _client is None and _redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")

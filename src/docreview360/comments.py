@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import uuid4
 
@@ -19,7 +19,7 @@ class CommentModel(BaseModel):
     text: str
     mentions: list[str] = []
     parent: Optional[str] = None
-    created: datetime = datetime.utcnow()
+    created: datetime = datetime.now(timezone.utc)
 
 
 _comments: Dict[str, List[CommentModel]] = {}

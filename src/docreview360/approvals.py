@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import uuid4
 
@@ -61,7 +61,7 @@ def update_approval_state(
     if due_at is not None:
         approval.due_at = due_at
     if state == "approved":
-        approval.signed_at = datetime.utcnow().isoformat()
+        approval.signed_at = datetime.now(timezone.utc).isoformat()
     else:
         approval.signed_at = None
     if state == "approved":

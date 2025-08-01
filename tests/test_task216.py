@@ -1,10 +1,12 @@
 import json
 from importlib import reload
+from pathlib import Path
+from typing import Any
 
 from docreview360 import watchlist
 
 
-def test_task216_toggle(tmp_path, monkeypatch):
+def test_task216_toggle(tmp_path: Path, monkeypatch: Any) -> None:
     file = tmp_path / "watch.json"
     monkeypatch.setenv("DOCREV_WATCHLIST_FILE", str(file))
     reload(watchlist)

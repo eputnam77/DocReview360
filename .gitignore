@@ -32,3 +32,6 @@ frontend/build/
 .hypothesis/
 frontend/.next/
 uv.lock
+
+# Archive storage (generated content)
+archive_store/

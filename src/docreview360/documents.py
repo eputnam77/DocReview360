@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
 from typing import Dict, List, Optional
@@ -93,7 +93,7 @@ def import_document(
         number=next_document_number(project),
         project=project,
         user=user,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         priority=priority,
     )
     with document_lock:

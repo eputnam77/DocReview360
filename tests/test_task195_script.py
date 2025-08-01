@@ -1,6 +1,8 @@
 from pathlib import Path
 
-SCRIPT = Path(".git/hooks/sendemail-validate.sample")
+# Use path relative to project root
+project_root = Path(__file__).parent.parent
+SCRIPT = project_root / "scripts" / "sendemail-validate.sample"
 
 
 def test_sendemail_hook_contains_commands() -> None:

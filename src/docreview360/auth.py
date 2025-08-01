@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, status
@@ -83,7 +83,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
     """Return a signed JWT access token."""
 
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return str(jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
 
@@ -136,7 +136,7 @@ def create_id_token(data: Dict[str, Any], expires_delta: timedelta | None = None
     """Return an ID token for OIDC authentication."""
 
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return str(jwt.encode(to_encode, OIDC_SECRET_KEY, algorithm=OIDC_ALGORITHM))
 

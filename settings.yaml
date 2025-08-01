@@ -1,0 +1,9 @@
+dash_bob:
+  activity: true
+  logs: true
+  stats: false
+  status: true
+prefs_bob:
+  theme: dark
+prefs_u1:
+  theme: dark

@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.celery_app import export_documents, reindex_document
 from docreview360.documents import DocumentModel, documents
 from docreview360.search import search_index

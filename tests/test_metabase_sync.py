@@ -1,7 +1,6 @@
 import httpx
-from httpx import Response
-
 from docreview360.metabase_sync import run_field_sync
+from httpx import Response
 
 
 def test_run_field_sync(monkeypatch) -> None:

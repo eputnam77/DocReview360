@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.workflows import workflows
+from fastapi.testclient import TestClient
 
 
 def test_project_creation_links_workflow() -> None:

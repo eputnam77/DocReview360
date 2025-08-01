@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from docreview360.notifications import notify_overdue_projects, sent_emails
 from docreview360.search import ProjectModel, overdue_high_priority, projects
@@ -9,7 +9,7 @@ def test_overdue_high_priority_detection() -> None:
         id="pX",
         name="Important",
         priority=5,
-        created=datetime.utcnow() - timedelta(days=20),
+        created=datetime.now(timezone.utc) - timedelta(days=20),
     )
     projects[proj.id] = proj
     assert proj.id in overdue_high_priority()

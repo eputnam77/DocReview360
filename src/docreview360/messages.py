@@ -2,7 +2,7 @@
 
 # ruff: noqa: E501
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 MESSAGES = {
     "create_project": "{user} created project {project_id} on {date} at {time}",
@@ -116,7 +116,7 @@ MESSAGES = {
 def render(name: str, **data: str) -> str:
     """Return a formatted message by name."""
     template = MESSAGES.get(name, name)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     data.setdefault("date", now.strftime("%Y-%m-%d"))
     data.setdefault("time", now.strftime("%H:%M"))
     # avoid KeyError for optional placeholders like IP address

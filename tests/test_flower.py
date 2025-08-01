@@ -4,7 +4,6 @@ from typing import Any, cast
 
 import pytest
 from celery import Celery
-
 from docreview360 import flower
 
 

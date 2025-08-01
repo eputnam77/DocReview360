@@ -1,7 +1,6 @@
+from docreview360.stubs.task52 import task52
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-
-from docreview360.stubs.task52 import task52
 
 
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])

@@ -1,10 +1,13 @@
-import httpx
+from typing import Any, Dict, Optional
 
+import httpx
 from docreview360.metabase import fetch_card_csv, fetch_dashboards
 
 
-def test_fetch_dashboards(monkeypatch):
-    def fake_get(url, headers=None, timeout=None):
+def test_fetch_dashboards(monkeypatch: Any) -> None:
+    def fake_get(
+        url: str, headers: Optional[Dict[str, Any]] = None, timeout: Optional[int] = None
+    ) -> httpx.Response:
         req = httpx.Request("GET", url)
         return httpx.Response(200, json=[{"id": 1, "name": "Main"}], request=req)
 
@@ -13,8 +16,10 @@ def test_fetch_dashboards(monkeypatch):
     assert data == [{"id": 1, "name": "Main"}]
 
 
-def test_fetch_card_csv(monkeypatch):
-    def fake_post(url, headers=None, timeout=None):
+def test_fetch_card_csv(monkeypatch: Any) -> None:
+    def fake_post(
+        url: str, headers: Optional[Dict[str, Any]] = None, timeout: Optional[int] = None
+    ) -> httpx.Response:
         req = httpx.Request("POST", url)
         return httpx.Response(200, text="a,b\n1,2", request=req)
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def xor_encrypt(data: bytes, key: bytes) -> bytes:
@@ -21,7 +21,7 @@ def should_purge(created: datetime, retention_days: int) -> bool:
     """Return ``True`` if the item is older than ``retention_days``."""
     if retention_days <= 0:
         raise ValueError("retention_days must be positive")
-    return datetime.utcnow() - created > timedelta(days=retention_days)
+    return datetime.now(timezone.utc) - created > timedelta(days=retention_days)
 
 
 def generate_compliance_pdf(data_flow: str) -> bytes:

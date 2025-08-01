@@ -52,17 +52,28 @@ pre-commit install
 
 ---
 
-## 🔑 Configure secrets
+## 🔑 Configure secrets
 
 ```bash
 cp .env.example .env           # template included
 # or export variables directly:
+
+# Unix/Linux/macOS (bash/zsh):
 export DOCREVIEW360_SECRET_KEY=your-secret
 export DOCREVIEW360_ALGORITHM=HS256
 export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
 export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
 export DOCREVIEW360_OIDC_ALGORITHM=HS256
 export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+
+# Windows PowerShell:
+$env:DOCREVIEW360_SECRET_KEY="your-secret"
+$env:DOCREVIEW360_ALGORITHM="HS256"
+$env:DOCREVIEW360_ACCESS_EXPIRE_MINUTES="30"
+$env:DOCREVIEW360_OIDC_SECRET_KEY="your-oidc-secret"
+$env:DOCREVIEW360_OIDC_ALGORITHM="HS256"
+$env:DOCREVIEW360_OIDC_EXPIRE_MINUTES="30"
+
 # Optional:
 # DOCREVIEW360_SIGNATURE_SECRET  (digital signatures)
 # NEXT_PUBLIC_API_BASE=http://localhost:8000  (frontend → backend)

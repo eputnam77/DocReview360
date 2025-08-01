@@ -1,8 +1,7 @@
 from pathlib import Path
 
-import pytest
-
 import docreview360.ai_utils as ai
+import pytest
 from docreview360.doc_types import (
     DocumentTypeModel,
     export_document_types,

@@ -8,7 +8,9 @@ def test_task160_components_bundle() -> None:
 
     task160()
 
-    wf_dir = Path("frontend/components/workflow")
+    # Use paths relative to project root
+    project_root = Path(__file__).parent.parent
+    wf_dir = project_root / "frontend" / "components" / "workflow"
     assert (wf_dir / "UploadDropzone.tsx").exists()
     assert (wf_dir / "ProgressSidebar.tsx").exists()
     assert (wf_dir / "CompletedBanner.tsx").exists()
@@ -17,8 +19,8 @@ def test_task160_components_bundle() -> None:
     index_src = (wf_dir / "index.ts").read_text()
     assert "UploadDropzone" in index_src
 
-    types_src = Path("frontend/types.ts").read_text()
+    types_src = (project_root / "frontend" / "types.ts").read_text()
     assert "interface StepInstance" in types_src
 
-    data_src = Path("frontend/data/mock.ts").read_text()
+    data_src = (project_root / "frontend" / "data" / "mock.ts").read_text()
     assert "MOCK_INSTANCE" in data_src

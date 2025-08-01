@@ -1,11 +1,13 @@
 from importlib import reload
+from pathlib import Path
+from typing import Any
 
 from docreview360 import watchlist
 from docreview360.api import app
 from fastapi.testclient import TestClient
 
 
-def test_watchlist_toggle(tmp_path, monkeypatch):
+def test_watchlist_toggle(tmp_path: Path, monkeypatch: Any) -> None:
     file = tmp_path / "watch.json"
     monkeypatch.setenv("DOCREV_WATCHLIST_FILE", str(file))
     reload(watchlist)
@@ -15,7 +17,7 @@ def test_watchlist_toggle(tmp_path, monkeypatch):
     assert watchlist.toggle_watch("alice", "p1") == []
 
 
-def test_watchlist_api(tmp_path, monkeypatch):
+def test_watchlist_api(tmp_path: Path, monkeypatch: Any) -> None:
     file = tmp_path / "watch.json"
     monkeypatch.setenv("DOCREV_WATCHLIST_FILE", str(file))
     reload(watchlist)
