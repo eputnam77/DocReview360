@@ -1,64 +1,61 @@
 // frontend/pages/projects/[id]/index.tsx
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  Fragment,
-  useCallback,
-} from "react";
-import { useRouter } from "next/router";
-import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
-  PopoverTrigger,
   PopoverContent,
+  PopoverTrigger,
 } from "@/components/ui/popover";
-import { Disclosure, Transition, Menu } from "@headlessui/react";
-import { API } from "@/lib/api";
 import {
-  Users2,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { getDemoProject } from "@/data";
+import { API } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { useUserStore } from "@/state/user";
+import { Disclosure, Menu, Transition } from "@headlessui/react";
+import {
+  BarChart2,
+  Check,
   CheckCircle2,
   Clock,
-  BarChart2,
-  FileEdit,
-  Mail,
-  Trash,
-  PlusCircle,
-  Eye,
   Download,
-  Check,
-  X,
-  RotateCcw,
-  MoreHorizontal,
-  LayoutList,
-  MessageSquarePlus,
+  FileEdit,
   History,
+  LayoutList,
+  Mail,
+  MessageSquarePlus,
+  MoreHorizontal,
+  PlusCircle,
+  RotateCcw,
+  Trash,
+  Users2
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import UploadDropzone from "@/components/workflow/UploadDropzone";
-import { useUserStore } from "@/state/user";
-import { getDemoProject } from "@/data";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 // ---------------------------------------------------------------------------
 // 1 ▲ Types
@@ -670,6 +667,36 @@ export default function ProjectDetailsPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // ▼ check for completed signatures on page load
+  useEffect(() => {
+    if (!approvals.length) return;
+
+    // Check localStorage for completed signatures
+    approvals.forEach((approval) => {
+      if (approval.documensoSigId) {
+        const completedAt = localStorage.getItem(`approval-${approval.id}`);
+        if (completedAt && approval.state !== "approved") {
+          // Update the approval state to reflect completion
+          setApprovals((prev) =>
+            prev.map((a) =>
+              a.id === approval.id
+                ? {
+                    ...a,
+                    state: "approved" as const,
+                    signedAt: completedAt,
+                    documensoSigId: approval.documensoSigId
+                  }
+                : a,
+            ),
+          );
+
+          // Sync with backend
+          syncApprovalWithBackend(approval.id, approval.documensoSigId);
+        }
+      }
+    });
+  }, [approvals]);
+
   // ▼ review KPIs memo
   const stats = useMemo(() => {
     const assigned = approvals.length;
@@ -757,17 +784,54 @@ export default function ProjectDetailsPage() {
       alert("Approval already completed.");
       return;
     }
-    fetch(`${API}/approvals/${aid}/sign`, { method: "POST" })
-      .then((r) => r.json())
+
+    console.log(`Starting signature process for approval ${aid}`);
+
+    // Show loading state
+    setApprovals((prev) =>
+      prev.map((a) =>
+        a.id === aid ? { ...a, state: "pending" as const } : a,
+      ),
+    );
+
+    fetch(`${API}/approvals/${aid}/sign`, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+      .then((r) => {
+        console.log(`Signature request response: ${r.status} ${r.statusText}`);
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        }
+        return r.json();
+      })
       .then((d) => {
+        console.log(`Signature request successful:`, d);
+        // Update local state with signature ID
         setApprovals((prev) =>
           prev.map((a) =>
             a.id === aid ? { ...a, documensoSigId: d.id } : a,
           ),
         );
-        router.push(d.url);
+
+        // Redirect to Documenso with proper parameters
+        const documensoUrl = `${d.url}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${aid}`;
+        console.log(`Redirecting to: ${documensoUrl}`);
+        router.push(documensoUrl);
       })
-      .catch(() => alert("Failed to start signing"));
+      .catch((error) => {
+        console.error("Signature request failed:", error);
+        alert(`Failed to start signing: ${error.message}`);
+
+        // Reset approval state on error
+        setApprovals((prev) =>
+          prev.map((a) =>
+            a.id === aid ? { ...a, state: "pending" as const } : a,
+          ),
+        );
+      });
   };
 
   const resetApprovalLocal = (aid: string) => {
@@ -781,6 +845,27 @@ export default function ProjectDetailsPage() {
           : a,
       ),
     );
+  };
+
+  const syncApprovalWithBackend = async (approvalId: string, signatureId: string) => {
+    try {
+      const response = await fetch(`${API}/approvals/${approvalId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          state: 'approved',
+          signature: signatureId,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to sync approval with backend');
+      }
+    } catch (error) {
+      console.error('Error syncing approval:', error);
+    }
   };
 
   const exportRaci = () => {
