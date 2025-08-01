@@ -26,3 +26,7 @@ Pull requests are welcome! Please run the unit tests with `pytest` and the end-t
 
 - [User Guide](user_guide.md)
 - [Latest Features](latest_features.md)
+
+## License
+
+This project is released under the GNU General Public License v3.0. See the LICENSE file for details.
