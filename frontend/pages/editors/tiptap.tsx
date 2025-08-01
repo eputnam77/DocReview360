@@ -1,6 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import dynamic from "next/dynamic";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 // Core Extensions
 import Collaboration from "@tiptap/extension-collaboration";
@@ -405,6 +405,13 @@ function Sidebar(props: SidebarProps) {
 }
 
 export default function TipTapEditorPage() {
+  // Client-side only rendering to prevent SSR issues
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Yjs Setup
   const [collabEnabled, setCollabEnabled] = useState(false);
   const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
@@ -564,6 +571,7 @@ export default function TipTapEditorPage() {
       extensions,
       content,
       autofocus: true,
+      immediatelyRender: false, // Fix SSR hydration warnings
       editorProps: {
         attributes: {
           class:
@@ -609,16 +617,55 @@ export default function TipTapEditorPage() {
   }
 
   async function handleTemplateLoad(filename: string) {
-    if (!editor) return;
+    if (!editor) {
+      console.error("Editor not initialized");
+      return;
+    }
+
     try {
-      const res = await fetch(`/templates/${filename}`);
-      if (!res.ok) throw new Error("fetch failed");
-      const html = await res.text();
-      const sanitized = sanitizeHtml(html);
+      console.log("=== TEMPLATE LOAD DEBUG ===");
+      console.log("Loading template:", filename);
+      console.log("Available templates:", TEMPLATES.map(t => ({ id: t.id, type: t.type, label: t.label })));
+
+      // Find the template in the TEMPLATES array
+      const template = TEMPLATES.find(t => t.id === filename);
+      if (!template) {
+        throw new Error(`Template not found: ${filename}. Available templates: ${TEMPLATES.map(t => t.id).join(', ')}`);
+      }
+
+      console.log("Template found:", template.label, "Type:", template.type);
+      console.log("Template content length:", template.content?.length || 0);
+      console.log("Template content preview:", template.content?.substring(0, 100) + "...");
+
+      // Use the template content directly
+      const sanitized = sanitizeHtml(template.content);
+      console.log("Sanitized content length:", sanitized.length);
+      console.log("Sanitized content preview:", sanitized.substring(0, 100) + "...");
+
+      // Test if the content is valid before setting it
+      if (!sanitized || sanitized.trim().length === 0) {
+        throw new Error("Template content is empty after sanitization");
+      }
+
       editor.commands.setContent(sanitized);
       setContent(sanitized);
-    } catch {
-      alert("Failed to load template: " + filename);
+
+      console.log("Template loaded successfully");
+      console.log("=== END TEMPLATE LOAD DEBUG ===");
+
+      // Close sidebar after successful template load for better UX
+      setSidebarOpen(false);
+    } catch (error) {
+      console.error("=== TEMPLATE LOAD ERROR ===");
+      console.error("Template load error:", error);
+      console.error("Error details:", {
+        filename,
+        availableTemplates: TEMPLATES.map(t => t.id),
+        editorExists: !!editor,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
+      console.error("=== END TEMPLATE LOAD ERROR ===");
+      alert(`Failed to load template: ${filename}\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -695,7 +742,7 @@ export default function TipTapEditorPage() {
     }
   }
 
-  if (!editor)
+  if (!isClient || !editor)
     return (
       <div className="flex items-center justify-center h-full">
         Loading TipTap…

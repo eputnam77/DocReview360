@@ -1,51 +1,71 @@
 // app/tools/checker/page.tsx  (or pages/tools/checker.tsx)
 "use client";
 
-import React, { useState } from "react";
-import { API } from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileInput } from "@/components/ui/file-input"; // 👈 Wraps native <input type="file"> with styles*
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { FileInput } from "@/components/ui/file-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { UploadCloud, FileWarning, Download } from "lucide-react";
+import { API } from "@/lib/api";
+import { AlertCircle, CheckCircle, Download, FileWarning, UploadCloud } from "lucide-react";
+import React, { useState } from "react";
 
 interface CheckResult {
   [key: string]: unknown;
 }
 
-const DEMO_RESULT: CheckResult = {
-  heading: "Missing H2",
-  accessibility: "alt text",
-};
+interface CheckResponse {
+  results: CheckResult;
+  filename?: string;
+  error?: string;
+}
 
 export default function CheckerPage() {
   const [result, setResult] = useState<CheckResult | null>(null);
   const [download, setDownload] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [apiStatus, setApiStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
+    setResult(null);
+    setDownload(null);
 
     const formData = new FormData(e.currentTarget);
+    const apiUrl = API || '/api';
+
     try {
-      const res = await fetch(`${API}/tools/checker`, { method: "POST", body: formData });
+      console.log(`Submitting to: ${apiUrl}/tools/checker`);
+      const res = await fetch(`${apiUrl}/tools/checker`, {
+        method: "POST",
+        body: formData
+      });
 
       if (res.ok) {
-        const data = await res.json();
+        const data: CheckResponse = await res.json();
         setResult(data.results);
-        setDownload(`/downloads/${data.filename}`);
+        if (data.filename) {
+          setDownload(`/downloads/${data.filename}`);
+        }
+        setApiStatus('connected');
       } else {
-        setResult(DEMO_RESULT);
+        const errorData = await res.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${res.status}: ${res.statusText}`;
+        setError(`Backend error: ${errorMessage}`);
+        setApiStatus('disconnected');
       }
-    } catch {
-      setResult(DEMO_RESULT);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Network error';
+      setError(`Connection error: ${errorMessage}`);
+      setApiStatus('disconnected');
     } finally {
       setIsLoading(false);
     }
@@ -55,19 +75,40 @@ export default function CheckerPage() {
     <div className="p-8 space-y-8">
       <h1 className="text-2xl font-bold">Document Checker</h1>
 
+      {/* API Status Indicator */}
+      {apiStatus !== 'unknown' && (
+        <Card className={`max-w-lg ${apiStatus === 'connected' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              {apiStatus === 'connected' ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              )}
+              <span className={`text-sm font-medium ${apiStatus === 'connected' ? 'text-green-800' : 'text-red-800'}`}>
+                {apiStatus === 'connected'
+                  ? 'Connected to GovDocVerify backend'
+                  : 'Backend connection failed - check configuration'
+                }
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Upload Card */}
       <Card className="max-w-lg">
         <CardHeader className="space-y-1">
           <UploadCloud className="h-8 w-8 text-indigo-600" />
           <CardTitle className="text-lg">Upload a document</CardTitle>
           <CardDescription>
-            DOC / DOCX only. The checker validates headings, accessibility, and FAA style.
+            DOC / DOCX only. The checker validates headings, accessibility, and FAA style using GovDocVerify.
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <FileInput            /* a styled <input type="file"> helper ─ see note below */
+            <FileInput
               name="file"
               accept=".doc,.docx"
               required
@@ -77,18 +118,40 @@ export default function CheckerPage() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? "Checking…" : "Run checks"}
+              {isLoading ? "Running GovDocVerify checks…" : "Run checks"}
             </Button>
           </form>
         </CardContent>
       </Card>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader className="flex flex-row items-center gap-3 pb-2">
+            <AlertCircle className="h-6 w-6 text-red-600" />
+            <CardTitle className="text-lg font-semibold text-red-800">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-700">{error}</p>
+            <div className="mt-4 text-sm text-red-600">
+              <p><strong>Troubleshooting:</strong></p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Ensure the backend server is running on port 8000</li>
+                <li>Check that GovDocVerify is properly installed</li>
+                <li>Verify NEXT_PUBLIC_API_BASE environment variable is set</li>
+                <li>Check browser console for detailed error information</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Results Card */}
       {result && (
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-2">
             <FileWarning className="h-6 w-6 text-orange-600" />
-            <CardTitle className="text-lg font-semibold">Issues found</CardTitle>
+            <CardTitle className="text-lg font-semibold">GovDocVerify Results</CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-72 rounded-md border p-2">
@@ -112,16 +175,3 @@ export default function CheckerPage() {
     </div>
   );
 }
-
-/* 
- * *If your design system doesn’t include <FileInput>, swap it with:
- *   <input
- *     type="file"
- *     name="file"
- *     accept=".doc,.docx"
- *     className="w-full rounded border border-gray-300 p-2 text-sm
- *                file:mr-4 file:rounded file:border-0 file:bg-indigo-600
- *                file:px-3 file:py-2 file:text-white
- *                hover:file:bg-indigo-700"
- *   />
- */
