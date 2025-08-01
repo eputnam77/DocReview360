@@ -369,3 +369,7 @@ workflows. The Playwright suite spins up the FastAPI server, drives a real
 browser and exercises background services. The CI pipeline installs the
 Playwright browsers and runs `pytest -m e2e` in headless mode so regressions are
 caught before release.
+
+## License
+
+DocReview360 is distributed under the GNU General Public License v3.0. Refer to the LICENSE file for full terms.
