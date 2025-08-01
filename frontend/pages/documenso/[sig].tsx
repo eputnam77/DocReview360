@@ -1,7 +1,8 @@
-import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API } from "@/lib/api";
 import { ShieldCheck } from "lucide-react";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 export default function DocumensoSign() {
@@ -11,21 +12,65 @@ export default function DocumensoSign() {
   const approvalId = router.query.approval as string | undefined;
   const [signing, setSigning] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const complete = () => {
     setSigning(true);
-    fetch(`/sign/${sig}/complete`, { method: "POST" })
+    setError(null);
+
+    console.log(`Completing signature ${sig} for approval ${approvalId}`);
+
+    // Call the backend to complete the signature
+    fetch(`${API}/sign/${sig}/complete`, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+      .then((r) => {
+        console.log(`Signature completion response: ${r.status} ${r.statusText}`);
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        }
+        return r.json();
+      })
       .then(() => {
+        console.log(`Signature completion successful`);
+        // Store completion timestamp in localStorage for the approval
         if (approvalId) {
-          localStorage.setItem(
-            `approval-${approvalId}`,
-            new Date().toISOString(),
-          );
+          const timestamp = new Date().toISOString();
+          localStorage.setItem(`approval-${approvalId}`, timestamp);
+          console.log(`Stored completion timestamp: ${timestamp}`);
+
+          // Also sync with backend immediately
+          fetch(`${API}/approvals/${approvalId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              state: 'approved',
+              signature: sig,
+            }),
+          }).then(r => {
+            console.log(`Backend sync response: ${r.status} ${r.statusText}`);
+          }).catch(err => {
+            console.error('Failed to sync approval with backend:', err);
+          });
         }
         setDone(true);
-        setTimeout(() => router.push(returnTo), 1000);
+
+        // Redirect back to the project page after a short delay
+        setTimeout(() => {
+          console.log(`Redirecting to: ${returnTo}`);
+          router.push(returnTo);
+        }, 1500);
       })
-      .finally(() => setSigning(false));
+      .catch((err) => {
+        console.error("Signature completion failed:", err);
+        setError(err.message);
+        setSigning(false);
+      });
   };
 
   if (!sig) return <p className="p-4">Loading…</p>;
@@ -44,17 +89,20 @@ export default function DocumensoSign() {
             <div className="text-gray-500 text-sm mb-2">
               Approval ID: <span className="font-mono">{sig}</span>
             </div>
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+                Error: {error}
+              </div>
+            )}
             <div className="mb-4 text-gray-600">
-              {done
-                ? (
-                  <span className="text-green-700 font-semibold">Document signed and approved. Redirecting…</span>
-                ) : (
-                  <>
-                    To approve this document, click the button below.<br />
-                    This will record your official approval.<br />
-                  </>
-                )
-              }
+              {done ? (
+                <span className="text-green-700 font-semibold">Document signed and approved. Redirecting…</span>
+              ) : (
+                <>
+                  To approve this document, click the button below.<br />
+                  This will record your official approval.<br />
+                </>
+              )}
             </div>
             <Button
               onClick={complete}
