@@ -159,3 +159,5 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 165 | Pre-fill SC Notice Builder  | Map SC-Intake JSON to Task **137** wrapper call; pass config object; show preview/download.   | Integration · P2 | 0.5 d  | Generated notice reflects intake fields; hash stable given same input.   |
 | 166 | E2E: SC paths   | Playwright scenario: create SC project (defer), guard fails send-for-review, complete intake, generate notice, publish.   | QA · P2    | 1 d  | `pytest -m e2e` passes end-to-end SC scenario.  |
 
+| 167 | Central AI model configuration file | YAML file `ai_models.yaml` lists provider name, endpoint and model ID for OpenAI, Anthropic, OpenRouter, AWS Bedrock and Google. Default uses a free OpenRouter model. Backend loads `settings.ai_default_model` and all AI helpers read from this. | Backend · P2 | 1 d | API calls use the selected model |
+| 168 | Model selector UI | Dropdown in Integrations settings page to choose the active AI model from `ai_models.yaml`. Saving updates `settings.ai_default_model`. | FE · P2 | 1 d | Changing model reflects in API responses |
