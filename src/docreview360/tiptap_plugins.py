@@ -23,3 +23,11 @@ def numbering_plugin(data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str,
     markdown = tiptap_to_markdown(data)
     numbered = apply_numbering(markdown, mapping)
     return markdown_to_tiptap(numbered)
+
+
+def lint_template(data: Dict[str, Any], rules: Dict[str, List[str]], enabled: bool) -> List[str]:
+    """Run :func:`lint_template_plugin` when ``enabled`` is ``True``."""
+
+    if not enabled:
+        return []
+    return lint_template_plugin(data, rules)
