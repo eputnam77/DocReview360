@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 
 from .stubs import record_task_completion
 
@@ -26,3 +27,44 @@ def list_templates(root: Path = TEMPLATES_DIR) -> List[str]:
     if not root.exists():
         return []
     return [p.stem for p in root.glob("*.md")]
+
+
+@dataclass
+class TemplateVersion:
+    """Stored template content with version and metadata."""
+
+    version: int
+    content: bytes
+    metadata: Dict[str, Any]
+
+
+_template_store: dict[str, List[TemplateVersion]] = {}
+
+
+def upload_template(
+    name: str, data: bytes, metadata: Dict[str, Any] | None = None
+) -> TemplateVersion:
+    """Store ``data`` and ``metadata`` as a new version for ``name``."""
+
+    if not name:
+        raise ValueError("name is required")
+    versions = _template_store.setdefault(name, [])
+    version = len(versions) + 1
+    record = TemplateVersion(version=version, content=data, metadata=metadata or {})
+    versions.append(record)
+    return record
+
+
+def get_latest_template(name: str) -> TemplateVersion | None:
+    """Return the most recent template for ``name`` if it exists."""
+
+    versions = _template_store.get(name)
+    if not versions:
+        return None
+    return versions[-1]
+
+
+def list_template_versions(name: str) -> List[TemplateVersion]:
+    """Return all stored versions for ``name``."""
+
+    return list(_template_store.get(name, []))
