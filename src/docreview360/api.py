@@ -114,6 +114,7 @@ from .search import (
 )
 from .status import internal_status, public_status
 from .stubs.task223 import convert_document
+from .template_manager import upload_template as store_template
 from .watchlist import get_watchlist, toggle_watch
 from .workflows import (
     WorkflowModel,
@@ -757,6 +758,27 @@ async def delete_document_type_endpoint(name: str) -> Response:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return Response(status_code=204)
 
+
+# ---------------------------------------------------------------------------
+# Template upload
+# ---------------------------------------------------------------------------
+
+
+@app.post("/templates", status_code=201)
+async def upload_template_endpoint(
+    name: str = Form(...),
+    meta: str = Form("{}"),
+    file: UploadFile = File(...),
+) -> dict[str, Any]:
+    """Store uploaded template ``file`` with ``meta`` information."""
+
+    try:
+        metadata = json.loads(meta)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="invalid metadata") from exc
+    content = await file.read()
+    version = store_template(name, content, metadata)
+    return {"name": name, "version": version.version, "metadata": version.metadata}
 
 @app.get("/plugin-marketplace")
 async def list_marketplace() -> list[str]:
