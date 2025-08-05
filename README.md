@@ -121,6 +121,7 @@ The `--reload` flag auto‑reloads on code changes—handy in development.
 ## 🖥️ Run the React frontend (Node 18+)
 
 ```bash
+# Ensure you are at DocReview360/DocReview360/frontend
 cd frontend
 npm install --legacy-peer-deps
 

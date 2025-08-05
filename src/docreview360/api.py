@@ -182,6 +182,7 @@ class ProjectCreate(BaseModel):
     phase: str | None = None
     workflow: str | None = None
     priority: int = 0
+    description: str | None = None
 
 
 class ProjectUpdate(BaseModel):
@@ -366,10 +367,42 @@ async def get_project_endpoint(project_id: str) -> ProjectModel:
 
 
 @app.put("/projects/{project_id}", response_model=ProjectModel)
-async def update_project_endpoint(project_id: str, body: ProjectUpdate) -> ProjectModel:
+async def update_project_endpoint(
+    project_id: str,
+    name: str | None = Form(None),
+    user: str | None = Form(None),
+    doc_type: str | None = Form(None),
+    title: str | None = Form(None),
+    description: str | None = Form(None),
+    sme: str | None = Form(None),  # Add sme field for frontend compatibility
+    docType: str | None = Form(None),  # Add docType field for frontend compatibility
+    file: UploadFile | None = File(None)
+) -> ProjectModel:
     """Update project fields like name, user or doc_type."""
     try:
-        return update_project(project_id, name=body.name, user=body.user, doc_type=body.doc_type)
+        # Map frontend fields to backend fields
+        project_user = user or sme  # Use sme as user if user is not provided
+        project_doc_type = doc_type or docType  # Use docType as doc_type if doc_type is not provided
+
+        # Update the project with the provided fields
+        updated_project = update_project(
+            project_id,
+            name=name or title,  # Map title to name for frontend compatibility
+            user=project_user,
+            doc_type=project_doc_type
+        )
+
+        # If a file was uploaded, import it as a document for this project
+        if file:
+            content = await file.read()
+            import_document(
+                file.filename or "uploaded_document",
+                content,
+                project=project_id,
+                user=project_user
+            )
+
+        return updated_project
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

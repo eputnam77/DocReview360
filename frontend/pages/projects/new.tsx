@@ -1,17 +1,17 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/router";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 import { API } from "@/lib/api";
+import { useRouter } from "next/router";
+import React, { useEffect, useRef, useState } from "react";
 
 function FieldGate({ when, children }: { when: boolean; children: React.ReactNode }) {
   return when ? <>{children}</> : null;
@@ -45,16 +45,24 @@ export default function NewProjectPage() {
   const manualWorkflow = useRef(false);
 
   useEffect(() => {
+    console.log('Fetching document types from:', `${API}/document-types`);
     fetch(`${API}/document-types`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) =>
-        setDocTypes(
-          data.length
-            ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-            : DEMO_DOC_TYPES,
-        ),
-      )
-      .catch(() => setDocTypes(DEMO_DOC_TYPES));
+      .then((r) => {
+        console.log('Document types response status:', r.status);
+        return r.ok ? r.json() : [];
+      })
+      .then((data) => {
+        console.log('Document types API data:', data);
+        const docTypeNames = data.length
+          ? data.map((d: any) => (typeof d === "string" ? d : d.name))
+          : DEMO_DOC_TYPES;
+        console.log('Setting document types to:', docTypeNames);
+        setDocTypes(docTypeNames);
+      })
+      .catch((error) => {
+        console.error('Error fetching document types:', error);
+        setDocTypes(DEMO_DOC_TYPES);
+      });
     fetch(`${API}/phases`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) =>
@@ -103,7 +111,8 @@ export default function NewProjectPage() {
     if (!title.trim()) errs.title = "Required";
     if (!phase) errs.phase = "Required";
     if (!workflow) errs.workflow = "Required";
-    if (files.length === 0) errs.files = "Upload at least one";
+    // Remove file upload requirement - make it optional
+    // if (files.length === 0) errs.files = "Upload at least one";
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -112,29 +121,46 @@ export default function NewProjectPage() {
     e.preventDefault();
     setError(null);
     if (!validate()) {
+      console.log('Validation failed:', fieldErrors);
       return;
     }
 
     setLoading(true);
 
+    const projectData = {
+      id: docNumber,
+      name: title,
+      user: sme || undefined,
+      doc_type: docType,
+      phase,
+      workflow,
+      description,
+    };
+
+    console.log('Creating project with data:', projectData);
+
     try {
       const res = await fetch(`${API}/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: docNumber,
-          name: title,
-          user: sme || undefined,
-          doc_type: docType,
-          phase,
-          workflow,
-          description,
-        }),
+        body: JSON.stringify(projectData),
       });
-      if (!res.ok) throw new Error("Failed to create project");
+
+      console.log('Response status:', res.status);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to create project: ${res.status} ${errorText}`);
+      }
+
+      const result = await res.json();
+      console.log('Project created successfully:', result);
+
       // Redirect to projects list or new project page
       router.push("/projects");
     } catch (err) {
+      console.error('Error creating project:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -266,7 +292,7 @@ export default function NewProjectPage() {
             </div>
           </details>
           <div>
-            <Label>Upload Reference Files (.docx, .pdf, .txt)</Label>
+            <Label>Upload Reference Files (.docx, .pdf, .txt) <span className="text-gray-500">(optional)</span></Label>
             <UploadDropzone
               value={files}
               onChange={(f) => setFiles(Array.isArray(f) ? f : f ? [f] : [])}

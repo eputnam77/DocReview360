@@ -4,26 +4,26 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/components/ui/table";
 import { getDemoProject } from "@/data";
 import { API } from "@/lib/api";
@@ -31,30 +31,30 @@ import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import {
-  BarChart2,
-  Check,
-  CheckCircle2,
-  Clock,
-  Download,
-  FileEdit,
-  History,
-  LayoutList,
-  Mail,
-  MessageSquarePlus,
-  MoreHorizontal,
-  PlusCircle,
-  RotateCcw,
-  Trash,
-  Users2
+    BarChart2,
+    Check,
+    CheckCircle2,
+    Clock,
+    Download,
+    FileEdit,
+    History,
+    LayoutList,
+    Mail,
+    MessageSquarePlus,
+    MoreHorizontal,
+    PlusCircle,
+    RotateCcw,
+    Trash,
+    Users2
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    Fragment,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
 } from "react";
 
 // ---------------------------------------------------------------------------
@@ -638,10 +638,23 @@ export default function ProjectDetailsPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+    console.log('Fetching project data from:', `${API}/projects/${id}`);
     fetch(`${API}/projects/${id}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(async (proj) => {
-        setProject(proj);
+        // Map backend data to frontend interface
+        const mappedProject: Project = {
+          id: proj.id,
+          number: proj.number || 1,
+          type: proj.doc_type || "Unknown",
+          title: proj.name || "Untitled",
+          owner: proj.user || "Unknown",
+          status: proj.status || "Draft",
+          progress: 40, // Default progress since backend doesn't provide this
+          updated: proj.created || new Date().toISOString().split('T')[0],
+          editor: "tiptap" // Default editor
+        };
+        setProject(mappedProject);
         if (proj.workflow) {
           const wfRes = await fetch(`${API}/workflows/${proj.workflow}`);
           if (wfRes.ok) setWorkflow(await wfRes.json());
@@ -654,7 +667,9 @@ export default function ProjectDetailsPage() {
         setRefDocs(DEMO_REFERENCE_DOCS);
         setLogs(DEMO_LOGS);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('API call failed:', error);
+        console.log('Falling back to demo data');
         const demo = getDemoProject(String(id));
         if (demo) setProject(demo as Project);
         else setProject(DEMO_PROJECT);

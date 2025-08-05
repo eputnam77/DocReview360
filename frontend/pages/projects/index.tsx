@@ -22,7 +22,7 @@ interface Project {
   number: string | number;
   type: string;
   title: string;
-  status: string;
+  status?: string;
   progress: number;
   updated?: string;
   user?: string;
@@ -99,13 +99,13 @@ export default function ProjectList() {
   // Calculate simple stats for this user
   const statAssigned = projects.length;
   const statInProgress = projects.filter(
-    (p) => p.status.toLowerCase() === "in progress"
+    (p) => p.status?.toLowerCase() === "in progress"
   ).length;
   const statCompleted = projects.filter(
-    (p) => p.status.toLowerCase() === "complete"
+    (p) => p.status?.toLowerCase() === "complete"
   ).length;
   const statOverdue = projects.filter(
-    (p) => p.status.toLowerCase() === "overdue"
+    (p) => p.status?.toLowerCase() === "overdue"
   ).length;
 
   const sorted = [...projects].sort((a, b) => {
@@ -230,7 +230,7 @@ export default function ProjectList() {
                       : "bg-gray-100 text-gray-700"
                   )}
                 >
-                  {p.status}
+                  {p.status || "Unknown"}
                 </span>
               </TableCell>
               <TableCell className="min-w-[100px] w-32">
