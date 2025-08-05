@@ -22,8 +22,25 @@ document_types: Dict[str, DocumentTypeModel] = {}
 
 
 def _bootstrap_sample() -> None:
-    """Create a default sample document type if none exist."""
+    """Create default document types if none exist."""
     if not document_types:
+        # Add FAA-specific document types
+        document_types["Advisory Circular"] = DocumentTypeModel(
+            name="Advisory Circular",
+            template="<h1>Advisory Circular</h1>",
+            workflow=["draft", "review", "final"],
+        )
+        document_types["Policy Statement"] = DocumentTypeModel(
+            name="Policy Statement",
+            template="<h1>Policy Statement</h1>",
+            workflow=["draft", "review", "final"],
+        )
+        document_types["Release Notes"] = DocumentTypeModel(
+            name="Release Notes",
+            template="<h1>Release Notes</h1>",
+            workflow=["draft", "review", "final"],
+        )
+        # Keep the sample for backward compatibility
         document_types["sample"] = DocumentTypeModel(
             name="sample",
             template="<h1>Sample</h1>",

@@ -1,18 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import UploadDropzone from "@/components/workflow/UploadDropzone";
-import { API } from "@/lib/api";
 import { getDemoProject } from "@/data/demoProjects";
+import { API } from "@/lib/api";
+import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
 
 const DOCUMENT_TYPES = [
   "Advisory Circular",
@@ -23,40 +12,43 @@ const DOCUMENT_TYPES = [
 export default function EditProjectPage() {
   const router = useRouter();
   const { id } = router.query;
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form fields
   const [docId, setDocId] = useState("");
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
-  const [docType, setDocType] = useState<string | undefined>(undefined);
+  const [docType, setDocType] = useState<string>("");
   const [description, setDescription] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-
-  // Handle file upload - convert File[] to File for single file uploads
-  const handleFileChange = (fileOrFiles: File | File[] | null) => {
-    if (Array.isArray(fileOrFiles)) {
-      setFile(fileOrFiles[0] || null);
-    } else {
-      setFile(fileOrFiles);
-    }
-  };
 
   // Fetch project details on mount
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+    console.log('Edit page: Fetching project data from:', `${API}/projects/${id}`);
+
     fetch(`${API}/projects/${id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((proj) => {
-        setDocId(proj.docId || "");
-        setTitle(proj.title || "");
-        setSme(proj.sme || "");
-        setDocType(proj.docType || "");
-        setDescription(proj.description || "");
+      .then((r) => {
+        console.log('Edit page: Response status:', r.status);
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
       })
-      .catch(() => {
+      .then((proj) => {
+        console.log('Edit page: Received project data:', proj);
+        // Map backend ProjectModel fields to frontend form fields
+        setDocId(proj.id || "");
+        setTitle(proj.name || "");
+        setSme(proj.user || "");
+        setDocType(proj.doc_type || "");
+        setDescription(proj.name || ""); // Use name as description since backend doesn't have description
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Edit page: API call failed:', error);
+        console.log('Edit page: Falling back to demo data');
         const demo = getDemoProject(String(id));
         if (demo) {
           setDocId(String(demo.number));
@@ -67,8 +59,8 @@ export default function EditProjectPage() {
         } else {
           setError("Could not load project.");
         }
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,7 +78,6 @@ export default function EditProjectPage() {
     formData.append("sme", sme);
     formData.append("docType", docType);
     formData.append("description", description);
-    if (file) formData.append("file", file);
 
     try {
       const res = await fetch(`${API}/projects/${id}`, {
@@ -102,7 +93,7 @@ export default function EditProjectPage() {
     }
   };
 
-  if (loading) return <div className="p-8">Loading…</div>;
+  if (loading && !docId) return <div className="p-8">Loading…</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -114,67 +105,72 @@ export default function EditProjectPage() {
           encType="multipart/form-data"
         >
           <div>
-            <Label htmlFor="docId">Document ID *</Label>
-            <Input
+            <label htmlFor="docId" className="block text-sm font-medium mb-2">Document ID *</label>
+            <input
               id="docId"
+              type="text"
               value={docId}
               onChange={(e) => setDocId(e.target.value)}
               required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <Label htmlFor="title">Document Title *</Label>
-            <Input
+            <label htmlFor="title" className="block text-sm font-medium mb-2">Document Title *</label>
+            <input
               id="title"
+              type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <Label htmlFor="sme">Subject Matter Expert (SME)</Label>
-            <Input
+            <label htmlFor="sme" className="block text-sm font-medium mb-2">Subject Matter Expert (SME)</label>
+            <input
               id="sme"
+              type="text"
               value={sme}
               onChange={(e) => setSme(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <Label htmlFor="docType">Document Type *</Label>
-            <Select value={docType} onValueChange={setDocType}>
-              <SelectTrigger id="docType">
-                <SelectValue placeholder="Select a document type" />
-              </SelectTrigger>
-              <SelectContent>
-                {DOCUMENT_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label htmlFor="docType" className="block text-sm font-medium mb-2">Document Type *</label>
+            <select
+              id="docType"
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a document type</option>
+              {DOCUMENT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
-            <Label htmlFor="description">Description</Label>
-            <Input
+            <label htmlFor="description" className="block text-sm font-medium mb-2">Description</label>
+            <input
               id="description"
+              type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>Replace Document File (.docx, .pdf, .txt)</Label>
-            <UploadDropzone
-              value={file}
-              onChange={handleFileChange}
-              accept=".docx,.pdf,.txt"
-              maxSizeMB={20}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" disabled={loading} className="w-full">
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {loading ? "Saving..." : "Save Changes"}
-          </Button>
+          </button>
         </form>
       </div>
     </div>

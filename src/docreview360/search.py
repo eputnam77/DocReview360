@@ -10,11 +10,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from . import fts
 from .cache import cache_get, cache_set
 from .documents import DocumentModel, documents
+from .workflows import get_workflow
 
 
 class ProjectModel(BaseModel):
@@ -30,6 +31,27 @@ class ProjectModel(BaseModel):
     created: datetime = datetime.now(UTC)
     temp_user: Optional[str] = None
     temp_until: datetime | None = None
+
+    @computed_field
+    @property
+    def status(self) -> str:
+        """Derive status from workflow phase or return default."""
+        if self.workflow:
+            wf = get_workflow(self.workflow)
+            if wf:
+                # Map workflow phases to status values
+                phase = wf.phase.lower()
+                if "draft" in phase or "initial" in phase:
+                    return "Draft"
+                elif "review" in phase:
+                    return "In Progress"
+                elif "approval" in phase or "final" in phase:
+                    return "Complete"
+                elif "overdue" in phase:
+                    return "Overdue"
+                else:
+                    return wf.phase
+        return "Draft"  # Default status for projects without workflows
 
 
 @dataclass
