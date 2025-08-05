@@ -146,10 +146,10 @@ class ReviewerAssign(BaseModel):
 
 class ApprovalCreate(BaseModel):
     """Input model for creating approvals."""
-
     workflow: str
     reviewer: str
     due_at: datetime | None = None
+    description: str | None = None
 
 
 class ApprovalUpdate(BaseModel):
@@ -174,9 +174,9 @@ class PluginToggle(BaseModel):
 
 class ProjectCreate(BaseModel):
     """Input model for creating projects."""
-
-    id: str
+    id: str | None = None  # Made optional - will be auto-generated if not provided
     name: str
+    document_number: str | None = None  # User-provided document number/reference
     user: str | None = None
     doc_type: str | None = None
     phase: str | None = None
@@ -315,7 +315,13 @@ async def update_profile(
 async def list_projects_endpoint(
     user: str | None = None, x_user: str | None = Header(None)
 ) -> list[ProjectModel]:
-    """Return projects optionally filtered by user with simple caching."""
+    """Return projects optionally filtered by user with simple caching.
+    
+    When a user is specified, includes projects where the user is:
+    1. Directly assigned as project.user
+    2. Temporarily assigned as project.temp_user  
+    3. Assigned as a reviewer in any approval step (SME, FLM, PPM, TW, etc.)
+    """
     user = (user or x_user) or None
     cache_key = f"projects-{user or 'all'}"
     cached = cache_get(cache_key)
@@ -336,19 +342,40 @@ async def list_projects_endpoint(
     return projects_list
 
 
+@app.get("/projects/assigned/{username}", response_model=list[ProjectModel])
+async def get_user_assignments_endpoint(username: str) -> list[ProjectModel]:
+    """Get all projects assigned to a specific user through any mechanism.
+    
+    This includes:
+    - Direct project assignments
+    - Temporary assignments  
+    - Approval assignments (SME, FLM, PPM, TW, Senior TW, TW Manager, Attorney)
+    
+    Useful for debugging and testing assignment logic.
+    """
+    return list_projects(username)
+
+
 @app.post("/projects", status_code=201, response_model=ProjectModel)
 async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
+    # Auto-generate ID if not provided
+    if body.id is None:
+        from .search import search_index
+        body.id = search_index.generate_project_id()
+
+    # If document_number is not provided, use the id as document_number
+    if body.document_number is None:
+        body.document_number = body.id
+
     project = ProjectModel(**body.model_dump())
     add_project(project)
     if body.workflow:
         wf = create_workflow(project.id, [body.workflow])
         project.workflow = wf.id
-    cache_set(
-        "projects",
-        json.dumps([p.model_dump(mode="json") for p in list_projects()]),
-        ttl=30,
-    )
+    # Clear all project-related caches to ensure fresh data
+    clear_cache()
+    print(f"DEBUG: Project '{project.id}' created successfully, cache cleared")
     log_event(
         "create_project",
         user=project.user,
@@ -782,13 +809,67 @@ async def update_document_type_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@app.get("/document-types/{name}/usage", response_model=dict[str, Any])
+async def check_document_type_usage_endpoint(name: str) -> dict[str, Any]:
+    """Check if a document type is in use and return usage information."""
+    from .doc_types import get_document_type
+
+    # Check if document type exists
+    doc_type = get_document_type(name)
+    if not doc_type:
+        raise HTTPException(status_code=404, detail=f"Document type '{name}' not found")
+
+    # Get all projects to check usage
+    projects = list_projects()
+    projects_using_doc_type = [p for p in projects if p.doc_type == name]
+
+    return {
+        "name": name,
+        "in_use": len(projects_using_doc_type) > 0,
+        "usage_count": len(projects_using_doc_type),
+        "projects": [{"id": p.id, "name": p.name} for p in projects_using_doc_type]
+    }
+
+
 @app.delete("/document-types/{name}", status_code=204, response_class=Response)
-async def delete_document_type_endpoint(name: str) -> Response:
-    """Remove an existing document type."""
+async def delete_document_type_endpoint(name: str, replacement: str | None = None) -> Response:
+    """Remove an existing document type. If in use, replacement is required."""
+    from .doc_types import delete_document_type, get_document_type
+
+    # Check if document type exists
+    doc_type = get_document_type(name)
+    if not doc_type:
+        raise HTTPException(status_code=404, detail=f"Document type '{name}' not found")
+
+    # Check if document type is in use
+    projects = list_projects()
+    projects_using_doc_type = [p for p in projects if p.doc_type == name]
+
+    if projects_using_doc_type:
+        if not replacement:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Document type '{name}' is in use by {len(projects_using_doc_type)} project(s). Please specify a replacement document type."
+            )
+
+        # Verify replacement document type exists
+        replacement_doc_type = get_document_type(replacement)
+        if not replacement_doc_type:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Replacement document type '{replacement}' not found"
+            )
+
+        # Update all projects to use the replacement
+        for project in projects_using_doc_type:
+            update_project(project.id, doc_type=replacement)
+
+    # Delete the document type
     try:
         delete_document_type(name)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     return Response(status_code=204)
 
 
@@ -814,11 +895,11 @@ async def upload_template_endpoint(
     return {"name": name, "version": version.version, "metadata": version.metadata}
 
 @app.get("/plugin-marketplace")
-async def list_marketplace() -> list[str]:
-    """Return available plugins that can be installed."""
-    from .plugin_marketplace import list_available
+async def list_marketplace() -> list[dict[str, Any]]:
+    """Return available plugins with detailed information."""
+    from .plugin_marketplace import list_plugins_with_info
 
-    return list_available()
+    return list_plugins_with_info()
 
 
 class MarketplaceInstall(BaseModel):
@@ -861,13 +942,83 @@ async def list_phases_endpoint() -> list[str]:
     return list_phases()
 
 
+@app.get("/phases/{name}/usage", response_model=dict[str, Any])
+async def check_phase_usage_endpoint(name: str) -> dict[str, Any]:
+    """Check if a phase is in use and return usage information."""
+
+    # Check if phase exists
+    phases_list = list_phases()
+    if name not in phases_list:
+        raise HTTPException(status_code=404, detail=f"Phase '{name}' not found")
+
+    # Get all projects to check usage (projects don't have direct phase field, but workflows do)
+    all_workflows = list_workflows()
+    workflows_using_phase = [w for w in all_workflows if name in w.phases]
+
+    # Get projects that use workflows with this phase
+    projects = list_projects()
+    projects_using_phase = []
+    for project in projects:
+        if project.workflow:
+            workflow = get_workflow(project.workflow)
+            if workflow and name in workflow.phases:
+                projects_using_phase.append(project)
+
+    return {
+        "name": name,
+        "in_use": len(projects_using_phase) > 0 or len(workflows_using_phase) > 0,
+        "usage_count": len(projects_using_phase) + len(workflows_using_phase),
+        "projects": [{"id": p.id, "name": p.name} for p in projects_using_phase],
+        "workflows": [{"id": w.id, "project": w.project} for w in workflows_using_phase]
+    }
+
+
 @app.delete("/phases/{name}", status_code=204, response_class=Response)
-async def delete_phase_endpoint(name: str) -> Response:
-    """Remove a phase by name."""
+async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Response:
+    """Remove a phase by name. If in use, replacement is required."""
+
+    # Check if phase exists
+    phases_list = list_phases()
+    if name not in phases_list:
+        raise HTTPException(status_code=404, detail=f"Phase '{name}' not found")
+
+    # Check if replacement phase exists
+    if replacement and replacement not in phases_list:
+        raise HTTPException(status_code=404, detail=f"Replacement phase '{replacement}' not found")
+
+    # Check if phase is in use
+    all_workflows = list_workflows()
+    workflows_using_phase = [w for w in all_workflows if name in w.phases]
+
+    projects = list_projects()
+    projects_using_phase = []
+    for project in projects:
+        if project.workflow:
+            workflow = get_workflow(project.workflow)
+            if workflow and name in workflow.phases:
+                projects_using_phase.append(project)
+
+    if projects_using_phase or workflows_using_phase:
+        if not replacement:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Phase '{name}' is in use by {len(projects_using_phase)} project(s) and {len(workflows_using_phase)} workflow(s). Please specify a replacement phase."
+            )
+
+        # For now, prevent deletion if workflows are using it
+        # In a full implementation, you would update the workflows to use the replacement phase
+        if workflows_using_phase:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Phase '{name}' is used in workflows. Please update workflows manually before deleting."
+            )
+
+    # Delete the phase
     try:
         delete_phase(name)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     return Response(status_code=204)
 
 
@@ -928,7 +1079,7 @@ async def advance_workflow_endpoint(wf_id: str) -> WorkflowModel:
 @app.post("/approvals", status_code=201, response_model=ApprovalModel)
 async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
     """Create an approval for a workflow."""
-    return create_approval(body.workflow, body.reviewer, due_at=body.due_at)
+    return create_approval(body.workflow, body.reviewer, due_at=body.due_at, description=body.description)
 
 
 @app.get("/approvals", response_model=list[ApprovalModel])

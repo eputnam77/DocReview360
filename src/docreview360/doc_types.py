@@ -40,12 +40,7 @@ def _bootstrap_sample() -> None:
             template="<h1>Release Notes</h1>",
             workflow=["draft", "review", "final"],
         )
-        # Keep the sample for backward compatibility
-        document_types["sample"] = DocumentTypeModel(
-            name="sample",
-            template="<h1>Sample</h1>",
-            workflow=["draft", "review", "final"],
-        )
+
 
 
 _bootstrap_sample()

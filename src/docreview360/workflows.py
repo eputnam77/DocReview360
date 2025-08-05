@@ -8,6 +8,15 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 
+class ApprovalStep(BaseModel):
+    """Represents an approval step in a workflow."""
+
+    role: str
+    description: str
+    order: int
+    required: bool = True
+
+
 class WorkflowModel(BaseModel):
     """Simple workflow representation."""
 
@@ -17,12 +26,50 @@ class WorkflowModel(BaseModel):
     phases: List[str]
     reviewers: List[str] = []
     document: Optional[str] = None
+    approval_steps: List[ApprovalStep] = []
 
 
 workflows: Dict[str, WorkflowModel] = {}
 
 # Registered callbacks mimicking agileagents bot webhooks
 bot_callbacks: list[Callable[[WorkflowModel], None]] = []
+
+
+def get_approval_steps_for_phase(phase: str) -> List[ApprovalStep]:
+    """Generate approval steps based on the branch-coordination workflow."""
+    # Single "branch-coordination" workflow for all phases
+    return [
+        ApprovalStep(
+            role="SME",
+            description="Subject Matter Expert review and validation",
+            order=1
+        ),
+        ApprovalStep(
+            role="Front Line Manager",
+            description="Front Line Manager approval",
+            order=2
+        ),
+        ApprovalStep(
+            role="Product Policy Manager",
+            description="Product Policy Manager review and approval",
+            order=3
+        ),
+        ApprovalStep(
+            role="Technical Writer",
+            description="Technical Writer review and editing",
+            order=4
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Senior Technical Writer review and approval",
+            order=5
+        ),
+        ApprovalStep(
+            role="Technical Writing Manager",
+            description="Technical Writing Manager final approval",
+            order=6
+        )
+    ]
 
 
 def register_bot(callback: Callable[[WorkflowModel], None]) -> None:
@@ -34,8 +81,24 @@ def create_workflow(project: str, phases: List[str]) -> WorkflowModel:
     """Create a workflow for a project starting at the first phase."""
     wf_id = uuid4().hex
     start_phase = phases[0] if phases else "start"
-    workflow = WorkflowModel(id=wf_id, project=project, phase=start_phase, phases=phases)
+
+    # Generate approval steps based on the phase
+    approval_steps = get_approval_steps_for_phase(start_phase)
+
+    workflow = WorkflowModel(
+        id=wf_id,
+        project=project,
+        phase=start_phase,
+        phases=phases,
+        approval_steps=approval_steps
+    )
     workflows[wf_id] = workflow
+
+    # Create initial approval entries for each step
+    from .approvals import create_approval
+    for step in approval_steps:
+        create_approval(wf_id, step.role, due_at=None, description=step.description)
+
     for cb in bot_callbacks:
         cb(workflow)
     return workflow

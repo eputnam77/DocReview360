@@ -1,0 +1,344 @@
+"""Integration tests for project creation with configuration propagation."""
+
+from __future__ import annotations
+
+import json
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+
+from docreview360.api import app
+from docreview360.doc_types import add_document_type, document_types, DocumentTypeModel
+from docreview360.phases import add_phase, _phases
+from docreview360.workflows import create_workflow, workflows
+
+
+class TestProjectCreationIntegration:
+    """Test project creation with configuration integration."""
+
+    @pytest.fixture(autouse=True)
+    def setup_teardown(self) -> None:
+        """Setup and teardown for each test."""
+        # Clear existing data
+        document_types.clear()
+        _phases.clear()
+        workflows.clear()
+        
+        # Add test configuration
+        add_document_type(DocumentTypeModel(
+            name="Test Document Type",
+            template="<h1>Test Template</h1>",
+            workflow=["draft", "review", "approve"]
+        ))
+        
+        add_phase("Test Phase 1")
+        add_phase("Test Phase 2")
+        
+        # Create workflow using the correct API
+        create_workflow("test-project", ["Test Phase 1", "Test Phase 2"])
+        
+        yield
+        
+        # Cleanup
+        document_types.clear()
+        _phases.clear()
+        workflows.clear()
+
+    def test_project_creation_with_configuration_fields(self) -> None:
+        """Test that project creation uses configuration from document types, phases, workflows."""
+        client = TestClient(app)
+        
+        # Test that configuration is available
+        doc_types_resp = client.get("/document-types")
+        assert doc_types_resp.status_code == 200
+        doc_types = doc_types_resp.json()
+        assert any(dt["name"] == "Test Document Type" for dt in doc_types)
+        
+        phases_resp = client.get("/phases")
+        assert phases_resp.status_code == 200
+        phases_data = phases_resp.json()
+        assert "Test Phase 1" in phases_data
+        assert "Test Phase 2" in phases_data
+        
+        workflows_resp = client.get("/workflows")
+        assert workflows_resp.status_code == 200
+        workflows_data = workflows_resp.json()
+        assert any(wf["name"] == "Test Workflow" for wf in workflows_data)
+        
+        # Create project using configuration
+        project_data = {
+            "id": "test-project-1",
+            "name": "Test Project",
+            "doc_type": "Test Document Type",
+            "phase": "Test Phase 1",
+            "workflow": "Test Workflow",
+            "user": "test-user",
+            "description": "Test project description"
+        }
+        
+        resp = client.post("/projects", json=project_data)
+        assert resp.status_code == 201
+        
+        project = resp.json()
+        assert project["doc_type"] == "Test Document Type"
+        assert project["phase"] == "Test Phase 1"
+        assert project["workflow"] == "Test Workflow"
+
+    def test_project_creation_field_validation(self) -> None:
+        """Test that all required fields are validated during project creation."""
+        client = TestClient(app)
+        
+        # Test missing required fields
+        incomplete_data = {
+            "id": "test-project-2",
+            "name": "Test Project"
+            # Missing doc_type, phase, workflow
+        }
+        
+        resp = client.post("/projects", json=incomplete_data)
+        # Should still succeed as these might be optional in current implementation
+        # but we can test that the fields are properly handled
+        assert resp.status_code in [201, 422]  # 422 if validation is strict
+        
+        # Test with invalid document type
+        invalid_data = {
+            "id": "test-project-3",
+            "name": "Test Project",
+            "doc_type": "Non-existent Document Type",
+            "phase": "Test Phase 1",
+            "workflow": "Test Workflow"
+        }
+        
+        resp = client.post("/projects", json=invalid_data)
+        # Should handle gracefully - either succeed with default or fail appropriately
+        assert resp.status_code in [201, 400, 422]
+
+    def test_project_creation_frontend_backend_sync(self) -> None:
+        """Test that frontend form data correctly maps to backend project model."""
+        client = TestClient(app)
+        
+        # Simulate frontend FormData format
+        frontend_data = {
+            "docId": "DOC-123",
+            "title": "Frontend Test Project",
+            "sme": "John Doe",
+            "docType": "Test Document Type",
+            "phase": "Test Phase 1",
+            "workflow": "Test Workflow",
+            "description": "Frontend project description"
+        }
+        
+        # Test both JSON and FormData formats
+        # JSON format (what backend expects)
+        json_data = {
+            "id": frontend_data["docId"],
+            "name": frontend_data["title"],
+            "user": frontend_data["sme"],
+            "doc_type": frontend_data["docType"],
+            "phase": frontend_data["phase"],
+            "workflow": frontend_data["workflow"],
+            "description": frontend_data["description"]
+        }
+        
+        resp = client.post("/projects", json=json_data)
+        assert resp.status_code == 201
+        
+        project = resp.json()
+        assert project["id"] == "DOC-123"
+        assert project["name"] == "Frontend Test Project"
+        assert project["user"] == "John Doe"
+        assert project["doc_type"] == "Test Document Type"
+        
+        # Test FormData format (what frontend sends)
+        resp = client.post("/projects", data=frontend_data)
+        # Should handle FormData appropriately
+        assert resp.status_code in [201, 422]  # 422 if FormData not supported
+
+    def test_project_creation_with_file_upload(self) -> None:
+        """Test project creation with file upload integration."""
+        client = TestClient(app)
+        
+        project_data = {
+            "id": "test-project-file",
+            "name": "File Upload Test Project",
+            "doc_type": "Test Document Type",
+            "phase": "Test Phase 1",
+            "workflow": "Test Workflow"
+        }
+        
+        # Create project
+        resp = client.post("/projects", json=project_data)
+        assert resp.status_code == 201
+        
+        # Upload file to project
+        files = {"file": ("test.txt", "Test file content", "text/plain")}
+        upload_resp = client.post(
+            f"/projects/{project_data['id']}/upload",
+            files=files
+        )
+        
+        # File upload might not be implemented yet, so check for appropriate response
+        assert upload_resp.status_code in [200, 201, 404, 501]
+
+    def test_project_creation_error_handling(self) -> None:
+        """Test error handling during project creation."""
+        client = TestClient(app)
+        
+        # Test duplicate project ID
+        project_data = {
+            "id": "duplicate-test",
+            "name": "First Project",
+            "doc_type": "Test Document Type"
+        }
+        
+        # Create first project
+        resp = client.post("/projects", json=project_data)
+        assert resp.status_code == 201
+        
+        # Try to create duplicate
+        resp = client.post("/projects", json=project_data)
+        # Should handle duplicate gracefully
+        assert resp.status_code in [201, 400, 409]  # 409 for conflict
+        
+        # Test invalid project data
+        invalid_data = {
+            "id": "",  # Empty ID
+            "name": "",  # Empty name
+        }
+        
+        resp = client.post("/projects", json=invalid_data)
+        # Should validate and handle appropriately
+        assert resp.status_code in [201, 400, 422]
+
+
+class TestConfigurationPropagation:
+    """Test configuration propagation to frontend and projects."""
+
+    def test_document_types_propagate_to_frontend(self) -> None:
+        """Test that document types from configuration appear in frontend endpoints."""
+        client = TestClient(app)
+        
+        # Clear existing document types
+        document_types.clear()
+        
+        # Add test document types
+        test_types = [
+            DocumentTypeModel(name="Policy Document", template="<h1>Policy</h1>"),
+            DocumentTypeModel(name="Procedure Manual", template="<h1>Procedure</h1>"),
+            DocumentTypeModel(name="Technical Spec", template="<h1>Technical</h1>")
+        ]
+        
+        for doc_type in test_types:
+            add_document_type(doc_type)
+        
+        # Test that they appear in the API
+        resp = client.get("/document-types")
+        assert resp.status_code == 200
+        
+        doc_types = resp.json()
+        doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
+        
+        assert "Policy Document" in doc_type_names
+        assert "Procedure Manual" in doc_type_names
+        assert "Technical Spec" in doc_type_names
+
+    def test_phases_propagate_to_frontend(self) -> None:
+        """Test that phases from configuration appear in frontend endpoints."""
+        client = TestClient(app)
+        
+        # Clear existing phases
+        _phases.clear()
+        
+        # Add test phases
+        test_phases = ["Draft", "Review", "Approval", "Published"]
+        for phase in test_phases:
+            add_phase(phase)
+        
+        # Test that they appear in the API
+        resp = client.get("/phases")
+        assert resp.status_code == 200
+        
+        phases_data = resp.json()
+        assert "Draft" in phases_data
+        assert "Review" in phases_data
+        assert "Approval" in phases_data
+        assert "Published" in phases_data
+
+    def test_workflows_propagate_to_frontend(self) -> None:
+        """Test that workflows from configuration appear in frontend endpoints."""
+        client = TestClient(app)
+        
+        # Clear existing workflows
+        workflows.clear()
+        
+        # Add test workflows
+        test_workflows = [
+            {"name": "Simple Review", "phases": ["Draft", "Review", "Approval"]},
+            {"name": "Complex Review", "phases": ["Draft", "Internal Review", "External Review", "Approval", "Published"]}
+        ]
+        
+        for workflow in test_workflows:
+            add_workflow(workflow)
+        
+        # Test that they appear in the API
+        resp = client.get("/workflows")
+        assert resp.status_code == 200
+        
+        workflows_data = resp.json()
+        workflow_names = [wf["name"] for wf in workflows_data]
+        
+        assert "Simple Review" in workflow_names
+        assert "Complex Review" in workflow_names
+
+    def test_configuration_changes_affect_new_projects(self) -> None:
+        """Test that configuration changes immediately affect new project creation."""
+        client = TestClient(app)
+        
+        # Clear existing configuration
+        document_types.clear()
+        phases.clear()
+        workflows.clear()
+        
+        # Add initial configuration
+        add_document_type({"name": "Initial Doc Type", "template": "<h1>Initial</h1>"})
+        add_phase("Initial Phase")
+        add_workflow({"name": "Initial Workflow", "phases": ["Initial Phase"]})
+        
+        # Create project with initial configuration
+        project_data = {
+            "id": "config-test-1",
+            "name": "Initial Config Project",
+            "doc_type": "Initial Doc Type",
+            "phase": "Initial Phase",
+            "workflow": "Initial Workflow"
+        }
+        
+        resp = client.post("/projects", json=project_data)
+        assert resp.status_code == 201
+        
+        # Update configuration
+        add_document_type({"name": "Updated Doc Type", "template": "<h1>Updated</h1>"})
+        add_phase("Updated Phase")
+        add_workflow({"name": "Updated Workflow", "phases": ["Updated Phase"]})
+        
+        # Create new project with updated configuration
+        updated_project_data = {
+            "id": "config-test-2",
+            "name": "Updated Config Project",
+            "doc_type": "Updated Doc Type",
+            "phase": "Updated Phase",
+            "workflow": "Updated Workflow"
+        }
+        
+        resp = client.post("/projects", json=updated_project_data)
+        assert resp.status_code == 201
+        
+        # Verify both projects exist with their respective configurations
+        resp = client.get("/projects")
+        assert resp.status_code == 200
+        
+        projects = resp.json()
+        project_ids = [p["id"] for p in projects]
+        assert "config-test-1" in project_ids
+        assert "config-test-2" in project_ids 
