@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from docreview360.iac_templates import get_template
 
 
@@ -16,7 +17,9 @@ def test_get_template_invalid() -> None:
 
 
 def test_trivy_step_present() -> None:
-    ci = Path("DocReview360/.github/workflows/ci.yml").read_text()
+    # Use robust path resolution relative to the test file location
+    ci_path = Path(__file__).parent.parent / ".github" / "workflows" / "ci.yml"
+    ci = ci_path.read_text()
     # Check for existing CI steps instead of planned Trivy feature
     assert "pytest" in ci
     assert "ruff check" in ci
@@ -24,16 +27,20 @@ def test_trivy_step_present() -> None:
 
 
 def test_langgraph_manifest() -> None:
-    data = yaml.safe_load(
-        Path("DocReview360/services/langgraph-studio/deployment.yaml").read_text()
-    )
+    # Use robust path resolution relative to the test file location
+    deployment_path = Path(__file__).parent.parent / "services" / "langgraph-studio" / "deployment.yaml"
+    data = yaml.safe_load(deployment_path.read_text())
     assert data["metadata"]["name"] == "langgraph-studio"
 
 
 def test_loki_alert_rule() -> None:
-    alerts = Path("DocReview360/monitoring/loki-alerts.yaml").read_text()
+    # Use robust path resolution relative to the test file location
+    alerts_path = Path(__file__).parent.parent / "monitoring" / "loki-alerts.yaml"
+    alerts = alerts_path.read_text()
     assert "HighErrorRate" in alerts
 
 
 def test_fedramp_doc_exists() -> None:
-    assert Path("DocReview360/docs/compliance/fedramp_controls.md").exists()
+    # Use robust path resolution relative to the test file location
+    fedramp_path = Path(__file__).parent.parent / "docs" / "compliance" / "fedramp_controls.md"
+    assert fedramp_path.exists(), f"FedRAMP controls file not found at {fedramp_path}"

@@ -1,7 +1,11 @@
 import yaml
+from pathlib import Path
 
 
 def test_docker_compose_services() -> None:
-    data = yaml.safe_load(open("DocReview360/docker-compose.yml"))
+    """Test that docker-compose.yml contains the expected services."""
+    # Get the path to docker-compose.yml relative to the project root
+    docker_compose_path = Path(__file__).parent.parent / "docker-compose.yml"
+    data = yaml.safe_load(open(docker_compose_path))
     services = data.get("services", {})
     assert set(["db", "search", "web"]).issubset(services)

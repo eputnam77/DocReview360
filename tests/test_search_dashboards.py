@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import httpx
+
 from docreview360 import vector_search
 from docreview360.stubs.task82 import OpenSearchClient
 

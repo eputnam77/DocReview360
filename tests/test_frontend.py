@@ -3,7 +3,8 @@ from pathlib import Path
 
 
 def test_frontend_skeleton() -> None:
-    pkg_file = Path("DocReview360/frontend/package.json")
+    # Use robust path resolution relative to the test file location
+    pkg_file = Path(__file__).parent.parent / "frontend" / "package.json"
     assert pkg_file.exists(), "package.json missing"
     data = json.loads(pkg_file.read_text())
     deps = data.get("dependencies", {})
@@ -15,5 +16,5 @@ def test_frontend_skeleton() -> None:
     assert "@tanstack/react-query" in deps
     assert "zustand" in deps
 
-    index_src = Path("DocReview360/frontend/pages/index.tsx").read_text()
+    index_src = (Path(__file__).parent.parent / "frontend" / "pages" / "index.tsx").read_text()
     assert "useCounterStore" in index_src

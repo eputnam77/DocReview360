@@ -1,4 +1,5 @@
 import pytest
+
 from docreview360.stubs.task76 import authenticate_keycloak, has_role
 
 

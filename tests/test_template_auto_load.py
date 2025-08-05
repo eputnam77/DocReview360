@@ -42,4 +42,4 @@ def test_project_creation_autoloads_latest_template() -> None:
     project = ProjectModel(id="p1", name="Proj", user="alice")
     doc = task215(project, doc_type)
     assert doc.content == "# AC v2"
-  
+

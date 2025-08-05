@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import Any
 
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.environment import add_environment
-from fastapi.testclient import TestClient
 
 
 def test_environment_list_and_switch(tmp_path: Path, monkeypatch: Any) -> None:

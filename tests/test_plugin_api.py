@@ -2,8 +2,9 @@ import sys
 from types import ModuleType
 from typing import Callable, cast
 
-from docreview360.api import app
 from fastapi.testclient import TestClient
+
+from docreview360.api import app
 
 
 def create_dummy_plugin(name: str) -> str:

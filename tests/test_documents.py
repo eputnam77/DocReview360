@@ -1,6 +1,7 @@
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.documents import autosave_document, import_document
-from fastapi.testclient import TestClient
 
 
 def test_import_and_edit_document() -> None:
@@ -45,4 +46,6 @@ def test_autosave_document() -> None:
     from docreview360 import search as search_module
 
     search_module.search_index.remove_document(doc.id)
-    del doc_module.documents[doc.id]
+    # Safely remove document if it exists
+    if doc.id in doc_module.documents:
+        del doc_module.documents[doc.id]

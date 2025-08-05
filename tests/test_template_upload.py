@@ -50,4 +50,4 @@ def test_template_upload_creates_version() -> None:
     versions = template_manager.list_template_versions("policy")
     assert len(versions) == 1
     assert versions[0].metadata == {"desc": "test"}
-  
+
