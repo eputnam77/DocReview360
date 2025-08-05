@@ -93,6 +93,7 @@ interface Approval {
   signedAt?: string;
   comments?: string;
   documensoSigId?: string;
+  description?: string; // Description from the approval step
 }
 interface Reply {
   id: string;
@@ -650,19 +651,59 @@ export default function ProjectDetailsPage() {
           title: proj.name || "Untitled",
           owner: proj.user || "Unknown",
           status: proj.status || "Draft",
-          progress: 40, // Default progress since backend doesn't provide this
-          updated: proj.created || new Date().toISOString().split('T')[0],
+          progress: proj.progress || 0, // Use backend progress if available
+          updated: proj.updated || proj.created || new Date().toISOString().split('T')[0],
           editor: "tiptap" // Default editor
         };
         setProject(mappedProject);
+        
+        // Load workflow and approvals if project has a workflow
         if (proj.workflow) {
-          const wfRes = await fetch(`${API}/workflows/${proj.workflow}`);
-          if (wfRes.ok) setWorkflow(await wfRes.json());
-          const apRes = await fetch(
-            `${API}/approvals?workflow=${proj.workflow}`,
-          );
-          if (apRes.ok) setApprovals(await apRes.json());
+          console.log('Project has workflow:', proj.workflow);
+          
+          // Fetch workflow details
+          try {
+            const wfRes = await fetch(`${API}/workflows/${proj.workflow}`);
+            if (wfRes.ok) {
+              const workflowData = await wfRes.json();
+              console.log('Workflow data:', workflowData);
+              setWorkflow(workflowData);
+            }
+          } catch (error) {
+            console.error('Error fetching workflow:', error);
+          }
+          
+          // Fetch approvals for this workflow
+          try {
+            const apRes = await fetch(`${API}/approvals?workflow=${proj.workflow}`);
+            if (apRes.ok) {
+              const approvalsData = await apRes.json();
+              console.log('Approvals data:', approvalsData);
+              // Map backend approval data to frontend interface
+              const mappedApprovals = approvalsData.map((approval: any) => ({
+                id: approval.id,
+                reviewer: approval.reviewer,
+                email: approval.reviewer, // Use reviewer as email since backend doesn't have separate email field
+                state: approval.state,
+                statusDate: approval.due_at || new Date().toISOString().split('T')[0],
+                signedAt: approval.signed_at,
+                comments: approval.comments || '',
+                documensoSigId: approval.signature,
+                description: approval.description // Add description from backend
+              }));
+              setApprovals(mappedApprovals);
+            }
+          } catch (error) {
+            console.error('Error fetching approvals:', error);
+            setApprovals([]); // Set empty array on error
+          }
+        } else {
+          console.log('Project has no workflow');
+          setWorkflow(null);
+          setApprovals([]);
         }
+        
+        // Set other data (using demo data for now)
         setDispos(DEMO_DISPO_COMMENTS);
         setRefDocs(DEMO_REFERENCE_DOCS);
         setLogs(DEMO_LOGS);
@@ -1171,6 +1212,7 @@ export default function ProjectDetailsPage() {
                       />
                     </TableHead>
                     <TableHead>Reviewer</TableHead>
+                    <TableHead>Role/Description</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Signed At</TableHead>
                     <TableHead>Comments</TableHead>
@@ -1178,118 +1220,138 @@ export default function ProjectDetailsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {approvals.map((a) => (
-                    <TableRow key={a.id} className="group">
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(a.id)}
-                          onChange={() => toggleSelect(a.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {a.reviewer}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={classNames(
-                            "px-2 py-0.5 rounded-full text-xs font-semibold capitalize",
-                            a.state === "approved" &&
-                              "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-                            a.state === "pending" &&
-                              "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-                            a.state === "overdue" &&
-                              "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-                            a.state === "rejected" &&
-                              "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-                          )}
-                        >
-                          {a.state}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {a.signedAt
-                          ? new Date(a.signedAt).toLocaleString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
-                        {a.comments || "—"}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <RowMenu>
-                            <Menu.Item as={Fragment}>
-                              {({ active, close }) => (
-                                <button
-                                  className={classNames(
-                                    "w-full px-3 py-2 text-left text-sm",
-                                    active && "bg-indigo-50 dark:bg-gray-800",
-                                  )}
-                                  onClick={() => {
-                                    close();
-                                    signApproval(a.id);
-                                  }}
-                                >
-                                  {" "}
-                                  <Check className="w-4 h-4 inline mr-2" /> Sign
-                                  / Approve
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  className={classNames(
-                                    "w-full px-3 py-2 text-left text-sm",
-                                    active && "bg-indigo-50 dark:bg-gray-800",
-                                  )}
-                                  onClick={() => resetApprovalLocal(a.id)}
-                                >
-                                  {" "}
-                                  <RotateCcw className="w-4 h-4 inline mr-2" />
-                                  Reset
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  className={classNames(
-                                    "w-full px-3 py-2 text-left text-sm",
-                                    active && "bg-indigo-50 dark:bg-gray-800",
-                                  )}
-                                  onClick={() => alert("Email")}
-                                >
-                                  {" "}
-                                  <Mail className="w-4 h-4 inline mr-2" /> Send
-                                  email
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  className={classNames(
-                                    "w-full px-3 py-2 text-left text-sm text-red-600",
-                                    active && "bg-indigo-50 dark:bg-gray-800",
-                                  )}
-                                  onClick={() =>
-                                    setApprovals(
-                                      approvals.filter((x) => x.id !== a.id),
-                                    )
-                                  }
-                                >
-                                  {" "}
-                                  <Trash className="w-4 h-4 inline mr-2" />{" "}
-                                  Remove
-                                </button>
-                              )}
-                            </Menu.Item>
-                          </RowMenu>
+                  {approvals.length > 0 ? (
+                    approvals.map((a) => (
+                      <TableRow key={a.id} className="group">
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(a.id)}
+                            onChange={() => toggleSelect(a.id)}
+                          />
                         </TableCell>
-                      )}
+                        <TableCell className="whitespace-nowrap">
+                          {a.reviewer}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
+                          {a.description || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={classNames(
+                              "px-2 py-0.5 rounded-full text-xs font-semibold capitalize",
+                              a.state === "approved" &&
+                                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+                              a.state === "pending" &&
+                                "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+                              a.state === "overdue" &&
+                                "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                              a.state === "rejected" &&
+                                "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+                            )}
+                          >
+                            {a.state}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {a.signedAt
+                            ? new Date(a.signedAt).toLocaleString()
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
+                          {a.comments || "—"}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell className="text-right">
+                            <RowMenu>
+                              <Menu.Item as={Fragment}>
+                                {({ active, close }) => (
+                                  <button
+                                    className={classNames(
+                                      "w-full px-3 py-2 text-left text-sm",
+                                      active && "bg-indigo-50 dark:bg-gray-800",
+                                    )}
+                                    onClick={() => {
+                                      close();
+                                      signApproval(a.id);
+                                    }}
+                                  >
+                                    {" "}
+                                    <Check className="w-4 h-4 inline mr-2" /> Sign
+                                    / Approve
+                                  </button>
+                                )}
+                              </Menu.Item>
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    className={classNames(
+                                      "w-full px-3 py-2 text-left text-sm",
+                                      active && "bg-indigo-50 dark:bg-gray-800",
+                                    )}
+                                    onClick={() => resetApprovalLocal(a.id)}
+                                  >
+                                    {" "}
+                                    <RotateCcw className="w-4 h-4 inline mr-2" />
+                                    Reset
+                                  </button>
+                                )}
+                              </Menu.Item>
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    className={classNames(
+                                      "w-full px-3 py-2 text-left text-sm",
+                                      active && "bg-indigo-50 dark:bg-gray-800",
+                                    )}
+                                    onClick={() => alert("Email")}
+                                  >
+                                    {" "}
+                                    <Mail className="w-4 h-4 inline mr-2" /> Send
+                                    email
+                                  </button>
+                                )}
+                              </Menu.Item>
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    className={classNames(
+                                      "w-full px-3 py-2 text-left text-sm text-red-600",
+                                      active && "bg-indigo-50 dark:bg-gray-800",
+                                    )}
+                                    onClick={() =>
+                                      setApprovals(
+                                        approvals.filter((x) => x.id !== a.id),
+                                      )
+                                    }
+                                  >
+                                    {" "}
+                                    <Trash className="w-4 h-4 inline mr-2" />{" "}
+                                    Remove
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            </RowMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8">
+                        <div className="text-gray-500 dark:text-gray-400">
+                          <Users2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm font-medium">No approvals configured</p>
+                          <p className="text-xs mt-1">
+                            {workflow ? 
+                              `This project uses the "${workflow.phase}" workflow. Approvals will appear here once they are added.` :
+                              "This project has no workflow configured. Add a workflow to enable approvals."
+                            }
+                          </p>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
