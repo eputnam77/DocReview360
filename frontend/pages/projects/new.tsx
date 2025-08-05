@@ -11,7 +11,7 @@ import {
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 import { API } from "@/lib/api";
 import { useRouter } from "next/router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 function FieldGate({ when, children }: { when: boolean; children: React.ReactNode }) {
   return when ? <>{children}</> : null;
@@ -23,9 +23,8 @@ export default function NewProjectPage() {
   const router = useRouter();
   // Document Number is provided by the user. The immutable Document ID will be
   // generated server-side when the project is created.
-  const DEMO_DOC_TYPES = ["Advisory Circular", "Policy Statement", "Release Notes"];
-  const DEMO_PHASES = ["FAA Review", "Public Comment", "Final Issuance"];
-  const DEMO_WORKFLOWS = ["FAA Review", "Public Comment"];
+  const DEMO_DOC_TYPES: string[] = [];
+  const DEMO_PHASES: string[] = [];
   const [docTypes, setDocTypes] = useState<string[]>(DEMO_DOC_TYPES);
   const [phases, setPhases] = useState<string[]>(DEMO_PHASES);
   const [docNumber, setDocNumber] = useState("");
@@ -34,15 +33,18 @@ export default function NewProjectPage() {
   const [docType, setDocType] = useState<string | undefined>(undefined);
   const [phase, setPhase] = useState<string | undefined>(undefined);
   const [workflow, setWorkflow] = useState<string | undefined>(undefined);
-  const [workflows, setWorkflows] = useState<string[]>([]);
-  const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const manualWorkflow = useRef(false);
+  // Auto-set workflow based on selected phase
+  useEffect(() => {
+    if (phase) {
+      setWorkflow(phase);
+    }
+  }, [phase]);
 
   useEffect(() => {
     console.log('Fetching document types from:', `${API}/document-types`);
@@ -65,44 +67,19 @@ export default function NewProjectPage() {
       });
     fetch(`${API}/phases`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data) =>
-        setPhases(
-          data.length
-            ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-            : DEMO_PHASES,
-        ),
-      )
-      .catch(() => setPhases(DEMO_PHASES));
-    fetch(`${API}/workflows`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) =>
-        setWorkflows(
-          data.length
-            ? data.map((w: any) => (typeof w === "string" ? w : w.name))
-            : DEMO_WORKFLOWS,
-        ),
-      )
-      .catch(() => setWorkflows(DEMO_WORKFLOWS));
-    const saved = localStorage.getItem("phaseWorkflowMap");
-    if (saved) {
-      try {
-        setPhaseMap(JSON.parse(saved));
-      } catch {
-        // ignore parse errors
-      }
-    }
+      .then((data) => {
+        console.log('Phases API data:', data);
+        const phaseNames = data.length
+          ? data.map((d: any) => (typeof d === "string" ? d : d.name))
+          : DEMO_PHASES;
+        console.log('Setting phases to:', phaseNames);
+        setPhases(phaseNames);
+      })
+      .catch((error) => {
+        console.error('Error fetching phases:', error);
+        setPhases(DEMO_PHASES);
+      });
   }, []);
-
-  useEffect(() => {
-    manualWorkflow.current = false;
-  }, [docType, phase]);
-
-  useEffect(() => {
-    if (!manualWorkflow.current && phase) {
-      const def = phaseMap[phase];
-      if (def) setWorkflow(def);
-    }
-  }, [docType, phase, phaseMap]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -128,7 +105,8 @@ export default function NewProjectPage() {
     setLoading(true);
 
     const projectData = {
-      id: docNumber,
+      // Don't send id - let backend auto-generate it
+      document_number: docNumber, // User-provided document number
       name: title,
       user: sme || undefined,
       doc_type: docType,
@@ -243,26 +221,13 @@ export default function NewProjectPage() {
           <FieldGate when={!!docType && !!phase}>
             <div>
               <Label htmlFor="workflow">Workflow *</Label>
-              <Select
-                value={workflow}
-                disabled={!docType || !phase}
-                onValueChange={(v) => {
-                  manualWorkflow.current = true;
-                  setWorkflow(v);
-                }}
-              >
-                <SelectTrigger id="workflow">
-                  <SelectValue placeholder="Select a workflow" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workflows.map((w) => (
-                    <SelectItem key={w} value={w}>
-                      {w}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">Suggested by selected phase.</p>
+              <Input
+                id="workflow"
+                value={workflow || ""}
+                disabled={true}
+                placeholder="Auto-selected based on phase"
+              />
+              <p className="text-xs text-gray-500">Automatically set based on selected phase.</p>
               {fieldErrors.workflow && (
                 <p className="text-sm text-red-600">{fieldErrors.workflow}</p>
               )}

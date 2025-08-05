@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { API } from "@/lib/api";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Workflow {
   id: string;
@@ -19,20 +19,13 @@ interface Workflow {
   updated: string;
 }
 
-const DEMO_WORKFLOWS: Workflow[] = [
+const DEFAULT_WORKFLOWS: Workflow[] = [
   {
-    id: "faa-review",
-    name: "FAA Review",
-    description: "Routing workflow for FAA review.",
-    usage: 12,
-    updated: "2025-07-06",
-  },
-  {
-    id: "pub-comment",
-    name: "Public Comment",
-    description: "Routing workflow for Public Comment.",
-    usage: 7,
-    updated: "2025-06-20",
+    id: "branch-coordination",
+    name: "branch-coordination",
+    description: "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
+    usage: 0,
+    updated: new Date().toISOString().split('T')[0],
   },
 ];
 
@@ -42,8 +35,8 @@ export default function WorkflowList() {
   useEffect(() => {
     fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: Workflow[]) => setWorkflows(data.length ? data : DEMO_WORKFLOWS))
-      .catch(() => setWorkflows(DEMO_WORKFLOWS));
+      .then((data: Workflow[]) => setWorkflows(data.length ? data : DEFAULT_WORKFLOWS))
+      .catch(() => setWorkflows(DEFAULT_WORKFLOWS));
   }, []);
 
   return (

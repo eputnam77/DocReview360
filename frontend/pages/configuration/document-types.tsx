@@ -1,57 +1,72 @@
-import React, { useEffect, useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { API } from "@/lib/api";
+import { Pencil, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DocType {
   id: string;
   name: string;
-  workflow?: string[];
+  phases?: string[];
   template?: string;
 }
 
-const DEMO_TYPES: DocType[] = [
-  { id: "dt1", name: "Advisory Circular" },
-  { id: "dt2", name: "Policy Statement" },
-  { id: "dt3", name: "Release Notes" },
-];
+const DEFAULT_TYPES: DocType[] = [];
+
+// Default phases that ship with the product
+const DEFAULT_PHASES = ["Internal FAA Review", "Public Comment", "Final Issuance"];
 
 export default function DocumentTypesPage() {
   const [types, setTypes] = useState<DocType[]>([]);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [phases, setPhases] = useState<string[]>([]);
+  const [docTypePhaseMap, setDocTypePhaseMap] = useState<Record<string, string[]>>({});
+  const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
+  const [replacementDocType, setReplacementDocType] = useState<string>("");
+  const [usageInfo, setUsageInfo] = useState<any>(null);
 
   useEffect(() => {
+    // Load existing mappings from localStorage
+    const saved = localStorage.getItem("docTypePhaseMap");
+    if (saved) {
+      try {
+        setDocTypePhaseMap(JSON.parse(saved));
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+
+    // Fetch document types
     fetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setTypes(
-          data.length
-            ? data.map((d) => ({
-                id: d.name,
-                name: d.name,
-                template: d.template,
-                workflow: d.workflow,
-              }))
-            : DEMO_TYPES
-        )
-      )
-      .catch(() => setTypes(DEMO_TYPES));
+      .then((data: DocType[]) => setTypes(data.length ? data : DEFAULT_TYPES))
+      .catch(() => setTypes(DEFAULT_TYPES));
+
+    // Fetch phases
+    fetch(`${API}/phases`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: string[]) => setPhases(data.length ? data : DEFAULT_PHASES))
+      .catch(() => setPhases(DEFAULT_PHASES));
   }, []);
 
   const addType = async () => {
     if (!newName.trim()) return;
-    const body = { name: newName.trim() };
+    const body = {
+      name: newName.trim(),
+      template: `<h1>${newName.trim()}</h1>`,
+      workflow: []
+    };
     try {
       const r = await fetch(`${API}/document-types`, {
         method: "POST",
@@ -71,13 +86,67 @@ export default function DocumentTypesPage() {
     setNewName("");
   };
 
+  const checkUsage = async (docTypeName: string) => {
+    try {
+      const response = await fetch(`${API}/document-types/${encodeURIComponent(docTypeName)}/usage`);
+      if (response.ok) {
+        const usage = await response.json();
+        setUsageInfo(usage);
+        return usage;
+      }
+    } catch (error) {
+      console.error("Error checking usage:", error);
+    }
+    return null;
+  };
+
   const removeType = async (id: string) => {
+    // Check if document type is in use
+    const usage = await checkUsage(id);
+    
+    if (usage && usage.in_use) {
+      // Show delete dialog with replacement selection
+      setShowDeleteDialog(id);
+      return;
+    }
+    
+    // If not in use, delete directly
     setTypes(types.filter((t) => t.id !== id));
     try {
-      await fetch(`${API}/document-types/${id}`, { method: "DELETE" });
+      await fetch(`${API}/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
     } catch {
       // ignore network errors in demo mode
     }
+  };
+
+  const confirmDelete = async () => {
+    if (!showDeleteDialog || !replacementDocType) return;
+    
+    try {
+      const response = await fetch(`${API}/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`, { 
+        method: "DELETE" 
+      });
+      
+      if (response.ok) {
+        setTypes(types.filter((t) => t.id !== showDeleteDialog));
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error("Error deleting document type:", error);
+      alert("Error deleting document type");
+    }
+    
+    setShowDeleteDialog(null);
+    setReplacementDocType("");
+    setUsageInfo(null);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteDialog(null);
+    setReplacementDocType("");
+    setUsageInfo(null);
   };
 
   const startEdit = (t: DocType) => {
@@ -107,6 +176,23 @@ export default function DocumentTypesPage() {
     setEditName("");
   };
 
+  const changePhase = (docTypeId: string, phase: string) => {
+    const currentPhases = docTypePhaseMap[docTypeId] || [];
+    let updatedPhases: string[];
+
+    if (currentPhases.includes(phase)) {
+      // Remove phase if already selected
+      updatedPhases = currentPhases.filter(p => p !== phase);
+    } else {
+      // Add phase if not selected
+      updatedPhases = [...currentPhases, phase];
+    }
+
+    const updated = { ...docTypePhaseMap, [docTypeId]: updatedPhases };
+    setDocTypePhaseMap(updated);
+    localStorage.setItem("docTypePhaseMap", JSON.stringify(updated));
+  };
+
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Document Types</h1>
@@ -133,7 +219,7 @@ export default function DocumentTypesPage() {
             <TableHead>Document Type</TableHead>
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
-            <TableHead>Attached Workflow</TableHead>
+            <TableHead>Attached Phase</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -182,9 +268,30 @@ export default function DocumentTypesPage() {
                 </Button>
               </TableCell>
               <TableCell>
-                {t.workflow && t.workflow.length
-                  ? t.workflow.join(", ")
-                  : <span className="text-gray-400">—</span>}
+                <div className="flex flex-wrap gap-1">
+                  {phases.map((p) => {
+                    const currentPhases = docTypePhaseMap[t.id] || [];
+                    const isSelected = currentPhases.includes(p);
+                    return (
+                      <label
+                        key={p}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer border ${
+                          isSelected
+                            ? "bg-blue-100 text-blue-700 border-blue-300"
+                            : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => changePhase(t.id, p)}
+                          className="mr-1"
+                        />
+                        {p}
+                      </label>
+                    );
+                  })}
+                </div>
               </TableCell>
             </TableRow>
           ))}
@@ -197,6 +304,65 @@ export default function DocumentTypesPage() {
           )}
         </TableBody>
       </Table>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Delete Document Type</h3>
+            
+            {usageInfo && (
+              <div className="mb-4">
+                <p className="text-red-600 mb-2">
+                  This document type is currently in use by {usageInfo.usage_count} item(s):
+                </p>
+                {usageInfo.projects && usageInfo.projects.length > 0 && (
+                  <div className="mb-2">
+                    <p className="font-medium">Projects:</p>
+                    <ul className="list-disc list-inside text-sm text-gray-600">
+                      {usageInfo.projects.map((project: any) => (
+                        <li key={project.id}>{project.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <p className="mb-4">
+              Please select a replacement document type to assign to all affected projects:
+            </p>
+            
+            <Select value={replacementDocType} onValueChange={setReplacementDocType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select replacement document type" />
+              </SelectTrigger>
+              <SelectContent>
+                {types
+                  .filter(t => t.id !== showDeleteDialog)
+                  .map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex gap-2 mt-6">
+              <Button 
+                onClick={confirmDelete} 
+                disabled={!replacementDocType}
+                variant="danger"
+              >
+                Delete and Replace
+              </Button>
+              <Button onClick={cancelDelete} variant="outline">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,34 +1,33 @@
-import React, { useEffect, useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { API } from "@/lib/api";
+import { Pencil, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface Phase {
   id: string;
   name: string;
 }
 
-const DEMO_PHASES: Phase[] = [
-  { id: "phase-faa", name: "FAA Review" },
-  { id: "phase-comment", name: "Public Comment" },
-  { id: "phase-final", name: "Final Issuance" },
-];
+const DEMO_PHASES: Phase[] = [];
+
+// Default workflow that ships with the product
+const DEFAULT_WORKFLOWS = ["branch-coordination"];
 
 export default function PhasesPage() {
   const [phases, setPhases] = useState<Phase[]>([]);
@@ -37,34 +36,57 @@ export default function PhasesPage() {
   const [editName, setEditName] = useState("");
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
+  const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
+  const [replacementPhase, setReplacementPhase] = useState<string>("");
+  const [usageInfo, setUsageInfo] = useState<any>(null);
 
   useEffect(() => {
-    fetch(`${API}/phases`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setPhases(
-          data.length
-            ? data.map((d) => ({
-                id: d.name,
-                name: d.name,
-              }))
-            : DEMO_PHASES,
-        )
-      )
-      .catch(() => setPhases(DEMO_PHASES));
-    fetch(`${API}/workflows`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => setWorkflows(data.map((w) => w.name)))
-      .catch(() => setWorkflows([]));
+    // Load existing mappings from localStorage
     const saved = localStorage.getItem("phaseWorkflowMap");
     if (saved) {
       try {
         setPhaseMap(JSON.parse(saved));
       } catch {
-        // ignore
+        // ignore invalid JSON
       }
     }
+
+    fetch(`${API}/phases`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) =>
+        setPhases(
+          data.map((phaseName) => ({
+            id: phaseName,
+            name: phaseName,
+          }))
+        )
+      )
+      .catch(() => setPhases([]));
+
+    fetch(`${API}/workflows`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => {
+        const workflowNames = data.length
+          ? data.map((wf) => (typeof wf === "string" ? wf : wf.name))
+          : DEFAULT_WORKFLOWS;
+        setWorkflows(workflowNames);
+      })
+      .catch(() => setWorkflows(DEFAULT_WORKFLOWS));
   }, []);
+
+  const checkUsage = async (phaseName: string) => {
+    try {
+      const response = await fetch(`${API}/phases/${encodeURIComponent(phaseName)}/usage`);
+      if (response.ok) {
+        const usage = await response.json();
+        setUsageInfo(usage);
+        return usage;
+      }
+    } catch (error) {
+      console.error("Error checking usage:", error);
+    }
+    return null;
+  };
 
   const addPhase = async () => {
     if (!newName.trim()) return;
@@ -89,12 +111,52 @@ export default function PhasesPage() {
   };
 
   const removePhase = async (id: string) => {
+    // Check if phase is in use
+    const usage = await checkUsage(id);
+    
+    if (usage && usage.in_use) {
+      // Show delete dialog with replacement selection
+      setShowDeleteDialog(id);
+      return;
+    }
+    
+    // If not in use, delete directly
     setPhases(phases.filter((p) => p.id !== id));
     try {
-      await fetch(`${API}/phases/${id}`, { method: "DELETE" });
+      await fetch(`${API}/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
     } catch {
       // ignore network errors in demo mode
     }
+  };
+
+  const confirmDelete = async () => {
+    if (!showDeleteDialog || !replacementPhase) return;
+    
+    try {
+      const response = await fetch(`${API}/phases/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementPhase)}`, { 
+        method: "DELETE" 
+      });
+      
+      if (response.ok) {
+        setPhases(phases.filter((p) => p.id !== showDeleteDialog));
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error("Error deleting phase:", error);
+      alert("Error deleting phase");
+    }
+    
+    setShowDeleteDialog(null);
+    setReplacementPhase("");
+    setUsageInfo(null);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteDialog(null);
+    setReplacementPhase("");
+    setUsageInfo(null);
   };
 
   const startEdit = (p: Phase) => {
@@ -232,6 +294,75 @@ export default function PhasesPage() {
           )}
         </TableBody>
       </Table>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Delete Phase</h3>
+            
+            {usageInfo && (
+              <div className="mb-4">
+                <p className="text-red-600 mb-2">
+                  This phase is currently in use by {usageInfo.usage_count} item(s):
+                </p>
+                {usageInfo.projects && usageInfo.projects.length > 0 && (
+                  <div className="mb-2">
+                    <p className="font-medium">Projects:</p>
+                    <ul className="list-disc list-inside text-sm text-gray-600">
+                      {usageInfo.projects.map((project: any) => (
+                        <li key={project.id}>{project.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {usageInfo.workflows && usageInfo.workflows.length > 0 && (
+                  <div className="mb-2">
+                    <p className="font-medium">Workflows:</p>
+                    <ul className="list-disc list-inside text-sm text-gray-600">
+                      {usageInfo.workflows.map((workflow: any) => (
+                        <li key={workflow.id}>{workflow.project}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <p className="mb-4">
+              Please select a replacement phase to assign to all affected items:
+            </p>
+            
+            <Select value={replacementPhase} onValueChange={setReplacementPhase}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select replacement phase" />
+              </SelectTrigger>
+              <SelectContent>
+                {phases
+                  .filter(p => p.id !== showDeleteDialog)
+                  .map((phase) => (
+                    <SelectItem key={phase.id} value={phase.id}>
+                      {phase.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex gap-2 mt-6">
+              <Button 
+                onClick={confirmDelete} 
+                disabled={!replacementPhase}
+                variant="danger"
+              >
+                Delete and Replace
+              </Button>
+              <Button onClick={cancelDelete} variant="outline">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

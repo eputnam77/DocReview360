@@ -1,29 +1,31 @@
-import React, { useState, useEffect } from "react";
-import {
-  Card, CardHeader, CardTitle, CardContent,
-} from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardHeader, CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Trash, GripVertical } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { GripVertical, PlusCircle, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
 
 // Example roles
 const ROLES = [
-  "Project Lead", "Project Lead Manager", "Product Policy Manager",
-  "Technical Writer", "Technical Writer Manager", "Other"
+  "Subject Matter Expert", "Front Line Manager", "Product Policy Manager",
+  "Technical Writer", "Senior Technical Writer", "Technical Writing Manager", "Attorney", "Branch Manager", "Other"
 ];
 
 // Example demo workflow (would fetch in real app)
 const DEMO_WORKFLOW = {
-  name: "Advisory Circular Standard Review",
-  description: "Standard FAA AC review including all key stakeholders.",
+  name: "Branch Coordination Review",
+  description: "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
   steps: [
-    { id: "1", role: "Project Lead", user: "Jane Doe", required: true },
-    { id: "2", role: "Project Lead Manager", user: "John Smith", required: true },
-    { id: "3", role: "Product Policy Manager", user: "Alex Admin", required: true },
-    { id: "4", role: "Technical Writer", user: "Erin Writer", required: true },
-    { id: "5", role: "Technical Writer Manager", user: "Robin Lead", required: false },
+    { id: "1", role: "Subject Matter Expert", user: "", required: true },
+    { id: "2", role: "Front Line Manager", user: "", required: true },
+    { id: "3", role: "Product Policy Manager", user: "", required: true },
+    { id: "4", role: "Technical Writer", user: "", required: true },
+    { id: "5", role: "Senior Technical Writer", user: "", required: true },
+    { id: "6", role: "Technical Writing Manager", user: "", required: true },
   ]
 };
 
@@ -58,6 +60,11 @@ export default function EditWorkflowPage() {
     const [moved] = arr.splice(from, 1);
     arr.splice(to, 0, moved);
     setSteps(arr);
+  };
+  const toggleRequired = (id: string) => {
+    setSteps(steps.map(s =>
+      s.id === id ? { ...s, required: !s.required } : s
+    ));
   };
   const handleSave = () => {
     // Submit to API here
@@ -152,10 +159,15 @@ export default function EditWorkflowPage() {
                   <TableCell>{s.role}</TableCell>
                   <TableCell>{s.user || <span className="text-gray-400">—</span>}</TableCell>
                   <TableCell>
-                    <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
-                      s.required ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
-                    )}>{s.required ? "Yes" : "No"}</span>
+                    <label className="inline-flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={s.required}
+                        onChange={() => toggleRequired(s.id)}
+                        className="mr-1"
+                      />
+                      <span className="text-xs">Required</span>
+                    </label>
                   </TableCell>
                   <TableCell>
                     <Button

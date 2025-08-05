@@ -68,7 +68,7 @@ const CONFIG_ITEMS = [
     label: "Plugin Marketplace",
     href: "/configuration/plugin-marketplace",
     icon: <PackagePlus className="w-6 h-6 text-fuchsia-500" />,
-    desc: "Install optional plugins from PyPI.",
+    desc: "Browse and install optional plugins to extend functionality.",
   },
 ];
 

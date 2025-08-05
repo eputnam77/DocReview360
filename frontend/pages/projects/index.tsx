@@ -20,6 +20,7 @@ import { API } from "@/lib/api";
 interface Project {
   id: string;
   number: string | number;
+  document_number?: string; // User-provided document number/reference
   type: string;
   title: string;
   status?: string;
@@ -163,13 +164,13 @@ export default function ProjectList() {
               onClick={() => setSortKey("id")}
               className="cursor-pointer"
             >
-              Document Id
+              Project ID
             </TableHead>
             <TableHead
-              onClick={() => setSortKey("number")}
+              onClick={() => setSortKey("document_number")}
               className="cursor-pointer"
             >
-              Document #
+              Document Number
             </TableHead>
             <TableHead
               onClick={() => setSortKey("type")}
@@ -209,10 +210,12 @@ export default function ProjectList() {
                   className="underline text-indigo-700"
                   href={`/projects/${p.id}`}
                 >
-                  {p.id}
+                  {p.id.slice(0, 8)}...
                 </Link>
               </TableCell>
-              <TableCell>{p.number}</TableCell>
+              <TableCell className="font-mono text-sm">
+                {p.document_number || p.number}
+              </TableCell>
               <TableCell>{p.type}</TableCell>
               <TableCell>{p.title}</TableCell>
               <TableCell>
