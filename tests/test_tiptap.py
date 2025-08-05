@@ -18,4 +18,6 @@ def test_import_tiptap_document() -> None:
     from docreview360 import search as search_mod
 
     search_mod.search_index.remove_document(doc.id)
-    del doc_mod.documents[doc.id]
+    # Safely remove document if it exists
+    if doc.id in doc_mod.documents:
+        del doc_mod.documents[doc.id]

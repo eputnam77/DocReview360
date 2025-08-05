@@ -45,7 +45,7 @@ async def upload(filename: str) -> dict[str, str]:
 
 def test_enforce_mode_rejects_wrong_name() -> None:
     client = TestClient(app)
-    r = client.post("/upload", json={"filename": "wrong.txt"})
+    r = client.post("/upload", params={"filename": "wrong.txt"})
     assert r.status_code == 422
     assert EXPECTED in r.json()["detail"]
 

@@ -1,6 +1,7 @@
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.plugin_marketplace import AVAILABLE_PLUGINS
-from fastapi.testclient import TestClient
 
 
 def test_marketplace_list() -> None:

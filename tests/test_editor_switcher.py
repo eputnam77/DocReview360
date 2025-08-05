@@ -1,5 +1,6 @@
 import pytest
-from docreview360.documents import DocumentModel, set_document_editor
+
+from docreview360.documents import DocumentModel, set_document_editor, import_document
 from docreview360.editor_switcher import render_editor
 
 
@@ -10,13 +11,20 @@ def test_render_default_editor() -> None:
 
 
 def test_render_switched_editor() -> None:
-    doc = DocumentModel(id="2", content="hi")
-    from docreview360.documents import documents
+    # Use import_document to properly add the document to the dictionary
+    doc = import_document("test_doc.md", b"hi")
 
-    documents[doc.id] = doc
     set_document_editor(doc.id, "onlyoffice")
     html = render_editor(doc)
-    assert "onlyoffice/2" in html
+    assert f"onlyoffice/{doc.id}" in html
+
+    # Cleanup to avoid side effects
+    from docreview360 import documents as doc_module
+    from docreview360 import search as search_module
+
+    search_module.search_index.remove_document(doc.id)
+    if doc.id in doc_module.documents:
+        del doc_module.documents[doc.id]
 
 
 def test_unknown_editor() -> None:

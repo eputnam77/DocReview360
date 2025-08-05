@@ -17,6 +17,8 @@ def task41() -> list[str]:
     # cleanup to avoid polluting other tests
     from .. import documents as _docs
 
-    del _docs.documents[doc.id]
+    # Safely remove document if it exists
+    if doc.id in _docs.documents:
+        del _docs.documents[doc.id]
     record_task_completion(41)
     return versions

@@ -1,5 +1,6 @@
-from docreview360.api import app
 from fastapi.testclient import TestClient
+
+from docreview360.api import app
 
 
 def test_dashboard_updates_after_signature() -> None:

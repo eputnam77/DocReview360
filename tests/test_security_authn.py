@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-import jwt
+from jose import jwt
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from docreview360.auth import ALGORITHM, SECRET_KEY, create_access_token, keycloak_mfa_login
-from docreview360.piv_cac import validate_piv_certificate
 from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.testclient import TestClient
+
+from docreview360.auth import ALGORITHM, SECRET_KEY, create_access_token, keycloak_mfa_login
+from docreview360.piv_cac import validate_piv_certificate
 
 # Helpers for certificate
 

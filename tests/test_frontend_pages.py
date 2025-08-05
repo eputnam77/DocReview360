@@ -2,6 +2,9 @@ from pathlib import Path
 
 
 def test_react_pages_exist() -> None:
+    # Use robust path resolution relative to the test file location
+    pages_dir = Path(__file__).parent.parent / "frontend" / "pages"
+    
     for page in [
         "login.tsx",
         "dashboard/index.tsx",
@@ -11,4 +14,4 @@ def test_react_pages_exist() -> None:
         "viewer.tsx",
         "logs/index.tsx",
     ]:
-        assert (Path("DocReview360/frontend/pages") / page).exists()
+        assert (pages_dir / page).exists(), f"Page {page} not found"
