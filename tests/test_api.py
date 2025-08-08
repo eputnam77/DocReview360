@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.workflows import create_workflow
+from fastapi.testclient import TestClient
 
 
 def test_gzip_middleware() -> None:
@@ -70,10 +69,10 @@ def test_update_project_endpoint() -> None:
 def test_update_project_with_formdata() -> None:
     """Test project update with FormData (frontend compatibility)."""
     client = TestClient(app)
-    
+
     # Create a test project
     client.post("/projects", json={"id": "pedit-form", "name": "Old Project"})
-    
+
     # Update with FormData (simulating frontend request)
     resp = client.put(
         "/projects/pedit-form",
@@ -95,10 +94,10 @@ def test_update_project_with_formdata() -> None:
 def test_update_project_with_file_upload() -> None:
     """Test project update with file upload."""
     client = TestClient(app)
-    
+
     # Create a test project
     client.post("/projects", json={"id": "pedit-file", "name": "File Test Project"})
-    
+
     # Update with file upload
     resp = client.put(
         "/projects/pedit-file",
@@ -114,7 +113,7 @@ def test_update_project_with_file_upload() -> None:
     assert data["name"] == "File Updated Project"
     assert data["user"] == "bob"
     assert data["doc_type"] == "Policy Statement"
-    
+
     # Verify that a document was created for this project
     docs_resp = client.get("/documents")
     assert docs_resp.status_code == 200
@@ -126,7 +125,7 @@ def test_update_project_with_file_upload() -> None:
 def test_update_project_not_found() -> None:
     """Test project update with non-existent project ID."""
     client = TestClient(app)
-    
+
     resp = client.put(
         "/projects/nonexistent",
         data={"name": "New Name"}
@@ -137,10 +136,17 @@ def test_update_project_not_found() -> None:
 def test_update_project_partial_fields() -> None:
     """Test project update with only some fields provided."""
     client = TestClient(app)
-    
+
     # Create a test project
-    client.post("/projects", json={"id": "pedit-partial", "name": "Original Name", "user": "original"})
-    
+    client.post(
+        "/projects",
+        json={
+            "id": "pedit-partial",
+            "name": "Original Name",
+            "user": "original",
+        },
+    )
+
     # Update only the name
     resp = client.put(
         "/projects/pedit-partial",
@@ -155,7 +161,7 @@ def test_update_project_partial_fields() -> None:
 def test_environments_endpoint() -> None:
     """Test the environments endpoint that frontend is trying to access."""
     client = TestClient(app)
-    
+
     resp = client.get("/environments")
     assert resp.status_code == 200
     data = resp.json()
@@ -166,11 +172,11 @@ def test_environments_endpoint() -> None:
 def test_users_me_endpoint() -> None:
     """Test the /api/users/me endpoint that frontend is trying to access."""
     client = TestClient(app)
-    
+
     # Test without user header
     resp = client.get("/api/users/me")
     assert resp.status_code == 404  # This endpoint doesn't exist, should return 404
-    
+
     # Test the correct endpoint that does exist
     resp = client.get("/users/me")
     assert resp.status_code == 200
@@ -182,10 +188,10 @@ def test_users_me_endpoint() -> None:
 def test_project_edit_frontend_compatibility() -> None:
     """Test that project editing works with the exact format the frontend sends."""
     client = TestClient(app)
-    
+
     # Create a test project
     client.post("/projects", json={"id": "frontend-test", "name": "Frontend Test Project"})
-    
+
     # Simulate the exact frontend FormData format
     resp = client.put(
         "/projects/frontend-test",

@@ -1,7 +1,6 @@
 from typing import cast
 
 import pytest
-
 from docreview360 import pandiff
 
 

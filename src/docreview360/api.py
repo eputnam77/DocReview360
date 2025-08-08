@@ -316,10 +316,10 @@ async def list_projects_endpoint(
     user: str | None = None, x_user: str | None = Header(None)
 ) -> list[ProjectModel]:
     """Return projects optionally filtered by user with simple caching.
-    
+
     When a user is specified, includes projects where the user is:
     1. Directly assigned as project.user
-    2. Temporarily assigned as project.temp_user  
+    2. Temporarily assigned as project.temp_user
     3. Assigned as a reviewer in any approval step (SME, FLM, PPM, TW, etc.)
     """
     user = (user or x_user) or None
@@ -345,12 +345,12 @@ async def list_projects_endpoint(
 @app.get("/projects/assigned/{username}", response_model=list[ProjectModel])
 async def get_user_assignments_endpoint(username: str) -> list[ProjectModel]:
     """Get all projects assigned to a specific user through any mechanism.
-    
+
     This includes:
     - Direct project assignments
-    - Temporary assignments  
+    - Temporary assignments
     - Approval assignments (SME, FLM, PPM, TW, Senior TW, TW Manager, Attorney)
-    
+
     Useful for debugging and testing assignment logic.
     """
     return list_projects(username)
@@ -408,8 +408,10 @@ async def update_project_endpoint(
     """Update project fields like name, user or doc_type."""
     try:
         # Map frontend fields to backend fields
-        project_user = user or sme  # Use sme as user if user is not provided
-        project_doc_type = doc_type or docType  # Use docType as doc_type if doc_type is not provided
+        # Use sme as user if user is not provided
+        project_user = user or sme
+        # Use docType as doc_type if doc_type is not provided
+        project_doc_type = doc_type or docType
 
         # Update the project with the provided fields
         updated_project = update_project(
@@ -834,7 +836,7 @@ async def check_document_type_usage_endpoint(name: str) -> dict[str, Any]:
 @app.delete("/document-types/{name}", status_code=204, response_class=Response)
 async def delete_document_type_endpoint(name: str, replacement: str | None = None) -> Response:
     """Remove an existing document type. If in use, replacement is required."""
-    from .doc_types import delete_document_type, get_document_type
+    from .doc_types import get_document_type
 
     # Check if document type exists
     doc_type = get_document_type(name)
@@ -847,10 +849,12 @@ async def delete_document_type_endpoint(name: str, replacement: str | None = Non
 
     if projects_using_doc_type:
         if not replacement:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Document type '{name}' is in use by {len(projects_using_doc_type)} project(s). Please specify a replacement document type."
+            detail_msg = (
+                f"Document type '{name}' is in use by "
+                f"{len(projects_using_doc_type)} project(s). "
+                "Please specify a replacement document type."
             )
+            raise HTTPException(status_code=400, detail=detail_msg)
 
         # Verify replacement document type exists
         replacement_doc_type = get_document_type(replacement)
@@ -1000,18 +1004,21 @@ async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Re
 
     if projects_using_phase or workflows_using_phase:
         if not replacement:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Phase '{name}' is in use by {len(projects_using_phase)} project(s) and {len(workflows_using_phase)} workflow(s). Please specify a replacement phase."
+            detail_msg = (
+                f"Phase '{name}' is in use by {len(projects_using_phase)} "
+                f"project(s) and {len(workflows_using_phase)} workflow(s). "
+                "Please specify a replacement phase."
             )
+            raise HTTPException(status_code=400, detail=detail_msg)
 
         # For now, prevent deletion if workflows are using it
         # In a full implementation, you would update the workflows to use the replacement phase
         if workflows_using_phase:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Phase '{name}' is used in workflows. Please update workflows manually before deleting."
+            detail_msg = (
+                f"Phase '{name}' is used in workflows. "
+                "Please update workflows manually before deleting."
             )
+            raise HTTPException(status_code=400, detail=detail_msg)
 
     # Delete the phase
     try:
@@ -1079,7 +1086,12 @@ async def advance_workflow_endpoint(wf_id: str) -> WorkflowModel:
 @app.post("/approvals", status_code=201, response_model=ApprovalModel)
 async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
     """Create an approval for a workflow."""
-    return create_approval(body.workflow, body.reviewer, due_at=body.due_at, description=body.description)
+    return create_approval(
+        body.workflow,
+        body.reviewer,
+        due_at=body.due_at,
+        description=body.description,
+    )
 
 
 @app.get("/approvals", response_model=list[ApprovalModel])

@@ -28,13 +28,18 @@ class ApprovalModel(BaseModel):
 approvals: Dict[str, ApprovalModel] = {}
 
 
-def create_approval(workflow: str, reviewer: str, due_at: datetime | None = None, description: str | None = None) -> ApprovalModel:
+def create_approval(
+    workflow: str,
+    reviewer: str,
+    due_at: datetime | None = None,
+    description: str | None = None,
+) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     approval_id = uuid4().hex
     approval = ApprovalModel(
-        id=approval_id, 
-        workflow=workflow, 
-        reviewer=reviewer, 
+        id=approval_id,
+        workflow=workflow,
+        reviewer=reviewer,
         due_at=due_at,
         description=description
     )

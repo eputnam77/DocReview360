@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.stubs.task152 import task152
 
 

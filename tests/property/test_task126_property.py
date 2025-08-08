@@ -1,7 +1,6 @@
+from docreview360.stubs.task126 import task126
 from hypothesis import given
 from hypothesis import strategies as st
-
-from docreview360.stubs.task126 import task126
 
 
 @given(st.text(), st.text())

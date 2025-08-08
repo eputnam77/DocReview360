@@ -1,7 +1,6 @@
+from docreview360.stubs.task164 import analyze_performance
 from hypothesis import given
 from hypothesis import strategies as st
-
-from docreview360.stubs.task164 import analyze_performance
 
 
 @given(st.integers(min_value=1, max_value=10))

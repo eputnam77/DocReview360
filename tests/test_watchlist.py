@@ -2,10 +2,9 @@ from importlib import reload
 from pathlib import Path
 from typing import Any
 
-from fastapi.testclient import TestClient
-
 from docreview360 import watchlist
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def test_watchlist_toggle(tmp_path: Path, monkeypatch: Any) -> None:

@@ -1,7 +1,6 @@
+from docreview360.stubs.task97 import enable_observability
 from hypothesis import given
 from hypothesis import strategies as st
-
-from docreview360.stubs.task97 import enable_observability
 
 
 @given(st.text())

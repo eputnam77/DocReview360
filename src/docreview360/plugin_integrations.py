@@ -6,6 +6,7 @@ into DocReview360's document processing and review workflows.
 
 from __future__ import annotations
 
+import importlib
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -23,7 +24,7 @@ class PluginManager:
         """Load available plugins based on what's installed."""
         # Check for language-tool-python
         try:
-            import language_tool_python  # type: ignore[import-untyped]
+            language_tool_python = importlib.import_module("language_tool_python")
             self.available_plugins["language-tool-python"] = language_tool_python
             logger.info("Language Tool Python plugin loaded successfully")
         except ImportError:
@@ -31,7 +32,7 @@ class PluginManager:
 
         # Check for textstat
         try:
-            import textstat  # type: ignore[import-untyped]
+            textstat = importlib.import_module("textstat")
             self.available_plugins["textstat"] = textstat
             logger.info("TextStat plugin loaded successfully")
         except ImportError:
@@ -39,7 +40,7 @@ class PluginManager:
 
         # Check for PyPDF2
         try:
-            import PyPDF2  # type: ignore[import-untyped]
+            PyPDF2 = importlib.import_module("PyPDF2")
             self.available_plugins["pypdf2"] = PyPDF2
             logger.info("PyPDF2 plugin loaded successfully")
         except ImportError:
@@ -47,7 +48,7 @@ class PluginManager:
 
         # Check for python-docx
         try:
-            import docx  # type: ignore[import-untyped]
+            docx = importlib.import_module("docx")
             self.available_plugins["python-docx"] = docx
             logger.info("Python-docx plugin loaded successfully")
         except ImportError:

@@ -11,7 +11,7 @@ from pathlib import Path
 # Add the src directory to the path so we can import docreview360
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from docreview360.plugin_integrations import plugin_manager, enhanced_document_check
+from docreview360.plugin_integrations import enhanced_document_check, plugin_manager
 
 
 def demo_plugin_status() -> None:
@@ -64,7 +64,10 @@ def demo_enhanced_document_check() -> None:
     print("🔍 Enhanced Document Check Demo")
     print("=" * 50)
 
-    sample_text = "This is a test document with some content for analysis. The the word 'the' is repeated."
+    sample_text = (
+        "This is a test document with some content for analysis. "
+        "The the word 'the' is repeated."
+    )
 
     result = enhanced_document_check(sample_text)
 

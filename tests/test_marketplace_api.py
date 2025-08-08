@@ -1,11 +1,9 @@
 from typing import Any
 
-from fastapi.testclient import TestClient
-import pytest
-from pytest import MonkeyPatch
-
 from docreview360.api import app
 from docreview360.plugin_marketplace import PLUGIN_DATA
+from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
 
 
 def test_marketplace_list() -> None:

@@ -1,10 +1,9 @@
 from typing import Any, Dict
 
 import pytest
+from docreview360.api import app
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
-
-from docreview360.api import app
 
 scenarios("../features")
 

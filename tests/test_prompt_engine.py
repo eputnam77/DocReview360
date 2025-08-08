@@ -1,6 +1,5 @@
-import pytest
-
 import docreview360.ai_utils as ai
+import pytest
 
 
 def test_render_prompt() -> None:
