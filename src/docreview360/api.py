@@ -146,6 +146,7 @@ class ReviewerAssign(BaseModel):
 
 class ApprovalCreate(BaseModel):
     """Input model for creating approvals."""
+
     workflow: str
     reviewer: str
     due_at: datetime | None = None
@@ -174,6 +175,7 @@ class PluginToggle(BaseModel):
 
 class ProjectCreate(BaseModel):
     """Input model for creating projects."""
+
     id: str | None = None  # Made optional - will be auto-generated if not provided
     name: str
     document_number: str | None = None  # User-provided document number/reference
@@ -362,6 +364,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     # Auto-generate ID if not provided
     if body.id is None:
         from .search import search_index
+
         body.id = search_index.generate_project_id()
 
     # If document_number is not provided, use the id as document_number
@@ -403,7 +406,7 @@ async def update_project_endpoint(
     description: str | None = Form(None),
     sme: str | None = Form(None),  # Add sme field for frontend compatibility
     docType: str | None = Form(None),  # Add docType field for frontend compatibility
-    file: UploadFile | None = File(None)
+    file: UploadFile | None = File(None),
 ) -> ProjectModel:
     """Update project fields like name, user or doc_type."""
     try:
@@ -418,17 +421,14 @@ async def update_project_endpoint(
             project_id,
             name=name or title,  # Map title to name for frontend compatibility
             user=project_user,
-            doc_type=project_doc_type
+            doc_type=project_doc_type,
         )
 
         # If a file was uploaded, import it as a document for this project
         if file:
             content = await file.read()
             import_document(
-                file.filename or "uploaded_document",
-                content,
-                project=project_id,
-                user=project_user
+                file.filename or "uploaded_document", content, project=project_id, user=project_user
             )
 
         return updated_project
@@ -829,7 +829,7 @@ async def check_document_type_usage_endpoint(name: str) -> dict[str, Any]:
         "name": name,
         "in_use": len(projects_using_doc_type) > 0,
         "usage_count": len(projects_using_doc_type),
-        "projects": [{"id": p.id, "name": p.name} for p in projects_using_doc_type]
+        "projects": [{"id": p.id, "name": p.name} for p in projects_using_doc_type],
     }
 
 
@@ -856,12 +856,16 @@ async def delete_document_type_endpoint(name: str, replacement: str | None = Non
             )
             raise HTTPException(status_code=400, detail=detail_msg)
 
-        # Verify replacement document type exists
+        # Replacement must refer to a different, existing document type
+        if replacement == name:
+            raise HTTPException(
+                status_code=400, detail=f"Replacement document type '{replacement}' not found"
+            )
+
         replacement_doc_type = get_document_type(replacement)
         if not replacement_doc_type:
             raise HTTPException(
-                status_code=404,
-                detail=f"Replacement document type '{replacement}' not found"
+                status_code=404, detail=f"Replacement document type '{replacement}' not found"
             )
 
         # Update all projects to use the replacement
@@ -897,6 +901,7 @@ async def upload_template_endpoint(
     content = await file.read()
     version = store_template(name, content, metadata)
     return {"name": name, "version": version.version, "metadata": version.metadata}
+
 
 @app.get("/plugin-marketplace")
 async def list_marketplace() -> list[dict[str, Any]]:
@@ -973,12 +978,14 @@ async def check_phase_usage_endpoint(name: str) -> dict[str, Any]:
         "in_use": len(projects_using_phase) > 0 or len(workflows_using_phase) > 0,
         "usage_count": len(projects_using_phase) + len(workflows_using_phase),
         "projects": [{"id": p.id, "name": p.name} for p in projects_using_phase],
-        "workflows": [{"id": w.id, "project": w.project} for w in workflows_using_phase]
+        "workflows": [{"id": w.id, "project": w.project} for w in workflows_using_phase],
     }
 
 
 @app.delete("/phases/{name}", status_code=204, response_class=Response)
-async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Response:
+async def delete_phase_endpoint(  # noqa: C901
+    name: str, replacement: str | None = None
+) -> Response:
     """Remove a phase by name. If in use, replacement is required."""
 
     # Check if phase exists
@@ -1011,16 +1018,19 @@ async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Re
             )
             raise HTTPException(status_code=400, detail=detail_msg)
 
-        # For now, prevent deletion if workflows are using it
-        # In a full implementation, you would update the workflows to use the replacement phase
-        if workflows_using_phase:
-            detail_msg = (
-                f"Phase '{name}' is used in workflows. "
-                "Please update workflows manually before deleting."
+        if replacement == name:
+            raise HTTPException(
+                status_code=400,
+                detail="Replacement phase must be different",
             )
-            raise HTTPException(status_code=400, detail=detail_msg)
 
-    # Delete the phase
+        # Update workflows to use the replacement phase
+        for wf in workflows_using_phase:
+            wf.phases = [replacement if p == name else p for p in wf.phases]
+            if wf.phase == name:
+                wf.phase = replacement
+
+    # Delete the phase from registry
     try:
         delete_phase(name)
     except KeyError as exc:
