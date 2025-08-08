@@ -7,6 +7,8 @@ handles the replacement process correctly.
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
 import pytest
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
@@ -20,7 +22,7 @@ class TestReplacementDeletion:
     """Test replacement deletion functionality."""
 
     @pytest.fixture(autouse=True)
-    def setup_teardown(self) -> None:
+    def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
         document_types.clear()
@@ -35,23 +37,15 @@ class TestReplacementDeletion:
         client = TestClient(app)
 
         # Create document types
-        add_document_type(DocumentTypeModel(
-            name="Test Doc Type 1",
-            template="<h1>Test 1</h1>",
-            workflow=[]
-        ))
-        add_document_type(DocumentTypeModel(
-            name="Test Doc Type 2",
-            template="<h1>Test 2</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Test Doc Type 1", template="<h1>Test 1</h1>", workflow=[])
+        )
+        add_document_type(
+            DocumentTypeModel(name="Test Doc Type 2", template="<h1>Test 2</h1>", workflow=[])
+        )
 
         # Create project using the document type
-        project = ProjectModel(
-            id="test-project",
-            name="Test Project",
-            doc_type="Test Doc Type 1"
-        )
+        project = ProjectModel(id="test-project", name="Test Project", doc_type="Test Doc Type 1")
         add_project(project)
 
         # Check usage
@@ -81,23 +75,17 @@ class TestReplacementDeletion:
         client = TestClient(app)
 
         # Create document types
-        add_document_type(DocumentTypeModel(
-            name="Original Doc Type",
-            template="<h1>Original</h1>",
-            workflow=[]
-        ))
-        add_document_type(DocumentTypeModel(
-            name="Replacement Doc Type",
-            template="<h1>Replacement</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+        )
+        add_document_type(
+            DocumentTypeModel(
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+            )
+        )
 
         # Create project using the original document type
-        project = ProjectModel(
-            id="test-project",
-            name="Test Project",
-            doc_type="Original Doc Type"
-        )
+        project = ProjectModel(id="test-project", name="Test Project", doc_type="Original Doc Type")
         add_project(project)
 
         # Try to delete without replacement (should fail)
@@ -130,11 +118,9 @@ class TestReplacementDeletion:
         client = TestClient(app)
 
         # Create document type
-        add_document_type(DocumentTypeModel(
-            name="Unused Doc Type",
-            template="<h1>Unused</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Unused Doc Type", template="<h1>Unused</h1>", workflow=[])
+        )
 
         # Delete without replacement (should succeed)
         resp = client.delete("/document-types/Unused Doc Type")
@@ -152,18 +138,12 @@ class TestReplacementDeletion:
         client = TestClient(app)
 
         # Create document type
-        add_document_type(DocumentTypeModel(
-            name="Test Doc Type",
-            template="<h1>Test</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=[])
+        )
 
         # Create project using the document type
-        project = ProjectModel(
-            id="test-project",
-            name="Test Project",
-            doc_type="Test Doc Type"
-        )
+        project = ProjectModel(id="test-project", name="Test Project", doc_type="Test Doc Type")
         add_project(project)
 
         # Try to delete with non-existent replacement
@@ -181,18 +161,11 @@ class TestReplacementDeletion:
         add_phase("Test Phase 2")
 
         # Create project (phases are used through workflows)
-        project = ProjectModel(
-            id="test-project",
-            name="Test Project",
-            workflow="test-workflow"
-        )
+        project = ProjectModel(id="test-project", name="Test Project", workflow="test-workflow")
         add_project(project)
 
         # Create workflow using the phase
-        workflow_data = {
-            "project": "test-project",
-            "phases": ["Test Phase 1"]
-        }
+        workflow_data = {"project": "test-project", "phases": ["Test Phase 1"]}
         resp = client.post("/workflows", json=workflow_data)
         assert resp.status_code == 201
 
@@ -223,10 +196,7 @@ class TestReplacementDeletion:
         add_phase("Replacement Phase")
 
         # Create workflow using the original phase
-        workflow_data = {
-            "project": "test-project",
-            "phases": ["Original Phase"]
-        }
+        workflow_data = {"project": "test-project", "phases": ["Original Phase"]}
         resp = client.post("/workflows", json=workflow_data)
         assert resp.status_code == 201
 
@@ -273,10 +243,7 @@ class TestReplacementDeletion:
         add_phase("Test Phase")
 
         # Create workflow using the phase
-        workflow_data = {
-            "project": "test-project",
-            "phases": ["Test Phase"]
-        }
+        workflow_data = {"project": "test-project", "phases": ["Test Phase"]}
         resp = client.post("/workflows", json=workflow_data)
         assert resp.status_code == 201
 
@@ -303,23 +270,19 @@ class TestReplacementDeletion:
         client = TestClient(app)
 
         # Create document types
-        add_document_type(DocumentTypeModel(
-            name="Original Doc Type",
-            template="<h1>Original</h1>",
-            workflow=[]
-        ))
-        add_document_type(DocumentTypeModel(
-            name="Replacement Doc Type",
-            template="<h1>Replacement</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+        )
+        add_document_type(
+            DocumentTypeModel(
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+            )
+        )
 
         # Create multiple projects using the original document type
         for i in range(3):
             project = ProjectModel(
-                id=f"test-project-{i}",
-                name=f"Test Project {i}",
-                doc_type="Original Doc Type"
+                id=f"test-project-{i}", name=f"Test Project {i}", doc_type="Original Doc Type"
             )
             add_project(project)
 
@@ -351,18 +314,12 @@ class TestReplacementDeletion:
         client = TestClient(app)
 
         # Create document type
-        add_document_type(DocumentTypeModel(
-            name="Test Doc Type",
-            template="<h1>Test</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=[])
+        )
 
         # Create project using the document type
-        project = ProjectModel(
-            id="test-project",
-            name="Test Project",
-            doc_type="Test Doc Type"
-        )
+        project = ProjectModel(id="test-project", name="Test Project", doc_type="Test Doc Type")
         add_project(project)
 
         # Try to replace with the same document type (should fail)
@@ -376,23 +333,17 @@ class TestReplacementDeletion:
         client = TestClient(app)
 
         # Create document types
-        add_document_type(DocumentTypeModel(
-            name="Original Doc Type",
-            template="<h1>Original</h1>",
-            workflow=[]
-        ))
-        add_document_type(DocumentTypeModel(
-            name="Replacement Doc Type",
-            template="<h1>Replacement</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+        )
+        add_document_type(
+            DocumentTypeModel(
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+            )
+        )
 
         # Create project
-        project = ProjectModel(
-            id="test-project",
-            name="Test Project",
-            doc_type="Original Doc Type"
-        )
+        project = ProjectModel(id="test-project", name="Test Project", doc_type="Original Doc Type")
         add_project(project)
 
         # Verify initial state
