@@ -1,3 +1,4 @@
+import socket
 import threading
 import time
 from typing import Iterator
@@ -10,13 +11,16 @@ from playwright.sync_api import Page
 
 @pytest.fixture(scope="session")
 def live_server() -> Iterator[str]:
-    config = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="error")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     time.sleep(1)
     try:
-        yield "http://127.0.0.1:8000"
+        yield f"http://127.0.0.1:{port}"
     finally:
         server.should_exit = True
         thread.join()

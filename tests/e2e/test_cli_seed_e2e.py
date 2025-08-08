@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+import socket
 import threading
 import time
 from pathlib import Path
@@ -51,13 +52,16 @@ def seeded_config(tmp_path_factory: TempPathFactory) -> Path:
 def live_server_seeded(seeded_config: Path) -> Iterator[str]:
     original = cfg.CONFIG_FILE
     cfg.CONFIG_FILE = seeded_config
-    config = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="error")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     time.sleep(1)
     try:
-        yield "http://127.0.0.1:8000"
+        yield f"http://127.0.0.1:{port}"
     finally:
         server.should_exit = True
         thread.join()
