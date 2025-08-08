@@ -1,9 +1,8 @@
-from fastapi import Depends, FastAPI
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.rbac import add_role, has_role, require_role
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
 
 
 def test_admin_access_control() -> None:

@@ -1,7 +1,6 @@
+from docreview360.stubs.task87 import render_chart
 from hypothesis import given
 from hypothesis import strategies as st
-
-from docreview360.stubs.task87 import render_chart
 
 
 @given(st.text(), st.dictionaries(st.text(), st.integers()))

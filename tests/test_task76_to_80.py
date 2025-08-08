@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from docreview360.iac_templates import get_template
 
 
@@ -28,7 +27,12 @@ def test_trivy_step_present() -> None:
 
 def test_langgraph_manifest() -> None:
     # Use robust path resolution relative to the test file location
-    deployment_path = Path(__file__).parent.parent / "services" / "langgraph-studio" / "deployment.yaml"
+    deployment_path = (
+        Path(__file__).parent.parent
+        / "services"
+        / "langgraph-studio"
+        / "deployment.yaml"
+    )
     data = yaml.safe_load(deployment_path.read_text())
     assert data["metadata"]["name"] == "langgraph-studio"
 

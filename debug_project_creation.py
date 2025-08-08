@@ -4,10 +4,10 @@ Diagnostic script to test project creation and identify issues.
 Run this script to test the project creation functionality.
 """
 
-import json
-import requests
 import sys
 from datetime import datetime
+
+import requests
 
 # Configuration
 API_BASE = "http://localhost:8000"
@@ -47,13 +47,13 @@ def test_project_creation():
 
         if response.status_code == 201:
             project_data = response.json()
-            print(f"✅ Project Created Successfully:")
+            print("✅ Project Created Successfully:")
             print(f"   ID: {project_data.get('id')}")
             print(f"   Name: {project_data.get('name')}")
             print(f"   User: {project_data.get('user')}")
             return project_data.get('id')
         else:
-            print(f"❌ Project Creation Failed:")
+            print("❌ Project Creation Failed:")
             print(f"   Response: {response.text}")
             return None
 
@@ -71,7 +71,7 @@ def test_project_retrieval(project_id: str) -> bool:
 
         if response.status_code == 200:
             project_data = response.json()
-            print(f"✅ Project Retrieved Successfully:")
+            print("✅ Project Retrieved Successfully:")
             print(f"   ID: {project_data.get('id')}")
             print(f"   Name: {project_data.get('name')}")
             return True
@@ -86,7 +86,7 @@ def test_project_retrieval(project_id: str) -> bool:
 def test_project_list():
     """Test listing all projects."""
     try:
-        print(f"\n🔄 Listing all projects")
+        print("\n🔄 Listing all projects")
         response = requests.get(f"{API_BASE}/projects", timeout=5)
 
         print(f"📊 List Response Status: {response.status_code}")
@@ -95,7 +95,11 @@ def test_project_list():
             projects = response.json()
             print(f"✅ Found {len(projects)} projects:")
             for i, project in enumerate(projects, 1):
-                print(f"   {i}. {project.get('id')} - {project.get('name')} (User: {project.get('user', 'None')})")
+                proj_user = project.get('user', 'None')
+                print(
+                    f"   {i}. {project.get('id')} - {project.get('name')} "
+                    f"(User: {proj_user})"
+                )
             return projects
         else:
             print(f"❌ Project List Failed: {response.text}")
@@ -108,7 +112,7 @@ def test_project_list():
 def test_cache_clearing():
     """Test clearing the cache to see if it affects project listing."""
     try:
-        print(f"\n🔄 Testing cache clearing")
+        print("\n🔄 Testing cache clearing")
         # Note: This endpoint might not exist, but worth trying
         response = requests.post(f"{API_BASE}/cache/clear", timeout=5)
         print(f"📊 Cache Clear Response: {response.status_code}")
@@ -129,7 +133,7 @@ def main():
         sys.exit(1)
 
     # Test 2: List initial projects
-    initial_projects = test_project_list()
+    test_project_list()
 
     # Test 3: Create new project
     new_project_id = test_project_creation()
@@ -162,9 +166,9 @@ def main():
             project_ids_after_cache = [p.get('id') for p in final_projects_after_cache]
 
             if new_project_id in project_ids_after_cache:
-                print(f"✅ CACHE ISSUE: Project appears after cache expiration!")
+                print("✅ CACHE ISSUE: Project appears after cache expiration!")
             else:
-                print(f"❌ PERSISTENT ISSUE: Project still not appearing after cache expiration!")
+                print("❌ PERSISTENT ISSUE: Project still not appearing after cache expiration!")
     else:
         print("\n❌ Cannot proceed with tests - project creation failed")
 

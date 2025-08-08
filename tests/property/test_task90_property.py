@@ -2,10 +2,9 @@ import string
 from pathlib import Path
 
 from cryptography.fernet import Fernet
+from docreview360.stubs.task90 import create_backup
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-
-from docreview360.stubs.task90 import create_backup
 
 
 @given(value=st.text(alphabet=string.ascii_letters, min_size=1))

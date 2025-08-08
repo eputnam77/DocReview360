@@ -2,9 +2,9 @@ import requests
 
 # First, let's create a new project and see the full response
 project_data = {
-    'name': 'Test Project with Auto Approvals 2', 
-    'document_number': 'TEST-002', 
-    'phase': 'Public Comment', 
+    'name': 'Test Project with Auto Approvals 2',
+    'document_number': 'TEST-002',
+    'phase': 'Public Comment',
     'workflow': 'Public Comment'
 }
 response = requests.post('http://localhost:8000/projects', json=project_data)
@@ -28,4 +28,4 @@ if project["workflow"]:
     # Also check the workflow details
     workflow = requests.get(f'http://localhost:8000/workflows/{workflow_id}').json()
     print(f'\nWorkflow data: {workflow}')
-    print(f'Workflow keys: {list(workflow.keys())}') 
+    print(f'Workflow keys: {list(workflow.keys())}')

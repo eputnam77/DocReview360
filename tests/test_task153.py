@@ -1,7 +1,6 @@
 import base64
 
 import pytest
-
 from docreview360.stubs.task153 import task153
 
 

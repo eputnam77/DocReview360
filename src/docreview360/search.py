@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import uuid
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -16,7 +17,6 @@ from . import fts
 from .cache import cache_get, cache_set
 from .documents import DocumentModel, documents
 from .workflows import get_workflow
-import uuid
 
 
 class ProjectModel(BaseModel):
@@ -36,7 +36,6 @@ class ProjectModel(BaseModel):
     updated: datetime | None = None  # Add updated field for frontend compatibility
 
     @computed_field
-    @property
     def status(self) -> str:
         """Derive status from workflow phase or return default."""
         if self.workflow:
@@ -59,19 +58,16 @@ class ProjectModel(BaseModel):
         return "Draft"  # Default status for projects without workflows
 
     @computed_field
-    @property
     def title(self) -> str:
         """Alias for name field for frontend compatibility."""
         return self.name
 
     @computed_field
-    @property
     def type(self) -> str:
         """Alias for doc_type field for frontend compatibility."""
         return self.doc_type or "Unknown"
 
     @computed_field
-    @property
     def progress(self) -> int:
         """Calculate progress based on workflow status."""
         if self.workflow:
@@ -112,8 +108,8 @@ class SearchIndex:
         default_id = str(uuid.uuid4())
         current_time = datetime.now(UTC)
         default = ProjectModel(
-            id=default_id, 
-            name="Example", 
+            id=default_id,
+            name="Example",
             number=self._next_project_number,
             document_number="1",  # Legacy support
             updated=current_time
@@ -294,24 +290,24 @@ def _expire_temp_assignment(project: ProjectModel, *, lock_held: bool = False) -
 
 def list_projects(user: str | None = None) -> list[ProjectModel]:
     """Return projects optionally filtered by assigned user.
-    
+
     Includes projects where the user is:
     1. Directly assigned as project.user
-    2. Temporarily assigned as project.temp_user  
+    2. Temporarily assigned as project.temp_user
     3. Assigned as a reviewer in any approval step
     """
     from .approvals import list_approvals
-    
+
     with project_lock:
         result = []
         for proj in projects.values():
             _expire_temp_assignment(proj, lock_held=True)
-            
+
             # Check direct assignments
             if user is None or proj.user == user or proj.temp_user == user:
                 result.append(proj)
                 continue
-                
+
             # Check approval assignments if user is specified and project has workflow
             if user and proj.workflow:
                 # Get all approvals for this project's workflow
@@ -321,7 +317,7 @@ def list_projects(user: str | None = None) -> list[ProjectModel]:
                     if approval.reviewer == user:
                         result.append(proj)
                         break
-                        
+
         return result
 
 

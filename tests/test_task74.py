@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-
 from docreview360.search import ProjectModel, assign_temporary, projects
 
 

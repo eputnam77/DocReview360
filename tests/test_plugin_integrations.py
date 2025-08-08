@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from docreview360.plugin_integrations import PluginManager, enhanced_document_check
 
 
