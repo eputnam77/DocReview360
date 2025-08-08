@@ -18,23 +18,34 @@ We use **pipx** for global tool shims, **uv** for ultra‑fast Python/venv work,
 
 ```bash
 # 0. One-time setup: Python & pipx -------------------------------------------------
-python --version                # confirm Python ≥3.13
+python --version                # confirm Python ≥3.11
+
+# Debian / Raspberry Pi OS
+sudo apt update
+sudo apt install pipx
+pipx ensurepath                # add pipx to PATH
+source ~/.bashrc               # reload sheel so PATH is updated
+
+# Windows
 python -m pip install --user pipx
 python -m pipx ensurepath       # restart shell if PATH changes
+
+# All platforms
 pipx install uv                 # fast resolver, venv mgr, lockfile, tool runner
 
-# 1  Per project ────────────────────────────────────────────────────────
-git clone https://github.com/eputnam77/DocReview360.git
-cd DocReview360
+# 1. Clone project ---------------------------------------------------------------
+git clone https://github.com/eputnam77/NovelScriptCLI.git
+cd NovelScriptCLI
 
-# 2. Create and activate venv --------------------------------------
-uv python install 3.12.0        # Download if not present
-uv venv --python 3.12.0
+# 2. Create and activate venv (Python 3.13) --------------------------------------
+uv python install 3.13.0        # Download if not present
+uv venv --python 3.13.0
+
 # Activate the venv:
+#   On Mac/Linux:
+source .venv/bin/activate
 #   On Windows:
 .venv\Scripts\activate
-#   On Mac/Linux:
-# source .venv/bin/activate
 
 # 3. Install project + extras (dev, test, security) ------------------------------
 uv pip install -e ".[dev,test,security]"
