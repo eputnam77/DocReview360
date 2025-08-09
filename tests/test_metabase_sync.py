@@ -1,6 +1,6 @@
 import httpx
-from httpx import Response
 import pytest
+from httpx import Response
 
 from docreview360.metabase_sync import run_field_sync
 
