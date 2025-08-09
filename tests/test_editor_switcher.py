@@ -1,4 +1,5 @@
 import pytest
+
 from docreview360.documents import DocumentModel, import_document, set_document_editor
 from docreview360.editor_switcher import render_editor
 

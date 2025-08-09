@@ -1,5 +1,6 @@
-from docreview360.okta import verify_okta_token
 from jose import jwt
+
+from docreview360.okta import verify_okta_token
 
 SECRET = "secret"
 ISSUER = "https://okta.example.com/"

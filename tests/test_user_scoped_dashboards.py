@@ -1,8 +1,9 @@
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval
 from docreview360.search import ProjectModel, add_project, projects
 from docreview360.workflows import create_workflow, workflows
-from fastapi.testclient import TestClient
 
 
 def _cleanup() -> None:

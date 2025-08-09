@@ -13,19 +13,22 @@ the changes propagate correctly to all parts of the system including:
 
 from __future__ import annotations
 
+from typing import Generator
+
 import pytest
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
 from docreview360.phases import add_phase
 from docreview360.workflows import workflows
-from fastapi.testclient import TestClient
 
 
 class TestNameChangePropagation:
     """Test name change propagation throughout the system."""
 
     @pytest.fixture(autouse=True)
-    def setup_teardown(self) -> None:
+    def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
         document_types.clear()

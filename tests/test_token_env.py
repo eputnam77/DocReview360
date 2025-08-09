@@ -1,8 +1,9 @@
 import importlib
 
-import docreview360.auth as auth
 import pytest
 from jose import jwt
+
+import docreview360.auth as auth
 
 
 def test_env_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:

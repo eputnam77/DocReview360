@@ -1,5 +1,6 @@
-from docreview360.database import Database
 from sqlalchemy import inspect
+
+from docreview360.database import Database
 
 
 def test_database_migrate() -> None:

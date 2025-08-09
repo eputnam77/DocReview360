@@ -1,4 +1,5 @@
 import pytest
+
 from docreview360.settings_manager import load_settings
 from docreview360.stubs.task142 import task142
 

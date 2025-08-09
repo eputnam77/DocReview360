@@ -6,8 +6,9 @@ from typing import Iterator
 
 import pytest
 import uvicorn
-from docreview360.api import app
 from playwright.sync_api import Page
+
+from docreview360.api import app
 
 
 @pytest.fixture(scope="session")  # type: ignore[misc]

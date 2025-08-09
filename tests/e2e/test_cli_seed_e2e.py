@@ -8,11 +8,12 @@ from typing import Iterator
 import pytest
 import uvicorn
 from click.testing import CliRunner
+from playwright.sync_api import Page
+from pytest import TempPathFactory
+
 from docreview360 import config as cfg
 from docreview360.api import app
 from docreview360.cli import cli
-from playwright.sync_api import Page
-from pytest import TempPathFactory
 
 
 @pytest.fixture(scope="session")  # type: ignore[misc]
