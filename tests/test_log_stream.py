@@ -1,6 +1,7 @@
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.logs import log_event
-from fastapi.testclient import TestClient
 
 
 def test_log_websocket() -> None:

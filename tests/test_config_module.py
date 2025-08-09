@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from docreview360.config import Config
 
 

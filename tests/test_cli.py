@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from click.testing import CliRunner
+
 from docreview360.cli import cli
 from docreview360.config import CONFIG_FILE
 

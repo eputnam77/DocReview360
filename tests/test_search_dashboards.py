@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import httpx
+import pytest
+
 from docreview360 import vector_search
 from docreview360.stubs.task82 import OpenSearchClient
 
@@ -19,7 +21,7 @@ def test_document_creation_triggers_opensearch_refresh() -> None:
 # SR-02
 
 
-def test_vector_query_returns_topk_and_embedding(monkeypatch) -> None:
+def test_vector_query_returns_topk_and_embedding(monkeypatch: pytest.MonkeyPatch) -> None:
     embed_len: dict[str, int] = {}
 
     def fake_post(url: str, json: dict[str, object], timeout: int) -> httpx.Response:
@@ -41,7 +43,7 @@ def test_vector_query_returns_topk_and_embedding(monkeypatch) -> None:
 # DB-01
 
 
-def test_docs_by_phase_card_fetch(monkeypatch) -> None:
+def test_docs_by_phase_card_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_get(
         url: str, headers: dict[str, str] | None = None, timeout: int | None = None
     ) -> httpx.Response:

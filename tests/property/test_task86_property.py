@@ -1,6 +1,7 @@
-from docreview360.stubs.task86 import has_trivy_step
 from hypothesis import given
 from hypothesis import strategies as st
+
+from docreview360.stubs.task86 import has_trivy_step
 
 
 @given(st.text())
