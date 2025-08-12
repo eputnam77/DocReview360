@@ -15,8 +15,7 @@ const ROLES = [
   "Technical Writer", "Senior Technical Writer", "Technical Writing Manager", "Attorney", "Branch Manager", "Other"
 ];
 
-// Example demo workflow (would fetch in real app)
-const DEMO_WORKFLOW = {
+const DEFAULT_WORKFLOW = {
   name: "Branch Coordination Review",
   description: "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
   steps: [
