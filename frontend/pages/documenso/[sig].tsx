@@ -9,6 +9,14 @@ export default function DocumensoSign() {
   const router = useRouter();
   const { sig } = router.query as { sig: string };
   const returnTo = (router.query.return as string) || "/";
+  const safeReturnTo = (() => {
+    try {
+      const decoded = decodeURIComponent(returnTo);
+      return typeof decoded === 'string' && decoded.startsWith('/') ? decoded : '/';
+    } catch {
+      return returnTo.startsWith('/') ? returnTo : '/';
+    }
+  })();
   const approvalId = router.query.approval as string | undefined;
   const [signing, setSigning] = useState(false);
   const [done, setDone] = useState(false);
@@ -62,8 +70,8 @@ export default function DocumensoSign() {
 
         // Redirect back to the project page after a short delay
         setTimeout(() => {
-          console.log(`Redirecting to: ${returnTo}`);
-          router.push(returnTo);
+          console.log(`Redirecting to: ${safeReturnTo}`);
+          router.push(safeReturnTo);
         }, 1500);
       })
       .catch((err) => {
