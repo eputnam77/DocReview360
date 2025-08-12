@@ -33,3 +33,15 @@ def delete_phase(name: str) -> None:
         _phases.remove(name)
     except ValueError as exc:
         raise KeyError(f"Phase '{name}' not found") from exc
+
+
+def rename_phase(old: str, new: str) -> None:
+    """Rename an existing phase from ``old`` to ``new``.
+
+    Raises KeyError if ``old`` does not exist.
+    """
+    try:
+        idx = _phases.index(old)
+    except ValueError as exc:
+        raise KeyError(f"Phase '{old}' not found") from exc
+    _phases[idx] = new

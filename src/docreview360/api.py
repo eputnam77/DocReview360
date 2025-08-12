@@ -83,7 +83,7 @@ from .exporter import export_document, set_guardrails
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .nemo_guardrails import GuardrailsMiddleware, contains_pii
-from .phases import add_phase, delete_phase, list_phases
+from .phases import add_phase, delete_phase, list_phases, rename_phase
 from .plugins import load_plugins
 from .plugins import registry as plugin_registry
 from .profile import get_preferences, update_preferences
@@ -948,6 +948,30 @@ async def create_phase_endpoint(body: PhaseModel) -> list[str]:
 @app.get("/phases", response_model=list[str])
 async def list_phases_endpoint() -> list[str]:
     """Return all configured phases."""
+    return list_phases()
+
+
+@app.put("/phases/{name}", response_model=list[str])
+async def rename_phase_endpoint(name: str, body: PhaseModel) -> list[str]:
+    """Rename a phase and propagate changes to workflows."""
+
+    phases_list = list_phases()
+    if name not in phases_list:
+        raise HTTPException(status_code=404, detail=f"Phase '{name}' not found")
+
+    # Update registry
+    try:
+        rename_phase(name, body.name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    # Propagate to existing workflows
+    all_workflows = list_workflows()
+    for wf in all_workflows:
+        wf.phases = [body.name if p == name else p for p in wf.phases]
+        if wf.phase == name:
+            wf.phase = body.name
+
     return list_phases()
 
 

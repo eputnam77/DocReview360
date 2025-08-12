@@ -36,6 +36,19 @@ class ProjectModel(BaseModel):
     updated: datetime | None = None  # Add updated field for frontend compatibility
 
     @computed_field
+    def phase(self) -> str | None:
+        """Return the current workflow phase, if any.
+
+        This surfaces the active phase for a project so the edit form can
+        populate its Phase field based on the associated workflow.
+        """
+        if self.workflow:
+            wf = get_workflow(self.workflow)
+            if wf:
+                return wf.phase
+        return None
+
+    @computed_field
     def status(self) -> str:
         """Derive status from workflow phase or return default."""
         if self.workflow:
