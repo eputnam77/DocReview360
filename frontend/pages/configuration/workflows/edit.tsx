@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GripVertical, PlusCircle, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { API } from "@/lib/api";
 
 // Example roles
 const ROLES = [
@@ -16,7 +18,8 @@ const ROLES = [
 ];
 
 const DEFAULT_WORKFLOW = {
-  name: "Branch Coordination Review",
+  id: "branch-coordination",
+  name: "branch-coordination",
   description: "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
   steps: [
     { id: "1", role: "Subject Matter Expert", user: "", required: true },
@@ -29,6 +32,8 @@ const DEFAULT_WORKFLOW = {
 };
 
 export default function EditWorkflowPage() {
+  const router = useRouter();
+  const { id } = router.query;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<any[]>([]);
@@ -37,11 +42,27 @@ export default function EditWorkflowPage() {
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
-    // Load existing
-    setName(DEMO_WORKFLOW.name);
-    setDescription(DEMO_WORKFLOW.description);
-    setSteps(DEMO_WORKFLOW.steps.map(s => ({ ...s, id: s.id })));
-  }, []);
+    // Determine which workflow to edit; default to system workflow
+    const wfId = (id ? String(id) : "branch-coordination");
+    // Try API first
+    fetch(`${API}/workflows/${wfId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const wf = data ?? (wfId === "branch-coordination" ? DEFAULT_WORKFLOW : null);
+        if (wf) {
+          setName(wf.name);
+          setDescription(wf.description);
+          setSteps(wf.steps.map((s: any) => ({ ...s, id: s.id })));
+        }
+      })
+      .catch(() => {
+        if (wfId === "branch-coordination") {
+          setName(DEFAULT_WORKFLOW.name);
+          setDescription(DEFAULT_WORKFLOW.description);
+          setSteps(DEFAULT_WORKFLOW.steps.map((s) => ({ ...s, id: s.id })));
+        }
+      });
+  }, [id]);
 
   const addStep = () => {
     setSteps([

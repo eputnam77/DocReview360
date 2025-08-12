@@ -5,30 +5,28 @@ import {
 } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit3, Users2, Clock, FileEdit } from "lucide-react";
+import { Edit3, Users2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API } from "@/lib/api";
 
-// Demo workflow, steps, and logs
-const DEMO_WORKFLOW = {
-  id: "ac-std",
-  name: "Advisory Circular Standard Review",
-  description: "Standard FAA AC review including all key stakeholders.",
+// Fallback for system workflow if API is unavailable
+const DEFAULT_SYSTEM_WORKFLOW = {
+  id: "branch-coordination",
+  name: "branch-coordination",
+  description:
+    "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
   steps: [
-    { id: "1", role: "Project Lead", user: "Jane Doe", required: true },
-    { id: "2", role: "Project Lead Manager", user: "John Smith", required: true },
-    { id: "3", role: "Product Policy Manager", user: "Alex Admin", required: true },
-    { id: "4", role: "Technical Writer", user: "Erin Writer", required: true },
-    { id: "5", role: "Technical Writer Manager", user: "Robin Lead", required: false },
+    { id: "1", role: "Subject Matter Expert", user: "", required: true },
+    { id: "2", role: "Front Line Manager", user: "", required: true },
+    { id: "3", role: "Product Policy Manager", user: "", required: true },
+    { id: "4", role: "Technical Writer", user: "", required: true },
+    { id: "5", role: "Senior Technical Writer", user: "", required: true },
+    { id: "6", role: "Technical Writing Manager", user: "", required: true },
   ],
-  usage: 12, // times used in projects
-  created: "2025-07-01",
-  updated: "2025-07-06",
+  usage: 0,
+  created: new Date().toISOString().split("T")[0],
+  updated: new Date().toISOString().split("T")[0],
 };
-const DEMO_LOGS = [
-  { timestamp: "2025-07-01", action: "Workflow created" },
-  { timestamp: "2025-07-05", action: "Step added: Technical Writer Manager" },
-  { timestamp: "2025-07-06", action: "Workflow updated" },
-];
 
 export default function WorkflowDetailPage() {
   const router = useRouter();
@@ -37,10 +35,29 @@ export default function WorkflowDetailPage() {
   const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
-    if (id) {
-      setWorkflow(DEMO_WORKFLOW); // Replace with fetch logic
-      setLogs(DEMO_LOGS);
-    }
+    if (!id) return;
+    const wfId = String(id);
+    fetch(`${API}/workflows/${wfId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setWorkflow(data);
+          setLogs(data.logs ?? []);
+        } else if (wfId === "branch-coordination") {
+          setWorkflow(DEFAULT_SYSTEM_WORKFLOW);
+          setLogs([
+            { timestamp: DEFAULT_SYSTEM_WORKFLOW.created, action: "Workflow created" },
+          ]);
+        }
+      })
+      .catch(() => {
+        if (wfId === "branch-coordination") {
+          setWorkflow(DEFAULT_SYSTEM_WORKFLOW);
+          setLogs([
+            { timestamp: DEFAULT_SYSTEM_WORKFLOW.created, action: "Workflow created" },
+          ]);
+        }
+      });
   }, [id]);
 
   if (!workflow) return <p className="p-4">Loading…</p>;
@@ -57,7 +74,7 @@ export default function WorkflowDetailPage() {
             <p className="text-gray-500 text-sm mt-1">{workflow.description}</p>
           </div>
           <Button asChild>
-            <a href="/configuration/workflows/edit">
+            <a href={`/configuration/workflows/edit?id=${workflow.id}`}>
               <Edit3 className="w-5 h-5 mr-2" />
               Edit Workflow
             </a>

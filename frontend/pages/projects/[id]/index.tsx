@@ -865,17 +865,23 @@ export default function ProjectDetailsPage() {
       })
       .then((d) => {
         console.log(`Signature request successful:`, d);
+        // Prefer local Documenso page route over external URL
+        const sigId = d?.id ?? d?.signature?.id;
+        if (!sigId) {
+          throw new Error("Missing signature id in response");
+        }
+
         // Update local state with signature ID
         setApprovals((prev) =>
           prev.map((a) =>
-            a.id === aid ? { ...a, documensoSigId: d.id } : a,
+            a.id === aid ? { ...a, documensoSigId: sigId } : a,
           ),
         );
 
-        // Redirect to Documenso with proper parameters
-        const documensoUrl = `${d.url}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${aid}`;
-        console.log(`Redirecting to: ${documensoUrl}`);
-        router.push(documensoUrl);
+        // Redirect to our internal Documenso page
+        const internalUrl = `/documenso/${encodeURIComponent(String(sigId))}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${encodeURIComponent(aid)}`;
+        console.log(`Redirecting to: ${internalUrl}`);
+        router.push(internalUrl);
       })
       .catch((error) => {
         console.error("Signature request failed:", error);
