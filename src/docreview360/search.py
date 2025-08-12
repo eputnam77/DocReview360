@@ -192,6 +192,7 @@ def update_project(
     name: str | None = None,
     user: str | None = None,
     doc_type: str | None = None,
+    workflow: str | None = None,
 ) -> ProjectModel:
     """Update basic fields of a project and return the updated model."""
     with project_lock:
@@ -202,6 +203,8 @@ def update_project(
             project.user = user
         if doc_type is not None:
             project.doc_type = doc_type
+        if workflow is not None:
+            project.workflow = workflow
         # Update the updated timestamp
         project.updated = datetime.now(UTC)
         return project
