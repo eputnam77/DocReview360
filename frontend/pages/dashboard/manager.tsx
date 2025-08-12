@@ -68,13 +68,18 @@ export default function ManagerDashboardPage() {
     "kpi", "status", "leaderboard", "activity", "deadlines", "reviews", "errors", "turnaround", "docTypes", "logs",
   ];
   const DEFAULT_VISIBLE = ["kpi", "status", "leaderboard", "activity", "deadlines", "reviews", "logs"];
-  const [visibleDashboards, setVisibleDashboards] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("visibleDashboards");
-      return stored ? JSON.parse(stored) : DEFAULT_VISIBLE;
+  // Initialize with a stable value for SSR; hydrate from localStorage after mount
+  const [visibleDashboards, setVisibleDashboards] = useState<string[]>(DEFAULT_VISIBLE);
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("visibleDashboards");
+        if (stored) setVisibleDashboards(JSON.parse(stored));
+      }
+    } catch {
+      // ignore JSON/localStorage errors
     }
-    return DEFAULT_VISIBLE;
-  });
+  }, []);
   const toggleDashboard = (key: string) => {
     setVisibleDashboards((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
