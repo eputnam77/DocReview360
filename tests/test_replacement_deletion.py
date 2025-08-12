@@ -10,13 +10,12 @@ from __future__ import annotations
 from collections.abc import Generator
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
 from docreview360.phases import add_phase
-from docreview360.search import ProjectModel, add_project
+from docreview360.search import ProjectModel, add_project, projects
 from docreview360.workflows import workflows
+from fastapi.testclient import TestClient
 
 
 class TestReplacementDeletion:
@@ -28,10 +27,12 @@ class TestReplacementDeletion:
         # Clear existing data
         document_types.clear()
         workflows.clear()
+        projects.clear()
         yield
         # Cleanup
         document_types.clear()
         workflows.clear()
+        projects.clear()
 
     def test_document_type_usage_check(self) -> None:
         """Test that document type usage is correctly detected."""
