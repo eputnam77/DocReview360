@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 
 class DocumentTypeModel(BaseModel):
@@ -14,7 +14,8 @@ class DocumentTypeModel(BaseModel):
 
     name: str
     template: str
-    workflow: List[str] = []
+    # Use ``default_factory`` to avoid shared mutable defaults between instances
+    workflow: List[str] = Field(default_factory=list)
     default_template_id: str | None = None
 
 
@@ -46,9 +47,18 @@ def _bootstrap_sample() -> None:
 _bootstrap_sample()
 
 
-def add_document_type(doc_type: DocumentTypeModel) -> None:
-    """Store a document type in memory."""
+def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentTypeModel:
+    """Store a document type in memory.
+
+    The test-suite sometimes provides plain dictionaries instead of
+    ``DocumentTypeModel`` instances. To support that usage we accept either and
+    coerce dictionaries to ``DocumentTypeModel`` before storing them.
+    """
+
+    if isinstance(doc_type, dict):
+        doc_type = DocumentTypeModel(**doc_type)
     document_types[doc_type.name] = doc_type
+    return doc_type
 
 
 def get_document_type(name: str) -> DocumentTypeModel | None:
