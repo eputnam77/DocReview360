@@ -24,7 +24,11 @@ interface Phase {
   name: string;
 }
 
-const DEMO_PHASES: Phase[] = [];
+const DEFAULT_PHASES: Phase[] = [
+    { id: "Internal FAA Review", name: "Internal FAA Review" },
+    { id: "Public Comment", name: "Public Comment" },
+    { id: "Final Issuance", name: "Final Issuance" },
+];
 
 // Default workflow that ships with the product
 const DEFAULT_WORKFLOWS = ["branch-coordination"];
