@@ -57,15 +57,12 @@ export default function PhasesPage() {
 
     fetch(`${API}/phases`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setPhases(
-          data.map((phaseName) => ({
-            id: phaseName,
-            name: phaseName,
-          }))
-        )
-      )
-      .catch(() => setPhases([]));
+      .then((data: any[]) => {
+        const phaseNames: string[] = Array.isArray(data) ? data : [];
+        const list = (phaseNames.length ? phaseNames : DEFAULT_PHASES).map((name) => ({ id: name, name }));
+        setPhases(list);
+      })
+      .catch(() => setPhases(DEFAULT_PHASES.map((name) => ({ id: name, name }))));
 
     fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
@@ -102,14 +99,16 @@ export default function PhasesPage() {
         body: JSON.stringify(body),
       });
       if (r.ok) {
-        const created = await r.json();
-        setPhases([...phases, { id: created.name, name: created.name }]);
+        // API returns the full list of phase names
+        const names: string[] = await r.json();
+        setPhases(names.map((name) => ({ id: name, name })));
+      } else {
+        // Fallback in demo/dev when API route isn't present
+        setPhases([...phases, { id: body.name, name: body.name }]);
       }
     } catch {
-      setPhases([
-        ...phases,
-        { id: "ph-" + Date.now().toString(), name: body.name },
-      ]);
+      // Network or other error: fallback to local optimistic add
+      setPhases([...phases, { id: body.name, name: body.name }]);
     }
     setNewName("");
   };

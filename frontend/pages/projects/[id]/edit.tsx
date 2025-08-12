@@ -36,7 +36,16 @@ interface Approval {
   signed_at?: string;
 }
 
-const DEMO_WORKFLOWS_DATA: Workflow[] = [];
+const DEMO_WORKFLOWS_DATA: Workflow[] = [
+  {
+    id: "branch-coordination",
+    name: "branch-coordination",
+    description:
+      "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
+    phases: ["Internal FAA Review", "Public Comment", "Final Issuance"],
+    reviewers: [],
+  },
+];
 
 export default function EditProjectPage() {
   const router = useRouter();
@@ -187,16 +196,17 @@ export default function EditProjectPage() {
         setLoading(false);
       });
 
-    // Fetch available workflows
+    // Fetch available workflows (instances). If none, fall back to default template
     fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Workflow[]) => {
-        setWorkflows(data);
-        setWorkflowNames(data.map(w => w.name));
+        const list = (Array.isArray(data) && data.length) ? data : DEMO_WORKFLOWS_DATA;
+        setWorkflows(list);
+        setWorkflowNames(list.map((w) => w.name));
       })
       .catch(() => {
-        setWorkflows([]);
-        setWorkflowNames([]);
+        setWorkflows(DEMO_WORKFLOWS_DATA);
+        setWorkflowNames(DEMO_WORKFLOWS_DATA.map((w) => w.name));
       });
 
     // Fetch available phases
