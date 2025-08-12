@@ -193,6 +193,8 @@ class ProjectUpdate(BaseModel):
     name: str | None = None
     user: str | None = None
     doc_type: str | None = None
+    # Allow updating the current phase via workflow state
+    phase: str | None = None
     workflow: str | None = None
 
 
@@ -375,7 +377,9 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     project = ProjectModel(**body.model_dump())
     add_project(project)
     if body.workflow:
-        wf = create_workflow(project.id, [body.workflow])
+        # Initialize workflow using the provided phase as the starting phase
+        start_phase = body.phase or "start"
+        wf = create_workflow(project.id, [start_phase])
         project.workflow = wf.id
     # Clear all project-related caches to ensure fresh data
     clear_cache()
@@ -414,8 +418,11 @@ async def update_project_endpoint(
     """Update project fields like name, user, doc_type, or workflow."""
     try:
         body: ProjectUpdate | None = None
+        workflow_provided = False
         if request.headers.get("content-type", "").startswith("application/json"):
             data = await request.json()
+            # Track whether the workflow field was explicitly present (even if null)
+            workflow_provided = "workflow" in data
             body = ProjectUpdate(**data)
 
         if body is not None:
@@ -425,6 +432,8 @@ async def update_project_endpoint(
                 user = body.user
             if body.doc_type is not None:
                 doc_type = body.doc_type
+            # Preserve explicit nulls: only overwrite when non-null; otherwise
+            # keep current value of `workflow` variable but mark it as provided
             if body.workflow is not None:
                 workflow = body.workflow
 
@@ -433,9 +442,25 @@ async def update_project_endpoint(
         project_doc_type = doc_type or docType
 
         workflow_id: str | None = None
-        if workflow is not None:
-            wf = create_workflow(project_id, [workflow])
-            workflow_id = wf.id
+        workflow_set = False
+        if request.headers.get("content-type", "").startswith("application/json"):
+            # JSON path: rely on workflow_provided flag to decide if we should update
+            if workflow_provided:
+                workflow_set = True
+                if workflow is not None:
+                    # Create a new workflow for this project; if a phase was supplied
+                    # in the same payload, use it as the starting phase.
+                    start_phase = body.phase if (body and body.phase) else "start"
+                    wf = create_workflow(project_id, [start_phase])
+                    workflow_id = wf.id
+                else:
+                    workflow_id = None  # explicit clear
+        else:
+            # Form path: update when a value is provided (cannot distinguish explicit nulls)
+            if workflow is not None:
+                wf = create_workflow(project_id, ["start"])  # default when sent via form
+                workflow_id = wf.id
+                workflow_set = True
 
         # Update the project with the provided fields
         updated_project = update_project(
@@ -444,7 +469,21 @@ async def update_project_endpoint(
             user=project_user,
             doc_type=project_doc_type,
             workflow=workflow_id,
+            workflow_set=workflow_set,
         )
+
+        # If only the phase was provided, update the existing workflow's phase
+        if request.headers.get("content-type", "").startswith("application/json") and body is not None:
+            if body.phase is not None:
+                from .workflows import get_workflow as _get_wf
+                wf_id_to_update = updated_project.workflow
+                if wf_id_to_update:
+                    wf_model = _get_wf(wf_id_to_update)
+                    if wf_model:
+                        wf_model.phase = body.phase
+                        # Optionally ensure the new phase exists in the phases list
+                        if body.phase not in wf_model.phases:
+                            wf_model.phases.append(body.phase)
 
         # If a file was uploaded, import it as a document for this project
         if file:
