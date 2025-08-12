@@ -59,60 +59,32 @@ __all__ = [
     "okta",
 ]
 
-from . import (
-    ai_utils,
-    api,
-    approvals,
-    archive,
-    auth,
-    auth0_provider,
-    celery_app,
-    chat_bot,
-    cli,
-    comments,
-    config,
-    contextual_help,
-    conversion,
-    deploy,
-    doc_types,
-    documents,
-    editor_loader,
-    editor_switcher,
-    exporter,
-    fann_corpus,
-    fann_model,
-    fed_numbering,
-    fts,
-    git_hooks,
-    hr_sync,
-    login_gov,
-    logs,
-    metabase,
-    migration,
-    models,
-    monitoring,
-    nemo_guardrails,
-    notifications,
-    okta,
-    onlyoffice_editor,
-    piv_cac,
-    plugins,
-    plugins_ui,
-    project_init,
-    pyo3_builder,
-    rbac,
-    reporting,
-    search,
-    security_hardening,
-    security_utils,
-    seeds,
-    tiptap,
-    vector_search,
-    wasm_plugin,
-    watchlist,
-    workflow_components,
-    workflows,
-)
+
+# Importing every submodule at package import time pulls in a large dependency
+# tree.  Many of those dependencies (FastAPI, Celery, etc.) are optional and not
+# required for the lightweight helper modules used in our tests.  Eagerly
+# importing them causes ``ModuleNotFoundError`` during test collection.  To keep
+# the public API intact while avoiding heavy imports, we expose submodules lazily
+# via ``__getattr__``.  This mirrors the behaviour of packages like ``numpy`` or
+# ``pandas`` where modules are loaded on first access.
+
+import sys
+from importlib import import_module
+from typing import Any
+
+
+def __getattr__(name: str) -> Any:
+    """Dynamically import submodules on first access.
+
+    This allows ``from docreview360 import chat_bot`` without importing the
+    entire dependency graph when the package is initialised.
+    """
+
+    if name in __all__:
+        module = import_module(f".{name}", __name__)
+        setattr(sys.modules[__name__], name, module)
+        return module
+    raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
 def placeholder(multiplier: int = 1) -> int:
