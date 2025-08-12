@@ -3,19 +3,35 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
-from pydantic import BaseModel
+pydantic_dataclass: Callable[..., Any]
+try:  # pragma: no cover - optional pydantic dataclass integration
+    from pydantic.dataclasses import dataclass as pydantic_dataclass
+except Exception:  # pragma: no cover - pydantic is absent
+    pydantic_dataclass = dataclass
 
 
-class LogEntry(BaseModel):
-    """Structured log entry."""
+@pydantic_dataclass
+class LogEntry:
+    """Structured log entry used for audit logs."""
 
     timestamp: datetime
     action: str
     user: Optional[str] = None
-    metadata: Dict[str, Any] = {}
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def model_dump(
+        self, *args: Any, **kwargs: Any
+    ) -> Dict[str, Any]:  # pragma: no cover - compatibility
+        return {
+            "timestamp": self.timestamp,
+            "action": self.action,
+            "user": self.user,
+            "metadata": self.metadata,
+        }
 
 
 logs: List[LogEntry] = []
@@ -59,8 +75,11 @@ def unregister_listener(callback: Callable[[LogEntry], None]) -> None:
 def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry:
     """Record a log entry and return it."""
     entry = LogEntry(
-        timestamp=datetime.now(timezone.utc), action=action, user=user, metadata=metadata
-    )
+        timestamp=datetime.now(timezone.utc),
+        action=action,
+        user=user,
+        metadata=metadata,
+    )  # type: ignore[call-arg]
     logs.append(entry)
     for pattern, cb in alerts:
         if pattern in action:

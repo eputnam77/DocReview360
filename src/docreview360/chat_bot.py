@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import re
 
-from .search import projects
-from .workflows import workflows
+try:  # pragma: no cover - optional dependency
+    from .search import projects
+except Exception:  # pragma: no cover - search module may depend on pydantic
+    projects = {}
+
+try:  # pragma: no cover - optional dependency
+    from .workflows import workflows
+except Exception:  # pragma: no cover - workflows module may depend on pydantic
+    workflows = {}
 
 
 async def answer_question(question: str) -> str:
