@@ -193,6 +193,7 @@ class ProjectUpdate(BaseModel):
     name: str | None = None
     user: str | None = None
     doc_type: str | None = None
+    workflow: str | None = None
 
 
 class CommentCreate(BaseModel):
@@ -399,22 +400,42 @@ async def get_project_endpoint(project_id: str) -> ProjectModel:
 @app.put("/projects/{project_id}", response_model=ProjectModel)
 async def update_project_endpoint(
     project_id: str,
+    request: Request,
     name: str | None = Form(None),
     user: str | None = Form(None),
     doc_type: str | None = Form(None),
+    workflow: str | None = Form(None),
     title: str | None = Form(None),
     description: str | None = Form(None),
     sme: str | None = Form(None),  # Add sme field for frontend compatibility
     docType: str | None = Form(None),  # Add docType field for frontend compatibility
     file: UploadFile | None = File(None),
 ) -> ProjectModel:
-    """Update project fields like name, user or doc_type."""
+    """Update project fields like name, user, doc_type, or workflow."""
     try:
+        body: ProjectUpdate | None = None
+        if request.headers.get("content-type", "").startswith("application/json"):
+            data = await request.json()
+            body = ProjectUpdate(**data)
+
+        if body is not None:
+            if body.name is not None:
+                name = body.name
+            if body.user is not None:
+                user = body.user
+            if body.doc_type is not None:
+                doc_type = body.doc_type
+            if body.workflow is not None:
+                workflow = body.workflow
+
         # Map frontend fields to backend fields
-        # Use sme as user if user is not provided
         project_user = user or sme
-        # Use docType as doc_type if doc_type is not provided
         project_doc_type = doc_type or docType
+
+        workflow_id: str | None = None
+        if workflow is not None:
+            wf = create_workflow(project_id, [workflow])
+            workflow_id = wf.id
 
         # Update the project with the provided fields
         updated_project = update_project(
@@ -422,6 +443,7 @@ async def update_project_endpoint(
             name=name or title,  # Map title to name for frontend compatibility
             user=project_user,
             doc_type=project_doc_type,
+            workflow=workflow_id,
         )
 
         # If a file was uploaded, import it as a document for this project
