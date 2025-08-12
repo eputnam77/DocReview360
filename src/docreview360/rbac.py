@@ -26,13 +26,25 @@ USER_ROLES: dict[str, Set[str]] = {"alice": {"user"}}
 
 
 def set_user_roles(username: str, roles: Iterable[str]) -> None:
-    """Assign ``roles`` to ``username`` replacing any existing mapping."""
-    USER_ROLES[username] = set(roles)
+    """Assign ``roles`` to ``username`` replacing any existing mapping.
+
+    Role names are normalised to lower-case so that lookups become
+    case-insensitive.  This mirrors how roles are typically stored in
+    backing stores and avoids subtle bugs where callers pass ``"Admin"``
+    instead of ``"admin"``.
+    """
+
+    USER_ROLES[username] = {r.lower() for r in roles}
 
 
 def add_role(username: str, role: str) -> None:
-    """Add a single ``role`` to ``username``."""
-    USER_ROLES.setdefault(username, set()).add(role)
+    """Add a single ``role`` to ``username``.
+
+    The provided ``role`` is stored in lower-case to keep the mapping
+    normalised.  Re-adding an existing role is a no-op.
+    """
+
+    USER_ROLES.setdefault(username, set()).add(role.lower())
 
 
 def get_roles(username: str) -> set[str]:
@@ -41,13 +53,18 @@ def get_roles(username: str) -> set[str]:
 
 
 def has_role(username: str, role: str) -> bool:
-    """Return ``True`` if ``username`` is assigned ``role``."""
-    return role in USER_ROLES.get(username, set())
+    """Return ``True`` if ``username`` is assigned ``role``.
+
+    The check is case-insensitive to match the behaviour of
+    :func:`add_role` and :func:`set_user_roles`.
+    """
+
+    return role.lower() in USER_ROLES.get(username, set())
 
 
 def has_permission(username: str, action: str) -> bool:
     """Return ``True`` if ``username`` may perform ``action`` based on roles."""
-    roles = get_roles(username)
+    roles = {r.lower() for r in get_roles(username)}
     return any(action in ROLE_PERMISSIONS.get(r, set()) for r in roles)
 
 
