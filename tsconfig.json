@@ -4,10 +4,15 @@
     "module": "esnext",
     "strict": true,
     "moduleResolution": "node",
+    "jsx": "preserve",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "lib": ["es2022", "dom"],
     "baseUrl": ".",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./frontend/node_modules/@types"
+    ],
     "paths": {
       "@/*": ["frontend/*"]
     }

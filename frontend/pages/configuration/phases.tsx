@@ -17,11 +17,28 @@ import {
 } from "@/components/ui/table";
 import { API } from "@/lib/api";
 import { Pencil, Trash } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 interface Phase {
   id: string;
   name: string;
+}
+
+interface UsageProject {
+  id: string | number;
+  name: string;
+}
+
+interface UsageWorkflow {
+  id: string | number;
+  project: string;
+}
+
+interface UsageInfo {
+  in_use: boolean;
+  usage_count: number;
+  projects?: UsageProject[];
+  workflows?: UsageWorkflow[];
 }
 
 const DEFAULT_PHASES: Phase[] = [
@@ -42,7 +59,7 @@ export default function PhasesPage() {
   const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
   const [replacementPhase, setReplacementPhase] = useState<string>("");
-  const [usageInfo, setUsageInfo] = useState<any>(null);
+  const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
 
   useEffect(() => {
     // Load existing mappings from localStorage
@@ -55,31 +72,77 @@ export default function PhasesPage() {
       }
     }
 
-    fetch(`${API}/phases`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => {
-        const phaseNames: string[] = Array.isArray(data) ? data : [];
-        const list = (phaseNames.length ? phaseNames : DEFAULT_PHASES).map((name) => ({ id: name, name }));
-        setPhases(list);
-      })
-      .catch(() => setPhases(DEFAULT_PHASES.map((name) => ({ id: name, name }))));
+    const normalizePhases = (items: unknown): Phase[] => {
+      if (!Array.isArray(items)) return DEFAULT_PHASES;
+      const list: Phase[] = items
+        .map((item) => {
+          if (typeof item === "string") {
+            return { id: item, name: item };
+          }
+          if (item && typeof item === "object") {
+            const anyItem = item as { id?: unknown; name?: unknown };
+            const name =
+              typeof anyItem.name === "string"
+                ? anyItem.name
+                : String(anyItem.name ?? "");
+            const id =
+              typeof anyItem.id === "string" && anyItem.id
+                ? anyItem.id
+                : name;
+            if (name) return { id, name };
+          }
+          return null;
+        })
+        .filter(Boolean) as Phase[];
+      return list.length ? list : DEFAULT_PHASES;
+    };
 
-    fetch(`${API}/workflows`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => {
-        const workflowNames = data.length
-          ? data.map((wf) => (typeof wf === "string" ? wf : wf.name))
-          : DEFAULT_WORKFLOWS;
-        setWorkflows(workflowNames);
-      })
-      .catch(() => setWorkflows(DEFAULT_WORKFLOWS));
+    const normalizeWorkflows = (items: unknown): string[] => {
+      if (!Array.isArray(items)) return DEFAULT_WORKFLOWS;
+      const names = items
+        .map((wf) =>
+          typeof wf === "string"
+            ? wf
+            : wf && typeof wf === "object" && "name" in wf
+            ? String((wf as { name?: unknown }).name ?? "")
+            : null,
+        )
+        .filter((v): v is string => Boolean(v));
+      return names.length ? names : DEFAULT_WORKFLOWS;
+    };
+
+    (async () => {
+      try {
+        const r = await fetch(`${API}/phases`);
+        if (r.ok) {
+          const data = await r.json();
+          setPhases(normalizePhases(data));
+        } else {
+          setPhases(DEFAULT_PHASES);
+        }
+      } catch {
+        setPhases(DEFAULT_PHASES);
+      }
+
+      try {
+        const r = await fetch(`${API}/workflows`);
+        if (r.ok) {
+          const data = await r.json();
+          setWorkflows(normalizeWorkflows(data));
+        } else {
+          setWorkflows(DEFAULT_WORKFLOWS);
+        }
+      } catch {
+        setWorkflows(DEFAULT_WORKFLOWS);
+      }
+    })();
   }, []);
 
-  const checkUsage = async (phaseName: string) => {
+  const checkUsage = async (phaseName: string): Promise<UsageInfo | null> => {
     try {
       const response = await fetch(`${API}/phases/${encodeURIComponent(phaseName)}/usage`);
       if (response.ok) {
-        const usage = await response.json();
+        const usage = (await response.json()) as UsageInfo;
         setUsageInfo(usage);
         return usage;
       }
@@ -99,9 +162,28 @@ export default function PhasesPage() {
         body: JSON.stringify(body),
       });
       if (r.ok) {
-        // API returns the full list of phase names
-        const names: string[] = await r.json();
-        setPhases(names.map((name) => ({ id: name, name })));
+        const data = await r.json();
+        // Normalize whether API returns strings or objects
+        const normalize = (items: unknown): Phase[] => {
+          if (!Array.isArray(items)) return phases;
+          const list: Phase[] = items
+            .map((item) =>
+              typeof item === "string"
+                ? { id: item, name: item }
+                : item && typeof item === "object"
+                ? {
+                    id:
+                      typeof (item as { id?: unknown }).id === "string"
+                        ? ((item as { id?: string }).id as string)
+                        : (item as { name?: string }).name ?? "",
+                    name: (item as { name?: string }).name ?? "",
+                  }
+                : null,
+            )
+            .filter(Boolean) as Phase[];
+          return list.length ? list : phases;
+        };
+        setPhases(normalize(data));
       } else {
         // Fallback in demo/dev when API route isn't present
         setPhases([...phases, { id: body.name, name: body.name }]);
@@ -172,7 +254,7 @@ export default function PhasesPage() {
     const body = { name: editName.trim() };
     setPhases(phases.map((p) => (p.id === id ? { ...p, name: body.name } : p)));
     try {
-      await fetch(`${API}/phases/${id}`, {
+      await fetch(`${API}/phases/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -200,7 +282,7 @@ export default function PhasesPage() {
       <h1 className="text-2xl font-bold">Phases</h1>
       <form
         className="flex items-end gap-2"
-        onSubmit={(e) => {
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
           e.preventDefault();
           addPhase();
         }}
@@ -225,7 +307,7 @@ export default function PhasesPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {phases.map((p) => (
+          {phases.map((p: Phase) => (
             <TableRow key={p.id}>
               <TableCell className="min-w-[150px]">
                 {editingId === p.id ? (
@@ -272,13 +354,13 @@ export default function PhasesPage() {
               <TableCell>
                 <Select
                   value={phaseMap[p.id] || ""}
-                  onValueChange={(v) => changeWorkflow(p.id, v)}
+                  onValueChange={(v: string) => changeWorkflow(p.id, v)}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    {workflows.map((w) => (
+                    {workflows.map((w: string) => (
                       <SelectItem key={w} value={w}>
                         {w}
                       </SelectItem>
@@ -313,7 +395,7 @@ export default function PhasesPage() {
                   <div className="mb-2">
                     <p className="font-medium">Projects:</p>
                     <ul className="list-disc list-inside text-sm text-gray-600">
-                      {usageInfo.projects.map((project: any) => (
+                      {usageInfo.projects.map((project) => (
                         <li key={project.id}>{project.name}</li>
                       ))}
                     </ul>
@@ -323,7 +405,7 @@ export default function PhasesPage() {
                   <div className="mb-2">
                     <p className="font-medium">Workflows:</p>
                     <ul className="list-disc list-inside text-sm text-gray-600">
-                      {usageInfo.workflows.map((workflow: any) => (
+                      {usageInfo.workflows.map((workflow) => (
                         <li key={workflow.id}>{workflow.project}</li>
                       ))}
                     </ul>
@@ -336,14 +418,14 @@ export default function PhasesPage() {
               Please select a replacement phase to assign to all affected items:
             </p>
             
-            <Select value={replacementPhase} onValueChange={setReplacementPhase}>
+            <Select value={replacementPhase} onValueChange={(v: string) => setReplacementPhase(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select replacement phase" />
               </SelectTrigger>
               <SelectContent>
                 {phases
-                  .filter(p => p.id !== showDeleteDialog)
-                  .map((phase) => (
+                  .filter((p: Phase) => p.id !== showDeleteDialog)
+                  .map((phase: Phase) => (
                     <SelectItem key={phase.id} value={phase.id}>
                       {phase.name}
                     </SelectItem>
