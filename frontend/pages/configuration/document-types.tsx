@@ -20,7 +20,11 @@ interface DocType {
   template?: string;
 }
 
-const DEFAULT_TYPES: DocType[] = [];
+const DEFAULT_TYPES: DocType[] = [
+  { id: "Advisory Circular", name: "Advisory Circular" },
+  { id: "Policy Statement", name: "Policy Statement" },
+  { id: "Release Notes", name: "Release Notes" },
+];
 
 // Default phases that ship with the product
 const DEFAULT_PHASES = ["Internal FAA Review", "Public Comment", "Final Issuance"];
