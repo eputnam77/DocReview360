@@ -813,7 +813,7 @@ async def ai_summarize_endpoint(body: TextBody) -> dict[str, str]:
 
 @app.post("/chat")
 async def chat_bot_endpoint(body: TextBody) -> dict[str, str]:
-    """Return an answer from the simple chat bot."""
+    """Return an answer from the simple chatbot."""
     from .chat_bot import answer_question
 
     answer = await answer_question(body.text)

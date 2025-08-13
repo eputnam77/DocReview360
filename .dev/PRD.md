@@ -258,7 +258,7 @@ When a user creates a **Special Conditions** project, the system collects SC-spe
 * **Phases configuration page** allows admins to manage workflow phases.
 * **Document numbering options** let admins choose sequential numbering or manual entry per project. Document IDs remain 32-character hex strings (e.g., "AC 20.11", "PS-20.1191").
 * **Integrations settings page** redesigned for easier configuration via `/config`.
-* **Central AI model configuration** lists supported providers (OpenAI, Anthropic, OpenRouter, AWS Bedrock, Google). The default entry uses a free OpenRouter model. All AI helpers—TipTap editor features, the AI workload balancer, AI search and the chat bot—read from this file. Administrators choose the active model in the Integrations settings page.
+* **Central AI model configuration** lists supported providers (OpenAI, Anthropic, OpenRouter, AWS Bedrock, Google). The default entry uses a free OpenRouter model. All AI helpers—TipTap editor features, the AI workload balancer, AI search and the chatbot—read from this file. Administrators choose the active model in the Integrations settings page.
 * **In-app docs page** reachable from the Support menu.
 * **Migration CLI (`docreview360 migrate`)** exports data from one instance and imports it into another, enabling safe reinitialisation when switching DB or auth backends.
 
@@ -272,7 +272,7 @@ When a user creates a **Special Conditions** project, the system collects SC-spe
 | Is it a **presentation or feature flag**? | ✖ | ✔ |
 | Is rollback **trivial** and state-free? | ✖ | ✔ |
 
-### 3.9 AI Chat Bot
+### 3.9 AI Chatbot
 
 * Conversational assistant accessible from the dashboard.
 * Queries the project database (projects, assignments, workflow state) to answer

@@ -8,7 +8,7 @@
 | 198 | GitHub doc storage sync          | Done |
 | 199 | Playwright E2E baseline          | Done |
 | 200 | E2E CI job & docs                | Deferred |
-| 201 | AI chat bot for project queries   | Done |
+| 201 | AI chatbot for project queries   | Done |
 | 202 | In-app documentation page        | Done |
 | 203 | Enhanced integrations page       | Done |
 | 204 | Phases configuration page        | Done |
