@@ -1,4 +1,4 @@
-"""General AI chat bot for DocReview360 content and document writing questions."""
+"""General AI chatbot for DocReview360 content and document writing questions."""
 
 from __future__ import annotations
 

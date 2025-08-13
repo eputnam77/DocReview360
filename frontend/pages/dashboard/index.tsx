@@ -290,7 +290,7 @@ export default function MainDashboardPage() {
         </TabsContent>
       </Tabs>
       )}
-      {/* Simple project chat bot */}
+      {/* Simple project chatbot */}
       <ChatBot />
     </div>
   );

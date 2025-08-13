@@ -22,7 +22,7 @@ export default function ChatBot() {
   return (
     <Card className="mt-6">
       <CardHeader>
-        <CardTitle>Project Chat Bot</CardTitle>
+        <CardTitle>Project Chatbot</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="flex gap-2">

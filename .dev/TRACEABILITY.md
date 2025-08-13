@@ -16,7 +16,7 @@
 | Document types in progress widget | Task 138 | | |
 | Sortable project tracker table | Task 139 | | |
 | First-run setup wizard | Task 140 | | |
-| AI chat bot assistant | Task 141 | | |
+| AI chatbot assistant | Task 141 | | |
 | Terraform plan viewer with OPA | Task 142 | | |
 | Archival package format selector | Task 143 | | |
 | User roles & permissions matrix | Task 144 | | |

@@ -1,4 +1,4 @@
-"""Tiny AI chat bot demo."""
+"""Tiny AI chatbot demo."""
 
 from __future__ import annotations
 

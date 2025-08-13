@@ -132,7 +132,7 @@ Below is one **fully ordered master backlog** — ① → ①140 — with **ever
 | 138   | Document types in progress widget | Dashboard counts active projects per type. | FE • P3 | 2 d | Count matches DB query |
 | 139   | Sortable project tracker table | Table view with filters linking to projects. | FE • P3 | 3 d | Sorting updates rows correctly |
 | 140   | First-run setup wizard | Step-by-step initial DB/auth/storage/editor config. | FE • P2 | 3 d | Completing wizard persists settings |
-| 141   | AI Chat Bot | Conversational assistant querying project data. | AI • P3 | 3 d | "Status" query returns correct info |
+| 141   | AI Chatbot | Conversational assistant querying project data. | AI • P3 | 3 d | "Status" query returns correct info |
 | 142   | Terraform plan viewer with OPA | Web UI shows `terraform plan` output and policy results. | DevOps • P3 | 2 d | Failing plan highlights policy breach |
 | 143   | Archival package format selector | Choose BagIt, METS, or Purview package on publish. | Backend • P3 | 3 d | Archive log records chosen type |
 | 144   | Default user role matrix update | Implement baseline roles in `rbac.yaml` and enforce via middleware. | Security • Must | 8 h | API test verifies permissions |
