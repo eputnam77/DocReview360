@@ -133,10 +133,31 @@ def load_weights(path: str | Path) -> Weights:
     return Weights.from_dict(data)
 
 
-def predict(text: str, weights: Weights) -> float:
-    """Return anomaly score using ``weights``."""
+def predict_weighted(
+    text: str,
+    weights: Weights,
+    feature_weights: Sequence[float] | None = None,
+) -> float:
+    """Return anomaly score applying optional feature ``feature_weights``.
+
+    ``feature_weights`` should have the same length as the FANN feature vector
+    and scales the input features before they are fed into the network.  This
+    enables adaptive weighting for different document types without retraining
+    the model from scratch.
+    """
+
     x = _fann_features(text)
-    h_raw = [sum(w * xi for w, xi in zip(row, x)) + b for row, b in zip(weights.w1, weights.b1)]
+    if feature_weights is not None:
+        x = [xi * wi for xi, wi in zip(x, feature_weights)]
+    h_raw = [
+        sum(w * xi for w, xi in zip(row, x)) + b
+        for row, b in zip(weights.w1, weights.b1)
+    ]
     h = [math.tanh(v) for v in h_raw]
     z = sum(w * hi for w, hi in zip(weights.w2, h)) + weights.b2
     return 1.0 / (1.0 + math.exp(-z))
+
+
+def predict(text: str, weights: Weights) -> float:
+    """Return anomaly score using ``weights``."""
+    return predict_weighted(text, weights)
