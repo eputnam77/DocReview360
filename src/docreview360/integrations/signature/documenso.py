@@ -9,6 +9,7 @@ rest of the codebase can operate without an external service during tests.
 from __future__ import annotations
 
 import os
+from base64 import b64encode
 from typing import Dict, Tuple
 from uuid import uuid4
 
@@ -98,6 +99,22 @@ def complete_signature(sig_id: str) -> None:
     log_event(f"signature_completed:{sig_id}")
 
 
+def verify_signature(sig_id: str, document: bytes) -> bool:
+    """Validate ``sig_id`` for ``document``."""
+    if DOCUMENSO_URL:
+        try:
+            resp = httpx.post(
+                f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}/verify",
+                json={"document": b64encode(document).decode()},
+                timeout=5,
+            )
+            resp.raise_for_status()
+            return bool(resp.json().get("valid"))
+        except httpx.HTTPError as exc:
+            raise RuntimeError("Documenso request failed") from exc
+    return _signatures.get(sig_id) == "signed"
+
+
 def signature_status(sig_id: str) -> str:
     """Return the status for ``sig_id``."""
     if DOCUMENSO_URL:
@@ -179,6 +196,9 @@ class DocumensoProvider:
     def process_webhook(self, data: dict) -> None:
         process_webhook(data)  # pragma: no cover - simple delegation
 
+    def verify_signature(self, sig_id: str, document: bytes) -> bool:
+        return verify_signature(sig_id, document)
+
 
 # Register provider on import
 register_provider(DocumensoProvider())
@@ -188,6 +208,7 @@ __all__ = [
     "request_signature",
     "complete_signature",
     "signature_status",
+    "verify_signature",
     "process_webhook",
     "DocumensoProvider",
 ]
