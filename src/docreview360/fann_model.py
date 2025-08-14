@@ -35,6 +35,42 @@ def train_model(
     return weights
 
 
+def update_model(
+    weights: Sequence[float],
+    texts: Sequence[str],
+    labels: Sequence[int],
+    *,
+    epochs: int = _DEF_EPOCHS,
+    lr: float = _DEF_LR,
+) -> list[float]:
+    """Incrementally update ``weights`` using additional training data.
+
+    Parameters
+    ----------
+    weights:
+        Existing model weights to refine.
+    texts, labels:
+        New training examples.  When empty, ``weights`` are returned unchanged.
+    epochs:
+        Number of passes over ``texts``.
+    lr:
+        Learning rate for the gradient descent update.
+    """
+
+    if not texts:
+        return list(weights)
+    feats = [(_fann_features(t) + [1.0]) for t in texts]
+    new_weights = list(weights)
+    for _ in range(epochs):
+        for x, y in zip(feats, labels):
+            z = sum(w * xi for w, xi in zip(new_weights, x))
+            pred = 1.0 / (1.0 + math.exp(-z))
+            error = pred - float(y)
+            for i in range(len(new_weights)):
+                new_weights[i] -= lr * error * x[i]
+    return new_weights
+
+
 def save_weights(weights: Sequence[float], path: str | Path) -> Path:
     """Write ``weights`` to ``path`` as JSON."""
     dest = Path(path)

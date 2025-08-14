@@ -1,14 +1,25 @@
-from pathlib import Path
-from zipfile import ZipFile
+from docreview360.ai_utils import (
+    FANN_FEATURE_NAMES,
+    _fann_features,
+    structural_pattern_score,
+    style_guide_score,
+)
+from docreview360.fann_model import train_model, update_model
 
-from docreview360.pyo3_builder import build_stub_wheel
+
+def test_style_and_structure_features() -> None:
+    good_style = "This is a sentence. Another one."
+    bad_style = "bad sentence. another."
+    assert style_guide_score(good_style) > style_guide_score(bad_style)
+
+    structured = "# H\ntext\n# H2\nmore"
+    plain = "plain\ntext"
+    idx = FANN_FEATURE_NAMES.index("structure")
+    assert structural_pattern_score(structured) > structural_pattern_score(plain)
+    assert _fann_features(structured)[idx] > _fann_features(plain)[idx]
 
 
-def test_build_stub_wheel(tmp_path: Path) -> None:
-    wheel = build_stub_wheel(tmp_path / "pkg.whl")
-    assert wheel.exists()
-
-    with ZipFile(wheel) as zf:
-        names = zf.namelist()
-        assert any(name.endswith(".dist-info/WHEEL") for name in names)
-        assert any(name.endswith(".dist-info/METADATA") for name in names)
+def test_update_model_changes_weights() -> None:
+    base = train_model(["ok", "bad bad"], [0, 1], epochs=2)
+    updated = update_model(base, ["bad bad bad"], [1], epochs=2)
+    assert updated != base

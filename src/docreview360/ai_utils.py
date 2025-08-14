@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from typing import TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
@@ -41,6 +42,16 @@ def generate_feedback(name: str, text: str) -> str:
     return apply_feedback_template(tmpl, text)
 
 
+FANN_FEATURE_NAMES = [
+    "length",
+    "unique_ratio",
+    "repeated",
+    "readability",
+    "style",
+    "structure",
+]
+
+
 # SynthLang simulation
 SYNTH_STOP_WORDS = {
     "the",
@@ -72,6 +83,36 @@ def _count_syllables(word: str) -> int:
     return max(1, len(groups))
 
 
+def style_guide_score(text: str) -> float:
+    """Return the fraction of sentences meeting simple style rules.
+
+    A sentence is considered compliant when it starts with a capital letter and
+    contains no repeated whitespace.  This intentionally light‑weight check
+    provides a deterministic signal for tests without pulling in heavy NLP
+    dependencies.
+    """
+
+    sentences = [s.strip() for s in re.split(r"[.!?]", text) if s.strip()]
+    if not sentences:
+        return 1.0
+    good = sum(1 for s in sentences if s[0].isupper() and not re.search(r"\s{2,}", s))
+    return good / len(sentences)
+
+
+def structural_pattern_score(text: str) -> float:
+    """Return a ratio of heading lines to total lines.
+
+    This approximates structural richness of a document: documents with more
+    Markdown‑style headings (`# Heading`) are considered more structured.
+    """
+
+    lines = text.splitlines()
+    if not lines:
+        return 0.0
+    headings = sum(1 for line in lines if line.strip().startswith("#"))
+    return headings / len(lines)
+
+
 def _fann_features(text: str) -> list[float]:
     """Return simple numeric features for the faux FANN network.
 
@@ -81,6 +122,8 @@ def _fann_features(text: str) -> list[float]:
     * Ratio of unique characters
     * Repeated consecutive word count
     * Flesch reading ease score (scaled 0-1)
+    * Style guide adherence score
+    * Structural pattern score
     """
 
     words = text.lower().split()
@@ -95,10 +138,20 @@ def _fann_features(text: str) -> list[float]:
     flesch = 206.835 - 1.015 * words_per_sentence - 84.6 * syllables_per_word
     readability = flesch / 100  # scale to roughly 0-1
 
-    return [len(text) / 1000, unique_ratio, repeated, readability]
+    style = style_guide_score(text)
+    structure = structural_pattern_score(text)
+
+    return [
+        len(text) / 1000,
+        unique_ratio,
+        repeated,
+        readability,
+        style,
+        structure,
+    ]
 
 
-_FANN_WEIGHTS = [0.0, -0.1, 1.2, -0.1]
+_FANN_WEIGHTS = [0.0, -0.1, 1.2, -0.1, -0.2, -0.2]
 
 
 def _fann_score(text: str) -> float:
