@@ -86,31 +86,52 @@ def _count_syllables(word: str) -> int:
 def style_guide_score(text: str) -> float:
     """Return the fraction of sentences meeting simple style rules.
 
-    A sentence is considered compliant when it starts with a capital letter and
-    contains no repeated whitespace.  This intentionally light‑weight check
-    provides a deterministic signal for tests without pulling in heavy NLP
-    dependencies.
+    The check intentionally avoids heavy NLP dependencies yet aims to capture
+    several common style issues:
+
+    * Sentence starts with a capital letter.
+    * Sentence ends with terminal punctuation (``.?!``).
+    * No repeated whitespace.
+    * No repeated punctuation.
+    * No consecutive repeated words.
     """
 
-    sentences = [s.strip() for s in re.split(r"[.!?]", text) if s.strip()]
+    # Split on whitespace following punctuation so the punctuation is retained
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
     if not sentences:
         return 1.0
-    good = sum(1 for s in sentences if s[0].isupper() and not re.search(r"\s{2,}", s))
+
+    good = 0
+    for s in sentences:
+        words = s.split()
+        has_repeat = any(w1.lower() == w2.lower() for w1, w2 in zip(words, words[1:]))
+        if (
+            s[0].isupper()
+            and s[-1] in ".!?"
+            and not re.search(r"\s{2,}", s)
+            and not re.search(r"[.!?]{2,}", s)
+            and not has_repeat
+        ):
+            good += 1
     return good / len(sentences)
 
 
 def structural_pattern_score(text: str) -> float:
-    """Return a ratio of heading lines to total lines.
+    """Return a ratio of structural lines to total lines.
 
-    This approximates structural richness of a document: documents with more
-    Markdown‑style headings (`# Heading`) are considered more structured.
+    Structural lines include Markdown headings, bullet lists and numbered
+    lists.  This provides a slightly richer signal than simply counting
+    headings.
     """
 
     lines = text.splitlines()
     if not lines:
         return 0.0
     headings = sum(1 for line in lines if line.strip().startswith("#"))
-    return headings / len(lines)
+    bullets = sum(1 for line in lines if line.strip().startswith(("-", "*", "+")))
+    numbered = sum(1 for line in lines if re.match(r"\d+[.)]\s", line.strip()))
+    structured = headings + bullets + numbered
+    return structured / len(lines)
 
 
 def _fann_features(text: str) -> list[float]:
