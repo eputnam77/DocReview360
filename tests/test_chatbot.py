@@ -1,11 +1,12 @@
-import pytest
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from docreview360 import chat_bot
-from docreview360.search import ProjectModel, add_project
-from docreview360.workflows import create_workflow, WorkflowModel
 from docreview360.approvals import create_approval, update_approval_state
-from docreview360.doc_types import add_document_type, DocumentTypeModel
+from docreview360.doc_types import DocumentTypeModel, add_document_type
+from docreview360.search import ProjectModel, add_project
+from docreview360.workflows import create_workflow
 
 
 @pytest.mark.asyncio
@@ -55,14 +56,14 @@ async def test_user_response_time() -> None:
     # Create a workflow and approval for testing
     add_project(ProjectModel(id="p5", name="Demo5"))
     workflow = create_workflow("p5", ["draft", "review"])
-    
+
     # Create an approval
     due_at = datetime.now(timezone.utc) + timedelta(days=2)
     approval = create_approval(workflow.id, "charlie", due_at, "Test approval")
-    
+
     # Approve it quickly (within a day)
     update_approval_state(approval.id, "approved")
-    
+
     resp = await chat_bot.answer_question("How long does charlie take to respond?")
     # Should indicate a quick response time
     assert "day" in resp.lower() or "responds within" in resp.lower()
