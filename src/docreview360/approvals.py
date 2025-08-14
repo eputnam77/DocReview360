@@ -3,25 +3,32 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 
 from .logs import log_event
 from .workflows import workflows
+from .integrations.signature import get_provider, DEFAULT_PROVIDER
 
 
 class ApprovalModel(BaseModel):
     """Representation of an approval record."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str
     workflow: str
     reviewer: str
     state: str = "pending"
     due_at: datetime | None = None
-    signature: Optional[str] = None
-    signed_at: Optional[str] = None
+    signature_provider: str = DEFAULT_PROVIDER
+    signature_id: Optional[str] = Field(default=None, alias="signature")
+    document_hash: Optional[str] = None
+    certificate_url: Optional[str] = None
+    signed_at: datetime | None = None
     description: Optional[str] = None  # Description from the approval step
 
 
@@ -33,15 +40,21 @@ def create_approval(
     reviewer: str,
     due_at: datetime | None = None,
     description: str | None = None,
+    *,
+    signature_provider: str = DEFAULT_PROVIDER,
+    document: bytes | None = None,
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     approval_id = uuid4().hex
+    doc_hash = hashlib.sha256(document).hexdigest() if document else None
     approval = ApprovalModel(
         id=approval_id,
         workflow=workflow,
         reviewer=reviewer,
         due_at=due_at,
-        description=description
+        description=description,
+        signature_provider=signature_provider,
+        document_hash=doc_hash,
     )
     approvals[approval_id] = approval
     return approval
@@ -62,25 +75,31 @@ def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
 def update_approval_state(
     approval_id: str,
     state: str,
-    signature: str | None = None,
+    signature_id: str | None = None,
     *,
+    certificate_url: str | None = None,
+    signed_at: datetime | None = None,
     due_at: datetime | None = None,
 ) -> ApprovalModel:
-    """Set approval state and optional digital signature placeholder."""
+    """Set approval state and optional digital signature metadata."""
     approval = approvals[approval_id]
     approval.state = state
-    approval.signature = signature
+    if signature_id is not None:
+        approval.signature_id = signature_id
+    if certificate_url is not None:
+        approval.certificate_url = certificate_url
     if due_at is not None:
         approval.due_at = due_at
     if state == "approved":
-        approval.signed_at = datetime.now(timezone.utc).isoformat()
+        approval.signed_at = signed_at or datetime.now(timezone.utc)
     else:
         approval.signed_at = None
+        approval.certificate_url = None
     if state == "approved":
         wf = workflows.get(approval.workflow)
         project_id = wf.project if wf else ""
         log_event(
-            f"{approval.reviewer} approved document {project_id} with digital signature",
+            f"{approval.reviewer} approved document {project_id} via {approval.signature_provider}",
             user=approval.reviewer,
             project=project_id,
         )
@@ -97,6 +116,39 @@ def update_approval_state(
     return approval
 
 
+def send_for_signature(
+    approval_id: str,
+    document_id: str,
+    user: str,
+    return_url: str | None = None,
+) -> str:
+    """Trigger the active provider to request a signature for this approval.
+
+    Returns the provider signing URL.
+    """
+
+    approval = approvals[approval_id]
+    provider = get_provider(approval.signature_provider)
+    sig_id, url = provider.request_signature(
+        document_id,
+        user,
+        workflow_id=approval.workflow,
+        approval_id=approval_id,
+        return_url=return_url,
+    )
+    approval.signature_id = sig_id
+    return url
+
+
+def verify_document_hash(approval_id: str, document: bytes) -> bool:
+    """Validate ``document`` matches the stored hash for ``approval_id``."""
+
+    approval = approvals[approval_id]
+    if approval.document_hash is None:
+        return True
+    return approval.document_hash == hashlib.sha256(document).hexdigest()
+
+
 def reset_approval(approval_id: str, confirm: bool) -> bool:
     """Reset the state of an approval to ``pending`` if confirmed."""
 
@@ -107,7 +159,7 @@ def reset_approval(approval_id: str, confirm: bool) -> bool:
         if approval is None:
             raise KeyError("approval not found")
         approval.state = "pending"
-        approval.signature = None
+        approval.signature_id = None
         approval.signed_at = None
 
     return task213(confirm, _do_reset)
