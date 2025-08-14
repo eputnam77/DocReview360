@@ -38,7 +38,7 @@ async def _call_openai(prompt: str) -> str:
                 json={"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": prompt}]},
             )
             resp.raise_for_status()
-    except httpx.HTTPError as exc:  # pragma: no cover - network errors
+    except httpx.HTTPError as exc:
         raise RuntimeError("OpenAI request failed") from exc
     data = resp.json()
     return str(data.get("choices", [{}])[0].get("message", {}).get("content", "")).strip()

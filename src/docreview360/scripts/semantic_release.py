@@ -15,5 +15,5 @@ def run() -> None:
     record_task_completion(140)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     run()

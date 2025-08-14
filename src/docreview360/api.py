@@ -1091,7 +1091,7 @@ async def check_phase_usage_endpoint(name: str) -> dict[str, Any]:
 
 
 @app.delete("/phases/{name}", status_code=204, response_class=Response)
-async def delete_phase_endpoint(  # noqa: C901
+async def delete_phase_endpoint(
     name: str, replacement: str | None = None
 ) -> Response:
     """Remove a phase by name. If in use, replacement is required."""
@@ -1373,12 +1373,12 @@ async def dashboard(request: Request) -> Response:
 
 
 @app.get("/help", response_class=HTMLResponse)
-async def help_page() -> HTMLResponse:  # pragma: no cover - thin wrapper
+async def help_page() -> HTMLResponse:
     """Display a lightweight help page rendered from Markdown."""
     doc_path = Path(__file__).resolve().parent.parent.parent / "docs" / "getting_started.md"
     try:
         text = doc_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:  # pragma: no cover - unexpected
+    except (OSError, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=500, detail="Unable to load documentation") from exc
     html = MarkdownIt().render(text)
     return HTMLResponse(html)
@@ -1629,7 +1629,7 @@ async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
     cfg = Config(**payload.model_dump())
     try:
         cfg.save(CONFIG_FILE)
-    except OSError as exc:  # pragma: no cover - filesystem errors
+    except OSError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return payload
 
@@ -1656,6 +1656,6 @@ async def switch_env_endpoint(name: str) -> dict[str, str]:
     """Switch the active environment and return its URL."""
     try:
         url = switch_environment(name)
-    except KeyError as exc:  # pragma: no cover - invalid env
+    except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"url": url}

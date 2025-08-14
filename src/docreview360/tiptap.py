@@ -24,7 +24,7 @@ def tiptap_to_markdown(data: Dict[str, Any]) -> str:
     """Extract plain text from a simple TipTap JSON document."""
     try:
         paragraphs: List[dict[str, Any]] = data["content"]
-    except (KeyError, TypeError) as exc:  # pragma: no cover - sanity
+    except (KeyError, TypeError) as exc:
         raise ValueError("Invalid TipTap JSON") from exc
 
     lines = []

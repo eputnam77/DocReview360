@@ -13,7 +13,7 @@ def test_task30_fetch_length(monkeypatch: pytest.MonkeyPatch) -> None:
         class Resp:
             text = "ok"
 
-            def raise_for_status(self) -> None:  # pragma: no cover - not used
+            def raise_for_status(self) -> None:
                 pass
 
         assert url == "http://example.com"

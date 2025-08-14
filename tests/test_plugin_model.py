@@ -20,7 +20,7 @@ def test_entry_point_registration_appears_in_ui() -> None:
     def register(reg: object) -> None:
         registry.register("myplugin", lambda: "ok")
 
-    mod.register = register  # type: ignore[attr-defined]
+    mod.register = register
     sys.modules[mod.__name__] = mod
     load_plugins([mod.__name__])
     html = render_plugin_table()

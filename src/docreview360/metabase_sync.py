@@ -28,7 +28,7 @@ def run_field_sync(base_url: str, token: str) -> None:
     try:
         resp = httpx.post(url, headers={"X-Metabase-Session": token}, timeout=10)
         resp.raise_for_status()
-    except Exception:  # pragma: no cover - network
+    except Exception:
         # Network issues are ignored during tests to avoid failures on
         # unreachable demo servers.
         return

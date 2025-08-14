@@ -83,7 +83,7 @@ def load_plugins(modules: Iterable[str]) -> None:
     for mod_name in modules:
         try:
             module = import_module(mod_name)
-        except Exception as exc:  # pragma: no cover - sanity fallback
+        except Exception as exc:
             raise ImportError(f"Cannot import plugin module {mod_name}") from exc
 
         register_func = getattr(module, "register", None)

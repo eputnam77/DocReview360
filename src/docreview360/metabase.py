@@ -23,7 +23,7 @@ def load_dashboards(path: str | Path) -> Dict[str, Any]:
     src = Path(path)
     try:
         text = src.read_text()
-    except OSError as exc:  # pragma: no cover - filesystem errors
+    except OSError as exc:
         raise RuntimeError(f"Failed to read {src}") from exc
     try:
         data = json.loads(text)

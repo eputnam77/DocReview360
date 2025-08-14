@@ -60,7 +60,7 @@ def request_signature(
             data = resp.json()
             sig_id = data["id"]
             url = data.get("url", f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}")
-        except httpx.HTTPError as exc:  # pragma: no cover - network failure
+        except httpx.HTTPError as exc:
             raise RuntimeError("Documenso request failed") from exc
     else:
         sig_id = uuid4().hex
@@ -88,7 +88,7 @@ def complete_signature(sig_id: str) -> None:
         try:
             resp = httpx.post(f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}/complete", timeout=5)
             resp.raise_for_status()
-        except httpx.HTTPError as exc:  # pragma: no cover - network failure
+        except httpx.HTTPError as exc:
             raise RuntimeError("Documenso request failed") from exc
     else:
         if sig_id not in _signatures:
@@ -105,7 +105,7 @@ def signature_status(sig_id: str) -> str:
             resp = httpx.get(f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}", timeout=5)
             resp.raise_for_status()
             return str(resp.json()["status"])
-        except httpx.HTTPError as exc:  # pragma: no cover - network failure
+        except httpx.HTTPError as exc:
             raise RuntimeError("Documenso request failed") from exc
     try:
         return _signatures[sig_id]

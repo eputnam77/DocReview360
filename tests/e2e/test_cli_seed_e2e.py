@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 import socket
 import threading
 import time
@@ -16,7 +15,7 @@ from docreview360.api import app
 from docreview360.cli import cli
 
 
-@pytest.fixture(scope="session")  # type: ignore[misc]
+@pytest.fixture(scope="session")
 def seeded_config(tmp_path_factory: TempPathFactory) -> Path:
     path = tmp_path_factory.mktemp("seedcfg") / "docreview360.yml"
     runner = CliRunner()
@@ -49,7 +48,7 @@ def seeded_config(tmp_path_factory: TempPathFactory) -> Path:
     return path
 
 
-@pytest.fixture(scope="session")  # type: ignore[misc]
+@pytest.fixture(scope="session")
 def live_server_seeded(seeded_config: Path) -> Iterator[str]:
     original = cfg.CONFIG_FILE
     cfg.CONFIG_FILE = seeded_config

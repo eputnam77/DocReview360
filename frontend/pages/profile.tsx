@@ -94,7 +94,7 @@ export default function ProfilePage() {
         }
       })
       .catch(() => setProfile(DEMO_PROFILE));
-    // eslint-disable-next-line
+
   }, []);
 
   const updateField = (key: keyof Profile, value: any) =>
