@@ -29,7 +29,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 
 from . import auth, reporting
 from . import search as search_mod
@@ -39,6 +39,7 @@ from .approvals import (
     create_approval,
     get_approval,
     list_approvals,
+    send_for_signature,
     update_approval_state,
 )
 from .archive import (
@@ -66,9 +67,9 @@ from .doc_types import (
 from .documenso import (
     complete_signature,
     process_webhook,
-    request_signature,
     signature_status,
 )
+from .integrations.signature import get_provider, DEFAULT_PROVIDER
 from .documents import (
     DocumentModel,
     get_document,
@@ -156,8 +157,10 @@ class ApprovalCreate(BaseModel):
 class ApprovalUpdate(BaseModel):
     """Input model for updating approval state."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     state: str
-    signature: str | None = None
+    signature_id: str | None = Field(default=None, alias="signature")
     due_at: datetime | None = None
 
 
@@ -1246,7 +1249,7 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
         return update_approval_state(
             approval_id,
             body.state,
-            signature=body.signature,
+            signature_id=body.signature_id,
             due_at=body.due_at,
         )
     except KeyError as exc:
@@ -1255,7 +1258,7 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
 
 @app.post("/approvals/{approval_id}/sign")
 async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
-    """Begin a Documenso signing flow for an approval."""
+    """Begin a signing flow for an approval."""
     approval = get_approval(approval_id)
     if approval is None:
         raise HTTPException(status_code=404, detail="Approval not found")
@@ -1263,15 +1266,8 @@ async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return_to = f"/projects/{wf.project}"
-    sig_id, url = request_signature(
-        wf.project,
-        approval.reviewer,
-        workflow_id=approval.workflow,
-        approval_id=approval.id,
-        return_url=return_to,
-    )
-    approval.signature = sig_id
-    return {"id": sig_id, "url": url}
+    url = send_for_signature(approval_id, wf.project, approval.reviewer, return_to)
+    return {"id": approval.signature_id, "url": url}
 
 
 @app.post("/sign/{doc_id}")
@@ -1281,15 +1277,11 @@ async def sign_document(
     workflow: str | None = Form(None),
     approval: str | None = Form(None),
 ) -> dict[str, str]:
-    """Create a Documenso signature request for ``doc_id``.
-
-    Returns both the signature ``id`` and a ``url`` that a client should
-    redirect the user to for signing.
-    """
-    sig_id, url = request_signature(
+    """Create a signature request for ``doc_id`` using the active provider."""
+    sig_id, url = get_provider(DEFAULT_PROVIDER).request_signature(
         doc_id,
         user,
-        workflow,
+        workflow_id=workflow,
         approval_id=approval,
     )
     return {"id": sig_id, "url": url}
