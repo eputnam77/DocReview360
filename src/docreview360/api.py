@@ -34,6 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from . import auth, reporting
 from . import search as search_mod
 from .ai_assist import rewrite_text, summarize_text
+from .ai_balancer import load_state as load_worker_state, save_state as save_worker_state
 from .approvals import (
     ApprovalModel,
     create_approval,
@@ -132,6 +133,8 @@ from .workflows import (
 
 # Load environment variables from .env file
 load_dotenv()
+
+WORKER_STATE_FILE = Path(os.getenv("DOCREVIEW360_WORKER_STATE", "worker_state.json"))
 
 
 class WorkflowCreate(BaseModel):
@@ -273,6 +276,16 @@ if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     app.add_middleware(GuardrailsMiddleware, checker=contains_pii)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+@app.on_event("startup")
+async def _load_balancer_state() -> None:
+    load_worker_state(WORKER_STATE_FILE)
+
+
+@app.on_event("shutdown")
+async def _save_balancer_state() -> None:
+    save_worker_state(WORKER_STATE_FILE)
 
 
 @app.get("/health")

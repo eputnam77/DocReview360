@@ -3,9 +3,25 @@
 from __future__ import annotations
 
 from typing import Dict
+import json
+from pathlib import Path
+
+from prometheus_client import Counter
 
 # In-memory registry mapping each worker name to their current active job count.
 _workers: Dict[str, int] = {}
+
+WORKER_REGISTRATIONS = Counter(
+    "docreview360_worker_registrations_total", "Number of workers registered"
+)
+JOB_ASSIGNMENTS = Counter(
+    "docreview360_job_assignments_total",
+    "Number of jobs assigned to workers",
+    ["worker"],
+)
+WORKER_DEREGISTRATIONS = Counter(
+    "docreview360_worker_deregistrations_total", "Number of workers deregistered"
+)
 
 
 def register_worker(name: str) -> None:
@@ -21,6 +37,7 @@ def register_worker(name: str) -> None:
     if name in _workers:
         raise ValueError(f"{name} already registered")
     _workers[name] = 0
+    WORKER_REGISTRATIONS.inc()
 
 
 def assign_job() -> str:
@@ -29,6 +46,7 @@ def assign_job() -> str:
         raise RuntimeError("no workers registered")
     worker = min(_workers, key=lambda k: _workers[k])
     _workers[worker] += 1
+    JOB_ASSIGNMENTS.labels(worker=worker).inc()
     return worker
 
 
@@ -66,9 +84,29 @@ def deregister_worker(name: str) -> int:
     """
     if name not in _workers:
         raise KeyError(name)
+    WORKER_DEREGISTRATIONS.inc()
     return _workers.pop(name)
 
 
 def reset() -> None:
     """Remove all workers and job counts (used in tests)."""
     _workers.clear()
+
+
+def save_state(path: str | Path) -> None:
+    """Persist the current worker registry to ``path``."""
+    with Path(path).open("w", encoding="utf-8") as fh:
+        json.dump(_workers, fh)
+
+
+def load_state(path: str | Path) -> None:
+    """Load worker registry from ``path`` if it exists."""
+    file = Path(path)
+    if not file.exists():
+        _workers.clear()
+        return
+    with file.open("r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    _workers.clear()
+    for key, value in data.items():
+        _workers[str(key)] = int(value)
