@@ -84,6 +84,20 @@ async def test_general_question() -> None:
 
 
 @pytest.mark.asyncio
+async def test_repo_content_question() -> None:
+    resp = await chat_bot.answer_question(
+        "Where can I find information about the FastAPI backend in DocReview360?"
+    )
+    assert "readme" in resp.lower()
+
+
+@pytest.mark.asyncio
+async def test_writing_style_question() -> None:
+    resp = await chat_bot.answer_question("How should I handle passive voice in writing?")
+    assert "active voice" in resp.lower()
+
+
+@pytest.mark.asyncio
 async def test_unknown_question() -> None:
     resp = await chat_bot.answer_question("What is the meaning of life?")
     assert "I can help answer questions about DocReview360" in resp
