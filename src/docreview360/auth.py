@@ -45,31 +45,56 @@ class User(BaseModel):
     """Simple user model."""
 
     username: str
+    active: bool = True
 
 
-FAKE_USERS_DB = {"alice": {"username": "alice", "password": "password", "otp": "123456"}}
+FAKE_USERS_DB = {
+    "alice": {
+        "username": "alice",
+        "password": "password",
+        "otp": "123456",
+        "active": True,
+    },
+    "bob": {
+        "username": "bob",
+        "password": "password",
+        "otp": "123456",
+        "active": True,
+    },
+}
+
+
+def is_active(username: str) -> bool:
+    """Return ``True`` if ``username`` is marked active."""
+
+    entry = FAKE_USERS_DB.get(username)
+    return bool(entry and entry.get("active", True))
 
 
 def authenticate_user(username: str, password: str) -> User | None:
-    """Return ``User`` if credentials match, otherwise ``None``."""
+    """Return ``User`` if credentials match and user is active."""
 
     if not username or not password:
         return None
 
     user = FAKE_USERS_DB.get(username)
-    if user and user["password"] == password:
-        return User(username=username)
+    if user and user.get("password") == password and user.get("active", True):
+        return User(username=username, active=True)
     return None
 
 
 def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
-    """Return ``User`` if credentials and OTP match."""
+    """Return ``User`` if credentials, OTP match, and user is active."""
     user = FAKE_USERS_DB.get(username)
     if not user:
         return None
-    if user.get("password") != password or user.get("otp") != otp:
+    if (
+        user.get("password") != password
+        or user.get("otp") != otp
+        or not user.get("active", True)
+    ):
         return None
-    return User(username=username)
+    return User(username=username, active=True)
 
 
 def keycloak_mfa_login(username: str, password: str, otp: str) -> str:
@@ -100,9 +125,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             detail="Invalid token",
         ) from exc
     user = FAKE_USERS_DB.get(username)
-    if user is None:
+    if not user or not user.get("active", True):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
-    return User(username=username)
+    return User(username=username, active=True)
 
 
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from threading import Lock
 from typing import Iterable
 
-from . import ai_balancer
+from . import ai_balancer, auth
 from .config import CONFIG_FILE, Config
 from .search import project_lock, projects, update_project
 
@@ -47,7 +47,7 @@ def assign_technical_writer(
     if not cfg or not cfg.ai_auto_assign_writers:
         raise RuntimeError("AI auto-assignment disabled")
 
-    cand_list = list(candidates)
+    cand_list = [c for c in candidates if auth.is_active(c)]
     if not cand_list:
         raise ValueError("candidates is required")
 
@@ -76,7 +76,7 @@ def assign_technical_writer(
     for cand in cand_list:
         with _balancer_lock:
             if ai_balancer.current_load(cand) < counts[cand]:
-                ai_balancer._workers[cand] = counts[cand]  # type: ignore[attr-defined]
+                ai_balancer._workers[cand] = counts[cand]
 
     selected = min(
         cand_list,
@@ -84,7 +84,7 @@ def assign_technical_writer(
     )
     update_project(project_id, user=selected)
     with _balancer_lock:
-        ai_balancer._workers[selected] = (  # type: ignore[attr-defined]
+        ai_balancer._workers[selected] = (
             ai_balancer.current_load(selected) + 1
         )
     return selected
@@ -121,7 +121,7 @@ def reassign_projects_from_writer(
     if not cfg or not cfg.ai_auto_assign_writers:
         raise RuntimeError("AI auto-assignment disabled")
 
-    cand_list = [c for c in candidates if c != writer]
+    cand_list = [c for c in candidates if c != writer and auth.is_active(c)]
     if not cand_list:
         raise ValueError("candidates is required")
 
