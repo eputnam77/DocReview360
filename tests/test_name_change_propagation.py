@@ -46,18 +46,20 @@ class TestNameChangePropagation:
         original_name = "Advisory Circular"
         new_name = "Updated Advisory Circular"
 
-        add_document_type(DocumentTypeModel(
-            name=original_name,
-            template="<h1>Advisory Circular</h1>",
-            workflow=["draft", "review", "final"]
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name=original_name,
+                template="<h1>Advisory Circular</h1>",
+                workflow=["draft", "review", "final"],
+            )
+        )
 
         # Create project using the document type
         project_data = {
             "id": "test-project",
             "name": "Test Project",
             "doc_type": original_name,
-            "phase": "Internal FAA Review"
+            "phase": "Internal Coordination",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -69,7 +71,7 @@ class TestNameChangePropagation:
         updated_doc_type = DocumentTypeModel(
             name=new_name,
             template="<h1>Updated Advisory Circular</h1>",
-            workflow=["draft", "review", "final"]
+            workflow=["draft", "review", "final"],
         )
 
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
@@ -104,8 +106,8 @@ class TestNameChangePropagation:
         client = TestClient(app)
 
         # Create initial phase
-        original_name = "Internal FAA Review"
-        new_name = "Updated Internal FAA Review"
+        original_name = "Internal Coordination"
+        new_name = "Updated Internal Coordination"
 
         add_phase(original_name)
 
@@ -114,7 +116,7 @@ class TestNameChangePropagation:
             "id": "test-project",
             "name": "Test Project",
             "doc_type": "Advisory Circular",
-            "phase": original_name
+            "phase": original_name,
         }
 
         resp = client.post("/projects", json=project_data)
@@ -123,10 +125,7 @@ class TestNameChangePropagation:
         assert project["phase"] == original_name
 
         # Create workflow using the phase
-        workflow_data = {
-            "project": "test-project",
-            "phases": [original_name]
-        }
+        workflow_data = {"project": "test-project", "phases": [original_name]}
 
         resp = client.post("/workflows", json=workflow_data)
         assert resp.status_code == 201
@@ -163,7 +162,7 @@ class TestNameChangePropagation:
         # Create workflow
         workflow_data = {
             "project": "test-project",
-            "phases": ["Internal FAA Review", "Public Comment"]
+            "phases": ["Internal Coordination", "Public Comment / Proposed Rulemaking"],
         }
 
         resp = client.post("/workflows", json=workflow_data)
@@ -175,8 +174,8 @@ class TestNameChangePropagation:
             "id": "test-project",
             "name": "Test Project",
             "doc_type": "Advisory Circular",
-            "phase": "Internal FAA Review",
-            "workflow": workflow["id"]
+            "phase": "Internal Coordination",
+            "workflow": workflow["id"],
         }
 
         resp = client.post("/projects", json=project_data)
@@ -187,7 +186,7 @@ class TestNameChangePropagation:
         approval_data = {
             "workflow": workflow["id"],
             "reviewer": "test-user",
-            "description": "Test approval"
+            "description": "Test approval",
         }
 
         resp = client.post("/approvals", json=approval_data)
@@ -212,18 +211,16 @@ class TestNameChangePropagation:
 
         # Create document type
         doc_type_name = "Test Document Type"
-        add_document_type(DocumentTypeModel(
-            name=doc_type_name,
-            template="<h1>Test</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name=doc_type_name, template="<h1>Test</h1>", workflow=[])
+        )
 
         # Create project using the document type
         project_data = {
             "id": "test-project",
             "name": "Test Project",
             "doc_type": doc_type_name,
-            "phase": "Internal FAA Review"
+            "phase": "Internal Coordination",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -248,18 +245,16 @@ class TestNameChangePropagation:
         original_name = "Test Doc Type"
         new_name = "Updated Test Doc Type"
 
-        add_document_type(DocumentTypeModel(
-            name=original_name,
-            template="<h1>Test</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name=original_name, template="<h1>Test</h1>", workflow=[])
+        )
 
         # Create project to generate logs
         project_data = {
             "id": "test-project",
             "name": "Test Project",
             "doc_type": original_name,
-            "phase": "Internal FAA Review"
+            "phase": "Internal Coordination",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -267,9 +262,7 @@ class TestNameChangePropagation:
 
         # Rename document type
         updated_doc_type = DocumentTypeModel(
-            name=new_name,
-            template="<h1>Updated Test</h1>",
-            workflow=[]
+            name=new_name, template="<h1>Updated Test</h1>", workflow=[]
         )
 
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
@@ -289,11 +282,9 @@ class TestNameChangePropagation:
         # Create document type
         doc_type_name = "Report Test Doc Type"
 
-        add_document_type(DocumentTypeModel(
-            name=doc_type_name,
-            template="<h1>Report Test</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name=doc_type_name, template="<h1>Report Test</h1>", workflow=[])
+        )
 
         # Create multiple projects to generate report data
         for i in range(3):
@@ -301,7 +292,7 @@ class TestNameChangePropagation:
                 "id": f"report-test-{i}",
                 "name": f"Report Test Project {i}",
                 "doc_type": doc_type_name,
-                "phase": "Internal FAA Review"
+                "phase": "Internal Coordination",
             }
 
             resp = client.post("/projects", json=project_data)
@@ -328,18 +319,16 @@ class TestNameChangePropagation:
         original_name = "Search Test Doc Type"
         new_name = "Updated Search Test Doc Type"
 
-        add_document_type(DocumentTypeModel(
-            name=original_name,
-            template="<h1>Search Test</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name=original_name, template="<h1>Search Test</h1>", workflow=[])
+        )
 
         # Create project
         project_data = {
             "id": "search-test-project",
             "name": "Search Test Project",
             "doc_type": original_name,
-            "phase": "Internal FAA Review"
+            "phase": "Internal Coordination",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -351,9 +340,7 @@ class TestNameChangePropagation:
 
         # Rename document type
         updated_doc_type = DocumentTypeModel(
-            name=new_name,
-            template="<h1>Updated Search Test</h1>",
-            workflow=[]
+            name=new_name, template="<h1>Updated Search Test</h1>", workflow=[]
         )
 
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
@@ -374,11 +361,9 @@ class TestNameChangePropagation:
         doc_type_name = "Consistency Test Doc Type"
         phase_name = "Consistency Test Phase"
 
-        add_document_type(DocumentTypeModel(
-            name=doc_type_name,
-            template="<h1>Consistency Test</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name=doc_type_name, template="<h1>Consistency Test</h1>", workflow=[])
+        )
         add_phase(phase_name)
 
         # Create project
@@ -386,7 +371,7 @@ class TestNameChangePropagation:
             "id": "consistency-test-project",
             "name": "Consistency Test Project",
             "doc_type": doc_type_name,
-            "phase": phase_name
+            "phase": phase_name,
         }
 
         resp = client.post("/projects", json=project_data)
@@ -394,10 +379,7 @@ class TestNameChangePropagation:
         project = resp.json()
 
         # Create workflow
-        workflow_data = {
-            "project": project["id"],
-            "phases": [phase_name]
-        }
+        workflow_data = {"project": project["id"], "phases": [phase_name]}
 
         resp = client.post("/workflows", json=workflow_data)
         assert resp.status_code == 201
@@ -409,9 +391,7 @@ class TestNameChangePropagation:
 
         # Update document type
         updated_doc_type = DocumentTypeModel(
-            name=new_doc_type_name,
-            template="<h1>Updated Consistency Test</h1>",
-            workflow=[]
+            name=new_doc_type_name, template="<h1>Updated Consistency Test</h1>", workflow=[]
         )
 
         resp = client.put(f"/document-types/{doc_type_name}", json=updated_doc_type.model_dump())
@@ -440,23 +420,19 @@ class TestNameChangePropagation:
         client = TestClient(app)
 
         # Test renaming to existing name
-        add_document_type(DocumentTypeModel(
-            name="Existing Doc Type",
-            template="<h1>Existing</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Existing Doc Type", template="<h1>Existing</h1>", workflow=[])
+        )
 
-        add_document_type(DocumentTypeModel(
-            name="Another Doc Type",
-            template="<h1>Another</h1>",
-            workflow=[]
-        ))
+        add_document_type(
+            DocumentTypeModel(name="Another Doc Type", template="<h1>Another</h1>", workflow=[])
+        )
 
         # Try to rename to existing name
         updated_doc_type = DocumentTypeModel(
             name="Existing Doc Type",  # This name already exists
             template="<h1>Updated</h1>",
-            workflow=[]
+            workflow=[],
         )
 
         resp = client.put("/document-types/Another Doc Type", json=updated_doc_type.model_dump())
@@ -473,11 +449,13 @@ class TestNameChangePropagation:
 
         # Create many document types
         for i in range(10):
-            add_document_type(DocumentTypeModel(
-                name=f"Performance Test Doc Type {i}",
-                template=f"<h1>Performance Test {i}</h1>",
-                workflow=[]
-            ))
+            add_document_type(
+                DocumentTypeModel(
+                    name=f"Performance Test Doc Type {i}",
+                    template=f"<h1>Performance Test {i}</h1>",
+                    workflow=[],
+                )
+            )
 
         # Create many projects
         for i in range(20):
@@ -485,7 +463,7 @@ class TestNameChangePropagation:
                 "id": f"perf-test-project-{i}",
                 "name": f"Performance Test Project {i}",
                 "doc_type": f"Performance Test Doc Type {i % 10}",
-                "phase": "Internal FAA Review"
+                "phase": "Internal Coordination",
             }
 
             resp = client.post("/projects", json=project_data)
@@ -496,9 +474,7 @@ class TestNameChangePropagation:
         new_name = "Updated Performance Test Doc Type 0"
 
         updated_doc_type = DocumentTypeModel(
-            name=new_name,
-            template="<h1>Updated Performance Test</h1>",
-            workflow=[]
+            name=new_name, template="<h1>Updated Performance Test</h1>", workflow=[]
         )
 
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
