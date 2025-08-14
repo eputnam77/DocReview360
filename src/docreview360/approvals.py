@@ -1,4 +1,4 @@
-"""Approval management with digital signature placeholder."""
+"""Approval management with digital signature and FANN-based routing support."""
 
 from __future__ import annotations
 
@@ -9,9 +9,11 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .integrations.signature import DEFAULT_PROVIDER, get_provider
+from .integrations.signature import get_provider, DEFAULT_PROVIDER
 from .logs import log_event
 from .workflows import workflows
+from .quality import approval_likelihood
+from .fann_model import Weights
 
 
 class ApprovalModel(BaseModel):
@@ -68,6 +70,28 @@ def create_approval(
     return approval
 
 
+def submit_draft_for_approval(
+    workflow: str,
+    reviewer: str,
+    text: str,
+    weights: Weights,
+    *,
+    threshold: float = 0.5,
+    extra_reviewer: str = "policy",
+) -> ApprovalModel:
+    """Score ``text`` and route for additional review if risky.
+
+    Drafts with an approval likelihood below ``threshold`` are first sent to
+    ``extra_reviewer`` before the main ``reviewer`` receives the approval
+    request.  This connects FANN scoring with the workflow system for
+    proactive risk mitigation.
+    """
+    score = approval_likelihood(text, weights)
+    if score < threshold:
+        create_approval(workflow, extra_reviewer, description="Auto risk review")
+    return create_approval(workflow, reviewer, description="Primary review")
+
+
 def get_approval(approval_id: str) -> ApprovalModel | None:
     """Retrieve a single approval by id."""
     return approvals.get(approval_id)
@@ -82,7 +106,6 @@ def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
 
 def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:
     """Return the approval associated with ``signature_id`` if any."""
-
     for approval in approvals.values():
         if approval.signature_id == signature_id:
             return approval
@@ -102,7 +125,6 @@ def handle_signature_return(
     certificate metadata. ``KeyError`` is raised when no approval is mapped and
     ``ValueError`` when hash verification fails.
     """
-
     approval = get_approval_by_signature(signature_id)
     if approval is None:
         raise KeyError("approval not found for signature")
@@ -193,7 +215,6 @@ def send_for_signature(
 
     Returns the provider signing URL.
     """
-
     approval = approvals[approval_id]
     provider = get_provider(approval.signature_provider)
     sig_id, url = provider.request_signature(
@@ -217,7 +238,6 @@ def send_for_signature(
 
 def verify_document_hash(approval_id: str, document: bytes) -> bool:
     """Validate ``document`` matches the stored hash for ``approval_id``."""
-
     approval = approvals[approval_id]
     if approval.document_hash is None:
         return True
@@ -226,7 +246,6 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
 
 def reset_approval(approval_id: str, confirm: bool) -> bool:
     """Reset the state of an approval to ``pending`` if confirmed."""
-
     from .stubs.task213 import task213
 
     def _do_reset() -> None:

@@ -82,6 +82,7 @@ from .documents import (
 from .environment import current_environment, load_envs, switch_environment
 from .exporter import export_document, set_guardrails
 from .integrations.signature import DEFAULT_PROVIDER, get_provider
+from .audit import AuditEvent, get_audit_log
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .nemo_guardrails import GuardrailsMiddleware, contains_pii
@@ -681,6 +682,15 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return document
+
+
+@app.get("/documents/{doc_id}/audit", response_model=list[AuditEvent])
+async def get_document_audit_endpoint(doc_id: str) -> list[AuditEvent]:
+    """Return audit events for a document."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return get_audit_log(doc_id)
 
 
 @app.put("/documents/{doc_id}", response_model=DocumentModel)

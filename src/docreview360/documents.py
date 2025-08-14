@@ -14,6 +14,7 @@ from zipfile import ZipFile
 from pydantic import BaseModel
 
 from . import fts
+from .audit import log_audit_event
 
 
 class DocumentModel(BaseModel):
@@ -103,6 +104,13 @@ def import_document(
 
     search_module.add_document(document)
     fts.index_document(doc_id, content)
+    log_audit_event(
+        doc_id,
+        "created",
+        user=user,
+        project=project,
+        filename=filename,
+    )
     return document
 
 
@@ -146,6 +154,7 @@ def update_document(
     # Re-index the updated document
     search_module.add_document(document)
     fts.index_document(doc_id, document.content)
+    log_audit_event(doc_id, "updated", user=document.user, priority=priority)
 
     return document
 
