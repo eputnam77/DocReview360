@@ -9,16 +9,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { getDemoProject } from "@/data/demoProjects";
 import { API } from "@/lib/api";
 import { CheckCircle, Clock, Users, Workflow, XCircle } from "lucide-react";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
-
-const DOCUMENT_TYPES: string[] = [];
-
-const DEMO_PHASES: string[] = [];
-const DEMO_WORKFLOWS: string[] = [];
 
 interface Workflow {
   id: string;
@@ -35,17 +29,6 @@ interface Approval {
   due_at?: string;
   signed_at?: string;
 }
-
-const DEMO_WORKFLOWS_DATA: Workflow[] = [
-  {
-    id: "branch-coordination",
-    name: "branch-coordination",
-    description:
-      "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
-    phases: ["Internal FAA Review", "Public Comment", "Final Issuance"],
-    reviewers: [],
-  },
-];
 
 export default function EditProjectPage() {
   const router = useRouter();
@@ -68,7 +51,7 @@ export default function EditProjectPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>("");
   const [currentApprovals, setCurrentApprovals] = useState<Approval[]>([]);
   const [showWorkflowSelector, setShowWorkflowSelector] = useState(false);
-  const [phases, setPhases] = useState<string[]>(DEMO_PHASES);
+  const [phases, setPhases] = useState<string[]>([]);
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
 
@@ -97,7 +80,9 @@ export default function EditProjectPage() {
       const def = phaseMap[phase];
       if (def) {
         // Find the workflow ID that matches the mapped workflow name
-        const mappedWorkflow = workflows.find(w => w.name === def);
+        const mappedWorkflow = workflows.find(
+          w => (w.name ?? w.project ?? w.id) === def,
+        );
         if (mappedWorkflow) {
           setSelectedWorkflow(mappedWorkflow.id);
         }
@@ -179,47 +164,34 @@ export default function EditProjectPage() {
       })
       .catch((error) => {
         console.error('Edit page: API call failed:', error);
-        console.log('Edit page: Falling back to demo data');
-        const demo = getDemoProject(String(id));
-        if (demo) {
-          setDocId(String(demo.number)); // Use number as docId for demo
-          setDocNumber(String(demo.number)); // Document number, ensure it's a string
-          setTitle(demo.title);
-          setSme(demo.user || "");
-          setDocType(demo.type);
-          // Set phase to first available phase from API, or empty if none available
-          setPhase(phases.length > 0 ? phases[0] : "");
-          setDescription(demo.title);
-        } else {
-          setError("Could not load project.");
-        }
+        setError('Could not load project.');
         setLoading(false);
       });
 
-    // Fetch available workflows (instances). If none, fall back to default template
+    // Fetch available workflows (instances).
     fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: Workflow[]) => {
-        const list = (Array.isArray(data) && data.length) ? data : DEMO_WORKFLOWS_DATA;
+      .then((data: any[]) => {
+        const list = Array.isArray(data) ? data : [];
         setWorkflows(list);
-        setWorkflowNames(list.map((w) => w.name));
+        setWorkflowNames(list.map((w) => w.name ?? w.project ?? w.id));
       })
       .catch(() => {
-        setWorkflows(DEMO_WORKFLOWS_DATA);
-        setWorkflowNames(DEMO_WORKFLOWS_DATA.map((w) => w.name));
+        setWorkflows([]);
+        setWorkflowNames([]);
       });
 
     // Fetch available phases
     fetch(`${API}/phases`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        const phaseNames = data.length
+        const phaseNames = Array.isArray(data)
           ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-          : DEMO_PHASES;
+          : [];
         setPhases(phaseNames);
       })
       .catch(() => {
-        setPhases(DEMO_PHASES);
+        setPhases([]);
       });
 
     // Fetch available document types
@@ -488,18 +460,21 @@ export default function EditProjectPage() {
                   <SelectValue placeholder="Select a workflow" />
                 </SelectTrigger>
                 <SelectContent>
-                  {workflows.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{w.name}</span>
-                        {phaseMap[phase] === w.name && (
+                  {workflows.map((w) => {
+                    const wfName = w.name ?? w.project ?? w.id;
+                    return (
+                      <SelectItem key={w.id} value={w.id}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{wfName}</span>
+                          {phaseMap[phase] === wfName && (
                           <Badge variant="outline" className="ml-2 text-xs">
                             Suggested
                           </Badge>
                         )}
-                      </div>
-                    </SelectItem>
-                  ))}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {phaseMap[phase] && (
@@ -614,7 +589,7 @@ export default function EditProjectPage() {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <h5 className="font-medium text-sm">{workflow.name}</h5>
+                            <h5 className="font-medium text-sm">{workflow.name ?? workflow.project ?? workflow.id}</h5>
                             <p className="text-xs text-gray-600 mt-1">{workflow.description}</p>
                             <div className="flex items-center gap-2 mt-2">
                               <Badge variant="outline" className="text-xs">
@@ -623,7 +598,7 @@ export default function EditProjectPage() {
                               <Badge variant="outline" className="text-xs">
                                 {workflow.reviewers.length} reviewers
                               </Badge>
-                              {phaseMap[phase] === workflow.name && (
+                              {phaseMap[phase] === (workflow.name ?? workflow.project ?? workflow.id) && (
                                 <Badge className="text-xs bg-green-100 text-green-800">
                                   Suggested
                                 </Badge>

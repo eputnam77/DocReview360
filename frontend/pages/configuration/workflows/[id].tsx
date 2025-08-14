@@ -9,25 +9,6 @@ import { Edit3, Users2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API } from "@/lib/api";
 
-// Fallback for system workflow if API is unavailable
-const DEFAULT_SYSTEM_WORKFLOW = {
-  id: "branch-coordination",
-  name: "branch-coordination",
-  description:
-    "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
-  steps: [
-    { id: "1", role: "Subject Matter Expert", user: "", required: true },
-    { id: "2", role: "Front Line Manager", user: "", required: true },
-    { id: "3", role: "Product Policy Manager", user: "", required: true },
-    { id: "4", role: "Technical Writer", user: "", required: true },
-    { id: "5", role: "Senior Technical Writer", user: "", required: true },
-    { id: "6", role: "Technical Writing Manager", user: "", required: true },
-  ],
-  usage: 0,
-  created: new Date().toISOString().split("T")[0],
-  updated: new Date().toISOString().split("T")[0],
-};
-
 export default function WorkflowDetailPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -43,21 +24,9 @@ export default function WorkflowDetailPage() {
         if (data) {
           setWorkflow(data);
           setLogs(data.logs ?? []);
-        } else if (wfId === "branch-coordination") {
-          setWorkflow(DEFAULT_SYSTEM_WORKFLOW);
-          setLogs([
-            { timestamp: DEFAULT_SYSTEM_WORKFLOW.created, action: "Workflow created" },
-          ]);
         }
       })
-      .catch(() => {
-        if (wfId === "branch-coordination") {
-          setWorkflow(DEFAULT_SYSTEM_WORKFLOW);
-          setLogs([
-            { timestamp: DEFAULT_SYSTEM_WORKFLOW.created, action: "Workflow created" },
-          ]);
-        }
-      });
+      .catch(() => {});
   }, [id]);
 
   if (!workflow) return <p className="p-4">Loading…</p>;
