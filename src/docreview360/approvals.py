@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from .integrations.signature import DEFAULT_PROVIDER, get_provider
 from .logs import log_event
 from .workflows import workflows
-from .integrations.signature import get_provider, DEFAULT_PROVIDER
 
 
 class ApprovalModel(BaseModel):
@@ -78,6 +78,59 @@ def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
     if workflow is None:
         return list(approvals.values())
     return [a for a in approvals.values() if a.workflow == workflow]
+
+
+def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:
+    """Return the approval associated with ``signature_id`` if any."""
+
+    for approval in approvals.values():
+        if approval.signature_id == signature_id:
+            return approval
+    return None
+
+
+def handle_signature_return(
+    signature_id: str,
+    *,
+    document: bytes | None = None,
+    certificate_url: str | None = None,
+    signed_at: datetime | None = None,
+) -> ApprovalModel:
+    """Update the approval linked to ``signature_id`` as signed.
+
+    Optionally verifies ``document`` against the stored hash and records
+    certificate metadata. ``KeyError`` is raised when no approval is mapped and
+    ``ValueError`` when hash verification fails.
+    """
+
+    approval = get_approval_by_signature(signature_id)
+    if approval is None:
+        raise KeyError("approval not found for signature")
+
+    log_event(
+        "approval_callback",
+        approval_id=approval.id,
+        provider=approval.signature_provider,
+        signature_id=signature_id,
+    )
+
+    if document is not None and approval.document_hash is not None:
+        if hashlib.sha256(document).hexdigest() != approval.document_hash:
+            log_event(
+                "signature_hash_mismatch",
+                approval_id=approval.id,
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+            )
+            raise ValueError("document hash mismatch")
+
+    return update_approval_state(
+        approval.id,
+        "approved",
+        signature_id=signature_id,
+        certificate_url=certificate_url,
+        signed_at=signed_at,
+    )
 
 
 def update_approval_state(
