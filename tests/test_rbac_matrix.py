@@ -24,12 +24,11 @@ rbac = importlib.util.module_from_spec(spec_rbac)
 sys.modules["docreview360.rbac"] = rbac
 spec_rbac.loader.exec_module(rbac)
 
-from docreview360.rbac import (
-    ROLE_PERMISSIONS,
-    USER_ROLES,
-    require_permission,
-    set_user_roles,
-)
+# Bind local aliases to avoid late imports (ruff E402)
+ROLE_PERMISSIONS = rbac.ROLE_PERMISSIONS
+USER_ROLES = rbac.USER_ROLES
+require_permission = rbac.require_permission
+set_user_roles = rbac.set_user_roles
 
 
 def test_default_role_permissions_seed() -> None:
