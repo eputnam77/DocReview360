@@ -31,11 +31,12 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import auth, reporting
-from . import search as search_mod
-from .ai_assist import rewrite_text, summarize_text
-from .ai_balancer import load_state as load_worker_state, save_state as save_worker_state
-from .approvals import (
+from .. import auth, reporting
+from .. import search as search_mod
+from ..ai_assist import rewrite_text, summarize_text
+from ..ai_balancer import load_state as load_worker_state
+from ..ai_balancer import save_state as save_worker_state
+from ..approvals import (
     ApprovalModel,
     create_approval,
     get_approval,
@@ -44,21 +45,21 @@ from .approvals import (
     update_approval_state,
     verify_document_signature,
 )
-from .archive import (
+from ..archive import (
     ArchiveRecord,
     get_archive,
     list_archives,
 )
-from .archive import (
+from ..archive import (
     archive_document as archive_doc,
 )
-from .audit import AuditEvent, get_audit_log
-from .cache import cache_get, cache_set, clear_cache
-from .cms import save_to_cms
-from .comments import CommentModel, add_comment, list_comments
-from .config import CONFIG_FILE, Config
-from .dashboard_prefs import get_visibility, set_visibility
-from .doc_types import (
+from ..audit import AuditEvent, get_audit_log
+from ..cache import cache_get, cache_set, clear_cache
+from ..cms import save_to_cms
+from ..comments import CommentModel, add_comment, list_comments
+from ..config import CONFIG_FILE, Config
+from ..dashboard_prefs import get_visibility, set_visibility
+from ..doc_types import (
     DocumentTypeModel,
     add_document_type,
     delete_document_type,
@@ -68,33 +69,32 @@ from .doc_types import (
     list_document_types,
     update_document_type,
 )
-from .documenso import (
+from ..documenso import (
     complete_signature,
     process_webhook,
     signature_status,
 )
-from .documents import (
+from ..documents import (
     DocumentModel,
     get_document,
     import_document,
     update_document,
 )
-from .documents import (
+from ..documents import (
     list_documents as list_docs,
 )
-from .environment import current_environment, load_envs, switch_environment
-from .exporter import export_document, set_guardrails
-from .integrations.signature import get_default_provider, get_provider
-from .settings_manager import load_settings, update_setting
-from .logs import LogEntry, log_event, log_stream, query_logs
-from .messages import render
-from .nemo_guardrails import GuardrailsMiddleware, contains_pii
-from .phases import add_phase, delete_phase, list_phases, rename_phase
-from .plugins import load_plugins
-from .plugins import registry as plugin_registry
-from .profile import get_preferences, update_preferences
-from .rbac import get_roles, require_role
-from .reporting import (
+from ..environment import current_environment, load_envs, switch_environment
+from ..exporter import export_document, set_guardrails
+from ..integrations.signature import get_default_provider, get_provider
+from ..logs import LogEntry, log_event, log_stream, query_logs
+from ..messages import render
+from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
+from ..phases import add_phase, delete_phase, list_phases, rename_phase
+from ..plugins import load_plugins
+from ..plugins import registry as plugin_registry
+from ..profile import get_preferences, update_preferences
+from ..rbac import get_roles, require_role
+from ..reporting import (
     DashboardEntry,
     SummaryReport,
     admin_dashboard,
@@ -104,7 +104,7 @@ from .reporting import (
     user_dashboard,
     widget_counts,
 )
-from .search import (
+from ..search import (
     ProjectModel,
     add_project,
     assign_temporary,
@@ -118,11 +118,12 @@ from .search import (
     set_project_priority,
     update_project,
 )
-from .status import internal_status, public_status
-from .stubs.task223 import convert_document
-from .template_manager import upload_template as store_template
-from .watchlist import get_watchlist, toggle_watch
-from .workflows import (
+from ..settings_manager import load_settings, update_setting
+from ..status import internal_status, public_status
+from ..stubs.task223 import convert_document
+from ..template_manager import upload_template as store_template
+from ..watchlist import get_watchlist, toggle_watch
+from ..workflows import (
     WorkflowModel,
     advance_workflow,
     assign_reviewer,
@@ -132,6 +133,7 @@ from .workflows import (
     start_workflow,
     workflows,
 )
+from .approvals import router as approvals_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -278,6 +280,8 @@ app.add_middleware(
 # performance profiling report. ``minimum_size`` avoids wasting
 # CPU cycles on tiny payloads.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+app.include_router(approvals_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
@@ -416,7 +420,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
     # Auto-generate ID if not provided
     if body.id is None:
-        from .search import search_index
+        from ..search import search_index
 
         body.id = search_index.generate_project_id()
 
@@ -491,7 +495,7 @@ def _update_workflow_phase(
     is_json = request.headers.get("content-type", "").startswith("application/json")
     if not is_json:
         return
-    from .workflows import get_workflow as _get_wf
+    from ..workflows import get_workflow as _get_wf
 
     wf_id_to_update = updated_project.workflow
     if not wf_id_to_update:
@@ -652,7 +656,7 @@ async def import_document_endpoint(
 @app.post("/documents/tiptap", status_code=201, response_model=DocumentModel)
 async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
     """Import a TipTap JSON document."""
-    from .tiptap import import_tiptap_document
+    from ..tiptap import import_tiptap_document
 
     try:
         document = import_tiptap_document(body)
@@ -913,7 +917,7 @@ async def ai_summarize_endpoint(body: TextBody) -> dict[str, str]:
 @app.post("/chat")
 async def chat_bot_endpoint(body: TextBody) -> dict[str, str]:
     """Return an answer from the simple chatbot."""
-    from .chat_bot import answer_question
+    from ..chat_bot import answer_question
 
     answer = await answer_question(body.text)
     return {"result": answer}
@@ -974,7 +978,7 @@ async def update_document_type_endpoint(
 @app.get("/document-types/{name}/usage", response_model=dict[str, Any])
 async def check_document_type_usage_endpoint(name: str) -> dict[str, Any]:
     """Check if a document type is in use and return usage information."""
-    from .doc_types import get_document_type
+    from ..doc_types import get_document_type
 
     # Check if document type exists
     doc_type = get_document_type(name)
@@ -996,7 +1000,7 @@ async def check_document_type_usage_endpoint(name: str) -> dict[str, Any]:
 @app.delete("/document-types/{name}", status_code=204, response_class=Response)
 async def delete_document_type_endpoint(name: str, replacement: str | None = None) -> Response:
     """Remove an existing document type. If in use, replacement is required."""
-    from .doc_types import get_document_type
+    from ..doc_types import get_document_type
 
     # Check if document type exists
     doc_type = get_document_type(name)
@@ -1066,7 +1070,7 @@ async def upload_template_endpoint(
 @app.get("/plugin-marketplace")
 async def list_marketplace() -> list[dict[str, Any]]:
     """Return available plugins with detailed information."""
-    from .plugin_marketplace import list_plugins_with_info
+    from ..plugin_marketplace import list_plugins_with_info
 
     return list_plugins_with_info()
 
@@ -1078,7 +1082,7 @@ class MarketplaceInstall(BaseModel):
 @app.post("/plugin-marketplace/install")
 async def install_marketplace_plugin(body: MarketplaceInstall) -> dict[str, str]:
     """Install a plugin from the marketplace."""
-    from .plugin_marketplace import install_plugin
+    from ..plugin_marketplace import install_plugin
 
     try:
         install_plugin(body.name)
