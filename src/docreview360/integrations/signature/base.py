@@ -25,6 +25,9 @@ class SignatureProvider(Protocol):
     def process_webhook(self, data: dict) -> None:
         """Handle a webhook payload from the provider."""
 
+    def verify_signature(self, sig_id: str, document: bytes) -> bool:
+        """Return ``True`` if ``sig_id`` is valid for ``document``."""
+
 
 providers: Dict[str, SignatureProvider] = {}
 
