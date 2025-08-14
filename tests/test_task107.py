@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docreview360.ai_utils import _fann_features
+from docreview360.ai_utils import FANN_FEATURE_NAMES, _fann_features
 from docreview360.fann_model import load_weights, predict, save_weights, train_model
 
 
@@ -14,10 +14,11 @@ def test_train_and_predict(tmp_path: Path) -> None:
 
 
 def test_readability_feature() -> None:
-    simple = _fann_features("short sentence.")[-1]
+    idx = FANN_FEATURE_NAMES.index("readability")
+    simple = _fann_features("short sentence.")[idx]
     complex_text = (
         "Complexity arises when sentences contain multiple clauses, resulting in longer "
         "constructions and convoluted meaning."
     )
-    complex = _fann_features(complex_text)[-1]
+    complex = _fann_features(complex_text)[idx]
     assert simple > complex
