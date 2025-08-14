@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .search import ProjectModel
@@ -13,7 +13,8 @@ else:
     ProjectModel = Any
 projects: dict[str, Any]
 try:
-    from .search import list_projects, overdue_high_priority, projects as _projects
+    from .search import list_projects, overdue_high_priority
+    from .search import projects as _projects
 
     projects = _projects
 except Exception:

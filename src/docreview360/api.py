@@ -1090,32 +1090,52 @@ async def check_phase_usage_endpoint(name: str) -> dict[str, Any]:
     }
 
 
+# Internal helpers to keep endpoint complexity low
+def _ensure_phase_exists(name: str, phases_list: list[str]) -> None:
+    if name not in phases_list:
+        raise HTTPException(status_code=404, detail=f"Phase '{name}' not found")
+
+
+def _validate_replacement_exists(replacement: str | None, phases_list: list[str]) -> None:
+    # Validate that a provided replacement refers to an existing phase
+    if replacement and replacement not in phases_list:
+        raise HTTPException(status_code=404, detail=f"Replacement phase '{replacement}' not found")
+
+
+def _phase_usage(name: str) -> tuple[list[ProjectModel], list[WorkflowModel]]:
+    # Compute projects and workflows that reference the given phase
+    all_workflows = list_workflows()
+    workflows_using_phase = [w for w in all_workflows if name in w.phases]
+
+    projects_using_phase: list[ProjectModel] = []
+    for project in list_projects():
+        if project.workflow:
+            workflow = get_workflow(project.workflow)
+            if workflow and name in workflow.phases:
+                projects_using_phase.append(project)
+    return projects_using_phase, workflows_using_phase
+
+
+def _apply_phase_replacement(
+    name: str, replacement: str, workflows_using_phase: list[WorkflowModel]
+) -> None:
+    # Update all affected workflows to use the replacement phase
+    for wf in workflows_using_phase:
+        wf.phases = [replacement if p == name else p for p in wf.phases]
+        if wf.phase == name:
+            wf.phase = replacement
+
+
 @app.delete("/phases/{name}", status_code=204, response_class=Response)
 async def delete_phase_endpoint(
     name: str, replacement: str | None = None
 ) -> Response:
     """Remove a phase by name. If in use, replacement is required."""
-
-    # Check if phase exists
     phases_list = list_phases()
-    if name not in phases_list:
-        raise HTTPException(status_code=404, detail=f"Phase '{name}' not found")
+    _ensure_phase_exists(name, phases_list)
+    _validate_replacement_exists(replacement, phases_list)
 
-    # Check if replacement phase exists
-    if replacement and replacement not in phases_list:
-        raise HTTPException(status_code=404, detail=f"Replacement phase '{replacement}' not found")
-
-    # Check if phase is in use
-    all_workflows = list_workflows()
-    workflows_using_phase = [w for w in all_workflows if name in w.phases]
-
-    projects = list_projects()
-    projects_using_phase = []
-    for project in projects:
-        if project.workflow:
-            workflow = get_workflow(project.workflow)
-            if workflow and name in workflow.phases:
-                projects_using_phase.append(project)
+    projects_using_phase, workflows_using_phase = _phase_usage(name)
 
     if projects_using_phase or workflows_using_phase:
         if not replacement:
@@ -1125,25 +1145,14 @@ async def delete_phase_endpoint(
                 "Please specify a replacement phase."
             )
             raise HTTPException(status_code=400, detail=detail_msg)
-
         if replacement == name:
-            raise HTTPException(
-                status_code=400,
-                detail="Replacement phase must be different",
-            )
+            raise HTTPException(status_code=400, detail="Replacement phase must be different")
+        _apply_phase_replacement(name, replacement, workflows_using_phase)
 
-        # Update workflows to use the replacement phase
-        for wf in workflows_using_phase:
-            wf.phases = [replacement if p == name else p for p in wf.phases]
-            if wf.phase == name:
-                wf.phase = replacement
-
-    # Delete the phase from registry
     try:
         delete_phase(name)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
     return Response(status_code=204)
 
 
