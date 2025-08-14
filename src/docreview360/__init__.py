@@ -57,6 +57,10 @@ __all__ = [
     "piv_cac",
     "auth0_provider",
     "okta",
+    "reviewer_model",
+    "document_compare",
+    "quality",
+    "review_analytics",
 ]
 
 

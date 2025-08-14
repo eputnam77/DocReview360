@@ -1,0 +1,12 @@
+from docreview360.document_compare import influence_map, track_changes, version_similarity
+
+
+def test_document_compare_utils():
+    a = "hello\nworld"
+    b = "hello\nthere world"
+    sim = version_similarity(a, b)
+    assert 0 <= sim <= 1
+    diff = track_changes(a, b)
+    assert diff
+    mapping = influence_map({"a": a, "b": b}, threshold=0.0)
+    assert ("a", "b") in mapping
