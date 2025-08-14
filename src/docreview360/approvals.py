@@ -9,11 +9,13 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .integrations.signature import get_provider, DEFAULT_PROVIDER
+from .integrations.signature import DEFAULT_PROVIDER, get_provider
 from .logs import log_event
 from .workflows import workflows
 from .quality import approval_likelihood
 from .fann_model import Weights
+from .audit import log_audit_event
+from .documents import get_document
 
 
 class ApprovalModel(BaseModel):
@@ -64,6 +66,14 @@ def create_approval(
         user=reviewer,
         workflow=workflow,
         approval_id=approval_id,
+        provider=signature_provider,
+        document_hash=doc_hash,
+    )
+    log_audit_event(
+        approval_id,
+        "created",
+        user=reviewer,
+        workflow=workflow,
         provider=signature_provider,
         document_hash=doc_hash,
     )
@@ -191,6 +201,16 @@ def update_approval_state(
         document_hash=approval.document_hash,
         previous_state=previous,
     )
+    log_audit_event(
+        approval_id,
+        state,
+        user=approval.reviewer,
+        provider=approval.signature_provider,
+        signature_id=approval.signature_id,
+        document_hash=approval.document_hash,
+        previous_state=previous,
+        project=project_id,
+    )
     if state == "approved" and wf:
         # check if all approvals done
         if all(
@@ -216,6 +236,12 @@ def send_for_signature(
     Returns the provider signing URL.
     """
     approval = approvals[approval_id]
+    if approval.document_hash is None:
+        document = get_document(document_id)
+        if document is None:
+            raise KeyError("document not found")
+        approval.document_hash = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
+
     provider = get_provider(approval.signature_provider)
     sig_id, url = provider.request_signature(
         document_id,
@@ -231,6 +257,15 @@ def send_for_signature(
         approval_id=approval_id,
         provider=approval.signature_provider,
         signature_id=sig_id,
+        workflow=approval.workflow,
+    )
+    log_audit_event(
+        approval_id,
+        "sent_for_signature",
+        user=user,
+        provider=approval.signature_provider,
+        signature_id=sig_id,
+        document_hash=approval.document_hash,
         workflow=approval.workflow,
     )
     return url
@@ -260,6 +295,13 @@ def reset_approval(approval_id: str, confirm: bool) -> bool:
             "approval_reset",
             user=approval.reviewer,
             approval_id=approval_id,
+            provider=approval.signature_provider,
+            previous_state=previous,
+        )
+        log_audit_event(
+            approval_id,
+            "reset",
+            user=approval.reviewer,
             provider=approval.signature_provider,
             previous_state=previous,
         )
