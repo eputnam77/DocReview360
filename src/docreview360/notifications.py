@@ -36,7 +36,7 @@ def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
     try:
         subject = tmpl.subject.format(**context)
         body = tmpl.body.format(**context)
-    except KeyError as exc:  # pragma: no cover - usage error
+    except KeyError as exc:
         raise ValueError(f"missing placeholder {exc.args[0]}") from exc
     email = {"to": recipient, "subject": subject, "body": body}
     sent_emails.append(email)

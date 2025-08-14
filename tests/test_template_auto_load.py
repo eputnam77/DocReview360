@@ -1,7 +1,5 @@
 """Auto-load latest template when creating project."""
 
-# mypy: ignore-errors
-
 import importlib.util
 import sys
 import types
@@ -17,7 +15,7 @@ def _load(name: str, file: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(name, PACKAGE_DIR / file)
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    spec.loader.exec_module(module)
     return module
 
 

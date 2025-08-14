@@ -23,7 +23,7 @@ class ImixsAdapter:
                 resp = httpx.post(url, timeout=5)
                 resp.raise_for_status()
                 handle = resp.json().get("id", "unknown")
-            except httpx.HTTPError as exc:  # pragma: no cover - network errors
+            except httpx.HTTPError as exc:
                 raise RuntimeError("Imixs request failed") from exc
             record_task_completion(78)
             return str(handle)

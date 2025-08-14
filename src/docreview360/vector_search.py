@@ -45,7 +45,7 @@ def index_document(doc_id: str, content: str) -> None:
                 json={"content": content},
                 timeout=5,
             ).raise_for_status()
-        except httpx.HTTPError as exc:  # pragma: no cover - network
+        except httpx.HTTPError as exc:
             raise RuntimeError("OpenSearch index failed") from exc
 
     if PGVECTOR_URL:
@@ -55,7 +55,7 @@ def index_document(doc_id: str, content: str) -> None:
                 json={"id": doc_id, "content": content},
                 timeout=5,
             ).raise_for_status()
-        except httpx.HTTPError as exc:  # pragma: no cover - network
+        except httpx.HTTPError as exc:
             raise RuntimeError("pgvector index failed") from exc
 
 
@@ -94,7 +94,7 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
             resp.raise_for_status()
             hits = resp.json().get("hits", {}).get("hits", [])
             return [
-                (hit["_id"], float(hit.get("_score", 0)))  # pragma: no cover - network
+                (hit["_id"], float(hit.get("_score", 0)))
                 for hit in hits
             ]
         except httpx.HTTPError as exc:

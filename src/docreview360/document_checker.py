@@ -1,8 +1,6 @@
 """Validate documents using JSON rules."""
 
 from __future__ import annotations
-
-# mypy: ignore-errors
 import json
 from pathlib import Path
 from typing import Any, cast
@@ -11,8 +9,8 @@ try:
     # GovDocVerify installs as the lowercase ``govdocverify`` package
     # regardless of repository casing. Importing with the original
     # mixed‑case name fails on Linux filesystems.
-    from govdocverify.cli import process_document as _gov_run  # type: ignore[import-untyped]
-except Exception:  # pragma: no cover - optional dep
+    from govdocverify.cli import process_document as _gov_run
+except Exception:
     _gov_run = None
 
 import re

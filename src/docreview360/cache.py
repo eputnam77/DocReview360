@@ -5,12 +5,12 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any, Dict, cast
 
-if TYPE_CHECKING:  # pragma: no cover - for static typing only
+if TYPE_CHECKING:
     from redis import Redis
 
 try:
     import redis as _redis
-except Exception:  # pragma: no cover - fallback when redis not installed
+except Exception:
     _redis = None
 
 _cache: Dict[str, Any] = {}
@@ -33,7 +33,7 @@ def _get_client() -> "Redis | None":
             )
             client.ping()
             _client = client
-        except Exception:  # pragma: no cover - redis unreachable
+        except Exception:
             _client = _UNREACHABLE
     if _client is _UNREACHABLE:
         return None

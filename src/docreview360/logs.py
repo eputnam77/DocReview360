@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
 pydantic_dataclass: Callable[..., Any]
-try:  # pragma: no cover - optional pydantic dataclass integration
+try:
     from pydantic.dataclasses import dataclass as pydantic_dataclass
-except Exception:  # pragma: no cover - pydantic is absent
+except Exception:
     pydantic_dataclass = dataclass
 
 
@@ -25,7 +25,7 @@ class LogEntry:
 
     def model_dump(
         self, *args: Any, **kwargs: Any
-    ) -> Dict[str, Any]:  # pragma: no cover - compatibility
+    ) -> Dict[str, Any]:
         return {
             "timestamp": self.timestamp,
             "action": self.action,
@@ -79,7 +79,7 @@ def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry
         action=action,
         user=user,
         metadata=metadata,
-    )  # type: ignore[call-arg]
+    )
     logs.append(entry)
     for pattern, cb in alerts:
         if pattern in action:
@@ -126,5 +126,5 @@ async def watch_logs(callback: Callable[[LogEntry], None]) -> None:
     async for entry in log_stream():
         try:
             callback(entry)
-        except Exception:  # pragma: no cover - defensive
+        except Exception:
             pass

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi.testclient import TestClient
-from requests import Response  # type: ignore
+from requests import Response
 
 from docreview360.api import app
 

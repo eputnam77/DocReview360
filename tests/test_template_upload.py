@@ -1,7 +1,5 @@
 """Tests for template upload endpoint."""
 
-# mypy: ignore-errors
-
 import importlib.util
 import json
 import sys

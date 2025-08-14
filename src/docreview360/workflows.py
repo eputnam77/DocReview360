@@ -129,7 +129,7 @@ def advance_workflow(wf_id: str) -> WorkflowModel:
     workflow = workflows[wf_id]
     try:
         idx = workflow.phases.index(workflow.phase)
-    except ValueError as exc:  # pragma: no cover - invalid phase is unreachable in tests
+    except ValueError as exc:
         raise KeyError(f"Unknown phase '{workflow.phase}'") from exc
     if idx + 1 >= len(workflow.phases):
         workflow.phase = workflow.phases[-1]
