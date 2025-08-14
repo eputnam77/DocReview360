@@ -23,6 +23,9 @@ class Config:
     host: str = "127.0.0.1"
     port: int = 8000
     debug: bool = False
+    # Toggle for AI auto-assignment of technical writers
+    # Disabled by default per request
+    ai_auto_assign_writers: bool = False
 
     @classmethod
     def load(cls, path: Path = CONFIG_FILE) -> "Config | None":
