@@ -4,16 +4,28 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from pathlib import Path
+from typing import Any, TYPE_CHECKING
 
+if TYPE_CHECKING:  # pragma: no cover - type-only import
+    from .search import ProjectModel
+else:  # pragma: no cover - fallback when search module missing
+    ProjectModel = Any
+projects: dict[str, Any]
 try:  # pragma: no cover - optional dependency
-    from .search import list_projects, overdue_high_priority, projects
+    from .search import list_projects, overdue_high_priority, projects as _projects
+
+    projects = _projects
 except Exception:  # pragma: no cover - search module may depend on pydantic
-    projects = {}
-    def list_projects(_user: str) -> list:  # pragma: no cover
+
+    def list_projects(user: str | None = None) -> list[ProjectModel]:  # pragma: no cover
         return []
 
-    def overdue_high_priority() -> list:  # pragma: no cover
+    def overdue_high_priority() -> list[str]:  # pragma: no cover
         return []
+
+    projects = {}
+
 
 try:  # pragma: no cover - optional dependency
     from .workflows import workflows
@@ -71,7 +83,7 @@ TEMPLATES = [
         "id": "meeting_minutes",
         "label": "Meeting Minutes Template",
         "type": "word",
-    }
+    },
 ]
 
 
@@ -99,7 +111,7 @@ def _status_question(lower: str) -> str | None:
         wf = workflows.get(proj.workflow)
         if wf:
             return f"{proj_id} is currently in the {wf.phase.lower()} phase."
-    return f"{proj_id} is currently in the {proj.status} phase."
+    return f"{proj_id} is currently in the {proj.status.lower()} phase."
 
 
 def _workload_question(lower: str) -> str | None:
@@ -144,23 +156,24 @@ def _template_question(lower: str) -> str | None:
     )
     if not template:
         return None
-    doc_type = template.group(1)
+    doc_type = re.sub(r"[?!.]", "", template.group(1)).strip().lower()
+    doc_type = re.sub(r"^(a|an|the) ", "", doc_type)
     for tmpl in TEMPLATES:
+        label = tmpl["label"].lower()
+        tid = tmpl["id"].lower()
         if (
-            doc_type.lower() in tmpl["label"].lower()
-            or tmpl["label"].lower() in doc_type.lower()
-            or doc_type.lower() in tmpl["id"].lower()
-            or tmpl["id"].lower() in doc_type.lower()
-            or (doc_type.lower() == "business letter" and tmpl["id"] == "business_letter")
+            doc_type in label
+            or label in doc_type
+            or doc_type in tid
+            or tid in doc_type
+            or (doc_type == "business letter" and tid == "business_letter")
         ):
             return (
                 f"For {doc_type}, you should use the '{tmpl['label']}' template (ID: {tmpl['id']})."
             )
     for doc_type_name, doc_type_obj in document_types.items():
-        if (
-            doc_type.lower() in doc_type_name.lower()
-            or doc_type_name.lower() in doc_type.lower()
-        ):
+        name_lower = doc_type_name.lower()
+        if doc_type in name_lower or name_lower in doc_type:
             template_id = doc_type_obj.default_template_id or doc_type_obj.template
             return f"For {doc_type_name}, you should use the template with ID: {template_id}."
     return (
@@ -192,14 +205,10 @@ def _response_time_question(lower: str) -> str | None:
         r"(?:how long does|how long) (?:it take|does it take) (?:for )?(?:user )?([\w-]+) "
         r"(?:to respond|respond|to review|review)"
     )
-    pattern2 = (
-        r"(?:how long) (?:does )?([\w-]+) (?:take to respond|respond|to review|review)"
-    )
+    pattern2 = r"(?:how long) (?:does )?([\w-]+) (?:take to respond|respond|to review|review)"
     pattern3 = r"how long does ([\w-]+) take to respond"
     response_time = (
-        re.search(pattern1, lower)
-        or re.search(pattern2, lower)
-        or re.search(pattern3, lower)
+        re.search(pattern1, lower) or re.search(pattern2, lower) or re.search(pattern3, lower)
     )
     if not response_time:
         return None
@@ -210,24 +219,18 @@ def _response_time_question(lower: str) -> str | None:
         if a.reviewer == user and a.state == "approved" and a.signed_at
     ]
     if not user_approvals:
-        return (
-            f"I don't have enough data to determine {user}'s typical response time."
-        )
+        return f"I don't have enough data to determine {user}'s typical response time."
     response_times: list[int] = []
     for approval in user_approvals:
         if approval.due_at and approval.signed_at:
             try:
-                signed_at = datetime.fromisoformat(
-                    approval.signed_at.replace('Z', '+00:00')
-                )
+                signed_at = datetime.fromisoformat(approval.signed_at.replace("Z", "+00:00"))
                 if signed_at <= approval.due_at:
                     response_times.append((approval.due_at - signed_at).days)
             except Exception:
                 pass
     if not response_times:
-        return (
-            f"I don't have enough data to determine {user}'s typical response time."
-        )
+        return f"I don't have enough data to determine {user}'s typical response time."
     avg_days = sum(response_times) / len(response_times)
     if avg_days < 1:
         return f"{user} typically responds within a day."
@@ -235,6 +238,72 @@ def _response_time_question(lower: str) -> str | None:
         return f"{user} typically responds within {round(avg_days)} days."
     weeks = round(avg_days / 7)
     return f"{user} typically responds within {weeks} week{'s' if weeks > 1 else ''}."
+
+
+STOP_WORDS = {
+    "what",
+    "where",
+    "can",
+    "i",
+    "find",
+    "information",
+    "about",
+    "the",
+    "a",
+    "an",
+    "docreview360",
+    "docreview",
+    "in",
+    "to",
+    "of",
+    "and",
+    "is",
+    "how",
+    "do",
+}
+
+
+def _repo_content_question(lower: str) -> str | None:
+    if "docreview360" not in lower and "docreview" not in lower:
+        return None
+    words = re.findall(r"[a-z0-9]+", lower)
+    keywords = [w for w in words if w not in STOP_WORDS]
+    if not keywords:
+        return None
+    root = Path(__file__).resolve().parents[2]
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".ico"}:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        except Exception:
+            continue
+        if all(k in text for k in keywords):
+            return (
+                f"I found information about {' '.join(keywords)} in " f"{path.relative_to(root)}."
+            )
+    return f"I couldn't find information about {' '.join(keywords)} in DocReview360."
+
+
+def _writing_style_question(lower: str) -> str | None:
+    if "passive voice" in lower:
+        return (
+            "Strunk and White recommend using the active voice. Rewrite sentences to "
+            "show who performs the action."
+        )
+    if (
+        "strunk and white" in lower
+        or "grammar" in lower
+        or "writing style" in lower
+        or "style guide" in lower
+    ):
+        return (
+            "Follow Strunk and White's 'Elements of Style': use the active voice, "
+            "omit needless words, and keep your writing clear and concise."
+        )
+    return None
 
 
 def _system_question(lower: str) -> str | None:
@@ -267,6 +336,8 @@ async def answer_question(question: str) -> str:
         _document_type_question,
         _template_list_question,
         _response_time_question,
+        _writing_style_question,
+        _repo_content_question,
         _system_question,
     ]
     for handler in handlers:
