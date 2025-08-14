@@ -4,17 +4,84 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Dict, List, cast
 
 try:
     # GovDocVerify installs as the lowercase ``govdocverify`` package
     # regardless of repository casing. Importing with the original
     # mixed‑case name fails on Linux filesystems.
-    from govdocverify.cli import process_document as _gov_run
+    from govdocverify.cli import process_document as _gov_run  # type: ignore[import-not-found]
 except Exception:
     _gov_run = None
 
 import re
+
+from .ai_utils import _count_syllables
+
+_REQUIRED_SECTIONS = ["introduction", "body", "conclusion"]
+
+
+def _readability_metrics(text: str) -> Dict[str, float]:
+    """Return simple readability scores for ``text``.
+
+    Implements Flesch Reading Ease and Flesch–Kincaid grade level using a
+    lightweight syllable estimator. Scores are rounded for stability.
+    """
+
+    sentences = max(1, sum(text.count(ch) for ch in ".!?"))
+    words = re.findall(r"\b\w+\b", text)
+    word_count = len(words) or 1
+    syllables = sum(_count_syllables(w) for w in words) or 1
+    words_per_sentence = word_count / sentences
+    syllables_per_word = syllables / word_count
+    flesch = 206.835 - 1.015 * words_per_sentence - 84.6 * syllables_per_word
+    grade = 0.39 * words_per_sentence + 11.8 * syllables_per_word - 15.59
+    return {
+        "flesch_reading_ease": round(flesch, 2),
+        "flesch_kincaid_grade": round(grade, 2),
+    }
+
+
+def _style_issues(text: str) -> List[str]:
+    """Return a list of simple style-guide issues detected in ``text``."""
+
+    issues: List[str] = []
+    if re.search(r"\s{2,}", text):
+        issues.append("double spaces detected")
+    if "utilize" in text.lower():
+        issues.append("avoid 'utilize'; prefer 'use'")
+    return issues
+
+
+def _analyze_structure(
+    text: str,
+    *,
+    required_sections: List[str] | None = None,
+    max_words: int = 200,
+) -> Dict[str, List[str]]:
+    """Inspect document structure for missing or overlong sections.
+
+    Sections are identified using markdown-style headings beginning with ``#``.
+    ``required_sections`` are matched case-insensitively.
+    """
+
+    required_sections = [s.lower() for s in (required_sections or _REQUIRED_SECTIONS)]
+    header = re.compile(r"^\s*#+\s*(.+)")
+    sections: Dict[str, List[str]] = {}
+    current: str | None = None
+    for line in text.splitlines():
+        m = header.match(line)
+        if m:
+            current = m.group(1).strip().lower()
+            sections[current] = []
+        elif current is not None:
+            sections[current].append(line)
+
+    missing = [s for s in required_sections if s not in sections]
+    overlong = [
+        name for name, lines in sections.items() if len(" ".join(lines).split()) > max_words
+    ]
+    return {"missing_sections": missing, "overlong_sections": overlong}
 
 
 def _fallback(file_path: str | Path) -> dict[str, object]:
@@ -45,9 +112,20 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
         if not aria_label.search(attrs) and body.strip() == "":
             accessibility.append("button missing label")
 
-    style_ok = not _detect_anomalies(text)
+    style_issues = _style_issues(text)
+    style_ok = not _detect_anomalies(text) and not style_issues
 
-    return {"grammar": grammar, "accessibility": accessibility, "styleOk": style_ok}
+    readability = _readability_metrics(text)
+    structure = _analyze_structure(text)
+
+    return {
+        "grammar": grammar,
+        "accessibility": accessibility,
+        "styleOk": style_ok,
+        "styleIssues": style_issues,
+        "readability": readability,
+        "structure": structure,
+    }
 
 
 def _detect_anomalies(text: str, threshold: float = 0.7) -> bool:
