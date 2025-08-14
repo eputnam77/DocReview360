@@ -305,6 +305,15 @@ def verify_document_signature(doc_id: str) -> dict[str, object]:
         hash_valid = approval.document_hash == doc_hash
         signature_valid = approval.state == "approved" and approval.signature_id is not None
         certificate_present = approval.certificate_url is not None
+        provider_valid = False
+        if approval.signature_id:
+            try:
+                provider = get_provider(approval.signature_provider)
+                provider_valid = provider.verify_signature(
+                    approval.signature_id, document.content.encode()
+                )
+            except Exception:
+                provider_valid = False
         details.append(
             {
                 "approval_id": approval.id,
@@ -312,6 +321,7 @@ def verify_document_signature(doc_id: str) -> dict[str, object]:
                 "hash_valid": hash_valid,
                 "signature_valid": signature_valid,
                 "certificate_present": certificate_present,
+                "signature_verified": provider_valid,
             }
         )
 
@@ -319,7 +329,11 @@ def verify_document_signature(doc_id: str) -> dict[str, object]:
         "pass"
         if details
         and all(
-            d["hash_valid"] and d["signature_valid"] and d["certificate_present"] for d in details
+            d["hash_valid"]
+            and d["signature_valid"]
+            and d["certificate_present"]
+            and d["signature_verified"]
+            for d in details
         )
         else "fail"
     )

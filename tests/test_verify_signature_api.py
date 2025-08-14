@@ -29,3 +29,4 @@ def test_verify_signature_endpoint() -> None:
     data = resp2.json()
     assert data["status"] == "pass"
     assert data["details"][0]["approval_id"] == appr.id
+    assert data["details"][0]["signature_verified"] is True
