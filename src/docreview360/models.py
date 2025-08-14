@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -25,6 +25,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     organization: Mapped[Organization | None] = relationship(back_populates="users")
 
