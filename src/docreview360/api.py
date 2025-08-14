@@ -29,7 +29,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from . import auth, reporting
 from . import search as search_mod
@@ -51,6 +51,7 @@ from .archive import (
     archive_document as archive_doc,
 )
 from .cache import cache_get, cache_set, clear_cache
+from .cms import save_to_cms
 from .comments import CommentModel, add_comment, list_comments
 from .config import CONFIG_FILE, Config
 from .dashboard_prefs import get_visibility, set_visibility
@@ -69,7 +70,6 @@ from .documenso import (
     process_webhook,
     signature_status,
 )
-from .integrations.signature import get_provider, DEFAULT_PROVIDER
 from .documents import (
     DocumentModel,
     get_document,
@@ -81,6 +81,7 @@ from .documents import (
 )
 from .environment import current_environment, load_envs, switch_environment
 from .exporter import export_document, set_guardrails
+from .integrations.signature import DEFAULT_PROVIDER, get_provider
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .nemo_guardrails import GuardrailsMiddleware, contains_pii
@@ -674,6 +675,12 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         )
         # Clear cached search results so subsequent queries reflect the update
         clear_cache()
+        cfg = Config.load(CONFIG_FILE)
+        if cfg and cfg.cms.lower() == "sharepoint":
+            try:
+                save_to_cms(updated, config=cfg)
+            except Exception as exc:  # pragma: no cover - best effort
+                raise HTTPException(status_code=502, detail=str(exc)) from exc
         return updated
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
