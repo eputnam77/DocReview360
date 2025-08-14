@@ -4,7 +4,10 @@ from collections import Counter
 import pytest
 
 from docreview360 import ai_balancer
-from docreview360.ai_writer_assign import assign_technical_writer
+from docreview360.ai_writer_assign import (
+    assign_technical_writer,
+    reassign_projects_from_writer,
+)
 from docreview360.config import Config
 from docreview360.search import ProjectModel, add_project, projects
 
@@ -101,6 +104,41 @@ def test_concurrent_assignments_thread_safe() -> None:
         assert abs(counts.get("alice", 0) - counts.get("bob", 0)) <= 1
         assert ai_balancer.current_load("alice") == counts.get("alice", 0)
         assert ai_balancer.current_load("bob") == counts.get("bob", 0)
+    finally:
+        _restore_projects(snap)
+        ai_balancer.reset()
+
+
+def test_reassign_projects_from_departing_writer() -> None:
+    snap = _snapshot_projects()
+    ai_balancer.reset()
+    try:
+        projects.clear()
+        add_project(ProjectModel(id="p1", name="A", user="alice"))
+        add_project(ProjectModel(id="p2", name="B", user="alice"))
+        add_project(ProjectModel(id="p3", name="C", user="bob"))
+        cfg = Config(
+            database="sqlite",
+            editor="tiptap",
+            cms="none",
+            auth="oidc",
+            ai_auto_assign_writers=True,
+        )
+        # Ensure balancer reflects current assignments
+        ai_balancer.register_worker("alice")
+        ai_balancer.register_worker("bob")
+        ai_balancer.register_worker("carol")
+        ai_balancer._workers["alice"] = 2  # type: ignore[attr-defined]
+        ai_balancer._workers["bob"] = 1  # type: ignore[attr-defined]
+
+        reassigned = reassign_projects_from_writer("alice", ["bob", "carol"], cfg)
+        assert set(reassigned) == {"p1", "p2"}
+        assert all(proj.user != "alice" for proj in projects.values())
+        counts = Counter(proj.user for proj in projects.values())
+        assert ai_balancer.current_load("bob") == counts.get("bob", 0)
+        assert ai_balancer.current_load("carol") == counts.get("carol", 0)
+        with pytest.raises(KeyError):
+            ai_balancer.current_load("alice")
     finally:
         _restore_projects(snap)
         ai_balancer.reset()

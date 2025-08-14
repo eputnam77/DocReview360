@@ -88,3 +88,57 @@ def assign_technical_writer(
             ai_balancer.current_load(selected) + 1
         )
     return selected
+
+
+def reassign_projects_from_writer(
+    writer: str, candidates: Iterable[str], cfg: Config | None = None
+) -> list[str]:
+    """Reassign all projects currently handled by ``writer``.
+
+    Parameters
+    ----------
+    writer:
+        The departing writer whose projects should be reassigned.
+    candidates:
+        Iterable of alternative writer usernames. ``writer`` is ignored if
+        present in this iterable.
+    cfg:
+        Optional configuration. When omitted, the global config file is used.
+
+    Returns
+    -------
+    list[str]
+        IDs of the projects that were reassigned.
+
+    Raises
+    ------
+    RuntimeError
+        If AI auto-assignment is disabled.
+    ValueError
+        If no candidate writers are provided.
+    """
+    cfg = cfg or Config.load(CONFIG_FILE)
+    if not cfg or not cfg.ai_auto_assign_writers:
+        raise RuntimeError("AI auto-assignment disabled")
+
+    cand_list = [c for c in candidates if c != writer]
+    if not cand_list:
+        raise ValueError("candidates is required")
+
+    with project_lock:
+        to_reassign = [pid for pid, proj in projects.items() if proj.user == writer]
+
+    for pid in to_reassign:
+        # Decrement load for departing writer if tracked.
+        try:
+            ai_balancer.complete_job(writer)
+        except KeyError:
+            pass
+        assign_technical_writer(pid, cand_list, cfg)
+
+    try:
+        ai_balancer.deregister_worker(writer)
+    except KeyError:
+        pass
+
+    return to_reassign
