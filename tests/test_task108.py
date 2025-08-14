@@ -10,12 +10,16 @@ from docreview360.fann_model import train_model, update_model
 def test_style_and_structure_features() -> None:
     good_style = "This is a sentence. Another one."
     bad_style = "bad sentence. another."
+    repeat = "This is is wrong."
     assert style_guide_score(good_style) > style_guide_score(bad_style)
+    assert style_guide_score(good_style) > style_guide_score(repeat)
 
     structured = "# H\ntext\n# H2\nmore"
+    bulleted = "- item\n- item2"
     plain = "plain\ntext"
     idx = FANN_FEATURE_NAMES.index("structure")
     assert structural_pattern_score(structured) > structural_pattern_score(plain)
+    assert structural_pattern_score(bulleted) > structural_pattern_score(plain)
     assert _fann_features(structured)[idx] > _fann_features(plain)[idx]
 
 
