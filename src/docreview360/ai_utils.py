@@ -64,15 +64,41 @@ def synth_compress(text: str) -> str:
     return no_vowels
 
 
+def _count_syllables(word: str) -> int:
+    """Rough syllable estimator used for readability features."""
+    import re
+
+    groups = re.findall(r"[aeiouy]+", word.lower())
+    return max(1, len(groups))
+
+
 def _fann_features(text: str) -> list[float]:
-    """Return simple numeric features for the faux FANN network."""
+    """Return simple numeric features for the faux FANN network.
+
+    Features
+    --------
+    * Normalised length (thousands of characters)
+    * Ratio of unique characters
+    * Repeated consecutive word count
+    * Flesch reading ease score (scaled 0-1)
+    """
+
     words = text.lower().split()
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
     unique_ratio = len(set(text)) / (len(text) or 1)
-    return [len(text) / 1000, unique_ratio, repeated]
+
+    sentence_count = sum(text.count(ch) for ch in ".!?") or 1
+    word_count = len(words) or 1
+    syllables = sum(_count_syllables(w) for w in words) or 1
+    words_per_sentence = word_count / sentence_count
+    syllables_per_word = syllables / word_count
+    flesch = 206.835 - 1.015 * words_per_sentence - 84.6 * syllables_per_word
+    readability = flesch / 100  # scale to roughly 0-1
+
+    return [len(text) / 1000, unique_ratio, repeated, readability]
 
 
-_FANN_WEIGHTS = [0.0, -0.1, 1.2]
+_FANN_WEIGHTS = [0.0, -0.1, 1.2, -0.1]
 
 
 def _fann_score(text: str) -> float:
