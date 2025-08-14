@@ -21,8 +21,10 @@ def train_model(
     lr: float = _DEF_LR,
 ) -> list[float]:
     """Return weight vector trained using a simple logistic regression."""
-    weights = [0.0, 0.0, 0.0, 0.0]  # 3 features + bias
+    if not texts:
+        raise ValueError("training requires at least one text")
     features = [(_fann_features(t) + [1.0]) for t in texts]
+    weights = [0.0 for _ in range(len(features[0]))]
     for _ in range(epochs):
         for x, y in zip(features, labels):
             z = sum(w * xi for w, xi in zip(weights, x))
