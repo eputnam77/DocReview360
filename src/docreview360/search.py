@@ -61,7 +61,7 @@ class ProjectModel(BaseModel):
                 elif "review" in phase:
                     return "In Progress"
                 elif "public comment" in phase:
-                    return "In Progress"  # Map Public Comment to In Progress
+                    return "In Progress"  # Map Public Comment / Proposed Rulemaking to In Progress
                 elif "approval" in phase or "final" in phase:
                     return "Complete"
                 elif "overdue" in phase:
@@ -125,7 +125,7 @@ class SearchIndex:
             name="Example",
             number=self._next_project_number,
             document_number="1",  # Legacy support
-            updated=current_time
+            updated=current_time,
         )
         self._next_project_number += 1
         self.projects: Dict[str, ProjectModel] = {default_id: default}

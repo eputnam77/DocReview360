@@ -74,7 +74,7 @@ The following scenarios provide comprehensive coverage of DocReview360's functio
 ### Scenario 2: Project Creation with Workflow Auto-Assignment
 **Objective**: Test automatic approval assignments when creating projects with workflows
 **Steps**:
-1. Create a project with workflow using `POST /projects` with phase="Public Comment"
+1. Create a project with workflow using `POST /projects` with phase="Public Comment / Proposed Rulemaking"
 2. Verify automatic workflow creation via `GET /workflows/{workflow_id}`
 3. Check that automatic approvals are created for all roles (SME, FLM, PPM, TW, Senior TW, TW Manager)
 4. Verify each assigned reviewer can see the project in their assignments
@@ -442,7 +442,7 @@ The following scenarios provide comprehensive coverage of DocReview360's functio
 ### Scenario 24: Multi-Phase Workflow with Phase-Specific Comments
 **Objective**: Test complex workflows with different approval requirements per phase
 **Steps**:
-1. Create project with multi-phase workflow (Draft → Review → Public Comment → Final)
+1. Create project with multi-phase workflow (Draft Development → Internal Coordination → Public Comment / Proposed Rulemaking → Final Issuance)
 2. Progress through each phase with different reviewer sets
 3. Add phase-specific comments and requirements
 4. Test phase advancement and requirement validation
