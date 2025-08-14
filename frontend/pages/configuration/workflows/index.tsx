@@ -13,21 +13,11 @@ import { useEffect, useState } from "react";
 
 interface Workflow {
   id: string;
-  name: string;
+  name?: string;
   description?: string;
-  usage: number;
-  updated: string;
+  usage?: number;
+  updated?: string;
 }
-
-const DEFAULT_WORKFLOWS: Workflow[] = [
-  {
-    id: "branch-coordination",
-    name: "branch-coordination",
-    description: "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
-    usage: 0,
-    updated: new Date().toISOString().split('T')[0],
-  },
-];
 
 export default function WorkflowList() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -35,8 +25,8 @@ export default function WorkflowList() {
   useEffect(() => {
     fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: Workflow[]) => setWorkflows(data.length ? data : DEFAULT_WORKFLOWS))
-      .catch(() => setWorkflows(DEFAULT_WORKFLOWS));
+      .then((data: Workflow[]) => setWorkflows(Array.isArray(data) ? data : []))
+      .catch(() => setWorkflows([]));
   }, []);
 
   return (

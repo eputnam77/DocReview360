@@ -72,6 +72,27 @@ def get_approval_steps_for_phase(phase: str) -> List[ApprovalStep]:
     ]
 
 
+def _bootstrap_sample() -> None:
+    """Create a default workflow so the API returns initial data."""
+    if workflows:
+        return
+
+    from .phases import list_phases
+
+    phases = list_phases()
+    start_phase = phases[0] if phases else "start"
+    workflows["branch-coordination"] = WorkflowModel(
+        id="branch-coordination",
+        project="branch-coordination",
+        phase=start_phase,
+        phases=phases or [start_phase],
+        approval_steps=get_approval_steps_for_phase(start_phase),
+    )
+
+
+_bootstrap_sample()
+
+
 def register_bot(callback: Callable[[WorkflowModel], None]) -> None:
     """Register an automation bot callback."""
     bot_callbacks.append(callback)
