@@ -9,12 +9,12 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .audit import log_audit_event
+from .documents import get_document
+from .fann_model import Weights
 from .integrations.signature import get_default_provider, get_provider
 from .logs import log_event
 from .quality import approval_likelihood
-from .fann_model import Weights
-from .audit import log_audit_event
-from .documents import get_document
 from .workflows import workflows
 
 
@@ -233,14 +233,26 @@ def send_for_signature(
 ) -> str:
     """Trigger the active provider to request a signature for this approval.
 
-    Returns the provider signing URL.
+    Returns the provider signing URL. ``return_url`` indicates where the user
+    should be redirected after the signing provider returns control. The actual
+    callback URL sent to the provider always targets the internal
+    ``/approvals/return`` endpoint and carries the desired ``return_url`` as the
+    ``next`` parameter.
     """
     approval = approvals[approval_id]
     if approval.document_hash is None:
         document = get_document(document_id)
         if document is None:
             raise KeyError("document not found")
-        approval.document_hash = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
+        approval.document_hash = hashlib.sha256(
+            document.content.encode("utf-8")
+        ).hexdigest()
+
+    from urllib.parse import quote
+
+    callback = f"/approvals/return?approval={approval_id}"
+    if return_url:
+        callback += f"&next={quote(return_url)}"
 
     provider = get_provider(approval.signature_provider)
     sig_id, url = provider.request_signature(
@@ -248,7 +260,7 @@ def send_for_signature(
         user,
         workflow_id=approval.workflow,
         approval_id=approval_id,
-        return_url=return_url,
+        return_url=callback,
     )
     approval.signature_id = sig_id
     log_event(
