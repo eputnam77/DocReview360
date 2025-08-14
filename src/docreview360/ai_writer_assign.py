@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from typing import Iterable
+from threading import Lock
 
+from . import ai_balancer
 from .config import CONFIG_FILE, Config
 from .search import project_lock, projects, update_project
+
+_balancer_lock = Lock()
 
 
 def assign_technical_writer(
@@ -51,12 +55,36 @@ def assign_technical_writer(
     if project is None:
         raise ValueError(f"unknown project {project_id}")
 
-    workload: dict[str, int] = {w: 0 for w in cand_list}
+    # Ensure all candidates are registered with the balancer.
+    for cand in cand_list:
+        try:
+            ai_balancer.register_worker(cand)
+        except ValueError:
+            # Already registered, which is fine for our purposes.
+            pass
+
+    # Gather existing workload and priority adjustments for each candidate.
+    counts: dict[str, int] = {w: 0 for w in cand_list}
+    priority_adj: dict[str, int] = {w: 0 for w in cand_list}
     with project_lock:
         for proj in projects.values():
-            if proj.user in workload:
-                workload[proj.user] += 1 + max(proj.priority, 0)
+            if proj.user in counts:
+                counts[proj.user] += 1
+                priority_adj[proj.user] += max(proj.priority, 0)
 
-    selected = min(cand_list, key=lambda w: (workload[w], w))
+    # Sync balancer counts with existing assignments if needed.
+    for cand in cand_list:
+        with _balancer_lock:
+            if ai_balancer.current_load(cand) < counts[cand]:
+                ai_balancer._workers[cand] = counts[cand]  # type: ignore[attr-defined]
+
+    selected = min(
+        cand_list,
+        key=lambda w: (ai_balancer.current_load(w) + priority_adj[w], w),
+    )
     update_project(project_id, user=selected)
+    with _balancer_lock:
+        ai_balancer._workers[selected] = (  # type: ignore[attr-defined]
+            ai_balancer.current_load(selected) + 1
+        )
     return selected
