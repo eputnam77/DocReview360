@@ -10,7 +10,19 @@ _phases: List[str] = []
 def _bootstrap_sample() -> None:
     """Initialize with a default set of phases."""
     if not _phases:
-        _phases.extend(["Internal FAA Review", "Public Comment", "Final Issuance"])
+        _phases.extend(
+            [
+                "Beta Documentation Review",
+                "Draft Development",
+                "Final Issuance",
+                "General Availability",
+                "Internal Coordination",
+                "Maintenance / Revision Cycle",
+                "Peer Review",
+                "Public Comment / Proposed Rulemaking",
+                "Release Candidate Review",
+            ]
+        )
 
 
 _bootstrap_sample()

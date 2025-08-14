@@ -143,7 +143,7 @@ export default function NewWorkflowPage() {
                 id="workflow-name"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g., Public Comment"
+                placeholder="e.g., Public Comment / Proposed Rulemaking"
                 className="font-bold"
                 required
                 aria-required="true"

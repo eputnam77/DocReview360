@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
+
 from docreview360.api import app
 
 client = TestClient(app)
+
 
 def test_workflows_seeded():
     resp = client.get("/workflows")

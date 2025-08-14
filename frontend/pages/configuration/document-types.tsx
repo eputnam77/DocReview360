@@ -27,7 +27,17 @@ const DEFAULT_TYPES: DocType[] = [
 ];
 
 // Default phases that ship with the product
-const DEFAULT_PHASES = ["Internal FAA Review", "Public Comment", "Final Issuance"];
+const DEFAULT_PHASES = [
+  "Beta Documentation Review",
+  "Draft Development",
+  "Final Issuance",
+  "General Availability",
+  "Internal Coordination",
+  "Maintenance / Revision Cycle",
+  "Peer Review",
+  "Public Comment / Proposed Rulemaking",
+  "Release Candidate Review",
+];
 
 export default function DocumentTypesPage() {
   const [types, setTypes] = useState<DocType[]>([]);
