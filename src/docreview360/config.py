@@ -26,6 +26,8 @@ class Config:
     # Toggle for AI auto-assignment of technical writers
     # Disabled by default per request
     ai_auto_assign_writers: bool = False
+    # Pattern for exported filenames; placeholders: {id}, {number}
+    filename_template: str = "{id}"
 
     @classmethod
     def load(cls, path: Path = CONFIG_FILE) -> "Config | None":

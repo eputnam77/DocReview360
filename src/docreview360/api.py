@@ -244,6 +244,7 @@ class ConfigPayload(BaseModel):
     port: int = 8000
     debug: bool = False
     ai_auto_assign_writers: bool = False
+    filename_template: str = "{id}"
 
 
 app = FastAPI(title="DocReview360")
@@ -694,7 +695,9 @@ async def export_document_endpoint(doc_id: str, fmt: str) -> Response:
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
     try:
-        data, media, filename = export_document(document, fmt)
+        cfg = Config.load(CONFIG_FILE)
+        template = cfg.filename_template if cfg else "{id}"
+        data, media, filename = export_document(document, fmt, name_template=template)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
@@ -1130,9 +1133,7 @@ def _apply_phase_replacement(
 
 
 @app.delete("/phases/{name}", status_code=204, response_class=Response)
-async def delete_phase_endpoint(
-    name: str, replacement: str | None = None
-) -> Response:
+async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Response:
     """Remove a phase by name. If in use, replacement is required."""
     phases_list = list_phases()
     _ensure_phase_exists(name, phases_list)

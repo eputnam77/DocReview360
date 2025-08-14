@@ -8,6 +8,7 @@ import httpx
 from celery import Celery
 
 from .backup_utils import create_backup
+from .config import CONFIG_FILE, Config
 from .documents import documents
 from .exporter import export_batch
 from .search import search_index
@@ -84,7 +85,9 @@ def export_documents(doc_ids: list[str], fmt: str) -> bytes:
             raise KeyError(f"document '{doc_id}' not found")
         docs.append(doc)
 
-    return export_batch(docs, fmt)
+    cfg = Config.load(CONFIG_FILE)
+    template = cfg.filename_template if cfg else "{id}"
+    return export_batch(docs, fmt, name_template=template)
 
 
 app.task(name="docreview360.export_documents")(export_documents)
