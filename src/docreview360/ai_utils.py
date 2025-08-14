@@ -83,6 +83,9 @@ def _count_syllables(word: str) -> int:
     return max(1, len(groups))
 
 
+_MAX_SENT_LEN = 120
+
+
 def style_guide_score(text: str) -> float:
     """Return the fraction of sentences meeting simple style rules.
 
@@ -94,6 +97,7 @@ def style_guide_score(text: str) -> float:
     * No repeated whitespace.
     * No repeated punctuation.
     * No consecutive repeated words.
+    * Sentence length under ``_MAX_SENT_LEN`` characters.
     """
 
     # Split on whitespace following punctuation so the punctuation is retained
@@ -111,27 +115,46 @@ def style_guide_score(text: str) -> float:
             and not re.search(r"\s{2,}", s)
             and not re.search(r"[.!?]{2,}", s)
             and not has_repeat
+            and len(s) <= _MAX_SENT_LEN
         ):
             good += 1
     return good / len(sentences)
 
 
 def structural_pattern_score(text: str) -> float:
-    """Return a ratio of structural lines to total lines.
+    """Return a ratio of structural lines to total lines with a heading-order penalty.
 
-    Structural lines include Markdown headings, bullet lists and numbered
-    lists.  This provides a slightly richer signal than simply counting
-    headings.
+    Structural lines include Markdown headings, bullet lists and numbered lists.
+    When headings jump multiple levels (e.g. H1 to H4), the score is penalised to
+    reflect poor structural progression.
     """
 
     lines = text.splitlines()
     if not lines:
         return 0.0
-    headings = sum(1 for line in lines if line.strip().startswith("#"))
-    bullets = sum(1 for line in lines if line.strip().startswith(("-", "*", "+")))
-    numbered = sum(1 for line in lines if re.match(r"\d+[.)]\s", line.strip()))
-    structured = headings + bullets + numbered
-    return structured / len(lines)
+
+    headings: list[int] = []
+    bullets = 0
+    numbered = 0
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            m = re.match(r"(#+)\s", stripped)
+            if m:
+                headings.append(len(m.group(1)))
+        elif stripped.startswith(("-", "*", "+")):
+            bullets += 1
+        elif re.match(r"\d+[.)]\s", stripped):
+            numbered += 1
+
+    structured = len(headings) + bullets + numbered
+    base = structured / len(lines)
+    if not headings:
+        return base
+
+    jumps = sum(1 for a, b in zip(headings, headings[1:]) if b > a + 1)
+    penalty = jumps / len(headings)
+    return base * (1 - penalty)
 
 
 def _fann_features(text: str) -> list[float]:

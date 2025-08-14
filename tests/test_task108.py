@@ -13,14 +13,18 @@ def test_style_and_structure_features() -> None:
     repeat = "This is is wrong."
     assert style_guide_score(good_style) > style_guide_score(bad_style)
     assert style_guide_score(good_style) > style_guide_score(repeat)
+    long = "This is a very long sentence that should trigger the length rule " * 5 + "."
+    assert style_guide_score(good_style) > style_guide_score(long)
 
     structured = "# H\ntext\n# H2\nmore"
     bulleted = "- item\n- item2"
     plain = "plain\ntext"
+    bad_heading = "# H1\n#### jump\ntext"
     idx = FANN_FEATURE_NAMES.index("structure")
     assert structural_pattern_score(structured) > structural_pattern_score(plain)
     assert structural_pattern_score(bulleted) > structural_pattern_score(plain)
     assert _fann_features(structured)[idx] > _fann_features(plain)[idx]
+    assert structural_pattern_score(structured) > structural_pattern_score(bad_heading)
 
 
 def test_update_model_changes_weights() -> None:
