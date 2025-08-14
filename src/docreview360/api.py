@@ -29,7 +29,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from . import auth, reporting
 from . import search as search_mod
@@ -69,7 +69,6 @@ from .documenso import (
     process_webhook,
     signature_status,
 )
-from .integrations.signature import get_provider, DEFAULT_PROVIDER
 from .documents import (
     DocumentModel,
     get_document,
@@ -81,6 +80,7 @@ from .documents import (
 )
 from .environment import current_environment, load_envs, switch_environment
 from .exporter import export_document, set_guardrails
+from .integrations.signature import DEFAULT_PROVIDER, get_provider
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .nemo_guardrails import GuardrailsMiddleware, contains_pii
@@ -288,7 +288,7 @@ async def current_user_endpoint(x_user: str | None = Header(None)) -> dict[str, 
     """
     if not x_user:
         raise HTTPException(status_code=401, detail="Missing user")
-    return {"username": x_user, "is_admin": True}
+    return {"username": x_user, "is_admin": True, "active": auth.is_active(x_user)}
 
 
 class PreferencePayload(BaseModel):
@@ -296,6 +296,12 @@ class PreferencePayload(BaseModel):
 
     theme: Literal["system", "light", "dark"] | None = None
     reduce_motion: bool | None = None
+
+
+class UserStatusPayload(BaseModel):
+    """Payload for toggling a user's active status."""
+
+    active: bool
 
 
 @app.get("/profile")
@@ -321,6 +327,20 @@ async def update_profile(
         raise HTTPException(status_code=401, detail="Missing user")
     prefs = {k: v for k, v in body.model_dump().items() if v is not None}
     return {"username": x_user, "preferences": update_preferences(x_user, prefs)}
+
+
+@app.post("/admin/users/{username}/status")
+async def set_user_status(
+    username: str,
+    body: UserStatusPayload,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Set the active status for ``username`` (admin only)."""
+
+    if username not in auth.FAKE_USERS_DB:
+        raise HTTPException(status_code=404, detail="User not found")
+    auth.FAKE_USERS_DB[username]["active"] = body.active
+    return {"username": username, "active": body.active}
 
 
 @app.get("/projects", response_model=list[ProjectModel])
