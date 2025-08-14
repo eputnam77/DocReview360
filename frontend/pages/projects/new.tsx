@@ -45,36 +45,26 @@ export default function NewProjectPage() {
   }, [phase]);
 
   useEffect(() => {
-    console.log('Fetching document types from:', `${API}/document-types`);
-    fetch(`${API}/document-types`)
-      .then((r) => {
-        console.log('Document types response status:', r.status);
-        return r.ok ? r.json() : [];
-      })
-      .then((data) => {
-        console.log('Document types API data:', data);
-        const docTypeNames = data.length
-          ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-          : [];
-        console.log('Setting document types to:', docTypeNames);
-        setDocTypes(docTypeNames);
-      })
-      .catch((error) => {
-        console.error('Error fetching document types:', error);
-        setDocTypes([]);
-      });
-    fetch(`${API}/phases`)
+    fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        console.log('Phases API data:', data);
-        const phaseNames = data.length
+        const docTypeNames = Array.isArray(data)
           ? data.map((d: any) => (typeof d === "string" ? d : d.name))
           : [];
-        console.log('Setting phases to:', phaseNames);
+        setDocTypes(docTypeNames);
+      })
+      .catch(() => {
+        setDocTypes([]);
+      });
+    fetch("/api/phases")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const phaseNames = Array.isArray(data)
+          ? data.map((d: any) => (typeof d === "string" ? d : d.name))
+          : [];
         setPhases(phaseNames);
       })
-      .catch((error) => {
-        console.error('Error fetching phases:', error);
+      .catch(() => {
         setPhases([]);
       });
   }, []);
