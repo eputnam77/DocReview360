@@ -20,6 +20,8 @@ def clone_workflow(wf_id: str, reviewers: Iterable[str] | None = None) -> Workfl
         phase=original.phase,
         phases=list(original.phases),
         reviewers=list(reviewers or original.reviewers),
+        template=original.template,
+        approval_steps=[s.model_copy() for s in original.approval_steps],
     )
     workflows[clone.id] = clone
     record_task_completion(144)

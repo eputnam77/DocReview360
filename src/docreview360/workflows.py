@@ -26,6 +26,7 @@ class WorkflowModel(BaseModel):
     phases: List[str]
     reviewers: List[str] = []
     document: Optional[str] = None
+    template: str = "branch-coordination"
     approval_steps: List[ApprovalStep] = []
 
 
@@ -34,42 +35,191 @@ workflows: Dict[str, WorkflowModel] = {}
 # Registered callbacks mimicking agileagents bot webhooks
 bot_callbacks: list[Callable[[WorkflowModel], None]] = []
 
-
-def get_approval_steps_for_phase(phase: str) -> List[ApprovalStep]:
-    """Generate approval steps based on the branch-coordination workflow."""
-    # Single "branch-coordination" workflow for all phases
-    return [
+# Workflow templates keyed by name
+workflow_templates: Dict[str, List[ApprovalStep]] = {
+    "branch-coordination": [
         ApprovalStep(
             role="SME",
             description="Subject Matter Expert review and validation",
-            order=1
+            order=1,
         ),
         ApprovalStep(
             role="Front Line Manager",
             description="Front Line Manager approval",
-            order=2
+            order=2,
         ),
         ApprovalStep(
             role="Product Policy Manager",
             description="Product Policy Manager review and approval",
-            order=3
+            order=3,
         ),
         ApprovalStep(
             role="Technical Writer",
             description="Technical Writer review and editing",
-            order=4
+            order=4,
         ),
         ApprovalStep(
             role="Senior Technical Writer",
             description="Senior Technical Writer review and approval",
-            order=5
+            order=5,
         ),
         ApprovalStep(
             role="Technical Writing Manager",
             description="Technical Writing Manager final approval",
-            order=6
-        )
-    ]
+            order=6,
+        ),
+    ],
+    "pre-coordination": [
+        ApprovalStep(
+            role="Writer",
+            description="Initial drafting and self-check",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Peer Reviewer",
+            description="Peer review for technical soundness",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Branch Liaison",
+            description="Confirms alignment with branch priorities",
+            order=3,
+        ),
+    ],
+    "requirements-data-gathering": [
+        ApprovalStep(
+            role="Research Analyst",
+            description="Collects background data and stakeholder requirements",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Legal/Regulatory Reviewer",
+            description="Identifies statutory constraints",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Writer",
+            description="Creates annotated outline for downstream reviewers",
+            order=3,
+        ),
+    ],
+    "fast-track-coordination": [
+        ApprovalStep(
+            role="Writer",
+            description="Drafts minor or urgent changes",
+            order=1,
+        ),
+        ApprovalStep(
+            role="SME",
+            description="Subject Matter Expert review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Final review and approval",
+            order=3,
+        ),
+    ],
+    "multi-branch-coordination": [
+        ApprovalStep(
+            role="SME (Branch A)",
+            description="Branch A SME review",
+            order=1,
+        ),
+        ApprovalStep(
+            role="SME (Branch B)",
+            description="Branch B SME review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Branch Managers (A and B)",
+            description="Management approval from both branches",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Senior Technical Writer review",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Technical Writing Manager",
+            description="Technical Writing Manager final approval",
+            order=5,
+        ),
+    ],
+    "external-partner-coordination": [
+        ApprovalStep(
+            role="Internal SME",
+            description="Internal subject matter expert review",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Public Affairs",
+            description="Communications and public affairs review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="External Stakeholder",
+            description="External stakeholder review",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Technical Writer",
+            description="Incorporates external feedback",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Technical Writing Manager",
+            description="Final internal approval",
+            order=5,
+        ),
+    ],
+    "publication-distribution": [
+        ApprovalStep(
+            role="Technical Writer",
+            description="Prepares publication version",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Communications/Outreach",
+            description="Distributes to official channels",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Records Management",
+            description="Archives final version in CMS",
+            order=3,
+        ),
+    ],
+    "implementation-tracking": [
+        ApprovalStep(
+            role="Program Manager",
+            description="Notifies affected teams",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Compliance Officer",
+            description="Confirms procedures updated",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Records Management",
+            description="Archive and close workflow",
+            order=3,
+        ),
+    ],
+}
+
+
+def get_approval_steps_for_phase(
+    phase: str, workflow: str = "branch-coordination"
+) -> List[ApprovalStep]:
+    """Return approval steps for the given workflow."""
+    try:
+        steps = workflow_templates[workflow]
+    except KeyError as exc:
+        raise KeyError(f"Unknown workflow '{workflow}'") from exc
+    return [step.model_copy() for step in steps]
 
 
 def _bootstrap_sample() -> None:
@@ -81,13 +231,15 @@ def _bootstrap_sample() -> None:
 
     phases = list_phases()
     start_phase = phases[0] if phases else "start"
-    workflows["branch-coordination"] = WorkflowModel(
-        id="branch-coordination",
-        project="branch-coordination",
-        phase=start_phase,
-        phases=phases or [start_phase],
-        approval_steps=get_approval_steps_for_phase(start_phase),
-    )
+    for name in workflow_templates:
+        workflows[name] = WorkflowModel(
+            id=name,
+            project=name,
+            phase=start_phase,
+            phases=phases or [start_phase],
+            template=name,
+            approval_steps=get_approval_steps_for_phase(start_phase, name),
+        )
 
 
 _bootstrap_sample()
@@ -98,20 +250,23 @@ def register_bot(callback: Callable[[WorkflowModel], None]) -> None:
     bot_callbacks.append(callback)
 
 
-def create_workflow(project: str, phases: List[str]) -> WorkflowModel:
+def create_workflow(
+    project: str, phases: List[str], template: str = "branch-coordination"
+) -> WorkflowModel:
     """Create a workflow for a project starting at the first phase."""
     wf_id = uuid4().hex
     start_phase = phases[0] if phases else "start"
 
-    # Generate approval steps based on the phase
-    approval_steps = get_approval_steps_for_phase(start_phase)
+    # Generate approval steps based on the selected template
+    approval_steps = get_approval_steps_for_phase(start_phase, template)
 
     workflow = WorkflowModel(
         id=wf_id,
         project=project,
         phase=start_phase,
         phases=phases,
-        approval_steps=approval_steps
+        template=template,
+        approval_steps=approval_steps,
     )
     workflows[wf_id] = workflow
 
