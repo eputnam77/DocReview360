@@ -57,6 +57,14 @@ def create_approval(
         document_hash=doc_hash,
     )
     approvals[approval_id] = approval
+    log_event(
+        "approval_created",
+        user=reviewer,
+        workflow=workflow,
+        approval_id=approval_id,
+        provider=signature_provider,
+        document_hash=doc_hash,
+    )
     return approval
 
 
@@ -83,6 +91,7 @@ def update_approval_state(
 ) -> ApprovalModel:
     """Set approval state and optional digital signature metadata."""
     approval = approvals[approval_id]
+    previous = approval.state
     approval.state = state
     if signature_id is not None:
         approval.signature_id = signature_id
@@ -95,14 +104,19 @@ def update_approval_state(
     else:
         approval.signed_at = None
         approval.certificate_url = None
-    if state == "approved":
-        wf = workflows.get(approval.workflow)
-        project_id = wf.project if wf else ""
-        log_event(
-            f"{approval.reviewer} approved document {project_id} via {approval.signature_provider}",
-            user=approval.reviewer,
-            project=project_id,
-        )
+    wf = workflows.get(approval.workflow)
+    project_id = wf.project if wf else ""
+    log_event(
+        f"approval_{state}",
+        user=approval.reviewer,
+        project=project_id,
+        approval_id=approval_id,
+        provider=approval.signature_provider,
+        signature_id=approval.signature_id,
+        document_hash=approval.document_hash,
+        previous_state=previous,
+    )
+    if state == "approved" and wf:
         # check if all approvals done
         if all(
             a.state == "approved" and a.workflow == approval.workflow
@@ -137,6 +151,14 @@ def send_for_signature(
         return_url=return_url,
     )
     approval.signature_id = sig_id
+    log_event(
+        "approval_sent_for_signature",
+        user=user,
+        approval_id=approval_id,
+        provider=approval.signature_provider,
+        signature_id=sig_id,
+        workflow=approval.workflow,
+    )
     return url
 
 
@@ -158,8 +180,16 @@ def reset_approval(approval_id: str, confirm: bool) -> bool:
         approval = approvals.get(approval_id)
         if approval is None:
             raise KeyError("approval not found")
+        previous = approval.state
         approval.state = "pending"
         approval.signature_id = None
         approval.signed_at = None
+        log_event(
+            "approval_reset",
+            user=approval.reviewer,
+            approval_id=approval_id,
+            provider=approval.signature_provider,
+            previous_state=previous,
+        )
 
     return task213(confirm, _do_reset)
