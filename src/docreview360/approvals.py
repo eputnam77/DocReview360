@@ -1,17 +1,17 @@
-"""Approval management with digital signature placeholder."""
+"""Approval management with digital signature and FANN-based routing support."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from .integrations.signature import get_provider, DEFAULT_PROVIDER
 from .logs import log_event
 from .workflows import workflows
-from .integrations.signature import get_provider, DEFAULT_PROVIDER
 from .quality import approval_likelihood
 from .fann_model import Weights
 
@@ -70,18 +70,6 @@ def create_approval(
     return approval
 
 
-def get_approval(approval_id: str) -> ApprovalModel | None:
-    """Retrieve a single approval by id."""
-    return approvals.get(approval_id)
-
-
-def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
-    """Return approvals, optionally filtered by workflow id."""
-    if workflow is None:
-        return list(approvals.values())
-    return [a for a in approvals.values() if a.workflow == workflow]
-
-
 def submit_draft_for_approval(
     workflow: str,
     reviewer: str,
@@ -98,11 +86,73 @@ def submit_draft_for_approval(
     request.  This connects FANN scoring with the workflow system for
     proactive risk mitigation.
     """
-
     score = approval_likelihood(text, weights)
     if score < threshold:
         create_approval(workflow, extra_reviewer, description="Auto risk review")
     return create_approval(workflow, reviewer, description="Primary review")
+
+
+def get_approval(approval_id: str) -> ApprovalModel | None:
+    """Retrieve a single approval by id."""
+    return approvals.get(approval_id)
+
+
+def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
+    """Return approvals, optionally filtered by workflow id."""
+    if workflow is None:
+        return list(approvals.values())
+    return [a for a in approvals.values() if a.workflow == workflow]
+
+
+def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:
+    """Return the approval associated with ``signature_id`` if any."""
+    for approval in approvals.values():
+        if approval.signature_id == signature_id:
+            return approval
+    return None
+
+
+def handle_signature_return(
+    signature_id: str,
+    *,
+    document: bytes | None = None,
+    certificate_url: str | None = None,
+    signed_at: datetime | None = None,
+) -> ApprovalModel:
+    """Update the approval linked to ``signature_id`` as signed.
+
+    Optionally verifies ``document`` against the stored hash and records
+    certificate metadata. ``KeyError`` is raised when no approval is mapped and
+    ``ValueError`` when hash verification fails.
+    """
+    approval = get_approval_by_signature(signature_id)
+    if approval is None:
+        raise KeyError("approval not found for signature")
+
+    log_event(
+        "approval_callback",
+        approval_id=approval.id,
+        provider=approval.signature_provider,
+        signature_id=signature_id,
+    )
+
+    if document is not None and approval.document_hash is not None:
+        if hashlib.sha256(document).hexdigest() != approval.document_hash:
+            log_event(
+                "signature_hash_mismatch",
+                approval_id=approval.id,
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+            )
+            raise ValueError("document hash mismatch")
+
+    return update_approval_state(
+        approval.id,
+        "approved",
+        signature_id=signature_id,
+        certificate_url=certificate_url,
+        signed_at=signed_at,
+    )
 
 
 def update_approval_state(
@@ -165,7 +215,6 @@ def send_for_signature(
 
     Returns the provider signing URL.
     """
-
     approval = approvals[approval_id]
     provider = get_provider(approval.signature_provider)
     sig_id, url = provider.request_signature(
@@ -189,7 +238,6 @@ def send_for_signature(
 
 def verify_document_hash(approval_id: str, document: bytes) -> bool:
     """Validate ``document`` matches the stored hash for ``approval_id``."""
-
     approval = approvals[approval_id]
     if approval.document_hash is None:
         return True
@@ -198,7 +246,6 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
 
 def reset_approval(approval_id: str, confirm: bool) -> bool:
     """Reset the state of an approval to ``pending`` if confirmed."""
-
     from .stubs.task213 import task213
 
     def _do_reset() -> None:

@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi.testclient import TestClient
-
+import pytest
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def test_approval_lifecycle() -> None:
@@ -82,3 +82,26 @@ def test_reset_approval() -> None:
     appr.state = "approved"
     assert not reset_approval(appr.id, False)
     assert appr.state == "approved"
+
+
+def test_handle_signature_return_hash_validation() -> None:
+    """handle_signature_return should validate document hash."""
+
+    from docreview360.approvals import (
+        create_approval,
+        handle_signature_return,
+        send_for_signature,
+    )
+
+    doc = b"hello"
+    appr = create_approval("wf42", "carol", document=doc)
+    send_for_signature(appr.id, "doc42", "carol")
+    # Valid document should mark approved
+    handle_signature_return(appr.signature_id, document=doc)
+    assert appr.state == "approved"
+
+    # Mismatch should raise
+    appr2 = create_approval("wf43", "dave", document=b"orig")
+    send_for_signature(appr2.id, "doc43", "dave")
+    with pytest.raises(ValueError):
+        handle_signature_return(appr2.signature_id, document=b"tampered")

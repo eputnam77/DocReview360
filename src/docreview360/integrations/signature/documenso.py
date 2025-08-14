@@ -15,7 +15,7 @@ from uuid import uuid4
 import httpx
 
 from ...logs import log_event
-from .base import SignatureProvider, register_provider
+from .base import register_provider
 
 # In-memory mapping of signature id -> status
 DOCUMENSO_URL = os.getenv("DOCUMENSO_URL")
@@ -23,8 +23,6 @@ DOCUMENSO_URL = os.getenv("DOCUMENSO_URL")
 _signatures: Dict[str, str] = {}
 # store workflow id for each signature when provided
 _sig_workflows: Dict[str, str] = {}
-# map signature id to approval for status updates
-_sig_approvals: Dict[str, str] = {}
 
 
 def request_signature(
@@ -76,8 +74,6 @@ def request_signature(
 
     if workflow_id:
         _sig_workflows[sig_id] = workflow_id
-    if approval_id:
-        _sig_approvals[sig_id] = approval_id
 
     log_event(f"signature_requested:{document_id}:{user}")
     return sig_id, url
@@ -131,7 +127,6 @@ def process_webhook(data: Dict[str, str]) -> None:
     _signatures[sig_id] = status
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
-        appr_id = _sig_approvals.get(sig_id)
         if wf_id:
             try:
                 from ...workflows import advance_workflow
@@ -139,13 +134,23 @@ def process_webhook(data: Dict[str, str]) -> None:
                 advance_workflow(wf_id)
             except KeyError:
                 pass
-        if appr_id:
-            try:
-                from ...approvals import update_approval_state
+        try:
+            from ...approvals import handle_signature_return
 
-                update_approval_state(appr_id, "approved", signature_id=sig_id)
-            except KeyError:
-                pass
+            signed_at = data.get("signed_at")
+            if isinstance(signed_at, str):
+                from datetime import datetime
+
+                signed_at_dt = datetime.fromisoformat(signed_at)
+            else:
+                signed_at_dt = None
+            handle_signature_return(
+                sig_id,
+                certificate_url=data.get("certificate_url"),
+                signed_at=signed_at_dt,
+            )
+        except (KeyError, ValueError):
+            pass
     log_event(f"signature_webhook:{sig_id}:{status}")
 
 
