@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from .config import CONFIG_FILE, Config
-from .search import projects, update_project
+from .search import project_lock, projects, update_project
 
 
 def assign_technical_writer(
@@ -52,9 +52,10 @@ def assign_technical_writer(
         raise ValueError(f"unknown project {project_id}")
 
     workload: dict[str, int] = {w: 0 for w in cand_list}
-    for proj in projects.values():
-        if proj.user in workload:
-            workload[proj.user] += 1 + max(proj.priority, 0)
+    with project_lock:
+        for proj in projects.values():
+            if proj.user in workload:
+                workload[proj.user] += 1 + max(proj.priority, 0)
 
     selected = min(cand_list, key=lambda w: (workload[w], w))
     update_project(project_id, user=selected)
