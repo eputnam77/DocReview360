@@ -31,15 +31,15 @@ accepts a module path and registers any plugins exported by that module.
 ### Example plugin
 
 Create a small module that exports a `register` function. The example below adds
-`demo-extension` which simply logs a message when loaded:
+`example-extension` which simply logs a message when loaded:
 
 ```python
-def demo_extension(data: dict) -> dict:
-    print("demo extension active")
+def example_extension(data: dict) -> dict:
+    print("example extension active")
     return data
 
 def register(registry) -> None:
-    registry.register("demo-extension", demo_extension)
+    registry.register("example-extension", example_extension)
 ```
 
 Save this as `my_package/my_plugin.py` and register it with the steps above.

@@ -13,7 +13,7 @@ Welcome to the DocReview360 project. This site collects guides and references fo
 
 ## Project features
 
-DocReview360 implements a small slice of the functionality described in the product requirements. The prototype demonstrates:
+DocReview360 implements a small slice of the functionality described in the product requirements. The prototype shows:
 
 - In-memory project and document storage with sequential numbering
 - Import and export of Markdown and DOCX files

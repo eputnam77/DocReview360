@@ -31,7 +31,7 @@ def push_document(doc: Path, repo: Path, branch: str = "main", remote: Path | No
     """Commit ``doc`` to ``repo`` and return the commit hash.
 
     When ``remote`` is provided the commit is also pushed to that
-    repository. This supports local bare repos for offline demo usage.
+    repository. This supports local bare repos for offline usage.
     """
     _ensure_repo(repo, branch, remote)
     dest = repo / doc.name

@@ -15,4 +15,4 @@ The following examples show how DocReview360 could fit into day‑to‑day work.
 3. Temporarily assign another user if someone is away.
 4. Search for documents related to the project to track progress.
 
-These scenarios demonstrate the interplay between projects, documents and approvals. Even though the data lives in memory, the flow mirrors a real system and helps you understand how everything connects.
+These scenarios illustrate the interplay between projects, documents and approvals. Even though the data lives in memory, the flow mirrors a real system and helps you understand how everything connects.

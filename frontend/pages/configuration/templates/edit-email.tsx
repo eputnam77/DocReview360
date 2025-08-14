@@ -6,12 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { API } from "@/lib/api";
 
-const DEMO_TEMPLATE = {
-  name: "review_request",
-  subject: "Review {document_title}",
-  body: "Hi {reviewer}, please review {document_title}.",
-  task: "review",
-};
 
 export default function EditEmailTemplatePage() {
   const router = useRouter();
@@ -24,11 +18,11 @@ export default function EditEmailTemplatePage() {
 
   useEffect(() => {
     if (id) {
-      // Replace with real API call
-      setName(String(id));
-      setSubject(DEMO_TEMPLATE.subject);
-      setBody(DEMO_TEMPLATE.body);
-      setTask(DEMO_TEMPLATE.task);
+        // Replace with real API call
+        setName(String(id));
+        setSubject("");
+        setBody("");
+        setTask("");
     }
   }, [id]);
 
@@ -41,7 +35,7 @@ export default function EditEmailTemplatePage() {
         body: JSON.stringify(payload),
       });
     } catch {
-      // ignore network errors in demo mode
+        // ignore network errors in development mode
     }
     alert("Email template updated:\n" + JSON.stringify(payload, null, 2));
   };

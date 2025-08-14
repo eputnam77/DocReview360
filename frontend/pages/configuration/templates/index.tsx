@@ -26,18 +26,6 @@ interface EmailTemplate {
   task?: string;
 }
 
-const DEMO_TEMPLATES: Template[] = [
-  { id: "tpl1", name: "AC Template", docType: "Advisory Circular", format: "DOCX", modified: "2025-07-06" },
-  { id: "tpl2", name: "Release Notes", docType: "Release Notes", format: "HTML", modified: "2025-07-05" },
-];
-
-const DEMO_EMAILS: EmailTemplate[] = [
-  {
-    name: "review_request",
-    subject: "Review {document_title}",
-    task: "review",
-  },
-];
 
 export default function TemplatesIndex() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -46,61 +34,60 @@ export default function TemplatesIndex() {
   useEffect(() => {
     fetch(`${API}/templates`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setTemplates(
-          data.length
-            ? data.map((t) => ({
-                id: t.id || t.name,
-                name: t.name,
-                docType: t.docType,
-                format: t.format || "—",
-                modified: t.modified || t.updated || "—",
-              }))
-            : DEMO_TEMPLATES,
+        .then((data: any[]) =>
+          setTemplates(
+            data.length
+              ? data.map((t) => ({
+                  id: t.id || t.name,
+                  name: t.name,
+                  docType: t.docType,
+                  format: t.format || "—",
+                  modified: t.modified || t.updated || "—",
+                }))
+              : []
+          )
         )
-      )
-      .catch(() => setTemplates(DEMO_TEMPLATES));
+        .catch(() => setTemplates([]));
   }, []);
 
   useEffect(() => {
     fetch(`${API}/email-templates`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setEmailTemplates(
-          data.length
-            ? data.map((t) => ({
-                name: t.name,
-                subject: t.subject,
-                task: t.task,
-              }))
-            : DEMO_EMAILS,
-        ),
-      )
-      .catch(() => setEmailTemplates(DEMO_EMAILS));
+        .then((data: any[]) =>
+          setEmailTemplates(
+            data.length
+              ? data.map((t) => ({
+                  name: t.name,
+                  subject: t.subject,
+                  task: t.task,
+                }))
+              : []
+          ),
+        )
+        .catch(() => setEmailTemplates([]));
   }, []);
 
   const removeTemplate = async (id: string) => {
     setTemplates(templates.filter((t) => t.id !== id));
     try {
       await fetch(`${API}/templates/${id}`, { method: "DELETE" });
-    } catch {
-      // ignore network errors in demo mode
-    }
+      } catch {
+        // ignore network errors in development mode
+      }
   };
 
   const removeEmail = async (name: string) => {
     setEmailTemplates(emailTemplates.filter((t) => t.name !== name));
     try {
       await fetch(`${API}/email-templates/${name}`, { method: "DELETE" });
-    } catch {
-      // ignore network errors in demo mode
-    }
+      } catch {
+        // ignore network errors in development mode
+      }
   };
 
-  const handleDownload = (tpl: Template) => {
-    // If you have a download URL, use it; else, just alert for demo
-    window.open(`${API}/templates/${tpl.id}/download`, "_blank");
-  };
+    const handleDownload = (tpl: Template) => {
+      window.open(`${API}/templates/${tpl.id}/download`, "_blank");
+    };
 
   return (
     <div className="p-8 space-y-8">

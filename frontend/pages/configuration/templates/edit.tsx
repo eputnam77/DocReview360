@@ -20,13 +20,13 @@ const SUPPORTED_FORMATS = [
   { value: "TXT", label: "Plain Text / Markdown (.txt, .md)" },
 ];
 
-// Demo fallback
-const DEMO_TEMPLATE = {
-  id: "tpl1",
-  name: "AC Template",
-  docType: "Advisory Circular",
+// Placeholder template data until API is implemented
+const EMPTY_TEMPLATE = {
+  id: "",
+  name: "",
+  docType: "",
   format: "HTML",
-  content: "<h1>Title Here</h1><p>Content goes here...</p>",
+  content: "",
 };
 
 export default function EditTemplatePage() {
@@ -49,12 +49,12 @@ export default function EditTemplatePage() {
       .catch(() => setDocTypes([]));
 
     if (id) {
-      // Replace with real API call: `/api/templates/${id}`
-      // For demo, populate with static data
-      setName(DEMO_TEMPLATE.name);
-      setDocType(DEMO_TEMPLATE.docType);
-      setFormat(DEMO_TEMPLATE.format || SUPPORTED_FORMATS[0].value);
-      setContent(DEMO_TEMPLATE.content || "");
+        // Replace with real API call: `/api/templates/${id}`
+        // Populate with empty values until API is ready
+        setName(EMPTY_TEMPLATE.name);
+        setDocType(EMPTY_TEMPLATE.docType);
+        setFormat(EMPTY_TEMPLATE.format || SUPPORTED_FORMATS[0].value);
+        setContent(EMPTY_TEMPLATE.content || "");
     }
   }, [id]);
 

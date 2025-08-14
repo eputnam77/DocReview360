@@ -7,4 +7,3 @@ export * from "./mock"; // If you have mock.ts for MOCK_INSTANCE, MOCK_PROJECTS,
 
 // You can add more exports here as your app grows.
 // export * from "./otherData";
-export * from "./demoProjects";

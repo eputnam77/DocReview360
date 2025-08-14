@@ -11,7 +11,7 @@ import { Extension } from "@tiptap/core";
  * Prevent editing of level 1 and level 2 headings.
  * We intercept backspace/delete and selection changes
  * to keep those headings immutable. This is a basic
- * demonstration and not a fool-proof content lock.
+ * example and not a fool-proof content lock.
  */
 export function tiptapHeadingLock() {
   return Extension.create({

@@ -9,7 +9,7 @@ import type { Awareness } from "y-protocols/awareness";
  */
 /**
  * Lightweight Yjs collaboration wrapper. If `yjs` is not
- * available (e.g. in offline demos) the extension simply
+ * available (e.g. in offline mode) the extension simply
  * does nothing but keeps the API surface stable.
  */
 export function tiptapYjsCollab() {
@@ -20,7 +20,7 @@ export function tiptapYjsCollab() {
         const yjs = await import("yjs");
         const { WebrtcProvider } = await import("y-webrtc");
         const doc = new yjs.Doc();
-        const provider = new WebrtcProvider("tiptap-demo", doc);
+        const provider = new WebrtcProvider("tiptap-room", doc);
 
         (this.editor as any).storage.yjs = { doc, provider };
       } catch (err) {

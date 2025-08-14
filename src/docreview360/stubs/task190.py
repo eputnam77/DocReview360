@@ -14,7 +14,7 @@ def task190() -> bool:
     add_role("alice", "manager")
     client = TestClient(app)
 
-    # Create a token for alice (using the demo user from auth.py)
+    # Create a token for alice (using the sample user from auth.py)
     from .. import auth
 
     token = auth.create_access_token({"sub": "alice"})

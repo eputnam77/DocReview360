@@ -6,7 +6,7 @@ from docreview360.api import app
 
 def test_dashboard_websocket() -> None:
     search.projects.clear()
-    search.add_project(search.ProjectModel(id="ws1", name="WebSocket Demo"))
+    search.add_project(search.ProjectModel(id="ws1", name="WebSocket Sample"))
     client = TestClient(app)
     with client.websocket_connect("/ws/dashboard") as ws:
         data = ws.receive_json()

@@ -13,9 +13,6 @@ import {
 } from "@/components";
 import { API } from "@/lib/api";
 
-const DEMO_RESULTS: Result[] = [
-  { id: "AC-101", project: "AC-101", content: "Demo document" },
-];
 
 interface Result {
   id: string;
@@ -31,10 +28,10 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!q) return;
-    fetch(`${API}/search?q=${encodeURIComponent(q)}`)
-      .then((r) => (r.ok ? r.json() : DEMO_RESULTS))
-      .then((data) => setResults(Array.isArray(data) ? data : DEMO_RESULTS))
-      .catch(() => setResults(DEMO_RESULTS));
+      fetch(`${API}/search?q=${encodeURIComponent(q)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setResults(Array.isArray(data) ? data : []))
+        .catch(() => setResults([]));
   }, [q]);
 
   function onSubmit(e: React.FormEvent) {
