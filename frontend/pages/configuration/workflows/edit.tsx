@@ -17,20 +17,6 @@ const ROLES = [
   "Technical Writer", "Senior Technical Writer", "Technical Writing Manager", "Attorney", "Branch Manager", "Other"
 ];
 
-const DEFAULT_WORKFLOW = {
-  id: "branch-coordination",
-  name: "branch-coordination",
-  description: "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
-  steps: [
-    { id: "1", role: "Subject Matter Expert", user: "", required: true },
-    { id: "2", role: "Front Line Manager", user: "", required: true },
-    { id: "3", role: "Product Policy Manager", user: "", required: true },
-    { id: "4", role: "Technical Writer", user: "", required: true },
-    { id: "5", role: "Senior Technical Writer", user: "", required: true },
-    { id: "6", role: "Technical Writing Manager", user: "", required: true },
-  ]
-};
-
 export default function EditWorkflowPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -44,24 +30,16 @@ export default function EditWorkflowPage() {
   useEffect(() => {
     // Determine which workflow to edit; default to system workflow
     const wfId = (id ? String(id) : "branch-coordination");
-    // Try API first
     fetch(`${API}/workflows/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        const wf = data ?? (wfId === "branch-coordination" ? DEFAULT_WORKFLOW : null);
+      .then((wf) => {
         if (wf) {
-          setName(wf.name);
-          setDescription(wf.description);
-          setSteps(wf.steps.map((s: any) => ({ ...s, id: s.id })));
+          setName(wf.name ?? wf.project ?? "");
+          setDescription(wf.description ?? "");
+          setSteps(Array.isArray(wf.steps) ? wf.steps.map((s: any) => ({ ...s, id: s.id })) : []);
         }
       })
-      .catch(() => {
-        if (wfId === "branch-coordination") {
-          setName(DEFAULT_WORKFLOW.name);
-          setDescription(DEFAULT_WORKFLOW.description);
-          setSteps(DEFAULT_WORKFLOW.steps.map((s) => ({ ...s, id: s.id })));
-        }
-      });
+      .catch(() => {});
   }, [id]);
 
   const addStep = () => {
