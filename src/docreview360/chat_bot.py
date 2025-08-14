@@ -7,39 +7,39 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
-if TYPE_CHECKING:  # pragma: no cover - type-only import
+if TYPE_CHECKING:
     from .search import ProjectModel
-else:  # pragma: no cover - fallback when search module missing
+else:
     ProjectModel = Any
 projects: dict[str, Any]
-try:  # pragma: no cover - optional dependency
+try:
     from .search import list_projects, overdue_high_priority, projects as _projects
 
     projects = _projects
-except Exception:  # pragma: no cover - search module may depend on pydantic
+except Exception:
 
-    def list_projects(user: str | None = None) -> list[ProjectModel]:  # pragma: no cover
+    def list_projects(user: str | None = None) -> list[ProjectModel]:
         return []
 
-    def overdue_high_priority() -> list[str]:  # pragma: no cover
+    def overdue_high_priority() -> list[str]:
         return []
 
     projects = {}
 
 
-try:  # pragma: no cover - optional dependency
+try:
     from .workflows import workflows
-except Exception:  # pragma: no cover - workflows module may depend on pydantic
+except Exception:
     workflows = {}
 
-try:  # pragma: no cover - optional dependency
+try:
     from .approvals import approvals
-except Exception:  # pragma: no cover - approvals module may depend on pydantic
+except Exception:
     approvals = {}
 
-try:  # pragma: no cover - optional dependency
+try:
     from .doc_types import document_types
-except Exception:  # pragma: no cover - doc_types module may depend on pydantic
+except Exception:
     document_types = {}
 
 # Define templates data structure based on frontend templates

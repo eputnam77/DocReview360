@@ -9,14 +9,14 @@ from .search import list_projects
 from .stubs import record_task_completion
 
 
-class Document(graphene.ObjectType):  # type: ignore[misc]
+class Document(graphene.ObjectType):
     """GraphQL type representing a document."""
 
     id = graphene.String(required=True)
     content = graphene.String(required=True)
 
 
-class Project(graphene.ObjectType):  # type: ignore[misc]
+class Project(graphene.ObjectType):
     """GraphQL type representing a project."""
 
     id = graphene.String(required=True)
@@ -24,16 +24,16 @@ class Project(graphene.ObjectType):  # type: ignore[misc]
     number = graphene.Int()
 
 
-class Query(graphene.ObjectType):  # type: ignore[misc]
+class Query(graphene.ObjectType):
     """Root query with read-only access to projects and documents."""
 
     projects = graphene.List(Project)
     documents = graphene.List(Document)
 
-    def resolve_projects(self, info: object) -> list[Project]:  # noqa: D417
+    def resolve_projects(self, info: object) -> list[Project]:
         return [Project(id=p.id, name=p.name, number=p.number) for p in list_projects()]
 
-    def resolve_documents(self, info: object) -> list[Document]:  # noqa: D417
+    def resolve_documents(self, info: object) -> list[Document]:
         return [Document(id=d.id, content=d.content) for d in list_documents()]
 
 

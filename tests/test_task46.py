@@ -36,7 +36,7 @@ def test_require_role_dependency() -> None:
     app_local = FastAPI()
 
     @app_local.get("/edit")
-    def edit_route(user: str = Depends(dep)) -> str:  # noqa: F841
+    def edit_route(user: str = Depends(dep)) -> str:
         return "ok"
 
     client = TestClient(app_local)

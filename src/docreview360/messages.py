@@ -1,7 +1,5 @@
 """Central message templates for audit logs."""
 
-# ruff: noqa: E501
-
 from datetime import datetime, timezone
 
 MESSAGES = {

@@ -437,7 +437,7 @@ def search(
                 cached = cached.decode()
             data = json.loads(cached)
             return [DocumentModel.model_validate(d) for d in data]
-        except Exception:  # pragma: no cover - fallback to recompute
+        except Exception:
             pass
     terms = _normalize(query).split()
     if not terms:

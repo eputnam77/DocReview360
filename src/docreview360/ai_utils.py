@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Dict
 
-if TYPE_CHECKING:  # pragma: no cover - hints only
+if TYPE_CHECKING:
     from .documents import DocumentModel
 
 
@@ -95,15 +95,15 @@ def suggest_document_type(text: str) -> str:
         return "report"
     if "invoice" in text_lower:
         return "invoice"
-    return "sample"  # pragma: no cover - default path
+    return "sample"
 
 
 def validate_content(text: str) -> bool:
     """Very basic content validation using anomaly detection."""
     if not text.strip():
-        return False  # pragma: no cover - trivial branch
+        return False
     if detect_anomalies(text):
-        return False  # pragma: no cover - rarely hit in tests
+        return False
     return True
 
 

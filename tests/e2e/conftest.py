@@ -4,7 +4,7 @@ import pytest
 
 try:
     from playwright.sync_api import sync_playwright
-except Exception:  # pragma: no cover - playwright missing
+except Exception:
     sync_playwright = None
 
 

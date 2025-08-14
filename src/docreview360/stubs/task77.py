@@ -23,7 +23,7 @@ class CamundaClient:
                 resp = httpx.post(url, timeout=5)
                 resp.raise_for_status()
                 pid = resp.json().get("id", "unknown")
-            except httpx.HTTPError as exc:  # pragma: no cover - network errors
+            except httpx.HTTPError as exc:
                 raise RuntimeError("Camunda request failed") from exc
             record_task_completion(77)
             return str(pid)

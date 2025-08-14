@@ -27,5 +27,5 @@ def generate(output: str = "packages/sdk-ts") -> None:
     record_task_completion(138)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     generate()

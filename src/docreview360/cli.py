@@ -154,5 +154,5 @@ def import_cmd(path: str) -> None:  # "import" is a keyword
         raise click.ClickException(str(exc)) from exc
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     cli()

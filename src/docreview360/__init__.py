@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 """DocReview360 core package."""
 
 __all__ = [

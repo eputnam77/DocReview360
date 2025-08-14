@@ -1,7 +1,5 @@
 """RBAC permission tests."""
 
-# mypy: ignore-errors
-
 import importlib.util
 import sys
 import types
@@ -26,7 +24,7 @@ rbac = importlib.util.module_from_spec(spec_rbac)
 sys.modules["docreview360.rbac"] = rbac
 spec_rbac.loader.exec_module(rbac)
 
-from docreview360.rbac import (  # noqa: E402
+from docreview360.rbac import (
     ROLE_PERMISSIONS,
     USER_ROLES,
     require_permission,
@@ -52,7 +50,7 @@ def test_field_level_rbac() -> None:
     app = FastAPI()
     data: dict[str, int] = {"field_x": 0}
 
-    @app.patch("/resource")  # type: ignore[misc]
+    @app.patch("/resource")
     def patch_resource(
         payload: dict[str, int],
         user: auth.User = Depends(require_permission("edit_field_x")),
@@ -79,14 +77,14 @@ def test_permission_escalation() -> None:
     app = FastAPI()
     store: dict[str, bool] = {}
 
-    @app.post("/items")  # type: ignore[misc]
+    @app.post("/items")
     def create_item(
         user: auth.User = Depends(require_permission("create")),
     ) -> dict[str, bool]:
         store["created"] = True
         return {"ok": True}
 
-    @app.patch("/items")  # type: ignore[misc]
+    @app.patch("/items")
     def patch_item(
         user: auth.User = Depends(require_permission("update")),
     ) -> dict[str, bool]:

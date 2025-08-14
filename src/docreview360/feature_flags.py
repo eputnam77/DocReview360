@@ -6,7 +6,7 @@ from typing import Any
 
 try:
     from UnleashClient import UnleashClient
-except Exception:  # pragma: no cover - optional dep
+except Exception:
     UnleashClient = None
 
 from .stubs import record_task_completion

@@ -31,7 +31,7 @@ class Config:
             return None
         try:
             raw = yaml.safe_load(path.read_text()) or {}
-        except yaml.YAMLError as exc:  # pragma: no cover - yaml error is rare
+        except yaml.YAMLError as exc:
             raise ValueError(f"Invalid YAML in {path}") from exc
         if not isinstance(raw, dict):
             raise ValueError(f"Invalid config structure in {path}")

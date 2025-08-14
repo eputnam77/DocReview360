@@ -14,7 +14,7 @@ def create_dummy_plugin(name: str) -> str:
         register_fn = cast("Callable[[str, Callable[[], str]], None]", getattr(reg, "register"))
         register_fn(name, lambda: name)
 
-    mod.register = register  # type: ignore[attr-defined]
+    mod.register = register
     sys.modules[mod.__name__] = mod
     return mod.__name__
 
