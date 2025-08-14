@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .integrations.signature import DEFAULT_PROVIDER, get_provider
+from .integrations.signature import get_default_provider, get_provider
 from .logs import log_event
 from .quality import approval_likelihood
 from .fann_model import Weights
@@ -28,7 +28,7 @@ class ApprovalModel(BaseModel):
     reviewer: str
     state: str = "pending"
     due_at: datetime | None = None
-    signature_provider: str = DEFAULT_PROVIDER
+    signature_provider: str = Field(default_factory=get_default_provider)
     signature_id: Optional[str] = Field(default=None, alias="signature")
     document_hash: Optional[str] = None
     certificate_url: Optional[str] = None
@@ -45,10 +45,12 @@ def create_approval(
     due_at: datetime | None = None,
     description: str | None = None,
     *,
-    signature_provider: str = DEFAULT_PROVIDER,
+    signature_provider: str | None = None,
     document: bytes | None = None,
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
+    if signature_provider is None:
+        signature_provider = get_default_provider()
     approval_id = uuid4().hex
     doc_hash = hashlib.sha256(document).hexdigest() if document else None
     approval = ApprovalModel(

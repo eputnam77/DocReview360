@@ -84,7 +84,8 @@ from .documents import (
 )
 from .environment import current_environment, load_envs, switch_environment
 from .exporter import export_document, set_guardrails
-from .integrations.signature import DEFAULT_PROVIDER, get_provider
+from .integrations.signature import get_default_provider, get_provider
+from .settings_manager import load_settings, update_setting
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .nemo_guardrails import GuardrailsMiddleware, contains_pii
@@ -254,6 +255,12 @@ class ConfigPayload(BaseModel):
     debug: bool = False
     ai_auto_assign_writers: bool = False
     filename_template: str = "{id}"
+
+
+class SignatureProviderPayload(BaseModel):
+    """Payload for selecting the active signature provider."""
+
+    provider: str
 
 
 app = FastAPI(title="DocReview360")
@@ -1339,7 +1346,7 @@ async def sign_document(
     approval: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a signature request for ``doc_id`` using the active provider."""
-    sig_id, url = get_provider(DEFAULT_PROVIDER).request_signature(
+    sig_id, url = get_provider().request_signature(
         doc_id,
         user,
         workflow_id=workflow,
@@ -1697,6 +1704,25 @@ async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
     except OSError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return payload
+
+
+@app.get("/signature-provider")
+async def get_signature_provider_endpoint() -> dict[str, str]:
+    """Return the configured signature provider."""
+
+    settings = load_settings()
+    provider = settings.get("signature_provider", get_default_provider())
+    return {"provider": provider}
+
+
+@app.put("/signature-provider")
+async def update_signature_provider_endpoint(
+    payload: SignatureProviderPayload,
+) -> dict[str, str]:
+    """Persist the active signature provider selection."""
+
+    update_setting("signature_provider", payload.provider)
+    return {"provider": payload.provider}
 
 
 @app.post("/tools/convert")
