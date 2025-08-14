@@ -7,7 +7,7 @@ def dummy() -> None:
 
 
 def test_render_plugin_table() -> None:
-    registry.register("demo", dummy)
+    registry.register("sample", dummy)
     html = render_plugin_table()
-    assert "demo" in html
+    assert "sample" in html
     assert "enabled" in html

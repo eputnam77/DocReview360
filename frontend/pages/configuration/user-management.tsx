@@ -28,11 +28,6 @@ interface User {
   roles: string[]; // Now supports multiple roles
 }
 
-// --- Demo users ---
-const DEMO_USERS: User[] = [
-  { id: "u1", username: "admin", roles: ["admin"] },
-  { id: "u2", username: "jane", roles: ["editor"] },
-];
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -45,22 +40,22 @@ export default function UserManagementPage() {
   useEffect(() => {
     fetch(`${API}/users`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setUsers(
-          data.length
-            ? data.map((u) => ({
-                id: u.id || u.username,
-                username: u.username,
-                roles: Array.isArray(u.roles)
-                  ? u.roles
-                  : typeof u.role === "string"
-                  ? [u.role]
-                  : [],
-              }))
-            : DEMO_USERS,
+        .then((data: any[]) =>
+          setUsers(
+            data.length
+              ? data.map((u) => ({
+                  id: u.id || u.username,
+                  username: u.username,
+                  roles: Array.isArray(u.roles)
+                    ? u.roles
+                    : typeof u.role === "string"
+                    ? [u.role]
+                    : [],
+                }))
+              : []
+          )
         )
-      )
-      .catch(() => setUsers(DEMO_USERS));
+        .catch(() => setUsers([]));
   }, []);
 
   const addUser = () => {

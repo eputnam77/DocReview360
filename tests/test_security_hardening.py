@@ -13,9 +13,9 @@ from docreview360.security_hardening import (
 
 def test_import_realm_file(tmp_path: Path) -> None:
     p = tmp_path / "realm.json"
-    p.write_text('{"realm": "demo"}')
+    p.write_text('{"realm": "sample"}')
     data = import_realm_file(str(p))
-    assert data["realm"] == "demo"
+    assert data["realm"] == "sample"
 
 
 def test_import_realm_file_invalid(tmp_path: Path) -> None:

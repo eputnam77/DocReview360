@@ -46,14 +46,6 @@ interface Permission {
   allowed: boolean;
 }
 
-// --- Example permissions for initial view ---
-const DEMO_PERMISSIONS: Permission[] = [
-  { id: "admin-delete_project", role: "admin", action: "delete_project", allowed: true },
-  { id: "pm-delete_project", role: "pm", action: "delete_project", allowed: false },
-  { id: "user-view_document", role: "user", action: "view_document", allowed: true },
-  { id: "reviewer-approve_document", role: "reviewer", action: "approve_document", allowed: true },
-  { id: "viewer-edit_document", role: "viewer", action: "edit_document", allowed: false },
-];
 
 export default function PermissionsPage() {
   const [perms, setPerms] = useState<Permission[]>([]);
@@ -67,24 +59,24 @@ export default function PermissionsPage() {
     fetch(`${API}/rbac`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) {
-          const rows: Permission[] = [];
-          for (const [role, actions] of Object.entries<any>(data)) {
-            for (const [action, allowed] of Object.entries(actions as any)) {
-              rows.push({
-                id: `${role}-${action}`,
-                role,
-                action,
-                allowed: !!allowed,
-              });
+          if (data) {
+            const rows: Permission[] = [];
+            for (const [role, actions] of Object.entries<any>(data)) {
+              for (const [action, allowed] of Object.entries(actions as any)) {
+                rows.push({
+                  id: `${role}-${action}`,
+                  role,
+                  action,
+                  allowed: !!allowed,
+                });
+              }
             }
+            setPerms(rows);
+          } else {
+            setPerms([]);
           }
-          setPerms(rows);
-        } else {
-          setPerms(DEMO_PERMISSIONS);
-        }
-      })
-      .catch(() => setPerms(DEMO_PERMISSIONS));
+        })
+        .catch(() => setPerms([]));
   }, []);
 
   const addPermission = () => {

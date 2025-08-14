@@ -25,9 +25,9 @@ spec_notif.loader.exec_module(notifications)
 # FN-01
 
 def test_bad_placeholder_is_rejected() -> None:
-    notifications.add_template("demo", "{subject}", "Hello {name}")
+    notifications.add_template("sample", "{subject}", "Hello {name}")
     with pytest.raises(ValueError):
-        notifications.send_email("demo", "a@example.com", subject="Hi")
+        notifications.send_email("sample", "a@example.com", subject="Hi")
 
 
 # FN-02

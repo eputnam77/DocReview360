@@ -1,6 +1,6 @@
 """Plugin integration examples for DocReview360.
 
-This module demonstrates how real PyPI packages can be integrated
+This module shows how real PyPI packages can be integrated
 into DocReview360's document processing and review workflows.
 """
 

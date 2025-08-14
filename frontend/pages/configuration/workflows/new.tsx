@@ -82,7 +82,7 @@ export default function NewWorkflowPage() {
 
   const handleSave = async () => {
     const payload = { name, description, steps };
-    // naive demo submission
+    // naive submission
     await fetch(`${API}/workflows`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -103,7 +103,7 @@ export default function NewWorkflowPage() {
           });
         }
       } catch {
-        // ignore errors in demo
+        // ignore errors in development
       }
     }
 

@@ -118,7 +118,7 @@ export default function DocumentProcessorPage() {
         }
       } catch (error) {
         console.error("Failed to load enabled tools:", error);
-        // Default to no tools enabled for demo
+        // Default to no tools enabled for development
         setEnabledTools([]);
       }
     };

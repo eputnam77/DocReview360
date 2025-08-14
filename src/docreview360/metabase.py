@@ -35,7 +35,7 @@ def load_dashboards(path: str | Path) -> Dict[str, Any]:
 
 
 class MetabaseClient:
-    """Client wrapper returning fake chart data for demos."""
+    """Client wrapper returning fake chart data for tests."""
 
     def __init__(self, dashboards: Dict[str, Any] | None = None) -> None:
         self.dashboards = dashboards or {"charts": []}

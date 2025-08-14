@@ -51,16 +51,6 @@ TEMPLATES = [
         "type": "tiptap",
     },
     {
-        "id": "demo_tiptap",
-        "label": "Demo Memo (TipTap)",
-        "type": "tiptap",
-    },
-    {
-        "id": "demo_word",
-        "label": "Demo Letter (Word .docx)",
-        "type": "word",
-    },
-    {
         "id": "business_letter",
         "label": "Business Letter Template",
         "type": "word",
