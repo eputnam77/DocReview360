@@ -9,11 +9,12 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .integrations.signature import get_provider, DEFAULT_PROVIDER
-from .logs import log_event
-from .workflows import workflows
-from .quality import approval_likelihood
+from .documents import get_document
 from .fann_model import Weights
+from .integrations.signature import DEFAULT_PROVIDER, get_provider
+from .logs import log_event
+from .quality import approval_likelihood
+from .workflows import workflows
 
 
 class ApprovalModel(BaseModel):
@@ -242,6 +243,49 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
     if approval.document_hash is None:
         return True
     return approval.document_hash == hashlib.sha256(document).hexdigest()
+
+
+def verify_document_signature(doc_id: str) -> dict[str, object]:
+    """Verify digital signatures for approvals linked to ``doc_id``.
+
+    The function recomputes the document hash and compares it against any
+    stored approval hashes. For each matching approval it checks that the
+    approval is in the ``approved`` state and has an associated certificate.
+    Returns a dictionary with an overall ``status`` (``pass``/``fail``) and a
+    list of per-approval details.
+    """
+
+    document = get_document(doc_id)
+    if document is None:
+        raise KeyError("document not found")
+
+    doc_hash = hashlib.sha256(document.content.encode()).hexdigest()
+    details: list[dict[str, object]] = []
+    for approval in approvals.values():
+        if approval.document_hash != doc_hash:
+            continue
+        hash_valid = approval.document_hash == doc_hash
+        signature_valid = approval.state == "approved" and approval.signature_id is not None
+        certificate_present = approval.certificate_url is not None
+        details.append(
+            {
+                "approval_id": approval.id,
+                "signature_id": approval.signature_id,
+                "hash_valid": hash_valid,
+                "signature_valid": signature_valid,
+                "certificate_present": certificate_present,
+            }
+        )
+
+    status = (
+        "pass"
+        if details
+        and all(
+            d["hash_valid"] and d["signature_valid"] and d["certificate_present"] for d in details
+        )
+        else "fail"
+    )
+    return {"status": status, "details": details}
 
 
 def reset_approval(approval_id: str, confirm: bool) -> bool:
