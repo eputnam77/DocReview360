@@ -41,6 +41,7 @@ from .approvals import (
     list_approvals,
     send_for_signature,
     update_approval_state,
+    verify_document_signature,
 )
 from .archive import (
     ArchiveRecord,
@@ -50,6 +51,7 @@ from .archive import (
 from .archive import (
     archive_document as archive_doc,
 )
+from .audit import AuditEvent, get_audit_log
 from .cache import cache_get, cache_set, clear_cache
 from .cms import save_to_cms
 from .comments import CommentModel, add_comment, list_comments
@@ -82,7 +84,6 @@ from .documents import (
 from .environment import current_environment, load_envs, switch_environment
 from .exporter import export_document, set_guardrails
 from .integrations.signature import DEFAULT_PROVIDER, get_provider
-from .audit import AuditEvent, get_audit_log
 from .logs import LogEntry, log_event, log_stream, query_logs
 from .messages import render
 from .nemo_guardrails import GuardrailsMiddleware, contains_pii
@@ -691,6 +692,15 @@ async def get_document_audit_endpoint(doc_id: str) -> list[AuditEvent]:
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return get_audit_log(doc_id)
+
+
+@app.get("/documents/{doc_id}/verify-signature")
+async def verify_signature_endpoint(doc_id: str) -> dict[str, object]:
+    """Validate the digital signatures associated with ``doc_id``."""
+    try:
+        return verify_document_signature(doc_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.put("/documents/{doc_id}", response_model=DocumentModel)
