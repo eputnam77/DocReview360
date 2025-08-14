@@ -182,7 +182,7 @@ export default function EditProjectPage() {
       });
 
     // Fetch available phases
-    fetch(`${API}/phases`)
+    fetch("/api/phases")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         const phaseNames = Array.isArray(data)
@@ -195,10 +195,10 @@ export default function EditProjectPage() {
       });
 
     // Fetch available document types
-    fetch(`${API}/document-types`)
+    fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        const docTypeNames = data.length
+        const docTypeNames = Array.isArray(data)
           ? data.map((d: any) => (typeof d === "string" ? d : d.name))
           : [];
         setDocTypes(docTypeNames);
