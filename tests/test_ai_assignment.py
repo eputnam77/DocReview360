@@ -3,6 +3,7 @@ from collections import Counter
 
 import pytest
 
+from docreview360 import ai_balancer
 from docreview360.ai_writer_assign import assign_technical_writer
 from docreview360.config import Config
 from docreview360.search import ProjectModel, add_project, projects
@@ -20,6 +21,7 @@ def _restore_projects(snapshot: dict[str, ProjectModel]) -> None:
 
 def test_assignment_picks_least_loaded_writer() -> None:
     snap = _snapshot_projects()
+    ai_balancer.reset()
     try:
         add_project(ProjectModel(id="p1", name="A", user="alice", priority=1))
         add_project(ProjectModel(id="p2", name="B", user="bob", priority=3))
@@ -34,12 +36,16 @@ def test_assignment_picks_least_loaded_writer() -> None:
         chosen = assign_technical_writer("p3", ["alice", "bob"], cfg)
         assert chosen == "alice"
         assert projects["p3"].user == "alice"
+        assert ai_balancer.current_load("alice") == 2
+        assert ai_balancer.current_load("bob") == 1
     finally:
         _restore_projects(snap)
+        ai_balancer.reset()
 
 
 def test_assignment_disabled_raises() -> None:
     snap = _snapshot_projects()
+    ai_balancer.reset()
     try:
         add_project(ProjectModel(id="p4", name="D"))
         cfg = Config(
@@ -53,11 +59,13 @@ def test_assignment_disabled_raises() -> None:
             assign_technical_writer("p4", ["alice"], cfg)
     finally:
         _restore_projects(snap)
+        ai_balancer.reset()
 
 
 def test_concurrent_assignments_thread_safe() -> None:
     """Ensure concurrent assignments do not corrupt project workloads."""
     snap = _snapshot_projects()
+    ai_balancer.reset()
     try:
         cfg = Config(
             database="sqlite",
@@ -91,5 +99,8 @@ def test_concurrent_assignments_thread_safe() -> None:
         counts = Counter(assignments)
         assert sum(counts.values()) == len(project_ids)
         assert abs(counts.get("alice", 0) - counts.get("bob", 0)) <= 1
+        assert ai_balancer.current_load("alice") == counts.get("alice", 0)
+        assert ai_balancer.current_load("bob") == counts.get("bob", 0)
     finally:
         _restore_projects(snap)
+        ai_balancer.reset()
