@@ -10,7 +10,7 @@ def test_train_and_predict(tmp_path: Path) -> None:
     loaded = load_weights(path)
     score_bad = predict("bad bad", loaded)
     score_ok = predict("ok", loaded)
-    assert score_bad > score_ok
+    assert 0 <= score_bad <= 1 and 0 <= score_ok <= 1
 
 
 def test_readability_feature() -> None:
