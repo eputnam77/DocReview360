@@ -11,7 +11,7 @@ def parse_login_gov_response(saml_response: str) -> str:
     try:
         xml_bytes = b64decode(saml_response)
         root = ET.fromstring(xml_bytes)
-    except Exception as exc:  # pragma: no cover - invalid input errors
+    except Exception as exc:
         raise ValueError("invalid SAML response") from exc
 
     ns = {"saml2": "urn:oasis:names:tc:SAML:2.0:assertion"}

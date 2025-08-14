@@ -35,7 +35,7 @@ def test_vector_search_opensearch_fallback(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(httpx, "post", fake_post)
 
     class Dummy:
-        def raise_for_status(self) -> None:  # pragma: no cover - no-op
+        def raise_for_status(self) -> None:
             pass
 
     def fake_put(*args: object, **kwargs: object) -> Dummy:

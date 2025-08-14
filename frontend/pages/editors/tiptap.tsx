@@ -550,7 +550,7 @@ export default function TipTapEditorPage() {
     }
     base.push(tiptapStructure());
     return base;
-    // eslint-disable-next-line
+
   }, [
     lintEnabled,
     collabEnabled,

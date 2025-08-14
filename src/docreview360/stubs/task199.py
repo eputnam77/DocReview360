@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from ..stubs import record_task_completion
 
-try:  # pragma: no cover - optional dependency
+try:
     import importlib
 
     playwright_version = importlib.import_module("playwright").__version__
-except Exception:  # pragma: no cover - Playwright not installed
+except Exception:
     playwright_version = ""
 
 

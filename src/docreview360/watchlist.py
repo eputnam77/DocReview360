@@ -18,7 +18,7 @@ def _load() -> Dict[str, Set[str]]:
         return {u: set(v) for u, v in data.items()}
     except FileNotFoundError:
         return {}
-    except json.JSONDecodeError:  # pragma: no cover - corrupt file
+    except json.JSONDecodeError:
         return {}
 
 

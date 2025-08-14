@@ -1,7 +1,5 @@
 """Conversion wizard tests."""
 
-# mypy: ignore-errors
-
 import importlib.util
 import sys
 import types

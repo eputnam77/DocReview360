@@ -15,7 +15,7 @@ from prometheus_client import Counter, start_http_server
 
 try:
     import sentry_sdk as _sentry_sdk
-except Exception:  # pragma: no cover - optional dependency missing
+except Exception:
     _sentry_sdk = None
 
 sentry_sdk: Optional[ModuleType] = cast(Optional[ModuleType], _sentry_sdk)

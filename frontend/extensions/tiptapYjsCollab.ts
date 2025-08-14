@@ -21,7 +21,7 @@ export function tiptapYjsCollab() {
         const { WebrtcProvider } = await import("y-webrtc");
         const doc = new yjs.Doc();
         const provider = new WebrtcProvider("tiptap-demo", doc);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (this.editor as any).storage.yjs = { doc, provider };
       } catch (err) {
         console.warn("Yjs collaboration not available", err);
@@ -29,7 +29,7 @@ export function tiptapYjsCollab() {
     },
     onDestroy() {
       // Clean up Yjs provider if it was created
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const storage = (this.editor as any).storage.yjs;
       storage?.provider?.destroy();
     },

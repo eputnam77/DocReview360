@@ -13,7 +13,7 @@ def clone_workflow(wf_id: str, reviewers: Iterable[str] | None = None) -> Workfl
     """Return a copy of ``wf_id`` with optional ``reviewers`` override."""
     original = workflows.get(wf_id)
     if original is None:
-        raise KeyError(f"workflow {wf_id} not found")  # pragma: no cover
+        raise KeyError(f"workflow {wf_id} not found")
     clone = WorkflowModel(
         id=uuid4().hex,
         project=original.project,

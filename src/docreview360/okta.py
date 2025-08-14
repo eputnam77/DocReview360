@@ -19,5 +19,5 @@ def verify_okta_token(token: str, secret: str, issuer: str, audience: str) -> di
             algorithms=["HS256"],
         )
         return cast(Dict[str, Any], claims)
-    except JWTError as exc:  # pragma: no cover - invalid token branch
+    except JWTError as exc:
         raise ValueError("invalid token") from exc
