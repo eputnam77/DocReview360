@@ -5,18 +5,30 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
+from typing import Optional
+
+from .sharepoint import SharePointClient
 
 
-def sync_to_sharepoint(src: str | Path = "archives", dest: str | Path | None = None) -> int:
-    """Copy files from ``src`` to the SharePoint ``dest`` directory.
+def sync_to_sharepoint(
+    src: str | Path = "archives",
+    dest: str | Path | None = None,
+    *,
+    client: Optional[SharePointClient] = None,
+) -> int:
+    """Upload files from ``src`` to SharePoint or copy to ``dest``.
 
     Parameters
     ----------
     src:
         Source directory containing archived files.
     dest:
-        Destination directory. If omitted, uses the ``SHAREPOINT_ROOT``
-        environment variable.
+        Destination directory when using local copy. When ``client`` is
+        provided this is interpreted as the remote folder path and may be
+        ``None`` for the drive root.
+    client:
+        When provided, files are uploaded via the Microsoft Graph API instead
+        of copied locally.
 
     Returns
     -------
@@ -33,6 +45,17 @@ def sync_to_sharepoint(src: str | Path = "archives", dest: str | Path | None = N
     src_path = Path(src)
     if not src_path.is_dir():
         raise FileNotFoundError(f"{src_path} does not exist or is not a directory")
+
+    if client is not None:
+        folder = str(dest or "").strip("/")
+        count = 0
+        for item in src_path.rglob("*"):
+            if item.is_file():
+                rel = item.relative_to(src_path)
+                key = f"{folder}/{rel}" if folder else str(rel)
+                client.upload_file(key.replace("\\", "/"), item.read_bytes())
+                count += 1
+        return count
 
     if dest is None:
         env_dest = os.getenv("SHAREPOINT_ROOT")
