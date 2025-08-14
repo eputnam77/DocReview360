@@ -1,6 +1,6 @@
 # Navigating the UI
 
-The user interface contains a handful of simple pages that demonstrate the overall flow.
+The user interface contains a handful of simple pages that illustrate the overall flow.
 
 ## Login
 
@@ -24,7 +24,7 @@ The `/doceditor` page showcases a richer editor powered by Tiptap. It opens in a
 
 ## Review Tracker
 
-The review tracker page lists example documents along with progress bars and due dates. It demonstrates how a reviewer dashboard might appear in the finished product.
+The review tracker page lists example documents along with progress bars and due dates. It illustrates how a reviewer dashboard might appear in the finished product.
 
 ## Project Tracker
 

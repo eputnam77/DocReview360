@@ -30,5 +30,5 @@ def run_field_sync(base_url: str, token: str) -> None:
         resp.raise_for_status()
     except Exception:
         # Network issues are ignored during tests to avoid failures on
-        # unreachable demo servers.
+        # unreachable test servers.
         return

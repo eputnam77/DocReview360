@@ -54,14 +54,14 @@ const TIME_ZONES = [
   "Australia/Sydney",
 ];
 
-const DEMO_PROFILE: Profile = {
+const EMPTY_PROFILE: Profile = {
   picture: "",
-  displayName: "Demo User",
-  email: "demo@example.com",
+  displayName: "",
+  email: "",
   phone: "",
-  shorthand: "DU",
-  jobTitle: "Analyst",
-  department: "QA",
+  shorthand: "",
+  jobTitle: "",
+  department: "",
   timeZone: "America/New_York",
   dashboards: ["main"],
   permissions: ["user"],
@@ -72,7 +72,7 @@ const DEMO_PROFILE: Profile = {
 };
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile>({ ...DEMO_PROFILE });
+  const [profile, setProfile] = useState<Profile>({ ...EMPTY_PROFILE });
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [pictureFile, setPictureFile] = useState<File | null>(null);
@@ -82,18 +82,18 @@ export default function ProfilePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
-          setProfile({
-            ...DEMO_PROFILE,
-            ...data,
-            dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
-            permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
-            theme: ["system", "light", "dark"].includes(data.theme) ? data.theme : "system",
-          });
-        } else {
-          setProfile(DEMO_PROFILE);
-        }
-      })
-      .catch(() => setProfile(DEMO_PROFILE));
+            setProfile({
+              ...EMPTY_PROFILE,
+              ...data,
+              dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
+              permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
+              theme: ["system", "light", "dark"].includes(data.theme) ? data.theme : "system",
+            });
+          } else {
+            setProfile(EMPTY_PROFILE);
+          }
+        })
+        .catch(() => setProfile(EMPTY_PROFILE));
 
   }, []);
 
@@ -123,7 +123,7 @@ export default function ProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...profile, password: password || undefined }),
     }).catch(() => {});
-    alert("Profile saved (demo)");
+    alert("Profile saved");
     setPassword("");
     setPasswordConfirm("");
     setPictureFile(null);

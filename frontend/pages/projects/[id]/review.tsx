@@ -15,15 +15,6 @@ import {
 } from "@/components/ui/table";
 import { API } from "@/lib/api";
 
-const DEMO_REVIEWS: Review[] = [
-  {
-    id: "r1",
-    reviewer: "Demo",
-    status: "approved",
-    comment: "Looks good",
-    created: new Date().toISOString(),
-  },
-];
 
 interface Review {
   id: string;
@@ -48,11 +39,11 @@ export default function ProjectReviewPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`${API}/projects/${id}/reviews`)
-      .then((r) => (r.ok ? r.json() : DEMO_REVIEWS))
-      .then((data) => setReviews(Array.isArray(data) ? data : DEMO_REVIEWS))
-      .catch(() => setReviews(DEMO_REVIEWS))
-      .finally(() => setLoading(false));
+      fetch(`${API}/projects/${id}/reviews`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setReviews(Array.isArray(data) ? data : []))
+        .catch(() => setReviews([]))
+        .finally(() => setLoading(false));
   }, [id]);
 
   // Submit a new review/comment

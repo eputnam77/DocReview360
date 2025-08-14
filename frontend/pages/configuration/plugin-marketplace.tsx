@@ -216,7 +216,7 @@ export default function PluginMarketplace() {
 
         setPlugins(allPlugins);
       } catch (error) {
-        // Fallback to demo data if API fails
+        // Fallback to sample data if API fails
         setPlugins([
           {
             id: "govdocverify",

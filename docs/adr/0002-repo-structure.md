@@ -19,7 +19,7 @@ services/    - Additional microservices
 plugins/     - Editor and exporter extensions
 iac/         - Terraform templates
 monitoring/  - Grafana alerts and dashboards
-examples/    - Demo workflows and sample data
+examples/    - Example workflows and sample data
 scripts/     - Helper utilities for CI and development
 p/           - Semgrep rulesets for SAST
 ```

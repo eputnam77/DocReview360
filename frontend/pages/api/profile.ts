@@ -9,8 +9,8 @@ interface Profile {
   dashboards: string[];
 }
 
-let profile: Profile = {
-  username: "demo",
+  let profile: Profile = {
+  username: "user",
   email: "",
   phone: "",
   picture: "",

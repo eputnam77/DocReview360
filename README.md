@@ -329,7 +329,7 @@ mutmut results
 Run the commands above from your Codespace terminal. When `uvicorn` is running,
 forward port 8000 in the **Ports** panel and choose **Open in Browser** to access the login page.
 
-A demo token is available with:
+A test token is available with:
 ```bash
 curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/token
 ```

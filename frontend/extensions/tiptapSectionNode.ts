@@ -10,7 +10,7 @@ import { Node } from "@tiptap/core";
 /**
  * Section node consisting of a draggable block with a
  * level 2 heading at the top. This is a very light‑weight
- * implementation to demonstrate draggable sections.
+ * implementation to showcase draggable sections.
  */
 export function tiptapSectionNode() {
   return Node.create({

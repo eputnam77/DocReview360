@@ -25,7 +25,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { getDemoProject } from "@/data";
 import { API } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
@@ -127,104 +126,7 @@ interface VersionEntry {
 }
 
 // ---------------------------------------------------------------------------
-// 2 ▲ Demo data (swap with API)
-// ---------------------------------------------------------------------------
-const DEMO_PROJECT: Project = {
-  id: "123e-ac-101",
-  number: "AC 20-197",
-  type: "Advisory Circular",
-  title: "Turbine Engine and Airframe Sensor Icing Compliance",
-  status: "In Progress",
-  progress: 40,
-  updated: "2025-07-04",
-  owner: "Jane Doe",
-  editor: "tiptap",
-};
-const DEMO_WORKFLOW: Workflow = {
-  id: "wf-101",
-  phase: "Review",
-  steps: [
-    { name: "Draft", status: "complete" },
-    { name: "Review", status: "active" },
-    { name: "Approval", status: "pending" },
-    { name: "Published", status: "pending" },
-  ],
-};
-const DEMO_APPROVALS: Approval[] = [
-  {
-    id: "appr-1",
-    reviewer: "Jane Doe",
-    email: "jane@example.com",
-    state: "pending",
-    statusDate: "2025-07-04",
-    comments: "Please check the legal cites.",
-  },
-  {
-    id: "appr-2",
-    reviewer: "John Smith",
-    email: "john@example.com",
-    state: "approved",
-    statusDate: "2025-07-05",
-    signedAt: "2025-07-05T14:30:00Z",
-    comments: "Approved, no changes needed.",
-  },
-];
-const DEMO_DISPO_COMMENTS: DispoComment[] = [
-  {
-    id: "c1",
-    reviewer: "Jane Doe",
-    routing: "Legal",
-    email: "jane@example.com",
-    pagePara: "2/3.1",
-    comment: "Clarify regulatory reference.",
-    change: "Rewrite as: 'per 14 CFR 21.8…'",
-    disposition: "Accepted",
-    decision: "Accepted",
-    replies: [
-      {
-        id: "r1",
-        author: "Project Owner",
-        text: "Addressed in rev-3.",
-        date: "2025-07-05",
-      },
-    ],
-  },
-];
-const DEMO_LOGS: LogEntry[] = [
-  { timestamp: "2025-07-04", action: "Draft created" },
-  { timestamp: "2025-07-04", action: "Initial review started" },
-  { timestamp: "2025-07-05", action: "Draft updated" },
-];
-const DEMO_REFERENCE_DOCS: RefDoc[] = [
-  {
-    name: "Requirements.pdf",
-    url: "https://file-examples.com/wp-content/uploads/2017/10/file-sample_150kB.pdf",
-    type: "pdf",
-  },
-];
-const DEMO_VERSIONS: VersionEntry[] = [
-  {
-    id: "v1",
-    timestamp: "2025-07-04T10:00",
-    author: "Jane Doe",
-    action: "Draft uploaded",
-  },
-  {
-    id: "v2",
-    timestamp: "2025-07-04T18:30",
-    author: "John Smith",
-    action: "Minor edits",
-  },
-  {
-    id: "v3",
-    timestamp: "2025-07-05T09:15",
-    author: "Jane Doe",
-    action: "Address Legal comments",
-  },
-];
-
-// ---------------------------------------------------------------------------
-// 3 ▲ Utility helpers
+// Utility helpers
 // ---------------------------------------------------------------------------
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 function classNames(...classes: (string | false | undefined)[]) {
@@ -621,7 +523,7 @@ export default function ProjectDetailsPage() {
   const [dispos, setDispos] = useState<DispoComment[]>([]);
   const [refDocs, setRefDocs] = useState<RefDoc[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [versions] = useState(DEMO_VERSIONS);
+  const [versions] = useState<VersionEntry[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [showAddComment, setShowAddComment] = useState(false);
@@ -703,22 +605,19 @@ export default function ProjectDetailsPage() {
           setApprovals([]);
         }
         
-        // Set other data (using demo data for now)
-        setDispos(DEMO_DISPO_COMMENTS);
-        setRefDocs(DEMO_REFERENCE_DOCS);
-        setLogs(DEMO_LOGS);
+        // Set other data (placeholder until API provides it)
+        setDispos([]);
+        setRefDocs([]);
+        setLogs([]);
       })
       .catch((error) => {
         console.error('API call failed:', error);
-        console.log('Falling back to demo data');
-        const demo = getDemoProject(String(id));
-        if (demo) setProject(demo as Project);
-        else setProject(DEMO_PROJECT);
-        setWorkflow(DEMO_WORKFLOW);
-        setApprovals(DEMO_APPROVALS);
-        setDispos(DEMO_DISPO_COMMENTS);
-        setRefDocs(DEMO_REFERENCE_DOCS);
-        setLogs(DEMO_LOGS);
+        setProject(null);
+        setWorkflow(null);
+        setApprovals([]);
+        setDispos([]);
+        setRefDocs([]);
+        setLogs([]);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -952,7 +851,7 @@ export default function ProjectDetailsPage() {
     URL.revokeObjectURL(url);
   };
 
-  // ▼ save optimistic / autosave demo (debounce)
+  // ▼ save optimistic / autosave placeholder (debounce)
   const autosave = useCallback(() => {
     console.info("autosave stub");
   }, []);

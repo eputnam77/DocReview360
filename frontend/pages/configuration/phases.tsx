@@ -176,7 +176,7 @@ export default function PhasesPage() {
         };
         setPhases(normalize(data));
       } else {
-        // Fallback in demo/dev when API route isn't present
+        // Fallback when API route isn't present
         setPhases([...phases, { id: body.name, name: body.name }]);
       }
     } catch {
@@ -201,7 +201,7 @@ export default function PhasesPage() {
     try {
       await fetch(`${API}/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
     } catch {
-      // ignore network errors in demo mode
+      // ignore network errors in development mode
     }
   };
 
@@ -251,7 +251,7 @@ export default function PhasesPage() {
         body: JSON.stringify(body),
       });
     } catch {
-      // ignore network errors in demo mode
+      // ignore network errors in development mode
     }
     setEditingId(null);
     setEditName("");

@@ -4,7 +4,7 @@ from ..workflow_designer import clone_workflow
 
 
 def task144(wf_id: str) -> None:
-    """Clone a workflow for demonstration."""
+    """Clone a workflow for testing."""
 
     clone_workflow(wf_id)
     return None

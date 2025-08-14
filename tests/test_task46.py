@@ -15,7 +15,7 @@ def test_admin_access_control() -> None:
     USER_ROLES.clear()  # Clear all roles
     USER_ROLES["alice"] = {"user"}  # Reset to default state
 
-    # token for demo user "alice"
+    # token for user "alice"
     resp = client.post("/token", data={"username": "alice", "password": "password"})
     token = resp.json()["access_token"]
 

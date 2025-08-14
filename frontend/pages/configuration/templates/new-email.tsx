@@ -19,9 +19,9 @@ export default function NewEmailTemplatePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-    } catch {
-      // ignore network errors in demo mode
-    }
+      } catch {
+        // ignore network errors in development mode
+      }
     alert("Email template saved:\n" + JSON.stringify(payload, null, 2));
     setName("");
     setSubject("");

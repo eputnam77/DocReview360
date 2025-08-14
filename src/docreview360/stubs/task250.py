@@ -1,4 +1,4 @@
-"""Projects page demo fallback placeholder."""
+"""Projects page fallback placeholder."""
 
 from __future__ import annotations
 
@@ -12,4 +12,4 @@ def load_projects(api_available: bool) -> List[Dict[str, Any]]:
     record_task_completion(250)
     if api_available:
         return []
-    return [{"id": "demo", "name": "Sample Project"}]
+    return [{"id": "sample", "name": "Sample Project"}]

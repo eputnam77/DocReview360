@@ -17,7 +17,7 @@ import { LogIn } from "lucide-react";
 export default function LoginPage() {
   function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    alert("Login submitted (demo)");   // replace with real auth logic
+    alert("Login submitted");   // replace with real auth logic
   }
 
   return (

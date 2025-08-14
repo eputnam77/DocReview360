@@ -129,7 +129,7 @@ export default function DocumentTypesPage() {
     try {
       await fetch(`${API}/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
     } catch {
-      // ignore network errors in demo mode
+      // ignore network errors in development mode
     }
   };
 
@@ -179,7 +179,7 @@ export default function DocumentTypesPage() {
         body: JSON.stringify(body),
       });
     } catch {
-      // ignore network errors in demo mode
+      // ignore network errors in development mode
     }
     setEditingId(null);
     setEditName("");

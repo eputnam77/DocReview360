@@ -29,9 +29,9 @@ export default function Home() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-white">
       <Card className="max-w-md w-full shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center text-indigo-700">
-            DocReview360 Demo
-          </CardTitle>
+            <CardTitle className="text-2xl font-bold text-center text-indigo-700">
+              DocReview360
+            </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
           <p>

@@ -13,7 +13,7 @@ def task198(tmp: Path | None = None) -> bool:
     """Round trip a document through a git repo."""
     tmp = tmp or Path(tempfile.mkdtemp())
     repo = tmp / "repo"
-    doc = tmp / "demo.txt"
+    doc = tmp / "sample.txt"
     doc.write_text("hello")
     commit = push_document(doc, repo)
     result = pull_document(doc.name, repo)
