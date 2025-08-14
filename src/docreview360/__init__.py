@@ -28,6 +28,7 @@ __all__ = [
     "security_utils",
     "celery_app",
     "ai_utils",
+    "ai_writer_assign",
     "monitoring",
     "hr_sync",
     "seeds",
