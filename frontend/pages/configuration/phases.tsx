@@ -41,15 +41,6 @@ interface UsageInfo {
   workflows?: UsageWorkflow[];
 }
 
-const DEFAULT_PHASES: Phase[] = [
-    { id: "Internal FAA Review", name: "Internal FAA Review" },
-    { id: "Public Comment", name: "Public Comment" },
-    { id: "Final Issuance", name: "Final Issuance" },
-];
-
-// Default workflow that ships with the product
-const DEFAULT_WORKFLOWS = ["branch-coordination"];
-
 export default function PhasesPage() {
   const [phases, setPhases] = useState<Phase[]>([]);
   const [newName, setNewName] = useState("");
@@ -73,7 +64,7 @@ export default function PhasesPage() {
     }
 
     const normalizePhases = (items: unknown): Phase[] => {
-      if (!Array.isArray(items)) return DEFAULT_PHASES;
+      if (!Array.isArray(items)) return [];
       const list: Phase[] = items
         .map((item) => {
           if (typeof item === "string") {
@@ -94,11 +85,11 @@ export default function PhasesPage() {
           return null;
         })
         .filter(Boolean) as Phase[];
-      return list.length ? list : DEFAULT_PHASES;
+      return list.length ? list : [];
     };
 
     const normalizeWorkflows = (items: unknown): string[] => {
-      if (!Array.isArray(items)) return DEFAULT_WORKFLOWS;
+      if (!Array.isArray(items)) return [];
       const names = items
         .map((wf) =>
           typeof wf === "string"
@@ -108,7 +99,7 @@ export default function PhasesPage() {
             : null,
         )
         .filter((v): v is string => Boolean(v));
-      return names.length ? names : DEFAULT_WORKFLOWS;
+      return names.length ? names : [];
     };
 
     (async () => {
@@ -118,10 +109,10 @@ export default function PhasesPage() {
           const data = await r.json();
           setPhases(normalizePhases(data));
         } else {
-          setPhases(DEFAULT_PHASES);
+          setPhases([]);
         }
       } catch {
-        setPhases(DEFAULT_PHASES);
+        setPhases([]);
       }
 
       try {
@@ -130,10 +121,10 @@ export default function PhasesPage() {
           const data = await r.json();
           setWorkflows(normalizeWorkflows(data));
         } else {
-          setWorkflows(DEFAULT_WORKFLOWS);
+          setWorkflows([]);
         }
       } catch {
-        setWorkflows(DEFAULT_WORKFLOWS);
+        setWorkflows([]);
       }
     })();
   }, []);

@@ -23,10 +23,8 @@ export default function NewProjectPage() {
   const router = useRouter();
   // Document Number is provided by the user. The immutable Document ID will be
   // generated server-side when the project is created.
-  const DEMO_DOC_TYPES: string[] = [];
-  const DEMO_PHASES: string[] = [];
-  const [docTypes, setDocTypes] = useState<string[]>(DEMO_DOC_TYPES);
-  const [phases, setPhases] = useState<string[]>(DEMO_PHASES);
+  const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [phases, setPhases] = useState<string[]>([]);
   const [docNumber, setDocNumber] = useState("");
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
@@ -57,13 +55,13 @@ export default function NewProjectPage() {
         console.log('Document types API data:', data);
         const docTypeNames = data.length
           ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-          : DEMO_DOC_TYPES;
+          : [];
         console.log('Setting document types to:', docTypeNames);
         setDocTypes(docTypeNames);
       })
       .catch((error) => {
         console.error('Error fetching document types:', error);
-        setDocTypes(DEMO_DOC_TYPES);
+        setDocTypes([]);
       });
     fetch(`${API}/phases`)
       .then((r) => (r.ok ? r.json() : []))
@@ -71,13 +69,13 @@ export default function NewProjectPage() {
         console.log('Phases API data:', data);
         const phaseNames = data.length
           ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-          : DEMO_PHASES;
+          : [];
         console.log('Setting phases to:', phaseNames);
         setPhases(phaseNames);
       })
       .catch((error) => {
         console.error('Error fetching phases:', error);
-        setPhases(DEMO_PHASES);
+        setPhases([]);
       });
   }, []);
 

@@ -21,14 +21,10 @@ export default function NewWorkflowPage() {
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<any[]>([]);
   const [role, setRole] = useState("");
-  // Demo document types used if API returns none
-  const DEMO_DOC_TYPES: string[] = [];
-  const [docTypes, setDocTypes] = useState<string[]>(DEMO_DOC_TYPES);
+  const [docTypes, setDocTypes] = useState<string[]>([]);
   const [docTypesSelected, setDocTypesSelected] = useState<string[]>([]);
   const [user, setUser] = useState("");
-  // Demo users if API call fails
-  const DEMO_USERS = ["admin", "jane"];
-  const [users, setUsers] = useState<string[]>(DEMO_USERS);
+  const [users, setUsers] = useState<string[]>([]);
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
@@ -49,16 +45,16 @@ export default function NewWorkflowPage() {
       .then((data: any[]) => {
         if (Array.isArray(data) && data.length) {
           setUsers(
-            data.map((u) =>
-              typeof u === "string" ? u : u.username || ""
-            ).filter(Boolean)
+            data
+              .map((u) => (typeof u === "string" ? u : u.username || ""))
+              .filter(Boolean)
           );
         } else {
-          setUsers(DEMO_USERS);
+          setUsers([]);
         }
       })
       .catch(() => {
-        setUsers(DEMO_USERS);
+        setUsers([]);
       });
   }, []);
 
