@@ -46,6 +46,29 @@ def current_load(worker: str) -> int:
     return _workers[worker]
 
 
+def deregister_worker(name: str) -> int:
+    """Remove ``name`` from the balancer and return its outstanding load.
+
+    Parameters
+    ----------
+    name:
+        Identifier of the worker to remove.
+
+    Returns
+    -------
+    int
+        The number of active jobs the worker had when removed.
+
+    Raises
+    ------
+    KeyError
+        If ``name`` is not currently registered.
+    """
+    if name not in _workers:
+        raise KeyError(name)
+    return _workers.pop(name)
+
+
 def reset() -> None:
     """Remove all workers and job counts (used in tests)."""
     _workers.clear()
