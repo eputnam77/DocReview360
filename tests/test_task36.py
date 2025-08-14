@@ -1,9 +1,12 @@
+import pytest
+
 from docreview360.ai_balancer import (
     assign_job,
     complete_job,
     current_load,
     register_worker,
     reset,
+    deregister_worker,
 )
 from docreview360.ai_writer_assign import assign_technical_writer
 from docreview360.config import Config
@@ -45,3 +48,17 @@ def test_writer_assignment_updates_balancer() -> None:
         for pid, proj in snapshot.items():
             projects[pid] = proj
         reset()
+
+
+def test_deregister_worker_returns_outstanding_load() -> None:
+    reset()
+    register_worker("alice")
+    register_worker("bob")
+    # Create some load across workers
+    for _ in range(5):
+        assign_job()
+    load = deregister_worker("alice")
+    assert load == 3
+    with pytest.raises(KeyError):
+        current_load("alice")
+    assert current_load("bob") == 2
