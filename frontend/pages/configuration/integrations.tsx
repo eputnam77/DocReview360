@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 const DATABASES = ["postgres", "mysql", "sqlite"];
 const EDITORS = ["tiptap", "onlyoffice", "xml", "word"];
 const CMS_OPTIONS = ["none", "local"];
+const SIGNATURE_PROVIDERS = ["documenso", "local"];
 
 const SETTING_DESCRIPTIONS: Record<string, string> = {
   database: "The backend database used by the app.",
@@ -87,19 +88,29 @@ const DEFAULT_CONFIG: Record<string, string | number | boolean> = {
 };
 
 export default function IntegrationsPage() {
-  const [config, setConfig] = useState<Record<string, string | number | boolean>>(DEFAULT_CONFIG);
+  const [config, setConfig] =
+    useState<Record<string, string | number | boolean>>(DEFAULT_CONFIG);
+  const [signatureProvider, setSignatureProvider] = useState("documenso");
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
-    fetch(`${API}/config`)
-      .then((r) => (r.ok ? r.json() : DEFAULT_CONFIG))
-      .then((data) =>
-        setConfig(Object.keys(data || {}).length ? data : DEFAULT_CONFIG),
-      )
-      .catch(() => setConfig(DEFAULT_CONFIG));
+    Promise.all([
+      fetch(`${API}/config`).then((r) => (r.ok ? r.json() : DEFAULT_CONFIG)),
+      fetch(`${API}/signature-provider`).then((r) =>
+        r.ok ? r.json() : { provider: "documenso" },
+      ),
+    ])
+      .then(([cfg, prov]) => {
+        setConfig(Object.keys(cfg || {}).length ? cfg : DEFAULT_CONFIG);
+        setSignatureProvider(prov.provider);
+      })
+      .catch(() => {
+        setConfig(DEFAULT_CONFIG);
+        setSignatureProvider("documenso");
+      });
   }, []);
 
   const update = (key: string, value: string | number | boolean) => {
@@ -119,7 +130,12 @@ export default function IntegrationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
-      if (resp.ok) {
+      const sigResp = await fetch(`${API}/signature-provider`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: signatureProvider }),
+      });
+      if (resp.ok && sigResp.ok) {
         alert(
           "Configuration saved. Changing integrations may require a restart and could cause data loss.",
         );
@@ -192,6 +208,24 @@ export default function IntegrationsPage() {
             </SelectTrigger>
             <SelectContent>
               {CMS_OPTIONS.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Signature Provider</Label>
+          <Select
+            value={signatureProvider}
+            onValueChange={(v) => setSignatureProvider(v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {SIGNATURE_PROVIDERS.map((opt) => (
                 <SelectItem key={opt} value={opt}>
                   {opt}
                 </SelectItem>

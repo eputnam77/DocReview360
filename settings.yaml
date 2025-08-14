@@ -1,3 +1,4 @@
+signature_provider: documenso
 dash_bob:
   activity: true
   logs: true
