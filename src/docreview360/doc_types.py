@@ -22,25 +22,38 @@ class DocumentTypeModel(BaseModel):
 document_types: Dict[str, DocumentTypeModel] = {}
 
 
+# Names of document types that ship with the system by default.
+DEFAULT_DOC_TYPE_NAMES = [
+    "Advisory Circular",
+    "API Guide",
+    "CLI Guide",
+    "Deviation Memorandum",
+    "Exemption",
+    "Federal Register Notice",
+    "General Memorandum",
+    "Manual",
+    "Order",
+    "Policy Memorandum",
+    "Policy Statement",
+    "Release Notes",
+    "Rulemaking",
+    "Special Class Airworthiness Criteria",
+    "Special Conditions",
+    "Standard Operating Procedure",
+    "Technical Standard Order",
+    "White Paper",
+]
+
+
 def _bootstrap_sample() -> None:
     """Create default document types if none exist."""
     if not document_types:
-        # Add FAA-specific document types
-        document_types["Advisory Circular"] = DocumentTypeModel(
-            name="Advisory Circular",
-            template="<h1>Advisory Circular</h1>",
-            workflow=["draft", "review", "final"],
-        )
-        document_types["Policy Statement"] = DocumentTypeModel(
-            name="Policy Statement",
-            template="<h1>Policy Statement</h1>",
-            workflow=["draft", "review", "final"],
-        )
-        document_types["Release Notes"] = DocumentTypeModel(
-            name="Release Notes",
-            template="<h1>Release Notes</h1>",
-            workflow=["draft", "review", "final"],
-        )
+        for name in DEFAULT_DOC_TYPE_NAMES:
+            document_types[name] = DocumentTypeModel(
+                name=name,
+                template=f"<h1>{name}</h1>",
+                workflow=["draft", "review", "final"],
+            )
 
 
 
