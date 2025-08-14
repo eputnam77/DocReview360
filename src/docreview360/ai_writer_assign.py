@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Iterable
 from threading import Lock
+from typing import Iterable
 
 from . import ai_balancer
 from .config import CONFIG_FILE, Config

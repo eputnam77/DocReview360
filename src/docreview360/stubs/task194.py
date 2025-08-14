@@ -14,7 +14,7 @@ def task194() -> bool:
     client = TestClient(app)
     resp = client.post(
         f"/workflows/{wf.id}/start",
-        data={"title": "demo"},
+        data={"title": "sample"},
     )
     record_task_completion(194)
     return resp.status_code == 200 and resp.json()["id"] == wf.id

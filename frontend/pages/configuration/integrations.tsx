@@ -74,7 +74,7 @@ const EXTRA_INTEGRATIONS = [
   { label: "GitHub Sync", value: "Enabled" },
 ];
 
-const DEMO_CONFIG: Record<string, string | number | boolean> = {
+const DEFAULT_CONFIG: Record<string, string | number | boolean> = {
   database: "sqlite",
   editor: "tiptap",
   cms: "none",
@@ -87,7 +87,7 @@ const DEMO_CONFIG: Record<string, string | number | boolean> = {
 };
 
 export default function IntegrationsPage() {
-  const [config, setConfig] = useState<Record<string, string | number | boolean>>(DEMO_CONFIG);
+  const [config, setConfig] = useState<Record<string, string | number | boolean>>(DEFAULT_CONFIG);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -95,11 +95,11 @@ export default function IntegrationsPage() {
 
   useEffect(() => {
     fetch(`${API}/config`)
-      .then((r) => (r.ok ? r.json() : DEMO_CONFIG))
+      .then((r) => (r.ok ? r.json() : DEFAULT_CONFIG))
       .then((data) =>
-        setConfig(Object.keys(data || {}).length ? data : DEMO_CONFIG),
+        setConfig(Object.keys(data || {}).length ? data : DEFAULT_CONFIG),
       )
-      .catch(() => setConfig(DEMO_CONFIG));
+      .catch(() => setConfig(DEFAULT_CONFIG));
   }, []);
 
   const update = (key: string, value: string | number | boolean) => {
@@ -127,7 +127,7 @@ export default function IntegrationsPage() {
         alert("Failed to save configuration");
       }
     } catch {
-      alert("Failed to save configuration (offline demo)");
+      alert("Failed to save configuration");
     }
   };
 

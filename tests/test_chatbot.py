@@ -11,14 +11,14 @@ from docreview360.workflows import create_workflow
 
 @pytest.mark.asyncio
 async def test_assigned_user() -> None:
-    add_project(ProjectModel(id="p1", name="Demo", user="alice"))
+    add_project(ProjectModel(id="p1", name="Sample", user="alice"))
     resp = await chat_bot.answer_question("Who is assigned to p1?")
     assert resp == "alice is assigned to p1."
 
 
 @pytest.mark.asyncio
 async def test_project_status() -> None:
-    add_project(ProjectModel(id="p2", name="Demo2"))
+    add_project(ProjectModel(id="p2", name="Sample2"))
     create_workflow("p2", ["draft", "review"])
     resp = await chat_bot.answer_question("What's the status of p2?")
     assert resp == "p2 is currently in the draft phase."
@@ -26,8 +26,8 @@ async def test_project_status() -> None:
 
 @pytest.mark.asyncio
 async def test_user_workload() -> None:
-    add_project(ProjectModel(id="p3", name="Demo3", user="bob"))
-    add_project(ProjectModel(id="p4", name="Demo4", user="bob"))
+    add_project(ProjectModel(id="p3", name="Sample3", user="bob"))
+    add_project(ProjectModel(id="p4", name="Sample4", user="bob"))
     resp = await chat_bot.answer_question("What is the workload for bob?")
     assert resp == "bob has 2 projects assigned."
 
@@ -54,7 +54,7 @@ async def test_list_templates() -> None:
 @pytest.mark.asyncio
 async def test_user_response_time() -> None:
     # Create a workflow and approval for testing
-    add_project(ProjectModel(id="p5", name="Demo5"))
+    add_project(ProjectModel(id="p5", name="Sample5"))
     workflow = create_workflow("p5", ["draft", "review"])
 
     # Create an approval

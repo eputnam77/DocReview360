@@ -21,7 +21,7 @@ export default async function handler(
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      // Clear, actionable error to configure OpenRouter for demo usage
+      // Clear, actionable error to configure OpenRouter for local usage
       return res.status(500).json({
         error:
           "OPENROUTER_API_KEY not set. Add it to frontend/.env.local to enable AI suggestions.",

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { API } from "@/lib/api";
 
-const DEMO_FILE = "demo.pdf";
+const FALLBACK_FILE = "sample.pdf";
 
 export default function ConverterPage() {
   const [result, setResult] = useState<string | null>(null);
@@ -18,11 +18,11 @@ export default function ConverterPage() {
         const data = await res.json();
         setResult(data.filename);
       } else {
-        setResult(DEMO_FILE);
+          setResult(FALLBACK_FILE);
       }
-    } catch {
-      setResult(DEMO_FILE);
-    }
+      } catch {
+        setResult(FALLBACK_FILE);
+      }
   };
 
   return (

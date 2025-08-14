@@ -71,20 +71,20 @@ Below is a short end-to-end walkthrough using the CLI and projects page together
 
 1. Create a new project:
    ```bash
-   docreview360 project create "Demo Project"
+   docreview360 project create "Sample Project"
    ```
 2. Upload a document and open it in the editor:
    ```bash
-   docreview360 document add --project "Demo Project" docs/index.md
+   docreview360 document add --project "Sample Project" docs/index.md
    ```
    Refresh your browser to see the file listed.
 3. Request an approval from a team member:
    ```bash
-   docreview360 approval request --project "Demo Project" --user alice
+   docreview360 approval request --project "Sample Project" --user alice
    ```
 4. Once approved, export the document to PDF:
    ```bash
-   docreview360 export pdf --project "Demo Project" --out demo.pdf
+   docreview360 export pdf --project "Sample Project" --out output.pdf
    ```
 5. Check the projects page to download the generated PDF and confirm the project status.
 

@@ -103,7 +103,7 @@ export default function DocumentAnalysisPage() {
         }
       } catch (error) {
         console.error("Failed to load enabled tools:", error);
-        // Default to all tools enabled for demo
+        // Default to all tools enabled for development
         setEnabledTools(ANALYSIS_TOOLS.map(tool => tool.id));
       }
     };

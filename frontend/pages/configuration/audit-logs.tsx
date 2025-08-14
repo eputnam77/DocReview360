@@ -16,28 +16,6 @@ interface LogEntry {
   metadata?: Record<string, any>;
 }
 
-const DEMO_LOGS: LogEntry[] = [
-  {
-    timestamp: "2025-07-04T16:10:00Z",
-    action: "Approved project",
-    metadata: { user: "Jane Doe", project: "AC-002" },
-  },
-  {
-    timestamp: "2025-07-03T14:20:00Z",
-    action: "Created project",
-    metadata: { user: "Alice Lee", project: "AC-005" },
-  },
-  {
-    timestamp: "2025-07-02T10:00:00Z",
-    action: "Uploaded document",
-    metadata: { user: "John Smith", project: "AC-001" },
-  },
-  {
-    timestamp: "2025-07-01T09:00:00Z",
-    action: "Assigned reviewer",
-    metadata: { user: "Team Beta", project: "AC-004" },
-  },
-];
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -45,18 +23,18 @@ export default function AuditLogsPage() {
   useEffect(() => {
     fetch(`${API}/audit`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: LogEntry[]) =>
-        setLogs(
-          data.length
-            ? data.sort(
-                (a, b) =>
-                  new Date(b.timestamp).getTime() -
-                  new Date(a.timestamp).getTime(),
-              )
-            : DEMO_LOGS,
-        ),
-      )
-      .catch(() => setLogs(DEMO_LOGS));
+        .then((data: LogEntry[]) =>
+          setLogs(
+            data.length
+              ? data.sort(
+                  (a, b) =>
+                    new Date(b.timestamp).getTime() -
+                    new Date(a.timestamp).getTime(),
+                )
+              : []
+          ),
+        )
+        .catch(() => setLogs([]));
 
     const ws = new WebSocket(`ws://${window.location.host}/ws/logs`);
     ws.onmessage = (ev) => {

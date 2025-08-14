@@ -282,7 +282,9 @@ async def current_user_endpoint(x_user: str | None = Header(None)) -> dict[str, 
     The frontend uses this endpoint to hydrate the global user store. In a real
     deployment this would rely on session middleware or OIDC claims.
     """
-    return {"username": x_user or "demo", "is_admin": True}
+    if not x_user:
+        raise HTTPException(status_code=401, detail="Missing user")
+    return {"username": x_user, "is_admin": True}
 
 
 class PreferencePayload(BaseModel):
@@ -1331,7 +1333,7 @@ async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
 
 @app.post("/oidc/token", response_model=auth.Token)
 async def oidc_token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
-    """Return an ID token using the OIDC demonstration flow."""
+    """Return an ID token using the OIDC flow."""
     return await auth.login_for_oidc_token(form_data)
 
 

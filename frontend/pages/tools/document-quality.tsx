@@ -96,7 +96,7 @@ export default function DocumentQualityPage() {
         }
       } catch (error) {
         console.error("Failed to load enabled tools:", error);
-        // Default to built-in tools enabled for demo
+        // Default to built-in tools enabled for development
         setEnabledTools(QUALITY_TOOLS.filter(tool => tool.isBuiltIn).map(tool => tool.id));
       }
     };

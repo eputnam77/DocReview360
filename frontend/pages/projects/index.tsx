@@ -12,7 +12,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEMO_PROJECTS } from "@/data";
 import { useUserStore } from "@/state/user";
 import { API } from "@/lib/api";
 
@@ -90,11 +89,9 @@ export default function ProjectList() {
       headers["X-User"] = username;
     }
     fetch(`${API}/projects`, { headers })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: Project[]) =>
-        setProjects(data.length > 0 ? data : DEMO_PROJECTS)
-      )
-      .catch(() => setProjects(DEMO_PROJECTS));
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: Project[]) => setProjects(data))
+        .catch(() => setProjects([]));
   }, [username]);
 
   // Calculate simple stats for this user
