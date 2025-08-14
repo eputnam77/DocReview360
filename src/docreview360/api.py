@@ -401,6 +401,71 @@ async def get_project_endpoint(project_id: str) -> ProjectModel:
     return project
 
 
+async def _parse_update_body(request: Request) -> tuple[ProjectUpdate | None, bool]:
+    """Return the JSON body and whether the workflow field was provided."""
+    if request.headers.get("content-type", "").startswith("application/json"):
+        data = await request.json()
+        return ProjectUpdate(**data), "workflow" in data
+    return None, False
+
+
+def _resolve_workflow(
+    request: Request,
+    workflow_provided: bool,
+    workflow: str | None,
+    body: ProjectUpdate | None,
+    project_id: str,
+) -> tuple[str | None, bool]:
+    """Determine new workflow information from the request."""
+    is_json = request.headers.get("content-type", "").startswith("application/json")
+    if is_json:
+        if workflow_provided:
+            if workflow is not None:
+                start_phase = body.phase if (body and body.phase) else "start"
+                wf = create_workflow(project_id, [start_phase])
+                return wf.id, True
+            return None, True
+        return None, False
+    if workflow is not None:
+        wf = create_workflow(project_id, ["start"])
+        return wf.id, True
+    return None, False
+
+
+def _update_workflow_phase(
+    request: Request, body: ProjectUpdate | None, updated_project: ProjectModel
+) -> None:
+    """Update an existing workflow's phase when only the phase is provided."""
+    if not body or body.phase is None:
+        return
+    is_json = request.headers.get("content-type", "").startswith("application/json")
+    if not is_json:
+        return
+    from .workflows import get_workflow as _get_wf
+
+    wf_id_to_update = updated_project.workflow
+    if not wf_id_to_update:
+        return
+    wf_model = _get_wf(wf_id_to_update)
+    if wf_model:
+        wf_model.phase = body.phase
+        if body.phase not in wf_model.phases:
+            wf_model.phases.append(body.phase)
+
+
+async def _import_uploaded_file(
+    file: UploadFile, project_id: str, project_user: str | None
+) -> None:
+    """Import an uploaded file as a document for the given project."""
+    content = await file.read()
+    import_document(
+        file.filename or "uploaded_document",
+        content,
+        project=project_id,
+        user=project_user,
+    )
+
+
 @app.put("/projects/{project_id}", response_model=ProjectModel)
 async def update_project_endpoint(
     project_id: str,
@@ -417,80 +482,38 @@ async def update_project_endpoint(
 ) -> ProjectModel:
     """Update project fields like name, user, doc_type, or workflow."""
     try:
-        body: ProjectUpdate | None = None
-        workflow_provided = False
-        if request.headers.get("content-type", "").startswith("application/json"):
-            data = await request.json()
-            # Track whether the workflow field was explicitly present (even if null)
-            workflow_provided = "workflow" in data
-            body = ProjectUpdate(**data)
+        body, workflow_provided = await _parse_update_body(request)
 
-        if body is not None:
+        if body:
             if body.name is not None:
                 name = body.name
             if body.user is not None:
                 user = body.user
             if body.doc_type is not None:
                 doc_type = body.doc_type
-            # Preserve explicit nulls: only overwrite when non-null; otherwise
-            # keep current value of `workflow` variable but mark it as provided
             if body.workflow is not None:
                 workflow = body.workflow
 
-        # Map frontend fields to backend fields
         project_user = user or sme
         project_doc_type = doc_type or docType
 
-        workflow_id: str | None = None
-        workflow_set = False
-        if request.headers.get("content-type", "").startswith("application/json"):
-            # JSON path: rely on workflow_provided flag to decide if we should update
-            if workflow_provided:
-                workflow_set = True
-                if workflow is not None:
-                    # Create a new workflow for this project; if a phase was supplied
-                    # in the same payload, use it as the starting phase.
-                    start_phase = body.phase if (body and body.phase) else "start"
-                    wf = create_workflow(project_id, [start_phase])
-                    workflow_id = wf.id
-                else:
-                    workflow_id = None  # explicit clear
-        else:
-            # Form path: update when a value is provided (cannot distinguish explicit nulls)
-            if workflow is not None:
-                wf = create_workflow(project_id, ["start"])  # default when sent via form
-                workflow_id = wf.id
-                workflow_set = True
+        workflow_id, workflow_set = _resolve_workflow(
+            request, workflow_provided, workflow, body, project_id
+        )
 
-        # Update the project with the provided fields
         updated_project = update_project(
             project_id,
-            name=name or title,  # Map title to name for frontend compatibility
+            name=name or title,
             user=project_user,
             doc_type=project_doc_type,
             workflow=workflow_id,
             workflow_set=workflow_set,
         )
 
-        # If only the phase was provided, update the existing workflow's phase
-        if request.headers.get("content-type", "").startswith("application/json") and body is not None:
-            if body.phase is not None:
-                from .workflows import get_workflow as _get_wf
-                wf_id_to_update = updated_project.workflow
-                if wf_id_to_update:
-                    wf_model = _get_wf(wf_id_to_update)
-                    if wf_model:
-                        wf_model.phase = body.phase
-                        # Optionally ensure the new phase exists in the phases list
-                        if body.phase not in wf_model.phases:
-                            wf_model.phases.append(body.phase)
+        _update_workflow_phase(request, body, updated_project)
 
-        # If a file was uploaded, import it as a document for this project
         if file:
-            content = await file.read()
-            import_document(
-                file.filename or "uploaded_document", content, project=project_id, user=project_user
-            )
+            await _import_uploaded_file(file, project_id, project_user)
 
         return updated_project
     except KeyError as exc:
