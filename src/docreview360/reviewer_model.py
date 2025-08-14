@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 from .ai_utils import FANN_FEATURE_NAMES, _fann_features
+from .fann_model import Weights, update_model
 
 
 def _feature_dict(text: str) -> Dict[str, float]:
@@ -59,3 +60,35 @@ class ReviewerModel:
                 best_score = score
                 best = reviewer
         return best
+
+    def ingest_feedback(
+        self, reviewer: str, text: str, approved: bool, weights: Weights
+    ) -> Weights:
+        """Incorporate reviewer feedback and update the global model.
+
+        The reviewer's preferences and decision history are updated and the
+        provided ``weights`` are incrementally trained on the new labelled
+        example, enabling a continual learning loop.
+        """
+
+        self.update_preferences(reviewer, text)
+        self.record_decision(reviewer, approved)
+        label = 1 if approved else 0
+        return update_model(weights, [text], [label])
+
+    def approval_rate(self, reviewer: str) -> float:
+        """Return fraction of approvals issued by ``reviewer``."""
+
+        prof = self._profiles.get(reviewer)
+        if not prof or not prof.decisions:
+            return 1.0
+        return sum(1 for d in prof.decisions if d) / len(prof.decisions)
+
+    def anomalous_reviewers(self, threshold: float = 0.2) -> List[str]:
+        """Return reviewers whose approval rate deviates from the mean."""
+
+        if not self._profiles:
+            return []
+        rates = {r: self.approval_rate(r) for r in self._profiles}
+        avg = sum(rates.values()) / len(rates)
+        return [r for r, rate in rates.items() if abs(rate - avg) > threshold]

@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from .logs import log_event
 from .workflows import workflows
 from .integrations.signature import get_provider, DEFAULT_PROVIDER
+from .quality import approval_likelihood
+from .fann_model import Weights
 
 
 class ApprovalModel(BaseModel):
@@ -78,6 +80,29 @@ def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
     if workflow is None:
         return list(approvals.values())
     return [a for a in approvals.values() if a.workflow == workflow]
+
+
+def submit_draft_for_approval(
+    workflow: str,
+    reviewer: str,
+    text: str,
+    weights: Weights,
+    *,
+    threshold: float = 0.5,
+    extra_reviewer: str = "policy",
+) -> ApprovalModel:
+    """Score ``text`` and route for additional review if risky.
+
+    Drafts with an approval likelihood below ``threshold`` are first sent to
+    ``extra_reviewer`` before the main ``reviewer`` receives the approval
+    request.  This connects FANN scoring with the workflow system for
+    proactive risk mitigation.
+    """
+
+    score = approval_likelihood(text, weights)
+    if score < threshold:
+        create_approval(workflow, extra_reviewer, description="Auto risk review")
+    return create_approval(workflow, reviewer, description="Primary review")
 
 
 def update_approval_state(
