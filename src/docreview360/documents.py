@@ -114,7 +114,7 @@ def import_document(
     log_audit_event(
         doc_id,
         "created",
-        user=user,
+        actor=user,
         project=project,
         filename=filename,
     )
@@ -166,7 +166,7 @@ def update_document(
     # Re-index the updated document
     search_module.add_document(document)
     fts.index_document(doc_id, document.content)
-    log_audit_event(doc_id, "updated", user=document.user, priority=priority)
+    log_audit_event(doc_id, "updated", actor=document.user, priority=priority)
 
     return document
 
