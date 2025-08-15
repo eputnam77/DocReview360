@@ -126,14 +126,16 @@ class SearchIndex:
 
     def __init__(self) -> None:
         self._next_project_number = 1
-        # Generate a proper UUID for the default project
-        default_id = str(uuid.uuid4())
+        # Provide a stable demo project for frontend development
+        default_id = "demo-project"
         current_time = datetime.now(UTC)
         default = ProjectModel(
             id=default_id,
-            name="Example",
+            name="Demo Project",
             number=self._next_project_number,
-            document_number="1",  # Legacy support
+            document_number="DOC-001",
+            user="demo_user",
+            doc_type="General",
             updated=current_time,
         )
         self._next_project_number += 1
