@@ -3,20 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     Table,
     TableBody,
@@ -39,9 +26,7 @@ import {
     History,
     LayoutList,
     Mail,
-    MessageSquarePlus,
     MoreHorizontal,
-    PlusCircle,
     RotateCcw,
     Trash,
     Users2
@@ -153,19 +138,6 @@ function ProgBar({ value }: { value: number }) {
   );
 }
 
-// Bulk bar
-function BulkBar({ count, onEmail }: { count: number; onEmail: () => void }) {
-  if (count === 0) return null;
-  return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-full px-5 py-2 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
-      <span className="text-sm font-medium">{count} selected</span>
-      <Button size="sm" onClick={onEmail}>
-        <Mail className="w-4 h-4 mr-1" /> Email selected
-      </Button>
-    </div>
-  );
-}
-
 // Row action menu
 function RowMenu({ children }: { children: React.ReactNode }) {
   return (
@@ -194,7 +166,7 @@ function RowMenu({ children }: { children: React.ReactNode }) {
 const NAV = [
   { id: "details", label: "Details" },
   { id: "approvals", label: "Approvals" },
-  { id: "comments", label: "Comments" },
+  { id: "reviews", label: "Reviews" },
   { id: "history", label: "History" },
 ];
 function StickyNav() {
@@ -216,265 +188,6 @@ function StickyNav() {
   );
 }
 
-// Add-comment modal
-function AddCommentModal({
-  open,
-  onClose,
-  onAdd,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onAdd: (c: Omit<DispoComment, "id" | "decision">) => void;
-}) {
-  const [form, setForm] = useState<Omit<DispoComment, "id" | "decision">>({
-    reviewer: "",
-    routing: "",
-    email: "",
-    pagePara: "",
-    comment: "",
-    change: "",
-    disposition: "",
-  });
-  const disabled = !form.reviewer || !form.comment;
-
-  const handleAdd = () => {
-    onAdd(form);
-    onClose();
-    setForm({
-      reviewer: "",
-      routing: "",
-      email: "",
-      pagePara: "",
-      comment: "",
-      change: "",
-      disposition: "",
-      // decision left blank for lead to fill
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Add Comment & Disposition</DialogTitle>
-          <DialogDescription>
-            Provide enough detail for traceability.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input
-            placeholder="Reviewer"
-            value={form.reviewer}
-            onChange={(e) => setForm({ ...form, reviewer: e.target.value })}
-          />
-          <Input
-            placeholder="Routing"
-            value={form.routing}
-            onChange={(e) => setForm({ ...form, routing: e.target.value })}
-          />
-          <Input
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-          <Input
-            placeholder="Page/Para"
-            value={form.pagePara}
-            onChange={(e) => setForm({ ...form, pagePara: e.target.value })}
-          />
-          <textarea
-            className="col-span-full border rounded p-2 min-h-[72px]"
-            placeholder="Comment / Rationale"
-            value={form.comment}
-            onChange={(e) => setForm({ ...form, comment: e.target.value })}
-          />
-          <textarea
-            className="col-span-full border rounded p-2 min-h-[72px]"
-            placeholder="Recommended Change"
-            value={form.change}
-            onChange={(e) => setForm({ ...form, change: e.target.value })}
-          />
-          <Input
-            placeholder="Disposition"
-            value={form.disposition}
-            onChange={(e) => setForm({ ...form, disposition: e.target.value })}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button disabled={disabled} onClick={handleAdd}>
-            Add
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Edit-comment modal
-function EditCommentModal({
-  open,
-  onClose,
-  comment,
-  onSave,
-}: {
-  open: boolean;
-  onClose: () => void;
-  comment: DispoComment | null;
-  onSave: (c: DispoComment) => void;
-}) {
-  const [form, setForm] = useState<DispoComment | null>(comment);
-  useEffect(() => setForm(comment), [comment]);
-  if (!form) return null;
-  const disabled = !form.reviewer || !form.comment;
-  const handleSave = () => {
-    onSave(form);
-    onClose();
-  };
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Edit Comment</DialogTitle>
-        </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input
-            placeholder="Reviewer"
-            value={form.reviewer}
-            onChange={(e) => setForm({ ...form, reviewer: e.target.value })}
-          />
-          <Input
-            placeholder="Routing"
-            value={form.routing}
-            onChange={(e) => setForm({ ...form, routing: e.target.value })}
-          />
-          <Input
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-          <Input
-            placeholder="Page/Para"
-            value={form.pagePara}
-            onChange={(e) => setForm({ ...form, pagePara: e.target.value })}
-          />
-          <textarea
-            className="col-span-full border rounded p-2 min-h-[72px]"
-            placeholder="Comment / Rationale"
-            value={form.comment}
-            onChange={(e) => setForm({ ...form, comment: e.target.value })}
-          />
-          <textarea
-            className="col-span-full border rounded p-2 min-h-[72px]"
-            placeholder="Recommended Change"
-            value={form.change}
-            onChange={(e) => setForm({ ...form, change: e.target.value })}
-          />
-          <Input
-            placeholder="Disposition"
-            value={form.disposition}
-            onChange={(e) => setForm({ ...form, disposition: e.target.value })}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button disabled={disabled} onClick={handleSave}>
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Reply modal
-function ReplyModal({
-  open,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (text: string) => void;
-}) {
-  const [txt, setTxt] = useState("");
-  const disabled = !txt;
-  const handlePost = () => {
-    onSubmit(txt);
-    setTxt("");
-    onClose();
-  };
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Reply</DialogTitle>
-        </DialogHeader>
-        <textarea
-          className="w-full border rounded p-2 text-sm"
-          rows={4}
-          value={txt}
-          onChange={(e) => setTxt(e.target.value)}
-        />
-        <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button disabled={disabled} onClick={handlePost}>
-            Post
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Add-reply popover
-function ReplyInput({ onSubmit }: { onSubmit: (text: string) => void }) {
-  const [txt, setTxt] = useState("");
-  return (
-    <Popover>
-      <PopoverTrigger as={Fragment}>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
-        >
-          <MessageSquarePlus className="w-4 h-4" /> Reply
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-3 w-72">
-        <textarea
-          className="w-full border rounded p-2 text-sm"
-          rows={3}
-          value={txt}
-          onChange={(e) => setTxt(e.target.value)}
-        />
-        <div className="mt-2 flex justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setTxt("")}>
-            Clear
-          </Button>
-          <Button
-            size="sm"
-            disabled={!txt}
-            onClick={() => {
-              onSubmit(txt);
-              setTxt("");
-            }}
-          >
-            Post
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 // Version timeline drawer (roadmap)
 function VersionDrawer({
@@ -520,16 +233,12 @@ export default function ProjectDetailsPage() {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [dispos, setDispos] = useState<DispoComment[]>([]);
   const [refDocs, setRefDocs] = useState<RefDoc[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [versions] = useState<VersionEntry[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [showAddComment, setShowAddComment] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
-  const [editComment, setEditComment] = useState<DispoComment | null>(null);
-  const [replyTo, setReplyTo] = useState<string | null>(null);
 
   // ▼ permission based on logged in user
   const username = useUserStore((s) => s.username);
@@ -667,51 +376,6 @@ export default function ProjectDetailsPage() {
   const toggleSelect = (aid: string) =>
     setSelected((prev) =>
       prev.includes(aid) ? prev.filter((x) => x !== aid) : [...prev, aid],
-    );
-  const bulkEmail = () =>
-    alert(
-      "Bulk email: " +
-        approvals
-          .filter((a) => selected.includes(a.id))
-          .map((x) => x.email)
-          .join(", "),
-    );
-  const addComment = (c: Omit<DispoComment, "id" | "decision">) =>
-    setDispos([
-      ...dispos,
-      {
-        ...c,
-        id: "c" + Math.random().toString(36).slice(2),
-        replies: [],
-        decision: "",
-      },
-    ]);
-  const addReply = (cid: string, text: string) =>
-    setDispos((prev) =>
-      prev.map((d) =>
-        d.id === cid
-          ? {
-              ...d,
-              replies: [
-                ...(d.replies ?? []),
-                {
-                  id: "r" + Date.now(),
-                  author: "Me",
-                  text,
-                  date: new Date().toISOString().slice(0, 10),
-                },
-              ],
-            }
-          : d,
-      ),
-    );
-
-  const saveComment = (c: DispoComment) =>
-    setDispos((prev) => prev.map((d) => (d.id === c.id ? c : d)));
-
-  const updateDecision = (cid: string, val: "Accepted" | "Rejected" | "Deferred" | "") =>
-    setDispos((prev) =>
-      prev.map((d) => (d.id === cid ? { ...d, decision: val } : d)),
     );
 
   const advancePhase = () => {
@@ -858,7 +522,7 @@ export default function ProjectDetailsPage() {
   useEffect(() => {
     const id = setTimeout(autosave, 1500);
     return () => clearTimeout(id);
-  }, [approvals, dispos, autosave]);
+  }, [approvals, autosave]);
 
   useEffect(() => {
     if (!isOwner) return;
@@ -1263,156 +927,16 @@ export default function ProjectDetailsPage() {
           </Card>
         </section>
 
-        <BulkBar count={selected.length} onEmail={bulkEmail} />
-
-        {/* COMMENTS SECTION */}
-        <section id="comments" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <MessageSquarePlus className="w-5 h-5" /> Comments & Disposition
-            </h2>
-            {canEdit && (
-              <Button size="sm" onClick={() => setShowAddComment(true)}>
-                <PlusCircle className="w-4 h-4 mr-1" /> Add Comment
-              </Button>
-            )}
-          </div>
+        {/* REVIEW SUMMARY SECTION */}
+        <section id="reviews" className="space-y-6">
           <Card>
-            <CardContent className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Reviewer</TableHead>
-                    <TableHead>Routing</TableHead>
-                    <TableHead>Page/Para</TableHead>
-                    <TableHead>Comment</TableHead>
-                    <TableHead>Change</TableHead>
-                    <TableHead>Decision</TableHead>
-                    <TableHead>Disposition</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dispos.map((d) => (
-                    <Fragment key={d.id}>
-                      <TableRow>
-                        <TableCell className="whitespace-nowrap">
-                          {d.reviewer}
-                        </TableCell>
-                        <TableCell>{d.routing}</TableCell>
-                        <TableCell>{d.pagePara}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {d.comment}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {d.change}
-                        </TableCell>
-                        <TableCell>
-                          {isOwner ? (
-                            <select
-                              className="border rounded px-1 text-sm"
-                              value={d.decision || ""}
-                              onChange={(e) =>
-                                updateDecision(
-                                  d.id,
-                                  e.target.value as "Accepted" | "Rejected" | "Deferred" | "",
-                                )
-                              }
-                            >
-                              <option value="">--</option>
-                              <option value="Accepted">Accepted</option>
-                              <option value="Rejected">Rejected</option>
-                              <option value="Deferred">Deferred</option>
-                            </select>
-                          ) : (
-                            d.decision || "—"
-                          )}
-                        </TableCell>
-                        <TableCell>{d.disposition}</TableCell>
-                        <TableCell className="text-right min-w-[60px]">
-                          <RowMenu>
-                            {canEdit && (
-                              <>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      className={classNames(
-                                        "w-full px-3 py-2 text-left text-sm",
-                                        active &&
-                                          "bg-indigo-50 dark:bg-gray-800",
-                                      )}
-                                  onClick={() => setEditComment(d)}
-                                    >
-                                      {" "}
-                                      <FileEdit className="w-4 h-4 inline mr-2" />{" "}
-                                      Edit
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      className={classNames(
-                                        "w-full px-3 py-2 text-left text-sm text-red-600",
-                                        active &&
-                                          "bg-indigo-50 dark:bg-gray-800",
-                                      )}
-                                      onClick={() =>
-                                        setDispos(
-                                          dispos.filter((x) => x.id !== d.id),
-                                        )
-                                      }
-                                    >
-                                      {" "}
-                                      <Trash className="w-4 h-4 inline mr-2" />{" "}
-                                      Delete
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                              </>
-                            )}
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  className={classNames(
-                                    "w-full px-3 py-2 text-left text-sm",
-                                    active &&
-                                      "bg-indigo-50 dark:bg-gray-800",
-                                  )}
-                                  onClick={() => setReplyTo(d.id)}
-                                >
-                                  {" "}
-                                  <MessageSquarePlus className="w-4 h-4 inline mr-2" /> Reply
-                                </button>
-                              )}
-                            </Menu.Item>
-                          </RowMenu>
-                        </TableCell>
-                      </TableRow>
-                      {/* replies */}
-                      {d.replies?.map((r) => (
-                        <TableRow
-                          key={r.id}
-                          className="bg-gray-50 dark:bg-gray-800/40"
-                        >
-                          <TableCell
-                            colSpan={8}
-                            className="pl-12 text-sm text-gray-600 dark:text-gray-300 py-2"
-                          >
-                            <span className="font-semibold mr-2">
-                              {r.author}
-                            </span>{" "}
-                            {r.text}
-                            <span className="ml-2 text-xs text-gray-400">
-                              {r.date}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </Fragment>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardHeader>
+              <CardTitle>Review summary</CardTitle>
+            </CardHeader>
+            <CardContent className="flex justify-end">
+              <Button asChild>
+                <Link href={`/projects/${id}/reviews`}>Open review workspace</Link>
+              </Button>
             </CardContent>
           </Card>
         </section>
@@ -1457,22 +981,6 @@ export default function ProjectDetailsPage() {
       </div>
 
       {/* Modals */}
-      <AddCommentModal
-        open={showAddComment}
-        onClose={() => setShowAddComment(false)}
-        onAdd={addComment}
-      />
-      <EditCommentModal
-        open={editComment !== null}
-        onClose={() => setEditComment(null)}
-        comment={editComment}
-        onSave={saveComment}
-      />
-      <ReplyModal
-        open={replyTo !== null}
-        onClose={() => setReplyTo(null)}
-        onSubmit={(txt) => replyTo && addReply(replyTo, txt)}
-      />
       <VersionDrawer
         open={showVersions}
         onClose={() => setShowVersions(false)}
