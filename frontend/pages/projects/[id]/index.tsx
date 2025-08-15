@@ -13,6 +13,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { API } from "@/lib/api";
+import PhaseTabs from "@/components/PhaseTabs";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
@@ -27,7 +28,6 @@ import {
     LayoutList,
     Mail,
     MoreHorizontal,
-    RotateCcw,
     Trash,
     Users2
 } from "lucide-react";
@@ -258,6 +258,19 @@ export default function ProjectDetailsPage() {
   const isOwner = project?.owner === username;
   const canEdit = isOwner || isAdmin;
 
+  const phaseList = useMemo(
+    () => workflow?.steps?.map((s) => ({ id: s.name, label: s.name })) ?? [],
+    [workflow?.steps],
+  );
+
+  const phaseCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    approvals.forEach((a) => {
+      if (a.phaseId) map[a.phaseId] = (map[a.phaseId] || 0) + 1;
+    });
+    return map;
+  }, [approvals]);
+
   // ▼ fetch data from API
   useEffect(() => {
     if (!id) return;
@@ -414,22 +427,32 @@ export default function ProjectDetailsPage() {
   }, [approvalsForPhase]);
 
   // ▼ handlers --------------------------------------------------------------
+  const handlePhaseChange = useCallback(
+    (phaseId: string) => {
+      if (!workflow?.steps) return;
+      const idx = workflow.steps.findIndex((s) => s.name === phaseId);
+      if (idx === -1) return;
+      const steps = workflow.steps.map((s, i) => ({
+        ...s,
+        status:
+          i < idx
+            ? ("complete" as const)
+            : i === idx
+              ? ("active" as const)
+              : ("pending" as const),
+      }));
+      setWorkflow({ ...workflow, steps, phase: steps[idx].name });
+      setProject((prev) =>
+        prev ? { ...prev, currentPhaseId: steps[idx].name } : prev,
+      );
+    },
+    [workflow],
+  );
+
   const toggleSelect = (aid: string) =>
     setSelected((prev) =>
       prev.includes(aid) ? prev.filter((x) => x !== aid) : [...prev, aid],
     );
-
-  const advancePhase = () => {
-    if (!workflow?.steps) return;
-    const idx = workflow.steps.findIndex((s) => s.status === "active");
-    if (idx === -1 || idx >= workflow.steps.length - 1) return;
-    const steps = workflow.steps.map((s, i) => {
-      if (i < idx + 1) return { ...s, status: "complete" as const };
-      if (i === idx + 1) return { ...s, status: "active" as const };
-      return { ...s, status: "pending" as const };
-    });
-    setWorkflow({ ...workflow, steps, phase: steps[idx + 1].name });
-  };
 
   const sendReminder = () => {
     const emails = approvalsForPhase
@@ -603,15 +626,16 @@ export default function ProjectDetailsPage() {
             <div className="w-36 shrink-0">
               <ProgBar value={project.progress} />
             </div>
+            <PhaseTabs
+              phases={phaseList}
+              activePhaseId={project.currentPhaseId || workflow?.phase}
+              counts={phaseCounts}
+              onChange={isOwner ? handlePhaseChange : undefined}
+            />
             {isOwner && (
-              <>
-                <Button size="sm" onClick={advancePhase}>
-                  <RotateCcw className="w-4 h-4 mr-1" /> Advance Phase
-                </Button>
-                <Button size="sm" onClick={exportRaci}>
-                  <Download className="w-4 h-4 mr-1" /> RACI CSV
-                </Button>
-              </>
+              <Button size="sm" onClick={exportRaci}>
+                <Download className="w-4 h-4 mr-1" /> RACI CSV
+              </Button>
             )}
             <Button
               size="icon"
