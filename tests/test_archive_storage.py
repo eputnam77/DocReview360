@@ -1,3 +1,5 @@
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -14,8 +16,13 @@ def test_archive_writes_files(tmp_path: Path) -> None:
     assert len(archives) == records_before + 1
     # verify files exist
     base = tmp_path / f"{doc.id}/{record.id}"
-    for ext in [".md", ".html", ".docx", ".pdf"]:
+    for ext in [".md", ".html", ".docx", ".pdf", ".metadata.json"]:
         assert (base.with_suffix(ext)).exists()
+    metadata = json.loads((base.with_suffix(".metadata.json")).read_text())
+    assert metadata["doc_id"] == doc.id
+    assert metadata["retention_policy"] == "standard"
+    assert metadata["version_summary"] == "v1"
+    assert metadata["hashes"]["md"] == hashlib.sha256(record.markdown).hexdigest()
 
 
 def test_upload_invalid_key(tmp_path: Path) -> None:
