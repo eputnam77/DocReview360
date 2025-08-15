@@ -6,7 +6,8 @@ import asyncio
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Callable, Dict, List
+from functools import wraps
+from typing import Any, AsyncIterator, Callable, Dict, List, TypeVar, cast, get_type_hints
 
 from sqlalchemy import delete, insert, select
 
@@ -216,3 +217,120 @@ async def watch_logs(callback: Callable[[LogEntry], None]) -> None:
             callback(entry)
         except Exception:
             pass
+
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: ignore[override]
+    """Decorator that logs function calls and outcomes via :func:`log_event`.
+
+    The wrapped function accepts an ``audit`` keyword-only flag to opt out of
+    logging when set to ``False``. The decorator attempts to determine a
+    ``user_id`` from common parameter names such as ``current_user``, ``user`` or
+    ``x_user``. For FastAPI handlers it also checks the ``Request`` object for an
+    ``X-User`` header. All parameters and the resulting outcome (or exception) are
+    forwarded as ``context`` to :func:`log_event`.
+    """
+
+    def decorator(f: F) -> F:
+        is_coro = asyncio.iscoroutinefunction(f)
+
+        @wraps(f)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            audit = kwargs.pop("audit", enabled)
+            if not audit:
+                return await f(*args, **kwargs)
+
+            user = (
+                kwargs.get("current_user")
+                or kwargs.get("user")
+                or kwargs.get("x_user")
+            )
+            if user is None and (request := kwargs.get("request")) is not None:
+                try:
+                    user = request.headers.get("x-user") or request.headers.get("X-User")
+                except Exception:  # pragma: no cover - defensive
+                    user = None
+            user_id = getattr(user, "username", None) or getattr(user, "id", None)
+            if user_id is None and user is not None:
+                user_id = str(user)
+
+            args_repr = [repr(a) for a in args]
+            kwargs_repr = {k: repr(v) for k, v in kwargs.items()}
+            try:
+                result = await f(*args, **kwargs)
+                log_event(
+                    f.__name__,
+                    user_id=user_id,
+                    outcome="success",
+                    args=args_repr,
+                    kwargs=kwargs_repr,
+                    result=repr(result),
+                )
+                return result
+            except Exception as exc:
+                log_event(
+                    f.__name__,
+                    user_id=user_id,
+                    outcome="error",
+                    args=args_repr,
+                    kwargs=kwargs_repr,
+                    error=str(exc),
+                )
+                raise
+
+        @wraps(f)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            audit = kwargs.pop("audit", enabled)
+            if not audit:
+                return f(*args, **kwargs)
+
+            user = (
+                kwargs.get("current_user")
+                or kwargs.get("user")
+                or kwargs.get("x_user")
+            )
+            if user is None and (request := kwargs.get("request")) is not None:
+                try:
+                    user = request.headers.get("x-user") or request.headers.get("X-User")
+                except Exception:  # pragma: no cover - defensive
+                    user = None
+            user_id = getattr(user, "username", None) or getattr(user, "id", None)
+            if user_id is None and user is not None:
+                user_id = str(user)
+
+            args_repr = [repr(a) for a in args]
+            kwargs_repr = {k: repr(v) for k, v in kwargs.items()}
+            try:
+                result = f(*args, **kwargs)
+                log_event(
+                    f.__name__,
+                    user_id=user_id,
+                    outcome="success",
+                    args=args_repr,
+                    kwargs=kwargs_repr,
+                    result=repr(result),
+                )
+                return result
+            except Exception as exc:
+                log_event(
+                    f.__name__,
+                    user_id=user_id,
+                    outcome="error",
+                    args=args_repr,
+                    kwargs=kwargs_repr,
+                    error=str(exc),
+                )
+                raise
+
+        annotations = get_type_hints(f)
+        async_wrapper.__annotations__ = annotations
+        sync_wrapper.__annotations__ = annotations
+        async_wrapper.__globals__.update(f.__globals__)
+        sync_wrapper.__globals__.update(f.__globals__)
+        return cast(F, async_wrapper if is_coro else sync_wrapper)
+
+    if func is None:
+        return cast(F, decorator)  # type: ignore[return-value]
+    return decorator(func)
