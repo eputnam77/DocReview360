@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { GripVertical, PlusCircle, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { API } from "@/lib/api";
 
 // Example roles
 const ROLES = [
@@ -28,20 +27,37 @@ export default function EditWorkflowPage() {
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
-    // Determine which workflow to edit; default to system workflow
-    const wfId = (id ? String(id) : "branch-coordination");
-    // Use local API route to load workflow data
+    if (!router.isReady || !id) return;
+    const wfId = Array.isArray(id) ? id[0] : id;
     fetch(`/api/workflows/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((wf) => {
         if (wf) {
-          setName(wf.name ?? wf.project ?? "");
+          const wfName = wf.name ?? wf.project ?? wf.template ?? wf.id;
+          setName(wfName);
           setDescription(wf.description ?? "");
-          setSteps(Array.isArray(wf.steps) ? wf.steps.map((s: any) => ({ ...s, id: s.id })) : []);
+          const loadedSteps = Array.isArray(wf.steps)
+            ? wf.steps
+            : Array.isArray(wf.approval_steps)
+              ? wf.approval_steps.map((s: any, idx: number) => ({
+                  id: s.id ?? idx,
+                  role: s.role ?? s.name ?? "",
+                  user: s.user ?? "",
+                  required: typeof s.required === "boolean" ? s.required : true,
+                }))
+              : Array.isArray(wf.phases)
+                ? wf.phases.map((p: any, idx: number) => ({
+                    id: idx,
+                    role: typeof p === "string" ? p : String(p),
+                    user: "",
+                    required: true,
+                  }))
+                : [];
+          setSteps(loadedSteps);
         }
       })
       .catch(() => {});
-  }, [id]);
+  }, [id, router.isReady]);
 
   const addStep = () => {
     setSteps([
