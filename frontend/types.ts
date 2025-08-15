@@ -48,3 +48,48 @@ export interface Template {
   category: Category;
   icon: ReactNode;
 }
+
+/** Basic phase information */
+export interface Phase {
+  id: string;
+  name: string;
+  dueAt?: string;
+}
+
+/** Core project metadata shared across views */
+export interface Project {
+  id: string;
+  number: string | number;
+  type: string;
+  title: string;
+  owner: string;
+  status: string;
+  progress: number;
+  updated?: string;
+  editor?: string;
+  workflow?: string;
+  currentPhaseId?: string | null;
+}
+
+/** Approval information for workflow steps */
+export interface Approval {
+  id: string;
+  reviewer: string;
+  email: string;
+  state: "pending" | "approved" | "overdue" | "rejected";
+  dueAt: string;
+  signedAt?: string;
+  comments?: string;
+  documensoSigId?: string;
+  description?: string;
+  phaseId?: string;
+  required?: boolean;
+  signature_provider?: string;
+  signature_id?: string;
+  certificate_url?: string;
+}
+
+/** Summary of reviews for a given phase */
+export interface ReviewSummary {
+  count: number;
+}

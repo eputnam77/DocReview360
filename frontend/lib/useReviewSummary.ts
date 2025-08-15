@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { API } from "./api";
+import type { ReviewSummary } from "@/types";
 
 export function useReviewSummary(projectId?: string, phaseId?: string) {
-  return useQuery<number>({
+  return useQuery<ReviewSummary>({
     queryKey: ["review-summary", projectId, phaseId],
     enabled: !!projectId,
     queryFn: async () => {
@@ -12,7 +13,7 @@ export function useReviewSummary(projectId?: string, phaseId?: string) {
         throw new Error("Failed to fetch reviews");
       }
       const data = await res.json();
-      return Array.isArray(data) ? data.length : 0;
+      return { count: Array.isArray(data) ? data.length : 0 };
     },
   });
 }
