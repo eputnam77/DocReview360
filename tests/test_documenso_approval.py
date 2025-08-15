@@ -9,7 +9,7 @@ from docreview360.security_utils import create_signature
 
 def test_approve_triggers_envelope_and_audit_hash(monkeypatch: pytest.MonkeyPatch) -> None:
     clear_logs()
-    sig_id, url = documenso.request_signature("doc1", "alice")
+    sig_id, url, _ = documenso.request_signature("doc1", "alice")
     audit = create_signature(sig_id, secret="s")
     log_event("documenso_envelope", audit=audit)
     entry = query_logs("documenso_envelope")[0]

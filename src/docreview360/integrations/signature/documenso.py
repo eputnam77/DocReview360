@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import os
 from base64 import b64encode
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 from uuid import uuid4
 
 import httpx
@@ -36,7 +36,7 @@ def request_signature(
     *,
     approval_id: str | None = None,
     return_url: str | None = None,
-) -> Tuple[str, str]:
+) -> Tuple[str, str, Dict[str, Any]]:
     """Return a signature request id and URL for ``document_id`` issued to ``user``.
 
     When ``DOCUMENSO_URL`` is defined an HTTP request is sent to the remote
@@ -63,12 +63,14 @@ def request_signature(
             data = resp.json()
             sig_id = data["id"]
             url = data.get("url", f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}")
+            meta = data.get("metadata", {})
         except httpx.HTTPError as exc:
             raise RuntimeError("Documenso request failed") from exc
     else:
         sig_id = uuid4().hex
         _signatures[sig_id] = "pending"
         url = f"/documenso/{sig_id}"
+        meta = {"envelope_id": sig_id}
         if return_url:
             from urllib.parse import quote
 
@@ -80,7 +82,7 @@ def request_signature(
         _sig_workflows[sig_id] = workflow_id
 
     log_event(f"signature_requested:{document_id}:{user}")
-    return sig_id, url
+    return sig_id, url, meta
 
 
 def complete_signature(sig_id: str) -> None:
@@ -162,6 +164,7 @@ def process_webhook(data: Dict[str, str]) -> None:
                 pass
         try:
             from ...approvals import handle_signature_return
+            import asyncio
 
             signed_at = data.get("signed_at")
             if isinstance(signed_at, str):
@@ -170,11 +173,17 @@ def process_webhook(data: Dict[str, str]) -> None:
                 signed_at_dt = datetime.fromisoformat(signed_at)
             else:
                 signed_at_dt = None
-            handle_signature_return(
+            coro = handle_signature_return(
                 sig_id,
                 certificate_url=cert_url,
                 signed_at=signed_at_dt,
             )
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                asyncio.run(coro)
+            else:
+                loop.create_task(coro)
         except (KeyError, ValueError):
             pass
     log_event(f"signature_webhook:{sig_id}:{status}")
@@ -193,7 +202,7 @@ class DocumensoProvider:
         *,
         approval_id: str | None = None,
         return_url: str | None = None,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, str, Dict[str, Any]]:
         return request_signature(
             document_id,
             user,
