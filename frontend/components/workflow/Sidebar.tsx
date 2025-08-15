@@ -9,7 +9,6 @@ import {
   Users2,
   Settings,
   User,
-  FileText,
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,11 +26,6 @@ const SECONDARY = [
     icon: <Users2 className="h-4 w-4" />,
     label: "Support",
     href: "/docs/",
-  },
-  {
-    icon: <FileText className="h-4 w-4" />,
-    label: "Logs",
-    href: "/logs",
   },
   {
     icon: <Wrench className="h-4 w-4" />,
