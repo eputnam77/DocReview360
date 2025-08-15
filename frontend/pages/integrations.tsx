@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, Label } from "@/components";
 import { API } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 type Config = {
   database: string;
@@ -49,9 +50,9 @@ export default function IntegrationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
-      alert("Configuration saved");
+      toast.success("Configuration saved");
     } catch {
-      alert("Failed to save configuration");
+      toast.error("Failed to save configuration");
     } finally {
       setSaving(false);
     }

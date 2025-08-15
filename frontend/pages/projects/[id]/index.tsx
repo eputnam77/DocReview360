@@ -192,7 +192,7 @@ function VersionDrawer({
       <DialogContent
         role="dialog"
         onKeyDown={(e) => e.key === "Escape" && onClose()}
-        className="max-w-md sm:max-w-md"
+        className="fixed right-0 top-0 h-full w-80 max-w-full translate-x-0 translate-y-0 rounded-none p-6"
       >
         <DialogHeader>
           <DialogTitle>Document Versions</DialogTitle>
