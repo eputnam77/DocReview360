@@ -196,8 +196,13 @@ async def handle_signature_return(
             )
             raise ValueError("document hash mismatch")
 
+    if certificate_url is not None:
+        approval.certificate_url = certificate_url
+
     provider = get_provider(approval.signature_provider)
-    if not provider.verify_signature(signature_id, document):
+    if not provider.validate_signature(
+        document, certificate_url or approval.certificate_url, approval.provider_metadata
+    ):
         log_event(
             "signature_verification_failed",
             approval_id=approval.id,
@@ -409,8 +414,10 @@ def verify_document_signature(doc_id: str) -> dict[str, object]:
         if approval.signature_id and hash_valid:
             try:
                 provider = get_provider(approval.signature_provider)
-                provider_valid = provider.verify_signature(
-                    approval.signature_id, document.content.encode()
+                provider_valid = provider.validate_signature(
+                    document.content.encode(),
+                    approval.certificate_url,
+                    approval.provider_metadata,
                 )
             except Exception:
                 provider_valid = False
