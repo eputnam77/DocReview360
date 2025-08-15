@@ -23,58 +23,37 @@ interface DocType {
   template?: string;
 }
 
-const DEFAULT_PHASES = [
-  "Beta Documentation Review",
-  "Draft Development",
-  "Final Issuance",
-  "General Availability",
-  "Internal Coordination",
-  "Maintenance / Revision Cycle",
-  "Peer Review",
-  "Public Comment / Proposed Rulemaking",
-  "Release Candidate Review",
-];
-
-// Backend-authoritative normalizer
 const normalizeDocTypes = (items: unknown): DocType[] => {
   if (!Array.isArray(items)) return [];
-
   return items
     .map((item) => {
       if (!item || typeof item !== "object") return null;
-
       const anyItem = item as {
         id?: unknown;
         name?: unknown;
         phases?: unknown;
-        template?: unknown;
         workflow?: unknown;
+        template?: unknown;
       };
-
       const name =
         typeof anyItem.name === "string" && anyItem.name.trim()
           ? anyItem.name.trim()
           : "";
-
       if (!name) return null;
-
       const id =
         typeof anyItem.id === "string" && anyItem.id.trim()
           ? anyItem.id.trim()
           : name;
-
       let phases: string[] | undefined;
       if (Array.isArray(anyItem.phases)) {
         phases = (anyItem.phases as string[]).filter((p) => typeof p === "string" && p.trim());
       } else if (Array.isArray(anyItem.workflow)) {
         phases = (anyItem.workflow as string[]).filter((p) => typeof p === "string" && p.trim());
       }
-
       const template =
         typeof anyItem.template === "string" && anyItem.template.trim()
           ? anyItem.template
           : undefined;
-
       return { id, name, phases, template };
     })
     .filter((v): v is DocType => Boolean(v));
@@ -95,7 +74,6 @@ function PhaseSelector({
   const filtered = phases.filter((p) =>
     p.toLowerCase().includes(search.toLowerCase()),
   );
-
   return (
     <div className="flex flex-wrap items-center gap-1">
       {selectedPhases.length > 0 ? (
@@ -109,11 +87,7 @@ function PhaseSelector({
       )}
       <Popover>
         <PopoverTrigger as={Fragment}>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs gap-1"
-          >
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs gap-1">
             <Plus className="w-3 h-3" />
             {selectedPhases.length ? "Edit" : "Add"}
           </Button>
@@ -174,34 +148,29 @@ export default function DocumentTypesPage() {
       } catch {}
     }
 
-    // Fetch document types from backend
+    // Fetch document types (and default phases) from backend
     fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         const list = normalizeDocTypes(data);
         setTypes(list);
-
         const backendMap: Record<string, string[]> = {};
         list.forEach((t) => {
           if (t.phases && t.phases.length) {
             backendMap[t.id] = t.phases;
           }
         });
-
-        // Merge backend defaults with any localStorage overrides
         const merged = { ...backendMap, ...parsed };
         setDocTypePhaseMap(merged);
         localStorage.setItem("docTypePhaseMap", JSON.stringify(merged));
       })
-      .catch(() => {
-        setTypes([]); // No fallback to DEFAULT_TYPES
-      });
+      .catch(() => setTypes([]));
 
     // Fetch available phases from backend
     fetch("/api/phases")
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: string[]) => setPhases(data.length ? data : DEFAULT_PHASES))
-      .catch(() => setPhases(DEFAULT_PHASES));
+      .then((data: string[]) => setPhases(Array.isArray(data) ? data : []))
+      .catch(() => setPhases([]));
   }, []);
 
   const addType = async () => {
@@ -259,7 +228,10 @@ export default function DocumentTypesPage() {
   const confirmDelete = async () => {
     if (!showDeleteDialog || !replacementDocType) return;
     try {
-      const response = await fetch(`${API}/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`, { method: "DELETE" });
+      const response = await fetch(
+        `${API}/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`,
+        { method: "DELETE" }
+      );
       if (response.ok) {
         setTypes(types.filter((t) => t.id !== showDeleteDialog));
       } else {
@@ -309,13 +281,11 @@ export default function DocumentTypesPage() {
   const changePhase = (docTypeId: string, phase: string) => {
     const currentPhases = docTypePhaseMap[docTypeId] || [];
     let updatedPhases: string[];
-
     if (currentPhases.includes(phase)) {
       updatedPhases = currentPhases.filter(p => p !== phase);
     } else {
       updatedPhases = [...currentPhases, phase];
     }
-
     const updated = { ...docTypePhaseMap, [docTypeId]: updatedPhases };
     setDocTypePhaseMap(updated);
     localStorage.setItem("docTypePhaseMap", JSON.stringify(updated));
@@ -324,13 +294,7 @@ export default function DocumentTypesPage() {
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Document Types</h1>
-      <form
-        className="flex items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addType();
-        }}
-      >
+      <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); addType(); }}>
         <Input
           placeholder="New Document Type"
           value={newName}
@@ -353,11 +317,7 @@ export default function DocumentTypesPage() {
             <TableRow key={t.id}>
               <TableCell className="min-w-[150px]">
                 {editingId === t.id ? (
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="h-8"
-                  />
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" />
                 ) : (
                   t.name
                 )}
