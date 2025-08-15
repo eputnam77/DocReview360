@@ -57,6 +57,8 @@ export { default as EnvironmentSwitcher } from "./EnvironmentSwitcher";
 export { default as PhaseTabs } from "./PhaseTabs";
 export { default as ApprovalTable } from "./ApprovalTable";
 export { default as AuditTimeline } from "./AuditTimeline";
+export { default as ProjectSummaryBar } from "./ProjectSummaryBar";
+export { default as KpiCards } from "./KpiCards";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";
