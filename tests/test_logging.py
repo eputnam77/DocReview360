@@ -20,13 +20,19 @@ def test_logging_records_actions() -> None:
     )
     assert resp.status_code == 201
 
-    resp = client.get("/logs")
+    headers = {"X-User": "alice"}
+    resp = client.get("/logs", headers=headers)
     events = resp.json()
     actions = {e["action"] for e in events}
     assert "create_project" in actions
     assert "import_document" in actions
 
-    resp = client.get("/logs", params={"action": "import_document"})
+    resp = client.get("/logs", params={"action": "import_document"}, headers=headers)
     filtered = resp.json()
     assert len(filtered) == 1
     assert filtered[0]["details"]["filename"] == "doc.md"
+
+    resp = client.get(
+        "/logs", params={"severity": "info", "limit": 1}, headers=headers
+    )
+    assert len(resp.json()) == 1

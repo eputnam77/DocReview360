@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from docreview360.audit import (
     clear_audit_log,
     get_audit_entry,
@@ -26,3 +28,20 @@ def test_audit_log_sort_and_lookup() -> None:
     assert [events[0].id, events[1].id] == [a1.id, a2.id]
     fetched = get_audit_entry(a1.id)
     assert fetched is not None and fetched.id == a1.id
+
+
+def test_query_logs_filters_and_pagination() -> None:
+    clear_logs()
+    log_event("alpha", user_id="u1", entity_id="d1", severity="info")
+    mid = datetime.now(timezone.utc)
+    e2 = log_event("beta", user_id="u2", entity_id="d2", severity="error")
+    after = datetime.now(timezone.utc)
+    logs = query_logs(
+        start=mid,
+        end=after,
+        user_id="u2",
+        severity="error",
+    )
+    assert [entry.id for entry in logs] == [e2.id]
+    paged = query_logs(limit=1, offset=1)
+    assert len(paged) == 1

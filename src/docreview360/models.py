@@ -149,7 +149,7 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String, index=True)
     entity_id: Mapped[str | None] = mapped_column(String, index=True)
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    severity: Mapped[str] = mapped_column(String, default="info")
+    severity: Mapped[str] = mapped_column(String, default="info", index=True)
     ip_address: Mapped[str | None] = mapped_column(String)
 
 
