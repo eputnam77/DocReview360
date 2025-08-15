@@ -51,7 +51,7 @@ export default function SearchPage() {
         />
         <Button type="submit">Search</Button>
       </form>
-      <Table className="min-w-full text-sm rounded-lg overflow-hidden bg-white">
+      <Table caption="Search results" className="min-w-full text-sm rounded-lg overflow-hidden bg-white">
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>

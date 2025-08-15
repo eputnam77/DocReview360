@@ -65,7 +65,7 @@ export default function AuditLogsPage() {
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Audit Logs</h1>
-      <Table>
+      <Table caption="Audit log entries">
         <TableHeader>
           <TableRow>
             <TableHead className="w-40">Timestamp</TableHead>
