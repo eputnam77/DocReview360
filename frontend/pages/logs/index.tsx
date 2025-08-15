@@ -36,7 +36,10 @@ export default function LiveLogsPage() {
         )
         .catch(() => setLogs([]));
 
-    const ws = new WebSocket(`ws://${window.location.host}/ws/logs`);
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(
+      `${wsProtocol}://${window.location.host}/ws/logs`
+    );
     ws.onmessage = (ev) => {
       const entry = JSON.parse(ev.data) as LogEntry;
       setLogs((prev) => [entry, ...prev]);
