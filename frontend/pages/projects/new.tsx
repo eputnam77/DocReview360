@@ -24,7 +24,9 @@ export default function NewProjectPage() {
   // Document Number is provided by the user. The immutable Document ID will be
   // generated server-side when the project is created.
   const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [docTypeMap, setDocTypeMap] = useState<Record<string, string[]>>({});
   const [phases, setPhases] = useState<string[]>([]);
+  const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
   const [docNumber, setDocNumber] = useState("");
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
@@ -37,37 +39,68 @@ export default function NewProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Auto-set workflow based on selected phase
+  // Auto-set workflow based on selected phase using saved mapping
   useEffect(() => {
     if (phase) {
-      setWorkflow(phase);
+      const mapped = phaseMap[phase];
+      setWorkflow(mapped || phase);
+    } else {
+      setWorkflow(undefined);
     }
-  }, [phase]);
+  }, [phase, phaseMap]);
 
   useEffect(() => {
+    // Load workflow mapping defined in configuration/phases page
+    const saved = localStorage.getItem("phaseWorkflowMap");
+    if (saved) {
+      try {
+        setPhaseMap(JSON.parse(saved));
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+
     fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        const docTypeNames = Array.isArray(data)
-          ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-          : [];
-        setDocTypes(docTypeNames);
+        if (!Array.isArray(data)) {
+          setDocTypes([]);
+          setDocTypeMap({});
+          return;
+        }
+        const names: string[] = [];
+        const map: Record<string, string[]> = {};
+        data.forEach((d: any) => {
+          const name = typeof d === "string" ? d : d?.name;
+          if (name) {
+            names.push(name);
+            const phases = Array.isArray(d?.phases)
+              ? (d.phases as string[])
+              : Array.isArray(d?.workflow)
+              ? (d.workflow as string[])
+              : [];
+            map[name] = phases;
+          }
+        });
+        setDocTypes(names);
+        setDocTypeMap(map);
       })
       .catch(() => {
         setDocTypes([]);
-      });
-    fetch("/api/phases")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        const phaseNames = Array.isArray(data)
-          ? data.map((d: any) => (typeof d === "string" ? d : d.name))
-          : [];
-        setPhases(phaseNames);
-      })
-      .catch(() => {
-        setPhases([]);
+        setDocTypeMap({});
       });
   }, []);
+
+  // When document type changes, reset dependent fields and phases
+  useEffect(() => {
+    if (docType) {
+      setPhases(docTypeMap[docType] || []);
+    } else {
+      setPhases([]);
+    }
+    setPhase(undefined);
+    setWorkflow(undefined);
+  }, [docType, docTypeMap]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
