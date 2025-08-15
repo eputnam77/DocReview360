@@ -85,13 +85,46 @@ def archive_document(
     )
     archives[record.id] = record
 
-    # Persist each artefact for durability
+    # Persist each artefact for durability and track locations for audit
     base = f"{record.document_id}/{record.id}"
-    upload_file(bucket, f"{base}.md", md_bytes)
-    upload_file(bucket, f"{base}.html", html_bytes)
-    upload_file(bucket, f"{base}.docx", docx_bytes)
-    upload_file(bucket, f"{base}.pdf", pdf_bytes)
-    upload_file(bucket, f"{base}.metadata.json", json.dumps(metadata_json).encode())
+    locations: Dict[str, str | None] = {}
+    locations["md"] = str(
+        upload_file(bucket, f"{base}.md", md_bytes, append_only=True) or ""
+    )
+    locations["html"] = str(
+        upload_file(bucket, f"{base}.html", html_bytes, append_only=True) or ""
+    )
+    locations["docx"] = str(
+        upload_file(bucket, f"{base}.docx", docx_bytes, append_only=True) or ""
+    )
+    locations["pdf"] = str(
+        upload_file(bucket, f"{base}.pdf", pdf_bytes, append_only=True) or ""
+    )
+    meta["artefact_locations"] = locations
+    metadata_json["artefact_locations"] = locations
+
+    # Generate a watermarked public HTML copy when requested
+    if document.public_copy:
+        ts = datetime.now(timezone.utc).isoformat()
+        watermark = html_bytes.decode() + f"\n<!-- verified {ts} -->"
+        public_key = f"{base}.public.html"
+        public_loc = upload_file(bucket, public_key, watermark.encode(), append_only=True)
+        meta["public_copy_url"] = str(public_loc)
+        meta["verification_timestamp"] = ts
+        metadata_json["public_copy_url"] = str(public_loc)
+        metadata_json["verification_timestamp"] = ts
+
+    # Persist metadata after collecting all details
+    upload_file(
+        bucket,
+        f"{base}.metadata.json",
+        json.dumps(metadata_json).encode(),
+        append_only=True,
+    )
+
+    # Update record metadata with final values including locations and
+    # optional public copy details
+    record.metadata = {"doc_id": document.id, **meta, "hashes": hashes}
 
     return record
 
