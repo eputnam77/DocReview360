@@ -1,4 +1,3 @@
-signature_provider: documenso
 dash_bob:
   activity: true
   logs: true
@@ -8,3 +7,5 @@ prefs_bob:
   theme: dark
 prefs_u1:
   theme: dark
+signature_provider_fallback: documenso
+signature_provider_primary: missing
