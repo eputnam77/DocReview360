@@ -1,9 +1,11 @@
+import hashlib
+
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval, send_for_signature
-from docreview360.integrations.signature import documenso
 from docreview360.documents import update_document
+from docreview360.integrations.signature import documenso
 
 
 def test_verify_signature_endpoint() -> None:
@@ -18,11 +20,12 @@ def test_verify_signature_endpoint() -> None:
 
     appr = create_approval("wf1", "alice", doc_id, document=b"hello")
     send_for_signature(appr.id, doc_id, "alice")
+    cert = hashlib.sha256(b"hello").hexdigest()
     documenso.process_webhook(
         {
             "id": appr.signature_id,
             "status": "signed",
-            "certificate_url": "cert",
+            "certificate_url": cert,
         }
     )
 
@@ -47,8 +50,9 @@ def test_verify_signature_mismatched_hash() -> None:
 
     appr = create_approval("wf1", "alice", doc_id, document=b"hello")
     send_for_signature(appr.id, doc_id, "alice")
+    cert = hashlib.sha256(b"hello").hexdigest()
     documenso.process_webhook(
-        {"id": appr.signature_id, "status": "signed", "certificate_url": "cert"}
+        {"id": appr.signature_id, "status": "signed", "certificate_url": cert}
     )
 
     # Mutate the document after signing so the stored hash mismatches
@@ -58,7 +62,11 @@ def test_verify_signature_mismatched_hash() -> None:
     assert resp2.status_code == 200
     data = resp2.json()
     assert data["status"] == "fail"
-    assert data["details"] == []
+    detail = next(d for d in data["details"] if d["approval_id"] == appr.id)
+    assert detail["hash_valid"] is False
+    assert detail["signature_valid"] is True
+    assert detail["certificate_present"] is True
+    assert detail["signature_verified"] is False
 
 
 def test_verify_signature_unsigned() -> None:
@@ -85,7 +93,7 @@ def test_verify_signature_unsigned() -> None:
     assert detail["signature_verified"] is False
 
 
-def test_verify_signature_missing_certificate() -> None:
+def test_verify_signature_invalid_certificate() -> None:
     approvals.clear()
     client = TestClient(app)
     resp = client.post(
@@ -98,7 +106,7 @@ def test_verify_signature_missing_certificate() -> None:
     appr = create_approval("wf1", "alice", doc_id, document=b"hello")
     send_for_signature(appr.id, doc_id, "alice")
     documenso.process_webhook(
-        {"id": appr.signature_id, "status": "signed"}
+        {"id": appr.signature_id, "status": "signed", "certificate_url": "bad"}
     )
 
     resp2 = client.get(f"/documents/{doc_id}/verify-signature")
@@ -108,5 +116,5 @@ def test_verify_signature_missing_certificate() -> None:
     detail = next(d for d in data["details"] if d["approval_id"] == appr.id)
     assert detail["hash_valid"] is True
     assert detail["signature_valid"] is True
-    assert detail["certificate_present"] is False
-    assert detail["signature_verified"] is True
+    assert detail["certificate_present"] is True
+    assert detail["signature_verified"] is False

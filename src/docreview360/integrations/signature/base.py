@@ -22,11 +22,11 @@ class SignatureProvider(Protocol):
     ) -> Tuple[str, str]:
         """Create a signature request and return ``(id, url)``."""
 
-    def process_webhook(self, data: dict) -> None:
+    def process_webhook(self, data: dict[str, str]) -> None:
         """Handle a webhook payload from the provider."""
 
-    def verify_signature(self, sig_id: str, document: bytes) -> bool:
-        """Return ``True`` if ``sig_id`` is valid for ``document``."""
+    def verify_signature(self, signature_id: str, document: bytes) -> bool:
+        """Return ``True`` if ``signature_id`` is valid for ``document``."""
 
 
 providers: Dict[str, SignatureProvider] = {}
@@ -48,7 +48,7 @@ def get_default_provider() -> str:
     if env:
         return env
     settings = load_settings()
-    return settings.get("signature_provider", "documenso")
+    return str(settings.get("signature_provider", "documenso"))
 
 
 def get_provider(name: str | None = None) -> SignatureProvider:
