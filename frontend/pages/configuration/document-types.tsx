@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { API } from "@/lib/api";
 import { Pencil, Plus, Trash } from "lucide-react";
@@ -23,225 +23,6 @@ interface DocType {
   template?: string;
 }
 
-const DEFAULT_TYPES: DocType[] = [
-  {
-    id: "Advisory Circular",
-    name: "Advisory Circular",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-    ],
-  },
-  {
-    id: "API Guide",
-    name: "API Guide",
-    phases: [
-      "Draft Development",
-      "Peer Review",
-      "Beta Documentation Review",
-      "Release Candidate Review",
-      "General Availability",
-      "Maintenance / Revision Cycle",
-    ],
-  },
-  {
-    id: "CLI Guide",
-    name: "CLI Guide",
-    phases: [
-      "Draft Development",
-      "Peer Review",
-      "Beta Documentation Review",
-      "Release Candidate Review",
-      "General Availability",
-      "Maintenance / Revision Cycle",
-    ],
-  },
-  {
-    id: "Deviation Memorandum",
-    name: "Deviation Memorandum",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-    ],
-  },
-  {
-    id: "Exemption",
-    name: "Exemption",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-    ],
-  },
-  {
-    id: "Federal Register Notice",
-    name: "Federal Register Notice",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-    ],
-  },
-  {
-    id: "General Memorandum",
-    name: "General Memorandum",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-    ],
-  },
-  {
-    id: "Manual",
-    name: "Manual",
-    phases: [
-      "Draft Development",
-      "Peer Review",
-      "Internal Coordination",
-      "Beta Documentation Review",
-      "Release Candidate Review",
-      "General Availability",
-      "Maintenance / Revision Cycle",
-    ],
-  },
-  {
-    id: "Order",
-    name: "Order",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-    ],
-  },
-  {
-    id: "Policy Memorandum",
-    name: "Policy Memorandum",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-    ],
-  },
-  {
-    id: "Policy Statement",
-    name: "Policy Statement",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-    ],
-  },
-  {
-    id: "Release Notes",
-    name: "Release Notes",
-    phases: [
-      "Draft Development",
-      "Peer Review",
-      "Beta Documentation Review",
-      "Release Candidate Review",
-      "General Availability",
-      "Maintenance / Revision Cycle",
-    ],
-  },
-  {
-    id: "Rulemaking",
-    name: "Rulemaking",
-    phases: [
-      "Draft Development",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-      "Final Issuance",
-    ],
-  },
-  {
-    id: "Special Class Airworthiness Criteria",
-    name: "Special Class Airworthiness Criteria",
-    phases: [
-      "Draft Development",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-      "Final Issuance",
-    ],
-  },
-  {
-    id: "Special Conditions",
-    name: "Special Conditions",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-    ],
-  },
-  {
-    id: "Standard Operating Procedure",
-    name: "Standard Operating Procedure",
-    phases: [
-      "Draft Development",
-      "Peer Review",
-      "Internal Coordination",
-      "Beta Documentation Review",
-      "Release Candidate Review",
-      "General Availability",
-      "Maintenance / Revision Cycle",
-    ],
-  },
-  {
-    id: "Technical Standard Order",
-    name: "Technical Standard Order",
-    phases: [
-      "Draft Development",
-      "Final Issuance",
-      "Internal Coordination",
-      "Public Comment / Proposed Rulemaking",
-    ],
-  },
-  {
-    id: "White Paper",
-    name: "White Paper",
-    phases: [
-      "Draft Development",
-      "Peer Review",
-      "Internal Coordination",
-      "Final Issuance",
-    ],
-  },
-];
-
-const normalizeDocTypes = (items: unknown): DocType[] => {
-  if (!Array.isArray(items)) return [];
-  const list: DocType[] = items
-    .map((item) => {
-      if (typeof item === "string") {
-        return { id: item, name: item };
-      }
-      if (item && typeof item === "object") {
-        const anyItem = item as { id?: unknown; name?: unknown; template?: unknown; phases?: unknown; workflow?: unknown };
-        const name = typeof anyItem.name === "string" ? anyItem.name : String(anyItem.name ?? "");
-        if (!name) return null;
-        const id = typeof anyItem.id === "string" && anyItem.id ? anyItem.id : name;
-        const phases = Array.isArray(anyItem.phases)
-          ? (anyItem.phases as string[])
-          : Array.isArray(anyItem.workflow)
-          ? (anyItem.workflow as string[])
-          : undefined;
-        const template = typeof anyItem.template === "string" ? anyItem.template : undefined;
-        return { id, name, phases, template };
-      }
-      return null;
-    })
-    .filter((v): v is DocType => Boolean(v));
-  return list.length ? list : [];
-};
-
-// Default phases that ship with the product
 const DEFAULT_PHASES = [
   "Beta Documentation Review",
   "Draft Development",
@@ -253,6 +34,51 @@ const DEFAULT_PHASES = [
   "Public Comment / Proposed Rulemaking",
   "Release Candidate Review",
 ];
+
+// Backend-authoritative normalizer
+const normalizeDocTypes = (items: unknown): DocType[] => {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+
+      const anyItem = item as {
+        id?: unknown;
+        name?: unknown;
+        phases?: unknown;
+        template?: unknown;
+        workflow?: unknown;
+      };
+
+      const name =
+        typeof anyItem.name === "string" && anyItem.name.trim()
+          ? anyItem.name.trim()
+          : "";
+
+      if (!name) return null;
+
+      const id =
+        typeof anyItem.id === "string" && anyItem.id.trim()
+          ? anyItem.id.trim()
+          : name;
+
+      let phases: string[] | undefined;
+      if (Array.isArray(anyItem.phases)) {
+        phases = (anyItem.phases as string[]).filter((p) => typeof p === "string" && p.trim());
+      } else if (Array.isArray(anyItem.workflow)) {
+        phases = (anyItem.workflow as string[]).filter((p) => typeof p === "string" && p.trim());
+      }
+
+      const template =
+        typeof anyItem.template === "string" && anyItem.template.trim()
+          ? anyItem.template
+          : undefined;
+
+      return { id, name, phases, template };
+    })
+    .filter((v): v is DocType => Boolean(v));
+};
 
 function PhaseSelector({
   docTypeId,
@@ -269,6 +95,7 @@ function PhaseSelector({
   const filtered = phases.filter((p) =>
     p.toLowerCase().includes(search.toLowerCase()),
   );
+
   return (
     <div className="flex flex-wrap items-center gap-1">
       {selectedPhases.length > 0 ? (
@@ -336,53 +163,41 @@ export default function DocumentTypesPage() {
   const [replacementDocType, setReplacementDocType] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<any>(null);
 
-  const mergeWithDefaultPhases = (
-    list: DocType[],
-    existing: Record<string, string[]>,
-  ) => {
-    const map = { ...existing } as Record<string, string[]>;
-    let changed = false;
-    list.forEach((t) => {
-      if (t.phases && t.phases.length && !map[t.id]) {
-        map[t.id] = t.phases;
-        changed = true;
-      }
-    });
-    if (changed || Object.keys(existing).length === 0) {
-      setDocTypePhaseMap(map);
-      localStorage.setItem("docTypePhaseMap", JSON.stringify(map));
-    }
-    return map;
-  };
-
   useEffect(() => {
-    // Load existing mappings from localStorage
+    // Restore user-customized mapping from localStorage
     const saved = localStorage.getItem("docTypePhaseMap");
     let parsed: Record<string, string[]> = {};
     if (saved) {
       try {
         parsed = JSON.parse(saved);
         setDocTypePhaseMap(parsed);
-      } catch {
-        // ignore invalid JSON
-      }
+      } catch {}
     }
 
-    // Fetch document types via Next.js API route to avoid CORS issues
+    // Fetch document types from backend
     fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         const list = normalizeDocTypes(data);
-        const finalList = list.length ? list : DEFAULT_TYPES;
-        setTypes(finalList);
-        parsed = mergeWithDefaultPhases(finalList, parsed);
+        setTypes(list);
+
+        const backendMap: Record<string, string[]> = {};
+        list.forEach((t) => {
+          if (t.phases && t.phases.length) {
+            backendMap[t.id] = t.phases;
+          }
+        });
+
+        // Merge backend defaults with any localStorage overrides
+        const merged = { ...backendMap, ...parsed };
+        setDocTypePhaseMap(merged);
+        localStorage.setItem("docTypePhaseMap", JSON.stringify(merged));
       })
       .catch(() => {
-        setTypes(DEFAULT_TYPES);
-        parsed = mergeWithDefaultPhases(DEFAULT_TYPES, parsed);
+        setTypes([]); // No fallback to DEFAULT_TYPES
       });
 
-    // Fetch phases through the local API route
+    // Fetch available phases from backend
     fetch("/api/phases")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: string[]) => setPhases(data.length ? data : DEFAULT_PHASES))
@@ -430,32 +245,21 @@ export default function DocumentTypesPage() {
   };
 
   const removeType = async (id: string) => {
-    // Check if document type is in use
     const usage = await checkUsage(id);
-    
     if (usage && usage.in_use) {
-      // Show delete dialog with replacement selection
       setShowDeleteDialog(id);
       return;
     }
-    
-    // If not in use, delete directly
     setTypes(types.filter((t) => t.id !== id));
     try {
       await fetch(`${API}/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
-    } catch {
-      // ignore network errors in development mode
-    }
+    } catch {}
   };
 
   const confirmDelete = async () => {
     if (!showDeleteDialog || !replacementDocType) return;
-    
     try {
-      const response = await fetch(`${API}/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`, { 
-        method: "DELETE" 
-      });
-      
+      const response = await fetch(`${API}/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`, { method: "DELETE" });
       if (response.ok) {
         setTypes(types.filter((t) => t.id !== showDeleteDialog));
       } else {
@@ -466,7 +270,6 @@ export default function DocumentTypesPage() {
       console.error("Error deleting document type:", error);
       alert("Error deleting document type");
     }
-    
     setShowDeleteDialog(null);
     setReplacementDocType("");
     setUsageInfo(null);
@@ -493,9 +296,7 @@ export default function DocumentTypesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-    } catch {
-      // ignore network errors in development mode
-    }
+    } catch {}
     setEditingId(null);
     setEditName("");
   };
@@ -510,10 +311,8 @@ export default function DocumentTypesPage() {
     let updatedPhases: string[];
 
     if (currentPhases.includes(phase)) {
-      // Remove phase if already selected
       updatedPhases = currentPhases.filter(p => p !== phase);
     } else {
-      // Add phase if not selected
       updatedPhases = [...currentPhases, phase];
     }
 
@@ -538,9 +337,7 @@ export default function DocumentTypesPage() {
           onChange={(e) => setNewName(e.target.value)}
           className="max-w-xs"
         />
-        <Button type="submit" size="sm">
-          Add
-        </Button>
+        <Button type="submit" size="sm">Add</Button>
       </form>
       <Table>
         <TableHeader>
@@ -568,31 +365,17 @@ export default function DocumentTypesPage() {
               <TableCell className="w-28">
                 {editingId === t.id ? (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => saveEdit(t.id)}>
-                      Save
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                      Cancel
-                    </Button>
+                    <Button size="sm" onClick={() => saveEdit(t.id)}>Save</Button>
+                    <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel</Button>
                   </div>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => startEdit(t)}
-                    title="Edit"
-                  >
+                  <Button variant="ghost" size="icon" onClick={() => startEdit(t)} title="Edit">
                     <Pencil className="w-4 h-4" />
                   </Button>
                 )}
               </TableCell>
               <TableCell className="w-20">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeType(t.id)}
-                  title="Remove"
-                >
+                <Button variant="ghost" size="icon" onClick={() => removeType(t.id)} title="Remove">
                   <Trash className="w-4 h-4 text-red-600" />
                 </Button>
               </TableCell>
@@ -616,12 +399,10 @@ export default function DocumentTypesPage() {
         </TableBody>
       </Table>
 
-      {/* Delete Confirmation Dialog */}
       {showDeleteDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Delete Document Type</h3>
-            
             {usageInfo && (
               <div className="mb-4">
                 <p className="text-red-600 mb-2">
@@ -639,11 +420,9 @@ export default function DocumentTypesPage() {
                 )}
               </div>
             )}
-            
             <p className="mb-4">
               Please select a replacement document type to assign to all affected projects:
             </p>
-            
             <Select value={replacementDocType} onValueChange={setReplacementDocType}>
               <SelectTrigger>
                 <SelectValue placeholder="Select replacement document type" />
@@ -658,13 +437,8 @@ export default function DocumentTypesPage() {
                   ))}
               </SelectContent>
             </Select>
-            
             <div className="flex gap-2 mt-6">
-              <Button 
-                onClick={confirmDelete} 
-                disabled={!replacementDocType}
-                variant="danger"
-              >
+              <Button onClick={confirmDelete} disabled={!replacementDocType} variant="danger">
                 Delete and Replace
               </Button>
               <Button onClick={cancelDelete} variant="outline">
