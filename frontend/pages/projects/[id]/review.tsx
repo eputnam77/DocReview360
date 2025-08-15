@@ -22,12 +22,15 @@ interface Review {
   status: "pending" | "approved" | "rejected";
   comment: string;
   created: string;
+  phaseId: string;
+  required?: boolean;
 }
 
 export default function ProjectReviewPage() {
   const router = useRouter();
   const { id } = router.query;
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [currentPhaseId, setCurrentPhaseId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [newStatus, setNewStatus] = useState<
     "pending" | "approved" | "rejected"
@@ -35,16 +38,39 @@ export default function ProjectReviewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch review history for this project
+  // Fetch project phase
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
-      fetch(`${API}/projects/${id}/reviews`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data) => setReviews(Array.isArray(data) ? data : []))
-        .catch(() => setReviews([]))
-        .finally(() => setLoading(false));
+    fetch(`${API}/projects/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) =>
+        setCurrentPhaseId(p?.current_phase_id || p?.phase || null),
+      );
   }, [id]);
+
+  // Fetch review history for this project and phase
+  useEffect(() => {
+    if (!id) return;
+    const phaseQuery = currentPhaseId
+      ? `?phase=${encodeURIComponent(currentPhaseId)}`
+      : "";
+    setLoading(true);
+    fetch(`${API}/projects/${id}/reviews${phaseQuery}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) =>
+        setReviews(
+          Array.isArray(data)
+            ? data.map((rev: any) => ({
+                ...rev,
+                phaseId: rev.phase_id ?? rev.phaseId ?? currentPhaseId || "",
+                required: rev.required,
+              }))
+            : [],
+        ),
+      )
+      .catch(() => setReviews([]))
+      .finally(() => setLoading(false));
+  }, [id, currentPhaseId]);
 
   // Submit a new review/comment
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,11 +88,18 @@ export default function ProjectReviewPage() {
         body: JSON.stringify({
           comment: newComment,
           status: newStatus,
+          phaseId: currentPhaseId,
+          required: true,
         }),
       });
       if (!res.ok) throw new Error("Failed to submit review");
       const data = await res.json();
-      setReviews([data, ...reviews]);
+      const mapped = {
+        ...data,
+        phaseId: data.phase_id ?? currentPhaseId || "",
+        required: data.required,
+      };
+      setReviews([mapped, ...reviews]);
       setNewComment("");
       setNewStatus("pending");
     } catch (err) {
@@ -77,6 +110,8 @@ export default function ProjectReviewPage() {
           status: newStatus,
           comment: newComment,
           created: new Date().toISOString(),
+          phaseId: currentPhaseId || "",
+          required: true,
         },
         ...reviews,
       ]);

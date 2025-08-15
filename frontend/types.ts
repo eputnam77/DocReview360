@@ -13,6 +13,8 @@ export interface StepInstance {
   kind: StepKind; // Form | Approval
   name: string; // e.g. "VP Demand Gen"
   status: StepStatus; // current state
+  phaseId?: string; // workflow phase identifier
+  required?: boolean; // whether the step is mandatory
   completedAt?: string; // ISO if done
   completedBy?: {
     // user info if done

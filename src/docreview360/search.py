@@ -49,6 +49,15 @@ class ProjectModel(BaseModel):
         return None
 
     @computed_field
+    def current_phase_id(self) -> str | None:
+        """Expose the raw phase identifier for API consumers."""
+        if self.workflow:
+            wf = get_workflow(self.workflow)
+            if wf:
+                return wf.phase
+        return None
+
+    @computed_field
     def status(self) -> str:
         """Derive status from workflow phase or return default."""
         if self.workflow:

@@ -28,6 +28,8 @@ interface Approval {
   state: "pending" | "approved" | "rejected";
   due_at?: string;
   signed_at?: string;
+  phaseId?: string;
+  required?: boolean;
 }
 
 export default function EditProjectPage() {
@@ -133,7 +135,12 @@ export default function EditProjectPage() {
             const apRes = await fetch(`${API}/approvals?workflow=${proj.workflow}`);
             if (apRes.ok) {
               const approvals = await apRes.json();
-              setCurrentApprovals(approvals);
+              const mapped = approvals.map((a: any) => ({
+                ...a,
+                phaseId: a.phase_id,
+                required: a.required,
+              }));
+              setCurrentApprovals(mapped);
             }
           } catch (error) {
             console.error('Failed to fetch approvals:', error);
@@ -152,7 +159,12 @@ export default function EditProjectPage() {
                 const apRes = await fetch(`${API}/approvals?workflow=${projectWorkflow.id}`);
                 if (apRes.ok) {
                   const approvals = await apRes.json();
-                  setCurrentApprovals(approvals);
+                  const mapped = approvals.map((a: any) => ({
+                    ...a,
+                    phaseId: a.phase_id,
+                    required: a.required,
+                  }));
+                  setCurrentApprovals(mapped);
                 }
               }
             }
@@ -279,8 +291,10 @@ export default function EditProjectPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       workflow: newWorkflow.id,
-                      reviewer: reviewer
-                    })
+                      reviewer: reviewer,
+                      phase_id: phase,
+                      required: true,
+                    }),
                   });
                 }
               }
@@ -313,8 +327,10 @@ export default function EditProjectPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       workflow: existingWorkflow.id,
-                      reviewer: reviewer
-                    })
+                      reviewer: reviewer,
+                      phase_id: phase,
+                      required: true,
+                    }),
                   });
                 }
               }
