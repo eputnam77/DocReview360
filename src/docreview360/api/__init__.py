@@ -276,12 +276,30 @@ class SignatureProviderPayload(BaseModel):
 app = FastAPI(title="DocReview360")
 
 # Add CORS middleware to allow frontend requests
+#
+# Previously, the API only allowed requests from hard-coded localhost
+# origins, which meant running the frontend from any other host (even a
+# test environment) resulted in a browser "Failed to fetch" error due to
+# a blocked CORS preflight request.  To support multiple environments we
+# now read the allowed origins from an environment variable.  When the
+# variable is unset we fall back to a permissive regular expression so
+# that developers can experiment in ephemeral environments without extra
+# configuration.
+allowed_origins = os.getenv("DOCREVIEW360_ALLOW_ORIGINS")
+if allowed_origins:
+    cors_kwargs = {
+        "allow_origins": [o.strip() for o in allowed_origins.split(",") if o.strip()]
+    }
+else:
+    # ``allow_origin_regex`` permits credentials while accepting any origin
+    cors_kwargs = {"allow_origin_regex": ".*"}
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    **cors_kwargs,
 )
 
 # Enable compression for large responses as recommended by the
