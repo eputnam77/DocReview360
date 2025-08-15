@@ -8,7 +8,7 @@ from typing import List, cast
 
 import requests  # type: ignore[import-untyped]
 
-from .approvals import submit_draft_for_approval
+from .approvals import submit_draft_for_approval, create_approval
 from .fann_model import Weights
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
@@ -18,7 +18,7 @@ _GRAPH_URL = "https://graph.microsoft.com/v1.0"
 
 @dataclass
 class SharePointClient:
-    """Minimal SharePoint client supporting upload, download and versioning."""
+    """Minimal SharePoint client supporting upload, download, metadata, and versioning."""
 
     site_id: str
     drive_id: str
@@ -76,29 +76,59 @@ class SharePointClient:
         extra_reviewer: str = "policy",
         threshold: float = 0.5,
         reviewer_model: ReviewerModel | None = None,
-    ) -> tuple[str, float]:
+    ) -> tuple[str, float, list[str]]:
         """Upload ``data`` and route for approval based on FANN scoring.
 
-        The uploaded document is scored using ``weights``.  If the approval
-        likelihood is below ``threshold`` an extra review step is inserted prior
-        to the normal ``reviewer``.
+        Returns:
+            tuple[item_id, score, approval_ids]
+            approval_ids is a list of all created approval IDs (may be empty).
         """
-
+        # Upload the document
         item_id = self.upload_file(path, data)
+
+        # Calculate FANN score
         text = data.decode("utf-8", errors="ignore")
         score = approval_likelihood(text, weights)
+
+        approval_ids: list[str] = []
+
+        # Trigger workflow approvals if configured
         if workflow is not None:
-            submit_draft_for_approval(
-                workflow,
-                reviewer,
-                item_id,
-                text,
-                weights,
-                threshold=threshold,
-                extra_reviewer=extra_reviewer,
-                reviewer_model=reviewer_model,
-            )
-        return item_id, score
+            if reviewer_model:
+                approval_id = submit_draft_for_approval(
+                    workflow,
+                    reviewer or "manager",
+                    item_id,
+                    text,
+                    weights,
+                    threshold=threshold,
+                    extra_reviewer=extra_reviewer,
+                    reviewer_model=reviewer_model,
+                )
+                if approval_id:
+                    approval_ids.append(approval_id)
+            else:
+                if score < threshold:
+                    approval_id = create_approval(workflow, extra_reviewer, description="Auto risk review")
+                    if approval_id:
+                        approval_ids.append(approval_id)
+                approval_id = create_approval(workflow, reviewer or "manager", description="Primary review")
+                if approval_id:
+                    approval_ids.append(approval_id)
+
+        # Auto-tag SharePoint with workflow + scoring info
+        metadata = {
+            "Workflow": workflow or "",
+            "FANNScore": f"{score:.3f}",
+            "ApprovalIDs": ", ".join(approval_ids) if approval_ids else "",
+        }
+        try:
+            self.set_properties(item_id, metadata)
+        except Exception as e:
+            # We don't want metadata failures to block main flow
+            print(f"Warning: Failed to set SharePoint metadata for {item_id}: {e}")
+
+        return item_id, score, approval_ids
 
 
 def client_from_env() -> SharePointClient:
