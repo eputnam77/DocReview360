@@ -136,6 +136,20 @@ def list_public_documents() -> list[DocumentModel]:
     return [d for d in documents.values() if d.public_copy]
 
 
+def public_documents_report() -> list[dict[str, str | None]]:
+    """Return minimal metadata for public documents.
+
+    Each entry contains the public document id and the originating
+    ``source_document_id`` so external systems can trace back to the
+    internal record.
+    """
+    return [
+        {"id": d.id, "source_document_id": d.source_document_id}
+        for d in documents.values()
+        if d.public_copy
+    ]
+
+
 def update_document(
     doc_id: str,
     content: str,
