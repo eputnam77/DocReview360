@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from docreview360.archive import archive_document, archives
 from docreview360.documents import DocumentModel
 from docreview360.object_storage import download_file, upload_file
@@ -38,3 +37,9 @@ def test_download_roundtrip(tmp_path: Path) -> None:
     path = upload_file(tmp_path, "foo.txt", b"hello")
     assert download_file(tmp_path, "foo.txt") == b"hello"
     assert path.read_bytes() == b"hello"
+
+
+def test_append_only(tmp_path: Path) -> None:
+    upload_file(tmp_path, "bar.txt", b"first", append_only=True)
+    with pytest.raises(FileExistsError):
+        upload_file(tmp_path, "bar.txt", b"second", append_only=True)
