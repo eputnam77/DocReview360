@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -31,31 +31,35 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import auth, reporting
-from . import search as search_mod
-from .ai_assist import rewrite_text, summarize_text
-from .approvals import (
+from .. import auth, reporting
+from .. import search as search_mod
+from ..ai_assist import rewrite_text, summarize_text
+from ..ai_balancer import load_state as load_worker_state
+from ..ai_balancer import save_state as save_worker_state
+from ..approvals import (
     ApprovalModel,
     create_approval,
     get_approval,
     list_approvals,
     send_for_signature,
     update_approval_state,
+    verify_document_signature,
 )
-from .archive import (
+from ..archive import (
     ArchiveRecord,
     get_archive,
     list_archives,
 )
-from .archive import (
+from ..archive import (
     archive_document as archive_doc,
 )
-from .cache import cache_get, cache_set, clear_cache
-from .cms import save_to_cms
-from .comments import CommentModel, add_comment, list_comments
-from .config import CONFIG_FILE, Config
-from .dashboard_prefs import get_visibility, set_visibility
-from .doc_types import (
+from ..audit import AuditEvent, get_audit_log
+from ..cache import cache_get, cache_set, clear_cache
+from ..cms import save_to_cms
+from ..comments import CommentModel, add_comment, list_comments
+from ..config import CONFIG_FILE, Config
+from ..dashboard_prefs import get_visibility, set_visibility
+from ..doc_types import (
     DocumentTypeModel,
     add_document_type,
     delete_document_type,
@@ -65,32 +69,32 @@ from .doc_types import (
     list_document_types,
     update_document_type,
 )
-from .documenso import (
+from ..documenso import (
     complete_signature,
-    process_webhook,
     signature_status,
 )
-from .documents import (
+from ..documents import (
     DocumentModel,
     get_document,
     import_document,
+    list_public_documents,
     update_document,
 )
-from .documents import (
+from ..documents import (
     list_documents as list_docs,
 )
-from .environment import current_environment, load_envs, switch_environment
-from .exporter import export_document, set_guardrails
-from .integrations.signature import DEFAULT_PROVIDER, get_provider
-from .logs import LogEntry, log_event, log_stream, query_logs
-from .messages import render
-from .nemo_guardrails import GuardrailsMiddleware, contains_pii
-from .phases import add_phase, delete_phase, list_phases, rename_phase
-from .plugins import load_plugins
-from .plugins import registry as plugin_registry
-from .profile import get_preferences, update_preferences
-from .rbac import get_roles, require_role
-from .reporting import (
+from ..environment import current_environment, load_envs, switch_environment
+from ..exporter import export_document, set_guardrails
+from ..integrations.signature import get_default_provider, get_provider
+from ..logs import LogEntry, log_event, log_stream, query_logs
+from ..messages import render
+from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
+from ..phases import add_phase, delete_phase, list_phases, rename_phase
+from ..plugins import load_plugins
+from ..plugins import registry as plugin_registry
+from ..profile import get_preferences, update_preferences
+from ..rbac import get_roles, require_role
+from ..reporting import (
     DashboardEntry,
     SummaryReport,
     admin_dashboard,
@@ -100,7 +104,7 @@ from .reporting import (
     user_dashboard,
     widget_counts,
 )
-from .search import (
+from ..search import (
     ProjectModel,
     add_project,
     assign_temporary,
@@ -114,11 +118,12 @@ from .search import (
     set_project_priority,
     update_project,
 )
-from .status import internal_status, public_status
-from .stubs.task223 import convert_document
-from .template_manager import upload_template as store_template
-from .watchlist import get_watchlist, toggle_watch
-from .workflows import (
+from ..settings_manager import load_settings, update_setting
+from ..status import internal_status, public_status
+from ..stubs.task223 import convert_document
+from ..template_manager import upload_template as store_template
+from ..watchlist import get_watchlist, toggle_watch
+from ..workflows import (
     WorkflowModel,
     advance_workflow,
     assign_reviewer,
@@ -128,9 +133,13 @@ from .workflows import (
     start_workflow,
     workflows,
 )
+from .approvals import router as approvals_router
+from .webhooks import router as webhooks_router
 
 # Load environment variables from .env file
 load_dotenv()
+
+WORKER_STATE_FILE = Path(os.getenv("DOCREVIEW360_WORKER_STATE", "worker_state.json"))
 
 
 class WorkflowCreate(BaseModel):
@@ -151,6 +160,7 @@ class ApprovalCreate(BaseModel):
 
     workflow: str
     reviewer: str
+    doc_id: str
     due_at: datetime | None = None
     description: str | None = None
 
@@ -251,6 +261,12 @@ class ConfigPayload(BaseModel):
     filename_template: str = "{id}"
 
 
+class SignatureProviderPayload(BaseModel):
+    """Payload for selecting the active signature provider."""
+
+    provider: str
+
+
 app = FastAPI(title="DocReview360")
 
 # Add CORS middleware to allow frontend requests
@@ -266,12 +282,25 @@ app.add_middleware(
 # performance profiling report. ``minimum_size`` avoids wasting
 # CPU cycles on tiny payloads.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+app.include_router(approvals_router)
+app.include_router(webhooks_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
     app.add_middleware(GuardrailsMiddleware, checker=contains_pii)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+@app.on_event("startup")
+async def _load_balancer_state() -> None:
+    load_worker_state(WORKER_STATE_FILE)
+
+
+@app.on_event("shutdown")
+async def _save_balancer_state() -> None:
+    save_worker_state(WORKER_STATE_FILE)
 
 
 @app.get("/health")
@@ -394,7 +423,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     """Create a new project."""
     # Auto-generate ID if not provided
     if body.id is None:
-        from .search import search_index
+        from ..search import search_index
 
         body.id = search_index.generate_project_id()
 
@@ -414,7 +443,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     print(f"DEBUG: Project '{project.id}' created successfully, cache cleared")
     log_event(
         "create_project",
-        user=project.user,
+        actor=project.user,
         project=project.id,
         message=render("create_project", user=project.user or "", project_id=project.id),
     )
@@ -469,7 +498,7 @@ def _update_workflow_phase(
     is_json = request.headers.get("content-type", "").startswith("application/json")
     if not is_json:
         return
-    from .workflows import get_workflow as _get_wf
+    from ..workflows import get_workflow as _get_wf
 
     wf_id_to_update = updated_project.workflow
     if not wf_id_to_update:
@@ -614,7 +643,7 @@ async def import_document_endpoint(
     )
     log_event(
         "import_document",
-        user=user,
+        actor=user,
         project=project,
         filename=filename,
         message=render(
@@ -630,7 +659,7 @@ async def import_document_endpoint(
 @app.post("/documents/tiptap", status_code=201, response_model=DocumentModel)
 async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
     """Import a TipTap JSON document."""
-    from .tiptap import import_tiptap_document
+    from ..tiptap import import_tiptap_document
 
     try:
         document = import_tiptap_document(body)
@@ -674,6 +703,12 @@ async def list_documents_endpoint() -> list[DocumentModel]:
     return docs_list
 
 
+@app.get("/documents/public", response_model=list[DocumentModel])
+async def list_public_documents_endpoint() -> list[DocumentModel]:
+    """Return documents that are flagged as public copies."""
+    return list_public_documents()
+
+
 @app.get("/documents/{doc_id}", response_model=DocumentModel)
 async def get_document_endpoint(doc_id: str) -> DocumentModel:
     """Retrieve a single document by id."""
@@ -681,6 +716,24 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return document
+
+
+@app.get("/documents/{doc_id}/audit", response_model=list[AuditEvent])
+async def get_document_audit_endpoint(doc_id: str) -> list[AuditEvent]:
+    """Return audit events for a document."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return get_audit_log(doc_id)
+
+
+@app.get("/documents/{doc_id}/verify-signature")
+async def verify_signature_endpoint(doc_id: str) -> dict[str, object]:
+    """Validate the digital signatures associated with ``doc_id``."""
+    try:
+        return verify_document_signature(doc_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.put("/documents/{doc_id}", response_model=DocumentModel)
@@ -873,7 +926,7 @@ async def ai_summarize_endpoint(body: TextBody) -> dict[str, str]:
 @app.post("/chat")
 async def chat_bot_endpoint(body: TextBody) -> dict[str, str]:
     """Return an answer from the simple chatbot."""
-    from .chat_bot import answer_question
+    from ..chat_bot import answer_question
 
     answer = await answer_question(body.text)
     return {"result": answer}
@@ -934,7 +987,7 @@ async def update_document_type_endpoint(
 @app.get("/document-types/{name}/usage", response_model=dict[str, Any])
 async def check_document_type_usage_endpoint(name: str) -> dict[str, Any]:
     """Check if a document type is in use and return usage information."""
-    from .doc_types import get_document_type
+    from ..doc_types import get_document_type
 
     # Check if document type exists
     doc_type = get_document_type(name)
@@ -956,7 +1009,7 @@ async def check_document_type_usage_endpoint(name: str) -> dict[str, Any]:
 @app.delete("/document-types/{name}", status_code=204, response_class=Response)
 async def delete_document_type_endpoint(name: str, replacement: str | None = None) -> Response:
     """Remove an existing document type. If in use, replacement is required."""
-    from .doc_types import get_document_type
+    from ..doc_types import get_document_type
 
     # Check if document type exists
     doc_type = get_document_type(name)
@@ -1026,7 +1079,7 @@ async def upload_template_endpoint(
 @app.get("/plugin-marketplace")
 async def list_marketplace() -> list[dict[str, Any]]:
     """Return available plugins with detailed information."""
-    from .plugin_marketplace import list_plugins_with_info
+    from ..plugin_marketplace import list_plugins_with_info
 
     return list_plugins_with_info()
 
@@ -1038,7 +1091,7 @@ class MarketplaceInstall(BaseModel):
 @app.post("/plugin-marketplace/install")
 async def install_marketplace_plugin(body: MarketplaceInstall) -> dict[str, str]:
     """Install a plugin from the marketplace."""
-    from .plugin_marketplace import install_plugin
+    from ..plugin_marketplace import install_plugin
 
     try:
         install_plugin(body.name)
@@ -1250,6 +1303,7 @@ async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
     return create_approval(
         body.workflow,
         body.reviewer,
+        body.doc_id,
         due_at=body.due_at,
         description=body.description,
     )
@@ -1294,7 +1348,8 @@ async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return_to = f"/projects/{wf.project}"
-    url = send_for_signature(approval_id, wf.project, approval.reviewer, return_to)
+    doc_id = approval.document_id or wf.project
+    url = send_for_signature(approval_id, doc_id, approval.reviewer, return_to)
     return {"id": approval.signature_id, "url": url}
 
 
@@ -1306,7 +1361,7 @@ async def sign_document(
     approval: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a signature request for ``doc_id`` using the active provider."""
-    sig_id, url = get_provider(DEFAULT_PROVIDER).request_signature(
+    sig_id, url = get_provider().request_signature(
         doc_id,
         user,
         workflow_id=workflow,
@@ -1319,7 +1374,7 @@ async def sign_document(
 async def complete_sign(sig_id: str) -> None:
     """Mark a signature request as completed."""
     complete_signature(sig_id)
-    process_webhook({"id": sig_id, "status": "signed"})
+    get_provider().process_webhook({"id": sig_id, "status": "signed"})
 
 
 @app.get("/sign/{sig_id}")
@@ -1329,23 +1384,13 @@ async def get_sign_status(sig_id: str) -> dict[str, str]:
     return {"status": status}
 
 
-@app.post("/hooks/documenso", status_code=204, response_class=Response)
-async def documenso_webhook(payload: dict[str, object]) -> Response:
-    """Process Documenso webhook callbacks."""
-    try:
-        process_webhook(cast(dict[str, str], payload))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return Response(status_code=204)
-
-
 @app.post("/token", response_model=auth.Token)
 async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
     token_resp = await auth.login_for_access_token(form_data)
     log_event(
         "login",
-        user=form_data.username,
+        actor=form_data.username,
         message=render("login", user=form_data.username),
     )
     return token_resp
@@ -1387,7 +1432,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
         response.set_cookie("session", "admin")
         log_event(
             "login",
-            user=username,
+            actor=username,
             message=render("login", user=username),
         )
         return response
@@ -1469,15 +1514,15 @@ async def unregister_plugin(name: str) -> Response:
 
 
 @app.get("/logs", response_model=list[LogEntry])
-async def list_logs(action: str | None = None, user: str | None = None) -> list[LogEntry]:
-    """Return recorded logs optionally filtered by action or user."""
-    return query_logs(action=action, user=user)
+async def list_logs(action: str | None = None, actor: str | None = None) -> list[LogEntry]:
+    """Return recorded logs optionally filtered by action or actor."""
+    return query_logs(action=action, actor=actor)
 
 
 @app.get("/api/audit", response_model=list[LogEntry])
-async def list_audit(action: str | None = None, user: str | None = None) -> list[LogEntry]:
+async def list_audit(action: str | None = None, actor: str | None = None) -> list[LogEntry]:
     """Alias for :func:`list_logs` used by the dashboard."""
-    return query_logs(action=action, user=user)
+    return query_logs(action=action, actor=actor)
 
 
 @app.get("/reports/summary", response_model=SummaryReport)
@@ -1664,6 +1709,25 @@ async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
     except OSError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return payload
+
+
+@app.get("/signature-provider")
+async def get_signature_provider_endpoint() -> dict[str, str]:
+    """Return the configured signature provider."""
+
+    settings = load_settings()
+    provider = settings.get("signature_provider", get_default_provider())
+    return {"provider": provider}
+
+
+@app.put("/signature-provider")
+async def update_signature_provider_endpoint(
+    payload: SignatureProviderPayload,
+) -> dict[str, str]:
+    """Persist the active signature provider selection."""
+
+    update_setting("signature_provider", payload.provider)
+    return {"provider": payload.provider}
 
 
 @app.post("/tools/convert")

@@ -26,7 +26,7 @@ def test_config_invalid(tmp_path: Path) -> None:
 def test_log_event_listener() -> None:
     captured = []
     logs.register_listener(captured.append)
-    event = logs.log_event("create", user="alice")
+    event = logs.log_event("create", actor="alice")
     logs.unregister_listener(captured.append)
     assert event in captured
 

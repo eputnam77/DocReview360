@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Dict, List
 
 from .ai_utils import FANN_FEATURE_NAMES, _fann_features
@@ -28,6 +29,26 @@ class ReviewerModel:
 
     def __init__(self) -> None:
         self._profiles: Dict[str, ReviewerProfile] = {}
+
+    def save(self, path: str) -> None:
+        """Serialise profiles to ``path`` in JSON format."""
+
+        data = {name: asdict(profile) for name, profile in self._profiles.items()}
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh)
+
+    def load(self, path: str) -> None:
+        """Load profiles from ``path`` created by :meth:`save`."""
+
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        self._profiles = {
+            name: ReviewerProfile(
+                preferences=defaultdict(float, prof.get("preferences", {})),
+                decisions=list(prof.get("decisions", [])),
+            )
+            for name, prof in data.items()
+        }
 
     def update_preferences(self, reviewer: str, text: str) -> None:
         feats = _feature_dict(text)

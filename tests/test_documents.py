@@ -1,10 +1,14 @@
+import hashlib
+
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
+from docreview360.audit import clear_audit_log
 from docreview360.documents import autosave_document, import_document
 
 
 def test_import_and_edit_document() -> None:
+    clear_audit_log()
     client = TestClient(app)
     content = "# Title\n\nHello"
     resp = client.post(
@@ -15,6 +19,8 @@ def test_import_and_edit_document() -> None:
     doc = resp.json()
     doc_id = doc["id"]
     assert doc["content"].startswith("# Title")
+    expected_hash = hashlib.sha256(content.encode()).hexdigest()
+    assert doc["ingestion_hash"] == expected_hash
 
     resp = client.get("/documents")
     assert any(d["id"] == doc_id for d in resp.json())
@@ -32,6 +38,10 @@ def test_import_and_edit_document() -> None:
     data = resp.json()
     assert data["content"] == updated
     assert data["history"] == [content]
+
+    resp = client.get(f"/documents/{doc_id}/audit")
+    events = [e["event"] for e in resp.json()]
+    assert events == ["created", "updated"]
 
 
 def test_autosave_document() -> None:

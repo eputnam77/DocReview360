@@ -13,14 +13,14 @@ def test_approve_triggers_envelope_and_audit_hash(monkeypatch: pytest.MonkeyPatc
     audit = create_signature(sig_id, secret="s")
     log_event("documenso_envelope", audit=audit)
     entry = query_logs("documenso_envelope")[0]
-    assert entry.metadata["audit"] == audit
+    assert entry.context["audit"] == audit
     assert sig_id
     assert url
 
 
 def test_delegated_signoff_records_delegate(monkeypatch: pytest.MonkeyPatch) -> None:
     clear_logs()
-    log_event("signoff", user="delegate", actor_type="delegate", manager="boss")
+    log_event("signoff", actor="delegate", actor_type="delegate", manager="boss")
     entry = query_logs("signoff")[0]
-    assert entry.metadata["actor_type"] == "delegate"
-    assert entry.metadata["manager"] == "boss"
+    assert entry.context["actor_type"] == "delegate"
+    assert entry.context["manager"] == "boss"
