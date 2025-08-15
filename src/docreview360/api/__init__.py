@@ -133,6 +133,7 @@ from ..workflows import (
     list_workflows,
     start_workflow,
     workflows,
+    list_roles,
 )
 from .approvals import router as approvals_router
 from .webhooks import router as webhooks_router
@@ -1291,6 +1292,12 @@ async def get_workflow_endpoint(wf_id: str) -> WorkflowModel:
 async def list_workflows_endpoint(project: str | None = None) -> list[WorkflowModel]:
     """Return workflows optionally filtered by project."""
     return list_workflows(project)
+
+
+@app.get("/workflow_roles", response_model=list[str])
+async def list_workflow_roles_endpoint() -> list[str]:
+    """Return all unique workflow roles."""
+    return list_roles()
 
 
 @app.post("/workflows/{wf_id}/start", response_model=WorkflowModel)
