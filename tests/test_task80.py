@@ -6,7 +6,7 @@ from docreview360.documenso import (
 
 
 def test_sign_document_flow() -> None:
-    sig, url = request_signature("doc1", "alice")
+    sig, url, _ = request_signature("doc1", "alice")
     assert url.endswith(sig)
     assert signature_status(sig) == "pending"
     complete_signature(sig)
