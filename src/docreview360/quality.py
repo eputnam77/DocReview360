@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from importlib import resources
 from pathlib import Path
-from typing import Sequence, cast
+from typing import Sequence
 
 from .ai_utils import FANN_FEATURE_NAMES, _fann_features
 from .fann_model import Weights, predict_weighted
@@ -54,7 +54,7 @@ def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = N
     more influence for specific document categories.
     """
 
-    return cast(float, predict_weighted(text, weights, _feature_weights(doc_type)))
+    return predict_weighted(text, weights, _feature_weights(doc_type))
 
 
 def explain_score(text: str, weights: Weights, *, doc_type: str | None = None) -> dict[str, object]:
