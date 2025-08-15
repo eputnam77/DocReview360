@@ -3,7 +3,6 @@ and FANN-based routing support."""
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -41,6 +40,7 @@ class ApprovalModel(BaseModel):
     signed_at: datetime | None = None
     description: Optional[str] = None
     provider_metadata: Dict[str, Any] = Field(default_factory=dict)
+    delegates: List[str] = Field(default_factory=list)
 
 
 approvals: Dict[str, ApprovalModel] = {}
@@ -55,6 +55,7 @@ def create_approval(
     *,
     signature_provider: str | None = None,
     document: bytes | None = None,
+    delegates: List[str] | None = None,
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     if signature_provider is None:
@@ -70,6 +71,7 @@ def create_approval(
         description=description,
         signature_provider=signature_provider,
         document_hash=doc_hash,
+        delegates=delegates or [],
     )
     approvals[approval_id] = approval
     log_event(
@@ -168,7 +170,13 @@ async def handle_signature_return(
         provider_metadata=approval.provider_metadata,
     )
 
-    if document is not None and approval.document_hash is not None:
+    if document is None:
+        stored_doc = get_document(doc_id)
+        if stored_doc is None:
+            raise KeyError("document not found")
+        document = stored_doc.content.encode("utf-8")
+
+    if approval.document_hash is not None:
         if hashlib.sha256(document).hexdigest() != approval.document_hash:
             log_event(
                 "signature_hash_mismatch",
@@ -187,6 +195,26 @@ async def handle_signature_return(
                 provider_metadata=approval.provider_metadata,
             )
             raise ValueError("document hash mismatch")
+
+    provider = get_provider(approval.signature_provider)
+    if not provider.verify_signature(signature_id, document):
+        log_event(
+            "signature_verification_failed",
+            approval_id=approval.id,
+            provider=approval.signature_provider,
+            signature_id=signature_id,
+            doc_id=doc_id,
+            provider_metadata=approval.provider_metadata,
+        )
+        log_audit_event(
+            doc_id,
+            "signature_verification_failed",
+            provider=approval.signature_provider,
+            signature_id=signature_id,
+            approval_id=approval.id,
+            provider_metadata=approval.provider_metadata,
+        )
+        raise ValueError("invalid signature")
 
     return await update_approval_state(
         approval.id,
@@ -245,6 +273,8 @@ async def update_approval_state(
     document: bytes | None = None,
 ) -> ApprovalModel:
     approval = approvals[approval_id]
+    if approval.state == "approved":
+        raise ValueError("signed approvals cannot be modified; reset required")
     previous = approval.state
     approval.state = state
     if signature_id is not None:
@@ -309,6 +339,10 @@ def send_for_signature(
     return_url: str | None = None,
 ) -> str:
     approval = approvals[approval_id]
+    if approval.state == "approved":
+        raise ValueError("approval already signed")
+    if user != approval.reviewer and user not in approval.delegates:
+        raise PermissionError("not authorised to send for signature")
     approval.document_id = doc_id
     if approval.document_hash is None:
         document = get_document(doc_id)
