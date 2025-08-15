@@ -10,10 +10,11 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, AsyncIterator, Callable, Dict, List, TypeVar, cast, get_type_hints
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, insert, select, event
 
 from .database import Database, default_url
 from .models import AuditLog, AuditLogRecord
+from . import rbac
 
 LogEntry = AuditLogRecord
 
@@ -28,6 +29,7 @@ class _LogList(list[LogEntry]):
         except Exception:
             return
         with db.session() as conn:
+            conn = conn.execution_options(allow_audit_log_mutations=True)
             conn.execute(delete(AuditLog))
 
 
@@ -59,7 +61,23 @@ def _get_db() -> Database:
         url = os.getenv("DOCREVIEW360_DATABASE_URL", default_url("sqlite"))
         _db = Database(url)
         _db.migrate()
+        _install_worm_guard(_db)
     return _db
+
+
+def _install_worm_guard(db: Database) -> None:
+    """Prevent direct updates or deletes on the audit log table."""
+
+    from sqlalchemy.sql.dml import Delete, Update
+
+    engine = db._engine
+
+    @event.listens_for(engine, "before_execute", retval=True)
+    def _worm_guard(conn, clauseelement, multiparams, params, execution_options):  # type: ignore[override]
+        if isinstance(clauseelement, (Delete, Update)) and getattr(clauseelement.table, "name", "") == AuditLog.__tablename__:
+            if not execution_options.get("allow_audit_log_mutations"):
+                raise PermissionError("Audit log entries are immutable")
+        return clauseelement, multiparams, params
 
 
 async def log_stream() -> AsyncIterator[LogEntry]:
@@ -203,6 +221,20 @@ def _coerce_details(value: Any) -> Dict[str, Any]:
 def export_logs() -> List[LogEntry]:
     """Return all logs for export purposes."""
     return query_logs()
+
+
+def purge_logs(user_id: str, *, reason: str | None = None) -> int:
+    """Admin-only removal of all log entries with explicit audit trail."""
+
+    if not rbac.has_role(user_id, "admin"):
+        raise PermissionError("Only admins may purge logs")
+    db = _get_db()
+    with db.session() as conn:
+        conn = conn.execution_options(allow_audit_log_mutations=True)
+        result = conn.execute(delete(AuditLog))
+        count = result.rowcount or 0
+    log_event("logs_purged", user_id=user_id, count=count, reason=reason)
+    return count
 
 
 def clear_logs() -> None:
