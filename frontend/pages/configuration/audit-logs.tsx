@@ -73,7 +73,12 @@ export default function AuditLogsPage() {
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Audit Logs</h1>
-      <form className="flex flex-wrap gap-2">
+
+      {/* Filter Form */}
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(e) => e.preventDefault()}
+      >
         <Input
           type="date"
           name="start"
@@ -117,7 +122,9 @@ export default function AuditLogsPage() {
           className="w-32"
         />
       </form>
-      <Table>
+
+      {/* Table with caption */}
+      <Table caption="Audit log entries">
         <TableHeader>
           <TableRow>
             <TableHead className="w-40">Timestamp</TableHead>
@@ -154,6 +161,8 @@ export default function AuditLogsPage() {
           )}
         </TableBody>
       </Table>
+
+      {/* Pagination */}
       <div className="flex justify-between">
         <Button
           variant="secondary"

@@ -82,7 +82,7 @@ export default function WorkflowDetailPage() {
               <span className="font-bold text-sm">{workflow.updated}</span>
             </div>
           </div>
-          <Table className="mb-0">
+          <Table caption="Workflow details" className="mb-0">
             <TableHeader>
               <TableRow>
                 <TableHead>Order</TableHead>

@@ -66,7 +66,7 @@ export default function PhaseTabs({
             aria-controls={`phase-panel-${p.id}`}
             tabIndex={isActive ? 0 : -1}
             className={cn(
-              "px-3 py-1.5 text-sm rounded-md",
+              "px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
               isActive
                 ? "bg-indigo-600 text-white"
                 : "bg-transparent text-gray-600 hover:bg-gray-100 hover:text-indigo-600",

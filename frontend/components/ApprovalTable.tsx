@@ -14,6 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Menu, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { toast } from "react-hot-toast";
+import {
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  XCircle,
+} from "lucide-react";
 
 export interface Approval {
   id: string;
@@ -43,22 +49,34 @@ function classNames(...classes: (string | false | undefined)[]) {
 function RowMenu({ children }: { children: React.ReactNode }) {
   return (
     <Menu as="div" className="relative inline-block text-left">
-      <Menu.Button className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring">
-        <span className="w-4 h-4 block">...</span>
-      </Menu.Button>
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
-      >
-        <Menu.Items className="absolute right-0 z-20 mt-2 w-48 rounded-md bg-white dark:bg-gray-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-          {children}
-        </Menu.Items>
-      </Transition>
+      {({ close }) => (
+        <>
+          <Menu.Button
+            aria-label="Row actions"
+            aria-haspopup="menu"
+            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            <span className="w-4 h-4 block">...</span>
+          </Menu.Button>
+          <Transition
+            as={Fragment}
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+          >
+            <Menu.Items
+              role="menu"
+              className="absolute right-0 z-20 mt-2 w-48 rounded-md bg-white dark:bg-gray-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+              onKeyDown={(e) => e.key === "Escape" && close()}
+            >
+              {children}
+            </Menu.Items>
+          </Transition>
+        </>
+      )}
     </Menu>
   );
 }
@@ -161,7 +179,7 @@ export default function ApprovalTable({
       )}
 
       {/* Table */}
-      <Table>
+      <Table caption="Approvals">
         <TableHeader>
           <TableRow>
             <TableHead>
@@ -201,7 +219,7 @@ export default function ApprovalTable({
                 <TableCell>
                   <span
                     className={classNames(
-                      "px-2 py-0.5 rounded-full text-xs font-semibold capitalize",
+                      "px-2 py-0.5 rounded-full text-xs font-semibold capitalize flex items-center gap-1",
                       a.state === "approved" &&
                         "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
                       a.state === "pending" &&
@@ -212,6 +230,10 @@ export default function ApprovalTable({
                         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
                     )}
                   >
+                    {a.state === "approved" && <CheckCircle2 className="w-3 h-3" />}
+                    {a.state === "pending" && <Clock className="w-3 h-3" />}
+                    {a.state === "overdue" && <AlertTriangle className="w-3 h-3" />}
+                    {a.state === "rejected" && <XCircle className="w-3 h-3" />}
                     {a.state}
                   </span>
                 </TableCell>
@@ -229,6 +251,7 @@ export default function ApprovalTable({
                         <Menu.Item as={Fragment}>
                           {({ active, close }) => (
                             <button
+                              role="menuitem"
                               className={classNames(
                                 "w-full px-3 py-2 text-left text-sm",
                                 active && "bg-indigo-50 dark:bg-gray-800",
@@ -247,6 +270,7 @@ export default function ApprovalTable({
                         <Menu.Item>
                           {({ active }) => (
                             <button
+                              role="menuitem"
                               className={classNames(
                                 "w-full px-3 py-2 text-left text-sm",
                                 active && "bg-indigo-50 dark:bg-gray-800",
@@ -261,6 +285,7 @@ export default function ApprovalTable({
                       <Menu.Item>
                         {({ active }) => (
                           <button
+                            role="menuitem"
                             className={classNames(
                               "w-full px-3 py-2 text-left text-sm",
                               active && "bg-indigo-50 dark:bg-gray-800",
@@ -275,6 +300,7 @@ export default function ApprovalTable({
                         <Menu.Item>
                           {({ active }) => (
                             <button
+                              role="menuitem"
                               className={classNames(
                                 "w-full px-3 py-2 text-left text-sm text-red-600",
                                 active && "bg-indigo-50 dark:bg-gray-800",

@@ -163,7 +163,7 @@ export default function PermissionsPage() {
           Add
         </Button>
       </form>
-      <Table>
+      <Table caption="Permissions">
         <TableHeader>
           <TableRow>
             <TableHead>Role</TableHead>
@@ -211,6 +211,7 @@ export default function PermissionsPage() {
                     size="icon"
                     onClick={() => startEdit(p)}
                     title="Edit"
+                    aria-label="Edit"
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -222,6 +223,7 @@ export default function PermissionsPage() {
                   size="icon"
                   onClick={() => removePermission(p.id)}
                   title="Remove"
+                  aria-label="Remove"
                 >
                   <Trash className="w-4 h-4 text-red-600" />
                 </Button>
