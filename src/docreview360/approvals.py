@@ -26,7 +26,7 @@ class ApprovalModel(BaseModel):
     id: str
     workflow: str
     reviewer: str
-    document_id: str | None = None
+    document_id: str
     state: str = "pending"
     due_at: datetime | None = None
     signature_provider: str = Field(default_factory=get_default_provider)
@@ -156,6 +156,13 @@ def handle_signature_return(
         signature_id=signature_id,
         doc_id=doc_id,
     )
+    log_audit_event(
+        doc_id,
+        "approval_callback",
+        provider=approval.signature_provider,
+        signature_id=signature_id,
+        approval_id=approval.id,
+    )
 
     if document is not None and approval.document_hash is not None:
         if hashlib.sha256(document).hexdigest() != approval.document_hash:
@@ -165,6 +172,13 @@ def handle_signature_return(
                 provider=approval.signature_provider,
                 signature_id=signature_id,
                 doc_id=doc_id,
+            )
+            log_audit_event(
+                doc_id,
+                "signature_hash_mismatch",
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+                approval_id=approval.id,
             )
             raise ValueError("document hash mismatch")
 
