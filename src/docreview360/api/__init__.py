@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -71,7 +71,6 @@ from ..doc_types import (
 )
 from ..documenso import (
     complete_signature,
-    process_webhook,
     signature_status,
 )
 from ..documents import (
@@ -135,6 +134,7 @@ from ..workflows import (
     workflows,
 )
 from .approvals import router as approvals_router
+from .webhooks import router as webhooks_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -284,6 +284,7 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(approvals_router)
+app.include_router(webhooks_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
@@ -1373,7 +1374,7 @@ async def sign_document(
 async def complete_sign(sig_id: str) -> None:
     """Mark a signature request as completed."""
     complete_signature(sig_id)
-    process_webhook({"id": sig_id, "status": "signed"})
+    get_provider().process_webhook({"id": sig_id, "status": "signed"})
 
 
 @app.get("/sign/{sig_id}")
@@ -1381,16 +1382,6 @@ async def get_sign_status(sig_id: str) -> dict[str, str]:
     """Return signature status."""
     status = signature_status(sig_id)
     return {"status": status}
-
-
-@app.post("/hooks/documenso", status_code=204, response_class=Response)
-async def documenso_webhook(payload: dict[str, object]) -> Response:
-    """Process Documenso webhook callbacks."""
-    try:
-        process_webhook(cast(dict[str, str], payload))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return Response(status_code=204)
 
 
 @app.post("/token", response_model=auth.Token)
