@@ -1,23 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API } from "./api";
 import { toast } from "react-hot-toast";
-
-export interface Approval {
-  id: string;
-  reviewer: string;
-  email: string;
-  state: "pending" | "approved" | "overdue" | "rejected";
-  dueAt: string;
-  signedAt?: string;
-  comments?: string;
-  documensoSigId?: string;
-  description?: string;
-  phaseId?: string;
-  required?: boolean;
-  signature_provider?: string;
-  signature_id?: string;
-  certificate_url?: string;
-}
+import type { Approval } from "@/types";
 
 interface Options {
   workflow?: string;

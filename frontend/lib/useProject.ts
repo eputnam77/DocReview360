@@ -1,19 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { API } from "./api";
-
-export interface Project {
-  id: string;
-  number: string | number;
-  type: string;
-  title: string;
-  owner: string;
-  status: string;
-  progress: number;
-  updated?: string;
-  editor?: string;
-  workflow?: string;
-  currentPhaseId?: string | null;
-}
+import type { Project } from "@/types";
 
 export function useProject(id?: string) {
   return useQuery<Project | null>({

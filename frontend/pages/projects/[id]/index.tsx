@@ -30,22 +30,11 @@ import React, {
     useState,
 } from "react";
 import { toast } from "react-hot-toast";
+import type { Project, Approval } from "@/types";
 
 // ---------------------------------------------------------------------------
 // 1 ▲ Types
 // ---------------------------------------------------------------------------
-interface Project {
-  id: string;
-  number: string | number;
-  type: string;
-  title: string;
-  owner: string;
-  status: "Draft" | "In Progress" | "Complete" | "Overdue";
-  progress: number;
-  updated?: string;
-  editor?: "tiptap" | "word";
-  currentPhaseId?: string | null;
-}
 interface LogEntry {
   id: string;
   timestamp: string;
@@ -61,19 +50,6 @@ interface Workflow {
   id: string;
   phase: string;
   steps?: WorkflowStep[];
-}
-interface Approval {
-  id: string;
-  reviewer: string;
-  email: string;
-  state: "pending" | "approved" | "overdue" | "rejected";
-  dueAt: string;
-  signedAt?: string;
-  comments?: string;
-  documensoSigId?: string;
-  description?: string; // Description from the approval step
-  phaseId?: string;
-  required?: boolean;
 }
 interface Reply {
   id: string;
@@ -252,6 +228,11 @@ export default function ProjectDetailsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [versions] = useState<VersionEntry[]>([]);
   const [reviewCount, setReviewCount] = useState(0);
+  const phaseChecklist = [
+    "Draft document",
+    "Internal review",
+    "Finalize content",
+  ];
 
   const approvalsForPhase = useMemo(
     () =>
@@ -270,7 +251,7 @@ export default function ProjectDetailsPage() {
   const canEdit = isOwner || isAdmin;
 
   const phaseList = useMemo(
-    () => workflow?.steps?.map((s) => ({ id: s.name, label: s.name })) ?? [],
+    () => workflow?.steps?.map((s) => ({ id: s.name, name: s.name })) ?? [],
     [workflow?.steps],
   );
 
@@ -292,7 +273,7 @@ export default function ProjectDetailsPage() {
     remind,
     isLoading: approvalsLoading,
   } = useApprovals({ workflow: projectData?.workflow, phase: projectData?.currentPhaseId });
-  const { data: reviewCountData, isLoading: reviewLoading } = useReviewSummary(
+  const { data: reviewSummary, isLoading: reviewLoading } = useReviewSummary(
     projectData?.id,
     projectData?.currentPhaseId,
   );
@@ -307,8 +288,8 @@ export default function ProjectDetailsPage() {
     setApprovals(approvalsData ?? []);
   }, [approvalsData]);
   useEffect(() => {
-    setReviewCount(reviewCountData ?? 0);
-  }, [reviewCountData]);
+    setReviewCount(reviewSummary?.count ?? 0);
+  }, [reviewSummary]);
 
   useEffect(() => {
     if (!id || !username) return;
@@ -533,6 +514,7 @@ export default function ProjectDetailsPage() {
   if (!project) return <p className="p-4">Project not found.</p>;
 
   const editorURL = `/editors/${project.editor ?? "tiptap"}?projectId=${project.id}`;
+  const currentPhaseName = workflow?.phase || project.currentPhaseId || "Unknown";
 
   // ------------------------------------------------------------------------
   //                             RENDER
@@ -652,23 +634,44 @@ export default function ProjectDetailsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Overall Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProgBar value={project.progress} />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  {project.progress}% complete
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Overall Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProgBar value={project.progress} />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {project.progress}% complete
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Primary CTA */}
-          <div className="flex justify-center">
-            <Button asChild className="text-lg px-6 py-3 rounded-lg shadow-lg">
-              <Link href={editorURL}>
+        {/* Phase checklist */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Phase checklist</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {phaseChecklist.length ? (
+              <ul className="space-y-2">
+                {phaseChecklist.map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <input type="checkbox" readOnly />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">No checklist items</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Primary CTA */}
+        <div className="flex justify-center">
+          <Button asChild className="text-lg px-6 py-3 rounded-lg shadow-lg">
+            <Link href={editorURL}>
                 <FileEdit className="w-5 h-5 mr-2" />{" "}
                 {project.editor === "word" ? "View" : "Edit"} Document
               </Link>
@@ -682,38 +685,50 @@ export default function ProjectDetailsPage() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <Users2 className="w-5 h-5" /> Approvals
             </h2>
-              {isOwner && (
+              {isOwner && approvalsForPhase.length > 0 && (
                 <Button size="sm" onClick={() => sendReminder()}>
                   <Mail className="w-4 h-4 mr-1" /> Remind Pending
                 </Button>
               )}
           </div>
-          <Card>
-            <CardContent className="overflow-x-auto">
-              <ApprovalTable
-                approvals={approvalsForPhase}
-                currentUser={user?.name}
-                canEdit={canEdit}
-                onSign={signApproval}
-                onReset={resetApprovalLocal}
-                onRemove={(id) =>
-                  setApprovals((prev) => prev.filter((x) => x.id !== id))
-                }
-                onBulkReminder={(ids) => sendReminder(ids)}
-              />
-            </CardContent>
-          </Card>
+          {approvalsForPhase.length > 0 ? (
+            <Card>
+              <CardContent className="overflow-x-auto">
+                <ApprovalTable
+                  approvals={approvalsForPhase}
+                  currentUser={user?.name}
+                  canEdit={canEdit}
+                  onSign={signApproval}
+                  onReset={resetApprovalLocal}
+                  onRemove={(id) =>
+                    setApprovals((prev) => prev.filter((x) => x.id !== id))
+                  }
+                  onBulkReminder={(ids) => sendReminder(ids)}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-gray-500">
+                No approvals yet. Add required approvers for {currentPhaseName}.
+              </CardContent>
+            </Card>
+          )}
         </section>
 
         {/* REVIEW SUMMARY SECTION */}
         <section id="reviews" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Review summary</CardTitle>
+              <CardTitle>
+                Review feedback (phase: {currentPhaseName})
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex justify-between items-center">
               <span className="text-sm text-gray-500">
-                {reviewCount} reviews in this phase
+                {reviewCount > 0
+                  ? `${reviewCount} reviews in this phase`
+                  : "No review feedback yet"}
               </span>
               <Button asChild>
                 <Link href={`/projects/${id}/reviews`}>
