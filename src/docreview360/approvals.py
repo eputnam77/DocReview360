@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 from urllib.parse import quote
 from uuid import uuid4
 
-import aiohttp
+import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from .audit import log_audit_event
@@ -208,10 +208,10 @@ async def _upload_approval_artifacts(
     cert_bytes = b""
     if certificate_url:
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(certificate_url) as resp:
-                    resp.raise_for_status()
-                    cert_bytes = await resp.read()
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(certificate_url)
+                resp.raise_for_status()
+                cert_bytes = resp.content
         except Exception:
             cert_bytes = b""
     if cert_bytes:
