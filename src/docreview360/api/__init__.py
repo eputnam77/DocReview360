@@ -443,7 +443,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     print(f"DEBUG: Project '{project.id}' created successfully, cache cleared")
     log_event(
         "create_project",
-        user=project.user,
+        actor=project.user,
         project=project.id,
         message=render("create_project", user=project.user or "", project_id=project.id),
     )
@@ -643,7 +643,7 @@ async def import_document_endpoint(
     )
     log_event(
         "import_document",
-        user=user,
+        actor=user,
         project=project,
         filename=filename,
         message=render(
@@ -1390,7 +1390,7 @@ async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     token_resp = await auth.login_for_access_token(form_data)
     log_event(
         "login",
-        user=form_data.username,
+        actor=form_data.username,
         message=render("login", user=form_data.username),
     )
     return token_resp
@@ -1432,7 +1432,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
         response.set_cookie("session", "admin")
         log_event(
             "login",
-            user=username,
+            actor=username,
             message=render("login", user=username),
         )
         return response
@@ -1514,15 +1514,15 @@ async def unregister_plugin(name: str) -> Response:
 
 
 @app.get("/logs", response_model=list[LogEntry])
-async def list_logs(action: str | None = None, user: str | None = None) -> list[LogEntry]:
-    """Return recorded logs optionally filtered by action or user."""
-    return query_logs(action=action, user=user)
+async def list_logs(action: str | None = None, actor: str | None = None) -> list[LogEntry]:
+    """Return recorded logs optionally filtered by action or actor."""
+    return query_logs(action=action, actor=actor)
 
 
 @app.get("/api/audit", response_model=list[LogEntry])
-async def list_audit(action: str | None = None, user: str | None = None) -> list[LogEntry]:
+async def list_audit(action: str | None = None, actor: str | None = None) -> list[LogEntry]:
     """Alias for :func:`list_logs` used by the dashboard."""
-    return query_logs(action=action, user=user)
+    return query_logs(action=action, actor=actor)
 
 
 @app.get("/reports/summary", response_model=SummaryReport)

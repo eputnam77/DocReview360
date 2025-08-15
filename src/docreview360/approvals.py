@@ -68,7 +68,7 @@ def create_approval(
     approvals[approval_id] = approval
     log_event(
         "approval_created",
-        user=reviewer,
+        actor=reviewer,
         workflow=workflow,
         approval_id=approval_id,
         provider=signature_provider,
@@ -78,7 +78,7 @@ def create_approval(
     log_audit_event(
         doc_id,
         "approval_created",
-        user=reviewer,
+        actor=reviewer,
         workflow=workflow,
         provider=signature_provider,
         document_hash=doc_hash,
@@ -219,7 +219,7 @@ def update_approval_state(
     project_id = wf.project if wf else ""
     log_event(
         f"approval_{state}",
-        user=approval.reviewer,
+        actor=approval.reviewer,
         project=project_id,
         approval_id=approval_id,
         provider=approval.signature_provider,
@@ -231,7 +231,7 @@ def update_approval_state(
     log_audit_event(
         approval.document_id,
         state,
-        user=approval.reviewer,
+        actor=approval.reviewer,
         provider=approval.signature_provider,
         signature_id=approval.signature_id,
         document_hash=approval.document_hash,
@@ -274,9 +274,7 @@ def send_for_signature(
         document = get_document(doc_id)
         if document is None:
             raise KeyError("document not found")
-        approval.document_hash = hashlib.sha256(
-            document.content.encode("utf-8")
-        ).hexdigest()
+        approval.document_hash = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
 
     from urllib.parse import quote
 
@@ -295,7 +293,7 @@ def send_for_signature(
     approval.signature_id = sig_id
     log_event(
         "approval_sent_for_signature",
-        user=user,
+        actor=user,
         approval_id=approval_id,
         provider=approval.signature_provider,
         signature_id=sig_id,
@@ -305,7 +303,7 @@ def send_for_signature(
     log_audit_event(
         doc_id,
         "sent_for_signature",
-        user=user,
+        actor=user,
         provider=approval.signature_provider,
         signature_id=sig_id,
         document_hash=approval.document_hash,
@@ -386,7 +384,7 @@ def reset_approval(approval_id: str, confirm: bool) -> bool:
         approval.signed_at = None
         log_event(
             "approval_reset",
-            user=approval.reviewer,
+            actor=approval.reviewer,
             approval_id=approval_id,
             provider=approval.signature_provider,
             doc_id=approval.document_id,
@@ -395,7 +393,7 @@ def reset_approval(approval_id: str, confirm: bool) -> bool:
         log_audit_event(
             approval.document_id,
             "reset",
-            user=approval.reviewer,
+            actor=approval.reviewer,
             provider=approval.signature_provider,
             previous_state=previous,
             approval_id=approval_id,
