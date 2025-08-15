@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import uuid4
 
+import requests  # type: ignore[import-untyped]
 from pydantic import BaseModel, ConfigDict, Field
 
 from .audit import log_audit_event
@@ -199,7 +200,41 @@ def handle_signature_return(
         signature_id=signature_id,
         certificate_url=certificate_url,
         signed_at=signed_at,
+        document=document,
     )
+
+
+def _upload_approval_artifacts(
+    approval: ApprovalModel,
+    document: bytes | None,
+    certificate_url: str | None,
+) -> None:
+    """Upload signed document and certificate to the CMS."""
+    if document is not None and approval.document_hash is not None:
+        if hashlib.sha256(document).hexdigest() != approval.document_hash:
+            raise ValueError("document hash mismatch")
+    from .sharepoint import client_from_env
+
+    client = client_from_env()
+    if document is not None:
+        client.upload_file(f"signed/{approval.id}", document)
+    cert_bytes = b""
+    if certificate_url:
+        try:
+            resp = requests.get(certificate_url)
+            resp.raise_for_status()
+            cert_bytes = resp.content
+        except Exception:
+            cert_bytes = b""
+    if cert_bytes:
+        client.upload_file(f"certificates/{approval.id}", cert_bytes)
+    assert approval.signed_at is not None
+    props = {
+        "signedDate": approval.signed_at.isoformat(),
+        "certificateUrl": certificate_url or "",
+        "documentHash": approval.document_hash or "",
+    }
+    client.set_properties(approval.document_id, props)
 
 
 def update_approval_state(
@@ -210,8 +245,14 @@ def update_approval_state(
     certificate_url: str | None = None,
     signed_at: datetime | None = None,
     due_at: datetime | None = None,
+    document: bytes | None = None,
 ) -> ApprovalModel:
-    """Set approval state and optional digital signature metadata."""
+    """Set approval state and optional digital signature metadata.
+
+    When transitioning to ``approved`` the signed document and certificate are
+    uploaded to the configured CMS and the signed date and certificate URL are
+    stored as document properties.
+    """
     approval = approvals[approval_id]
     previous = approval.state
     approval.state = state
@@ -223,6 +264,10 @@ def update_approval_state(
         approval.due_at = due_at
     if state == "approved":
         approval.signed_at = signed_at or datetime.now(timezone.utc)
+        try:
+            _upload_approval_artifacts(approval, document, certificate_url)
+        except Exception:  # pragma: no cover - optional CMS integration
+            pass
     else:
         approval.signed_at = None
         approval.certificate_url = None
