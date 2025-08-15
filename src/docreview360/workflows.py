@@ -28,6 +28,10 @@ class WorkflowModel(BaseModel):
     document: Optional[str] = None
     template: str = "branch-coordination"
     approval_steps: List[ApprovalStep] = []
+    # distinct roles participating in approvals
+    approval_roles: List[str] = []
+    # sequence of roles in the order they must approve
+    approval_sequence: List[str] = []
 
 
 workflows: Dict[str, WorkflowModel] = {}
@@ -232,13 +236,16 @@ def _bootstrap_sample() -> None:
     phases = list_phases()
     start_phase = phases[0] if phases else "start"
     for name in workflow_templates:
+        steps = get_approval_steps_for_phase(start_phase, name)
         workflows[name] = WorkflowModel(
             id=name,
             project=name,
             phase=start_phase,
             phases=phases or [start_phase],
             template=name,
-            approval_steps=get_approval_steps_for_phase(start_phase, name),
+            approval_steps=steps,
+            approval_roles=[s.role for s in steps],
+            approval_sequence=[s.role for s in sorted(steps, key=lambda s: s.order)],
         )
 
 
@@ -259,6 +266,8 @@ def create_workflow(
 
     # Generate approval steps based on the selected template
     approval_steps = get_approval_steps_for_phase(start_phase, template)
+    approval_roles = [s.role for s in approval_steps]
+    approval_sequence = [s.role for s in sorted(approval_steps, key=lambda s: s.order)]
 
     workflow = WorkflowModel(
         id=wf_id,
@@ -267,6 +276,8 @@ def create_workflow(
         phases=phases,
         template=template,
         approval_steps=approval_steps,
+        approval_roles=approval_roles,
+        approval_sequence=approval_sequence,
     )
     workflows[wf_id] = workflow
 

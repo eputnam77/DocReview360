@@ -19,12 +19,29 @@ const ProgressSidebar: React.FC<ProgressSidebarProps> = ({
   workflow,
   onStepClick,
 }) => {
+  const completed = workflow.steps.filter((_, i) => i < workflow.current).length;
+  const total = workflow.steps.length;
+  const progress = total ? Math.round((completed / total) * 100) : 0;
   return (
     <aside
       className="w-72 border-r px-6 py-8 bg-white dark:bg-gray-950"
       aria-label="Workflow Progress"
     >
       <h2 className="mb-6 text-lg font-semibold">Progress</h2>
+      <div className="mb-6">
+        <div className="flex justify-between text-xs">
+          <span>
+            {completed} of {total} steps
+          </span>
+          <span>{progress}%</span>
+        </div>
+        <div className="mt-1 h-2 w-full rounded bg-muted">
+          <div
+            className="h-2 rounded bg-purple-600"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
       <ul className="relative space-y-6">
         {/* vertical line for timeline */}
         <span
