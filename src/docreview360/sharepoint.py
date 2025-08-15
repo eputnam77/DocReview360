@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
-from typing import List
+from typing import List, cast
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 from .approvals import submit_draft_for_approval
 from .fann_model import Weights
@@ -42,7 +43,7 @@ class SharePointClient:
         url = f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/items/{item_id}/content"
         response = requests.get(url, headers=self._headers())
         response.raise_for_status()
-        return response.content
+        return cast(bytes, response.content)
 
     def list_versions(self, item_id: str) -> List[str]:
         """Return version identifiers for ``item_id``."""
@@ -52,6 +53,17 @@ class SharePointClient:
         payload = response.json()
         values = payload.get("value", [])
         return [str(entry.get("id")) for entry in values if "id" in entry]
+
+    def set_properties(self, item_id: str, properties: dict[str, str]) -> None:
+        """Update SharePoint item metadata properties."""
+        url = (
+            f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/"
+            f"items/{item_id}/listItem/fields"
+        )
+        headers = self._headers()
+        headers["Content-Type"] = "application/json"
+        response = requests.patch(url, headers=headers, json=properties)
+        response.raise_for_status()
 
     def upload_with_scoring(
         self,
@@ -87,3 +99,17 @@ class SharePointClient:
                 reviewer_model=reviewer_model,
             )
         return item_id, score
+
+
+def client_from_env() -> SharePointClient:
+    """Return a :class:`SharePointClient` using environment credentials."""
+    site_id = os.getenv("SHAREPOINT_SITE_ID")
+    drive_id = os.getenv("SHAREPOINT_DRIVE_ID")
+    token = os.getenv("SHAREPOINT_TOKEN")
+    if not all([site_id, drive_id, token]):
+        raise ValueError("Missing SharePoint credentials")
+    return SharePointClient(
+        site_id=cast(str, site_id),
+        drive_id=cast(str, drive_id),
+        token=cast(str, token),
+    )
