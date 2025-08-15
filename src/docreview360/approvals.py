@@ -6,17 +6,17 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from uuid import uuid4
 
-import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from .audit import log_audit_event
+from .certs import fetch_certificate
 from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
 from .integrations.signature import get_default_provider, get_provider
-from .logs import log_event
+from .logs import log_event, log_verification_failure
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
@@ -149,6 +149,7 @@ async def handle_signature_return(
     document: bytes | None = None,
     certificate_url: str | None = None,
     signed_at: datetime | None = None,
+    client_ip: str | None = None,
 ) -> ApprovalModel:
     approval = get_approval_by_signature(signature_id)
     if approval is None:
@@ -205,14 +206,17 @@ async def handle_signature_return(
         raise ValueError("document hash mismatch")
 
     if certificate_url is not None:
+        if urlparse(certificate_url).scheme != "https":
+            raise ValueError("certificate URL must use HTTPS")
         approval.certificate_url = certificate_url
 
     provider = get_provider(approval.signature_provider)
     if not provider.validate_signature(
         document, certificate_url or approval.certificate_url, approval.provider_metadata
     ):
-        log_event(
-            "signature_verification_failed",
+        log_verification_failure(
+            approval.reviewer,
+            client_ip or "",
             approval_id=approval.id,
             provider=approval.signature_provider,
             signature_id=signature_id,
@@ -257,10 +261,7 @@ async def _upload_approval_artifacts(
     cert_bytes = b""
     if certificate_url:
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(certificate_url)
-                resp.raise_for_status()
-                cert_bytes = resp.content
+            cert_bytes = fetch_certificate(certificate_url)
         except Exception:
             cert_bytes = b""
     if cert_bytes:
@@ -293,6 +294,8 @@ async def update_approval_state(
     if signature_id is not None:
         approval.signature_id = signature_id
     if certificate_url is not None:
+        if urlparse(certificate_url).scheme != "https":
+            raise ValueError("certificate URL must use HTTPS")
         approval.certificate_url = certificate_url
     if due_at is not None:
         approval.due_at = due_at

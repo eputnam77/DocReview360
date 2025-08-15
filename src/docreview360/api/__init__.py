@@ -1357,7 +1357,7 @@ async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
 async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> ApprovalModel:
     """Update approval state and signature."""
     try:
-        return update_approval_state(
+        return await update_approval_state(
             approval_id,
             body.state,
             signature_id=body.signature_id,
