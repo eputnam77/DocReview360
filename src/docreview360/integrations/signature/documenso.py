@@ -17,6 +17,7 @@ from uuid import uuid4
 import httpx
 
 from ...logs import log_event
+from ...secrets import get_secret
 from .base import register_provider
 
 # In-memory mapping of signature id -> status
@@ -27,6 +28,13 @@ _signatures: Dict[str, str] = {}
 _sig_workflows: Dict[str, str] = {}
 # map signature id -> certificate hash for local verification
 _sig_certificates: Dict[str, str] = {}
+
+
+def _auth_headers() -> Dict[str, str]:
+    token = get_secret("documenso")
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    return {}
 
 
 def request_signature(
@@ -58,6 +66,7 @@ def request_signature(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{document_id}",
                 json=payload,
                 timeout=5,
+                headers=_auth_headers(),
             )
             resp.raise_for_status()
             data = resp.json()
@@ -92,6 +101,7 @@ def complete_signature(sig_id: str) -> None:
             resp = httpx.post(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}/complete",
                 timeout=5,
+                headers=_auth_headers(),
             )
             resp.raise_for_status()
         except httpx.HTTPError as exc:
@@ -112,6 +122,7 @@ def verify_signature(signature_id: str, document: bytes) -> bool:
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{signature_id}/verify",
                 json={"document": b64encode(document).decode()},
                 timeout=5,
+                headers=_auth_headers(),
             )
             resp.raise_for_status()
             return bool(resp.json().get("valid"))
@@ -127,7 +138,11 @@ def signature_status(sig_id: str) -> str:
     """Return the status for ``sig_id``."""
     if DOCUMENSO_URL:
         try:
-            resp = httpx.get(f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}", timeout=5)
+            resp = httpx.get(
+                f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}",
+                timeout=5,
+                headers=_auth_headers(),
+            )
             resp.raise_for_status()
             return str(resp.json()["status"])
         except httpx.HTTPError as exc:
@@ -163,8 +178,9 @@ def process_webhook(data: Dict[str, str]) -> None:
             except KeyError:
                 pass
         try:
-            from ...approvals import handle_signature_return
             import asyncio
+
+            from ...approvals import handle_signature_return
 
             signed_at = data.get("signed_at")
             if isinstance(signed_at, str):

@@ -1,10 +1,17 @@
+import asyncio
+import hashlib
 from datetime import datetime, timedelta, timezone
 
-import asyncio
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
+from docreview360.approvals import (
+    approvals,
+    create_approval,
+    handle_signature_return,
+    send_for_signature,
+)
+from docreview360.integrations.signature import documenso
+from fastapi.testclient import TestClient
 
 
 def test_approval_lifecycle() -> None:
@@ -112,12 +119,58 @@ def test_handle_signature_return_hash_validation() -> None:
     doc = b"hello"
     appr = create_approval("wf42", "carol", "doc42", document=doc, signature_provider="documenso")
     send_for_signature(appr.id, "doc42", "carol")
+    documenso.complete_signature(appr.signature_id)
+    documenso._sig_certificates[appr.signature_id] = hashlib.sha256(doc).hexdigest()
     # Valid document should mark approved
     asyncio.run(handle_signature_return(appr.signature_id, document=doc))
     assert appr.state == "approved"
 
     # Mismatch should raise
-    appr2 = create_approval("wf43", "dave", "doc43", document=b"orig", signature_provider="documenso")
+    appr2 = create_approval(
+        "wf43",
+        "dave",
+        "doc43",
+        document=b"orig",
+        signature_provider="documenso",
+    )
     send_for_signature(appr2.id, "doc43", "dave")
+    documenso.complete_signature(appr2.signature_id)
+    documenso._sig_certificates[appr2.signature_id] = hashlib.sha256(b"orig").hexdigest()
     with pytest.raises(ValueError):
         asyncio.run(handle_signature_return(appr2.signature_id, document=b"tampered"))
+
+
+def test_signature_invalidated() -> None:
+    """handle_signature_return should reject invalid signatures."""
+
+    from docreview360.approvals import (
+        create_approval,
+        handle_signature_return,
+        send_for_signature,
+    )
+
+    doc = b"hello"
+    appr = create_approval("wf99", "carol", "doc99", document=doc, signature_provider="documenso")
+    send_for_signature(appr.id, "doc99", "carol")
+    # mark as completed but without certificate so verification fails
+    documenso.complete_signature(appr.signature_id)
+    with pytest.raises(ValueError):
+        asyncio.run(handle_signature_return(appr.signature_id, document=doc))
+
+
+def test_send_for_signature_authorization_and_lock() -> None:
+    approvals.clear()
+    appr = create_approval("wf1", "alice", "doc1")
+    with pytest.raises(PermissionError):
+        send_for_signature(appr.id, "doc1", "bob")
+    appr2 = create_approval("wf1", "alice", "doc2", delegates=["bob"])
+    send_for_signature(appr2.id, "doc2", "bob")
+
+    doc = b"hello"
+    appr3 = create_approval("wf2", "alice", "doc3", document=doc, signature_provider="documenso")
+    send_for_signature(appr3.id, "doc3", "alice")
+    documenso.complete_signature(appr3.signature_id)
+    documenso._sig_certificates[appr3.signature_id] = hashlib.sha256(doc).hexdigest()
+    asyncio.run(handle_signature_return(appr3.signature_id, document=doc))
+    with pytest.raises(ValueError):
+        send_for_signature(appr3.id, "doc3", "alice")
