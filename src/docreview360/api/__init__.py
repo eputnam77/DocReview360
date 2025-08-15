@@ -53,7 +53,7 @@ from ..archive import (
 from ..archive import (
     archive_document as archive_doc,
 )
-from ..audit import AuditEvent, get_audit_log
+from ..audit import AuditLogEntry, get_audit_log
 from ..cache import cache_get, cache_set, clear_cache
 from ..cms import save_to_cms
 from ..comments import CommentModel, add_comment, list_comments
@@ -726,8 +726,8 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
     return document
 
 
-@app.get("/documents/{doc_id}/audit", response_model=list[AuditEvent])
-async def get_document_audit_endpoint(doc_id: str) -> list[AuditEvent]:
+@app.get("/documents/{doc_id}/audit", response_model=list[AuditLogEntry])
+async def get_document_audit_endpoint(doc_id: str) -> list[AuditLogEntry]:
     """Return audit events for a document."""
     document = get_document(doc_id)
     if document is None:

@@ -1,54 +1,53 @@
-# Audit Event Schema
+# Audit Log Schema
 
-DocReview360 emits audit events as JSON objects that follow this schema:
+Audit entries are emitted as JSON objects with the following structure:
 
 ```json
 {
   "type": "object",
   "properties": {
-    "timestamp": {"type": "string", "format": "date-time"},
-    "actor": {"type": ["string", "null"]},
-    "action": {"type": "string"},
+    "event": {"type": "string"},
+    "document_id": {"type": "string"},
+    "approval_id": {"type": ["string", "null"]},
+    "status": {"type": "string"},
+    "hash": {"type": "string", "description": "SHA256 or HMAC of the entry"},
+    "certificate_url": {"type": ["string", "null"], "format": "uri"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "verifier": {"type": ["string", "null"]},
     "context": {"type": "object"}
   },
-  "required": ["timestamp", "action"],
-  "additionalProperties": false
+  "required": ["event", "document_id", "status", "hash", "verified_at"],
+  "additionalProperties": true
 }
 ```
 
-* ``timestamp`` – UTC time when the event occurred.
-* ``actor`` – identifier of who triggered the event (if known).
-* ``action`` – name of the activity that took place.
-* ``context`` – free-form metadata providing additional detail, such as
-  ``doc_id`` or ``project``.
+* `event` – description of what occurred.
+* `document_id` – identifier of the document involved.
+* `approval_id` – related approval identifier, when applicable.
+* `status` – outcome of the event (e.g., `valid`, `invalid`).
+* `hash` – cryptographic digest used to detect tampering. When a secret is
+  supplied, the hash becomes an HMAC signature.
+* `certificate_url` – link to the certificate associated with the action.
+* `verified_at` – UTC timestamp when the event was verified.
+* `verifier` – identifier for who performed the verification.
+* `context` – optional object containing additional metadata.
 
-Utilities such as `log_event` and `log_audit_event` return objects based on
-this schema and can be serialized with ``model_dump()`` for exporting.
+Each entry is appended to an immutable log file. The `hash` field is computed
+from the remaining properties to provide tamper evidence.
 
-## Usage example
+## Example
 
 ```python
-from docreview360.logs import log_event
+from docreview360.audit import log_audit_event
 
-event = log_event(
-    "document_created",
-    actor="alice",
-    doc_id="123",
-    project="alpha",
+entry = log_audit_event(
+    "doc-123",
+    "signature_validation",
+    approval_id="appr-1",
+    status="valid",
+    verifier="alice",
+    certificate_url="https://example.com/cert",
+    secret="s3cr3t",
 )
-print(event.model_dump(mode="json"))
-```
-
-Example output:
-
-```json
-{
-  "timestamp": "2024-01-01T12:00:00+00:00",
-  "actor": "alice",
-  "action": "document_created",
-  "context": {
-    "doc_id": "123",
-    "project": "alpha"
-  }
-}
+print(entry.model_dump(mode="json"))
 ```

@@ -17,7 +17,7 @@ def test_linkage_changes_are_audited() -> None:
 
     log_entries_doc1 = get_audit_log(doc1.id)
     assert any(
-        ev.action == "approval_linked" and ev.context.get("approval_id") == approval.id
+        ev.action == "approval_linked" and ev.approval_id == approval.id
         for ev in log_entries_doc1
     )
     assert approval.id in documents[doc1.id].approval_ids
@@ -30,12 +30,12 @@ def test_linkage_changes_are_audited() -> None:
 
     log_entries_old = get_audit_log(doc1.id)
     assert any(
-        ev.action == "approval_unlinked" and ev.context.get("approval_id") == approval.id
+        ev.action == "approval_unlinked" and ev.approval_id == approval.id
         for ev in log_entries_old
     )
 
     log_entries_new = get_audit_log(doc2.id)
     assert any(
-        ev.action == "approval_linked" and ev.context.get("approval_id") == approval.id
+        ev.action == "approval_linked" and ev.approval_id == approval.id
         for ev in log_entries_new
     )

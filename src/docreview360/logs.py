@@ -4,13 +4,30 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Callable, List
+from typing import Any, AsyncIterator, Callable, Dict, List
 
-from .audit import AuditEvent
+try:  # pragma: no cover - pydantic optional
+    from pydantic import BaseModel, Field
+except Exception:  # pragma: no cover
 
-# ``LogEntry`` is retained for backward compatibility; all events conform to
-# the :class:`~docreview360.audit.AuditEvent` schema.
-LogEntry = AuditEvent
+    class BaseModel:  # type: ignore[no-redef]
+        """Fallback stub when Pydantic is unavailable."""
+
+        def __init__(self, **data: Any) -> None:  # pragma: no cover - simple shim
+            for k, v in data.items():
+                setattr(self, k, v)
+
+        def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:  # pragma: no cover
+            return self.__dict__
+
+
+class LogEntry(BaseModel):
+    """Simple in-memory log entry used for ephemeral logging."""
+
+    timestamp: datetime = Field()
+    actor: str | None = None
+    action: str
+    context: Dict[str, Any] = Field(default_factory=dict)
 
 
 logs: List[LogEntry] = []
