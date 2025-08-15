@@ -9,3 +9,6 @@ prefs_u1:
   theme: dark
 signature_provider_fallback: documenso
 signature_provider_primary: missing
+signature_verification:
+  interval_minutes: 60
+  scope: approved
