@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { API } from "@/lib/api";
-import PhaseTabs from "@/components/PhaseTabs";
-import { ApprovalTable, AuditTimeline } from "@/components";
+import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards } from "@/components";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/useProject";
 import { usePhases } from "@/lib/usePhases";
@@ -15,10 +14,6 @@ import { useReviewSummary } from "@/lib/useReviewSummary";
 import { useUserStore } from "@/state/user";
 import { Disclosure, Transition } from "@headlessui/react";
 import {
-    BarChart2,
-    CheckCircle2,
-    Clock,
-    Download,
     FileEdit,
     History,
     LayoutList,
@@ -546,43 +541,15 @@ export default function ProjectDetailsPage() {
     <>
       <StickyNav />
       <div className="p-8 space-y-10">
-        {/* Sticky summary bar */}
-        <div className="sticky top-12 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-700 py-2 px-4 flex items-center justify-between gap-4">
-          <div className="truncate text-sm text-gray-600 dark:text-gray-300 space-x-2">
-            <span className="font-mono">{project.number}</span>
-            <span>•</span>
-            <span className="truncate">{project.title}</span>
-            <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
-              {project.status}
-            </span>
-            <span className="hidden md:inline ml-4">Accountable: {project.owner}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-36 shrink-0">
-              <ProgBar value={project.progress} />
-            </div>
-            <PhaseTabs
-              phases={phaseList}
-              activePhaseId={project.currentPhaseId || workflow?.phase}
-              counts={phaseCounts}
-              onChange={isOwner ? handlePhaseChange : undefined}
-            />
-            {isOwner && (
-              <Button size="sm" onClick={exportRaci}>
-                <Download className="w-4 h-4 mr-1" /> RACI CSV
-              </Button>
-            )}
-            <Button
-              size="icon"
-              variant="ghost"
-              title="Version timeline"
-              aria-label="Open version timeline"
-              onClick={() => setShowVersions(true)}
-            >
-              <History className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
+        <ProjectSummaryBar
+          project={{ ...project, currentPhaseId: project.currentPhaseId || workflow?.phase }}
+          phases={phaseList}
+          phaseCounts={phaseCounts}
+          onPhaseChange={isOwner ? handlePhaseChange : undefined}
+          onExportRaci={isOwner ? exportRaci : undefined}
+          onShowVersions={() => setShowVersions(true)}
+          isOwner={isOwner}
+        />
 
         {/* DETAILS SECTION */}
         <section id="details" className="space-y-6">
@@ -648,47 +615,7 @@ export default function ProjectDetailsPage() {
             )}
           </Disclosure>
 
-          {/* KPI cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl">
-            {[
-              {
-                icon: Users2,
-                label: "Assigned",
-                val: stats.assigned,
-                col: "text-indigo-600",
-              },
-              {
-                icon: CheckCircle2,
-                label: "Approved",
-                val: stats.approved,
-                col: "text-emerald-600",
-              },
-              {
-                icon: Clock,
-                label: "Pending",
-                val: stats.pending,
-                col: "text-orange-600",
-              },
-              {
-                icon: BarChart2,
-                label: "Overdue",
-                val: stats.overdue,
-                col: "text-red-600",
-              },
-            ].map((s) => (
-              <Card key={s.label} className="shadow-sm">
-                <CardContent className="flex items-center gap-4 p-4">
-                  <s.icon className={cn("w-7 h-7", s.col)} />
-                  <div>
-                    <p className="text-base font-bold leading-none">{s.val}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {s.label}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <KpiCards stats={stats} />
 
           {/* Workflow & progress */}
           <div className="grid md:grid-cols-2 gap-6">
