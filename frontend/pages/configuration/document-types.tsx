@@ -24,9 +24,195 @@ interface DocType {
 }
 
 const DEFAULT_TYPES: DocType[] = [
-  { id: "Advisory Circular", name: "Advisory Circular" },
-  { id: "Policy Statement", name: "Policy Statement" },
-  { id: "Release Notes", name: "Release Notes" },
+  {
+    id: "Advisory Circular",
+    name: "Advisory Circular",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+    ],
+  },
+  {
+    id: "API Guide",
+    name: "API Guide",
+    phases: [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle",
+    ],
+  },
+  {
+    id: "CLI Guide",
+    name: "CLI Guide",
+    phases: [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle",
+    ],
+  },
+  {
+    id: "Deviation Memorandum",
+    name: "Deviation Memorandum",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+    ],
+  },
+  {
+    id: "Exemption",
+    name: "Exemption",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+    ],
+  },
+  {
+    id: "Federal Register Notice",
+    name: "Federal Register Notice",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+    ],
+  },
+  {
+    id: "General Memorandum",
+    name: "General Memorandum",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+    ],
+  },
+  {
+    id: "Manual",
+    name: "Manual",
+    phases: [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle",
+    ],
+  },
+  {
+    id: "Order",
+    name: "Order",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+    ],
+  },
+  {
+    id: "Policy Memorandum",
+    name: "Policy Memorandum",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+    ],
+  },
+  {
+    id: "Policy Statement",
+    name: "Policy Statement",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+    ],
+  },
+  {
+    id: "Release Notes",
+    name: "Release Notes",
+    phases: [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle",
+    ],
+  },
+  {
+    id: "Rulemaking",
+    name: "Rulemaking",
+    phases: [
+      "Draft Development",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+      "Final Issuance",
+    ],
+  },
+  {
+    id: "Special Class Airworthiness Criteria",
+    name: "Special Class Airworthiness Criteria",
+    phases: [
+      "Draft Development",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+      "Final Issuance",
+    ],
+  },
+  {
+    id: "Special Conditions",
+    name: "Special Conditions",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+    ],
+  },
+  {
+    id: "Standard Operating Procedure",
+    name: "Standard Operating Procedure",
+    phases: [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle",
+    ],
+  },
+  {
+    id: "Technical Standard Order",
+    name: "Technical Standard Order",
+    phases: [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+    ],
+  },
+  {
+    id: "White Paper",
+    name: "White Paper",
+    phases: [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Final Issuance",
+    ],
+  },
 ];
 
 const normalizeDocTypes = (items: unknown): DocType[] => {
@@ -150,12 +336,33 @@ export default function DocumentTypesPage() {
   const [replacementDocType, setReplacementDocType] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<any>(null);
 
+  const mergeWithDefaultPhases = (
+    list: DocType[],
+    existing: Record<string, string[]>,
+  ) => {
+    const map = { ...existing } as Record<string, string[]>;
+    let changed = false;
+    list.forEach((t) => {
+      if (t.phases && t.phases.length && !map[t.id]) {
+        map[t.id] = t.phases;
+        changed = true;
+      }
+    });
+    if (changed || Object.keys(existing).length === 0) {
+      setDocTypePhaseMap(map);
+      localStorage.setItem("docTypePhaseMap", JSON.stringify(map));
+    }
+    return map;
+  };
+
   useEffect(() => {
     // Load existing mappings from localStorage
     const saved = localStorage.getItem("docTypePhaseMap");
+    let parsed: Record<string, string[]> = {};
     if (saved) {
       try {
-        setDocTypePhaseMap(JSON.parse(saved));
+        parsed = JSON.parse(saved);
+        setDocTypePhaseMap(parsed);
       } catch {
         // ignore invalid JSON
       }
@@ -166,9 +373,14 @@ export default function DocumentTypesPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         const list = normalizeDocTypes(data);
-        setTypes(list.length ? list : DEFAULT_TYPES);
+        const finalList = list.length ? list : DEFAULT_TYPES;
+        setTypes(finalList);
+        parsed = mergeWithDefaultPhases(finalList, parsed);
       })
-      .catch(() => setTypes(DEFAULT_TYPES));
+      .catch(() => {
+        setTypes(DEFAULT_TYPES);
+        parsed = mergeWithDefaultPhases(DEFAULT_TYPES, parsed);
+      });
 
     // Fetch phases through the local API route
     fetch("/api/phases")
