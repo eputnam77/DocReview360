@@ -1,7 +1,7 @@
 // frontend/components/ApprovalTable.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import { Menu, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { toast } from "react-hot-toast";
 import * as Icons from "lucide-react";
+import { FixedSizeList as List } from "react-window";
 const Icon = Icons as any;
 
 export interface Approval {
@@ -50,7 +51,7 @@ function RowMenu({ children }: { children: React.ReactNode }) {
           <Menu.Button
             aria-label="Row actions"
             aria-haspopup="menu"
-            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
           >
             <span className="w-4 h-4 block">...</span>
           </Menu.Button>
@@ -78,6 +79,15 @@ function RowMenu({ children }: { children: React.ReactNode }) {
   );
 }
 
+function useDebounce<T>(value: T, delay: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function ApprovalTable({
   approvals,
   currentUser,
@@ -91,6 +101,10 @@ export default function ApprovalTable({
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [requiredOnly, setRequiredOnly] = useState(false);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const pageSize = 50;
+  const [page, setPage] = useState(0);
 
   const roles = useMemo(() => {
     const set = new Set<string>();
@@ -103,9 +117,145 @@ export default function ApprovalTable({
       if (statusFilter !== "all" && a.state !== statusFilter) return false;
       if (roleFilter !== "all" && a.description !== roleFilter) return false;
       if (requiredOnly && !a.required) return false;
+      if (
+        debouncedSearch &&
+        !`${a.reviewer} ${a.email}`
+          .toLowerCase()
+          .includes(debouncedSearch.toLowerCase())
+      )
+        return false;
       return true;
     });
-  }, [approvals, statusFilter, roleFilter, requiredOnly]);
+  }, [approvals, statusFilter, roleFilter, requiredOnly, debouncedSearch]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [statusFilter, roleFilter, requiredOnly, debouncedSearch]);
+
+  const paged = useMemo(() => {
+    const start = page * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
+  const pageCount = Math.ceil(filtered.length / pageSize);
+
+  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const a = paged[index];
+    return (
+      <TableRow key={a.id} id={`approval-${a.id}`} className="group" style={style}>
+        <TableCell>
+          <input
+            type="checkbox"
+            checked={selected.includes(a.id)}
+            onChange={() => toggleSelect(a.id)}
+          />
+        </TableCell>
+        <TableCell className="whitespace-nowrap">{a.reviewer}</TableCell>
+        <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
+          {a.description || "—"}
+        </TableCell>
+        <TableCell>
+          <span
+            className={classNames(
+              "px-2 py-0.5 rounded-full text-xs font-semibold capitalize flex items-center gap-1",
+              a.state === "approved" &&
+                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+              a.state === "pending" &&
+                "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+              a.state === "overdue" &&
+                "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+              a.state === "rejected" &&
+                "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+            )}
+          >
+            {a.state === "approved" && <Icon.CheckCircle2 className="w-3 h-3" />}
+            {a.state === "pending" && <Icon.Clock className="w-3 h-3" />}
+            {a.state === "overdue" && <Icon.AlertTriangle className="w-3 h-3" />}
+            {a.state === "rejected" && <Icon.XCircle className="w-3 h-3" />}
+            {a.state}
+          </span>
+        </TableCell>
+        <TableCell>
+          {a.dueAt ? new Date(a.dueAt).toLocaleDateString() : "—"}
+        </TableCell>
+        <TableCell>
+          {a.signedAt ? new Date(a.signedAt).toLocaleString() : "—"}
+        </TableCell>
+        <TableCell>{a.required ? "Yes" : "No"}</TableCell>
+        <TableCell className="text-right">
+          {(canEdit || currentUser === a.reviewer) && (
+            <RowMenu>
+              {currentUser === a.reviewer && (
+                <Menu.Item as={Fragment}>
+                  {({ active, close }) => (
+                    <button
+                      role="menuitem"
+                      className={classNames(
+                        "w-full px-3 py-2 text-left text-sm",
+                        active && "bg-indigo-50 dark:bg-gray-800",
+                      )}
+                      onClick={() => {
+                        close();
+                        onSign(a.id);
+                      }}
+                    >
+                      Sign / Approve
+                    </button>
+                  )}
+                </Menu.Item>
+              )}
+              {canEdit && (
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      role="menuitem"
+                      className={classNames(
+                        "w-full px-3 py-2 text-left text-sm",
+                        active && "bg-indigo-50 dark:bg-gray-800",
+                      )}
+                      onClick={() => onReset(a.id)}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </Menu.Item>
+              )}
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    role="menuitem"
+                    className={classNames(
+                      "w-full px-3 py-2 text-left text-sm",
+                      active && "bg-indigo-50 dark:bg-gray-800",
+                    )}
+                    onClick={() => toast("Email sent")}
+                  >
+                    Send email
+                  </button>
+                )}
+              </Menu.Item>
+              {canEdit && (
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      role="menuitem"
+                      className={classNames(
+                        "w-full px-3 py-2 text-left text-sm text-red-600",
+                        active && "bg-indigo-50 dark:bg-gray-800",
+                      )}
+                      onClick={() => onRemove(a.id)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </Menu.Item>
+              )}
+            </RowMenu>
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   const toggleSelect = (id: string) =>
     setSelected((prev) =>
@@ -113,7 +263,7 @@ export default function ApprovalTable({
     );
 
   const toggleSelectAll = (checked: boolean) => {
-    setSelected(checked ? filtered.map((a) => a.id) : []);
+    setSelected(checked ? paged.map((a) => a.id) : []);
   };
 
   const remindSelected = () => {
@@ -158,6 +308,13 @@ export default function ApprovalTable({
           />
           Required only
         </label>
+        <input
+          type="text"
+          placeholder="Search..."
+          className="border rounded px-2 py-1 text-sm"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       {/* Bulk toolbar */}
@@ -183,7 +340,7 @@ export default function ApprovalTable({
               <input
                 type="checkbox"
                 aria-label="Select all"
-                checked={selected.length === filtered.length && filtered.length > 0}
+                checked={selected.length === paged.length && paged.length > 0}
                 onChange={(e) => toggleSelectAll(e.target.checked)}
               />
             </TableHead>
@@ -196,133 +353,18 @@ export default function ApprovalTable({
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {filtered.length > 0 ? (
-            filtered.map((a) => (
-              <TableRow key={a.id} id={`approval-${a.id}`} className="group">
-                <TableCell>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(a.id)}
-                    onChange={() => toggleSelect(a.id)}
-                  />
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {a.reviewer}
-                </TableCell>
-                <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
-                  {a.description || "—"}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={classNames(
-                      "px-2 py-0.5 rounded-full text-xs font-semibold capitalize flex items-center gap-1",
-                      a.state === "approved" &&
-                        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-                      a.state === "pending" &&
-                        "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-                      a.state === "overdue" &&
-                        "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-                      a.state === "rejected" &&
-                        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-                    )}
-                  >
-                    {a.state === "approved" && (
-                      <Icon.CheckCircle2 className="w-3 h-3" />
-                    )}
-                    {a.state === "pending" && (
-                      <Icon.Clock className="w-3 h-3" />
-                    )}
-                    {a.state === "overdue" && (
-                      <Icon.AlertTriangle className="w-3 h-3" />
-                    )}
-                    {a.state === "rejected" && (
-                      <Icon.XCircle className="w-3 h-3" />
-                    )}
-                    {a.state}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {a.dueAt ? new Date(a.dueAt).toLocaleDateString() : "—"}
-                </TableCell>
-                <TableCell>
-                  {a.signedAt ? new Date(a.signedAt).toLocaleString() : "—"}
-                </TableCell>
-                <TableCell>{a.required ? "Yes" : "No"}</TableCell>
-                <TableCell className="text-right">
-                  {(canEdit || currentUser === a.reviewer) && (
-                    <RowMenu>
-                      {currentUser === a.reviewer && (
-                        <Menu.Item as={Fragment}>
-                          {({ active, close }) => (
-                            <button
-                              role="menuitem"
-                              className={classNames(
-                                "w-full px-3 py-2 text-left text-sm",
-                                active && "bg-indigo-50 dark:bg-gray-800",
-                              )}
-                              onClick={() => {
-                                close();
-                                onSign(a.id);
-                              }}
-                            >
-                              Sign / Approve
-                            </button>
-                          )}
-                        </Menu.Item>
-                      )}
-                      {canEdit && (
-                        <Menu.Item>
-                          {({ active }) => (
-                            <button
-                              role="menuitem"
-                              className={classNames(
-                                "w-full px-3 py-2 text-left text-sm",
-                                active && "bg-indigo-50 dark:bg-gray-800",
-                              )}
-                              onClick={() => onReset(a.id)}
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </Menu.Item>
-                      )}
-                      <Menu.Item>
-                        {({ active }) => (
-                          <button
-                            role="menuitem"
-                            className={classNames(
-                              "w-full px-3 py-2 text-left text-sm",
-                              active && "bg-indigo-50 dark:bg-gray-800",
-                            )}
-                            onClick={() => toast("Email sent")}
-                          >
-                            Send email
-                          </button>
-                        )}
-                      </Menu.Item>
-                      {canEdit && (
-                        <Menu.Item>
-                          {({ active }) => (
-                            <button
-                              role="menuitem"
-                              className={classNames(
-                                "w-full px-3 py-2 text-left text-sm text-red-600",
-                                active && "bg-indigo-50 dark:bg-gray-800",
-                              )}
-                              onClick={() => onRemove(a.id)}
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </Menu.Item>
-                      )}
-                    </RowMenu>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
+        {paged.length > 0 ? (
+          <List
+            height={Math.min(400, paged.length * 56)}
+            itemCount={paged.length}
+            itemSize={56}
+            width="100%"
+            outerElementType={TableBody as any}
+          >
+            {Row}
+          </List>
+        ) : (
+          <TableBody>
             <TableRow>
               <TableCell colSpan={8} className="text-center py-8">
                 <div className="text-gray-500 dark:text-gray-400">
@@ -330,9 +372,32 @@ export default function ApprovalTable({
                 </div>
               </TableCell>
             </TableRow>
-          )}
-        </TableBody>
+          </TableBody>
+        )}
       </Table>
+      {pageCount > 1 && (
+        <div className="flex justify-end items-center gap-2 mt-2 text-sm">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous
+          </Button>
+          <span>
+            Page {page + 1} of {pageCount}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page + 1 >= pageCount}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

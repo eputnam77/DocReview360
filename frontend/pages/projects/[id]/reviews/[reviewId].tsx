@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FixedSizeList as List } from "react-window";
 
 type Comment = {
   id: string;
@@ -41,6 +42,15 @@ const sample: Comment[] = [
   },
 ];
 
+function useDebounce<T>(value: T, delay: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function ReviewWorkspacePage() {
   const router = useRouter();
   const { reviewId } = router.query;
@@ -52,6 +62,10 @@ export default function ReviewWorkspacePage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
   const [view, setView] = useState<"thread" | "matrix">("thread");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const pageSize = 50;
+  const [page, setPage] = useState(0);
 
   const updateDecision = (id: string, decision: Comment["decision"]) => {
     setComments((prev) =>
@@ -77,10 +91,45 @@ export default function ReviewWorkspacePage() {
         (!phaseFilter || c.phase === phaseFilter) &&
         (!reviewerFilter || c.reviewer === reviewerFilter) &&
         (!statusFilter || c.decision === statusFilter) &&
-        (!tagFilter || c.tags.includes(tagFilter))
+        (!tagFilter || c.tags.includes(tagFilter)) &&
+        (!debouncedSearch ||
+          `${c.reviewer} ${c.comment}`
+            .toLowerCase()
+            .includes(debouncedSearch.toLowerCase()))
       );
     });
-  }, [comments, phaseFilter, reviewerFilter, statusFilter, tagFilter]);
+  }, [comments, phaseFilter, reviewerFilter, statusFilter, tagFilter, debouncedSearch]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [phaseFilter, reviewerFilter, statusFilter, tagFilter, debouncedSearch]);
+
+  const paged = useMemo(() => {
+    const start = page * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
+  const pageCount = Math.ceil(filtered.length / pageSize);
+
+  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const d = paged[index];
+    return (
+      <TableRow
+        key={d.id}
+        onClick={() => setSelected(d.id)}
+        className={selected === d.id ? "bg-gray-100" : undefined}
+        style={style}
+      >
+        <TableCell>{d.reviewer}</TableCell>
+        <TableCell>{d.routing}</TableCell>
+        <TableCell>{d.pagePara}</TableCell>
+        <TableCell className="max-w-xs truncate">{d.comment}</TableCell>
+        <TableCell className="max-w-xs truncate">{d.change}</TableCell>
+        <TableCell>{d.decision}</TableCell>
+        <TableCell>{d.disposition}</TableCell>
+      </TableRow>
+    );
+  };
 
   const unique = {
     phases: Array.from(new Set(comments.map((c) => c.phase))),
@@ -208,6 +257,15 @@ export default function ReviewWorkspacePage() {
             ))}
           </select>
         </div>
+        <div>
+          <label className="block text-sm">Search</label>
+          <input
+            className="mt-1 w-full border p-1"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search comments"
+          />
+        </div>
         <div className="space-x-2 pt-2">
           <Button onClick={exportCSV}>Export CSV</Button>
           <Button onClick={exportXLSX} variant="outline">
@@ -244,30 +302,49 @@ export default function ReviewWorkspacePage() {
                     <TableHead>Disposition</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {filtered.map((d) => (
-                    <TableRow
-                      key={d.id}
-                      onClick={() => setSelected(d.id)}
-                      className={
-                        selected === d.id ? "bg-gray-100" : undefined
-                      }
-                    >
-                      <TableCell>{d.reviewer}</TableCell>
-                      <TableCell>{d.routing}</TableCell>
-                      <TableCell>{d.pagePara}</TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {d.comment}
+                {paged.length > 0 ? (
+                  <List
+                    height={Math.min(400, paged.length * 48)}
+                    itemCount={paged.length}
+                    itemSize={48}
+                    width="100%"
+                    outerElementType={TableBody as any}
+                  >
+                    {Row}
+                  </List>
+                ) : (
+                  <TableBody>
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        No comments found
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {d.change}
-                      </TableCell>
-                      <TableCell>{d.decision}</TableCell>
-                      <TableCell>{d.disposition}</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
+                  </TableBody>
+                )}
               </Table>
+              {pageCount > 1 && (
+                <div className="flex justify-end items-center gap-2 mt-2 text-sm">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={page === 0}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span>
+                    Page {page + 1} of {pageCount}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={page + 1 >= pageCount}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (
