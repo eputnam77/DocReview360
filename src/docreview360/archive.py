@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
@@ -43,11 +45,27 @@ def archive_document(
     html_bytes, _, _ = export_document(document, "html")
     docx_bytes, _, _ = export_document(document, "docx")
     pdf_bytes, _, _ = export_document(document, "pdf")
+
+    hashes = {
+        "md": sha256(md_bytes).hexdigest(),
+        "html": sha256(html_bytes).hexdigest(),
+        "docx": sha256(docx_bytes).hexdigest(),
+        "pdf": sha256(pdf_bytes).hexdigest(),
+    }
+    meta = metadata.copy() if metadata else {}
+    meta.setdefault("version_summary", f"v{len(document.history) + 1}")
+    meta.setdefault("retention_policy", "standard")
+    meta_output = {
+        "doc_id": document.id,
+        **meta,
+        "hashes": hashes,
+    }
+
     record = ArchiveRecord(
         id=uuid4().hex,
         document_id=document.id,
         timestamp=datetime.now(timezone.utc),
-        metadata=metadata or {},
+        metadata=meta_output,
         markdown=md_bytes,
         html=html_bytes,
         docx=docx_bytes,
@@ -61,6 +79,7 @@ def archive_document(
     upload_file(bucket, f"{base}.html", html_bytes)
     upload_file(bucket, f"{base}.docx", docx_bytes)
     upload_file(bucket, f"{base}.pdf", pdf_bytes)
+    upload_file(bucket, f"{base}.metadata.json", json.dumps(meta_output).encode())
 
     return record
 
