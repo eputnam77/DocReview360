@@ -1,6 +1,7 @@
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.workflows import create_workflow
-from fastapi.testclient import TestClient
 
 
 def test_gzip_middleware() -> None:
@@ -11,7 +12,15 @@ def test_list_projects() -> None:
     client = TestClient(app)
     resp = client.get("/projects")
     assert resp.status_code == 200
-    assert resp.json()[0]["name"] == "Example"
+    assert resp.json()[0]["name"] == "Demo Project"
+
+
+def test_demo_review_endpoint() -> None:
+    client = TestClient(app)
+    resp = client.get("/projects/demo-project/reviews")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert any(r["comment"] == "Looks good!" for r in data)
 
 
 def test_list_documents() -> None:
@@ -84,8 +93,8 @@ def test_update_project_with_formdata() -> None:
             "user": "alice",
             "doc_type": "Advisory Circular",
             "title": "Updated Title",
-            "description": "Updated description"
-        }
+            "description": "Updated description",
+        },
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -104,12 +113,8 @@ def test_update_project_with_file_upload() -> None:
     # Update with file upload
     resp = client.put(
         "/projects/pedit-file",
-        data={
-            "name": "File Updated Project",
-            "user": "bob",
-            "doc_type": "Policy Statement"
-        },
-        files={"file": ("test_document.md", "This is test content", "text/markdown")}
+        data={"name": "File Updated Project", "user": "bob", "doc_type": "Policy Statement"},
+        files={"file": ("test_document.md", "This is test content", "text/markdown")},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -129,10 +134,7 @@ def test_update_project_not_found() -> None:
     """Test project update with non-existent project ID."""
     client = TestClient(app)
 
-    resp = client.put(
-        "/projects/nonexistent",
-        data={"name": "New Name"}
-    )
+    resp = client.put("/projects/nonexistent", data={"name": "New Name"})
     assert resp.status_code == 404
 
 
@@ -151,10 +153,7 @@ def test_update_project_partial_fields() -> None:
     )
 
     # Update only the name
-    resp = client.put(
-        "/projects/pedit-partial",
-        data={"name": "Only Name Updated"}
-    )
+    resp = client.put("/projects/pedit-partial", data={"name": "Only Name Updated"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "Only Name Updated"
@@ -203,8 +202,8 @@ def test_project_edit_frontend_compatibility() -> None:
             "title": "Updated Document Title",
             "sme": "John Doe",
             "docType": "Advisory Circular",
-            "description": "Updated project description"
-        }
+            "description": "Updated project description",
+        },
     )
     assert resp.status_code == 200
     data = resp.json()
