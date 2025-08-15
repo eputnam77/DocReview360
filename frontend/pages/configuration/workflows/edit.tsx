@@ -10,21 +10,28 @@ import { GripVertical, PlusCircle, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
-// Example roles
-const ROLES = [
-  "Subject Matter Expert", "Front Line Manager", "Product Policy Manager",
-  "Technical Writer", "Senior Technical Writer", "Technical Writing Manager", "Attorney", "Branch Manager", "Other"
-];
-
 export default function EditWorkflowPage() {
   const router = useRouter();
   const { id } = router.query;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<any[]>([]);
-  const [role, setRole] = useState(ROLES[0]);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [role, setRole] = useState("");
   const [user, setUser] = useState("");
   const [required, setRequired] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/workflows/roles")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setRoles(data);
+          setRole(data[0] ?? "");
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!router.isReady || !id) return;
@@ -64,7 +71,7 @@ export default function EditWorkflowPage() {
       ...steps,
       { id: "s" + (Math.random() * 10000).toFixed(0), role, user, required },
     ]);
-    setRole(ROLES[0]);
+    setRole(roles[0] ?? "");
     setUser("");
     setRequired(true);
   };
@@ -117,7 +124,7 @@ export default function EditWorkflowPage() {
               onChange={e => setRole(e.target.value)}
               className="rounded border px-2 py-1"
             >
-              {ROLES.map(r => (
+              {roles.map(r => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>

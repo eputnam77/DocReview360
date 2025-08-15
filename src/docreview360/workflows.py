@@ -215,6 +215,12 @@ workflow_templates: Dict[str, List[ApprovalStep]] = {
 }
 
 
+def list_roles() -> list[str]:
+    """Return a sorted list of all unique roles used in workflow templates."""
+    roles = {step.role for steps in workflow_templates.values() for step in steps}
+    return sorted(roles)
+
+
 def get_approval_steps_for_phase(
     phase: str, workflow: str = "branch-coordination"
 ) -> List[ApprovalStep]:
