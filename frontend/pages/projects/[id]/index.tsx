@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { API } from "@/lib/api";
-import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards } from "@/components";
+import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal } from "@/components";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/useProject";
 import { usePhases } from "@/lib/usePhases";
@@ -141,6 +141,12 @@ const NAV = [
   { id: "reviews", label: "Reviews" },
   { id: "history", label: "History" },
 ];
+
+const PHASE_CHECKS: Record<string, string[]> = {
+  draft: ["Draft completed"],
+  review: ["Review feedback addressed"],
+  approval: ["Approval package prepared"],
+};
 function StickyNav() {
   const [active, setActive] = React.useState(NAV[0].id);
   const linksRef = React.useRef<(HTMLAnchorElement | null)[]>([]);
@@ -252,6 +258,8 @@ export default function ProjectDetailsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [versions] = useState<VersionEntry[]>([]);
   const [reviewCount, setReviewCount] = useState(0);
+  const [showPhaseDialog, setShowPhaseDialog] = useState(false);
+  const [pendingPhase, setPendingPhase] = useState<string | null>(null);
 
   const approvalsForPhase = useMemo(
     () =>
@@ -416,6 +424,23 @@ export default function ProjectDetailsPage() {
     [workflow],
   );
 
+  const requestPhaseChange = useCallback(
+    (phaseId: string) => {
+      if (phaseId === project?.currentPhaseId) return;
+      setPendingPhase(phaseId);
+      setShowPhaseDialog(true);
+    },
+    [project?.currentPhaseId],
+  );
+
+  const confirmPhaseChange = useCallback(() => {
+    if (pendingPhase) {
+      handlePhaseChange(pendingPhase);
+    }
+    setShowPhaseDialog(false);
+    setPendingPhase(null);
+  }, [pendingPhase, handlePhaseChange]);
+
   const sendReminder = (ids?: string[]) => {
     const targets = approvalsForPhase.filter(
       (a) =>
@@ -545,7 +570,7 @@ export default function ProjectDetailsPage() {
           project={{ ...project, currentPhaseId: project.currentPhaseId || workflow?.phase }}
           phases={phaseList}
           phaseCounts={phaseCounts}
-          onPhaseChange={isOwner ? handlePhaseChange : undefined}
+          onPhaseChange={canEdit ? requestPhaseChange : undefined}
           onExportRaci={isOwner ? exportRaci : undefined}
           onShowVersions={() => setShowVersions(true)}
           isOwner={isOwner}
@@ -754,6 +779,15 @@ export default function ProjectDetailsPage() {
       </div>
 
       {/* Modals */}
+      <PhaseAdvanceModal
+        open={showPhaseDialog}
+        onClose={() => setShowPhaseDialog(false)}
+        onConfirm={confirmPhaseChange}
+        approvals={approvalsForPhase}
+        checks={
+          PHASE_CHECKS[project.currentPhaseId || workflow?.phase || ""] || []
+        }
+      />
       <VersionDrawer
         open={showVersions}
         onClose={() => setShowVersions(false)}
