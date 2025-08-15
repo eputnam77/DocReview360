@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { API } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 
 export default function EditEmailTemplatePage() {
@@ -37,7 +38,7 @@ export default function EditEmailTemplatePage() {
     } catch {
         // ignore network errors in development mode
     }
-    alert("Email template updated:\n" + JSON.stringify(payload, null, 2));
+    toast.success("Email template updated:\n" + JSON.stringify(payload, null, 2));
   };
 
   return (

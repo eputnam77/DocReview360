@@ -19,6 +19,7 @@ import {
 import { API } from "@/lib/api";
 import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 
 const DATABASES = ["postgres", "mysql", "sqlite"];
 const EDITORS = ["tiptap", "onlyoffice", "xml", "word"];
@@ -139,14 +140,14 @@ export default function IntegrationsPage() {
         body: JSON.stringify({ primary: primaryProvider, fallback: fallbackProvider }),
       });
       if (resp.ok && sigResp.ok) {
-        alert(
+        toast.success(
           "Configuration saved. Changing integrations may require a restart and could cause data loss.",
         );
       } else {
-        alert("Failed to save configuration");
+        toast.error("Failed to save configuration");
       }
     } catch {
-      alert("Failed to save configuration");
+      toast.error("Failed to save configuration");
     }
   };
 

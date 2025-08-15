@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { API } from "@/lib/api";
 import { Download, Info, PackagePlus, Settings, ToggleLeft, ToggleRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 
 interface Plugin {
   id: string;
@@ -386,9 +387,9 @@ export default function PluginMarketplace() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: pluginId }),
       });
-      alert(`Successfully installed ${pluginId}`);
+      toast.success(`Successfully installed ${pluginId}`);
     } catch {
-      alert("Install failed");
+      toast.error("Install failed");
     } finally {
       setInstalling(null);
     }
@@ -413,9 +414,9 @@ export default function PluginMarketplace() {
           : plugin
       ));
 
-      alert(`${!currentState ? 'Enabled' : 'Disabled'} ${pluginId} in Tool menus`);
+      toast.success(`${!currentState ? 'Enabled' : 'Disabled'} ${pluginId} in Tool menus`);
     } catch {
-      alert("Toggle failed");
+      toast.error("Toggle failed");
     } finally {
       setToggling(null);
     }
