@@ -18,6 +18,8 @@ interface Approval {
   signature_provider: string;
   signature_id?: string;
   certificate_url?: string;
+  phaseId?: string;
+  required?: boolean;
 }
 
 const statusConfig: Record<
@@ -62,7 +64,17 @@ export default function ReviewDetailPage() {
     setLoading(true);
     fetch(`${API}/approvals/${id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setApproval(data))
+      .then((data) =>
+        setApproval(
+          data
+            ? {
+                ...data,
+                phaseId: data.phase_id,
+                required: data.required,
+              }
+            : null,
+        ),
+      )
       .finally(() => setLoading(false));
   }, [id]);
 
