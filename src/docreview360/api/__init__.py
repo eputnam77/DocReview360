@@ -25,7 +25,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
@@ -715,6 +715,18 @@ async def list_public_documents_endpoint() -> list[DocumentModel]:
 async def public_documents_report_endpoint() -> list[dict[str, str | None]]:
     """Return minimal metadata for public documents."""
     return public_documents_report()
+
+
+@app.get("/documents/public/{doc_id}/html")
+async def public_document_html_endpoint(doc_id: str):
+    """Return the watermarked HTML copy for a public document."""
+    for record in list_archives():
+        if record.document_id == doc_id and record.metadata.get("public_copy_url"):
+            url = record.metadata["public_copy_url"]
+            if str(url).startswith("s3://"):
+                return {"url": url}
+            return FileResponse(url, media_type="text/html")
+    raise HTTPException(status_code=404, detail="Public copy not found")
 
 
 @app.get("/documents/{doc_id}", response_model=DocumentModel)
