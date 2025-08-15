@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 from uuid import uuid4
 from xml.etree.ElementTree import XML
 from zipfile import ZipFile
+import hashlib
 
 from pydantic import BaseModel
 
@@ -29,6 +30,7 @@ class DocumentModel(BaseModel):
     user: Optional[str] = None
     date: Optional[datetime] = None
     priority: Optional[int] = None
+    ingestion_hash: str | None = None
 
 
 # Stored documents keyed by id
@@ -87,6 +89,7 @@ def import_document(
     else:
         content = data.decode()
     doc_id = uuid4().hex
+    ingestion_hash = hashlib.sha256(data).hexdigest()
     document = DocumentModel(
         id=doc_id,
         content=content,
@@ -96,6 +99,7 @@ def import_document(
         user=user,
         date=datetime.now(timezone.utc),
         priority=priority,
+        ingestion_hash=ingestion_hash,
     )
     with document_lock:
         documents[doc_id] = document
