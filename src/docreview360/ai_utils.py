@@ -97,28 +97,40 @@ def style_guide_score(text: str) -> float:
     * No repeated whitespace.
     * No repeated punctuation.
     * No consecutive repeated words.
+    * No missing space after commas or semicolons.
+    * No trailing whitespace.
+    * No repeated capitalization errors (e.g., ``THis``).
     * Sentence length under ``_MAX_SENT_LEN`` characters.
     """
 
-    # Split on whitespace following punctuation so the punctuation is retained
-    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
-    if not sentences:
-        return 1.0
+    sentences_raw = re.findall(r".*?[.!?](?:\s|$)", text, re.S)
+    if not sentences_raw:
+        sentences_raw = [text]
 
     good = 0
-    for s in sentences:
+    for raw in sentences_raw:
+        if not raw.strip():
+            continue
+        lines = raw.splitlines()
+        trailing_ws = any(re.search(r"[ \t]+$", line) for line in lines)
+        s = raw.strip()
         words = s.split()
         has_repeat = any(w1.lower() == w2.lower() for w1, w2 in zip(words, words[1:]))
+        missing_space = re.search(r"[;,](?!\s)", s)
+        repeated_caps = re.search(r"[A-Z]{2,}[a-z]", s)
         if (
             s[0].isupper()
             and s[-1] in ".!?"
             and not re.search(r"\s{2,}", s)
             and not re.search(r"[.!?]{2,}", s)
             and not has_repeat
+            and not missing_space
+            and not trailing_ws
+            and not repeated_caps
             and len(s) <= _MAX_SENT_LEN
         ):
             good += 1
-    return good / len(sentences)
+    return good / len(sentences_raw)
 
 
 def structural_pattern_score(text: str) -> float:
