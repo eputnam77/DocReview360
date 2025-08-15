@@ -8,6 +8,7 @@ rest of the codebase can operate without an external service during tests.
 
 from __future__ import annotations
 
+import hashlib
 import os
 from base64 import b64encode
 from typing import Dict, Tuple
@@ -24,6 +25,8 @@ DOCUMENSO_URL = os.getenv("DOCUMENSO_URL")
 _signatures: Dict[str, str] = {}
 # store workflow id for each signature when provided
 _sig_workflows: Dict[str, str] = {}
+# map signature id -> certificate hash for local verification
+_sig_certificates: Dict[str, str] = {}
 
 
 def request_signature(
@@ -99,12 +102,12 @@ def complete_signature(sig_id: str) -> None:
     log_event(f"signature_completed:{sig_id}")
 
 
-def verify_signature(sig_id: str, document: bytes) -> bool:
-    """Validate ``sig_id`` for ``document``."""
+def verify_signature(signature_id: str, document: bytes) -> bool:
+    """Validate ``signature_id`` for ``document``."""
     if DOCUMENSO_URL:
         try:
             resp = httpx.post(
-                f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}/verify",
+                f"{DOCUMENSO_URL.rstrip('/')}/sign/{signature_id}/verify",
                 json={"document": b64encode(document).decode()},
                 timeout=5,
             )
@@ -112,7 +115,10 @@ def verify_signature(sig_id: str, document: bytes) -> bool:
             return bool(resp.json().get("valid"))
         except httpx.HTTPError as exc:
             raise RuntimeError("Documenso request failed") from exc
-    return _signatures.get(sig_id) == "signed"
+    cert_hash = _sig_certificates.get(signature_id)
+    if _signatures.get(signature_id) == "signed" and cert_hash:
+        return cert_hash == hashlib.sha256(document).hexdigest()
+    return False
 
 
 def signature_status(sig_id: str) -> str:
@@ -142,6 +148,9 @@ def process_webhook(data: Dict[str, str]) -> None:
     if not sig_id or not status:
         raise ValueError("invalid webhook payload")
     _signatures[sig_id] = status
+    cert_url = data.get("certificate_url")
+    if cert_url:
+        _sig_certificates[sig_id] = cert_url
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
         if wf_id:
@@ -163,7 +172,7 @@ def process_webhook(data: Dict[str, str]) -> None:
                 signed_at_dt = None
             handle_signature_return(
                 sig_id,
-                certificate_url=data.get("certificate_url"),
+                certificate_url=cert_url,
                 signed_at=signed_at_dt,
             )
         except (KeyError, ValueError):
@@ -193,11 +202,11 @@ class DocumensoProvider:
             return_url=return_url,
         )
 
-    def process_webhook(self, data: dict) -> None:
+    def process_webhook(self, data: dict[str, str]) -> None:
         process_webhook(data)  # pragma: no cover - simple delegation
 
-    def verify_signature(self, sig_id: str, document: bytes) -> bool:
-        return verify_signature(sig_id, document)
+    def verify_signature(self, signature_id: str, document: bytes) -> bool:
+        return verify_signature(signature_id, document)
 
 
 # Register provider on import
