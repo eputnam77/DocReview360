@@ -18,7 +18,10 @@ def test_documenso_webhook_advances_workflow() -> None:
     sig_id = resp.json()["id"]
 
     # webhook callback marks signed
-    client.post("/hooks/documenso", json={"id": sig_id, "status": "signed"})
+    client.post(
+        "/hooks",
+        json={"id": sig_id, "status": "signed", "provider": "documenso"},
+    )
 
     # status updated and workflow advanced
     assert client.get(f"/sign/{sig_id}").json()["status"] == "signed"
