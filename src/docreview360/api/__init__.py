@@ -697,7 +697,10 @@ async def list_documents_endpoint() -> list[DocumentModel]:
             if isinstance(cached, bytes):
                 cached = cached.decode()
             data = json.loads(cached)
-            return [DocumentModel.model_validate(d) for d in data]
+            docs = [DocumentModel.model_validate(d) for d in data]
+            if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+                log_event("read", entity_id="documents", count=len(docs))
+            return docs
         except Exception:
             pass
     docs_list = list_docs()
@@ -706,6 +709,8 @@ async def list_documents_endpoint() -> list[DocumentModel]:
         json.dumps([d.model_dump(mode="json") for d in docs_list]),
         ttl=30,
     )
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id="documents", count=len(docs_list))
     return docs_list
 
 
@@ -739,6 +744,8 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id=doc_id)
     return document
 
 
@@ -817,6 +824,8 @@ async def export_document_endpoint(doc_id: str, fmt: str) -> Response:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id=doc_id, format=fmt)
     return Response(content=data, media_type=media, headers=headers)
 
 
@@ -840,7 +849,10 @@ async def archive_document_endpoint(
 @app.get("/archive", response_model=list[ArchiveRecord])
 async def list_archives_endpoint() -> list[ArchiveRecord]:
     """Return all archived documents."""
-    return list_archives()
+    records = list_archives()
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id="archives", count=len(records))
+    return records
 
 
 @app.get("/archive/{archive_id}", response_model=ArchiveRecord)
@@ -849,6 +861,8 @@ async def get_archive_endpoint(archive_id: str) -> ArchiveRecord:
     record = get_archive(archive_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Archive not found")
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id=archive_id)
     return record
 
 
@@ -888,6 +902,8 @@ async def search_documents(
         json.dumps([d.model_dump(mode="json") for d in results]),
         ttl=30,
     )
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id="search", query=q, count=len(results))
     return results
 
 
