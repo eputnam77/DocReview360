@@ -7,6 +7,10 @@ from typing import List
 
 import requests
 
+from .quality import approval_likelihood
+from .approvals import create_approval
+from .fann_model import Weights
+
 _GRAPH_URL = "https://graph.microsoft.com/v1.0"
 
 
@@ -47,3 +51,30 @@ class SharePointClient:
         payload = response.json()
         values = payload.get("value", [])
         return [str(entry.get("id")) for entry in values if "id" in entry]
+
+    def upload_with_scoring(
+        self,
+        path: str,
+        data: bytes,
+        weights: Weights,
+        *,
+        workflow: str | None = None,
+        reviewer: str = "manager",
+        extra_reviewer: str = "policy",
+        threshold: float = 0.5,
+    ) -> tuple[str, float]:
+        """Upload ``data`` and route for approval based on FANN scoring.
+
+        The uploaded document is scored using ``weights``.  If the approval
+        likelihood is below ``threshold`` an extra review step is inserted prior
+        to the normal ``reviewer``.
+        """
+
+        item_id = self.upload_file(path, data)
+        text = data.decode("utf-8", errors="ignore")
+        score = approval_likelihood(text, weights)
+        if workflow is not None:
+            if score < threshold:
+                create_approval(workflow, extra_reviewer, description="Auto risk review")
+            create_approval(workflow, reviewer, description="Primary review")
+        return item_id, score
