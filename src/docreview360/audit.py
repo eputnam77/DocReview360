@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -31,6 +32,7 @@ except Exception:  # pragma: no cover
 class AuditLogEntry(BaseModel):
     """Structured, optionally signed audit log entry."""
 
+    id: str
     event: str
     document_id: str
     approval_id: Optional[str] = None
@@ -102,6 +104,7 @@ def log_audit_event(
     if verifier is None and actor is not None:
         verifier = actor
     entry = AuditLogEntry(
+        id=str(uuid.uuid4()),
         event=event,
         document_id=document_id,
         approval_id=approval_id or context.pop("approval_id", None),
@@ -124,7 +127,7 @@ def log_audit_event(
 
 
 def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogEntry]:
-    """Return the audit log for ``document_id``."""
+    """Return the audit log for ``document_id`` sorted by timestamp."""
 
     events: List[AuditLogEntry] = []
     if not _AUDIT_LOG_PATH.exists():
@@ -145,7 +148,32 @@ def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogE
                 events.append(AuditLogEntry(**data))
             except Exception:
                 continue
+    events.sort(key=lambda e: e.verified_at)
     return events
+
+
+def get_audit_entry(entry_id: str, secret: str | None = None) -> AuditLogEntry | None:
+    """Return a single audit log entry by ``entry_id`` if present."""
+
+    if not _AUDIT_LOG_PATH.exists():
+        return None
+    with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if data.get("id") != entry_id:
+                continue
+            try:
+                expected = _compute_hash({k: v for k, v in data.items() if k != "hash"}, secret)
+                if secret and not hmac.compare_digest(expected, data.get("hash", "")):
+                    return None
+                data["verified_at"] = datetime.fromisoformat(data["verified_at"])
+                return AuditLogEntry(**data)
+            except Exception:
+                return None
+    return None
 
 
 def clear_audit_log() -> None:
