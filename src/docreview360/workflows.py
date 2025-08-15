@@ -333,7 +333,7 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
 
     from .approvals import approvals as approval_store
     from .audit import log_audit_event
-    from .documents import import_document
+    from .documents import import_document, link_approval, unlink_approval
     from .logs import log_event
 
     workflow = workflows[wf_id]
@@ -347,7 +347,9 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
     for approval in approval_store.values():
         if approval.workflow == wf_id:
             if approval.document_id != document.id:
+                unlink_approval(approval.document_id, approval.id)
                 approval.document_id = document.id
+                link_approval(document.id, approval.id)
                 log_event(
                     "approval_doc_linked",
                     approval_id=approval.id,

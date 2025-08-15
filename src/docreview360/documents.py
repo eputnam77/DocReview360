@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from . import fts
 from .audit import log_audit_event
+from .logs import log_event
 
 
 class DocumentModel(BaseModel):
@@ -34,6 +35,7 @@ class DocumentModel(BaseModel):
     # Flag to mark public copies and track originating document
     public_copy: bool = False
     source_document_id: str | None = None
+    approval_ids: List[str] = []
 
 
 # Stored documents keyed by id
@@ -148,6 +150,36 @@ def public_documents_report() -> list[dict[str, str | None]]:
         for d in documents.values()
         if d.public_copy
     ]
+
+
+def link_approval(doc_id: str, approval_id: str) -> None:
+    """Associate ``approval_id`` with ``doc_id`` and log the action."""
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError("document not found")
+    if approval_id not in document.approval_ids:
+        document.approval_ids.append(approval_id)
+        log_event(
+            "approval_linked",
+            doc_id=doc_id,
+            approval_id=approval_id,
+        )
+        log_audit_event(doc_id, "approval_linked", approval_id=approval_id)
+
+
+def unlink_approval(doc_id: str, approval_id: str) -> None:
+    """Remove ``approval_id`` from ``doc_id`` and log the action."""
+    document = documents.get(doc_id)
+    if document is None:
+        return
+    if approval_id in document.approval_ids:
+        document.approval_ids.remove(approval_id)
+        log_event(
+            "approval_unlinked",
+            doc_id=doc_id,
+            approval_id=approval_id,
+        )
+        log_audit_event(doc_id, "approval_unlinked", approval_id=approval_id)
 
 
 def update_document(

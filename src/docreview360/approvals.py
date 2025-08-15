@@ -13,7 +13,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from .audit import log_audit_event
-from .documents import get_document
+from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
 from .integrations.signature import get_default_provider, get_provider
 from .logs import log_event
@@ -74,6 +74,10 @@ def create_approval(
         delegates=delegates or [],
     )
     approvals[approval_id] = approval
+    try:
+        link_approval(doc_id, approval_id)
+    except KeyError:
+        pass
     log_event(
         "approval_created",
         actor=reviewer,
@@ -149,8 +153,11 @@ async def handle_signature_return(
     approval = get_approval_by_signature(signature_id)
     if approval is None:
         raise KeyError("approval not found for signature")
-    if doc_id is not None:
+    if doc_id is not None and doc_id != approval.document_id:
+        unlink_approval(approval.document_id, approval.id)
         approval.document_id = doc_id
+        link_approval(doc_id, approval.id)
+        approval.document_hash = None
     doc_id = approval.document_id
 
     log_event(
@@ -175,26 +182,27 @@ async def handle_signature_return(
         if stored_doc is None:
             raise KeyError("document not found")
         document = stored_doc.content.encode("utf-8")
-
-    if approval.document_hash is not None:
-        if hashlib.sha256(document).hexdigest() != approval.document_hash:
-            log_event(
-                "signature_hash_mismatch",
-                approval_id=approval.id,
-                provider=approval.signature_provider,
-                signature_id=signature_id,
-                doc_id=doc_id,
-                provider_metadata=approval.provider_metadata,
-            )
-            log_audit_event(
-                doc_id,
-                "signature_hash_mismatch",
-                provider=approval.signature_provider,
-                signature_id=signature_id,
-                approval_id=approval.id,
-                provider_metadata=approval.provider_metadata,
-            )
-            raise ValueError("document hash mismatch")
+    current_hash = hashlib.sha256(document).hexdigest()
+    if approval.document_hash is None:
+        approval.document_hash = current_hash
+    elif current_hash != approval.document_hash:
+        log_event(
+            "signature_hash_mismatch",
+            approval_id=approval.id,
+            provider=approval.signature_provider,
+            signature_id=signature_id,
+            doc_id=doc_id,
+            provider_metadata=approval.provider_metadata,
+        )
+        log_audit_event(
+            doc_id,
+            "signature_hash_mismatch",
+            provider=approval.signature_provider,
+            signature_id=signature_id,
+            approval_id=approval.id,
+            provider_metadata=approval.provider_metadata,
+        )
+        raise ValueError("document hash mismatch")
 
     if certificate_url is not None:
         approval.certificate_url = certificate_url
@@ -348,7 +356,11 @@ def send_for_signature(
         raise ValueError("approval already signed")
     if user != approval.reviewer and user not in approval.delegates:
         raise PermissionError("not authorised to send for signature")
-    approval.document_id = doc_id
+    if approval.document_id != doc_id:
+        unlink_approval(approval.document_id, approval.id)
+        approval.document_id = doc_id
+        link_approval(doc_id, approval.id)
+        approval.document_hash = None
     if approval.document_hash is None:
         document = get_document(doc_id)
         if document is None:
