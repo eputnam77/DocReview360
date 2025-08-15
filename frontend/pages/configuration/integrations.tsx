@@ -90,7 +90,8 @@ const DEFAULT_CONFIG: Record<string, string | number | boolean> = {
 export default function IntegrationsPage() {
   const [config, setConfig] =
     useState<Record<string, string | number | boolean>>(DEFAULT_CONFIG);
-  const [signatureProvider, setSignatureProvider] = useState("documenso");
+  const [primaryProvider, setPrimaryProvider] = useState("documenso");
+  const [fallbackProvider, setFallbackProvider] = useState("local");
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -100,16 +101,18 @@ export default function IntegrationsPage() {
     Promise.all([
       fetch(`${API}/config`).then((r) => (r.ok ? r.json() : DEFAULT_CONFIG)),
       fetch(`${API}/signature-provider`).then((r) =>
-        r.ok ? r.json() : { provider: "documenso" },
+        r.ok ? r.json() : { primary: "documenso", fallback: "local" },
       ),
     ])
       .then(([cfg, prov]) => {
         setConfig(Object.keys(cfg || {}).length ? cfg : DEFAULT_CONFIG);
-        setSignatureProvider(prov.provider);
+        setPrimaryProvider(prov.primary);
+        setFallbackProvider(prov.fallback);
       })
       .catch(() => {
         setConfig(DEFAULT_CONFIG);
-        setSignatureProvider("documenso");
+        setPrimaryProvider("documenso");
+        setFallbackProvider("local");
       });
   }, []);
 
@@ -133,7 +136,7 @@ export default function IntegrationsPage() {
       const sigResp = await fetch(`${API}/signature-provider`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: signatureProvider }),
+        body: JSON.stringify({ primary: primaryProvider, fallback: fallbackProvider }),
       });
       if (resp.ok && sigResp.ok) {
         alert(
@@ -218,11 +221,29 @@ export default function IntegrationsPage() {
         <div className="space-y-2">
           <Label>Signature Provider</Label>
           <Select
-            value={signatureProvider}
-            onValueChange={(v) => setSignatureProvider(v)}
+            value={primaryProvider}
+            onValueChange={(v) => setPrimaryProvider(v)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {SIGNATURE_PROVIDERS.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Fallback Signature Provider</Label>
+          <Select
+            value={fallbackProvider}
+            onValueChange={(v) => setFallbackProvider(v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select fallback" />
             </SelectTrigger>
             <SelectContent>
               {SIGNATURE_PROVIDERS.map((opt) => (
