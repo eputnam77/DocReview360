@@ -408,7 +408,7 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
     return approval.document_hash == hashlib.sha256(document).hexdigest()
 
 
-def verify_document_signature(doc_id: str) -> dict[str, object]:
+def verify_document_signature(doc_id: str, provider: str | None = None) -> dict[str, object]:
     document = get_document(doc_id)
     if document is None:
         raise KeyError("document not found")
@@ -423,14 +423,17 @@ def verify_document_signature(doc_id: str) -> dict[str, object]:
         signature_valid = approval.state == "approved" and approval.signature_id is not None
         certificate_present = approval.certificate_url is not None
         provider_valid = False
+        provider_name = provider or approval.signature_provider
         if approval.signature_id and hash_valid:
             try:
-                provider = get_provider(approval.signature_provider)
-                provider_valid = provider.validate_signature(
+                provider_impl = get_provider(provider_name)
+                provider_valid = provider_impl.validate_signature(
                     document.content.encode(),
                     approval.certificate_url,
                     approval.provider_metadata,
                 )
+            except KeyError as exc:
+                raise ValueError(f"unknown provider {provider_name}") from exc
             except Exception:
                 provider_valid = False
         details.append(

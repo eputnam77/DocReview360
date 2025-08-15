@@ -748,10 +748,17 @@ async def get_document_audit_endpoint(doc_id: str) -> list[AuditLogEntry]:
 
 
 @app.get("/documents/{doc_id}/verify-signature")
-async def verify_signature_endpoint(doc_id: str) -> dict[str, object]:
-    """Validate the digital signatures associated with ``doc_id``."""
+async def verify_signature_endpoint(doc_id: str, provider: str | None = None) -> dict[str, object]:
+    """Validate the digital signatures associated with ``doc_id``.
+
+    Parameters
+    ----------
+    provider:
+        Optional signature provider to use for validation. If omitted, the
+        provider stored with each approval is used.
+    """
     try:
-        return verify_document_signature(doc_id)
+        return verify_document_signature(doc_id, provider=provider)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
