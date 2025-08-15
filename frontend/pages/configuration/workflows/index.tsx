@@ -71,7 +71,7 @@ export default function WorkflowList() {
           <Link href="/configuration/workflows/new">Create Workflow</Link>
         </Button>
       </div>
-      <Table className="min-w-full text-sm">
+      <Table caption="Workflows" className="min-w-full text-sm">
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>

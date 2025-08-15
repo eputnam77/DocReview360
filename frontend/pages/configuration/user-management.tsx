@@ -143,7 +143,7 @@ export default function UserManagementPage() {
           Add
         </Button>
       </form>
-      <Table>
+      <Table caption="Users">
         <TableHeader>
           <TableRow>
             <TableHead>Username</TableHead>
@@ -210,6 +210,7 @@ export default function UserManagementPage() {
                     size="icon"
                     onClick={() => startEdit(u)}
                     title="Edit"
+                    aria-label="Edit"
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -221,6 +222,7 @@ export default function UserManagementPage() {
                   size="icon"
                   onClick={() => removeUser(u.id)}
                   title="Remove"
+                  aria-label="Remove"
                 >
                   <Trash className="w-4 h-4 text-red-600" />
                 </Button>

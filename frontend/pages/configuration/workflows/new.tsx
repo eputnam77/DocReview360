@@ -258,7 +258,7 @@ export default function NewWorkflowPage() {
           </div>
 
           {/* Steps Table */}
-          <Table>
+          <Table caption="Workflow steps">
             <TableHeader>
               <TableRow>
                 <TableHead>Order</TableHead>
@@ -301,6 +301,7 @@ export default function NewWorkflowPage() {
                       variant="ghost"
                       size="icon"
                       title="Remove step"
+                      aria-label="Remove step"
                       onClick={() => removeStep(s.id)}
                     >
                       <Trash className="w-4 h-4" />
