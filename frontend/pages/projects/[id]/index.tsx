@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { API } from "@/lib/api";
 import PhaseTabs from "@/components/PhaseTabs";
-import { ApprovalTable } from "@/components";
+import { ApprovalTable, AuditTimeline } from "@/components";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/useProject";
 import { usePhases } from "@/lib/usePhases";
@@ -52,8 +52,11 @@ interface Project {
   currentPhaseId?: string | null;
 }
 interface LogEntry {
+  id: string;
   timestamp: string;
   action: string;
+  type: "approval" | "review" | "edit" | "phase";
+  ref?: string;
 }
 interface WorkflowStep {
   name: string;
@@ -312,7 +315,47 @@ export default function ProjectDetailsPage() {
     setReviewCount(reviewCountData ?? 0);
   }, [reviewCountData]);
 
+  useEffect(() => {
+    if (!id || !username) return;
+    fetch(`${API}/audit?entity_id=${id}`, {
+      headers: { "X-User": username },
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) =>
+        setLogs(
+          data.map((d) => ({
+            id: d.id ?? d.timestamp,
+            timestamp: d.timestamp,
+            action: d.details?.message || d.action,
+            type: (d.details?.type as LogEntry["type"]) || "edit",
+            ref:
+              d.details?.approvalId ||
+              d.details?.reviewId ||
+              d.details?.phaseId,
+          })),
+        ),
+      )
+      .catch(() => setLogs([]));
+  }, [id, username]);
+
   const loading = projectLoading || phasesLoading || approvalsLoading || reviewLoading;
+
+  const auditEvents = useMemo(
+    () =>
+      logs.map((l) => ({
+        id: l.id,
+        timestamp: l.timestamp,
+        message: l.action,
+        type: l.type,
+        link:
+          l.type === "approval" && l.ref
+            ? `#approval-${l.ref}`
+            : l.type === "review" && l.ref
+            ? `/projects/${id}/reviews#${l.ref}`
+            : undefined,
+      })),
+    [logs, id],
+  );
 
   // ▼ check for completed signatures on page load
   useEffect(() => {
@@ -775,17 +818,7 @@ export default function ProjectDetailsPage() {
                   leaveFrom="transform opacity-100 scale-100"
                   leaveTo="transform opacity-0 scale-95"
                 >
-                  <Card>
-                    <CardContent>
-                      <ul className="list-disc pl-5 text-sm space-y-1">
-                        {logs.map((l, i) => (
-                          <li key={i}>
-                            {l.timestamp} — {l.action}
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
+                  <AuditTimeline events={auditEvents} />
                 </Transition>
               </>
             )}

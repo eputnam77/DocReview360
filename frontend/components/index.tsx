@@ -56,6 +56,7 @@ export { default as ChatBot } from "./ChatBot";
 export { default as EnvironmentSwitcher } from "./EnvironmentSwitcher";
 export { default as PhaseTabs } from "./PhaseTabs";
 export { default as ApprovalTable } from "./ApprovalTable";
+export { default as AuditTimeline } from "./AuditTimeline";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";
