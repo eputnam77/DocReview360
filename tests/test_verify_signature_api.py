@@ -18,7 +18,7 @@ def test_verify_signature_endpoint() -> None:
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
 
-    appr = create_approval("wf1", "alice", doc_id, document=b"hello")
+    appr = create_approval("wf1", "alice", doc_id, document=b"hello", signature_provider="documenso")
     send_for_signature(appr.id, doc_id, "alice")
     cert = hashlib.sha256(b"hello").hexdigest()
     documenso.process_webhook(
@@ -48,7 +48,7 @@ def test_verify_signature_mismatched_hash() -> None:
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
 
-    appr = create_approval("wf1", "alice", doc_id, document=b"hello")
+    appr = create_approval("wf1", "alice", doc_id, document=b"hello", signature_provider="documenso")
     send_for_signature(appr.id, doc_id, "alice")
     cert = hashlib.sha256(b"hello").hexdigest()
     documenso.process_webhook(
@@ -79,7 +79,7 @@ def test_verify_signature_unsigned() -> None:
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
 
-    appr = create_approval("wf1", "alice", doc_id, document=b"hello")
+    appr = create_approval("wf1", "alice", doc_id, document=b"hello", signature_provider="documenso")
     send_for_signature(appr.id, doc_id, "alice")
 
     resp2 = client.get(f"/documents/{doc_id}/verify-signature")
@@ -103,7 +103,7 @@ def test_verify_signature_invalid_certificate() -> None:
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
 
-    appr = create_approval("wf1", "alice", doc_id, document=b"hello")
+    appr = create_approval("wf1", "alice", doc_id, document=b"hello", signature_provider="documenso")
     send_for_signature(appr.id, doc_id, "alice")
     documenso.process_webhook(
         {"id": appr.signature_id, "status": "signed", "certificate_url": "bad"}

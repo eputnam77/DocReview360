@@ -3,9 +3,10 @@ and FANN-based routing support."""
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -39,6 +40,7 @@ class ApprovalModel(BaseModel):
     certificate_url: Optional[str] = None
     signed_at: datetime | None = None
     description: Optional[str] = None
+    provider_metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 approvals: Dict[str, ApprovalModel] = {}
@@ -78,6 +80,7 @@ def create_approval(
         provider=signature_provider,
         document_hash=doc_hash,
         doc_id=doc_id,
+        provider_metadata=approval.provider_metadata,
     )
     log_audit_event(
         doc_id,
@@ -87,6 +90,7 @@ def create_approval(
         provider=signature_provider,
         document_hash=doc_hash,
         approval_id=approval_id,
+        provider_metadata=approval.provider_metadata,
     )
     return approval
 
@@ -153,6 +157,7 @@ async def handle_signature_return(
         provider=approval.signature_provider,
         signature_id=signature_id,
         doc_id=doc_id,
+        provider_metadata=approval.provider_metadata,
     )
     log_audit_event(
         doc_id,
@@ -160,6 +165,7 @@ async def handle_signature_return(
         provider=approval.signature_provider,
         signature_id=signature_id,
         approval_id=approval.id,
+        provider_metadata=approval.provider_metadata,
     )
 
     if document is not None and approval.document_hash is not None:
@@ -170,6 +176,7 @@ async def handle_signature_return(
                 provider=approval.signature_provider,
                 signature_id=signature_id,
                 doc_id=doc_id,
+                provider_metadata=approval.provider_metadata,
             )
             log_audit_event(
                 doc_id,
@@ -177,6 +184,7 @@ async def handle_signature_return(
                 provider=approval.signature_provider,
                 signature_id=signature_id,
                 approval_id=approval.id,
+                provider_metadata=approval.provider_metadata,
             )
             raise ValueError("document hash mismatch")
 
@@ -267,6 +275,7 @@ async def update_approval_state(
         document_hash=approval.document_hash,
         doc_id=approval.document_id,
         previous_state=previous,
+        provider_metadata=approval.provider_metadata,
     )
     log_audit_event(
         approval.document_id,
@@ -278,6 +287,7 @@ async def update_approval_state(
         previous_state=previous,
         project=project_id,
         approval_id=approval_id,
+        provider_metadata=approval.provider_metadata,
     )
 
     if state == "approved" and wf:
@@ -292,7 +302,7 @@ async def update_approval_state(
     return approval
 
 
-async def send_for_signature(
+def send_for_signature(
     approval_id: str,
     doc_id: str,
     user: str,
@@ -311,10 +321,11 @@ async def send_for_signature(
         callback += f"&next={quote(return_url)}"
 
     provider = get_provider(approval.signature_provider)
-    sig_id, url = await provider.request_signature(
+    sig_id, url, meta = provider.request_signature(
         doc_id, user, workflow_id=approval.workflow, approval_id=approval_id, return_url=callback
     )
     approval.signature_id = sig_id
+    approval.provider_metadata = meta
     log_event(
         "approval_sent_for_signature",
         actor=user,
@@ -323,6 +334,7 @@ async def send_for_signature(
         signature_id=sig_id,
         workflow=approval.workflow,
         doc_id=doc_id,
+        provider_metadata=meta,
     )
     log_audit_event(
         doc_id,
@@ -333,6 +345,7 @@ async def send_for_signature(
         document_hash=approval.document_hash,
         workflow=approval.workflow,
         approval_id=approval_id,
+        provider_metadata=meta,
     )
     return url
 
@@ -344,7 +357,7 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
     return approval.document_hash == hashlib.sha256(document).hexdigest()
 
 
-async def verify_document_signature(doc_id: str) -> dict[str, object]:
+def verify_document_signature(doc_id: str) -> dict[str, object]:
     document = get_document(doc_id)
     if document is None:
         raise KeyError("document not found")
@@ -362,7 +375,7 @@ async def verify_document_signature(doc_id: str) -> dict[str, object]:
         if approval.signature_id and hash_valid:
             try:
                 provider = get_provider(approval.signature_provider)
-                provider_valid = await provider.verify_signature(
+                provider_valid = provider.verify_signature(
                     approval.signature_id, document.content.encode()
                 )
             except Exception:
@@ -415,9 +428,11 @@ def reset_approval(
         previous = approval.state
         sig_id = approval.signature_id
         doc_hash = approval.document_hash
+        metadata = approval.provider_metadata
         approval.state = "pending"
         approval.signature_id = None
         approval.signed_at = None
+        approval.provider_metadata = {}
         log_event(
             "approval_reset",
             actor=username,
@@ -428,6 +443,7 @@ def reset_approval(
             reason=reason,
             signature_id=sig_id,
             document_hash=doc_hash,
+            provider_metadata=metadata,
         )
         log_audit_event(
             approval.document_id,
@@ -439,6 +455,7 @@ def reset_approval(
             reason=reason,
             signature_id=sig_id,
             document_hash=doc_hash,
+            provider_metadata=metadata,
         )
 
     return task213(confirm, _do_reset)

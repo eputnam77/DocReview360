@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Protocol, Tuple
+from typing import Any, Dict, Protocol, Tuple
 
 from ...settings_manager import load_settings
 
@@ -19,8 +19,8 @@ class SignatureProvider(Protocol):
         *,
         approval_id: str | None = None,
         return_url: str | None = None,
-    ) -> Tuple[str, str]:
-        """Create a signature request and return ``(id, url)``."""
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        """Create a signature request and return ``(id, url, metadata)``."""
 
     def process_webhook(self, data: dict[str, str]) -> None:
         """Handle a webhook payload from the provider."""
