@@ -68,7 +68,7 @@ function PhaseSelector({
   docTypeId: string;
   phases: string[];
   selectedPhases: string[];
-  changePhase: (docTypeId: string, phase: string) => void;
+  changePhase: (docTypeId: string, phase: string) => void | Promise<void>;
 }) {
   const [search, setSearch] = useState("");
   const filtered = phases.filter((p) =>
@@ -132,37 +132,17 @@ export default function DocumentTypesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [phases, setPhases] = useState<string[]>([]);
-  const [docTypePhaseMap, setDocTypePhaseMap] = useState<Record<string, string[]>>({});
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
   const [replacementDocType, setReplacementDocType] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<any>(null);
 
   useEffect(() => {
-    // Restore user-customized mapping from localStorage
-    const saved = localStorage.getItem("docTypePhaseMap");
-    let parsed: Record<string, string[]> = {};
-    if (saved) {
-      try {
-        parsed = JSON.parse(saved);
-        setDocTypePhaseMap(parsed);
-      } catch {}
-    }
-
-    // Fetch document types (and default phases) from backend
+    // Fetch document types from backend
     fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         const list = normalizeDocTypes(data);
         setTypes(list);
-        const backendMap: Record<string, string[]> = {};
-        list.forEach((t) => {
-          if (t.phases && t.phases.length) {
-            backendMap[t.id] = t.phases;
-          }
-        });
-        const merged = { ...backendMap, ...parsed };
-        setDocTypePhaseMap(merged);
-        localStorage.setItem("docTypePhaseMap", JSON.stringify(merged));
       })
       .catch(() => setTypes([]));
 
@@ -188,12 +168,12 @@ export default function DocumentTypesPage() {
       });
       if (r.ok) {
         const created = await r.json();
-        setTypes([...types, { id: created.name, name: created.name }]);
+        setTypes([...types, { id: created.name, name: created.name, phases: [] }]);
       }
     } catch {
       setTypes([
         ...types,
-        { id: "dt-" + Date.now().toString(), name: body.name },
+        { id: "dt-" + Date.now().toString(), name: body.name, phases: [] },
       ]);
     }
     setNewName("");
@@ -278,17 +258,27 @@ export default function DocumentTypesPage() {
     setEditName("");
   };
 
-  const changePhase = (docTypeId: string, phase: string) => {
-    const currentPhases = docTypePhaseMap[docTypeId] || [];
-    let updatedPhases: string[];
-    if (currentPhases.includes(phase)) {
-      updatedPhases = currentPhases.filter(p => p !== phase);
-    } else {
-      updatedPhases = [...currentPhases, phase];
-    }
-    const updated = { ...docTypePhaseMap, [docTypeId]: updatedPhases };
-    setDocTypePhaseMap(updated);
-    localStorage.setItem("docTypePhaseMap", JSON.stringify(updated));
+  const changePhase = async (docTypeId: string, phase: string) => {
+    const docType = types.find((t) => t.id === docTypeId);
+    if (!docType) return;
+    const currentPhases = docType.phases || [];
+    const updatedPhases = currentPhases.includes(phase)
+      ? currentPhases.filter((p) => p !== phase)
+      : [...currentPhases, phase];
+    setTypes(
+      types.map((t) => (t.id === docTypeId ? { ...t, phases: updatedPhases } : t)),
+    );
+    try {
+      await fetch(`${API}/document-types/${encodeURIComponent(docTypeId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: docType.name,
+          template: docType.template || `<h1>${docType.name}</h1>`,
+          workflow: updatedPhases,
+        }),
+      });
+    } catch {}
   };
 
   return (
@@ -343,7 +333,7 @@ export default function DocumentTypesPage() {
                 <PhaseSelector
                   docTypeId={t.id}
                   phases={phases}
-                  selectedPhases={docTypePhaseMap[t.id] || []}
+                  selectedPhases={t.phases || []}
                   changePhase={changePhase}
                 />
               </TableCell>
