@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
 
 export default function SearchBar() {
   const router = useRouter();
@@ -22,8 +21,8 @@ export default function SearchBar() {
         placeholder="Search..."
         className="h-8 text-sm"
       />
-      <button type="submit">
-        <Search className="w-4 h-4 text-gray-500" />
+      <button type="submit" aria-label="Search">
+        <span className="w-4 h-4 text-gray-500">🔍</span>
       </button>
     </form>
   );
