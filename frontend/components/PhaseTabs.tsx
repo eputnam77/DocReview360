@@ -59,7 +59,9 @@ export default function PhaseTabs({
         return (
           <button
             key={p.id}
-            ref={(el) => (tabsRef.current[i] = el)}
+            ref={(el) => {
+              tabsRef.current[i] = el;
+            }}
             role="tab"
             id={`phase-tab-${p.id}`}
             aria-selected={isActive}
