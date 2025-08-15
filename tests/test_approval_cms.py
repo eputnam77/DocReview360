@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from datetime import datetime, timezone
 
@@ -34,28 +35,30 @@ def test_update_state_uploads_to_cms(monkeypatch):
         patched.append((url, json))
         return DummyResponse()
 
-    def fake_get(url: str) -> DummyResponse:
-        assert url == "http://cert"
-        return DummyResponse(content=b"cert-data")
+    def fake_fetch(url: str) -> bytes:
+        assert url == "https://cert"
+        return b"cert-data"
 
     monkeypatch.setattr("docreview360.sharepoint.requests.put", fake_put)
     monkeypatch.setattr("docreview360.sharepoint.requests.patch", fake_patch)
-    monkeypatch.setattr("docreview360.approvals.requests.get", fake_get)
+    monkeypatch.setattr("docreview360.approvals.fetch_certificate", fake_fetch)
 
     document = b"hello"
     approval = create_approval("wf1", "bob", "doc1", document=document)
     signed_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    update_approval_state(
-        approval.id,
-        "approved",
-        document=document,
-        certificate_url="http://cert",
-        signed_at=signed_at,
+    asyncio.run(
+        update_approval_state(
+            approval.id,
+            "approved",
+            document=document,
+            certificate_url="https://cert",
+            signed_at=signed_at,
+        )
     )
 
     assert len(uploaded) == 2
     assert patched
     props = patched[0][1]
-    assert props["certificateUrl"] == "http://cert"
+    assert props["certificateUrl"] == "https://cert"
     assert props["documentHash"] == hashlib.sha256(document).hexdigest()
     assert props["signedDate"].startswith("2024-01-01")

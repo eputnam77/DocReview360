@@ -86,6 +86,17 @@ def log_event(action: str, actor: str | None = None, **context: Any) -> LogEntry
     return entry
 
 
+def log_verification_failure(actor: str, ip: str, **context: Any) -> LogEntry:
+    """Log a failed signature verification with ``actor`` and client ``ip``."""
+
+    return log_event(
+        "signature_verification_failed",
+        actor=actor,
+        ip=ip,
+        **context,
+    )
+
+
 def query_logs(action: str | None = None, actor: str | None = None) -> List[LogEntry]:
     """Return logs filtered by optional action and actor."""
 

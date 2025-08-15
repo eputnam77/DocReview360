@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import asyncio
 from dataclasses import dataclass
 from typing import List, cast
 
@@ -143,3 +144,28 @@ def client_from_env() -> SharePointClient:
         drive_id=cast(str, drive_id),
         token=cast(str, token),
     )
+
+
+class AsyncSharePointClient(SharePointClient):
+    """Async wrapper for :class:`SharePointClient` using threads."""
+
+    async def upload_file(self, path: str, data: bytes) -> str:  # pragma: no cover - thin wrapper
+        return await asyncio.to_thread(super().upload_file, path, data)
+
+    async def set_properties(self, item_id: str, properties: dict[str, str]) -> None:  # pragma: no cover
+        await asyncio.to_thread(super().set_properties, item_id, properties)
+
+
+async def async_client_from_env() -> AsyncSharePointClient:
+    """Return an async SharePoint client using environment credentials."""
+
+    client = client_from_env()
+    return AsyncSharePointClient(client.site_id, client.drive_id, client.token)
+
+
+__all__ = [
+    "SharePointClient",
+    "client_from_env",
+    "AsyncSharePointClient",
+    "async_client_from_env",
+]

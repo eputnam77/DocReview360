@@ -12,6 +12,12 @@ from docreview360.approvals import (
 )
 from docreview360.integrations.signature import documenso
 from fastapi.testclient import TestClient
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives import hashes
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from uuid import uuid4
+from docreview360.documents import import_document
 
 
 def test_approval_lifecycle() -> None:
@@ -120,9 +126,25 @@ def test_handle_signature_return_hash_validation() -> None:
     appr = create_approval("wf42", "carol", "doc42", document=doc, signature_provider="documenso")
     send_for_signature(appr.id, "doc42", "carol")
     documenso.complete_signature(appr.signature_id)
-    documenso._sig_certificates[appr.signature_id] = hashlib.sha256(doc).hexdigest()
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test")])
+    now = datetime.utcnow()
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(days=1))
+        .not_valid_after(now + timedelta(days=1))
+        .sign(key, hashes.SHA256())
+    )
+    signature = key.sign(doc, padding.PKCS1v15(), hashes.SHA256())
+    cert_url = f"https://test-cert-{uuid4().hex}"
+    documenso.register_test_certificate(cert_url, cert, signature)
+    documenso._sig_certificates[appr.signature_id] = cert_url
     # Valid document should mark approved
-    asyncio.run(handle_signature_return(appr.signature_id, document=doc))
+    asyncio.run(handle_signature_return(appr.signature_id, document=doc, certificate_url=cert_url))
     assert appr.state == "approved"
 
     # Mismatch should raise
@@ -135,9 +157,12 @@ def test_handle_signature_return_hash_validation() -> None:
     )
     send_for_signature(appr2.id, "doc43", "dave")
     documenso.complete_signature(appr2.signature_id)
-    documenso._sig_certificates[appr2.signature_id] = hashlib.sha256(b"orig").hexdigest()
+    signature2 = key.sign(b"orig", padding.PKCS1v15(), hashes.SHA256())
+    cert_url2 = f"https://test-cert-{uuid4().hex}"
+    documenso.register_test_certificate(cert_url2, cert, signature2)
+    documenso._sig_certificates[appr2.signature_id] = cert_url2
     with pytest.raises(ValueError):
-        asyncio.run(handle_signature_return(appr2.signature_id, document=b"tampered"))
+        asyncio.run(handle_signature_return(appr2.signature_id, document=b"tampered", certificate_url=cert_url2))
 
 
 def test_signature_invalidated() -> None:
@@ -160,17 +185,34 @@ def test_signature_invalidated() -> None:
 
 def test_send_for_signature_authorization_and_lock() -> None:
     approvals.clear()
-    appr = create_approval("wf1", "alice", "doc1")
+    appr = create_approval("wf1", "alice", "doc1", signature_provider="documenso")
     with pytest.raises(PermissionError):
         send_for_signature(appr.id, "doc1", "bob")
-    appr2 = create_approval("wf1", "alice", "doc2", delegates=["bob"])
-    send_for_signature(appr2.id, "doc2", "bob")
+    doc_obj = import_document("doc2", b"hi")
+    appr2 = create_approval("wf1", "alice", doc_obj.id, delegates=["bob"], signature_provider="documenso")
+    send_for_signature(appr2.id, doc_obj.id, "bob")
 
     doc = b"hello"
     appr3 = create_approval("wf2", "alice", "doc3", document=doc, signature_provider="documenso")
     send_for_signature(appr3.id, "doc3", "alice")
     documenso.complete_signature(appr3.signature_id)
-    documenso._sig_certificates[appr3.signature_id] = hashlib.sha256(doc).hexdigest()
-    asyncio.run(handle_signature_return(appr3.signature_id, document=doc))
+    key2 = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject2 = issuer2 = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test")])
+    now2 = datetime.utcnow()
+    cert2 = (
+        x509.CertificateBuilder()
+        .subject_name(subject2)
+        .issuer_name(issuer2)
+        .public_key(key2.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now2 - timedelta(days=1))
+        .not_valid_after(now2 + timedelta(days=1))
+        .sign(key2, hashes.SHA256())
+    )
+    signature2 = key2.sign(doc, padding.PKCS1v15(), hashes.SHA256())
+    cert_url3 = f"https://test-cert-{uuid4().hex}"
+    documenso.register_test_certificate(cert_url3, cert2, signature2)
+    documenso._sig_certificates[appr3.signature_id] = cert_url3
+    asyncio.run(handle_signature_return(appr3.signature_id, document=doc, certificate_url=cert_url3))
     with pytest.raises(ValueError):
         send_for_signature(appr3.id, "doc3", "alice")

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from ..approvals import get_approval, handle_signature_return
@@ -14,6 +14,7 @@ router = APIRouter()
 
 @router.get("/approvals/return")
 async def approval_return(
+    request: Request,
     signature: str = Query(...),
     approval: str = Query(...),
     certificate_url: Optional[str] = None,
@@ -48,6 +49,7 @@ async def approval_return(
             doc_id=appr.document_id,
             certificate_url=certificate_url,
             signed_at=signed_at_dt,
+            client_ip=request.client.host if request.client else None,
         )
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

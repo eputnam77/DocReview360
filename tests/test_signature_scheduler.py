@@ -29,7 +29,7 @@ def _register_certificate(content: bytes) -> str:
         .sign(key, hashes.SHA256())
     )
     signature = key.sign(content, padding.PKCS1v15(), hashes.SHA256())
-    url = f"test-cert-{uuid4().hex}"
+    url = f"https://test-cert-{uuid4().hex}"
     documenso.register_test_certificate(url, cert, signature)
     return url
 
