@@ -5,24 +5,10 @@ import { Button } from "@/components/ui/button";
 import PhaseTabs from "@/components/PhaseTabs";
 import { Download, History } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Phase {
-  id: string;
-  label: string;
-}
-
-interface ProjectInfo {
-  id: string;
-  number: string | number;
-  title: string;
-  status: string;
-  owner: string;
-  progress: number;
-  currentPhaseId?: string | null;
-}
+import type { Phase, Project } from "@/types";
 
 export interface ProjectSummaryBarProps {
-  project: ProjectInfo;
+  project: Project;
   phases: Phase[];
   phaseCounts?: Record<string, number>;
   onPhaseChange?: (id: string) => void;
