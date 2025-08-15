@@ -1,14 +1,13 @@
-"""Async-capable approval management with digital signature, audit logging, 
+"""Async-capable approval management with digital signature, audit logging,
 and FANN-based routing support."""
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
-from uuid import uuid4
 from urllib.parse import quote
+from uuid import uuid4
 
 import aiohttp
 from pydantic import BaseModel, ConfigDict, Field
@@ -71,12 +70,24 @@ def create_approval(
         document_hash=doc_hash,
     )
     approvals[approval_id] = approval
-    log_event("approval_created", actor=reviewer, workflow=workflow,
-              approval_id=approval_id, provider=signature_provider,
-              document_hash=doc_hash, doc_id=doc_id)
-    log_audit_event(doc_id, "approval_created", actor=reviewer,
-                    workflow=workflow, provider=signature_provider,
-                    document_hash=doc_hash, approval_id=approval_id)
+    log_event(
+        "approval_created",
+        actor=reviewer,
+        workflow=workflow,
+        approval_id=approval_id,
+        provider=signature_provider,
+        document_hash=doc_hash,
+        doc_id=doc_id,
+    )
+    log_audit_event(
+        doc_id,
+        "approval_created",
+        actor=reviewer,
+        workflow=workflow,
+        provider=signature_provider,
+        document_hash=doc_hash,
+        approval_id=approval_id,
+    )
     return approval
 
 
@@ -136,21 +147,37 @@ async def handle_signature_return(
         approval.document_id = doc_id
     doc_id = approval.document_id
 
-    log_event("approval_callback", approval_id=approval.id,
-              provider=approval.signature_provider,
-              signature_id=signature_id, doc_id=doc_id)
-    log_audit_event(doc_id, "approval_callback",
-                    provider=approval.signature_provider,
-                    signature_id=signature_id, approval_id=approval.id)
+    log_event(
+        "approval_callback",
+        approval_id=approval.id,
+        provider=approval.signature_provider,
+        signature_id=signature_id,
+        doc_id=doc_id,
+    )
+    log_audit_event(
+        doc_id,
+        "approval_callback",
+        provider=approval.signature_provider,
+        signature_id=signature_id,
+        approval_id=approval.id,
+    )
 
     if document is not None and approval.document_hash is not None:
         if hashlib.sha256(document).hexdigest() != approval.document_hash:
-            log_event("signature_hash_mismatch", approval_id=approval.id,
-                      provider=approval.signature_provider,
-                      signature_id=signature_id, doc_id=doc_id)
-            log_audit_event(doc_id, "signature_hash_mismatch",
-                            provider=approval.signature_provider,
-                            signature_id=signature_id, approval_id=approval.id)
+            log_event(
+                "signature_hash_mismatch",
+                approval_id=approval.id,
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+                doc_id=doc_id,
+            )
+            log_audit_event(
+                doc_id,
+                "signature_hash_mismatch",
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+                approval_id=approval.id,
+            )
             raise ValueError("document hash mismatch")
 
     return await update_approval_state(
@@ -173,6 +200,7 @@ async def _upload_approval_artifacts(
             raise ValueError("document hash mismatch")
 
     from .sharepoint import async_client_from_env
+
     client = await async_client_from_env()
     if document is not None:
         await client.upload_file(f"signed/{approval.id}", document)
@@ -229,22 +257,38 @@ async def update_approval_state(
 
     wf = workflows.get(approval.workflow)
     project_id = wf.project if wf else ""
-    log_event(f"approval_{state}", actor=approval.reviewer, project=project_id,
-              approval_id=approval_id, provider=approval.signature_provider,
-              signature_id=approval.signature_id, document_hash=approval.document_hash,
-              doc_id=approval.document_id, previous_state=previous)
-    log_audit_event(approval.document_id, state, actor=approval.reviewer,
-                    provider=approval.signature_provider,
-                    signature_id=approval.signature_id,
-                    document_hash=approval.document_hash,
-                    previous_state=previous, project=project_id,
-                    approval_id=approval_id)
+    log_event(
+        f"approval_{state}",
+        actor=approval.reviewer,
+        project=project_id,
+        approval_id=approval_id,
+        provider=approval.signature_provider,
+        signature_id=approval.signature_id,
+        document_hash=approval.document_hash,
+        doc_id=approval.document_id,
+        previous_state=previous,
+    )
+    log_audit_event(
+        approval.document_id,
+        state,
+        actor=approval.reviewer,
+        provider=approval.signature_provider,
+        signature_id=approval.signature_id,
+        document_hash=approval.document_hash,
+        previous_state=previous,
+        project=project_id,
+        approval_id=approval_id,
+    )
 
     if state == "approved" and wf:
-        if all(a.state == "approved" for a in approvals.values()
-               if a.workflow == approval.workflow):
-            log_event(f"All required approvals completed for project {project_id}",
-                      project=project_id, doc_id=approval.document_id)
+        if all(
+            a.state == "approved" for a in approvals.values() if a.workflow == approval.workflow
+        ):
+            log_event(
+                f"All required approvals completed for project {project_id}",
+                project=project_id,
+                doc_id=approval.document_id,
+            )
     return approval
 
 
@@ -268,17 +312,28 @@ async def send_for_signature(
 
     provider = get_provider(approval.signature_provider)
     sig_id, url = await provider.request_signature(
-        doc_id, user, workflow_id=approval.workflow,
-        approval_id=approval_id, return_url=callback
+        doc_id, user, workflow_id=approval.workflow, approval_id=approval_id, return_url=callback
     )
     approval.signature_id = sig_id
-    log_event("approval_sent_for_signature", actor=user, approval_id=approval_id,
-              provider=approval.signature_provider, signature_id=sig_id,
-              workflow=approval.workflow, doc_id=doc_id)
-    log_audit_event(doc_id, "sent_for_signature", actor=user,
-                    provider=approval.signature_provider, signature_id=sig_id,
-                    document_hash=approval.document_hash, workflow=approval.workflow,
-                    approval_id=approval_id)
+    log_event(
+        "approval_sent_for_signature",
+        actor=user,
+        approval_id=approval_id,
+        provider=approval.signature_provider,
+        signature_id=sig_id,
+        workflow=approval.workflow,
+        doc_id=doc_id,
+    )
+    log_audit_event(
+        doc_id,
+        "sent_for_signature",
+        actor=user,
+        provider=approval.signature_provider,
+        signature_id=sig_id,
+        document_hash=approval.document_hash,
+        workflow=approval.workflow,
+        approval_id=approval_id,
+    )
     return url
 
 
@@ -312,20 +367,25 @@ async def verify_document_signature(doc_id: str) -> dict[str, object]:
                 )
             except Exception:
                 provider_valid = False
-        details.append({
-            "approval_id": approval.id,
-            "signature_id": approval.signature_id,
-            "hash_valid": hash_valid,
-            "signature_valid": signature_valid,
-            "certificate_present": certificate_present,
-            "signature_verified": provider_valid,
-        })
+        details.append(
+            {
+                "approval_id": approval.id,
+                "signature_id": approval.signature_id,
+                "hash_valid": hash_valid,
+                "signature_valid": signature_valid,
+                "certificate_present": certificate_present,
+                "signature_verified": provider_valid,
+            }
+        )
 
     status = (
         "pass"
-        if details and all(
-            d["hash_valid"] and d["signature_valid"]
-            and d["certificate_present"] and d["signature_verified"]
+        if details
+        and all(
+            d["hash_valid"]
+            and d["signature_valid"]
+            and d["certificate_present"]
+            and d["signature_verified"]
             for d in details
         )
         else "fail"
@@ -333,22 +393,52 @@ async def verify_document_signature(doc_id: str) -> dict[str, object]:
     return {"status": status, "details": details}
 
 
-def reset_approval(approval_id: str, confirm: bool) -> bool:
+def reset_approval(
+    approval_id: str,
+    confirm: bool,
+    *,
+    username: str,
+    password: str,
+    otp: str,
+    reason: str,
+) -> bool:
+    from .auth import authenticate_mfa
     from .stubs.task213 import task213
+
+    if not authenticate_mfa(username, password, otp):
+        return False
 
     def _do_reset() -> None:
         approval = approvals.get(approval_id)
         if approval is None:
             raise KeyError("approval not found")
         previous = approval.state
+        sig_id = approval.signature_id
+        doc_hash = approval.document_hash
         approval.state = "pending"
         approval.signature_id = None
         approval.signed_at = None
-        log_event("approval_reset", actor=approval.reviewer,
-                  approval_id=approval_id, provider=approval.signature_provider,
-                  doc_id=approval.document_id, previous_state=previous)
-        log_audit_event(approval.document_id, "reset", actor=approval.reviewer,
-                        provider=approval.signature_provider,
-                        previous_state=previous, approval_id=approval_id)
+        log_event(
+            "approval_reset",
+            actor=username,
+            approval_id=approval_id,
+            provider=approval.signature_provider,
+            doc_id=approval.document_id,
+            previous_state=previous,
+            reason=reason,
+            signature_id=sig_id,
+            document_hash=doc_hash,
+        )
+        log_audit_event(
+            approval.document_id,
+            "reset",
+            actor=username,
+            provider=approval.signature_provider,
+            previous_state=previous,
+            approval_id=approval_id,
+            reason=reason,
+            signature_id=sig_id,
+            document_hash=doc_hash,
+        )
 
     return task213(confirm, _do_reset)
