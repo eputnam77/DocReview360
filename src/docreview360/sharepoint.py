@@ -7,9 +7,10 @@ from typing import List
 
 import requests
 
-from .approvals import create_approval
+from .approvals import submit_draft_for_approval
 from .fann_model import Weights
 from .quality import approval_likelihood
+from .reviewer_model import ReviewerModel
 
 _GRAPH_URL = "https://graph.microsoft.com/v1.0"
 
@@ -59,9 +60,10 @@ class SharePointClient:
         weights: Weights,
         *,
         workflow: str | None = None,
-        reviewer: str = "manager",
+        reviewer: str | None = "manager",
         extra_reviewer: str = "policy",
         threshold: float = 0.5,
+        reviewer_model: ReviewerModel | None = None,
     ) -> tuple[str, float]:
         """Upload ``data`` and route for approval based on FANN scoring.
 
@@ -74,17 +76,14 @@ class SharePointClient:
         text = data.decode("utf-8", errors="ignore")
         score = approval_likelihood(text, weights)
         if workflow is not None:
-            if score < threshold:
-                create_approval(
-                    workflow,
-                    extra_reviewer,
-                    item_id,
-                    description="Auto risk review",
-                )
-            create_approval(
+            submit_draft_for_approval(
                 workflow,
                 reviewer,
                 item_id,
-                description="Primary review",
+                text,
+                weights,
+                threshold=threshold,
+                extra_reviewer=extra_reviewer,
+                reviewer_model=reviewer_model,
             )
         return item_id, score

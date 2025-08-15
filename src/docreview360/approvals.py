@@ -15,6 +15,7 @@ from .fann_model import Weights
 from .integrations.signature import get_default_provider, get_provider
 from .logs import log_event
 from .quality import approval_likelihood
+from .reviewer_model import ReviewerModel
 from .workflows import workflows
 
 
@@ -89,23 +90,33 @@ def create_approval(
 
 def submit_draft_for_approval(
     workflow: str,
-    reviewer: str,
+    reviewer: str | None,
     doc_id: str,
     text: str,
     weights: Weights,
     *,
     threshold: float = 0.5,
     extra_reviewer: str = "policy",
+    reviewer_model: ReviewerModel | None = None,
 ) -> ApprovalModel:
     """Score ``text`` and route for additional review if risky.
 
     Drafts with an approval likelihood below ``threshold`` are first sent to
-    ``extra_reviewer`` before the main ``reviewer`` receives the approval
-    request.
+    ``extra_reviewer`` before the main reviewer receives the approval request.
+    When ``reviewer`` is ``None`` the ``reviewer_model`` is consulted to route
+    the draft to the most suitable reviewer.
     """
     score = approval_likelihood(text, weights)
     if score < threshold:
-        create_approval(workflow, extra_reviewer, doc_id, description="Auto risk review")
+        create_approval(
+            workflow, extra_reviewer, doc_id, description="Auto risk review"
+        )
+    if reviewer is None:
+        if reviewer_model is None:
+            raise ValueError("reviewer_model required when reviewer is None")
+        reviewer = reviewer_model.route_draft(text)
+        if reviewer is None:  # pragma: no cover - defensive
+            raise ValueError("no reviewer available for draft")
     return create_approval(workflow, reviewer, doc_id, description="Primary review")
 
 
