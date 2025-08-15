@@ -18,6 +18,7 @@ import {
 import { API } from "@/lib/api";
 import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { toast } from "react-hot-toast";
 
 interface Phase {
   id: string;
@@ -217,11 +218,11 @@ export default function PhasesPage() {
         setPhases(phases.filter((p) => p.id !== showDeleteDialog));
       } else {
         const error = await response.json();
-        alert(`Error: ${error.detail}`);
+        toast.error(`Error: ${error.detail}`);
       }
     } catch (error) {
       console.error("Error deleting phase:", error);
-      alert("Error deleting phase");
+      toast.error("Error deleting phase");
     }
     
     setShowDeleteDialog(null);

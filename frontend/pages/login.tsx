@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export default function LoginPage() {
   function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    alert("Login submitted");   // replace with real auth logic
+    toast.success("Login submitted"); // replace with real auth logic
   }
 
   return (

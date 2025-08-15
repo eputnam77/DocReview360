@@ -10,6 +10,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { toast } from "react-hot-toast";
 
 const SUPPORTED_FORMATS = [
   { value: "DOCX", label: "Word DOCX (.docx)" },
@@ -89,9 +90,13 @@ export default function NewTemplatePage() {
       });
     }
 
-    alert(
+    toast.success(
       "Template saved:\n" +
-        JSON.stringify({ name, docType, format, file: file?.name, content: content ? "(see content)" : undefined }, null, 2)
+        JSON.stringify(
+          { name, docType, format, file: file?.name, content: content ? "(see content)" : undefined },
+          null,
+          2,
+        ),
     );
     setName("");
     setDocType("");

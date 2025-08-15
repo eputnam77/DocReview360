@@ -15,6 +15,7 @@ import {
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 export default function NewWorkflowPage() {
   const [name, setName] = useState("");
@@ -108,9 +109,13 @@ export default function NewWorkflowPage() {
       }
     }
 
-    alert(
+    toast.success(
       "Workflow saved:\n" +
-        JSON.stringify({ name, description, steps, docTypesSelected }, null, 2)
+        JSON.stringify(
+          { name, description, steps, docTypesSelected },
+          null,
+          2,
+        ),
     );
   };
 
