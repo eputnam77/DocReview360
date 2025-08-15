@@ -7,7 +7,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { API } from "@/lib/api";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -24,10 +23,25 @@ const normalizeWorkflows = (items: unknown): Workflow[] => {
   return items
     .map((item) => {
       if (item && typeof item === "object") {
-        const anyItem = item as { id?: unknown; name?: unknown; description?: unknown; usage?: unknown; updated?: unknown };
+        const anyItem = item as {
+          id?: unknown;
+          name?: unknown;
+          project?: unknown;
+          template?: unknown;
+          description?: unknown;
+          usage?: unknown;
+          updated?: unknown;
+        };
         const id = typeof anyItem.id === "string" ? anyItem.id : String(anyItem.id ?? "");
         if (!id) return null;
-        const name = typeof anyItem.name === "string" ? anyItem.name : undefined;
+        const name =
+          typeof anyItem.name === "string"
+            ? anyItem.name
+            : typeof anyItem.project === "string"
+            ? anyItem.project
+            : typeof anyItem.template === "string"
+            ? anyItem.template
+            : undefined;
         const description = typeof anyItem.description === "string" ? anyItem.description : undefined;
         const usage = typeof anyItem.usage === "number" ? anyItem.usage : undefined;
         const updated = typeof anyItem.updated === "string" ? anyItem.updated : undefined;
