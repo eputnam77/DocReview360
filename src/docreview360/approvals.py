@@ -330,13 +330,13 @@ def verify_document_signature(doc_id: str) -> dict[str, object]:
     doc_hash = hashlib.sha256(document.content.encode()).hexdigest()
     details: list[dict[str, object]] = []
     for approval in approvals.values():
-        if approval.document_hash != doc_hash:
+        if approval.document_id != doc_id:
             continue
         hash_valid = approval.document_hash == doc_hash
         signature_valid = approval.state == "approved" and approval.signature_id is not None
         certificate_present = approval.certificate_url is not None
         provider_valid = False
-        if approval.signature_id:
+        if approval.signature_id and hash_valid:
             try:
                 provider = get_provider(approval.signature_provider)
                 provider_valid = provider.verify_signature(
