@@ -1,5 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Table,
     TableBody,
@@ -9,8 +12,8 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { API } from "@/lib/api";
-import { Pencil, Trash } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Pencil, Plus, Trash } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DocType {
@@ -64,6 +67,77 @@ const DEFAULT_PHASES = [
   "Public Comment / Proposed Rulemaking",
   "Release Candidate Review",
 ];
+
+function PhaseSelector({
+  docTypeId,
+  phases,
+  selectedPhases,
+  changePhase,
+}: {
+  docTypeId: string;
+  phases: string[];
+  selectedPhases: string[];
+  changePhase: (docTypeId: string, phase: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = phases.filter((p) =>
+    p.toLowerCase().includes(search.toLowerCase()),
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {selectedPhases.length > 0 ? (
+        selectedPhases.map((p) => (
+          <Badge key={p} variant="outline" className="whitespace-nowrap">
+            {p}
+          </Badge>
+        ))
+      ) : (
+        <span className="text-gray-400 text-xs italic">No phases</span>
+      )}
+      <Popover>
+        <PopoverTrigger as={Fragment}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-xs gap-1"
+          >
+            <Plus className="w-3 h-3" />
+            {selectedPhases.length ? "Edit" : "Add"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-2">
+          <Input
+            placeholder="Search phases..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mb-2 h-8 text-xs"
+          />
+          <ScrollArea className="max-h-48">
+            <div className="space-y-1">
+              {filtered.map((p) => {
+                const isSelected = selectedPhases.includes(p);
+                return (
+                  <label
+                    key={p}
+                    className="flex items-center space-x-2 cursor-pointer px-1 py-1 rounded hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => changePhase(docTypeId, p)}
+                      className="h-3 w-3"
+                    />
+                    <span className="text-sm">{p}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 export default function DocumentTypesPage() {
   const [types, setTypes] = useState<DocType[]>([]);
@@ -311,30 +385,12 @@ export default function DocumentTypesPage() {
                 </Button>
               </TableCell>
               <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {phases.map((p) => {
-                    const currentPhases = docTypePhaseMap[t.id] || [];
-                    const isSelected = currentPhases.includes(p);
-                    return (
-                      <label
-                        key={p}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer border ${
-                          isSelected
-                            ? "bg-blue-100 text-blue-700 border-blue-300"
-                            : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => changePhase(t.id, p)}
-                          className="mr-1"
-                        />
-                        {p}
-                      </label>
-                    );
-                  })}
-                </div>
+                <PhaseSelector
+                  docTypeId={t.id}
+                  phases={phases}
+                  selectedPhases={docTypePhaseMap[t.id] || []}
+                  changePhase={changePhase}
+                />
               </TableCell>
             </TableRow>
           ))}
