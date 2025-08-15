@@ -19,8 +19,8 @@ def _setup() -> None:
     add_project(ProjectModel(id="pB", name="B", user="bob"))
     wf_a = create_workflow("pA", ["draft"])
     wf_b = create_workflow("pB", ["draft"])
-    create_approval(wf_a.id, reviewer="alice")
-    create_approval(wf_b.id, reviewer="bob")
+    create_approval(wf_a.id, "alice", "docA")
+    create_approval(wf_b.id, "bob", "docB")
 
 
 def test_dashboard_filtering_by_user() -> None:
