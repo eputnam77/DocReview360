@@ -1,7 +1,6 @@
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { API } from "@/lib/api";
+import { useApprovals } from "@/lib/useApprovals";
 import {
   CheckCircle2,
   Loader2,
@@ -9,18 +8,6 @@ import {
   AlertTriangle,
   FileText,
 } from "lucide-react";
-
-interface Approval {
-  id: string;
-  reviewer: string;
-  state: string;
-  signed_at?: string;
-  signature_provider: string;
-  signature_id?: string;
-  certificate_url?: string;
-  phaseId?: string;
-  required?: boolean;
-}
 
 const statusConfig: Record<
   string,
@@ -56,29 +43,16 @@ const providerLogos: Record<string, string> = {
 export default function ReviewDetailPage() {
   const router = useRouter();
   const { id } = router.query;
-  const [approval, setApproval] = useState<Approval | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { approval, isLoading } = useApprovals({ id: id as string });
 
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    fetch(`${API}/approvals/${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) =>
-        setApproval(
-          data
-            ? {
-                ...data,
-                phaseId: data.phase_id,
-                required: data.required,
-              }
-            : null,
-        ),
-      )
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) return <p className="p-4">Loading...</p>;
+  if (isLoading)
+    return (
+      <div className="p-4 space-y-4 animate-pulse">
+        <div className="h-6 w-1/3 bg-gray-200 rounded" />
+        <div className="h-4 w-full bg-gray-200 rounded" />
+        <div className="h-4 w-5/6 bg-gray-200 rounded" />
+      </div>
+    );
   if (!approval) return <p className="p-4">Approval not found.</p>;
 
   const status =
