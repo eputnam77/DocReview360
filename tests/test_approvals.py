@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from docreview360.api import app
 from fastapi.testclient import TestClient
+
+from docreview360.api import app
 
 
 def test_approval_lifecycle() -> None:
@@ -76,11 +77,25 @@ def test_reset_approval() -> None:
 
     appr = create_approval("wf1", "bob", "doc-reset")
     appr.state = "approved"
-    assert reset_approval(appr.id, True)
+    assert reset_approval(
+        appr.id,
+        True,
+        username="alice",
+        password="password",
+        otp="123456",
+        reason="test",
+    )
     assert appr.state == "pending"
 
     appr.state = "approved"
-    assert not reset_approval(appr.id, False)
+    assert not reset_approval(
+        appr.id,
+        False,
+        username="alice",
+        password="password",
+        otp="123456",
+        reason="test",
+    )
     assert appr.state == "approved"
 
 
