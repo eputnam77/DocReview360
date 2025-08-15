@@ -6,7 +6,7 @@ import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, cast
 
 from .ai_utils import _fann_features
 
@@ -29,11 +29,15 @@ class Weights:
 
     @classmethod
     def from_dict(cls, data: dict[str, object]) -> "Weights":
+        w1_data = cast(Sequence[Sequence[float]], data["w1"])
+        b1_data = cast(Sequence[float], data["b1"])
+        w2_data = cast(Sequence[float], data["w2"])
+        b2_val = cast(float, data["b2"])
         return cls(
-            w1=[[float(v) for v in row] for row in data["w1"]],
-            b1=[float(v) for v in data["b1"]],
-            w2=[float(v) for v in data["w2"]],
-            b2=float(data["b2"]),
+            w1=[list(row) for row in w1_data],
+            b1=list(b1_data),
+            w2=list(w2_data),
+            b2=float(b2_val),
         )
 
 

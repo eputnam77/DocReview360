@@ -59,7 +59,7 @@ async def test_user_response_time() -> None:
 
     # Create an approval
     due_at = datetime.now(timezone.utc) + timedelta(days=2)
-    approval = create_approval(workflow.id, "charlie", due_at, "Test approval")
+    approval = create_approval(workflow.id, "charlie", "doc-chat", due_at, "Test approval")
 
     # Approve it quickly (within a day)
     update_approval_state(approval.id, "approved")

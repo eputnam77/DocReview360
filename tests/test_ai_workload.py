@@ -42,13 +42,13 @@ def test_balancer_blocks_overloaded_writer() -> None:
 
 def daily_auto_assign(user: str) -> None:
     """Simulate daily job assigning an item and logging the rule."""
-    log_event("auto_assign", user=user, rule="least_loaded")
+    log_event("auto_assign", actor=user, rule="least_loaded")
 
 
 def test_auto_assign_audit_and_tooltip() -> None:
     clear_logs()
     daily_auto_assign("bob")
     entry = query_logs("auto_assign")[0]
-    tooltip = f"Assigned via {entry.metadata['rule']}"
-    assert entry.metadata["rule"] == "least_loaded"
+    tooltip = f"Assigned via {entry.context['rule']}"
+    assert entry.context["rule"] == "least_loaded"
     assert tooltip.endswith("least_loaded")

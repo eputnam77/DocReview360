@@ -8,14 +8,16 @@ rest of the codebase can operate without an external service during tests.
 
 from __future__ import annotations
 
+import hashlib
 import os
+from base64 import b64encode
 from typing import Dict, Tuple
 from uuid import uuid4
 
 import httpx
 
 from ...logs import log_event
-from .base import SignatureProvider, register_provider
+from .base import register_provider
 
 # In-memory mapping of signature id -> status
 DOCUMENSO_URL = os.getenv("DOCUMENSO_URL")
@@ -23,8 +25,8 @@ DOCUMENSO_URL = os.getenv("DOCUMENSO_URL")
 _signatures: Dict[str, str] = {}
 # store workflow id for each signature when provided
 _sig_workflows: Dict[str, str] = {}
-# map signature id to approval for status updates
-_sig_approvals: Dict[str, str] = {}
+# map signature id -> certificate hash for local verification
+_sig_certificates: Dict[str, str] = {}
 
 
 def request_signature(
@@ -76,8 +78,6 @@ def request_signature(
 
     if workflow_id:
         _sig_workflows[sig_id] = workflow_id
-    if approval_id:
-        _sig_approvals[sig_id] = approval_id
 
     log_event(f"signature_requested:{document_id}:{user}")
     return sig_id, url
@@ -100,6 +100,25 @@ def complete_signature(sig_id: str) -> None:
         _signatures[sig_id] = "signed"
 
     log_event(f"signature_completed:{sig_id}")
+
+
+def verify_signature(signature_id: str, document: bytes) -> bool:
+    """Validate ``signature_id`` for ``document``."""
+    if DOCUMENSO_URL:
+        try:
+            resp = httpx.post(
+                f"{DOCUMENSO_URL.rstrip('/')}/sign/{signature_id}/verify",
+                json={"document": b64encode(document).decode()},
+                timeout=5,
+            )
+            resp.raise_for_status()
+            return bool(resp.json().get("valid"))
+        except httpx.HTTPError as exc:
+            raise RuntimeError("Documenso request failed") from exc
+    cert_hash = _sig_certificates.get(signature_id)
+    if _signatures.get(signature_id) == "signed" and cert_hash:
+        return cert_hash == hashlib.sha256(document).hexdigest()
+    return False
 
 
 def signature_status(sig_id: str) -> str:
@@ -129,9 +148,11 @@ def process_webhook(data: Dict[str, str]) -> None:
     if not sig_id or not status:
         raise ValueError("invalid webhook payload")
     _signatures[sig_id] = status
+    cert_url = data.get("certificate_url")
+    if cert_url:
+        _sig_certificates[sig_id] = cert_url
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
-        appr_id = _sig_approvals.get(sig_id)
         if wf_id:
             try:
                 from ...workflows import advance_workflow
@@ -139,13 +160,23 @@ def process_webhook(data: Dict[str, str]) -> None:
                 advance_workflow(wf_id)
             except KeyError:
                 pass
-        if appr_id:
-            try:
-                from ...approvals import update_approval_state
+        try:
+            from ...approvals import handle_signature_return
 
-                update_approval_state(appr_id, "approved", signature_id=sig_id)
-            except KeyError:
-                pass
+            signed_at = data.get("signed_at")
+            if isinstance(signed_at, str):
+                from datetime import datetime
+
+                signed_at_dt = datetime.fromisoformat(signed_at)
+            else:
+                signed_at_dt = None
+            handle_signature_return(
+                sig_id,
+                certificate_url=cert_url,
+                signed_at=signed_at_dt,
+            )
+        except (KeyError, ValueError):
+            pass
     log_event(f"signature_webhook:{sig_id}:{status}")
 
 
@@ -171,8 +202,11 @@ class DocumensoProvider:
             return_url=return_url,
         )
 
-    def process_webhook(self, data: dict) -> None:
+    def process_webhook(self, data: dict[str, str]) -> None:
         process_webhook(data)  # pragma: no cover - simple delegation
+
+    def verify_signature(self, signature_id: str, document: bytes) -> bool:
+        return verify_signature(signature_id, document)
 
 
 # Register provider on import
@@ -183,6 +217,7 @@ __all__ = [
     "request_signature",
     "complete_signature",
     "signature_status",
+    "verify_signature",
     "process_webhook",
     "DocumensoProvider",
 ]

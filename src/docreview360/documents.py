@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import threading
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -14,6 +15,7 @@ from zipfile import ZipFile
 from pydantic import BaseModel
 
 from . import fts
+from .audit import log_audit_event
 
 
 class DocumentModel(BaseModel):
@@ -28,6 +30,10 @@ class DocumentModel(BaseModel):
     user: Optional[str] = None
     date: Optional[datetime] = None
     priority: Optional[int] = None
+    ingestion_hash: str | None = None  # SHA-256 of original upload
+    # Flag to mark public copies and track originating document
+    public_copy: bool = False
+    source_document_id: str | None = None
 
 
 # Stored documents keyed by id
@@ -86,6 +92,7 @@ def import_document(
     else:
         content = data.decode()
     doc_id = uuid4().hex
+    ingestion_hash = hashlib.sha256(data).hexdigest()
     document = DocumentModel(
         id=doc_id,
         content=content,
@@ -95,6 +102,7 @@ def import_document(
         user=user,
         date=datetime.now(timezone.utc),
         priority=priority,
+        ingestion_hash=ingestion_hash,
     )
     with document_lock:
         documents[doc_id] = document
@@ -103,6 +111,13 @@ def import_document(
 
     search_module.add_document(document)
     fts.index_document(doc_id, content)
+    log_audit_event(
+        doc_id,
+        "created",
+        actor=user,
+        project=project,
+        filename=filename,
+    )
     return document
 
 
@@ -114,6 +129,11 @@ def get_document(doc_id: str) -> DocumentModel | None:
 def list_documents() -> list[DocumentModel]:
     """Return all documents."""
     return list(documents.values())
+
+
+def list_public_documents() -> list[DocumentModel]:
+    """Return documents marked as public copies."""
+    return [d for d in documents.values() if d.public_copy]
 
 
 def update_document(
@@ -146,6 +166,7 @@ def update_document(
     # Re-index the updated document
     search_module.add_document(document)
     fts.index_document(doc_id, document.content)
+    log_audit_event(doc_id, "updated", actor=document.user, priority=priority)
 
     return document
 

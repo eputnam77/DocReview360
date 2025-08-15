@@ -61,6 +61,7 @@ __all__ = [
     "document_compare",
     "quality",
     "review_analytics",
+    "integrity",
 ]
 
 

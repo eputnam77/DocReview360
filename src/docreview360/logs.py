@@ -3,35 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional
+from typing import Any, AsyncIterator, Callable, List
 
-pydantic_dataclass: Callable[..., Any]
-try:
-    from pydantic.dataclasses import dataclass as pydantic_dataclass
-except Exception:
-    pydantic_dataclass = dataclass
+from .audit import AuditEvent
 
-
-@pydantic_dataclass
-class LogEntry:
-    """Structured log entry used for audit logs."""
-
-    timestamp: datetime
-    action: str
-    user: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-    def model_dump(
-        self, *args: Any, **kwargs: Any
-    ) -> Dict[str, Any]:
-        return {
-            "timestamp": self.timestamp,
-            "action": self.action,
-            "user": self.user,
-            "metadata": self.metadata,
-        }
+# ``LogEntry`` is retained for backward compatibility; all events conform to
+# the :class:`~docreview360.audit.AuditEvent` schema.
+LogEntry = AuditEvent
 
 
 logs: List[LogEntry] = []
@@ -72,13 +51,14 @@ def unregister_listener(callback: Callable[[LogEntry], None]) -> None:
         _listeners.remove(callback)
 
 
-def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry:
+def log_event(action: str, actor: str | None = None, **context: Any) -> LogEntry:
     """Record a log entry and return it."""
+
     entry = LogEntry(
         timestamp=datetime.now(timezone.utc),
         action=action,
-        user=user,
-        metadata=metadata,
+        actor=actor,
+        context=context,
     )
     logs.append(entry)
     for pattern, cb in alerts:
@@ -89,13 +69,14 @@ def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry
     return entry
 
 
-def query_logs(action: str | None = None, user: str | None = None) -> List[LogEntry]:
-    """Return logs filtered by optional action and user."""
+def query_logs(action: str | None = None, actor: str | None = None) -> List[LogEntry]:
+    """Return logs filtered by optional action and actor."""
+
     results = logs
     if action is not None:
         results = [e for e in results if e.action == action]
-    if user is not None:
-        results = [e for e in results if e.user == user]
+    if actor is not None:
+        results = [e for e in results if e.actor == actor]
     return results
 
 

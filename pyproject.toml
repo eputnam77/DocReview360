@@ -144,7 +144,7 @@ exclude = ["tests*", ".dev*"]
 "docreview360.iac_templates" = ["*.tf"]
 "docreview360" = ["py.typed"]
 "docreview360.migrations" = ["*.sql"]
-"*" = ["*.txt", "*.md", "*.yaml", "*.yml"]
+"*" = ["*.txt", "*.md", "*.yaml", "*.yml", "*.json"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]
