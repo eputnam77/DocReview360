@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { API } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 export default function NewEmailTemplatePage() {
   const [name, setName] = useState("");
@@ -22,7 +23,7 @@ export default function NewEmailTemplatePage() {
       } catch {
         // ignore network errors in development mode
       }
-    alert("Email template saved:\n" + JSON.stringify(payload, null, 2));
+    toast.success("Email template saved:\n" + JSON.stringify(payload, null, 2));
     setName("");
     setSubject("");
     setBody("");

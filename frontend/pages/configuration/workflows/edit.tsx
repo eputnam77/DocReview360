@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { GripVertical, PlusCircle, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import { toast } from "react-hot-toast";
 
 export default function EditWorkflowPage() {
   const router = useRouter();
@@ -90,7 +91,7 @@ export default function EditWorkflowPage() {
   };
   const handleSave = () => {
     // Submit to API here
-    alert("Workflow updated:\n" + JSON.stringify({ name, description, steps }, null, 2));
+    toast.success("Workflow updated:\n" + JSON.stringify({ name, description, steps }, null, 2));
   };
 
   return (

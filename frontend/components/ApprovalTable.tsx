@@ -6,6 +6,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -16,18 +17,8 @@ import { Fragment } from "react";
 import { toast } from "react-hot-toast";
 import * as Icons from "lucide-react";
 import { FixedSizeList as List } from "react-window";
+import type { Approval } from "@/types";
 const Icon = Icons as any;
-
-export interface Approval {
-  id: string;
-  reviewer: string;
-  email: string;
-  state: "pending" | "approved" | "overdue" | "rejected";
-  dueAt: string;
-  signedAt?: string;
-  description?: string;
-  required?: boolean;
-}
 
 interface Props {
   approvals: Approval[];
@@ -138,6 +129,25 @@ export default function ApprovalTable({
   }, [filtered, page, pageSize]);
 
   const pageCount = Math.ceil(filtered.length / pageSize);
+
+  const totals = useMemo(() => {
+    const acc = {
+      total: filtered.length,
+      required: 0,
+      approved: 0,
+      pending: 0,
+      overdue: 0,
+      rejected: 0,
+    };
+    filtered.forEach((a) => {
+      if (a.required) acc.required++;
+      if (a.state === "approved") acc.approved++;
+      else if (a.state === "pending") acc.pending++;
+      else if (a.state === "overdue") acc.overdue++;
+      else if (a.state === "rejected") acc.rejected++;
+    });
+    return acc;
+  }, [filtered]);
 
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
     const a = paged[index];
@@ -317,7 +327,7 @@ export default function ApprovalTable({
         />
       </div>
 
-      {/* Bulk toolbar */}
+      {/* Inline bulk actions toolbar */}
       {selected.length > 0 && (
         <div className="flex items-center gap-2">
           <span className="text-sm">{selected.length} selected</span>
@@ -354,21 +364,38 @@ export default function ApprovalTable({
           </TableRow>
         </TableHeader>
         {paged.length > 0 ? (
-          <List
-            height={Math.min(400, paged.length * 56)}
-            itemCount={paged.length}
-            itemSize={56}
-            width="100%"
-            outerElementType={TableBody as any}
-          >
-            {Row}
-          </List>
+          <>
+            <List
+              height={Math.min(400, paged.length * 56)}
+              itemCount={paged.length}
+              itemSize={56}
+              width="100%"
+              outerElementType={TableBody as any}
+            >
+              {Row}
+            </List>
+            <TableFooter>
+              <TableRow>
+                <TableCell />
+                <TableCell className="font-medium">Total: {totals.total}</TableCell>
+                <TableCell />
+                <TableCell className="text-xs">
+                  Pending {totals.pending} · Approved {totals.approved} · Overdue {totals.overdue} · Rejected {totals.rejected}
+                </TableCell>
+                <TableCell />
+                <TableCell>{totals.approved}</TableCell>
+                <TableCell>{totals.required}</TableCell>
+                <TableCell />
+              </TableRow>
+            </TableFooter>
+          </>
         ) : (
           <TableBody>
             <TableRow>
               <TableCell colSpan={8} className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400">
-                  <p className="text-sm font-medium">No approvals configured</p>
+                <div className="text-gray-500 dark:text-gray-400 space-y-1">
+                  <p className="text-sm font-medium">No approvals yet</p>
+                  <p className="text-sm">Add an approval to invite reviewers.</p>
                 </div>
               </TableCell>
             </TableRow>

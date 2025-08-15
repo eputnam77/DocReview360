@@ -2,11 +2,7 @@
 
 import React, { useRef } from "react";
 import { cn } from "@/lib/utils";
-
-interface Phase {
-  id: string;
-  label: string;
-}
+import type { Phase } from "@/types";
 
 export interface PhaseTabsProps {
   phases: Phase[];
@@ -77,7 +73,7 @@ export default function PhaseTabs({
             onClick={() => onChange?.(p.id)}
             disabled={!onChange}
           >
-            <span>{p.label}</span>
+            <span>{p.name}</span>
             {typeof count === "number" && (
               <span className="ml-1 text-xs">({count})</span>
             )}

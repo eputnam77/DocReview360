@@ -11,6 +11,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { toast } from "react-hot-toast";
 
 const SUPPORTED_FORMATS = [
   { value: "DOCX", label: "Word DOCX (.docx)" },
@@ -111,9 +112,20 @@ export default function EditTemplatePage() {
       });
     }
 
-    alert(
+    toast.success(
       "Template updated:\n" +
-        JSON.stringify({ id, name, docType, format, file: file?.name, content: content ? "(see content)" : undefined }, null, 2)
+        JSON.stringify(
+          {
+            id,
+            name,
+            docType,
+            format,
+            file: file?.name,
+            content: content ? "(see content)" : undefined,
+          },
+          null,
+          2,
+        ),
     );
     // Optionally, redirect back to index
     // router.push("/configuration/templates");

@@ -3,6 +3,7 @@
 
 import React, { useCallback, useRef, useState } from "react";
 import { UploadCloud, X, CheckCircle2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 
 interface UploadDropzoneProps {
@@ -37,7 +38,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
           (f) => f.size <= maxSizeMB * 1024 * 1024,
         );
         if (valid.length !== fileArr.length) {
-          alert(`File exceeds ${maxSizeMB} MB limit.`);
+          toast.error(`File exceeds ${maxSizeMB} MB limit. Please upload a smaller file.`);
           return;
         }
         if (multiple) {
