@@ -31,6 +31,8 @@ class ApprovalModel(BaseModel):
     workflow: str
     reviewer: str
     document_id: str
+    phase_id: str | None = None
+    required: bool = True
     state: str = "pending"
     due_at: datetime | None = None
     signature_provider: str = Field(default_factory=get_default_provider)
@@ -53,6 +55,8 @@ def create_approval(
     due_at: datetime | None = None,
     description: str | None = None,
     *,
+    phase_id: str | None = None,
+    required: bool = True,
     signature_provider: str | None = None,
     document: bytes | None = None,
     delegates: List[str] | None = None,
@@ -67,6 +71,8 @@ def create_approval(
         workflow=workflow,
         reviewer=reviewer,
         document_id=doc_id,
+        phase_id=phase_id,
+        required=required,
         due_at=due_at,
         description=description,
         signature_provider=signature_provider,
@@ -129,10 +135,15 @@ def get_approval(approval_id: str) -> ApprovalModel | None:
     return approvals.get(approval_id)
 
 
-def list_approvals(workflow: str | None = None) -> List[ApprovalModel]:
-    if workflow is None:
-        return list(approvals.values())
-    return [a for a in approvals.values() if a.workflow == workflow]
+def list_approvals(
+    workflow: str | None = None, phase_id: str | None = None
+) -> List[ApprovalModel]:
+    items: List[ApprovalModel] = list(approvals.values())
+    if workflow is not None:
+        items = [a for a in items if a.workflow == workflow]
+    if phase_id is not None:
+        items = [a for a in items if a.phase_id == phase_id]
+    return items
 
 
 def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:

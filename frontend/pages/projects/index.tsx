@@ -26,6 +26,7 @@ interface Project {
   progress: number;
   updated?: string;
   user?: string;
+  currentPhaseId?: string | null;
 }
 
 // --- Simple stat cards (copied style from dashboard) ---
@@ -89,9 +90,18 @@ export default function ProjectList() {
       headers["X-User"] = username;
     }
     fetch(`${API}/projects`, { headers })
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data: Project[]) => setProjects(data))
-        .catch(() => setProjects([]));
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any) =>
+        setProjects(
+          Array.isArray(data)
+            ? data.map((p: any) => ({
+                ...p,
+                currentPhaseId: p.current_phase_id ?? p.phase ?? null,
+              }))
+            : [],
+        ),
+      )
+      .catch(() => setProjects([]));
   }, [username]);
 
   // Calculate simple stats for this user

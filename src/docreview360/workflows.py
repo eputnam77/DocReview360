@@ -291,7 +291,15 @@ def create_workflow(
     from .approvals import create_approval
 
     for step in approval_steps:
-        create_approval(wf_id, step.role, wf_id, due_at=None, description=step.description)
+        create_approval(
+            wf_id,
+            step.role,
+            wf_id,
+            due_at=None,
+            description=step.description,
+            phase_id=workflow.phase,
+            required=step.required,
+        )
 
     for cb in bot_callbacks:
         cb(workflow)

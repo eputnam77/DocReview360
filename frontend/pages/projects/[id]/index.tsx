@@ -54,6 +54,7 @@ interface Project {
   progress: number;
   updated?: string;
   editor?: "tiptap" | "word";
+  currentPhaseId?: string | null;
 }
 interface LogEntry {
   timestamp: string;
@@ -78,6 +79,8 @@ interface Approval {
   comments?: string;
   documensoSigId?: string;
   description?: string; // Description from the approval step
+  phaseId?: string;
+  required?: boolean;
 }
 interface Reply {
   id: string;
@@ -236,6 +239,15 @@ export default function ProjectDetailsPage() {
   const [refDocs, setRefDocs] = useState<RefDoc[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [versions] = useState<VersionEntry[]>([]);
+  const [reviewCount, setReviewCount] = useState(0);
+
+  const approvalsForPhase = useMemo(
+    () =>
+      approvals.filter(
+        (a) => !project?.currentPhaseId || a.phaseId === project.currentPhaseId,
+      ),
+    [approvals, project?.currentPhaseId],
+  );
 
   const [loading, setLoading] = useState(true);
   const [showVersions, setShowVersions] = useState(false);
@@ -264,7 +276,8 @@ export default function ProjectDetailsPage() {
           status: proj.status || "Draft",
           progress: proj.progress || 0, // Use backend progress if available
           updated: proj.updated || proj.created || new Date().toISOString().split('T')[0],
-          editor: "tiptap" // Default editor
+          editor: "tiptap", // Default editor
+          currentPhaseId: proj.current_phase_id || proj.phase || null,
         };
         setProject(mappedProject);
         
@@ -286,7 +299,12 @@ export default function ProjectDetailsPage() {
           
           // Fetch approvals for this workflow
           try {
-            const apRes = await fetch(`${API}/approvals?workflow=${proj.workflow}`);
+            const phaseParam = mappedProject.currentPhaseId
+              ? `&phase=${encodeURIComponent(mappedProject.currentPhaseId)}`
+              : "";
+            const apRes = await fetch(
+              `${API}/approvals?workflow=${proj.workflow}${phaseParam}`,
+            );
             if (apRes.ok) {
               const approvalsData = await apRes.json();
               console.log('Approvals data:', approvalsData);
@@ -296,11 +314,14 @@ export default function ProjectDetailsPage() {
                 reviewer: approval.reviewer,
                 email: approval.reviewer, // Use reviewer as email since backend doesn't have separate email field
                 state: approval.state,
-                statusDate: approval.due_at || new Date().toISOString().split('T')[0],
+                statusDate:
+                  approval.due_at || new Date().toISOString().split('T')[0],
                 signedAt: approval.signed_at,
                 comments: approval.comments || '',
                 documensoSigId: approval.signature,
-                description: approval.description // Add description from backend
+                description: approval.description, // Add description from backend
+                phaseId: approval.phase_id,
+                required: approval.required,
               }));
               setApprovals(mappedApprovals);
             }
@@ -308,10 +329,30 @@ export default function ProjectDetailsPage() {
             console.error('Error fetching approvals:', error);
             setApprovals([]); // Set empty array on error
           }
+
+          // Fetch review summary for current phase
+          try {
+            const revPhase = mappedProject.currentPhaseId
+              ? `?phase=${encodeURIComponent(mappedProject.currentPhaseId)}`
+              : "";
+            const revRes = await fetch(
+              `${API}/projects/${proj.id}/reviews${revPhase}`,
+            );
+            if (revRes.ok) {
+              const reviewsData = await revRes.json();
+              setReviewCount(Array.isArray(reviewsData) ? reviewsData.length : 0);
+            } else {
+              setReviewCount(0);
+            }
+          } catch (error) {
+            console.error('Error fetching reviews:', error);
+            setReviewCount(0);
+          }
         } else {
           console.log('Project has no workflow');
           setWorkflow(null);
           setApprovals([]);
+          setReviewCount(0);
         }
         
         // Set other data (placeholder until API provides it)
@@ -363,14 +404,14 @@ export default function ProjectDetailsPage() {
 
   // ▼ review KPIs memo
   const stats = useMemo(() => {
-    const assigned = approvals.length;
+    const assigned = approvalsForPhase.length;
     return {
       assigned,
-      approved: approvals.filter((a) => a.state === "approved").length,
-      pending: approvals.filter((a) => a.state === "pending").length,
-      overdue: approvals.filter((a) => a.state === "overdue").length,
+      approved: approvalsForPhase.filter((a) => a.state === "approved").length,
+      pending: approvalsForPhase.filter((a) => a.state === "pending").length,
+      overdue: approvalsForPhase.filter((a) => a.state === "overdue").length,
     };
-  }, [approvals]);
+  }, [approvalsForPhase]);
 
   // ▼ handlers --------------------------------------------------------------
   const toggleSelect = (aid: string) =>
@@ -391,7 +432,7 @@ export default function ProjectDetailsPage() {
   };
 
   const sendReminder = () => {
-    const emails = approvals
+    const emails = approvalsForPhase
       .filter((a) => a.state === "pending" || a.state === "overdue")
       .map((a) => a.email);
     alert("Reminder sent to: " + emails.join(", "));
@@ -500,7 +541,7 @@ export default function ProjectDetailsPage() {
       [
         "Approval & signature",
         project.owner,
-        approvals.map((a) => a.reviewer).join(";"),
+        approvalsForPhase.map((a) => a.reviewer).join(";"),
         "Writer",
         "Ops",
       ],
@@ -526,14 +567,14 @@ export default function ProjectDetailsPage() {
 
   useEffect(() => {
     if (!isOwner) return;
-    const overdue = approvals.filter((a) => a.state === "overdue");
+    const overdue = approvalsForPhase.filter((a) => a.state === "overdue");
     if (overdue.length > 0) {
       alert(
         "Escalation: overdue approvals - " +
           overdue.map((o) => o.reviewer).join(", "),
       );
     }
-  }, [approvals, isOwner]);
+  }, [approvalsForPhase, isOwner]);
 
   if (loading) return <p className="p-4">Loading…</p>;
   if (!project) return <p className="p-4">Project not found.</p>;
@@ -770,12 +811,14 @@ export default function ProjectDetailsPage() {
                         type="checkbox"
                         aria-label="Select all"
                         checked={
-                          selected.length === approvals.length &&
-                          approvals.length > 0
+                          selected.length === approvalsForPhase.length &&
+                          approvalsForPhase.length > 0
                         }
                         onChange={(e) =>
                           setSelected(
-                            e.target.checked ? approvals.map((a) => a.id) : [],
+                            e.target.checked
+                              ? approvalsForPhase.map((a) => a.id)
+                              : [],
                           )
                         }
                       />
@@ -789,8 +832,8 @@ export default function ProjectDetailsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {approvals.length > 0 ? (
-                    approvals.map((a) => (
+                  {approvalsForPhase.length > 0 ? (
+                    approvalsForPhase.map((a) => (
                       <TableRow key={a.id} className="group">
                         <TableCell>
                           <input
@@ -933,9 +976,14 @@ export default function ProjectDetailsPage() {
             <CardHeader>
               <CardTitle>Review summary</CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-end">
+            <CardContent className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">
+                {reviewCount} reviews in this phase
+              </span>
               <Button asChild>
-                <Link href={`/projects/${id}/reviews`}>Open review workspace</Link>
+                <Link href={`/projects/${id}/reviews`}>
+                  Open review workspace
+                </Link>
               </Button>
             </CardContent>
           </Card>
