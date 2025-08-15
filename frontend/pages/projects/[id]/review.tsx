@@ -62,7 +62,7 @@ export default function ProjectReviewPage() {
           Array.isArray(data)
             ? data.map((rev: any) => ({
                 ...rev,
-                phaseId: rev.phase_id ?? rev.phaseId ?? currentPhaseId || "",
+                phaseId: rev.phase_id ?? rev.phaseId ?? currentPhaseId ?? "",
                 required: rev.required,
               }))
             : [],
@@ -96,7 +96,7 @@ export default function ProjectReviewPage() {
       const data = await res.json();
       const mapped = {
         ...data,
-        phaseId: data.phase_id ?? currentPhaseId || "",
+        phaseId: data.phase_id ?? currentPhaseId ?? "",
         required: data.required,
       };
       setReviews([mapped, ...reviews]);
