@@ -32,7 +32,7 @@ def _register_certificate(
     signature = key.sign(content, padding.PKCS1v15(), hashes.SHA256())
     if tamper:
         signature = b"\x00" + signature[1:]
-    url = f"test-cert-{uuid4().hex}"
+    url = f"https://test-cert-{uuid4().hex}"
     documenso.register_test_certificate(url, cert, signature, revoked=revoked)
     return url
 
