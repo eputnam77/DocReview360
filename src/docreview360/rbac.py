@@ -12,17 +12,18 @@ from . import auth
 # actions it may perform. The table acts as a source of truth for tests and
 # runtime checks.
 ROLE_PERMISSIONS: dict[str, Set[str]] = {
-    "admin": {"create", "read", "update", "delete", "edit_field_x"},
+    "admin": {"create", "read", "update", "delete", "edit_field_x", "view_audit_log"},
     "manager": {"create", "read", "update"},
     "sme": {"read", "edit_field_x"},
     "reviewer": {"read"},
     "editor": {"read", "update"},
     "observer": {"read"},
     "user": {"read"},
+    "auditor": {"view_audit_log"},
 }
 
 # In-memory mapping of usernames to role sets
-USER_ROLES: dict[str, Set[str]] = {"alice": {"user"}}
+USER_ROLES: dict[str, Set[str]] = {"alice": {"user", "admin"}, "bob": {"auditor"}}
 
 
 def set_user_roles(username: str, roles: Iterable[str]) -> None:

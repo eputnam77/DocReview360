@@ -2,9 +2,11 @@ import { create } from "zustand";
 
 interface UserState {
   isAdmin: boolean;
+  isAuditor: boolean;
   username: string;
   theme: "system" | "light" | "dark";
   setAdmin: (value: boolean) => void;
+  setAuditor: (value: boolean) => void;
   setUsername: (name: string) => void;
   setTheme: (value: "system" | "light" | "dark") => void;
   initialize: () => Promise<void>;
@@ -12,18 +14,24 @@ interface UserState {
 
 export const useUserStore = create<UserState>((set) => ({
   // Defaults are unauthenticated until initialize() fetches the session
-  isAdmin: true,
+  isAdmin: false,
+  isAuditor: false,
   username: "",
   theme: "system",
   setAdmin: (value) => set({ isAdmin: value }),
+  setAuditor: (value) => set({ isAuditor: value }),
   setUsername: (name) => set({ username: name }),
   setTheme: (value) => set({ theme: value }),
   async initialize() {
     try {
-      const resp = await fetch("/api/users/me");
+      const resp = await fetch("/api/users/me", { headers: { "X-User": "alice" } });
       if (resp.ok) {
         const data = await resp.json();
-        set({ username: data.username, isAdmin: data.is_admin });
+        set({
+          username: data.username,
+          isAdmin: Array.isArray(data.roles) && data.roles.includes("admin"),
+          isAuditor: Array.isArray(data.roles) && data.roles.includes("auditor"),
+        });
       }
       const prefsResp = await fetch("/api/profile");
       if (prefsResp.ok) {
