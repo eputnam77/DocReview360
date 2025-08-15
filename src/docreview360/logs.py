@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import traceback
 import uuid
 from datetime import datetime, timezone
 from functools import wraps
@@ -36,6 +37,18 @@ _listeners: List[Callable[[LogEntry], None]] = []
 
 
 _db: Database | None = None
+
+SENSITIVE_KEYS = {"password", "token", "secret"}
+
+
+def _redact(value: Any, key: str | None = None) -> Any:
+    if key and any(s in key.lower() for s in SENSITIVE_KEYS):
+        return "[REDACTED]"
+    if isinstance(value, dict):
+        return {k: _redact(v, k) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return type(value)(_redact(v) for v in value)
+    return value
 
 
 def _get_db() -> Database:
@@ -222,7 +235,7 @@ async def watch_logs(callback: Callable[[LogEntry], None]) -> None:
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: ignore[override]
+def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # noqa: C901
     """Decorator that logs function calls and outcomes via :func:`log_event`.
 
     The wrapped function accepts an ``audit`` keyword-only flag to opt out of
@@ -233,7 +246,7 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: igno
     forwarded as ``context`` to :func:`log_event`.
     """
 
-    def decorator(f: F) -> F:
+    def decorator(f: F) -> F:  # noqa: C901
         is_coro = asyncio.iscoroutinefunction(f)
 
         @wraps(f)
@@ -242,11 +255,7 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: igno
             if not audit:
                 return await f(*args, **kwargs)
 
-            user = (
-                kwargs.get("current_user")
-                or kwargs.get("user")
-                or kwargs.get("x_user")
-            )
+            user = kwargs.get("current_user") or kwargs.get("user") or kwargs.get("x_user")
             if user is None and (request := kwargs.get("request")) is not None:
                 try:
                     user = request.headers.get("x-user") or request.headers.get("X-User")
@@ -256,14 +265,15 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: igno
             if user_id is None and user is not None:
                 user_id = str(user)
 
-            args_repr = [repr(a) for a in args]
-            kwargs_repr = {k: repr(v) for k, v in kwargs.items()}
+            args_repr = [repr(_redact(a)) for a in args]
+            kwargs_repr = {k: repr(_redact(v, k)) for k, v in kwargs.items()}
             try:
                 result = await f(*args, **kwargs)
                 log_event(
                     f.__name__,
                     user_id=user_id,
                     outcome="success",
+                    severity="info",
                     args=args_repr,
                     kwargs=kwargs_repr,
                     result=repr(result),
@@ -274,9 +284,11 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: igno
                     f.__name__,
                     user_id=user_id,
                     outcome="error",
+                    severity="error",
                     args=args_repr,
                     kwargs=kwargs_repr,
                     error=str(exc),
+                    stacktrace=traceback.format_exc(),
                 )
                 raise
 
@@ -286,11 +298,7 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: igno
             if not audit:
                 return f(*args, **kwargs)
 
-            user = (
-                kwargs.get("current_user")
-                or kwargs.get("user")
-                or kwargs.get("x_user")
-            )
+            user = kwargs.get("current_user") or kwargs.get("user") or kwargs.get("x_user")
             if user is None and (request := kwargs.get("request")) is not None:
                 try:
                     user = request.headers.get("x-user") or request.headers.get("X-User")
@@ -300,14 +308,15 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: igno
             if user_id is None and user is not None:
                 user_id = str(user)
 
-            args_repr = [repr(a) for a in args]
-            kwargs_repr = {k: repr(v) for k, v in kwargs.items()}
+            args_repr = [repr(_redact(a)) for a in args]
+            kwargs_repr = {k: repr(_redact(v, k)) for k, v in kwargs.items()}
             try:
                 result = f(*args, **kwargs)
                 log_event(
                     f.__name__,
                     user_id=user_id,
                     outcome="success",
+                    severity="info",
                     args=args_repr,
                     kwargs=kwargs_repr,
                     result=repr(result),
@@ -318,19 +327,21 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # type: igno
                     f.__name__,
                     user_id=user_id,
                     outcome="error",
+                    severity="error",
                     args=args_repr,
                     kwargs=kwargs_repr,
                     error=str(exc),
+                    stacktrace=traceback.format_exc(),
                 )
                 raise
 
         annotations = get_type_hints(f)
         async_wrapper.__annotations__ = annotations
         sync_wrapper.__annotations__ = annotations
-        async_wrapper.__globals__.update(f.__globals__)
-        sync_wrapper.__globals__.update(f.__globals__)
+        async_wrapper.__globals__.update(f.__globals__)  # type: ignore[attr-defined]
+        sync_wrapper.__globals__.update(f.__globals__)  # type: ignore[attr-defined]
         return cast(F, async_wrapper if is_coro else sync_wrapper)
 
     if func is None:
-        return cast(F, decorator)  # type: ignore[return-value]
+        return cast(F, decorator)
     return decorator(func)
