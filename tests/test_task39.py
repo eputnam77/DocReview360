@@ -15,8 +15,8 @@ def test_live_log_listener() -> None:
 
     register_listener(callback)
     clear_logs()
-    log_event("create", user="u")
+    log_event("create", actor="u")
     unregister_listener(callback)
-    log_event("ignore", user="u")
+    log_event("ignore", actor="u")
 
     assert received == ["create"]
