@@ -1379,9 +1379,7 @@ async def assign_reviewer_endpoint(
 
 @app.post("/workflows/{wf_id}/advance", response_model=WorkflowModel)
 @log_call
-async def advance_workflow_endpoint(
-    wf_id: str, x_user: str | None = Header(None)
-) -> WorkflowModel:
+async def advance_workflow_endpoint(wf_id: str, x_user: str | None = Header(None)) -> WorkflowModel:
     """Advance workflow to the next phase."""
     try:
         return advance_workflow(wf_id)
@@ -1611,22 +1609,52 @@ async def unregister_plugin(name: str) -> Response:
 
 @app.get("/logs", response_model=list[LogEntry])
 async def list_logs(
-    action: str | None = None,
+    start: datetime | None = None,
+    end: datetime | None = None,
     user_id: str | None = None,
+    entity_id: str | None = None,
+    action: str | None = None,
+    severity: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
     _: str = Depends(require_audit_access),
 ) -> list[LogEntry]:
-    """Return recorded logs optionally filtered by action or user."""
-    return query_logs(action=action, user_id=user_id)
+    """Return recorded logs with optional filters and pagination."""
+    return query_logs(
+        action=action,
+        user_id=user_id,
+        start=start,
+        end=end,
+        entity_id=entity_id,
+        severity=severity,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @app.get("/api/audit", response_model=list[LogEntry])
 async def list_audit(
-    action: str | None = None,
+    start: datetime | None = None,
+    end: datetime | None = None,
     user_id: str | None = None,
+    entity_id: str | None = None,
+    action: str | None = None,
+    severity: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
     _: str = Depends(require_audit_access),
 ) -> list[LogEntry]:
     """Alias for :func:`list_logs` used by the dashboard."""
-    return query_logs(action=action, user_id=user_id)
+    return query_logs(
+        action=action,
+        user_id=user_id,
+        start=start,
+        end=end,
+        entity_id=entity_id,
+        severity=severity,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @app.get("/reports/summary", response_model=SummaryReport)
