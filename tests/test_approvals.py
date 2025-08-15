@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
@@ -109,14 +110,14 @@ def test_handle_signature_return_hash_validation() -> None:
     )
 
     doc = b"hello"
-    appr = create_approval("wf42", "carol", "doc42", document=doc)
+    appr = create_approval("wf42", "carol", "doc42", document=doc, signature_provider="documenso")
     send_for_signature(appr.id, "doc42", "carol")
     # Valid document should mark approved
-    handle_signature_return(appr.signature_id, document=doc)
+    asyncio.run(handle_signature_return(appr.signature_id, document=doc))
     assert appr.state == "approved"
 
     # Mismatch should raise
-    appr2 = create_approval("wf43", "dave", "doc43", document=b"orig")
+    appr2 = create_approval("wf43", "dave", "doc43", document=b"orig", signature_provider="documenso")
     send_for_signature(appr2.id, "doc43", "dave")
     with pytest.raises(ValueError):
-        handle_signature_return(appr2.signature_id, document=b"tampered")
+        asyncio.run(handle_signature_return(appr2.signature_id, document=b"tampered"))
