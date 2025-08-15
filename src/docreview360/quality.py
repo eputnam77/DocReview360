@@ -2,12 +2,36 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+import json
+from importlib import resources
+from pathlib import Path
+from typing import Sequence, cast
 
-from .fann_model import Weights, predict_weighted
 from .ai_utils import FANN_FEATURE_NAMES, _fann_features
+from .fann_model import Weights, predict_weighted
 
-_HIGH_RISK_TERMS = {"urgent", "guarantee", "liability"}
+_HIGH_RISK_TERMS: set[str] = set()
+
+
+def initialize_high_risk_terms(path: str | Path | None = None) -> None:
+    """Load high risk terms from ``path`` or bundled ``quality_terms.json``.
+
+    Parameters
+    ----------
+    path:
+        Optional path to a JSON file containing a list of risky terms. When
+        omitted the loader falls back to the package's default configuration.
+    """
+
+    global _HIGH_RISK_TERMS
+    if path is None:
+        data = resources.files(__package__).joinpath("quality_terms.json").read_text()
+    else:
+        data = Path(path).read_text()
+    _HIGH_RISK_TERMS = set(json.loads(data))
+
+
+initialize_high_risk_terms()
 
 # Default feature weights for different document types.
 _DOC_TYPE_WEIGHTS: dict[str, Sequence[float]] = {
@@ -30,7 +54,7 @@ def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = N
     more influence for specific document categories.
     """
 
-    return predict_weighted(text, weights, _feature_weights(doc_type))
+    return cast(float, predict_weighted(text, weights, _feature_weights(doc_type)))
 
 
 def explain_score(text: str, weights: Weights, *, doc_type: str | None = None) -> dict[str, object]:
