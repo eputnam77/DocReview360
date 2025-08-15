@@ -10,11 +10,11 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, AsyncIterator, Callable, Dict, List, TypeVar, cast, get_type_hints
 
-from sqlalchemy import delete, insert, select, event
+from sqlalchemy import delete, event, insert, select
 
+from . import rbac
 from .database import Database, default_url
 from .models import AuditLog, AuditLogRecord
-from . import rbac
 
 LogEntry = AuditLogRecord
 
@@ -73,8 +73,13 @@ def _install_worm_guard(db: Database) -> None:
     engine = db._engine
 
     @event.listens_for(engine, "before_execute", retval=True)
-    def _worm_guard(conn, clauseelement, multiparams, params, execution_options):  # type: ignore[override]
-        if isinstance(clauseelement, (Delete, Update)) and getattr(clauseelement.table, "name", "") == AuditLog.__tablename__:
+    def _worm_guard(  # type: ignore[override]
+        conn, clauseelement, multiparams, params, execution_options
+    ):
+        if (
+            isinstance(clauseelement, (Delete, Update))
+            and getattr(clauseelement.table, "name", "") == AuditLog.__tablename__
+        ):
             if not execution_options.get("allow_audit_log_mutations"):
                 raise PermissionError("Audit log entries are immutable")
         return clauseelement, multiparams, params
@@ -174,8 +179,15 @@ def query_logs(
     action: str | None = None,
     user_id: str | None = None,
     log_id: str | None = None,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    entity_id: str | None = None,
+    severity: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
 ) -> List[LogEntry]:
-    """Return logs filtered by optional action, user, or id sorted by timestamp."""
+    """Return logs filtered by optional fields and sorted by timestamp."""
 
     db = _get_db()
     stmt = select(AuditLog)
@@ -185,7 +197,19 @@ def query_logs(
         stmt = stmt.where(AuditLog.user_id == user_id)
     if log_id is not None:
         stmt = stmt.where(AuditLog.id == log_id)
+    if entity_id is not None:
+        stmt = stmt.where(AuditLog.entity_id == entity_id)
+    if severity is not None:
+        stmt = stmt.where(AuditLog.severity == severity)
+    if start is not None:
+        stmt = stmt.where(AuditLog.timestamp >= start)
+    if end is not None:
+        stmt = stmt.where(AuditLog.timestamp <= end)
     stmt = stmt.order_by(AuditLog.timestamp)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    if offset is not None:
+        stmt = stmt.offset(offset)
     with db.session() as conn:
         rows = conn.execute(stmt).all()
     return [
