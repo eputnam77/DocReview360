@@ -3,15 +3,14 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
-
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval, send_for_signature
 from docreview360.integrations.signature import documenso
+from fastapi.testclient import TestClient
 
 
 def _register_certificate(
@@ -69,9 +68,26 @@ def setup_doc(client: TestClient, sample_doc: bytes) -> tuple[str, object]:
 def test_valid_signature(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
-    documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": cert_url})
+    documenso.process_webhook(
+        {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+    )
 
     resp = client.get(f"/documents/{doc_id}/verify-signature")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "pass"
+    detail = next(d for d in data["details"] if d["approval_id"] == appr.id)
+    assert detail["signature_verified"] is True
+
+
+def test_explicit_provider(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+    doc_id, appr = setup_doc
+    cert_url = _register_certificate(sample_doc)
+    documenso.process_webhook(
+        {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+    )
+
+    resp = client.get(f"/documents/{doc_id}/verify-signature", params={"provider": "documenso"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "pass"
@@ -181,7 +197,9 @@ def test_out_of_order_webhook(client: TestClient, setup_doc: tuple[str, object],
 
     stale_cert = _register_certificate(sample_doc, tamper=True)
     try:
-        documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": stale_cert})
+        documenso.process_webhook(
+            {"id": appr.signature_id, "status": "signed", "certificate_url": stale_cert}
+        )
     except Exception:
         pass
 
