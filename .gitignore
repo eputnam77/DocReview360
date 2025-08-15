@@ -25,6 +25,7 @@ site/
 # OS
 .DS_Store
 Thumbs.db
+*.db
 
 # Frontend build
 frontend/node_modules/
