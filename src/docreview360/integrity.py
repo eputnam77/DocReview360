@@ -9,9 +9,11 @@ from typing import List
 
 from celery.schedules import crontab
 
+from .audit import log_audit_event
 from .celery_app import app
 from .config import CONFIG_FILE, Config
 from .documents import documents
+from .logs import log_event
 from .sharepoint import SharePointClient
 
 logger = logging.getLogger(__name__)
@@ -53,6 +55,18 @@ def verify_integrity() -> List[str]:
         digest = hashlib.sha256(data).hexdigest()
         if digest != doc.ingestion_hash:
             logger.warning("Ingestion hash mismatch for %s", doc.id)
+            log_event(
+                "integrity_mismatch",
+                document=doc.id,
+                expected=doc.ingestion_hash,
+                actual=digest,
+            )
+            log_audit_event(
+                doc.id,
+                "integrity_mismatch",
+                expected=doc.ingestion_hash,
+                actual=digest,
+            )
             mismatches.append(doc.id)
     return mismatches
 
