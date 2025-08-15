@@ -14,7 +14,15 @@ class Template:
 
 
 # registry of named templates
-TEMPLATES: Dict[str, Template] = {"default": Template("{subject}", "{body}")}
+TEMPLATES: Dict[str, Template] = {
+    "default": Template("{subject}", "{body}"),
+    "due_reminder": Template(
+        "Reminder: {item} due {due_date}", "{item} is due on {due_date}."
+    ),
+    "completion_notice": Template(
+        "{item} completed", "{item} has been completed."
+    ),
+}
 # store sent emails for inspection in tests
 sent_emails: List[dict[str, str]] = []
 
@@ -41,6 +49,16 @@ def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
     email = {"to": recipient, "subject": subject, "body": body}
     sent_emails.append(email)
     return email
+
+
+def send_due_date_reminder(recipient: str, item: str, due_date: str) -> dict[str, str]:
+    """Send a reminder that ``item`` is due on ``due_date``."""
+    return send_email("due_reminder", recipient, item=item, due_date=due_date)
+
+
+def send_completion_notification(recipient: str, item: str) -> dict[str, str]:
+    """Notify that ``item`` has been completed."""
+    return send_email("completion_notice", recipient, item=item)
 
 
 def notify_overdue_projects() -> list[dict[str, str]]:
