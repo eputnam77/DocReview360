@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Edit3, Users2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -62,10 +63,10 @@ export default function WorkflowDetailPage() {
             <p className="text-gray-500 text-sm mt-1">{workflow.description}</p>
           </div>
           <Button asChild>
-            <a href={`/configuration/workflows/edit?id=${workflow.id}`}>
+            <Link href={`/configuration/workflows/edit?id=${workflow.id}`}>
               <Edit3 className="w-5 h-5 mr-2" />
               Edit Workflow
-            </a>
+            </Link>
           </Button>
         </CardHeader>
         <CardContent>
