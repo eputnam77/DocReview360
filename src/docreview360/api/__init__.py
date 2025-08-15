@@ -86,7 +86,7 @@ from ..documents import (
 )
 from ..environment import current_environment, load_envs, switch_environment
 from ..exporter import export_document, set_guardrails
-from ..integrations.signature import get_default_provider, get_provider
+from ..integrations.signature import get_default_providers, get_provider
 from ..logs import LogEntry, log_event, log_stream, query_logs
 from ..messages import render
 from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
@@ -119,7 +119,7 @@ from ..search import (
     set_project_priority,
     update_project,
 )
-from ..settings_manager import load_settings, update_setting
+from ..settings_manager import update_setting
 from ..status import internal_status, public_status
 from ..stubs.task223 import convert_document
 from ..template_manager import upload_template as store_template
@@ -263,9 +263,10 @@ class ConfigPayload(BaseModel):
 
 
 class SignatureProviderPayload(BaseModel):
-    """Payload for selecting the active signature provider."""
+    """Payload for selecting active signature providers."""
 
-    provider: str
+    primary: str
+    fallback: str | None = None
 
 
 app = FastAPI(title="DocReview360")
@@ -1719,22 +1720,22 @@ async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
 
 
 @app.get("/signature-provider")
-async def get_signature_provider_endpoint() -> dict[str, str]:
-    """Return the configured signature provider."""
+async def get_signature_provider_endpoint() -> dict[str, str | None]:
+    """Return the configured signature providers."""
 
-    settings = load_settings()
-    provider = settings.get("signature_provider", get_default_provider())
-    return {"provider": provider}
+    primary, fallback = get_default_providers()
+    return {"primary": primary, "fallback": fallback}
 
 
 @app.put("/signature-provider")
 async def update_signature_provider_endpoint(
     payload: SignatureProviderPayload,
-) -> dict[str, str]:
+) -> dict[str, str | None]:
     """Persist the active signature provider selection."""
 
-    update_setting("signature_provider", payload.provider)
-    return {"provider": payload.provider}
+    update_setting("signature_provider_primary", payload.primary)
+    update_setting("signature_provider_fallback", payload.fallback)
+    return {"primary": payload.primary, "fallback": payload.fallback}
 
 
 @app.post("/tools/convert")
