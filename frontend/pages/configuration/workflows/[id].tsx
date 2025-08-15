@@ -23,8 +23,25 @@ export default function WorkflowDetailPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
-          setWorkflow(data);
-          setLogs(data.logs ?? []);
+          const steps = Array.isArray(data.steps)
+            ? data.steps
+            : Array.isArray(data.approval_steps)
+              ? data.approval_steps.map((s: any, idx: number) => ({
+                  id: s.id ?? idx,
+                  role: s.role ?? s.name ?? "",
+                  user: s.user ?? "",
+                  required: typeof s.required === "boolean" ? s.required : true,
+                }))
+              : Array.isArray(data.phases)
+                ? data.phases.map((p: any, idx: number) => ({
+                    id: idx,
+                    role: typeof p === "string" ? p : String(p),
+                    user: "",
+                    required: true,
+                  }))
+                : [];
+          setWorkflow({ ...data, steps });
+          setLogs(Array.isArray(data.logs) ? data.logs : []);
         }
       })
       .catch(() => {});
@@ -73,19 +90,31 @@ export default function WorkflowDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {workflow.steps.map((s: any, idx: number) => (
-                <TableRow key={s.id}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>{s.role}</TableCell>
-                  <TableCell>{s.user}</TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
-                      s.required ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
-                    )}>{s.required ? "Yes" : "No"}</span>
+              {workflow.steps.length > 0 ? (
+                workflow.steps.map((s: any, idx: number) => (
+                  <TableRow key={s.id ?? idx}>
+                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell>{s.role}</TableCell>
+                    <TableCell>{s.user}</TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded text-xs font-medium",
+                          s.required ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
+                        )}
+                      >
+                        {s.required ? "Yes" : "No"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-gray-500">
+                    No steps defined.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
