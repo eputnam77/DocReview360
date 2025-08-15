@@ -1,3 +1,4 @@
+import docreview360.ai_utils as ai_utils
 from docreview360.ai_utils import (
     FANN_FEATURE_NAMES,
     _fann_features,
@@ -7,7 +8,9 @@ from docreview360.ai_utils import (
 from docreview360.fann_model import train_model, update_model
 
 
-def test_style_and_structure_features() -> None:
+def test_style_and_structure_features(monkeypatch) -> None:
+    # Ensure heuristics are used even if GovDocVerify is installed
+    monkeypatch.setattr(ai_utils, "_gov_run", None)
     good_style = "This is a sentence. Another one."
     bad_style = "bad sentence. another."
     repeat = "This is is wrong."

@@ -11,6 +11,7 @@ from .ai_utils import FANN_FEATURE_NAMES, _fann_features
 from .fann_model import Weights, predict_weighted
 
 _HIGH_RISK_TERMS: set[str] = set()
+_HIGH_RISK_PENALTY: float = 0.9  # Multiply score by this if risky terms are present
 
 
 def initialize_high_risk_terms(path: str | Path | None = None) -> None:
@@ -22,7 +23,6 @@ def initialize_high_risk_terms(path: str | Path | None = None) -> None:
         Optional path to a JSON file containing a list of risky terms. When
         omitted the loader falls back to the package's default configuration.
     """
-
     global _HIGH_RISK_TERMS
     if path is None:
         data = resources.files(__package__).joinpath("quality_terms.json").read_text()
@@ -47,19 +47,27 @@ def _feature_weights(doc_type: str | None) -> Sequence[float] | None:
     return _DOC_TYPE_WEIGHTS.get(doc_type, _DOC_TYPE_WEIGHTS["default"])
 
 
+def high_risk_warnings(text: str) -> list[str]:
+    """Return list of risky terms present in ``text``."""
+    lower = text.lower()
+    return [term for term in _HIGH_RISK_TERMS if term in lower]
+
+
 def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = None) -> float:
     """Return approval likelihood using the trained FANN model.
 
     ``doc_type`` enables adaptive weighting of features so certain checks carry
     more influence for specific document categories.
+    High-risk terms automatically reduce the score by a set penalty.
     """
-
-    return predict_weighted(text, weights, _feature_weights(doc_type))
+    score = predict_weighted(text, weights, _feature_weights(doc_type))
+    if high_risk_warnings(text):
+        score *= _HIGH_RISK_PENALTY
+    return score
 
 
 def explain_score(text: str, weights: Weights, *, doc_type: str | None = None) -> dict[str, object]:
     """Return a breakdown of the approval score with human readable rationale."""
-
     feats = _fann_features(text)
     reasons: list[str] = []
     for name, val in zip(FANN_FEATURE_NAMES, feats):
@@ -69,11 +77,10 @@ def explain_score(text: str, weights: Weights, *, doc_type: str | None = None) -
             reasons.append("poor style guide adherence")
         elif name == "structure" and val < 0.5:
             reasons.append("weak structural patterns")
+
+    risky_terms = high_risk_warnings(text)
+    if risky_terms:
+        reasons.append(f"contains high-risk terms: {', '.join(risky_terms)}")
+
     score = approval_likelihood(text, weights, doc_type=doc_type)
     return {"score": score, "rationale": reasons}
-
-
-def high_risk_warnings(text: str) -> list[str]:
-    """Return list of risky terms present in ``text``."""
-    lower = text.lower()
-    return [term for term in _HIGH_RISK_TERMS if term in lower]
