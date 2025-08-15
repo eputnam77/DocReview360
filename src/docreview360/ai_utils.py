@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import math
+import os
 import re
+import tempfile
 from typing import TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
@@ -86,21 +88,15 @@ def _count_syllables(word: str) -> int:
 _MAX_SENT_LEN = 120
 
 
-def style_guide_score(text: str) -> float:
-    """Return the fraction of sentences meeting simple style rules.
+try:  # pragma: no cover - import guard
+    from govdocverify.cli import process_document as _gov_run  # type: ignore[import-not-found]
+except Exception:  # pragma: no cover - gracefully degrade
+    _gov_run = None
 
-    The check intentionally avoids heavy NLP dependencies yet aims to capture
-    several common style issues:
 
-    * Sentence starts with a capital letter.
-    * Sentence ends with terminal punctuation (``.?!``).
-    * No repeated whitespace.
-    * No repeated punctuation.
-    * No consecutive repeated words.
-    * Sentence length under ``_MAX_SENT_LEN`` characters.
-    """
+def _heuristic_style_score(text: str) -> float:
+    """Return the fraction of sentences meeting simple style rules."""
 
-    # Split on whitespace following punctuation so the punctuation is retained
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
     if not sentences:
         return 1.0
@@ -119,6 +115,36 @@ def style_guide_score(text: str) -> float:
         ):
             good += 1
     return good / len(sentences)
+
+
+def style_guide_score(text: str) -> float:
+    """Return a style score using GovDocVerify when available.
+
+    When the external ``GovDocVerify`` package is installed, the text is written
+    to a temporary file and processed via ``process_document``.  The score is
+    derived from the number of reported style issues.  If GovDocVerify is not
+    installed or errors occur, a lightweight heuristic check is used instead.
+    """
+
+    if _gov_run is not None:
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as tmp:
+                tmp.write(text)
+                tmp.flush()
+                path = tmp.name
+            try:
+                result = _gov_run(path, "Other")
+            finally:
+                os.unlink(path)
+            issues = result.get("styleIssues", [])  # type: ignore[assignment]
+            sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+            total = len(sentences) or 1
+            score = 1 - len(issues) / total
+            return max(0.0, score)
+        except Exception:
+            pass
+
+    return _heuristic_style_score(text)
 
 
 def structural_pattern_score(text: str) -> float:
