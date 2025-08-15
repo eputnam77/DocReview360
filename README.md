@@ -88,6 +88,7 @@ $env:DOCREVIEW360_OIDC_EXPIRE_MINUTES="30"
 # Optional:
 # DOCREVIEW360_SIGNATURE_SECRET  (digital signatures)
 # NEXT_PUBLIC_API_BASE=http://localhost:8000  (frontend → backend, leave blank to use dashboard host)
+# DOCREVIEW360_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000  (frontend host(s) allowed by CORS)
 ```
 
 Run the CLI wizard to generate `docreview360.yml`:
