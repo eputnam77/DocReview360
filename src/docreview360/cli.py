@@ -154,5 +154,37 @@ def import_cmd(path: str) -> None:  # "import" is a keyword
         raise click.ClickException(str(exc)) from exc
 
 
+@cli.group()
+def logs() -> None:
+    """Audit log utilities."""
+    return None
+
+
+@logs.command("hash-chain")
+@click.option("--bucket", default="tamper_proof_store", show_default=True)
+@click.option("--batch-size", default=100, show_default=True)
+def hash_chain(bucket: str, batch_size: int) -> None:
+    """Compute and store a hash chain of audit logs."""
+
+    from .log_hash_chain import batch_hash_logs
+
+    batch_hash_logs(bucket=bucket, batch_size=batch_size)
+    click.echo("Stored log hash chain")
+
+
+@logs.command("verify-chain")
+@click.option("--bucket", default="tamper_proof_store", show_default=True)
+@click.option("--batch-size", default=100, show_default=True)
+def verify_chain(bucket: str, batch_size: int) -> None:
+    """Verify the stored audit log hash chain."""
+
+    from .log_hash_chain import verify_hash_chain
+
+    if verify_hash_chain(bucket=bucket, batch_size=batch_size):
+        click.echo("Log integrity verified")
+    else:
+        raise click.ClickException("Log integrity check failed")
+
+
 if __name__ == "__main__":
     cli()

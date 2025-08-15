@@ -15,6 +15,7 @@ __all__ = [
     "workflows",
     "approvals",
     "logs",
+    "log_hash_chain",
     "exporter",
     "reporting",
     "archive",
