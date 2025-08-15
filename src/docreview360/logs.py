@@ -138,8 +138,12 @@ def log_verification_failure(user_id: str, ip: str, **context: Any) -> LogEntry:
     )
 
 
-def query_logs(action: str | None = None, user_id: str | None = None) -> List[LogEntry]:
-    """Return logs filtered by optional action and user."""
+def query_logs(
+    action: str | None = None,
+    user_id: str | None = None,
+    log_id: str | None = None,
+) -> List[LogEntry]:
+    """Return logs filtered by optional action, user, or id sorted by timestamp."""
 
     db = _get_db()
     stmt = select(AuditLog)
@@ -147,6 +151,9 @@ def query_logs(action: str | None = None, user_id: str | None = None) -> List[Lo
         stmt = stmt.where(AuditLog.action == action)
     if user_id is not None:
         stmt = stmt.where(AuditLog.user_id == user_id)
+    if log_id is not None:
+        stmt = stmt.where(AuditLog.id == log_id)
+    stmt = stmt.order_by(AuditLog.timestamp)
     with db.session() as conn:
         rows = conn.execute(stmt).all()
     return [
