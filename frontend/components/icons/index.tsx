@@ -1,22 +1,3 @@
 // components/icons/index.tsx
-export {
-  LayoutDashboard,
-  FolderOpen,
-  Workflow,
-  CirclePlay,
-  Plus,
-  Pencil,
-  ArrowUpRight,
-  LogIn,
-  FileText,
-  Users2,
-  BarChart2,
-  RefreshCw,
-  Bold,
-  Italic,
-  Strikethrough,
-  List,
-  ListOrdered,
-  Undo2,
-  Redo2,
-} from "lucide-react";
+// Placeholder file for icon barrel exports.
+export {};
