@@ -14,12 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Menu, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { toast } from "react-hot-toast";
-import {
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  XCircle,
-} from "lucide-react";
+import * as Icons from "lucide-react";
+const Icon = Icons as any;
 
 export interface Approval {
   id: string;
@@ -68,6 +64,7 @@ function RowMenu({ children }: { children: React.ReactNode }) {
             leaveTo="transform opacity-0 scale-95"
           >
             <Menu.Items
+              /* @ts-expect-error headlessui typing */
               role="menu"
               className="absolute right-0 z-20 mt-2 w-48 rounded-md bg-white dark:bg-gray-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
               onKeyDown={(e) => e.key === "Escape" && close()}
@@ -202,7 +199,7 @@ export default function ApprovalTable({
         <TableBody>
           {filtered.length > 0 ? (
             filtered.map((a) => (
-              <TableRow key={a.id} className="group">
+              <TableRow key={a.id} id={`approval-${a.id}`} className="group">
                 <TableCell>
                   <input
                     type="checkbox"
@@ -230,10 +227,18 @@ export default function ApprovalTable({
                         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
                     )}
                   >
-                    {a.state === "approved" && <CheckCircle2 className="w-3 h-3" />}
-                    {a.state === "pending" && <Clock className="w-3 h-3" />}
-                    {a.state === "overdue" && <AlertTriangle className="w-3 h-3" />}
-                    {a.state === "rejected" && <XCircle className="w-3 h-3" />}
+                    {a.state === "approved" && (
+                      <Icon.CheckCircle2 className="w-3 h-3" />
+                    )}
+                    {a.state === "pending" && (
+                      <Icon.Clock className="w-3 h-3" />
+                    )}
+                    {a.state === "overdue" && (
+                      <Icon.AlertTriangle className="w-3 h-3" />
+                    )}
+                    {a.state === "rejected" && (
+                      <Icon.XCircle className="w-3 h-3" />
+                    )}
                     {a.state}
                   </span>
                 </TableCell>
