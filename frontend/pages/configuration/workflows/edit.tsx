@@ -30,7 +30,8 @@ export default function EditWorkflowPage() {
   useEffect(() => {
     // Determine which workflow to edit; default to system workflow
     const wfId = (id ? String(id) : "branch-coordination");
-    fetch(`${API}/workflows/${wfId}`)
+    // Use local API route to load workflow data
+    fetch(`/api/workflows/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((wf) => {
         if (wf) {

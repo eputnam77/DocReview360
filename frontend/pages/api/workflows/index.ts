@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { API } from "@/lib/api";
 
-const DEFAULT_WORKFLOWS = [
-  {
-    id: "branch-coordination",
-    name: "branch-coordination",
-    description:
-      "Standard workflow with SME, Front Line Manager, Product Policy Manager, Technical Writer, Senior Technical Writer, and Technical Writing Manager steps",
-    usage: 0,
-    updated: new Date().toISOString().split("T")[0],
-  },
-];
-
-export default function handler(_req: NextApiRequest, res: NextApiResponse) {
-  res.status(200).json(DEFAULT_WORKFLOWS);
+export default async function handler(
+  _req: NextApiRequest,
+  res: NextApiResponse
+) {
+  try {
+    const r = await fetch(`${API}/workflows`);
+    const data = r.ok ? await r.json() : [];
+    res.status(200).json(data);
+  } catch {
+    // On network error, return empty list
+    res.status(200).json([]);
+  }
 }
-

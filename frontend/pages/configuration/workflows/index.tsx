@@ -42,7 +42,8 @@ export default function WorkflowList() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
 
   useEffect(() => {
-    fetch(`${API}/workflows`)
+    // Use local API route to proxy to backend
+    fetch("/api/workflows")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => setWorkflows(normalizeWorkflows(data)))
       .catch(() => setWorkflows([]));
