@@ -42,6 +42,10 @@ def test_public_copy_listing_and_archive(tmp_path) -> None:
         record = archive_document(public, bucket=tmp_path)
         assert record.metadata["public_copy"] is True
         assert record.metadata["source_doc_id"] == "int1"
+
+        report = client.get("/documents/public/report")
+        assert report.status_code == 200
+        assert report.json() == [{"id": "pub1", "source_document_id": "int1"}]
     finally:
         documents.clear()
         documents.update(backup)

@@ -78,6 +78,7 @@ from ..documents import (
     get_document,
     import_document,
     list_public_documents,
+    public_documents_report,
     update_document,
 )
 from ..documents import (
@@ -707,6 +708,12 @@ async def list_documents_endpoint() -> list[DocumentModel]:
 async def list_public_documents_endpoint() -> list[DocumentModel]:
     """Return documents that are flagged as public copies."""
     return list_public_documents()
+
+
+@app.get("/documents/public/report")
+async def public_documents_report_endpoint() -> list[dict[str, str | None]]:
+    """Return minimal metadata for public documents."""
+    return public_documents_report()
 
 
 @app.get("/documents/{doc_id}", response_model=DocumentModel)
