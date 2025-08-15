@@ -1,10 +1,32 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-const sample = [
+type Comment = {
+  id: string;
+  reviewer: string;
+  routing: string;
+  pagePara: string;
+  comment: string;
+  change: string;
+  decision: "Accepted" | "Rejected" | "Deferred" | "";
+  disposition: string;
+  phase: string;
+  tags: string[];
+};
+
+const sample: Comment[] = [
   {
     id: "1",
     reviewer: "Alice",
@@ -14,6 +36,8 @@ const sample = [
     change: "Update text",
     decision: "Accepted",
     disposition: "Fixed",
+    phase: "Draft",
+    tags: ["typo"],
   },
 ];
 
@@ -21,42 +45,267 @@ export default function ReviewWorkspacePage() {
   const router = useRouter();
   const { reviewId } = router.query;
 
+  const [comments, setComments] = useState<Comment[]>(sample);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [phaseFilter, setPhaseFilter] = useState("");
+  const [reviewerFilter, setReviewerFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [view, setView] = useState<"thread" | "matrix">("thread");
+
+  const updateDecision = (id: string, decision: Comment["decision"]) => {
+    setComments((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, decision } : c))
+    );
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!selected) return;
+      const key = e.key.toLowerCase();
+      if (key === "a") updateDecision(selected, "Accepted");
+      if (key === "r") updateDecision(selected, "Rejected");
+      if (key === "d") updateDecision(selected, "Deferred");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selected]);
+
+  const filtered = useMemo(() => {
+    return comments.filter((c) => {
+      return (
+        (!phaseFilter || c.phase === phaseFilter) &&
+        (!reviewerFilter || c.reviewer === reviewerFilter) &&
+        (!statusFilter || c.decision === statusFilter) &&
+        (!tagFilter || c.tags.includes(tagFilter))
+      );
+    });
+  }, [comments, phaseFilter, reviewerFilter, statusFilter, tagFilter]);
+
+  const unique = {
+    phases: Array.from(new Set(comments.map((c) => c.phase))),
+    reviewers: Array.from(new Set(comments.map((c) => c.reviewer))),
+    decisions: Array.from(new Set(comments.map((c) => c.decision))),
+    tags: Array.from(new Set(comments.flatMap((c) => c.tags))),
+  };
+
+  const exportCSV = () => {
+    const header = [
+      "Reviewer",
+      "Routing",
+      "Page/Para",
+      "Comment",
+      "Change",
+      "Decision",
+      "Disposition",
+    ];
+    const rows = filtered.map((c) =>
+      [
+        c.reviewer,
+        c.routing,
+        c.pagePara,
+        c.comment,
+        c.change,
+        c.decision,
+        c.disposition,
+      ].join(",")
+    );
+    const csv = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "comments.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportXLSX = () => {
+    const header =
+      "<tr><th>Reviewer</th><th>Routing</th><th>Page/Para</th><th>Comment</th><th>Change</th><th>Decision</th><th>Disposition</th></tr>";
+    const rows = filtered
+      .map(
+        (c) =>
+          `<tr><td>${c.reviewer}</td><td>${c.routing}</td><td>${c.pagePara}</td><td>${c.comment}</td><td>${c.change}</td><td>${c.decision}</td><td>${c.disposition}</td></tr>`
+      )
+      .join("");
+    const html = `<table>${header}${rows}</table>`;
+    const blob = new Blob([html], {
+      type: "application/vnd.ms-excel",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "comments.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const matrix = useMemo(() => {
+    const result: Record<string, Record<string, number>> = {};
+    comments.forEach((c) => {
+      const disp = c.disposition || "";
+      const dec = c.decision || "";
+      result[disp] = result[disp] || {};
+      result[disp][dec] = (result[disp][dec] || 0) + 1;
+    });
+    return result;
+  }, [comments]);
+
   return (
-    <div className="space-y-4 p-4">
-      <h1 className="text-2xl font-semibold">Review {reviewId}</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Comments & Disposition</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Reviewer</TableHead>
-                <TableHead>Routing</TableHead>
-                <TableHead>Page/Para</TableHead>
-                <TableHead>Comment</TableHead>
-                <TableHead>Change</TableHead>
-                <TableHead>Decision</TableHead>
-                <TableHead>Disposition</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sample.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell>{d.reviewer}</TableCell>
-                  <TableCell>{d.routing}</TableCell>
-                  <TableCell>{d.pagePara}</TableCell>
-                  <TableCell className="max-w-xs truncate">{d.comment}</TableCell>
-                  <TableCell className="max-w-xs truncate">{d.change}</TableCell>
-                  <TableCell>{d.decision}</TableCell>
-                  <TableCell>{d.disposition}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <div className="flex h-screen">
+      <aside className="w-1/4 border-r p-4 space-y-4 overflow-auto">
+        <h2 className="text-lg font-semibold">Filters</h2>
+        <div>
+          <label className="block text-sm">Phase</label>
+          <select
+            className="mt-1 w-full border p-1"
+            value={phaseFilter}
+            onChange={(e) => setPhaseFilter(e.target.value)}
+          >
+            <option value="">All</option>
+            {unique.phases.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm">Reviewer</label>
+          <select
+            className="mt-1 w-full border p-1"
+            value={reviewerFilter}
+            onChange={(e) => setReviewerFilter(e.target.value)}
+          >
+            <option value="">All</option>
+            {unique.reviewers.map((r) => (
+              <option key={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm">Status</label>
+          <select
+            className="mt-1 w-full border p-1"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All</option>
+            {unique.decisions.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm">Tags</label>
+          <select
+            className="mt-1 w-full border p-1"
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+          >
+            <option value="">All</option>
+            {unique.tags.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-x-2 pt-2">
+          <Button onClick={exportCSV}>Export CSV</Button>
+          <Button onClick={exportXLSX} variant="outline">
+            Export XLSX
+          </Button>
+        </div>
+        <div className="pt-2">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              setView((v) => (v === "thread" ? "matrix" : "thread"))
+            }
+          >
+            {view === "thread" ? "Show Dispo Matrix" : "Show Thread"}
+          </Button>
+        </div>
+      </aside>
+      <main className="flex-1 overflow-auto p-4">
+        {view === "thread" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Comments & Disposition</CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reviewer</TableHead>
+                    <TableHead>Routing</TableHead>
+                    <TableHead>Page/Para</TableHead>
+                    <TableHead>Comment</TableHead>
+                    <TableHead>Change</TableHead>
+                    <TableHead>Decision</TableHead>
+                    <TableHead>Disposition</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((d) => (
+                    <TableRow
+                      key={d.id}
+                      onClick={() => setSelected(d.id)}
+                      className={
+                        selected === d.id ? "bg-gray-100" : undefined
+                      }
+                    >
+                      <TableCell>{d.reviewer}</TableCell>
+                      <TableCell>{d.routing}</TableCell>
+                      <TableCell>{d.pagePara}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {d.comment}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {d.change}
+                      </TableCell>
+                      <TableCell>{d.decision}</TableCell>
+                      <TableCell>{d.disposition}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Disposition Matrix</CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Disposition</TableHead>
+                    {unique.decisions.map((d) => (
+                      <TableHead key={d}>{d}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(matrix).map(([disp, counts]) => (
+                    <TableRow key={disp}>
+                      <TableCell>{disp}</TableCell>
+                      {unique.decisions.map((d) => (
+                        <TableCell key={d}>{counts[d] || 0}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+      </main>
+      <aside className="w-1/4 border-l p-4 overflow-auto">
+        <h2 className="text-lg font-semibold">Document Context</h2>
+        <p className="text-sm text-gray-600">
+          Preview the relevant document snippet here.
+        </p>
+      </aside>
     </div>
   );
 }
