@@ -26,6 +26,32 @@ const DEFAULT_TYPES: DocType[] = [
   { id: "Release Notes", name: "Release Notes" },
 ];
 
+const normalizeDocTypes = (items: unknown): DocType[] => {
+  if (!Array.isArray(items)) return [];
+  const list: DocType[] = items
+    .map((item) => {
+      if (typeof item === "string") {
+        return { id: item, name: item };
+      }
+      if (item && typeof item === "object") {
+        const anyItem = item as { id?: unknown; name?: unknown; template?: unknown; phases?: unknown; workflow?: unknown };
+        const name = typeof anyItem.name === "string" ? anyItem.name : String(anyItem.name ?? "");
+        if (!name) return null;
+        const id = typeof anyItem.id === "string" && anyItem.id ? anyItem.id : name;
+        const phases = Array.isArray(anyItem.phases)
+          ? (anyItem.phases as string[])
+          : Array.isArray(anyItem.workflow)
+          ? (anyItem.workflow as string[])
+          : undefined;
+        const template = typeof anyItem.template === "string" ? anyItem.template : undefined;
+        return { id, name, phases, template };
+      }
+      return null;
+    })
+    .filter((v): v is DocType => Boolean(v));
+  return list.length ? list : [];
+};
+
 // Default phases that ship with the product
 const DEFAULT_PHASES = [
   "Beta Documentation Review",
@@ -64,7 +90,10 @@ export default function DocumentTypesPage() {
     // Fetch document types
     fetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: DocType[]) => setTypes(data.length ? data : DEFAULT_TYPES))
+      .then((data: unknown) => {
+        const list = normalizeDocTypes(data);
+        setTypes(list.length ? list : DEFAULT_TYPES);
+      })
       .catch(() => setTypes(DEFAULT_TYPES));
 
     // Fetch phases
