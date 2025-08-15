@@ -63,7 +63,7 @@ def test_purview_archive_logs_row() -> None:
     clear_logs()
     checksum = purview_upload(b"data")
     entry = query_logs("archive")[0]
-    assert entry.metadata["checksum"] == checksum
+    assert entry.context["checksum"] == checksum
 
 
 # AR-Fail

@@ -51,16 +51,14 @@ def unregister_listener(callback: Callable[[LogEntry], None]) -> None:
         _listeners.remove(callback)
 
 
-def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry:
+def log_event(action: str, actor: str | None = None, **context: Any) -> LogEntry:
     """Record a log entry and return it."""
 
-    doc_id = metadata.pop("doc_id", None)
     entry = LogEntry(
         timestamp=datetime.now(timezone.utc),
-        event=action,
-        user=user,
-        doc_id=doc_id,
-        details=metadata,
+        action=action,
+        actor=actor,
+        context=context,
     )
     logs.append(entry)
     for pattern, cb in alerts:
@@ -71,14 +69,14 @@ def log_event(action: str, user: str | None = None, **metadata: Any) -> LogEntry
     return entry
 
 
-def query_logs(action: str | None = None, user: str | None = None) -> List[LogEntry]:
-    """Return logs filtered by optional action and user."""
+def query_logs(action: str | None = None, actor: str | None = None) -> List[LogEntry]:
+    """Return logs filtered by optional action and actor."""
 
     results = logs
     if action is not None:
         results = [e for e in results if e.action == action]
-    if user is not None:
-        results = [e for e in results if e.user == user]
+    if actor is not None:
+        results = [e for e in results if e.actor == actor]
     return results
 
 
