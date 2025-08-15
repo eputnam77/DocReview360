@@ -30,7 +30,7 @@ class DocumentModel(BaseModel):
     user: Optional[str] = None
     date: Optional[datetime] = None
     priority: Optional[int] = None
-    ingestion_hash: str | None = None
+    ingestion_hash: str | None = None  # SHA-256 of original upload
     # Flag to mark public copies and track originating document
     public_copy: bool = False
     source_document_id: str | None = None
