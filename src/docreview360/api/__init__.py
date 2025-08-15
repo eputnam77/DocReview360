@@ -88,7 +88,7 @@ from ..documents import (
 from ..environment import current_environment, load_envs, switch_environment
 from ..exporter import export_document, set_guardrails
 from ..integrations.signature import get_default_providers, get_provider
-from ..logs import LogEntry, log_event, log_stream, query_logs
+from ..logs import LogEntry, log_event, log_stream, query_logs, log_call
 from ..messages import render
 from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
 from ..phases import add_phase, delete_phase, list_phases, rename_phase
@@ -1275,13 +1275,17 @@ async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Re
 
 
 @app.post("/workflows", status_code=201, response_model=WorkflowModel)
-async def create_workflow_endpoint(workflow: WorkflowCreate) -> WorkflowModel:
+@log_call
+async def create_workflow_endpoint(
+    workflow: WorkflowCreate, x_user: str | None = Header(None)
+) -> WorkflowModel:
     """Create a new workflow."""
     return create_workflow(workflow.project, workflow.phases)
 
 
 @app.get("/workflows/{wf_id}", response_model=WorkflowModel)
-async def get_workflow_endpoint(wf_id: str) -> WorkflowModel:
+@log_call
+async def get_workflow_endpoint(wf_id: str, x_user: str | None = Header(None)) -> WorkflowModel:
     """Return a workflow by id."""
     wf = get_workflow(wf_id)
     if wf is None:
@@ -1290,22 +1294,28 @@ async def get_workflow_endpoint(wf_id: str) -> WorkflowModel:
 
 
 @app.get("/workflows", response_model=list[WorkflowModel])
-async def list_workflows_endpoint(project: str | None = None) -> list[WorkflowModel]:
+@log_call
+async def list_workflows_endpoint(
+    project: str | None = None, x_user: str | None = Header(None)
+) -> list[WorkflowModel]:
     """Return workflows optionally filtered by project."""
     return list_workflows(project)
 
 
 @app.get("/workflow_roles", response_model=list[str])
-async def list_workflow_roles_endpoint() -> list[str]:
+@log_call
+async def list_workflow_roles_endpoint(x_user: str | None = Header(None)) -> list[str]:
     """Return all unique workflow roles."""
     return list_roles()
 
 
 @app.post("/workflows/{wf_id}/start", response_model=WorkflowModel)
+@log_call
 async def start_workflow_endpoint(
     wf_id: str,
     title: str = Form(...),
     file: UploadFile | None = File(None),
+    x_user: str | None = Header(None),
 ) -> WorkflowModel:
     """Start a workflow by uploading a document."""
 
@@ -1317,7 +1327,10 @@ async def start_workflow_endpoint(
 
 
 @app.post("/workflows/{wf_id}/assign", response_model=WorkflowModel)
-async def assign_reviewer_endpoint(wf_id: str, body: ReviewerAssign) -> WorkflowModel:
+@log_call
+async def assign_reviewer_endpoint(
+    wf_id: str, body: ReviewerAssign, x_user: str | None = Header(None)
+) -> WorkflowModel:
     """Assign a reviewer to a workflow."""
     try:
         return assign_reviewer(wf_id, body.user)
@@ -1326,7 +1339,10 @@ async def assign_reviewer_endpoint(wf_id: str, body: ReviewerAssign) -> Workflow
 
 
 @app.post("/workflows/{wf_id}/advance", response_model=WorkflowModel)
-async def advance_workflow_endpoint(wf_id: str) -> WorkflowModel:
+@log_call
+async def advance_workflow_endpoint(
+    wf_id: str, x_user: str | None = Header(None)
+) -> WorkflowModel:
     """Advance workflow to the next phase."""
     try:
         return advance_workflow(wf_id)

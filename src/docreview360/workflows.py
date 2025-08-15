@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from .logs import log_call
+
 
 class ApprovalStep(BaseModel):
     """Represents an approval step in a workflow."""
@@ -215,12 +217,14 @@ workflow_templates: Dict[str, List[ApprovalStep]] = {
 }
 
 
+@log_call
 def list_roles() -> list[str]:
     """Return a sorted list of all unique roles used in workflow templates."""
     roles = {step.role for steps in workflow_templates.values() for step in steps}
     return sorted(roles)
 
 
+@log_call
 def get_approval_steps_for_phase(
     phase: str, workflow: str = "branch-coordination"
 ) -> List[ApprovalStep]:
@@ -258,11 +262,13 @@ def _bootstrap_sample() -> None:
 _bootstrap_sample()
 
 
+@log_call
 def register_bot(callback: Callable[[WorkflowModel], None]) -> None:
     """Register an automation bot callback."""
     bot_callbacks.append(callback)
 
 
+@log_call
 def create_workflow(
     project: str, phases: List[str], template: str = "branch-coordination"
 ) -> WorkflowModel:
@@ -298,11 +304,13 @@ def create_workflow(
     return workflow
 
 
+@log_call
 def get_workflow(wf_id: str) -> WorkflowModel | None:
     """Return a workflow by id."""
     return workflows.get(wf_id)
 
 
+@log_call
 def list_workflows(project: str | None = None) -> list[WorkflowModel]:
     """Return workflows optionally filtered by project."""
     if project is None:
@@ -310,6 +318,7 @@ def list_workflows(project: str | None = None) -> list[WorkflowModel]:
     return [wf for wf in workflows.values() if wf.project == project]
 
 
+@log_call
 def assign_reviewer(wf_id: str, user: str) -> WorkflowModel:
     """Assign a reviewer to the workflow."""
     workflow = workflows[wf_id]
@@ -318,6 +327,7 @@ def assign_reviewer(wf_id: str, user: str) -> WorkflowModel:
     return workflow
 
 
+@log_call
 def advance_workflow(wf_id: str) -> WorkflowModel:
     """Move the workflow to the next phase."""
     workflow = workflows[wf_id]
@@ -334,6 +344,7 @@ def advance_workflow(wf_id: str) -> WorkflowModel:
     return workflow
 
 
+@log_call
 def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> WorkflowModel:
     """Attach a document to the workflow and mark it as started."""
 
