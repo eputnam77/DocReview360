@@ -95,7 +95,7 @@ from ..phases import add_phase, delete_phase, list_phases, rename_phase
 from ..plugins import load_plugins
 from ..plugins import registry as plugin_registry
 from ..profile import get_preferences, update_preferences
-from ..rbac import get_roles, require_role
+from ..rbac import get_roles, require_role, has_permission
 from ..reporting import (
     DashboardEntry,
     SummaryReport,
@@ -324,7 +324,26 @@ async def current_user_endpoint(x_user: str | None = Header(None)) -> dict[str, 
     """
     if not x_user:
         raise HTTPException(status_code=401, detail="Missing user")
-    return {"username": x_user, "is_admin": True, "active": auth.is_active(x_user)}
+    roles = list(get_roles(x_user))
+    return {
+        "username": x_user,
+        "is_admin": "admin" in roles,
+        "active": auth.is_active(x_user),
+        "roles": roles,
+    }
+
+
+def require_audit_access(x_user: str | None = Header(None)) -> str:
+    """Ensure the requester may view audit logs and record the attempt."""
+
+    if x_user is None:
+        log_event("audit_log_access", status="denied")
+        raise HTTPException(status_code=401, detail="Missing user")
+    if has_permission(x_user, "view_audit_log"):
+        log_event("audit_log_access", user_id=x_user, status="success")
+        return x_user
+    log_event("audit_log_access", user_id=x_user, status="denied")
+    raise HTTPException(status_code=403, detail="Forbidden")
 
 
 class PreferencePayload(BaseModel):
@@ -750,7 +769,9 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
 
 
 @app.get("/documents/{doc_id}/audit", response_model=list[AuditLogEntry])
-async def get_document_audit_endpoint(doc_id: str) -> list[AuditLogEntry]:
+async def get_document_audit_endpoint(
+    doc_id: str, _: str = Depends(require_audit_access)
+) -> list[AuditLogEntry]:
     """Return audit events for a document."""
     document = get_document(doc_id)
     if document is None:
@@ -1589,13 +1610,21 @@ async def unregister_plugin(name: str) -> Response:
 
 
 @app.get("/logs", response_model=list[LogEntry])
-async def list_logs(action: str | None = None, user_id: str | None = None) -> list[LogEntry]:
+async def list_logs(
+    action: str | None = None,
+    user_id: str | None = None,
+    _: str = Depends(require_audit_access),
+) -> list[LogEntry]:
     """Return recorded logs optionally filtered by action or user."""
     return query_logs(action=action, user_id=user_id)
 
 
 @app.get("/api/audit", response_model=list[LogEntry])
-async def list_audit(action: str | None = None, user_id: str | None = None) -> list[LogEntry]:
+async def list_audit(
+    action: str | None = None,
+    user_id: str | None = None,
+    _: str = Depends(require_audit_access),
+) -> list[LogEntry]:
     """Alias for :func:`list_logs` used by the dashboard."""
     return query_logs(action=action, user_id=user_id)
 
