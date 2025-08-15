@@ -7,7 +7,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Edit3, Users2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { API } from "@/lib/api";
 
 export default function WorkflowDetailPage() {
   const router = useRouter();
@@ -40,7 +39,9 @@ export default function WorkflowDetailPage() {
                     required: true,
                   }))
                 : [];
-          setWorkflow({ ...data, steps });
+          const wfName = data.name ?? data.project ?? data.template ?? data.id;
+          const wfDescription = data.description ?? "";
+          setWorkflow({ ...data, name: wfName, description: wfDescription, steps });
           setLogs(Array.isArray(data.logs) ? data.logs : []);
         }
       })
