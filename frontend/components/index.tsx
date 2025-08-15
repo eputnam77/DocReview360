@@ -54,6 +54,7 @@ export { default as UploadDropzone } from "./workflow/UploadDropzone";
 export { default as SearchBar } from "./SearchBar";
 export { default as ChatBot } from "./ChatBot";
 export { default as EnvironmentSwitcher } from "./EnvironmentSwitcher";
+export { default as PhaseTabs } from "./PhaseTabs";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";
