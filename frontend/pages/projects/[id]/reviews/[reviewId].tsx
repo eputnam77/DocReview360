@@ -232,7 +232,7 @@ export default function ReviewWorkspacePage() {
               <CardTitle>Comments & Disposition</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <Table>
+              <Table caption="Review comments">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Reviewer</TableHead>
@@ -276,7 +276,7 @@ export default function ReviewWorkspacePage() {
               <CardTitle>Disposition Matrix</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <Table>
+              <Table caption="Disposition counts">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Disposition</TableHead>

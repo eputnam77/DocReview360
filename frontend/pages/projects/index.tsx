@@ -164,7 +164,7 @@ export default function ProjectList() {
       </div>
 
       {/* Project Table */}
-      <Table className="min-w-full text-sm rounded-lg overflow-hidden bg-white">
+      <Table caption="Projects" className="min-w-full text-sm rounded-lg overflow-hidden bg-white">
         <TableHeader>
           <TableRow>
             <TableHead

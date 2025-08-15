@@ -3,16 +3,17 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export function Table({
-  className,
-  ...props
-}: React.TableHTMLAttributes<HTMLTableElement>) {
+interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
+  caption: React.ReactNode;
+}
+
+export function Table({ className, caption, children, ...props }: TableProps) {
   return (
     <div className="w-full overflow-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
-      <table
-        className={cn("min-w-full border-collapse text-sm", className)}
-        {...props}
-      />
+      <table className={cn("min-w-full border-collapse text-sm", className)} {...props}>
+        <caption className="sr-only">{caption}</caption>
+        {children}
+      </table>
     </div>
   );
 }
@@ -58,10 +59,12 @@ export function TableRow({
 
 export function TableHead({
   className,
+  scope = "col",
   ...props
 }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
+      scope={scope}
       className={cn(
         "px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200",
         className,

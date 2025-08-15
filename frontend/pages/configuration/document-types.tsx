@@ -293,7 +293,7 @@ export default function DocumentTypesPage() {
         />
         <Button type="submit" size="sm">Add</Button>
       </form>
-      <Table>
+      <Table caption="Document types">
         <TableHeader>
           <TableRow>
             <TableHead>Document Type</TableHead>
@@ -319,13 +319,25 @@ export default function DocumentTypesPage() {
                     <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel</Button>
                   </div>
                 ) : (
-                  <Button variant="ghost" size="icon" onClick={() => startEdit(t)} title="Edit">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => startEdit(t)}
+                    title="Edit"
+                    aria-label="Edit"
+                  >
                     <Pencil className="w-4 h-4" />
                   </Button>
                 )}
               </TableCell>
               <TableCell className="w-20">
-                <Button variant="ghost" size="icon" onClick={() => removeType(t.id)} title="Remove">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeType(t.id)}
+                  title="Remove"
+                  aria-label="Remove"
+                >
                   <Trash className="w-4 h-4 text-red-600" />
                 </Button>
               </TableCell>
