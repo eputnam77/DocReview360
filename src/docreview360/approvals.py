@@ -26,6 +26,7 @@ class ApprovalModel(BaseModel):
     id: str
     workflow: str
     reviewer: str
+    document_id: str | None = None
     state: str = "pending"
     due_at: datetime | None = None
     signature_provider: str = Field(default_factory=get_default_provider)
@@ -42,6 +43,7 @@ approvals: Dict[str, ApprovalModel] = {}
 def create_approval(
     workflow: str,
     reviewer: str,
+    doc_id: str,
     due_at: datetime | None = None,
     description: str | None = None,
     *,
@@ -57,6 +59,7 @@ def create_approval(
         id=approval_id,
         workflow=workflow,
         reviewer=reviewer,
+        document_id=doc_id,
         due_at=due_at,
         description=description,
         signature_provider=signature_provider,
@@ -70,14 +73,16 @@ def create_approval(
         approval_id=approval_id,
         provider=signature_provider,
         document_hash=doc_hash,
+        doc_id=doc_id,
     )
     log_audit_event(
-        approval_id,
-        "created",
+        doc_id,
+        "approval_created",
         user=reviewer,
         workflow=workflow,
         provider=signature_provider,
         document_hash=doc_hash,
+        approval_id=approval_id,
     )
     return approval
 
@@ -85,6 +90,7 @@ def create_approval(
 def submit_draft_for_approval(
     workflow: str,
     reviewer: str,
+    doc_id: str,
     text: str,
     weights: Weights,
     *,
@@ -99,8 +105,8 @@ def submit_draft_for_approval(
     """
     score = approval_likelihood(text, weights)
     if score < threshold:
-        create_approval(workflow, extra_reviewer, description="Auto risk review")
-    return create_approval(workflow, reviewer, description="Primary review")
+        create_approval(workflow, extra_reviewer, doc_id, description="Auto risk review")
+    return create_approval(workflow, reviewer, doc_id, description="Primary review")
 
 
 def get_approval(approval_id: str) -> ApprovalModel | None:
@@ -126,6 +132,7 @@ def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:
 def handle_signature_return(
     signature_id: str,
     *,
+    doc_id: str | None = None,
     document: bytes | None = None,
     certificate_url: str | None = None,
     signed_at: datetime | None = None,
@@ -138,12 +145,16 @@ def handle_signature_return(
     approval = get_approval_by_signature(signature_id)
     if approval is None:
         raise KeyError("approval not found for signature")
+    if doc_id is not None:
+        approval.document_id = doc_id
+    doc_id = approval.document_id
 
     log_event(
         "approval_callback",
         approval_id=approval.id,
         provider=approval.signature_provider,
         signature_id=signature_id,
+        doc_id=doc_id,
     )
 
     if document is not None and approval.document_hash is not None:
@@ -153,6 +164,7 @@ def handle_signature_return(
                 approval_id=approval.id,
                 provider=approval.signature_provider,
                 signature_id=signature_id,
+                doc_id=doc_id,
             )
             raise ValueError("document hash mismatch")
 
@@ -199,10 +211,11 @@ def update_approval_state(
         provider=approval.signature_provider,
         signature_id=approval.signature_id,
         document_hash=approval.document_hash,
+        doc_id=approval.document_id,
         previous_state=previous,
     )
     log_audit_event(
-        approval_id,
+        approval.document_id,
         state,
         user=approval.reviewer,
         provider=approval.signature_provider,
@@ -210,6 +223,7 @@ def update_approval_state(
         document_hash=approval.document_hash,
         previous_state=previous,
         project=project_id,
+        approval_id=approval_id,
     )
     if state == "approved" and wf:
         # check if all approvals done
@@ -221,13 +235,14 @@ def update_approval_state(
             log_event(
                 f"All required approvals completed for project {project_id}",
                 project=project_id,
+                doc_id=approval.document_id,
             )
     return approval
 
 
 def send_for_signature(
     approval_id: str,
-    document_id: str,
+    doc_id: str,
     user: str,
     return_url: str | None = None,
 ) -> str:
@@ -240,8 +255,9 @@ def send_for_signature(
     ``next`` parameter.
     """
     approval = approvals[approval_id]
+    approval.document_id = doc_id
     if approval.document_hash is None:
-        document = get_document(document_id)
+        document = get_document(doc_id)
         if document is None:
             raise KeyError("document not found")
         approval.document_hash = hashlib.sha256(
@@ -256,7 +272,7 @@ def send_for_signature(
 
     provider = get_provider(approval.signature_provider)
     sig_id, url = provider.request_signature(
-        document_id,
+        doc_id,
         user,
         workflow_id=approval.workflow,
         approval_id=approval_id,
@@ -270,15 +286,17 @@ def send_for_signature(
         provider=approval.signature_provider,
         signature_id=sig_id,
         workflow=approval.workflow,
+        doc_id=doc_id,
     )
     log_audit_event(
-        approval_id,
+        doc_id,
         "sent_for_signature",
         user=user,
         provider=approval.signature_provider,
         signature_id=sig_id,
         document_hash=approval.document_hash,
         workflow=approval.workflow,
+        approval_id=approval_id,
     )
     return url
 
@@ -357,14 +375,16 @@ def reset_approval(approval_id: str, confirm: bool) -> bool:
             user=approval.reviewer,
             approval_id=approval_id,
             provider=approval.signature_provider,
+            doc_id=approval.document_id,
             previous_state=previous,
         )
         log_audit_event(
-            approval_id,
+            approval.document_id,
             "reset",
             user=approval.reviewer,
             provider=approval.signature_provider,
             previous_state=previous,
+            approval_id=approval_id,
         )
 
     return task213(confirm, _do_reset)

@@ -159,6 +159,7 @@ class ApprovalCreate(BaseModel):
 
     workflow: str
     reviewer: str
+    doc_id: str
     due_at: datetime | None = None
     description: str | None = None
 
@@ -1294,6 +1295,7 @@ async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
     return create_approval(
         body.workflow,
         body.reviewer,
+        body.doc_id,
         due_at=body.due_at,
         description=body.description,
     )
@@ -1338,7 +1340,8 @@ async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return_to = f"/projects/{wf.project}"
-    url = send_for_signature(approval_id, wf.project, approval.reviewer, return_to)
+    doc_id = approval.document_id or wf.project
+    url = send_for_signature(approval_id, doc_id, approval.reviewer, return_to)
     return {"id": approval.signature_id, "url": url}
 
 
