@@ -272,6 +272,7 @@ def create_workflow(
 
     # Create initial approval entries for each step
     from .approvals import create_approval
+
     for step in approval_steps:
         create_approval(wf_id, step.role, wf_id, due_at=None, description=step.description)
 
@@ -319,13 +320,36 @@ def advance_workflow(wf_id: str) -> WorkflowModel:
 def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> WorkflowModel:
     """Attach a document to the workflow and mark it as started."""
 
+    from .approvals import approvals as approval_store
+    from .audit import log_audit_event
     from .documents import import_document
+    from .logs import log_event
 
     workflow = workflows[wf_id]
     filename = title if title.endswith((".md", ".doc", ".docx")) else f"{title}.md"
     content = data or b"-"
     document = import_document(filename, content, project=workflow.project)
     workflow.document = document.id
+
+    # Ensure all existing approvals reference the newly attached document so
+    # subsequent history logs retain the correct source linkage.
+    for approval in approval_store.values():
+        if approval.workflow == wf_id:
+            if approval.document_id != document.id:
+                approval.document_id = document.id
+                log_event(
+                    "approval_doc_linked",
+                    approval_id=approval.id,
+                    workflow=wf_id,
+                    doc_id=document.id,
+                )
+                log_audit_event(
+                    document.id,
+                    "approval_doc_linked",
+                    approval_id=approval.id,
+                    workflow=wf_id,
+                )
+
     if workflow.phases:
         workflow.phase = workflow.phases[0]
     return workflow
