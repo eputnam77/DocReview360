@@ -15,6 +15,7 @@ import { API } from "@/lib/api";
 import { Pencil, Plus, Trash } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "react-hot-toast";
 
 interface DocType {
   id: string;
@@ -216,11 +217,11 @@ export default function DocumentTypesPage() {
         setTypes(types.filter((t) => t.id !== showDeleteDialog));
       } else {
         const error = await response.json();
-        alert(`Error: ${error.detail}`);
+        toast.error(`Error: ${error.detail}`);
       }
     } catch (error) {
       console.error("Error deleting document type:", error);
-      alert("Error deleting document type");
+      toast.error("Error deleting document type");
     }
     setShowDeleteDialog(null);
     setReplacementDocType("");

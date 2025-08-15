@@ -42,6 +42,18 @@ export function TableBody({
   );
 }
 
+export function TableFooter({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tfoot
+      className={cn("bg-gray-50 dark:bg-gray-900", className)}
+      {...props}
+    />
+  );
+}
+
 export function TableRow({
   className,
   ...props

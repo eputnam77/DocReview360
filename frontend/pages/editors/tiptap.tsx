@@ -1,6 +1,7 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import dynamic from "next/dynamic";
 import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 
 // Core Extensions
 import Collaboration from "@tiptap/extension-collaboration";
@@ -665,7 +666,11 @@ export default function TipTapEditorPage() {
         errorMessage: error instanceof Error ? error.message : 'Unknown error'
       });
       console.error("=== END TEMPLATE LOAD ERROR ===");
-      alert(`Failed to load template: ${filename}\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(
+        `Failed to load template: ${filename}\n\nError: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
     }
   }
 
@@ -847,7 +852,7 @@ export default function TipTapEditorPage() {
           <ImageIcon className="w-4 h-4" />
         </button>
         <button
-          onClick={() => alert(editor.getHTML())}
+          onClick={() => toast.success("Document saved")}
           className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
         >
           Save
