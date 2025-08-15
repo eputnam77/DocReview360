@@ -1,0 +1,44 @@
+import { useQuery } from "@tanstack/react-query";
+import { API } from "./api";
+
+export interface Project {
+  id: string;
+  number: string | number;
+  type: string;
+  title: string;
+  owner: string;
+  status: string;
+  progress: number;
+  updated?: string;
+  editor?: string;
+  workflow?: string;
+  currentPhaseId?: string | null;
+}
+
+export function useProject(id?: string) {
+  return useQuery<Project | null>({
+    queryKey: ["project", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const res = await fetch(`${API}/projects/${id}`);
+      if (!res.ok) {
+        throw new Error("Failed to fetch project");
+      }
+      const proj = await res.json();
+      return {
+        id: proj.id,
+        number: proj.number || 1,
+        type: proj.doc_type || "Unknown",
+        title: proj.name || "Untitled",
+        owner: proj.user || "Unknown",
+        status: proj.status || "Draft",
+        progress: proj.progress || 0,
+        updated: proj.updated || proj.created || new Date().toISOString().split("T")[0],
+        editor: "tiptap",
+        workflow: proj.workflow,
+        currentPhaseId: proj.current_phase_id || proj.phase || null,
+      } as Project;
+    },
+  });
+}
+

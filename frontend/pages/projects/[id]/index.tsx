@@ -8,6 +8,10 @@ import { API } from "@/lib/api";
 import PhaseTabs from "@/components/PhaseTabs";
 import { ApprovalTable } from "@/components";
 import { cn } from "@/lib/utils";
+import { useProject } from "@/lib/useProject";
+import { usePhases } from "@/lib/usePhases";
+import { useApprovals } from "@/lib/useApprovals";
+import { useReviewSummary } from "@/lib/useReviewSummary";
 import { useUserStore } from "@/state/user";
 import { Disclosure, Transition } from "@headlessui/react";
 import {
@@ -259,7 +263,6 @@ export default function ProjectDetailsPage() {
     [approvals, project?.currentPhaseId],
   );
 
-  const [loading, setLoading] = useState(true);
   const [showVersions, setShowVersions] = useState(false);
 
   // ▼ permission based on logged in user
@@ -281,119 +284,35 @@ export default function ProjectDetailsPage() {
     return map;
   }, [approvals]);
 
-  // ▼ fetch data from API
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    console.log('Fetching project data from:', `${API}/projects/${id}`);
-    fetch(`${API}/projects/${id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(async (proj) => {
-        // Map backend data to frontend interface
-        const mappedProject: Project = {
-          id: proj.id,
-          number: proj.number || 1,
-          type: proj.doc_type || "Unknown",
-          title: proj.name || "Untitled",
-          owner: proj.user || "Unknown",
-          status: proj.status || "Draft",
-          progress: proj.progress || 0, // Use backend progress if available
-          updated: proj.updated || proj.created || new Date().toISOString().split('T')[0],
-          editor: "tiptap", // Default editor
-          currentPhaseId: proj.current_phase_id || proj.phase || null,
-        };
-        setProject(mappedProject);
-        
-        // Load workflow and approvals if project has a workflow
-        if (proj.workflow) {
-          console.log('Project has workflow:', proj.workflow);
-          
-          // Fetch workflow details
-          try {
-            const wfRes = await fetch(`${API}/workflows/${proj.workflow}`);
-            if (wfRes.ok) {
-              const workflowData = await wfRes.json();
-              console.log('Workflow data:', workflowData);
-              setWorkflow(workflowData);
-            }
-          } catch (error) {
-            console.error('Error fetching workflow:', error);
-          }
-          
-          // Fetch approvals for this workflow
-          try {
-            const phaseParam = mappedProject.currentPhaseId
-              ? `&phase=${encodeURIComponent(mappedProject.currentPhaseId)}`
-              : "";
-            const apRes = await fetch(
-              `${API}/approvals?workflow=${proj.workflow}${phaseParam}`,
-            );
-            if (apRes.ok) {
-              const approvalsData = await apRes.json();
-              console.log('Approvals data:', approvalsData);
-              // Map backend approval data to frontend interface
-              const mappedApprovals = approvalsData.map((approval: any) => ({
-                id: approval.id,
-                reviewer: approval.reviewer,
-                email: approval.reviewer, // Use reviewer as email since backend doesn't have separate email field
-                state: approval.state,
-                dueAt:
-                  approval.due_at || new Date().toISOString().split('T')[0],
-                signedAt: approval.signed_at,
-                comments: approval.comments || '',
-                documensoSigId: approval.signature,
-                description: approval.description, // Add description from backend
-                phaseId: approval.phase_id,
-                required: approval.required,
-              }));
-              setApprovals(mappedApprovals);
-            }
-          } catch (error) {
-            console.error('Error fetching approvals:', error);
-            setApprovals([]); // Set empty array on error
-          }
+  // ▼ data hooks
+  const { data: projectData, isLoading: projectLoading } = useProject(id as string);
+  const { data: workflowData, isLoading: phasesLoading } = usePhases(projectData?.workflow);
+  const {
+    approvals: approvalsData,
+    approve,
+    reset,
+    remind,
+    isLoading: approvalsLoading,
+  } = useApprovals({ workflow: projectData?.workflow, phase: projectData?.currentPhaseId });
+  const { data: reviewCountData, isLoading: reviewLoading } = useReviewSummary(
+    projectData?.id,
+    projectData?.currentPhaseId,
+  );
 
-          // Fetch review summary for current phase
-          try {
-            const revPhase = mappedProject.currentPhaseId
-              ? `?phase=${encodeURIComponent(mappedProject.currentPhaseId)}`
-              : "";
-            const revRes = await fetch(
-              `${API}/projects/${proj.id}/reviews${revPhase}`,
-            );
-            if (revRes.ok) {
-              const reviewsData = await revRes.json();
-              setReviewCount(Array.isArray(reviewsData) ? reviewsData.length : 0);
-            } else {
-              setReviewCount(0);
-            }
-          } catch (error) {
-            console.error('Error fetching reviews:', error);
-            setReviewCount(0);
-          }
-        } else {
-          console.log('Project has no workflow');
-          setWorkflow(null);
-          setApprovals([]);
-          setReviewCount(0);
-        }
-        
-        // Set other data (placeholder until API provides it)
-        setDispos([]);
-        setRefDocs([]);
-        setLogs([]);
-      })
-      .catch((error) => {
-        console.error('API call failed:', error);
-        setProject(null);
-        setWorkflow(null);
-        setApprovals([]);
-        setDispos([]);
-        setRefDocs([]);
-        setLogs([]);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+  useEffect(() => {
+    setProject(projectData ?? null);
+  }, [projectData]);
+  useEffect(() => {
+    setWorkflow(workflowData ?? null);
+  }, [workflowData]);
+  useEffect(() => {
+    setApprovals(approvalsData ?? []);
+  }, [approvalsData]);
+  useEffect(() => {
+    setReviewCount(reviewCountData ?? 0);
+  }, [reviewCountData]);
+
+  const loading = projectLoading || phasesLoading || approvalsLoading || reviewLoading;
 
   // ▼ check for completed signatures on page load
   useEffect(() => {
@@ -465,11 +384,10 @@ export default function ProjectDetailsPage() {
         (ids ? ids.includes(a.id) : true) &&
         (a.state === "pending" || a.state === "overdue"),
     );
-    const emails = targets.map((a) => a.email);
-    toast.success("Reminder sent to: " + emails.join(", "));
+    remind(targets.map((a) => a.id));
   };
 
-  const signApproval = (aid: string) => {
+  const signApproval = async (aid: string) => {
     const existing = approvals.find((a) => a.id === aid);
     if (existing?.state === "approved") {
       toast.error("Approval already completed.");
@@ -479,73 +397,28 @@ export default function ProjectDetailsPage() {
       toast.error("You are not assigned to this approval.");
       return;
     }
-
-    console.log(`Starting signature process for approval ${aid}`);
-
-    // Show loading state
-    setApprovals((prev) =>
-      prev.map((a) =>
-        a.id === aid ? { ...a, state: "pending" as const } : a,
-      ),
-    );
-
-    fetch(`${API}/approvals/${aid}/sign`, {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json',
+    try {
+      const data = await approve(aid);
+      const sigId = data?.id ?? data?.signature?.id;
+      if (sigId) {
+        router.push(
+          `/documenso/${encodeURIComponent(String(sigId))}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${encodeURIComponent(aid)}`,
+        );
       }
-    })
-      .then((r) => {
-        console.log(`Signature request response: ${r.status} ${r.statusText}`);
-        if (!r.ok) {
-          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-        }
-        return r.json();
-      })
-      .then((d) => {
-        console.log(`Signature request successful:`, d);
-        // Prefer local Documenso page route over external URL
-        const sigId = d?.id ?? d?.signature?.id;
-        if (!sigId) {
-          throw new Error("Missing signature id in response");
-        }
-
-        // Update local state with signature ID
-        setApprovals((prev) =>
-          prev.map((a) =>
-            a.id === aid ? { ...a, documensoSigId: sigId } : a,
-          ),
-        );
-
-        // Redirect to our internal Documenso page
-        const internalUrl = `/documenso/${encodeURIComponent(String(sigId))}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${encodeURIComponent(aid)}`;
-        console.log(`Redirecting to: ${internalUrl}`);
-        router.push(internalUrl);
-      })
-      .catch((error) => {
-        console.error("Signature request failed:", error);
-        toast.error(`Failed to start signing: ${error.message}`);
-
-        // Reset approval state on error
-        setApprovals((prev) =>
-          prev.map((a) =>
-            a.id === aid ? { ...a, state: "pending" as const } : a,
-          ),
-        );
-      });
+    } catch {
+      /* handled in hook */
+    }
   };
 
-  const resetApprovalLocal = (aid: string) => {
+  const resetApprovalLocal = async (aid: string) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(`approval-${aid}`);
     }
-    setApprovals((prev) =>
-      prev.map((a) =>
-        a.id === aid
-          ? { ...a, state: "pending", signedAt: undefined, documensoSigId: undefined }
-          : a,
-      ),
-    );
+    try {
+      await reset(aid);
+    } catch {
+      /* handled in hook */
+    }
   };
 
   const syncApprovalWithBackend = async (approvalId: string, signatureId: string) => {
@@ -611,7 +484,14 @@ export default function ProjectDetailsPage() {
     }
   }, [approvalsForPhase, isOwner]);
 
-  if (loading) return <p className="p-4">Loading…</p>;
+  if (loading)
+    return (
+      <div className="p-4 space-y-4 animate-pulse">
+        <div className="h-6 w-1/3 bg-gray-200 rounded" />
+        <div className="h-4 w-full bg-gray-200 rounded" />
+        <div className="h-4 w-5/6 bg-gray-200 rounded" />
+      </div>
+    );
   if (!project) return <p className="p-4">Project not found.</p>;
 
   const editorURL = `/editors/${project.editor ?? "tiptap"}?projectId=${project.id}`;
