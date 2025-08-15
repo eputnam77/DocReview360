@@ -20,7 +20,7 @@ def test_approve_triggers_envelope_and_audit_hash(monkeypatch: pytest.MonkeyPatc
 
 def test_delegated_signoff_records_delegate(monkeypatch: pytest.MonkeyPatch) -> None:
     clear_logs()
-    log_event("signoff", actor="delegate", actor_type="delegate", manager="boss")
+    log_event("signoff", user_id="delegate", actor_type="delegate", manager="boss")
     entry = query_logs("signoff")[0]
     assert entry.context["actor_type"] == "delegate"
     assert entry.context["manager"] == "boss"

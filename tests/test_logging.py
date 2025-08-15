@@ -29,4 +29,4 @@ def test_logging_records_actions() -> None:
     resp = client.get("/logs", params={"action": "import_document"})
     filtered = resp.json()
     assert len(filtered) == 1
-    assert filtered[0]["metadata"]["filename"] == "doc.md"
+    assert filtered[0]["details"]["filename"] == "doc.md"

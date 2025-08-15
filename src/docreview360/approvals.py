@@ -80,7 +80,7 @@ def create_approval(
         pass
     log_event(
         "approval_created",
-        actor=reviewer,
+        user_id=reviewer,
         workflow=workflow,
         approval_id=approval_id,
         provider=signature_provider,
@@ -313,7 +313,7 @@ async def update_approval_state(
     project_id = wf.project if wf else ""
     log_event(
         f"approval_{state}",
-        actor=approval.reviewer,
+        user_id=approval.reviewer,
         project=project_id,
         approval_id=approval_id,
         provider=approval.signature_provider,
@@ -382,7 +382,7 @@ def send_for_signature(
     approval.provider_metadata = meta
     log_event(
         "approval_sent_for_signature",
-        actor=user,
+        user_id=user,
         approval_id=approval_id,
         provider=approval.signature_provider,
         signature_id=sig_id,
@@ -494,7 +494,7 @@ def reset_approval(
         approval.provider_metadata = {}
         log_event(
             "approval_reset",
-            actor=username,
+            user_id=username,
             approval_id=approval_id,
             provider=approval.signature_provider,
             doc_id=approval.document_id,
