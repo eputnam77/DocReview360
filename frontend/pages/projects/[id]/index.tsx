@@ -4,22 +4,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
 import { API } from "@/lib/api";
 import PhaseTabs from "@/components/PhaseTabs";
+import { ApprovalTable } from "@/components";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
-import { Disclosure, Menu, Transition } from "@headlessui/react";
+import { Disclosure, Transition } from "@headlessui/react";
 import {
     BarChart2,
-    Check,
     CheckCircle2,
     Clock,
     Download,
@@ -27,8 +19,6 @@ import {
     History,
     LayoutList,
     Mail,
-    MoreHorizontal,
-    Trash,
     Users2
 } from "lucide-react";
 import Link from "next/link";
@@ -40,6 +30,7 @@ import React, {
     useMemo,
     useState,
 } from "react";
+import { toast } from "react-hot-toast";
 
 // ---------------------------------------------------------------------------
 // 1 ▲ Types
@@ -74,7 +65,7 @@ interface Approval {
   reviewer: string;
   email: string;
   state: "pending" | "approved" | "overdue" | "rejected";
-  statusDate: string;
+  dueAt: string;
   signedAt?: string;
   comments?: string;
   documensoSigId?: string;
@@ -138,30 +129,6 @@ function ProgBar({ value }: { value: number }) {
         style={{ width: `${pct}%` }}
       />
     </div>
-  );
-}
-
-// Row action menu
-function RowMenu({ children }: { children: React.ReactNode }) {
-  return (
-    <Menu as="div" className="relative inline-block text-left">
-      <Menu.Button className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring">
-        <MoreHorizontal className="w-4 h-4" />
-      </Menu.Button>
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
-      >
-        <Menu.Items className="absolute right-0 z-20 mt-2 w-48 rounded-md bg-white dark:bg-gray-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-          {children}
-        </Menu.Items>
-      </Transition>
-    </Menu>
   );
 }
 
@@ -235,7 +202,6 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
   const [refDocs, setRefDocs] = useState<RefDoc[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [versions] = useState<VersionEntry[]>([]);
@@ -327,7 +293,7 @@ export default function ProjectDetailsPage() {
                 reviewer: approval.reviewer,
                 email: approval.reviewer, // Use reviewer as email since backend doesn't have separate email field
                 state: approval.state,
-                statusDate:
+                dueAt:
                   approval.due_at || new Date().toISOString().split('T')[0],
                 signedAt: approval.signed_at,
                 comments: approval.comments || '',
@@ -449,22 +415,24 @@ export default function ProjectDetailsPage() {
     [workflow],
   );
 
-  const toggleSelect = (aid: string) =>
-    setSelected((prev) =>
-      prev.includes(aid) ? prev.filter((x) => x !== aid) : [...prev, aid],
+  const sendReminder = (ids?: string[]) => {
+    const targets = approvalsForPhase.filter(
+      (a) =>
+        (ids ? ids.includes(a.id) : true) &&
+        (a.state === "pending" || a.state === "overdue"),
     );
-
-  const sendReminder = () => {
-    const emails = approvalsForPhase
-      .filter((a) => a.state === "pending" || a.state === "overdue")
-      .map((a) => a.email);
-    alert("Reminder sent to: " + emails.join(", "));
+    const emails = targets.map((a) => a.email);
+    toast.success("Reminder sent to: " + emails.join(", "));
   };
 
   const signApproval = (aid: string) => {
     const existing = approvals.find((a) => a.id === aid);
     if (existing?.state === "approved") {
-      alert("Approval already completed.");
+      toast.error("Approval already completed.");
+      return;
+    }
+    if (existing?.reviewer !== user?.name) {
+      toast.error("You are not assigned to this approval.");
       return;
     }
 
@@ -512,7 +480,7 @@ export default function ProjectDetailsPage() {
       })
       .catch((error) => {
         console.error("Signature request failed:", error);
-        alert(`Failed to start signing: ${error.message}`);
+        toast.error(`Failed to start signing: ${error.message}`);
 
         // Reset approval state on error
         setApprovals((prev) =>
@@ -592,7 +560,7 @@ export default function ProjectDetailsPage() {
     if (!isOwner) return;
     const overdue = approvalsForPhase.filter((a) => a.state === "overdue");
     if (overdue.length > 0) {
-      alert(
+      toast.error(
         "Escalation: overdue approvals - " +
           overdue.map((o) => o.reviewer).join(", "),
       );
@@ -819,177 +787,25 @@ export default function ProjectDetailsPage() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <Users2 className="w-5 h-5" /> Approvals
             </h2>
-            {isOwner && (
-              <Button size="sm" onClick={sendReminder}>
-                <Mail className="w-4 h-4 mr-1" /> Remind Pending
-              </Button>
-            )}
+              {isOwner && (
+                <Button size="sm" onClick={() => sendReminder()}>
+                  <Mail className="w-4 h-4 mr-1" /> Remind Pending
+                </Button>
+              )}
           </div>
           <Card>
             <CardContent className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      <input
-                        type="checkbox"
-                        aria-label="Select all"
-                        checked={
-                          selected.length === approvalsForPhase.length &&
-                          approvalsForPhase.length > 0
-                        }
-                        onChange={(e) =>
-                          setSelected(
-                            e.target.checked
-                              ? approvalsForPhase.map((a) => a.id)
-                              : [],
-                          )
-                        }
-                      />
-                    </TableHead>
-                    <TableHead>Reviewer</TableHead>
-                    <TableHead>Role/Description</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Signed At</TableHead>
-                    <TableHead>Comments</TableHead>
-                    {canEdit && <TableHead />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {approvalsForPhase.length > 0 ? (
-                    approvalsForPhase.map((a) => (
-                      <TableRow key={a.id} className="group">
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={selected.includes(a.id)}
-                            onChange={() => toggleSelect(a.id)}
-                          />
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {a.reviewer}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
-                          {a.description || "—"}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={classNames(
-                              "px-2 py-0.5 rounded-full text-xs font-semibold capitalize",
-                              a.state === "approved" &&
-                                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-                              a.state === "pending" &&
-                                "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-                              a.state === "overdue" &&
-                                "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-                              a.state === "rejected" &&
-                                "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-                            )}
-                          >
-                            {a.state}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {a.signedAt
-                            ? new Date(a.signedAt).toLocaleString()
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
-                          {a.comments || "—"}
-                        </TableCell>
-                        {canEdit && (
-                          <TableCell className="text-right">
-                            <RowMenu>
-                              <Menu.Item as={Fragment}>
-                                {({ active, close }) => (
-                                  <button
-                                    className={classNames(
-                                      "w-full px-3 py-2 text-left text-sm",
-                                      active && "bg-indigo-50 dark:bg-gray-800",
-                                    )}
-                                    onClick={() => {
-                                      close();
-                                      signApproval(a.id);
-                                    }}
-                                  >
-                                    {" "}
-                                    <Check className="w-4 h-4 inline mr-2" /> Sign
-                                    / Approve
-                                  </button>
-                                )}
-                              </Menu.Item>
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    className={classNames(
-                                      "w-full px-3 py-2 text-left text-sm",
-                                      active && "bg-indigo-50 dark:bg-gray-800",
-                                    )}
-                                    onClick={() => resetApprovalLocal(a.id)}
-                                  >
-                                    {" "}
-                                    <RotateCcw className="w-4 h-4 inline mr-2" />
-                                    Reset
-                                  </button>
-                                )}
-                              </Menu.Item>
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    className={classNames(
-                                      "w-full px-3 py-2 text-left text-sm",
-                                      active && "bg-indigo-50 dark:bg-gray-800",
-                                    )}
-                                    onClick={() => alert("Email")}
-                                  >
-                                    {" "}
-                                    <Mail className="w-4 h-4 inline mr-2" /> Send
-                                    email
-                                  </button>
-                                )}
-                              </Menu.Item>
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    className={classNames(
-                                      "w-full px-3 py-2 text-left text-sm text-red-600",
-                                      active && "bg-indigo-50 dark:bg-gray-800",
-                                    )}
-                                    onClick={() =>
-                                      setApprovals(
-                                        approvals.filter((x) => x.id !== a.id),
-                                      )
-                                    }
-                                  >
-                                    {" "}
-                                    <Trash className="w-4 h-4 inline mr-2" />{" "}
-                                    Remove
-                                  </button>
-                                )}
-                              </Menu.Item>
-                            </RowMenu>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8">
-                        <div className="text-gray-500 dark:text-gray-400">
-                          <Users2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm font-medium">No approvals configured</p>
-                          <p className="text-xs mt-1">
-                            {workflow ? 
-                              `This project uses the "${workflow.phase}" workflow. Approvals will appear here once they are added.` :
-                              "This project has no workflow configured. Add a workflow to enable approvals."
-                            }
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <ApprovalTable
+                approvals={approvalsForPhase}
+                currentUser={user?.name}
+                canEdit={canEdit}
+                onSign={signApproval}
+                onReset={resetApprovalLocal}
+                onRemove={(id) =>
+                  setApprovals((prev) => prev.filter((x) => x.id !== id))
+                }
+                onBulkReminder={(ids) => sendReminder(ids)}
+              />
             </CardContent>
           </Card>
         </section>
