@@ -55,6 +55,10 @@ def archive_document(
     meta = metadata.copy() if metadata else {}
     meta.setdefault("version_summary", f"v{len(document.history) + 1}")
     meta.setdefault("retention_policy", "standard")
+    if document.public_copy:
+        meta.setdefault("public_copy", True)
+    if document.source_document_id:
+        meta.setdefault("source_doc_id", document.source_document_id)
     meta_output = {
         "doc_id": document.id,
         **meta,
