@@ -288,7 +288,7 @@ export default function PhasesPage() {
           Add
         </Button>
       </form>
-      <Table>
+      <Table caption="Phases">
         <TableHeader>
           <TableRow>
             <TableHead>Phase</TableHead>
@@ -327,6 +327,7 @@ export default function PhasesPage() {
                     size="icon"
                     onClick={() => startEdit(p)}
                     title="Edit"
+                    aria-label="Edit"
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -338,6 +339,7 @@ export default function PhasesPage() {
                   size="icon"
                   onClick={() => removePhase(p.id)}
                   title="Remove"
+                  aria-label="Remove"
                 >
                   <Trash className="w-4 h-4 text-red-600" />
                 </Button>

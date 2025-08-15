@@ -148,7 +148,7 @@ export default function EditWorkflowPage() {
               Add Step
             </Button>
           </form>
-          <Table>
+          <Table caption="Workflow steps">
             <TableHeader>
               <TableRow>
                 <TableHead>Order</TableHead>
@@ -196,6 +196,7 @@ export default function EditWorkflowPage() {
                       variant="ghost"
                       size="icon"
                       title="Remove step"
+                      aria-label="Remove step"
                       onClick={() => removeStep(s.id)}
                     >
                       <Trash className="w-4 h-4" />

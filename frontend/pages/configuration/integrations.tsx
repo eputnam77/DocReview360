@@ -327,7 +327,7 @@ export default function IntegrationsPage() {
             Add
           </Button>
         </form>
-        <Table>
+        <Table caption="Integrations">
           <TableHeader>
             <TableRow>
               <TableHead>Key</TableHead>
@@ -410,6 +410,7 @@ export default function IntegrationsPage() {
                         setEditValue(String(v));
                       }}
                       title="Edit"
+                      aria-label="Edit"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -425,6 +426,7 @@ export default function IntegrationsPage() {
                       setConfig(copy);
                     }}
                     title="Remove"
+                    aria-label="Remove"
                   >
                     <Trash className="w-4 h-4 text-red-600" />
                   </Button>

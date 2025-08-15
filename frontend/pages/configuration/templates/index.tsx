@@ -100,7 +100,7 @@ export default function TemplatesIndex() {
         </Button>
       </div>
 
-      <Table className="min-w-full text-sm">
+      <Table caption="Templates" className="min-w-full text-sm">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
@@ -124,6 +124,7 @@ export default function TemplatesIndex() {
                   variant="ghost"
                   size="icon"
                   title="View or Download"
+                  aria-label="View or Download"
                   onClick={() => handleDownload(t)}
                 >
                   {t.format && ["DOCX", "HTML", "XML", "JSON", "TXT"].includes(t.format)
@@ -133,7 +134,11 @@ export default function TemplatesIndex() {
               </TableCell>
               <TableCell className="w-14">
                 <Button variant="ghost" size="icon" asChild>
-                  <Link href={`/configuration/templates/edit?id=${t.id}`} title="Edit">
+                  <Link
+                    href={`/configuration/templates/edit?id=${t.id}`}
+                    title="Edit"
+                    aria-label="Edit"
+                  >
                     <Pencil className="w-4 h-4" />
                   </Link>
                 </Button>
@@ -143,6 +148,7 @@ export default function TemplatesIndex() {
                   variant="ghost"
                   size="icon"
                   title="Remove"
+                  aria-label="Remove"
                   onClick={() => removeTemplate(t.id)}
                 >
                   <Trash className="w-4 h-4 text-red-600" />
@@ -177,7 +183,7 @@ export default function TemplatesIndex() {
         </Button>
       </div>
 
-      <Table className="min-w-full text-sm mt-4">
+      <Table caption="Email templates" className="min-w-full text-sm mt-4">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
@@ -195,13 +201,23 @@ export default function TemplatesIndex() {
               <TableCell>{t.task || <span className="text-gray-400">—</span>}</TableCell>
               <TableCell className="w-14">
                 <Button variant="ghost" size="icon" asChild>
-                  <Link href={`/configuration/templates/edit-email?id=${t.name}`} title="Edit">
+                  <Link
+                    href={`/configuration/templates/edit-email?id=${t.name}`}
+                    title="Edit"
+                    aria-label="Edit"
+                  >
                     <Pencil className="w-4 h-4" />
                   </Link>
                 </Button>
               </TableCell>
               <TableCell className="w-14">
-                <Button variant="ghost" size="icon" title="Remove" onClick={() => removeEmail(t.name)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Remove"
+                  aria-label="Remove"
+                  onClick={() => removeEmail(t.name)}
+                >
                   <Trash className="w-4 h-4 text-red-600" />
                 </Button>
               </TableCell>
