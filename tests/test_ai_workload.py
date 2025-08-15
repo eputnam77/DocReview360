@@ -42,7 +42,7 @@ def test_balancer_blocks_overloaded_writer() -> None:
 
 def daily_auto_assign(user: str) -> None:
     """Simulate daily job assigning an item and logging the rule."""
-    log_event("auto_assign", actor=user, rule="least_loaded")
+    log_event("auto_assign", user_id=user, rule="least_loaded")
 
 
 def test_auto_assign_audit_and_tooltip() -> None:
