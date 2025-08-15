@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, ForeignKey, String
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -106,3 +109,19 @@ class Plugin(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     type: Mapped[str] = mapped_column(String(20), index=True)
+
+
+class AuditLog(Base):
+    """Database model storing audit log entries."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    user_id: Mapped[str | None] = mapped_column(String, index=True)
+    action: Mapped[str] = mapped_column(String, index=True)
+    entity_id: Mapped[str | None] = mapped_column(String, index=True)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    severity: Mapped[str] = mapped_column(String, default="info")
+    ip_address: Mapped[str | None] = mapped_column(String)
+
