@@ -104,7 +104,7 @@ export default function PhasesPage() {
 
     (async () => {
       try {
-        const r = await fetch(`${API}/phases`);
+        const r = await fetch("/api/phases");
         if (r.ok) {
           const data = await r.json();
           setPhases(normalizePhases(data));
@@ -116,7 +116,7 @@ export default function PhasesPage() {
       }
 
       try {
-        const r = await fetch(`${API}/workflows`);
+        const r = await fetch("/api/workflows");
         if (r.ok) {
           const data = await r.json();
           setWorkflows(normalizeWorkflows(data));
