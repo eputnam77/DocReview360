@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
@@ -17,6 +19,8 @@ def test_import_and_edit_document() -> None:
     doc = resp.json()
     doc_id = doc["id"]
     assert doc["content"].startswith("# Title")
+    expected_hash = hashlib.sha256(content.encode()).hexdigest()
+    assert doc["ingestion_hash"] == expected_hash
 
     resp = client.get("/documents")
     assert any(d["id"] == doc_id for d in resp.json())
