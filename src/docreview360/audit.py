@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,41 +28,46 @@ except Exception:  # pragma: no cover
             return {}
 
 
-class AuditEvent(BaseModel):
-    """Structured audit log entry.
+class AuditLogEntry(BaseModel):
+    """Structured, optionally signed audit log entry."""
 
-    The canonical schema contains four top‑level fields:
-
-    ``timestamp`` – when the event occurred (UTC).
-    ``actor`` – who triggered the event, if known.
-    ``action`` – description of what happened.
-    ``context`` – free‑form key/value metadata providing additional detail.
-    """
-
-    timestamp: datetime = Field()
-    actor: Optional[str] = None
-    action: str
+    event: str
+    document_id: str
+    approval_id: Optional[str] = None
+    status: str = Field(default="unknown")
+    hash: str = Field(description="SHA256 or HMAC signature of the entry")
+    certificate_url: Optional[str] = None
+    verified_at: datetime = Field()
+    verifier: Optional[str] = None
     context: Dict[str, Any] = Field(default_factory=dict)
 
     # Backwards compatibility aliases -------------------------------------
     @property
-    def user(self) -> Optional[str]:  # pragma: no cover - trivial accessor
-        return self.actor
+    def action(self) -> str:  # pragma: no cover - trivial accessor
+        return self.event
 
     @property
-    def event(self) -> str:  # pragma: no cover - trivial accessor
-        return self.action
+    def doc_id(self) -> str:  # pragma: no cover - trivial accessor
+        return self.document_id
 
     @property
-    def details(self) -> Dict[str, Any]:  # pragma: no cover - trivial accessor
-        return self.context
+    def actor(self) -> Optional[str]:  # pragma: no cover - trivial accessor
+        return self.verifier
+
+    @property
+    def timestamp(self) -> datetime:  # pragma: no cover - trivial accessor
+        return self.verified_at
 
     @property
     def metadata(self) -> Dict[str, Any]:  # pragma: no cover - trivial accessor
         return self.context
 
+    @property
+    def details(self) -> Dict[str, Any]:  # pragma: no cover - trivial accessor
+        return self.context
 
-AUDIT_EVENT_SCHEMA: Dict[str, Any] = AuditEvent.model_json_schema()
+
+AUDIT_LOG_SCHEMA: Dict[str, Any] = AuditLogEntry.model_json_schema()
 
 
 # append-only datastore -----------------------------------------------------
@@ -68,45 +75,58 @@ AUDIT_EVENT_SCHEMA: Dict[str, Any] = AuditEvent.model_json_schema()
 _AUDIT_LOG_PATH = Path(__file__).with_name("audit.log")
 
 
+def _compute_hash(data: Dict[str, Any], secret: str | None) -> str:
+    payload = json.dumps(data, sort_keys=True, default=str).encode()
+    if secret:
+        return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    return hashlib.sha256(payload).hexdigest()
+
+
 def log_audit_event(
-    doc_id: str,
-    action: str,
+    document_id: str,
+    event: str,
     actor: str | None = None,
     *,
-    ip_address: str | None = None,
-    provider: str | None = None,
-    signature_id: str | None = None,
-    document_hash: str | None = None,
+    approval_id: str | None = None,
+    status: str | None = None,
+    certificate_url: str | None = None,
+    verifier: str | None = None,
+    verified_at: datetime | None = None,
+    secret: str | None = None,
     **context: Any,
-) -> AuditEvent:
-    """Record an :class:`AuditEvent` for ``doc_id`` and return it."""
+) -> AuditLogEntry:
+    """Record an :class:`AuditLogEntry` for ``document_id`` and return it."""
 
-    entry = AuditEvent(
-        timestamp=datetime.now(timezone.utc),
-        action=action,
-        actor=actor,
-        context={
-            "doc_id": doc_id,
-            "ip_address": ip_address,
-            "provider": provider,
-            "signature_id": signature_id,
-            "document_hash": document_hash,
-            **context,
-        },
+    if verified_at is None:
+        verified_at = datetime.now(timezone.utc)
+    if verifier is None and actor is not None:
+        verifier = actor
+    entry = AuditLogEntry(
+        event=event,
+        document_id=document_id,
+        approval_id=approval_id or context.pop("approval_id", None),
+        status=status or context.pop("status", "unknown"),
+        certificate_url=certificate_url or context.pop("certificate_url", None),
+        verified_at=verified_at,
+        verifier=verifier,
+        hash="",
+        context=context,
     )
-
     data = entry.model_dump()
-    data["timestamp"] = entry.timestamp.isoformat()
+    data_without_hash = {k: v for k, v in data.items() if k != "hash"}
+    entry.hash = _compute_hash(data_without_hash, secret)
+    data["hash"] = entry.hash
+    data["verified_at"] = entry.verified_at.isoformat()
     _AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _AUDIT_LOG_PATH.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(data) + "\n")
     return entry
 
 
-def get_audit_log(doc_id: str) -> List[AuditEvent]:
-    """Return the audit log for ``doc_id``."""
+def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogEntry]:
+    """Return the audit log for ``document_id``."""
 
-    events: List[AuditEvent] = []
+    events: List[AuditLogEntry] = []
     if not _AUDIT_LOG_PATH.exists():
         return events
     with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
@@ -115,11 +135,14 @@ def get_audit_log(doc_id: str) -> List[AuditEvent]:
                 data = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if data.get("context", {}).get("doc_id") != doc_id:
+            if data.get("document_id") != document_id:
                 continue
             try:
-                data["timestamp"] = datetime.fromisoformat(data["timestamp"])
-                events.append(AuditEvent(**data))
+                expected = _compute_hash({k: v for k, v in data.items() if k != "hash"}, secret)
+                if secret and not hmac.compare_digest(expected, data.get("hash", "")):
+                    continue
+                data["verified_at"] = datetime.fromisoformat(data["verified_at"])
+                events.append(AuditLogEntry(**data))
             except Exception:
                 continue
     return events
