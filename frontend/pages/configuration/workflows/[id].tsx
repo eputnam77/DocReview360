@@ -18,7 +18,8 @@ export default function WorkflowDetailPage() {
   useEffect(() => {
     if (!id) return;
     const wfId = String(id);
-    fetch(`${API}/workflows/${wfId}`)
+    // Retrieve workflow details via local API route
+    fetch(`/api/workflows/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {

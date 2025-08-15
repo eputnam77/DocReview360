@@ -87,8 +87,8 @@ export default function DocumentTypesPage() {
       }
     }
 
-    // Fetch document types
-    fetch(`${API}/document-types`)
+    // Fetch document types via Next.js API route to avoid CORS issues
+    fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         const list = normalizeDocTypes(data);
@@ -96,8 +96,8 @@ export default function DocumentTypesPage() {
       })
       .catch(() => setTypes(DEFAULT_TYPES));
 
-    // Fetch phases
-    fetch(`${API}/phases`)
+    // Fetch phases through the local API route
+    fetch("/api/phases")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: string[]) => setPhases(data.length ? data : DEFAULT_PHASES))
       .catch(() => setPhases(DEFAULT_PHASES));

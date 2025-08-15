@@ -28,7 +28,8 @@ export default function NewWorkflowPage() {
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/document-types`)
+    // Load document types through API route
+    fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         setDocTypes(data.map((d) => (typeof d === "string" ? d : d.name)));
