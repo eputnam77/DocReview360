@@ -18,6 +18,10 @@ def test_signature_flow() -> None:
     assert "url" in resp.json()
     status = client.get(f"/sign/{sig_id}").json()["status"]
     assert status == "pending"
-    client.post("/hooks/documenso", json={"id": sig_id, "status": "signed"})
+    client.post(
+        "/hooks",
+        headers={"X-Provider": "documenso"},
+        json={"id": sig_id, "status": "signed"},
+    )
     status2 = client.get(f"/sign/{sig_id}").json()["status"]
     assert status2 == "signed"
