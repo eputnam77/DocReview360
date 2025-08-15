@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, computed_field
 
 
 class DocumentTypeModel(BaseModel):
@@ -17,6 +17,16 @@ class DocumentTypeModel(BaseModel):
     # Use ``default_factory`` to avoid shared mutable defaults between instances
     workflow: List[str] = Field(default_factory=list)
     default_template_id: str | None = None
+
+    @computed_field(return_type=str)
+    def id(self) -> str:
+        """Expose ``name`` under an ``id`` field for frontend compatibility."""
+        return self.name
+
+    @computed_field(return_type=list[str])
+    def phases(self) -> list[str]:
+        """Surface ``workflow`` as ``phases`` for consumers expecting that key."""
+        return self.workflow
 
 
 document_types: Dict[str, DocumentTypeModel] = {}
@@ -52,9 +62,8 @@ def _bootstrap_sample() -> None:
             document_types[name] = DocumentTypeModel(
                 name=name,
                 template=f"<h1>{name}</h1>",
-                workflow=["draft", "review", "final"],
+                workflow=[],
             )
-
 
 
 _bootstrap_sample()
