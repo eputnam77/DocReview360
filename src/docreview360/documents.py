@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import threading
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -10,7 +11,6 @@ from typing import Dict, List, Optional
 from uuid import uuid4
 from xml.etree.ElementTree import XML
 from zipfile import ZipFile
-import hashlib
 
 from pydantic import BaseModel
 
@@ -31,6 +31,9 @@ class DocumentModel(BaseModel):
     date: Optional[datetime] = None
     priority: Optional[int] = None
     ingestion_hash: str | None = None
+    # Flag to mark public copies and track originating document
+    public_copy: bool = False
+    source_document_id: str | None = None
 
 
 # Stored documents keyed by id
@@ -126,6 +129,11 @@ def get_document(doc_id: str) -> DocumentModel | None:
 def list_documents() -> list[DocumentModel]:
     """Return all documents."""
     return list(documents.values())
+
+
+def list_public_documents() -> list[DocumentModel]:
+    """Return documents marked as public copies."""
+    return [d for d in documents.values() if d.public_copy]
 
 
 def update_document(

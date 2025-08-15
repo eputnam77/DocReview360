@@ -78,6 +78,7 @@ from ..documents import (
     DocumentModel,
     get_document,
     import_document,
+    list_public_documents,
     update_document,
 )
 from ..documents import (
@@ -699,6 +700,12 @@ async def list_documents_endpoint() -> list[DocumentModel]:
         ttl=30,
     )
     return docs_list
+
+
+@app.get("/documents/public", response_model=list[DocumentModel])
+async def list_public_documents_endpoint() -> list[DocumentModel]:
+    """Return documents that are flagged as public copies."""
+    return list_public_documents()
 
 
 @app.get("/documents/{doc_id}", response_model=DocumentModel)
