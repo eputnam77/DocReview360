@@ -11,6 +11,7 @@ import {
 } from "@/components";
 import { Avatar } from "@/components/ui/avatar";
 import { API } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 // --- Types ---
 interface Profile {
@@ -115,7 +116,7 @@ export default function ProfilePage() {
 
   const handleSave = () => {
     if (password && password !== passwordConfirm) {
-      alert("Passwords do not match!");
+      toast.error("Passwords do not match");
       return;
     }
     fetch(`${API}/profile`, {
@@ -123,7 +124,7 @@ export default function ProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...profile, password: password || undefined }),
     }).catch(() => {});
-    alert("Profile saved");
+    toast.success("Profile saved");
     setPassword("");
     setPasswordConfirm("");
     setPictureFile(null);
