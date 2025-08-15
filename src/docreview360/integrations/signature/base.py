@@ -28,6 +28,14 @@ class SignatureProvider(Protocol):
     def verify_signature(self, signature_id: str, document: bytes) -> bool:
         """Return ``True`` if ``signature_id`` is valid for ``document``."""
 
+    def validate_signature(
+        self,
+        document_bytes: bytes,
+        certificate_url: str | None,
+        metadata: Dict[str, Any],
+    ) -> bool:
+        """Return ``True`` if ``document_bytes`` matches ``certificate_url``."""
+
 
 providers: Dict[str, SignatureProvider] = {}
 

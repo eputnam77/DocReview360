@@ -742,6 +742,8 @@ async def verify_signature_endpoint(doc_id: str) -> dict[str, object]:
         return verify_document_signature(doc_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.put("/documents/{doc_id}", response_model=DocumentModel)

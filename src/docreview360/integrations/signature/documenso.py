@@ -11,10 +11,14 @@ from __future__ import annotations
 import hashlib
 import os
 from base64 import b64encode
+from datetime import datetime
 from typing import Any, Dict, Tuple
 from uuid import uuid4
 
 import httpx
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
 from ...logs import log_event
 from ...secrets import get_secret
@@ -26,8 +30,10 @@ DOCUMENSO_URL = os.getenv("DOCUMENSO_URL")
 _signatures: Dict[str, str] = {}
 # store workflow id for each signature when provided
 _sig_workflows: Dict[str, str] = {}
-# map signature id -> certificate hash for local verification
+# map signature id -> certificate url
 _sig_certificates: Dict[str, str] = {}
+# certificate url -> certificate data
+_certificates: Dict[str, Dict[str, Any]] = {}
 
 
 def _auth_headers() -> Dict[str, str]:
@@ -134,6 +140,78 @@ def verify_signature(signature_id: str, document: bytes) -> bool:
     return False
 
 
+def validate_signature(
+    document_bytes: bytes,
+    certificate_url: str | None,
+    metadata: Dict[str, Any],
+) -> bool:
+    """Perform cryptographic checks on ``document_bytes`` using ``certificate_url``."""
+    if DOCUMENSO_URL:
+        try:
+            resp = httpx.post(
+                f"{DOCUMENSO_URL.rstrip('/')}/sign/validate",
+                json={
+                    "document": b64encode(document_bytes).decode(),
+                    "certificate_url": certificate_url,
+                    "metadata": metadata,
+                },
+                timeout=5,
+                headers=_auth_headers(),
+            )
+            resp.raise_for_status()
+            return bool(resp.json().get("valid"))
+        except httpx.HTTPError as exc:
+            raise RuntimeError("Documenso request failed") from exc
+
+    if not certificate_url:
+        return False
+
+    cert_info = _certificates.get(certificate_url)
+    if not cert_info:
+        return False
+
+    cert: x509.Certificate = cert_info["certificate"]
+    signature: bytes = cert_info["signature"]
+    revoked = bool(cert_info.get("revoked"))
+
+    now = datetime.utcnow()
+    try:
+        cert.public_key().verify(
+            cert.signature,
+            cert.tbs_certificate_bytes,
+            padding.PKCS1v15(),
+            cert.signature_hash_algorithm,
+        )
+    except Exception:
+        return False
+
+    if cert.not_valid_before > now or cert.not_valid_after < now:
+        return False
+    if revoked:
+        return False
+    try:
+        cert.public_key().verify(
+            signature,
+            document_bytes,
+            padding.PKCS1v15(),
+            hashes.SHA256(),
+        )
+    except Exception:
+        return False
+    return True
+
+
+def register_test_certificate(
+    url: str, certificate: x509.Certificate, signature: bytes, *, revoked: bool = False
+) -> None:
+    """Register a certificate for local validation during tests."""
+    _certificates[url] = {
+        "certificate": certificate,
+        "signature": signature,
+        "revoked": revoked,
+    }
+
+
 def signature_status(sig_id: str) -> str:
     """Return the status for ``sig_id``."""
     if DOCUMENSO_URL:
@@ -233,6 +311,11 @@ class DocumensoProvider:
     def verify_signature(self, signature_id: str, document: bytes) -> bool:
         return verify_signature(signature_id, document)
 
+    def validate_signature(
+        self, document_bytes: bytes, certificate_url: str | None, metadata: Dict[str, Any]
+    ) -> bool:
+        return validate_signature(document_bytes, certificate_url, metadata)
+
 
 # Register provider on import
 register_provider(DocumensoProvider())
@@ -243,6 +326,8 @@ __all__ = [
     "complete_signature",
     "signature_status",
     "verify_signature",
+    "validate_signature",
     "process_webhook",
+    "register_test_certificate",
     "DocumensoProvider",
 ]
