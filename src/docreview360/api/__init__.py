@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -120,6 +121,7 @@ from ..search import (
     set_project_priority,
     update_project,
 )
+from ..reviews import ReviewCreate, ReviewModel, add_review, list_reviews
 from ..settings_manager import update_setting
 from ..status import internal_status, public_status
 from ..stubs.task223 import convert_document
@@ -287,9 +289,7 @@ app = FastAPI(title="DocReview360")
 # configuration.
 allowed_origins = os.getenv("DOCREVIEW360_ALLOW_ORIGINS")
 if allowed_origins:
-    cors_kwargs = {
-        "allow_origins": [o.strip() for o in allowed_origins.split(",") if o.strip()]
-    }
+    cors_kwargs = {"allow_origins": [o.strip() for o in allowed_origins.split(",") if o.strip()]}
 else:
     # ``allow_origin_regex`` permits credentials while accepting any origin
     cors_kwargs = {"allow_origin_regex": ".*"}
@@ -499,6 +499,34 @@ async def get_project_endpoint(project_id: str) -> ProjectModel:
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@app.get("/projects/{project_id}/reviews", response_model=list[ReviewModel])
+async def list_project_reviews(project_id: str, phase: str | None = None) -> list[ReviewModel]:
+    """Return reviews for a project."""
+
+    return list_reviews(project_id, phase)
+
+
+@app.post("/projects/{project_id}/reviews", response_model=ReviewModel, status_code=201)
+async def create_project_review(
+    project_id: str,
+    body: ReviewCreate,
+    x_user: str | None = Header(None),
+) -> ReviewModel:
+    """Create a new review entry for a project."""
+
+    review = ReviewModel(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        reviewer=x_user or "Anonymous",
+        status=body.status,
+        comment=body.comment,
+        phase_id=body.phase_id,
+        required=body.required,
+    )
+    add_review(review)
+    return review
 
 
 async def _parse_update_body(request: Request) -> tuple[ProjectUpdate | None, bool]:
