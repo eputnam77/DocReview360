@@ -166,6 +166,8 @@ class ApprovalCreate(BaseModel):
     doc_id: str
     due_at: datetime | None = None
     description: str | None = None
+    phase_id: str | None = None
+    required: bool | None = None
 
 
 class ApprovalUpdate(BaseModel):
@@ -1343,13 +1345,17 @@ async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
         body.doc_id,
         due_at=body.due_at,
         description=body.description,
+        phase_id=body.phase_id,
+        required=body.required if body.required is not None else True,
     )
 
 
 @app.get("/approvals", response_model=list[ApprovalModel])
-async def list_approvals_endpoint(workflow: str | None = None) -> list[ApprovalModel]:
-    """Return approvals optionally filtered by workflow."""
-    return list_approvals(workflow)
+async def list_approvals_endpoint(
+    workflow: str | None = None, phase: str | None = None
+) -> list[ApprovalModel]:
+    """Return approvals optionally filtered by workflow and phase."""
+    return list_approvals(workflow, phase)
 
 
 @app.get("/approvals/{approval_id}", response_model=ApprovalModel)

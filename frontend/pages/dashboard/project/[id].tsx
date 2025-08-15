@@ -33,6 +33,7 @@ type Project = {
   completedSteps: number;
   totalSteps: number;
   documents: number;
+  currentPhaseId?: string | null;
 };
 
 type Log = { timestamp: string; action: string };
