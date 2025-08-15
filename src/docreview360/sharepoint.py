@@ -73,8 +73,8 @@ class SharePointClient:
         item_id = self.upload_file(path, data)
         text = data.decode("utf-8", errors="ignore")
         score = approval_likelihood(text, weights)
-        if workflow is not None:
-            if score < threshold:
-                create_approval(workflow, extra_reviewer, description="Auto risk review")
-            create_approval(workflow, reviewer, description="Primary review")
+            if workflow is not None:
+                if score < threshold:
+                    create_approval(workflow, extra_reviewer, item_id, description="Auto risk review")
+                create_approval(workflow, reviewer, item_id, description="Primary review")
         return item_id, score
