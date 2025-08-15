@@ -19,13 +19,32 @@ interface Workflow {
   updated?: string;
 }
 
+const normalizeWorkflows = (items: unknown): Workflow[] => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (item && typeof item === "object") {
+        const anyItem = item as { id?: unknown; name?: unknown; description?: unknown; usage?: unknown; updated?: unknown };
+        const id = typeof anyItem.id === "string" ? anyItem.id : String(anyItem.id ?? "");
+        if (!id) return null;
+        const name = typeof anyItem.name === "string" ? anyItem.name : undefined;
+        const description = typeof anyItem.description === "string" ? anyItem.description : undefined;
+        const usage = typeof anyItem.usage === "number" ? anyItem.usage : undefined;
+        const updated = typeof anyItem.updated === "string" ? anyItem.updated : undefined;
+        return { id, name, description, usage, updated };
+      }
+      return null;
+    })
+    .filter((v): v is Workflow => Boolean(v));
+};
+
 export default function WorkflowList() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
 
   useEffect(() => {
     fetch(`${API}/workflows`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: Workflow[]) => setWorkflows(Array.isArray(data) ? data : []))
+      .then((data: unknown) => setWorkflows(normalizeWorkflows(data)))
       .catch(() => setWorkflows([]));
   }, []);
 
