@@ -16,18 +16,8 @@ import { Fragment } from "react";
 import { toast } from "react-hot-toast";
 import * as Icons from "lucide-react";
 import { FixedSizeList as List } from "react-window";
+import type { Approval } from "@/types";
 const Icon = Icons as any;
-
-export interface Approval {
-  id: string;
-  reviewer: string;
-  email: string;
-  state: "pending" | "approved" | "overdue" | "rejected";
-  dueAt: string;
-  signedAt?: string;
-  description?: string;
-  required?: boolean;
-}
 
 interface Props {
   approvals: Approval[];
