@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.workflows import create_workflow
+from fastapi.testclient import TestClient
 
 
 def test_gzip_middleware() -> None:
@@ -42,10 +41,13 @@ def test_metrics_and_audit_endpoints() -> None:
 
     # audit endpoint mirrors /logs
     client.get("/projects")  # trigger a log via dependency
-    resp3 = client.get("/api/audit")
-    resp4 = client.get("/logs")
+    headers = {"X-User": "alice"}
+    resp3 = client.get("/api/audit", headers=headers)
+    resp4 = client.get("/logs", headers=headers)
     assert resp3.status_code == 200
-    assert resp3.json() == resp4.json()
+    data3 = [e for e in resp3.json() if e["action"] != "audit_log_access"]
+    data4 = [e for e in resp4.json() if e["action"] != "audit_log_access"]
+    assert data3 == data4
 
 
 def test_start_workflow_endpoint() -> None:
@@ -179,10 +181,10 @@ def test_users_me_endpoint() -> None:
     assert resp.status_code == 404  # This endpoint doesn't exist, should return 404
 
     # Test the correct endpoint that does exist
-    resp = client.get("/users/me")
+    resp = client.get("/users/me", headers={"X-User": "alice"})
     assert resp.status_code == 200
     data = resp.json()
-    assert "username" in data
+    assert data["username"] == "alice"
     assert "is_admin" in data
 
 
