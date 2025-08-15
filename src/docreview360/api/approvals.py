@@ -27,12 +27,14 @@ async def approval_return(
             "approval_return_invalid",
             approval_id=approval,
             signature_id=signature,
+            doc_id=appr.document_id if appr else None,
         )
         raise HTTPException(status_code=404, detail="Approval not found")
     log_event(
         "approval_return_received",
         approval_id=approval,
         signature_id=signature,
+        doc_id=appr.document_id,
     )
     signed_at_dt = None
     if signed_at:
@@ -43,6 +45,7 @@ async def approval_return(
     try:
         handle_signature_return(
             signature,
+            doc_id=appr.document_id,
             certificate_url=certificate_url,
             signed_at=signed_at_dt,
         )
