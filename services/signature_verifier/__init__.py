@@ -3,13 +3,17 @@ from __future__ import annotations
 import hashlib
 from datetime import timedelta
 
-from docreview360.audit import log_audit_event, schedule_audit_log_purge
 from docreview360.approvals import approvals
+from docreview360.archive import schedule_archive_purge
+from docreview360.audit import (
+    log_audit_event,
+    schedule_audit_log_hashing,
+    schedule_audit_log_purge,
+)
+from docreview360.celery_app import app
 from docreview360.documents import documents
 from docreview360.integrations.signature import get_provider
-from docreview360.archive import schedule_archive_purge
 from docreview360.settings_manager import load_settings
-from docreview360.celery_app import app
 
 
 def verify_document_signatures(scope: str = "approved") -> int:
@@ -55,9 +59,9 @@ def verify_document_signatures(scope: str = "approved") -> int:
     return count
 
 
-verify_document_signatures = app.task(
-    name="docreview360.verify_document_signatures"
-)(verify_document_signatures)
+verify_document_signatures = app.task(name="docreview360.verify_document_signatures")(
+    verify_document_signatures
+)
 
 
 def schedule_signature_verification() -> None:
@@ -73,4 +77,5 @@ def schedule_signature_verification() -> None:
         "args": (scope,),
     }
     schedule_audit_log_purge()
+    schedule_audit_log_hashing()
     schedule_archive_purge()
