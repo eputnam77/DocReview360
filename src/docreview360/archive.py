@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
+
+from .security_compliance import should_purge
+from .settings_manager import load_settings
 
 from pydantic import BaseModel, ConfigDict
 
@@ -32,6 +35,9 @@ class ArchiveRecord(BaseModel):
 
 
 archives: Dict[str, ArchiveRecord] = {}
+
+
+ARCHIVE_RETENTION_DAYS = 365
 
 
 def archive_document(
@@ -137,3 +143,54 @@ def get_archive(archive_id: str) -> ArchiveRecord | None:
 def list_archives() -> List[ArchiveRecord]:
     """Return all archived records."""
     return list(archives.values())
+
+
+def purge_archives(
+    retention_days: int = ARCHIVE_RETENTION_DAYS,
+    *,
+    bucket: str | Path = "archive_store",
+) -> int:
+    """Remove archived records older than ``retention_days``.
+
+    Parameters
+    ----------
+    retention_days:
+        Age in days after which archives are removed.
+    bucket:
+        Root directory where archived artefacts are stored.
+
+    Returns
+    -------
+    int
+        Number of archives removed.
+    """
+
+    removed = 0
+    for archive_id, record in list(archives.items()):
+        if should_purge(record.timestamp, retention_days):
+            base_dir = Path(bucket) / record.document_id
+            for path in base_dir.glob(f"{archive_id}*"):
+                try:
+                    path.unlink()
+                except Exception:
+                    pass
+            archives.pop(archive_id, None)
+            removed += 1
+    return removed
+
+
+def schedule_archive_purge() -> None:
+    """Configure periodic purging of expired archive records."""
+    from .celery_app import app
+
+    settings = load_settings()
+    cfg = settings.get("archive", {})
+    retention = int(cfg.get("retention_days", ARCHIVE_RETENTION_DAYS))
+    interval = int(cfg.get("purge_interval_minutes", 60 * 24))
+    app.task(name="docreview360.purge_archives")(purge_archives)
+    app.conf.beat_schedule = app.conf.get("beat_schedule", {})
+    app.conf.beat_schedule["purge_archives"] = {
+        "task": "docreview360.purge_archives",
+        "schedule": timedelta(minutes=interval),
+        "args": (retention,),
+    }

@@ -6,9 +6,12 @@ import hashlib
 import hmac
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from .security_compliance import should_purge
+from .settings_manager import load_settings
 
 try:  # pragma: no cover - pydantic optional
     from pydantic import BaseModel, Field
@@ -75,6 +78,8 @@ AUDIT_LOG_SCHEMA: Dict[str, Any] = AuditLogEntry.model_json_schema()
 # append-only datastore -----------------------------------------------------
 
 _AUDIT_LOG_PATH = Path(__file__).with_name("audit.log")
+
+LOG_RETENTION_DAYS = 90
 
 
 def _compute_hash(data: Dict[str, Any], secret: str | None) -> str:
@@ -181,3 +186,54 @@ def clear_audit_log() -> None:
 
     if _AUDIT_LOG_PATH.exists():
         _AUDIT_LOG_PATH.unlink()
+
+
+def purge_audit_logs(retention_days: int = LOG_RETENTION_DAYS) -> int:
+    """Remove audit log entries older than ``retention_days``.
+
+    Returns
+    -------
+    int
+        Number of entries removed.
+    """
+
+    if not _AUDIT_LOG_PATH.exists():
+        return 0
+    removed = 0
+    keep: List[str] = []
+    with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                data = json.loads(line)
+                created = datetime.fromisoformat(data["verified_at"])
+                if should_purge(created, retention_days):
+                    removed += 1
+                    continue
+            except Exception:
+                pass
+            keep.append(line)
+    if removed:
+        if keep:
+            with _AUDIT_LOG_PATH.open("w", encoding="utf-8") as fh:
+                for line in keep:
+                    fh.write(line)
+        else:
+            _AUDIT_LOG_PATH.unlink()
+    return removed
+
+
+def schedule_audit_log_purge() -> None:
+    """Configure periodic purging of expired audit log entries."""
+    from .celery_app import app
+
+    settings = load_settings()
+    cfg = settings.get("audit_log", {})
+    retention = int(cfg.get("retention_days", LOG_RETENTION_DAYS))
+    interval = int(cfg.get("purge_interval_minutes", 60 * 24))
+    app.task(name="docreview360.purge_audit_logs")(purge_audit_logs)
+    app.conf.beat_schedule = app.conf.get("beat_schedule", {})
+    app.conf.beat_schedule["purge_audit_logs"] = {
+        "task": "docreview360.purge_audit_logs",
+        "schedule": timedelta(minutes=interval),
+        "args": (retention,),
+    }

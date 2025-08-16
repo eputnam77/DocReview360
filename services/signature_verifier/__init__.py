@@ -3,10 +3,11 @@ from __future__ import annotations
 import hashlib
 from datetime import timedelta
 
-from docreview360.audit import log_audit_event
+from docreview360.audit import log_audit_event, schedule_audit_log_purge
 from docreview360.approvals import approvals
 from docreview360.documents import documents
 from docreview360.integrations.signature import get_provider
+from docreview360.archive import schedule_archive_purge
 from docreview360.settings_manager import load_settings
 from docreview360.celery_app import app
 
@@ -71,3 +72,5 @@ def schedule_signature_verification() -> None:
         "schedule": timedelta(minutes=interval),
         "args": (scope,),
     }
+    schedule_audit_log_purge()
+    schedule_archive_purge()
