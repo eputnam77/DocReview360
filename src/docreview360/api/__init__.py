@@ -7,7 +7,7 @@ import asyncio
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -1725,6 +1725,91 @@ async def list_audit(
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id="logs", count=len(entries))
     return entries
+
+
+@app.get("/logs/export")
+async def export_logs_endpoint(
+    fmt: str = "json",
+    start: datetime | None = None,
+    end: datetime | None = None,
+    user_id: str | None = None,
+    entity_id: str | None = None,
+    action: str | None = None,
+    severity: str | None = None,
+    log_id: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
+    _: str = Depends(require_audit_access),
+) -> Response:
+    """Export audit logs in the requested format with metadata."""
+
+    filters = {
+        k: v
+        for k, v in {
+            "start": start,
+            "end": end,
+            "user_id": user_id,
+            "entity_id": entity_id,
+            "action": action,
+            "severity": severity,
+            "log_id": log_id,
+            "limit": limit,
+            "offset": offset,
+        }.items()
+        if v is not None
+    }
+    entries = query_logs(
+        action=action,
+        user_id=user_id,
+        start=start,
+        end=end,
+        entity_id=entity_id,
+        severity=severity,
+        log_id=log_id,
+        limit=limit,
+        offset=offset,
+    )
+    metadata = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "filters": filters,
+    }
+    filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) or "none"
+    header = (
+        "id,timestamp,user_id,action,entity_id,severity,ip_address,details"
+    )
+    rows = [
+        f"{e.id},{e.timestamp},{e.user_id or ''},{e.action},{e.entity_id or ''},{e.severity},{e.ip_address or ''},{json.dumps(e.details)}"
+        for e in entries
+    ]
+    if fmt == "csv":
+        lines = [
+            f"# Generated at: {metadata['generated_at']}",
+            f"# Filters: {filter_str}",
+            header,
+            *rows,
+        ]
+        content = "\n".join(lines)
+        media = "text/csv"
+    elif fmt == "json":
+        content = json.dumps(
+            {"metadata": metadata, "logs": [e.model_dump(mode="json") for e in entries]}
+        )
+        media = "application/json"
+    elif fmt == "pdf":
+        lines = [
+            f"Generated at: {metadata['generated_at']}",
+            f"Filters: {filter_str}",
+            "",
+            header,
+            *rows,
+        ]
+        content = b"%PDF-1.4\n" + "\n".join(lines).encode("utf-8")
+        media = "application/pdf"
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported format")
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id="logs_export", count=len(entries), fmt=fmt)
+    return Response(content=content, media_type=media)
 
 
 @app.get("/reports/summary", response_model=SummaryReport)
