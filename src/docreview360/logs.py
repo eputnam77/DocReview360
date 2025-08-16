@@ -12,7 +12,7 @@ from typing import Any, AsyncIterator, Callable, Dict, List, Literal, TypeVar, c
 
 from sqlalchemy import delete, event, func, insert, select
 
-from . import rbac
+from . import log_connectors, rbac
 from .database import Database, default_url
 from .models import AuditLog, LogEntry
 
@@ -183,6 +183,13 @@ def log_event(
             cb(entry)
     for listener in list(_listeners):
         listener(entry)
+    if log_connectors.connectors:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:  # no running loop; run synchronously
+            asyncio.run(log_connectors.emit(entry))
+        else:
+            loop.create_task(log_connectors.emit(entry))
     return entry
 
 
