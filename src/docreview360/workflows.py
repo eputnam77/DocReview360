@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel
 
+from .event_dispatcher import dispatch_workflow_event
 from .logs import log_call
 
 
@@ -36,12 +38,15 @@ class WorkflowModel(BaseModel):
     approval_sequence: List[str] = []
     # how approval steps progress: sequential or parallel
     mode: str = "sequential"
+    callback_url: str | None = None
 
 
 workflows: Dict[str, WorkflowModel] = {}
 
 # Registered callbacks mimicking agileagents bot webhooks
 bot_callbacks: list[Callable[[WorkflowModel], None]] = []
+
+bot_callbacks.append(dispatch_workflow_event)
 
 # Workflow templates keyed by name
 workflow_templates: Dict[str, List[ApprovalStep]] = {
@@ -262,7 +267,8 @@ def _bootstrap_sample() -> None:
         )
 
 
-_bootstrap_sample()
+if os.getenv("DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP") != "1":
+    _bootstrap_sample()
 
 
 @log_call
@@ -336,6 +342,14 @@ def list_workflows(project: str | None = None) -> list[WorkflowModel]:
     if project is None:
         return list(workflows.values())
     return [wf for wf in workflows.values() if wf.project == project]
+
+
+@log_call
+def register_callback_url(wf_id: str, url: str) -> WorkflowModel:
+    """Register a callback URL for workflow events."""
+    workflow = workflows[wf_id]
+    workflow.callback_url = url
+    return workflow
 
 
 @log_call
