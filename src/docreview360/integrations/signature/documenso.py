@@ -19,10 +19,13 @@ import httpx
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+from pydantic import BaseModel, HttpUrl, ValidationError
 
+from ... import certs
+from ...http_client import get as http_get
+from ...http_client import post as http_post
 from ...logs import log_event
 from ...secrets import get_secret
-from ... import certs
 from .base import register_provider
 
 # In-memory mapping of signature id -> status
@@ -35,6 +38,13 @@ _sig_workflows: Dict[str, str] = {}
 _sig_certificates: Dict[str, str] = {}
 # certificate url -> certificate data
 _certificates: Dict[str, Dict[str, Any]] = {}
+
+
+class DocumensoWebhook(BaseModel):
+    id: str
+    status: str
+    certificate_url: HttpUrl | None = None
+    signed_at: datetime | None = None
 
 
 def _auth_headers() -> Dict[str, str]:
@@ -69,7 +79,7 @@ def request_signature(
                 payload["return_url"] = return_url
             if approval_id:
                 payload["approval_id"] = approval_id
-            resp = httpx.post(
+            resp = http_post(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{document_id}",
                 json=payload,
                 timeout=5,
@@ -112,7 +122,7 @@ def complete_signature(sig_id: str) -> None:
     """Mark a signature request as completed either locally or remotely."""
     if DOCUMENSO_URL:
         try:
-            resp = httpx.post(
+            resp = http_post(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}/complete",
                 timeout=5,
                 headers=_auth_headers(),
@@ -132,7 +142,7 @@ def verify_signature(signature_id: str, document: bytes) -> bool:
     """Validate ``signature_id`` for ``document``."""
     if DOCUMENSO_URL:
         try:
-            resp = httpx.post(
+            resp = http_post(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{signature_id}/verify",
                 json={"document": b64encode(document).decode()},
                 timeout=5,
@@ -156,7 +166,7 @@ def validate_signature(
     """Perform cryptographic checks on ``document_bytes`` using ``certificate_url``."""
     if DOCUMENSO_URL:
         try:
-            resp = httpx.post(
+            resp = http_post(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/validate",
                 json={
                     "document": b64encode(document_bytes).decode(),
@@ -232,7 +242,7 @@ def signature_status(sig_id: str) -> str:
     """Return the status for ``sig_id``."""
     if DOCUMENSO_URL:
         try:
-            resp = httpx.get(
+            resp = http_get(
                 f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}",
                 timeout=5,
                 headers=_auth_headers(),
@@ -248,20 +258,18 @@ def signature_status(sig_id: str) -> str:
 
 
 def process_webhook(data: Dict[str, str]) -> None:
-    """Process a Documenso webhook payload.
+    """Process a Documenso webhook payload."""
 
-    Expected keys are ``id`` and ``status``. When the status is ``signed`` and a
-    workflow mapping exists, the workflow is advanced to the next phase.
-    """
-
-    sig_id = data.get("id")
-    status = data.get("status")
-    if not sig_id or not status:
-        raise ValueError("invalid webhook payload")
+    try:
+        event = DocumensoWebhook.model_validate(data)
+    except ValidationError as exc:
+        raise ValueError("invalid webhook payload") from exc
+    sig_id = event.id
+    status = event.status
     _signatures[sig_id] = status
-    cert_url = data.get("certificate_url")
+    cert_url = event.certificate_url
     if cert_url:
-        _sig_certificates[sig_id] = cert_url
+        _sig_certificates[sig_id] = str(cert_url)
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
         if wf_id:
@@ -276,17 +284,10 @@ def process_webhook(data: Dict[str, str]) -> None:
 
             from ...approvals import handle_signature_return
 
-            signed_at = data.get("signed_at")
-            if isinstance(signed_at, str):
-                from datetime import datetime
-
-                signed_at_dt = datetime.fromisoformat(signed_at)
-            else:
-                signed_at_dt = None
             coro = handle_signature_return(
                 sig_id,
                 certificate_url=cert_url,
-                signed_at=signed_at_dt,
+                signed_at=event.signed_at,
             )
             try:
                 loop = asyncio.get_running_loop()
