@@ -18,8 +18,42 @@ interface LogEntry {
   action: string;
   user_id?: string;
   entity_id?: string;
+  entity_type?: string;
   severity?: string;
   details?: Record<string, any>;
+}
+
+function EntityLink({
+  id,
+  type,
+  fallback,
+}: {
+  id?: string;
+  type?: string;
+  fallback?: string;
+}) {
+  const [exists, setExists] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!id || !type) return;
+    fetch(`${API}/${type}/${id}`, { method: "HEAD" })
+      .then((r) => setExists(r.ok))
+      .catch(() => setExists(false));
+  }, [id, type]);
+  if (!id || !type) {
+    return fallback ? (
+      <span className="text-gray-400">{fallback}</span>
+    ) : (
+      <span className="text-gray-400">—</span>
+    );
+  }
+  if (exists === false) {
+    return <span className="text-gray-400">Entity not found</span>;
+  }
+  return (
+    <a href={`/${type}/${id}`} className="text-blue-600 hover:underline">
+      {id}
+    </a>
+  );
 }
 
 
@@ -157,9 +191,11 @@ export default function LiveLogsPage() {
                 {log.user_id || <span className="text-gray-400">—</span>}
               </TableCell>
               <TableCell>
-                {log.entity_id || log.details?.project || (
-                  <span className="text-gray-400">—</span>
-                )}
+                <EntityLink
+                  id={log.entity_id}
+                  type={log.entity_type}
+                  fallback={log.details?.project}
+                />
               </TableCell>
               <TableCell>{log.details?.message || log.action}</TableCell>
               <TableCell>

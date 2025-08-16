@@ -41,15 +41,20 @@ def test_audit_log_sort_and_lookup() -> None:
 
 def test_query_logs_filters_and_pagination() -> None:
     clear_logs()
-    log_event("alpha", user_id="u1", entity_id="d1", severity="info")
+    log_event(
+        "alpha", user_id="u1", entity_id="d1", entity_type="doc", severity="info"
+    )
     mid = datetime.now(timezone.utc)
-    e2 = log_event("beta", user_id="u2", entity_id="d2", severity="error")
+    e2 = log_event(
+        "beta", user_id="u2", entity_id="d2", entity_type="doc", severity="error"
+    )
     after = datetime.now(timezone.utc)
     logs = query_logs(
         start=mid,
         end=after,
         user_id="u2",
         entity_id="d2",
+        entity_type="doc",
         action="beta",
         severity="error",
     )
