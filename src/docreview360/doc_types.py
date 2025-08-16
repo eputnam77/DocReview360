@@ -155,6 +155,9 @@ DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
     ],
 }
 
+# Export default document type names for consumers and tests
+DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
+
 
 # --------------------------
 # Persistence helpers
