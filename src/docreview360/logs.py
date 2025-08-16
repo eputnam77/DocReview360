@@ -6,7 +6,7 @@ import asyncio
 import os
 import traceback
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from typing import Any, AsyncIterator, Callable, Dict, List, Literal, TypeVar, cast, get_type_hints
 
@@ -24,6 +24,7 @@ __all__ = [
     "count_logs",
     "export_logs",
     "purge_logs",
+    "purge_expired_logs",
     "delete_log",
     "clear_logs",
     "log_stream",
@@ -32,6 +33,7 @@ __all__ = [
     "unregister_listener",
     "watch_logs",
     "log_call",
+    "schedule_log_purge",
 ]
 
 
@@ -57,6 +59,10 @@ _listeners: List[Callable[[LogEntry], None]] = []
 _db: Database | None = None
 
 SENSITIVE_KEYS = {"password", "token", "secret"}
+
+
+# Default retention for operational logs (in days)
+LOG_RETENTION_DAYS = 365
 
 
 def _redact(value: Any, key: str | None = None) -> Any:
@@ -293,6 +299,22 @@ def export_logs(user_id: str, *, log_access: bool = True) -> List[LogEntry]:
     return entries
 
 
+def purge_expired_logs(retention_days: int = LOG_RETENTION_DAYS) -> int:
+    """Remove log entries older than ``retention_days``."""
+
+    if retention_days <= 0:
+        raise ValueError("retention_days must be positive")
+    threshold = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    db = _get_db()
+    with db.session() as conn:
+        conn = conn.execution_options(allow_audit_log_mutations=True)
+        result = conn.execute(delete(AuditLog).where(AuditLog.timestamp < threshold))
+        count = result.rowcount or 0
+    if count:
+        log_event("logs_retention_purge", count=count)
+    return count
+
+
 def purge_logs(user_id: str, *, reason: str | None = None) -> int:
     """Admin-only removal of all log entries with explicit audit trail."""
 
@@ -325,6 +347,25 @@ def clear_logs() -> None:
     """Remove all stored logs (useful for tests)."""
 
     logs.clear()
+
+
+def schedule_log_purge() -> None:
+    """Configure periodic purging of expired operational logs."""
+
+    from .celery_app import app
+    from .settings_manager import load_settings
+
+    settings = load_settings()
+    cfg = settings.get("logs", {})
+    retention = int(cfg.get("retention_days", LOG_RETENTION_DAYS))
+    interval = int(cfg.get("purge_interval_minutes", 60 * 24))
+    app.task(name="docreview360.purge_expired_logs")(purge_expired_logs)
+    app.conf.beat_schedule = app.conf.get("beat_schedule", {})
+    app.conf.beat_schedule["purge_expired_logs"] = {
+        "task": "docreview360.purge_expired_logs",
+        "schedule": timedelta(minutes=interval),
+        "args": (retention,),
+    }
 
 
 async def watch_logs(callback: Callable[[LogEntry], None]) -> None:
