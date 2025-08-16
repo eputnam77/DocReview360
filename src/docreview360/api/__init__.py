@@ -1434,6 +1434,7 @@ async def advance_workflow_endpoint(wf_id: str, x_user: str | None = Header(None
 
 
 @app.post("/approvals", status_code=201, response_model=ApprovalModel)
+@log_call
 async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
     """Create an approval for a workflow."""
     return create_approval(
@@ -1448,6 +1449,7 @@ async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
 
 
 @app.get("/approvals", response_model=list[ApprovalModel])
+@log_call
 async def list_approvals_endpoint(
     workflow: str | None = None, phase: str | None = None
 ) -> list[ApprovalModel]:
@@ -1456,6 +1458,7 @@ async def list_approvals_endpoint(
 
 
 @app.get("/approvals/{approval_id}", response_model=ApprovalModel)
+@log_call
 async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
     """Retrieve a single approval by id."""
     approval = get_approval(approval_id)
@@ -1465,6 +1468,7 @@ async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
 
 
 @app.put("/approvals/{approval_id}", response_model=ApprovalModel)
+@log_call
 async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> ApprovalModel:
     """Update approval state and signature."""
     try:
@@ -1479,6 +1483,7 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
 
 
 @app.post("/approvals/{approval_id}/sign")
+@log_call
 async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
     """Begin a signing flow for an approval."""
     approval = get_approval(approval_id)
@@ -1494,6 +1499,7 @@ async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
 
 
 @app.post("/sign/{doc_id}")
+@log_call
 async def sign_document(
     doc_id: str,
     user: str = Form(...),
@@ -1511,6 +1517,7 @@ async def sign_document(
 
 
 @app.post("/sign/{sig_id}/complete")
+@log_call
 async def complete_sign(sig_id: str) -> None:
     """Mark a signature request as completed."""
     complete_signature(sig_id)
@@ -1518,6 +1525,7 @@ async def complete_sign(sig_id: str) -> None:
 
 
 @app.get("/sign/{sig_id}")
+@log_call
 async def get_sign_status(sig_id: str) -> dict[str, str]:
     """Return signature status."""
     status = signature_status(sig_id)

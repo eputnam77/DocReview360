@@ -7,12 +7,13 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from ..approvals import get_approval, handle_signature_return
-from ..logs import log_event
+from ..logs import log_event, log_call
 
 router = APIRouter()
 
 
 @router.get("/approvals/return")
+@log_call
 async def approval_return(
     request: Request,
     signature: str = Query(...),
