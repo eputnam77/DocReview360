@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import AsyncIterator, Optional
+
+import json
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 
-from ..approvals import get_approval, handle_signature_return
+from ..approvals import (
+    get_approval,
+    handle_signature_return,
+    verify_document_signature_stream,
+)
 from ..logs import TRACE_ID, log_call, log_event
 
 router = APIRouter()
@@ -61,3 +67,41 @@ async def approval_return(
     if next:
         return RedirectResponse(next)
     return {"status": "processed"}
+
+
+@router.get("/documents/{doc_id}/verify-signature/stream")
+async def verify_signature_stream(doc_id: str, provider: str | None = None) -> StreamingResponse:
+    """Stream signature verification details for ``doc_id``."""
+    providers_input: str | list[str] | None = provider
+    if provider and "," in provider:
+        providers_input = [p.strip() for p in provider.split(",") if p.strip()]
+
+    try:
+        gen = verify_document_signature_stream(doc_id, provider=providers_input)
+        first_detail = next(gen)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    async def event_generator() -> AsyncIterator[str]:
+        details = [first_detail]
+        yield f"data: {json.dumps(first_detail)}\n\n"
+        for detail in gen:
+            details.append(detail)
+            yield f"data: {json.dumps(detail)}\n\n"
+        status = (
+            "pass"
+            if details
+            and all(
+                d["hash_valid"]
+                and d["signature_valid"]
+                and d["certificate_present"]
+                and d["signature_verified"]
+                for d in details
+            )
+            else "fail"
+        )
+        yield f"data: {json.dumps({'status': status, 'details': details})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
