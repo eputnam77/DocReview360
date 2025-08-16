@@ -152,6 +152,10 @@ class AuditLog(Base):
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     severity: Mapped[str] = mapped_column(String, default="info", index=True)
     ip_address: Mapped[str | None] = mapped_column(String)
+    prev_hash: Mapped[str | None] = mapped_column(String, index=True)
+    hash: Mapped[str] = mapped_column(String, index=True)
+    document_hash: Mapped[str | None] = mapped_column(String)
+    provider_response: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
 class LogEntry(BaseModel):
@@ -166,6 +170,10 @@ class LogEntry(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
     severity: Literal["info", "warning", "error"] = "info"
     ip_address: str | None = None
+    prev_hash: str | None = None
+    hash: str = ""
+    document_hash: str | None = None
+    provider_response: dict[str, Any] = Field(default_factory=dict)
 
     # Backwards compatibility aliases
     @property
