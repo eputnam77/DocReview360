@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict
 from .documents import DocumentModel
 from .exporter import export_document
 from .object_storage import upload_file
+from .reporting import compile_check_report
 
 
 class ArchiveRecord(BaseModel):
@@ -30,6 +31,8 @@ class ArchiveRecord(BaseModel):
     html: bytes
     docx: bytes
     pdf: bytes
+    report_html: bytes | None = None
+    report_pdf: bytes | None = None
 
     model_config = ConfigDict(ser_json_bytes="base64")
 
@@ -45,12 +48,17 @@ def archive_document(
     metadata: Dict[str, Any] | None = None,
     *,
     bucket: str | Path = "archive_store",
+    check_results: Dict[str, Any] | None = None,
 ) -> ArchiveRecord:
     """Store a document snapshot in several formats and persist to disk."""
     md_bytes, _, _ = export_document(document, "markdown")
     html_bytes, _, _ = export_document(document, "html")
     docx_bytes, _, _ = export_document(document, "docx")
     pdf_bytes, _, _ = export_document(document, "pdf")
+    report_html: bytes | None = None
+    report_pdf: bytes | None = None
+    if check_results:
+        report_html, report_pdf = compile_check_report(check_results)
 
     hashes = {
         "md": sha256(md_bytes).hexdigest(),
@@ -88,24 +96,26 @@ def archive_document(
         html=html_bytes,
         docx=docx_bytes,
         pdf=pdf_bytes,
+        report_html=report_html,
+        report_pdf=report_pdf,
     )
     archives[record.id] = record
 
     # Persist each artefact for durability and track locations for audit
     base = f"{record.document_id}/{record.id}"
     locations: Dict[str, str | None] = {}
-    locations["md"] = str(
-        upload_file(bucket, f"{base}.md", md_bytes, append_only=True) or ""
-    )
-    locations["html"] = str(
-        upload_file(bucket, f"{base}.html", html_bytes, append_only=True) or ""
-    )
-    locations["docx"] = str(
-        upload_file(bucket, f"{base}.docx", docx_bytes, append_only=True) or ""
-    )
-    locations["pdf"] = str(
-        upload_file(bucket, f"{base}.pdf", pdf_bytes, append_only=True) or ""
-    )
+    locations["md"] = str(upload_file(bucket, f"{base}.md", md_bytes, append_only=True) or "")
+    locations["html"] = str(upload_file(bucket, f"{base}.html", html_bytes, append_only=True) or "")
+    locations["docx"] = str(upload_file(bucket, f"{base}.docx", docx_bytes, append_only=True) or "")
+    locations["pdf"] = str(upload_file(bucket, f"{base}.pdf", pdf_bytes, append_only=True) or "")
+    if report_html:
+        locations["report_html"] = str(
+            upload_file(bucket, f"{base}.report.html", report_html, append_only=True) or ""
+        )
+    if report_pdf:
+        locations["report_pdf"] = str(
+            upload_file(bucket, f"{base}.report.pdf", report_pdf, append_only=True) or ""
+        )
     meta["artefact_locations"] = locations
     metadata_json["artefact_locations"] = locations
 
