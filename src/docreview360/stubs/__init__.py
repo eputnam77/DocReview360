@@ -13,4 +13,4 @@ def record_task_completion(task_id: int) -> None:
     task_id:
         Identifier of the task being executed.
     """
-    log_event(f"task_{task_id}_completed")
+    log_event("task_completed", entity_id=str(task_id))
