@@ -9,12 +9,16 @@ See [FedRAMP Controls Mapping](fedramp_controls.md) for a table of related compl
 
 ## Retention Defaults
 
-Audit logs and archived document snapshots are automatically purged after a
-configurable retention period. By default audit logs are retained for 90 days
-and archives for 365 days. These values can be adjusted in ``settings.yaml``::
+Operational logs, audit logs and archived document snapshots are automatically
+purged after a configurable retention period. By default operational logs are
+retained for 365 days and compliance audit logs for 2555 days (seven years).
+Archives remain at 365 days. These values can be adjusted in ``settings.yaml``::
 
+    logs:
+      retention_days: 365
+      purge_interval_minutes: 1440
     audit_log:
-      retention_days: 90
+      retention_days: 2555
       purge_interval_minutes: 1440
     archive:
       retention_days: 365
