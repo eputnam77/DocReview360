@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import graphene
 
+from .config import CONFIG_FILE, Config
 from .documents import list_documents
+from .logs import log_event
 from .search import list_projects
 from .stubs import record_task_completion
 
@@ -46,4 +48,7 @@ def execute_query(query: str) -> dict[str, object]:
     result = schema.execute(query)
     if result.errors:
         raise ValueError(str(result.errors[0]))
-    return result.data or {}
+    data = result.data or {}
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id="graphql", query=query, fields=list(data.keys()))
+    return data
