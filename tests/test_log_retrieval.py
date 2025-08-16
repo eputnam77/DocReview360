@@ -49,9 +49,10 @@ def test_query_logs_filters_and_pagination() -> None:
         start=mid,
         end=after,
         user_id="u2",
+        entity_id="d2",
+        action="beta",
         severity="error",
     )
     assert [entry.id for entry in logs] == [e2.id]
     paged = query_logs(limit=1, offset=1)
     assert len(paged) == 1
-
