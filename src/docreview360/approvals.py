@@ -21,6 +21,7 @@ from .integrations.registry import get_provider
 from .integrations.signature import get_default_provider, get_default_providers
 from .logs import log_event, log_verification_failure
 from .monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
+from .provider_store import set_provider_health
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
@@ -426,7 +427,7 @@ def send_for_signature(
     doc_id: str,
     user: str,
     return_url: str | None = None,
-) -> str:
+) -> str:  # noqa: C901
     approval = approvals[approval_id]
     if approval.state == "approved":
         raise ValueError("approval already signed")
@@ -447,34 +448,52 @@ def send_for_signature(
     if return_url:
         callback += f"&next={quote(return_url)}"
 
-    provider = get_provider(approval.signature_provider)
-    sig_id, url, meta = provider.request_signature(
-        doc_id, user, workflow_id=approval.workflow, approval_id=approval_id, return_url=callback
-    )
-    approval.signature_id = sig_id
-    approval.provider_metadata = meta
-    log_event(
-        "approval_sent_for_signature",
-        user_id=user,
-        approval_id=approval_id,
-        provider=approval.signature_provider,
-        signature_id=sig_id,
-        workflow=approval.workflow,
-        doc_id=doc_id,
-        provider_metadata=meta,
-    )
-    log_audit_event(
-        doc_id,
-        "sent_for_signature",
-        actor=user,
-        provider=approval.signature_provider,
-        signature_id=sig_id,
-        document_hash=approval.document_hash,
-        workflow=approval.workflow,
-        approval_id=approval_id,
-        provider_metadata=meta,
-    )
-    return url
+    providers = []
+    if approval.signature_provider:
+        providers.append(approval.signature_provider)
+    providers.extend([p for p in get_default_providers() if p not in providers])
+
+    for name in providers:
+        try:
+            provider = get_provider(name)
+            sig_id, url, meta = provider.request_signature(
+                doc_id,
+                user,
+                workflow_id=approval.workflow,
+                approval_id=approval_id,
+                return_url=callback,
+            )
+            approval.signature_provider = name
+            approval.signature_id = sig_id
+            approval.provider_metadata = meta
+            set_provider_health(name, True)
+            log_event(
+                "approval_sent_for_signature",
+                user_id=user,
+                approval_id=approval_id,
+                provider=name,
+                signature_id=sig_id,
+                workflow=approval.workflow,
+                doc_id=doc_id,
+                provider_metadata=meta,
+            )
+            log_audit_event(
+                doc_id,
+                "sent_for_signature",
+                actor=user,
+                provider=name,
+                signature_id=sig_id,
+                document_hash=approval.document_hash,
+                workflow=approval.workflow,
+                approval_id=approval_id,
+                provider_metadata=meta,
+            )
+            return url
+        except Exception:
+            set_provider_health(name, False)
+            continue
+
+    raise RuntimeError("all signature providers failed")
 
 
 def verify_document_hash(approval_id: str, document: bytes) -> bool:
