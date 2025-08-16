@@ -35,6 +35,12 @@ Audit entries are emitted as JSON objects with the following structure:
 Each entry is appended to an immutable log file. The `hash` field is computed
 from the remaining properties to provide tamper evidence.
 
+Segments of the log file are also hashed in batches (default 100 entries). A
+background task computes a SHA256 digest for each new segment and stores the
+digest in an append-only bucket at `tamper_proof_store/audit_anchors` using S3
+Object Lock. These external anchors allow later verification that the log file
+was not tampered with.
+
 ## Example
 
 ```python
