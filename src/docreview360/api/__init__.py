@@ -835,11 +835,15 @@ async def verify_signature_endpoint(doc_id: str, provider: str | None = None) ->
     Parameters
     ----------
     provider:
-        Optional signature provider to use for validation. If omitted, the
-        provider stored with each approval is used.
+        Optional signature provider or comma-separated list of providers to use
+        for validation. If omitted, the provider stored with each approval is
+        used and secondary providers are tried on failure.
     """
     try:
-        return verify_document_signature(doc_id, provider=provider)
+        providers_input: str | list[str] | None = provider
+        if provider and "," in provider:
+            providers_input = [p.strip() for p in provider.split(",") if p.strip()]
+        return verify_document_signature(doc_id, provider=providers_input)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -2021,7 +2025,9 @@ async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
 async def get_signature_provider_endpoint() -> dict[str, str | None]:
     """Return the configured signature providers."""
 
-    primary, fallback = get_default_providers()
+    providers = get_default_providers()
+    primary = providers[0] if providers else None
+    fallback = providers[1] if len(providers) > 1 else None
     return {"primary": primary, "fallback": fallback}
 
 
