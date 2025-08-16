@@ -13,7 +13,7 @@ import os
 from pydantic import BaseModel, ConfigDict, Field
 
 from .api.webhooks import emit_verification_completed
-from .audit import log_audit_event
+from .audit import AuditLogEntry, get_audit_log, log_audit_event
 from .celery_app import app
 from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
@@ -494,6 +494,43 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
     if approval.document_hash is None:
         return True
     return approval.document_hash == hashlib.sha256(document).hexdigest()
+
+
+def get_approval_history(approval_id: str) -> List[AuditLogEntry]:
+    """Return audit log entries associated with ``approval_id``."""
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise KeyError("approval not found")
+    entries = get_audit_log(approval.document_id)
+    return [e for e in entries if e.approval_id == approval_id]
+
+
+def get_signed_document(approval_id: str) -> bytes:
+    """Return the latest document bytes for ``approval_id``."""
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise KeyError("approval not found")
+    document = get_document(approval.document_id)
+    if document is None:
+        raise KeyError("document not found")
+    return document.content.encode()
+
+
+def approval_dashboard() -> List[Dict[str, Any]]:
+    """Return approval data including provider configuration and audit trail."""
+    data: List[Dict[str, Any]] = []
+    for approval in approvals.values():
+        history = [e.model_dump() for e in get_audit_log(approval.document_id) if e.approval_id == approval.id]
+        data.append(
+            {
+                "id": approval.id,
+                "state": approval.state,
+                "provider": approval.signature_provider,
+                "provider_metadata": approval.provider_metadata,
+                "audit": history,
+            }
+        )
+    return data
 
 
 def verify_document_signature_stream(  # noqa: C901

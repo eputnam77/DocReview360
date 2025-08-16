@@ -6,12 +6,16 @@ from datetime import datetime
 from typing import AsyncIterator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 
 from .. import auth
 from ..approvals import (
+    approval_dashboard,
     get_approval,
+    get_approval_history,
+    get_signed_document,
     handle_signature_return,
+    verify_document_hash,
     verify_document_signature_stream,
 )
 from ..logs import TRACE_ID, log_call, log_event
@@ -68,6 +72,58 @@ async def approval_return(
     if next:
         return RedirectResponse(next)
     return {"status": "processed"}
+
+
+@router.get("/approvals/{approval_id}/history")
+@log_call
+async def approval_history_endpoint(
+    approval_id: str,
+    user: auth.User = Depends(require_permission("view_audit_log")),
+):
+    """Return audit history for ``approval_id``."""
+    try:
+        history = get_approval_history(approval_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [h.model_dump(mode="json") for h in history]
+
+
+@router.get("/approvals/{approval_id}/signed-document")
+@log_call
+async def download_signed_document(
+    approval_id: str,
+    user: auth.User = Depends(require_permission("read")),
+) -> Response:
+    """Download the document associated with ``approval_id``."""
+    try:
+        data = get_signed_document(approval_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(content=data, media_type="application/octet-stream")
+
+
+@router.get("/approvals/{approval_id}/verify-hash")
+@log_call
+async def verify_hash_endpoint(
+    approval_id: str,
+    user: auth.User = Depends(require_permission("verification_override")),
+) -> dict[str, bool]:
+    """Verify stored document hash for ``approval_id``."""
+    try:
+        data = get_signed_document(approval_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    valid = verify_document_hash(approval_id, data)
+    return {"valid": valid}
+
+
+@router.get("/dashboard/approvals")
+@log_call
+async def dashboard_approvals_endpoint(
+    user: auth.User = Depends(require_permission("view_audit_log")),
+) -> list[dict[str, object]]:
+    """Return approval dashboard data."""
+    return approval_dashboard()
 
 
 @router.get("/documents/{doc_id}/verify-signature/stream")
