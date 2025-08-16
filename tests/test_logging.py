@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.logs import clear_logs
+from fastapi.testclient import TestClient
 
 
 def test_logging_records_actions() -> None:
@@ -26,6 +25,11 @@ def test_logging_records_actions() -> None:
     actions = {e["action"] for e in events}
     assert "create_project" in actions
     assert "import_document" in actions
+
+    first_id = events[0]["id"]
+    resp = client.get("/logs", params={"log_id": first_id}, headers=headers)
+    found = resp.json()
+    assert len(found) == 1 and found[0]["id"] == first_id
 
     resp = client.get("/logs", params={"action": "import_document"}, headers=headers)
     filtered = resp.json()
