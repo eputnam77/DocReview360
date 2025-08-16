@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .object_storage import upload_file
 from .security_compliance import should_purge
 from .settings_manager import load_settings
 
@@ -78,6 +79,7 @@ AUDIT_LOG_SCHEMA: Dict[str, Any] = AuditLogEntry.model_json_schema()
 # append-only datastore -----------------------------------------------------
 
 _AUDIT_LOG_PATH = Path(__file__).with_name("audit.log")
+_AUDIT_ANCHOR_PATH = _AUDIT_LOG_PATH.with_suffix(".anchor")
 
 # Default retention period for compliance audit logs (in days)
 COMPLIANCE_LOG_RETENTION_DAYS = 365 * 7
@@ -223,6 +225,62 @@ def purge_audit_logs(retention_days: int = COMPLIANCE_LOG_RETENTION_DAYS) -> int
     return removed
 
 
+def hash_new_log_segments(
+    *,
+    bucket: str | Path = "tamper_proof_store",
+    prefix: str = "audit_anchors",
+    segment_size: int = 100,
+    retention_days: int = 365,
+) -> int:
+    """Hash new audit log segments and store digests in append-only storage.
+
+    Parameters
+    ----------
+    bucket:
+        Directory or S3 bucket where segment hashes are stored.
+    prefix:
+        Subdirectory or key prefix for stored hashes.
+    segment_size:
+        Number of log entries per segment.
+    retention_days:
+        Retention period applied when storing hashes with object lock.
+
+    Returns
+    -------
+    int
+        Number of segments hashed during this invocation.
+    """
+
+    if not _AUDIT_LOG_PATH.exists():
+        return 0
+
+    start = 0
+    if _AUDIT_ANCHOR_PATH.exists():
+        try:
+            start = int(_AUDIT_ANCHOR_PATH.read_text())
+        except Exception:
+            start = 0
+
+    with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
+        lines = fh.readlines()
+
+    new_lines = lines[start:]
+    if not new_lines:
+        return 0
+
+    count = 0
+    for i in range(0, len(new_lines), segment_size):
+        segment = new_lines[i : i + segment_size]
+        digest = hashlib.sha256("".join(segment).encode("utf-8")).hexdigest()
+        index = (start // segment_size) + count
+        key = f"{prefix}/segment_{index}.sha256"
+        upload_file(bucket, key, digest.encode(), append_only=True, retention_days=retention_days)
+        count += 1
+
+    _AUDIT_ANCHOR_PATH.write_text(str(start + len(new_lines)))
+    return count
+
+
 def schedule_audit_log_purge() -> None:
     """Configure periodic purging of expired audit log entries."""
     from .celery_app import app
@@ -237,4 +295,29 @@ def schedule_audit_log_purge() -> None:
         "task": "docreview360.purge_audit_logs",
         "schedule": timedelta(minutes=interval),
         "args": (retention,),
+    }
+
+
+def schedule_audit_log_hashing() -> None:
+    """Configure periodic hashing of new audit log segments."""
+    from .celery_app import app
+
+    settings = load_settings()
+    cfg = settings.get("audit_log", {})
+    interval = int(cfg.get("hash_interval_minutes", 60))
+    bucket = str(cfg.get("hash_bucket", "tamper_proof_store"))
+    prefix = str(cfg.get("hash_prefix", "audit_anchors"))
+    segment_size = int(cfg.get("hash_segment_size", 100))
+    retention = int(cfg.get("hash_retention_days", 365))
+    app.task(name="docreview360.hash_new_log_segments")(hash_new_log_segments)
+    app.conf.beat_schedule = app.conf.get("beat_schedule", {})
+    app.conf.beat_schedule["hash_audit_log"] = {
+        "task": "docreview360.hash_new_log_segments",
+        "schedule": timedelta(minutes=interval),
+        "kwargs": {
+            "bucket": bucket,
+            "prefix": prefix,
+            "segment_size": segment_size,
+            "retention_days": retention,
+        },
     }
