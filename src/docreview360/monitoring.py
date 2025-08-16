@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import ModuleType
 from typing import Dict, Optional, cast
 
-from prometheus_client import Counter, start_http_server
+from prometheus_client import Counter, Histogram, start_http_server
 
 from .secrets import get_secret
 
@@ -23,6 +23,18 @@ sentry_sdk: Optional[ModuleType] = cast(Optional[ModuleType], _sentry_sdk)
 
 REQUEST_COUNTER = Counter(
     "docreview360_requests_total", "Number of HTTP requests processed by DocReview360"
+)
+
+# Verification metrics used by HTTP endpoints and background tasks.
+VERIFICATION_COUNTER = Counter(
+    "docreview360_verifications_total",
+    "Number of document verification operations",
+    ["source", "status"],
+)
+VERIFICATION_DURATION = Histogram(
+    "docreview360_verification_seconds",
+    "Time spent performing document verifications",
+    ["source"],
 )
 
 
