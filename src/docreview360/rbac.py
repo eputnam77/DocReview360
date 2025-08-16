@@ -23,7 +23,7 @@ ROLE_PERMISSIONS: dict[str, Set[str]] = {
 }
 
 # In-memory mapping of usernames to role sets
-USER_ROLES: dict[str, Set[str]] = {"alice": {"user", "admin"}, "bob": {"auditor"}}
+USER_ROLES: dict[str, Set[str]] = {"alice": {"user", "admin"}, "bob": {"auditor"}, "system": {"admin"}}
 
 
 def set_user_roles(username: str, roles: Iterable[str]) -> None:
