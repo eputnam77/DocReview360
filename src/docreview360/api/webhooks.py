@@ -5,11 +5,13 @@ from typing import Any
 from fastapi import APIRouter, Header, HTTPException, Response
 
 from ..integrations.signature import get_provider
+from ..logs import log_call
 
 router = APIRouter()
 
 
 @router.post("/hooks", status_code=204, response_class=Response)
+@log_call
 async def handle_webhook(
     payload: dict[str, Any],
     x_provider: str | None = Header(None, alias="X-Provider"),
