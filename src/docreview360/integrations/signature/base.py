@@ -4,6 +4,8 @@ import os
 from typing import Any, Dict, Protocol, Tuple
 
 from ...settings_manager import load_settings
+from ..registry import get_provider as registry_get_provider
+from ..registry import register_provider as registry_register
 
 
 class SignatureProvider(Protocol):
@@ -41,6 +43,9 @@ providers: Dict[str, SignatureProvider] = {}
 
 
 def register_provider(provider: SignatureProvider) -> None:
+    """Register ``provider`` with the global registry and local cache."""
+
+    registry_register(provider)
     providers[provider.name] = provider
 
 
@@ -59,9 +64,7 @@ def get_default_providers() -> list[str]:
     if env_primary or env_fallback:
         providers_list = [env_primary or "documenso"]
         if env_fallback:
-            providers_list.extend(
-                [p.strip() for p in env_fallback.split(",") if p.strip()]
-            )
+            providers_list.extend([p.strip() for p in env_fallback.split(",") if p.strip()])
         return providers_list
 
     settings = load_settings()
@@ -84,11 +87,13 @@ def get_default_provider() -> str:
 
 def get_provider(name: str | None = None) -> SignatureProvider:
     if name is not None:
-        return providers[name]
+        return registry_get_provider(name)
 
     for provider_name in get_default_providers():
-        if provider_name in providers:
-            return providers[provider_name]
+        try:
+            return registry_get_provider(provider_name)
+        except KeyError:
+            continue
     raise KeyError("no signature provider available")
 
 
