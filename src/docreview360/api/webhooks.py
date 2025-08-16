@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+import hashlib
+import hmac
+from datetime import datetime
+from typing import Dict, List
 
-import httpx
-from fastapi import APIRouter, Header, HTTPException, Response
-from pydantic import BaseModel, HttpUrl
+from fastapi import APIRouter, Header, HTTPException, Request, Response
+from pydantic import BaseModel, HttpUrl, ValidationError
 
+from ..http_client import post as http_post
 from ..integrations.signature import get_provider
 from ..logs import log_call
+from ..secrets import get_secret
 
 router = APIRouter()
 
@@ -18,6 +22,15 @@ class VerificationCompletedEvent(BaseModel):
     doc_id: str
     status: str
     details: List[Dict[str, object]]
+
+
+class SignatureWebhookPayload(BaseModel):
+    """Schema for incoming signature provider webhooks."""
+
+    id: str
+    status: str
+    certificate_url: HttpUrl | None = None
+    signed_at: datetime | None = None
 
 
 class WebhookSubscription(BaseModel):
@@ -35,7 +48,7 @@ def _dispatch(event: str, payload: Dict[str, object]) -> None:
 
     for url in _subscribers.get(event, []):
         try:
-            httpx.post(url, json={"event": event, "payload": payload}, timeout=5)
+            http_post(url, json={"event": event, "payload": payload}, timeout=5)
         except Exception:  # pragma: no cover - best effort
             continue
 
@@ -62,25 +75,34 @@ async def subscribe_webhook(sub: WebhookSubscription) -> Response:
 @router.post("/hooks", status_code=204, response_class=Response)
 @log_call
 async def handle_webhook(
-    payload: dict[str, Any],
+    request: Request,
     x_provider: str | None = Header(None, alias="X-Provider"),
     x_signature_provider: str | None = Header(None, alias="X-Signature-Provider"),
+    x_signature: str | None = Header(None, alias="X-Signature"),
 ) -> Response:
     """Dispatch webhook payloads to the appropriate signature provider.
 
-    The provider name can be supplied via the ``X-Provider`` or
-    ``X-Signature-Provider`` headers or as ``provider``/``signature_provider``
-    keys in the JSON body.
+    Provider names must be supplied via headers. Payloads are validated and
+    verified using HMAC signatures computed with provider-specific secrets.
     """
 
-    provider_name = (
-        x_provider
-        or x_signature_provider
-        or payload.get("provider")
-        or payload.get("signature_provider")
-    )
+    provider_name = x_provider or x_signature_provider
     if not provider_name:
         raise HTTPException(status_code=400, detail="missing provider")
+    if not x_signature:
+        raise HTTPException(status_code=400, detail="missing signature")
+
+    body = await request.body()
+    secret = get_secret(f"{provider_name}_webhook")
+    if not secret:
+        raise HTTPException(status_code=500, detail="provider secret not configured")
+    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, x_signature):
+        raise HTTPException(status_code=400, detail="invalid signature")
+    try:
+        payload = SignatureWebhookPayload.model_validate_json(body).model_dump()
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     try:
         get_provider(provider_name).process_webhook(payload)
     except (KeyError, ValueError) as exc:
