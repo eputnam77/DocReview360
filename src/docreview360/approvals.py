@@ -15,7 +15,11 @@ from .audit import log_audit_event
 from .certs import fetch_certificate
 from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
-from .integrations.signature import get_default_provider, get_provider
+from .integrations.signature import (
+    get_default_provider,
+    get_default_providers,
+    get_provider,
+)
 from .logs import log_event, log_verification_failure
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
@@ -422,7 +426,9 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
     return approval.document_hash == hashlib.sha256(document).hexdigest()
 
 
-def verify_document_signature(doc_id: str, provider: str | None = None) -> dict[str, object]:
+def verify_document_signature(
+    doc_id: str, provider: str | list[str] | None = None
+) -> dict[str, object]:
     document = get_document(doc_id)
     if document is None:
         raise KeyError("document not found")
@@ -436,20 +442,48 @@ def verify_document_signature(doc_id: str, provider: str | None = None) -> dict[
         hash_valid = approval.document_hash == doc_hash
         signature_valid = approval.state == "approved" and approval.signature_id is not None
         certificate_present = approval.certificate_url is not None
+        provider_results: dict[str, bool] = {}
         provider_valid = False
-        provider_name = provider or approval.signature_provider
+
+        if isinstance(provider, list):
+            provider_names = list(provider)
+            aggregate = True
+        elif isinstance(provider, str):
+            provider_names = [provider]
+            aggregate = False
+        else:
+            provider_names = [approval.signature_provider]
+            aggregate = False
+
+        explicit_names = set(provider_names)
+
+        if not isinstance(provider, list):
+            for p in get_default_providers():
+                if p not in provider_names:
+                    provider_names.append(p)
+
         if approval.signature_id and hash_valid:
-            try:
-                provider_impl = get_provider(provider_name)
-                provider_valid = provider_impl.validate_signature(
-                    document.content.encode(),
-                    approval.certificate_url,
-                    approval.provider_metadata,
-                )
-            except KeyError as exc:
-                raise ValueError(f"unknown provider {provider_name}") from exc
-            except Exception:
-                provider_valid = False
+            for provider_name in provider_names:
+                try:
+                    provider_impl = get_provider(provider_name)
+                except KeyError as exc:
+                    if provider_name in explicit_names:
+                        raise ValueError(f"unknown provider {provider_name}") from exc
+                    continue
+                try:
+                    result = provider_impl.validate_signature(
+                        document.content.encode(),
+                        approval.certificate_url,
+                        approval.provider_metadata,
+                    )
+                except Exception:
+                    result = False
+                provider_results[provider_name] = result
+                if result:
+                    provider_valid = True
+                    if not aggregate:
+                        break
+
         details.append(
             {
                 "approval_id": approval.id,
@@ -458,6 +492,7 @@ def verify_document_signature(doc_id: str, provider: str | None = None) -> dict[
                 "signature_valid": signature_valid,
                 "certificate_present": certificate_present,
                 "signature_verified": provider_valid,
+                "provider_results": provider_results,
             }
         )
 
