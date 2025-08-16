@@ -62,6 +62,30 @@ DocReview360 exposes a JSON API that lets you manage projects, documents and app
 - `GET /sign/{sig_id}` – check signature status
 - `POST /approvals/{approval_id}/sign` – sign a workflow approval
 - `POST /hooks/documenso` – webhook for signature callbacks
+- `GET /documents/{doc_id}/verify-signature` – validate document signatures
+- `GET /documents/{doc_id}/verify-signature/stream` – stream verification progress
+
+### Streaming verification example
+
+JavaScript clients can consume the server-sent event stream:
+
+```javascript
+const evt = new EventSource('/documents/123/verify-signature/stream');
+evt.onmessage = (e) => {
+  console.log(JSON.parse(e.data));
+};
+```
+
+Python's `requests` library can also read the stream:
+
+```python
+import requests
+
+with requests.get('http://localhost:8000/documents/123/verify-signature/stream', stream=True) as r:
+    for line in r.iter_lines():
+        if line:
+            print(line.decode())
+```
 
 ## Plugins
 - `GET /plugins` – list registered plugins

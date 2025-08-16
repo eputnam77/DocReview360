@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
@@ -421,15 +421,19 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
     return approval.document_hash == hashlib.sha256(document).hexdigest()
 
 
-def verify_document_signature(  # noqa: C901
+def verify_document_signature_stream(  # noqa: C901
     doc_id: str, provider: str | list[str] | None = None
-) -> dict[str, object]:
+) -> Iterator[dict[str, object]]:
+    """Yield verification details for each approval tied to ``doc_id``.
+
+    This generator makes it possible to stream verification progress to
+    clients via server-sent events or WebSockets.
+    """
     document = get_document(doc_id)
     if document is None:
         raise KeyError("document not found")
 
     doc_hash = hashlib.sha256(document.content.encode()).hexdigest()
-    details: list[dict[str, object]] = []
 
     for approval in approvals.values():
         if approval.document_id != doc_id:
@@ -479,18 +483,22 @@ def verify_document_signature(  # noqa: C901
                     if not aggregate:
                         break
 
-        details.append(
-            {
-                "approval_id": approval.id,
-                "signature_id": approval.signature_id,
-                "hash_valid": hash_valid,
-                "signature_valid": signature_valid,
-                "certificate_present": certificate_present,
-                "signature_verified": provider_valid,
-                "provider_results": provider_results,
-            }
-        )
+        yield {
+            "approval_id": approval.id,
+            "signature_id": approval.signature_id,
+            "hash_valid": hash_valid,
+            "signature_valid": signature_valid,
+            "certificate_present": certificate_present,
+            "signature_verified": provider_valid,
+            "provider_results": provider_results,
+        }
 
+
+def verify_document_signature(
+    doc_id: str, provider: str | list[str] | None = None
+) -> dict[str, object]:
+    """Return a summary result for signature verification."""
+    details = list(verify_document_signature_stream(doc_id, provider))
     status = (
         "pass"
         if details
