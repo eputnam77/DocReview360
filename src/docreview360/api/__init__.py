@@ -1706,11 +1706,18 @@ async def list_audit(
     action: str | None = None,
     severity: str | None = None,
     log_id: str | None = None,
+    page: int | None = None,
+    size: int | None = None,
     limit: int | None = None,
     offset: int | None = None,
     _: str = Depends(require_audit_access),
 ) -> list[LogEntry]:
     """Alias for :func:`list_logs` used by the dashboard."""
+    if page is not None:
+        size = size or 50
+        limit = size
+        offset = page * size
+
     entries = query_logs(
         action=action,
         user_id=user_id,
@@ -1774,11 +1781,10 @@ async def export_logs_endpoint(
         "filters": filters,
     }
     filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) or "none"
-    header = (
-        "id,timestamp,user_id,action,entity_id,severity,ip_address,details"
-    )
+    header = "id,timestamp,user_id,action,entity_id,severity,ip_address,details"
     rows = [
-        f"{e.id},{e.timestamp},{e.user_id or ''},{e.action},{e.entity_id or ''},{e.severity},{e.ip_address or ''},{json.dumps(e.details)}"
+        f"{e.id},{e.timestamp},{e.user_id or ''},{e.action},"
+        f"{e.entity_id or ''},{e.severity},{e.ip_address or ''},{json.dumps(e.details)}"
         for e in entries
     ]
     if fmt == "csv":
