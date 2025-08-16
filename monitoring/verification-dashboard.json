@@ -1,0 +1,28 @@
+{
+  "uid": "verification-metrics",
+  "title": "DocReview360 Verification Metrics",
+  "schemaVersion": 36,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Verification Rate",
+      "targets": [
+        {
+          "expr": "sum by (source, status) (rate(docreview360_verifications_total[5m]))",
+          "legendFormat": "{{source}}-{{status}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Verification Duration p95",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(docreview360_verification_seconds_bucket[5m])) by (le, source))",
+          "legendFormat": "{{source}}"
+        }
+      ]
+    }
+  ]
+}

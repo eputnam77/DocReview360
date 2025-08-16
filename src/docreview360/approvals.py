@@ -19,6 +19,7 @@ from .fann_model import Weights
 from .integrations.registry import get_provider
 from .integrations.signature import get_default_provider, get_default_providers
 from .logs import log_event, log_verification_failure
+from .monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
@@ -499,19 +500,21 @@ def verify_document_signature(
     doc_id: str, provider: str | list[str] | None = None
 ) -> dict[str, object]:
     """Return a summary result for signature verification."""
-    details = list(verify_document_signature_stream(doc_id, provider))
-    status = (
-        "pass"
-        if details
-        and all(
-            d["hash_valid"]
-            and d["signature_valid"]
-            and d["certificate_present"]
-            and d["signature_verified"]
-            for d in details
+    with VERIFICATION_DURATION.labels("api").time():
+        details = list(verify_document_signature_stream(doc_id, provider))
+        status = (
+            "pass"
+            if details
+            and all(
+                d["hash_valid"]
+                and d["signature_valid"]
+                and d["certificate_present"]
+                and d["signature_verified"]
+                for d in details
+            )
+            else "fail"
         )
-        else "fail"
-    )
+    VERIFICATION_COUNTER.labels("api", status).inc()
     result = {"status": status, "details": details}
     emit_verification_completed(doc_id, status, details)
     return result
