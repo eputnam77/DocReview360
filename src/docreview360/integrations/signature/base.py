@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, Protocol, Tuple
 
+from ...provider_store import get_active_providers
 from ...settings_manager import load_settings
 from ..registry import get_provider as registry_get_provider
 from ..registry import register_provider as registry_register
@@ -38,6 +39,9 @@ class SignatureProvider(Protocol):
     ) -> bool:
         """Return ``True`` if ``document_bytes`` matches ``certificate_url``."""
 
+    def health_check(self) -> bool:
+        """Return ``True`` if the provider is reachable and healthy."""
+
 
 providers: Dict[str, SignatureProvider] = {}
 
@@ -67,16 +71,20 @@ def get_default_providers() -> list[str]:
             providers_list.extend([p.strip() for p in env_fallback.split(",") if p.strip()])
         return providers_list
 
-    settings = load_settings()
-    primary = str(settings.get("signature_provider_primary", "documenso"))
-    fallback_setting = settings.get("signature_provider_fallback", "local")
-    fallbacks: list[str] = []
-    if fallback_setting:
-        if isinstance(fallback_setting, str):
-            fallbacks = [p.strip() for p in fallback_setting.split(",") if p.strip()]
-        else:
-            fallbacks = [str(fallback_setting)]
-    return [primary, *fallbacks]
+    # Fall back to provider store which tracks priority and health.
+    try:
+        return get_active_providers()
+    except Exception:  # pragma: no cover - defensive
+        settings = load_settings()
+        primary = str(settings.get("signature_provider_primary", "documenso"))
+        fallback_setting = settings.get("signature_provider_fallback", "local")
+        fallbacks: list[str] = []
+        if fallback_setting:
+            if isinstance(fallback_setting, str):
+                fallbacks = [p.strip() for p in fallback_setting.split(",") if p.strip()]
+            else:
+                fallbacks = [str(fallback_setting)]
+        return [primary, *fallbacks]
 
 
 def get_default_provider() -> str:

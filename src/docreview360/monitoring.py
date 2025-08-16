@@ -10,7 +10,7 @@ from __future__ import annotations
 from types import ModuleType
 from typing import Dict, Optional, cast
 
-from prometheus_client import Counter, Histogram, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from .secrets import get_secret
 
@@ -35,6 +35,13 @@ VERIFICATION_DURATION = Histogram(
     "docreview360_verification_seconds",
     "Time spent performing document verifications",
     ["source"],
+)
+
+# Health status for signature providers: 1 indicates healthy, 0 unhealthy.
+PROVIDER_HEALTH = Gauge(
+    "docreview360_provider_health",
+    "Health status of configured signature providers",
+    ["provider"],
 )
 
 
