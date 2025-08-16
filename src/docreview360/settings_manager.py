@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 import yaml
 
+from .secrets import configure_vault
 from .stubs import record_task_completion
 
 SETTINGS_FILE = Path("settings.yaml")
@@ -18,9 +19,13 @@ def load_settings(path: Path = SETTINGS_FILE) -> Dict[str, Any]:
     if not path.exists():
         return {}
     try:
-        return yaml.safe_load(path.read_text()) or {}
+        data = yaml.safe_load(path.read_text()) or {}
     except yaml.YAMLError as exc:
         raise ValueError(f"Invalid YAML in {path}") from exc
+    vault_cfg = data.get("vault")
+    if isinstance(vault_cfg, dict):
+        configure_vault(vault_cfg)
+    return data
 
 
 def update_setting(key: str, value: Any, path: Path = SETTINGS_FILE) -> None:
@@ -28,6 +33,8 @@ def update_setting(key: str, value: Any, path: Path = SETTINGS_FILE) -> None:
     settings = load_settings(path)
     settings[key] = value
     path.write_text(yaml.safe_dump(settings))
+    if key == "vault" and isinstance(value, dict):
+        configure_vault(value)
     record_task_completion(142)
 
 
