@@ -915,6 +915,7 @@ class ArchiveMetadata(BaseModel):
     """Optional metadata for archiving."""
 
     metadata: dict[str, Any] | None = None
+    check_results: dict[str, Any] | None = None
 
 
 @app.post("/archive/{doc_id}", status_code=201, response_model=ArchiveRecord)
@@ -925,7 +926,11 @@ async def archive_document_endpoint(
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    return archive_doc(document, metadata=body.metadata if body else None)
+    return archive_doc(
+        document,
+        metadata=body.metadata if body else None,
+        check_results=body.check_results if body else None,
+    )
 
 
 @app.get("/archive", response_model=list[ArchiveRecord])
@@ -946,6 +951,19 @@ async def get_archive_endpoint(archive_id: str) -> ArchiveRecord:
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=archive_id)
     return record
+
+
+@app.get("/archive/{archive_id}/report/{fmt}")
+async def download_report(archive_id: str, fmt: Literal["html", "pdf"]) -> Response:
+    """Return the archived check report in the requested format."""
+    record = get_archive(archive_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Archive not found")
+    if fmt == "html" and record.report_html is not None:
+        return Response(record.report_html, media_type="text/html")
+    if fmt == "pdf" and record.report_pdf is not None:
+        return Response(record.report_pdf, media_type="application/pdf")
+    raise HTTPException(status_code=404, detail="Report not found")
 
 
 @app.get("/search", response_model=list[DocumentModel])
