@@ -6,6 +6,7 @@ from pathlib import Path
 from docreview360.celery_app import app
 from docreview360.log_hash_chain import verify_hash_chain
 from docreview360.logs import log_event
+from docreview360.monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
 from docreview360.settings_manager import load_settings
 
 
@@ -33,12 +34,14 @@ def verify_log_chain(
     bool
         ``True`` when the current logs match the stored chain, ``False`` otherwise.
     """
-    ok = verify_hash_chain(bucket=bucket, key=key, batch_size=batch_size, user_id=user_id)
+    with VERIFICATION_DURATION.labels("log_chain").time():
+        ok = verify_hash_chain(bucket=bucket, key=key, batch_size=batch_size, user_id=user_id)
     log_event(
         "log_chain_verification",
         user_id=user_id,
         result="success" if ok else "mismatch",
     )
+    VERIFICATION_COUNTER.labels("log_chain", "success" if ok else "mismatch").inc()
     if not ok:
         log_event("log_chain_integrity_failure", user_id=user_id)
         if alert_email:

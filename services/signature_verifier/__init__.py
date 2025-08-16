@@ -16,6 +16,7 @@ from docreview360.audit import (
 from docreview360.celery_app import app
 from docreview360.documents import documents
 from docreview360.integrations.signature import get_provider
+from docreview360.monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
 from docreview360.settings_manager import load_settings
 
 
@@ -87,13 +88,16 @@ def verify_document_signatures(
         )
         return 1
 
-    approvals_iter = list(approvals.values())
-    if parallel:
-        with ThreadPoolExecutor() as pool:
-            return sum(pool.map(_process, approvals_iter))
-    count = 0
-    for approval in approvals_iter:
-        count += _process(approval)
+    with VERIFICATION_DURATION.labels("background").time():
+        approvals_iter = list(approvals.values())
+        if parallel:
+            with ThreadPoolExecutor() as pool:
+                count = sum(pool.map(_process, approvals_iter))
+        else:
+            count = 0
+            for approval in approvals_iter:
+                count += _process(approval)
+    VERIFICATION_COUNTER.labels("background", "success").inc(count)
     return count
 
 
