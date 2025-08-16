@@ -5,7 +5,8 @@ This module contains:
 - Lightweight SynthLang text compression simulation.
 - Faux FANN-style scoring for style, structure, and readability.
 - Heuristic and GovDocVerify-based style checks.
-- Workflow-friendly helpers for anomaly detection, document type suggestions, and export format hints.
+- Workflow-friendly helpers for anomaly detection,
+  document type suggestions, and export format hints.
 
 Dependencies:
 - GovDocVerify (optional). Falls back to internal heuristics when unavailable.
@@ -17,7 +18,7 @@ import math
 import os
 import re
 import tempfile
-from typing import TYPE_CHECKING, Dict, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 if TYPE_CHECKING:
     from .documents import DocumentModel
@@ -38,7 +39,14 @@ FANN_FEATURE_NAMES = [
 
 # Default stop words for SynthLang compression
 SYNTH_STOP_WORDS = {
-    "the", "and", "is", "a", "an", "of", "in", "to",
+    "the",
+    "and",
+    "is",
+    "a",
+    "an",
+    "of",
+    "in",
+    "to",
 }
 
 # FANN weights (configurable)
@@ -63,6 +71,7 @@ CUSTOM_STYLE_RULES: list[Callable[[str], bool]] = []
 # ---------------------------------------------------------------------------
 # Template management
 # ---------------------------------------------------------------------------
+
 
 def apply_feedback_template(template: str, text: str) -> str:
     """Insert `text` into the feedback template."""
@@ -97,9 +106,11 @@ def generate_feedback(name: str, text: str) -> str:
     tmpl = FEEDBACK_TEMPLATES.get(name, FEEDBACK_TEMPLATES["default"])
     return apply_feedback_template(tmpl, text)
 
+
 # ---------------------------------------------------------------------------
 # SynthLang compression simulation
 # ---------------------------------------------------------------------------
+
 
 def synth_compress(text: str) -> str:
     """Reduce token count by removing stop words and vowels when enabled."""
@@ -108,6 +119,7 @@ def synth_compress(text: str) -> str:
     words = [w for w in text.split() if w.lower() not in SYNTH_STOP_WORDS]
     no_vowels = "".join(ch for ch in " ".join(words) if ch.lower() not in "aeiou")
     return no_vowels
+
 
 # ---------------------------------------------------------------------------
 # Style and structure scoring
@@ -179,7 +191,7 @@ def style_guide_score(text: str) -> float:
             sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
             total = len(sentences) or 1
             return max(0.0, 1 - len(issues) / total)
-        except Exception as e:
+        except Exception:
             # Log in real workflow; fallback to heuristic
             pass
     return _heuristic_style_score(text)
@@ -214,9 +226,11 @@ def structural_pattern_score(text: str) -> float:
     penalty = jumps / len(headings)
     return base * (1 - penalty)
 
+
 # ---------------------------------------------------------------------------
 # FANN-like feature scoring & anomaly detection
 # ---------------------------------------------------------------------------
+
 
 def _fann_features(text: str) -> list[float]:
     """Return simple numeric features for the faux FANN network."""
@@ -262,9 +276,11 @@ def detect_anomalies(text: str, threshold: float = DEFAULT_ANOMALY_THRESHOLD) ->
     """Return True when `text` appears anomalous using a tiny FANN model."""
     return _fann_score(text) >= threshold
 
+
 # ---------------------------------------------------------------------------
 # Content validation & workflow helpers
 # ---------------------------------------------------------------------------
+
 
 def suggest_document_type(text: str) -> str:
     """Return a suggested document type name based on keywords."""
@@ -285,9 +301,7 @@ def validate_content(text: str) -> tuple[bool, dict[str, Any]]:
 
 
 def create_validated_document(
-    filename: str, data: bytes, *,
-    user: str | None = None,
-    project: str | None = None
+    filename: str, data: bytes, *, user: str | None = None, project: str | None = None
 ) -> "DocumentModel":
     """Create a document after validating its content."""
     text = data.decode()
@@ -295,6 +309,7 @@ def create_validated_document(
     if not is_valid:
         raise ValueError(f"Invalid content: {diagnostics}")
     from .documents import import_document
+
     return import_document(filename, data, project=project, user=user)
 
 

@@ -1,14 +1,20 @@
-import pytest
-from fastapi.testclient import TestClient
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
+
+import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from fastapi.testclient import TestClient
 
 from docreview360.api import app
-from docreview360.approvals import approvals, verify_document_signature, create_approval, send_for_signature
+from docreview360.approvals import (
+    approvals,
+    create_approval,
+    send_for_signature,
+    verify_document_signature,
+)
 from docreview360.integrations.signature import base, documenso
 
 
@@ -78,7 +84,9 @@ def test_fallback_and_dual_provider(client: TestClient, sample_doc: bytes) -> No
 
     doc_id, appr = _setup_document(client, sample_doc)
     cert_url = _register_certificate(sample_doc)
-    documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": cert_url})
+    documenso.process_webhook(
+        {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+    )
 
     result = verify_document_signature(doc_id, provider="failing")
     detail = next(d for d in result["details"] if d["approval_id"] == appr.id)
