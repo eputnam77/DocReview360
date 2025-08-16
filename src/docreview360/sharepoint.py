@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import os
 import asyncio
+import os
 from dataclasses import dataclass
 from typing import List, cast
 
 import requests  # type: ignore[import-untyped]
 
-from .approvals import submit_draft_for_approval, create_approval
+from .approvals import create_approval, submit_draft_for_approval
 from .fann_model import Weights
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
+from .secrets import get_secret
 
 _GRAPH_URL = "https://graph.microsoft.com/v1.0"
 
@@ -110,10 +111,18 @@ class SharePointClient:
                     approval_ids.append(approval_id)
             else:
                 if score < threshold:
-                    approval_id = create_approval(workflow, extra_reviewer, description="Auto risk review")
+                    approval_id = create_approval(
+                        workflow,
+                        extra_reviewer,
+                        description="Auto risk review",
+                    )
                     if approval_id:
                         approval_ids.append(approval_id)
-                approval_id = create_approval(workflow, reviewer or "manager", description="Primary review")
+                approval_id = create_approval(
+                    workflow,
+                    reviewer or "manager",
+                    description="Primary review",
+                )
                 if approval_id:
                     approval_ids.append(approval_id)
 
@@ -133,10 +142,10 @@ class SharePointClient:
 
 
 def client_from_env() -> SharePointClient:
-    """Return a :class:`SharePointClient` using environment credentials."""
+    """Return a :class:`SharePointClient` using configured credentials."""
     site_id = os.getenv("SHAREPOINT_SITE_ID")
     drive_id = os.getenv("SHAREPOINT_DRIVE_ID")
-    token = os.getenv("SHAREPOINT_TOKEN")
+    token = get_secret("sharepoint")
     if not all([site_id, drive_id, token]):
         raise ValueError("Missing SharePoint credentials")
     return SharePointClient(
@@ -152,7 +161,9 @@ class AsyncSharePointClient(SharePointClient):
     async def upload_file(self, path: str, data: bytes) -> str:  # pragma: no cover - thin wrapper
         return await asyncio.to_thread(super().upload_file, path, data)
 
-    async def set_properties(self, item_id: str, properties: dict[str, str]) -> None:  # pragma: no cover
+    async def set_properties(
+        self, item_id: str, properties: dict[str, str]
+    ) -> None:  # pragma: no cover
         await asyncio.to_thread(super().set_properties, item_id, properties)
 
 

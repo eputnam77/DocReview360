@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import os
 from typing import Optional
 
 from .config import Config
 from .documents import DocumentModel
 from .exporter import export_document
-from .sharepoint import SharePointClient
+from .sharepoint import SharePointClient, client_from_env
 
 
 def save_to_cms(
@@ -35,9 +34,9 @@ def save_to_cms(
         Export format, defaults to ``"markdown"``.
     client:
         Optional pre-configured :class:`SharePointClient` instance. When not
-        provided credentials are read from ``SHAREPOINT_SITE_ID``,
-        ``SHAREPOINT_DRIVE_ID`` and ``SHAREPOINT_TOKEN`` environment
-        variables.
+        provided, the SharePoint identifiers are read from
+        ``SHAREPOINT_SITE_ID`` and ``SHAREPOINT_DRIVE_ID`` environment
+        variables and the access token is resolved via the secrets interface.
 
     Returns
     -------
@@ -49,12 +48,7 @@ def save_to_cms(
         return None
 
     if client is None:
-        site_id = os.getenv("SHAREPOINT_SITE_ID")
-        drive_id = os.getenv("SHAREPOINT_DRIVE_ID")
-        token = os.getenv("SHAREPOINT_TOKEN")
-        if not all([site_id, drive_id, token]):
-            raise ValueError("Missing SharePoint credentials")
-        client = SharePointClient(site_id=site_id, drive_id=drive_id, token=token)
+        client = client_from_env()
 
     data, _, filename = export_document(document, fmt, name_template=config.filename_template)
     return client.upload_file(filename, data)
