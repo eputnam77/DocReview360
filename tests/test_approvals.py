@@ -1,8 +1,14 @@
 import asyncio
-import hashlib
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.x509.oid import NameOID
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.approvals import (
     approvals,
@@ -10,14 +16,8 @@ from docreview360.approvals import (
     handle_signature_return,
     send_for_signature,
 )
-from docreview360.integrations.signature import documenso
-from fastapi.testclient import TestClient
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.primitives import hashes
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from uuid import uuid4
 from docreview360.documents import import_document
+from docreview360.integrations.signature import documenso
 
 
 def test_approval_lifecycle() -> None:
@@ -162,7 +162,11 @@ def test_handle_signature_return_hash_validation() -> None:
     documenso.register_test_certificate(cert_url2, cert, signature2)
     documenso._sig_certificates[appr2.signature_id] = cert_url2
     with pytest.raises(ValueError):
-        asyncio.run(handle_signature_return(appr2.signature_id, document=b"tampered", certificate_url=cert_url2))
+        asyncio.run(
+            handle_signature_return(
+                appr2.signature_id, document=b"tampered", certificate_url=cert_url2
+            )
+        )
 
 
 def test_signature_invalidated() -> None:
@@ -189,7 +193,9 @@ def test_send_for_signature_authorization_and_lock() -> None:
     with pytest.raises(PermissionError):
         send_for_signature(appr.id, "doc1", "bob")
     doc_obj = import_document("doc2", b"hi")
-    appr2 = create_approval("wf1", "alice", doc_obj.id, delegates=["bob"], signature_provider="documenso")
+    appr2 = create_approval(
+        "wf1", "alice", doc_obj.id, delegates=["bob"], signature_provider="documenso"
+    )
     send_for_signature(appr2.id, doc_obj.id, "bob")
 
     doc = b"hello"
@@ -213,6 +219,8 @@ def test_send_for_signature_authorization_and_lock() -> None:
     cert_url3 = f"https://test-cert-{uuid4().hex}"
     documenso.register_test_certificate(cert_url3, cert2, signature2)
     documenso._sig_certificates[appr3.signature_id] = cert_url3
-    asyncio.run(handle_signature_return(appr3.signature_id, document=doc, certificate_url=cert_url3))
+    asyncio.run(
+        handle_signature_return(appr3.signature_id, document=doc, certificate_url=cert_url3)
+    )
     with pytest.raises(ValueError):
         send_for_signature(appr3.id, "doc3", "alice")
