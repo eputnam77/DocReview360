@@ -24,6 +24,7 @@ __all__ = [
     "count_logs",
     "export_logs",
     "purge_logs",
+    "delete_log",
     "clear_logs",
     "log_stream",
     "register_alert",
@@ -289,6 +290,20 @@ def purge_logs(user_id: str, *, reason: str | None = None) -> int:
         count = result.rowcount or 0
     log_event("logs_purged", user_id=user_id, count=count, reason=reason)
     return count
+
+
+def delete_log(log_id: str, user_id: str, *, reason: str | None = None) -> bool:
+    """Admin-only removal of a single log entry with audit trail."""
+
+    if not rbac.has_role(user_id, "admin"):
+        raise PermissionError("Only admins may delete log entries")
+    db = _get_db()
+    with db.session() as conn:
+        conn = conn.execution_options(allow_audit_log_mutations=True)
+        result = conn.execute(delete(AuditLog).where(AuditLog.id == log_id))
+        count = result.rowcount or 0
+    log_event("log_deleted", user_id=user_id, log_id=log_id, count=count, reason=reason)
+    return bool(count)
 
 
 def clear_logs() -> None:
