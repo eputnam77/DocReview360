@@ -186,5 +186,24 @@ def verify_chain(bucket: str, batch_size: int) -> None:
         raise click.ClickException("Log integrity check failed")
 
 
+@cli.command("verify-signatures")
+@click.option("--scope", default="approved", show_default=True)
+@click.option("--document-id", "document_ids", multiple=True)
+@click.option("--parallel/--sequential", default=False, show_default=True)
+def verify_signatures(scope: str, document_ids: tuple[str, ...], parallel: bool) -> None:
+    """Verify document signatures for the given documents.
+
+    When no document IDs are supplied, all approvals in ``scope`` are
+    processed. Set ``--parallel`` to process concurrently.
+    """
+
+    from services import signature_verifier
+
+    processed = signature_verifier.verify_document_signatures.run(  # type: ignore[attr-defined]
+        scope=scope, document_ids=list(document_ids) or None, parallel=parallel
+    )
+    click.echo(f"Processed {processed} approvals")
+
+
 if __name__ == "__main__":
     cli()
