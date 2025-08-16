@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .api.webhooks import emit_verification_completed
 from .audit import log_audit_event
+from .celery_app import app
 from .certs import fetch_certificate
 from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
@@ -23,6 +24,18 @@ from .monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
+
+
+@app.task(name="docreview360.approval_reminder")
+def _reminder_task(approval_id: str) -> None:
+    """Log a reminder event for ``approval_id``."""
+    log_event("approval_reminder", approval_id=approval_id)
+
+
+@app.task(name="docreview360.approval_escalation")
+def _escalation_task(approval_id: str, target: str) -> None:
+    """Log an escalation event for ``approval_id``."""
+    log_event("approval_escalated", approval_id=approval_id, target=target)
 
 
 class ApprovalModel(BaseModel):
@@ -37,7 +50,13 @@ class ApprovalModel(BaseModel):
     phase_id: str | None = None
     required: bool = True
     state: str = "pending"
-    due_at: datetime | None = None
+    # Step metadata
+    role: str | None = None
+    order: int = 0
+    deadline: datetime | None = Field(default=None, alias="due_at")
+    reminder_at: datetime | None = None
+    escalate_to: str | None = None
+    escalation_at: datetime | None = None
     signature_provider: str = Field(default_factory=get_default_provider)
     signature_id: Optional[str] = Field(default=None, alias="signature")
     document_hash: Optional[str] = None
@@ -46,6 +65,14 @@ class ApprovalModel(BaseModel):
     description: Optional[str] = None
     provider_metadata: Dict[str, Any] = Field(default_factory=dict)
     delegates: List[str] = Field(default_factory=list)
+
+    @property
+    def due_at(self) -> datetime | None:  # pragma: no cover - simple alias
+        return self.deadline
+
+    @due_at.setter
+    def due_at(self, value: datetime | None) -> None:  # pragma: no cover - simple alias
+        self.deadline = value
 
 
 approvals: Dict[str, ApprovalModel] = {}
@@ -63,6 +90,12 @@ def create_approval(
     signature_provider: str | None = None,
     document: bytes | None = None,
     delegates: List[str] | None = None,
+    role: str | None = None,
+    order: int = 0,
+    reminder_at: datetime | None = None,
+    escalate_to: str | None = None,
+    escalation_at: datetime | None = None,
+    state: str = "pending",
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     if signature_provider is None:
@@ -81,6 +114,12 @@ def create_approval(
         signature_provider=signature_provider,
         document_hash=doc_hash,
         delegates=delegates or [],
+        role=role or reviewer,
+        order=order,
+        reminder_at=reminder_at,
+        escalate_to=escalate_to,
+        escalation_at=escalation_at,
+        state=state,
     )
     approvals[approval_id] = approval
     try:
@@ -107,6 +146,10 @@ def create_approval(
         approval_id=approval_id,
         provider_metadata=approval.provider_metadata,
     )
+    if reminder_at:
+        _reminder_task.apply_async((approval_id,), eta=reminder_at)
+    if escalate_to and escalation_at:
+        _escalation_task.apply_async((approval_id, escalate_to), eta=escalation_at)
     return approval
 
 
@@ -288,7 +331,7 @@ async def _upload_approval_artifacts(
     await client.set_properties(approval.document_id, props)
 
 
-async def update_approval_state(
+async def update_approval_state(  # noqa: C901
     approval_id: str,
     state: str,
     signature_id: str | None = None,
@@ -301,6 +344,15 @@ async def update_approval_state(
     approval = approvals[approval_id]
     if approval.state == "approved":
         raise ValueError("signed approvals cannot be modified; reset required")
+    wf = workflows.get(approval.workflow)
+    if state == "approved" and wf and wf.mode == "sequential":
+        for a in approvals.values():
+            if (
+                a.workflow == approval.workflow
+                and a.order < approval.order
+                and a.state != "approved"
+            ):
+                raise ValueError("previous steps incomplete")
     previous = approval.state
     approval.state = state
     if signature_id is not None:
@@ -321,7 +373,6 @@ async def update_approval_state(
         approval.signed_at = None
         approval.certificate_url = None
 
-    wf = workflows.get(approval.workflow)
     project_id = wf.project if wf else ""
     log_event(
         f"approval_{state}",
@@ -349,6 +400,16 @@ async def update_approval_state(
     )
 
     if state == "approved" and wf:
+        if wf.mode == "sequential":
+            next_steps = [
+                a
+                for a in approvals.values()
+                if a.workflow == approval.workflow and a.order > approval.order
+            ]
+            if next_steps:
+                next_step = min(next_steps, key=lambda a: a.order)
+                if next_step.state != "approved":
+                    next_step.state = "pending"
         if all(
             a.state == "approved" for a in approvals.values() if a.workflow == approval.workflow
         ):

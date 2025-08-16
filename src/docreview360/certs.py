@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 import httpx
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
-from cryptography.x509.oid import AuthorityInformationAccessOID, ExtensionOID
 from cryptography.x509 import ocsp
+from cryptography.x509.oid import AuthorityInformationAccessOID, ExtensionOID
 
 # cache of certificate URL -> certificate chain bytes
 _chain_cache: Dict[str, bytes] = {}
@@ -66,7 +66,7 @@ def fetch_certificate(url: str, *, fetcher: Callable[[str], bytes] | None = None
     return data
 
 
-def verify_certificate_status(
+def verify_certificate_status(  # noqa: C901
     cert: x509.Certificate,
     *,
     issuer: x509.Certificate | None = None,
@@ -134,9 +134,7 @@ def verify_certificate_status(
 
     # Fallback to CRL checking
     try:
-        crl_dp = cert.extensions.get_extension_for_oid(
-            ExtensionOID.CRL_DISTRIBUTION_POINTS
-        ).value
+        crl_dp = cert.extensions.get_extension_for_oid(ExtensionOID.CRL_DISTRIBUTION_POINTS).value
     except x509.ExtensionNotFound:
         crl_dp = None
 

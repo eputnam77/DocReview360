@@ -153,6 +153,7 @@ class WorkflowCreate(BaseModel):
 
     project: str
     phases: list[str]
+    mode: str = "sequential"
 
 
 class ReviewerAssign(BaseModel):
@@ -171,6 +172,11 @@ class ApprovalCreate(BaseModel):
     description: str | None = None
     phase_id: str | None = None
     required: bool | None = None
+    role: str | None = None
+    order: int = 0
+    reminder_at: datetime | None = None
+    escalate_to: str | None = None
+    escalation_at: datetime | None = None
 
 
 class ApprovalUpdate(BaseModel):
@@ -1398,7 +1404,7 @@ async def create_workflow_endpoint(
     workflow: WorkflowCreate, x_user: str | None = Header(None)
 ) -> WorkflowModel:
     """Create a new workflow."""
-    return create_workflow(workflow.project, workflow.phases)
+    return create_workflow(workflow.project, workflow.phases, mode=workflow.mode)
 
 
 @app.get("/workflows/{wf_id}", response_model=WorkflowModel)
@@ -1478,6 +1484,11 @@ async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
         description=body.description,
         phase_id=body.phase_id,
         required=body.required if body.required is not None else True,
+        role=body.role,
+        order=body.order,
+        reminder_at=body.reminder_at,
+        escalate_to=body.escalate_to,
+        escalation_at=body.escalation_at,
     )
 
 
