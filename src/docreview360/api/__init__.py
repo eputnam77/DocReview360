@@ -1673,6 +1673,7 @@ async def list_logs(
     end: datetime | None = None,
     user_id: str | None = None,
     entity_id: str | None = None,
+    entity_type: str | None = None,
     action: str | None = None,
     severity: str | None = None,
     log_id: str | None = None,
@@ -1687,6 +1688,7 @@ async def list_logs(
         start=start,
         end=end,
         entity_id=entity_id,
+        entity_type=entity_type,
         severity=severity,
         log_id=log_id,
         limit=limit,
@@ -1703,6 +1705,7 @@ async def list_audit(
     end: datetime | None = None,
     user_id: str | None = None,
     entity_id: str | None = None,
+    entity_type: str | None = None,
     action: str | None = None,
     severity: str | None = None,
     log_id: str | None = None,
@@ -1724,6 +1727,7 @@ async def list_audit(
         start=start,
         end=end,
         entity_id=entity_id,
+        entity_type=entity_type,
         severity=severity,
         log_id=log_id,
         limit=limit,
@@ -1741,6 +1745,7 @@ async def export_logs_endpoint(
     end: datetime | None = None,
     user_id: str | None = None,
     entity_id: str | None = None,
+    entity_type: str | None = None,
     action: str | None = None,
     severity: str | None = None,
     log_id: str | None = None,
@@ -1757,6 +1762,7 @@ async def export_logs_endpoint(
             "end": end,
             "user_id": user_id,
             "entity_id": entity_id,
+            "entity_type": entity_type,
             "action": action,
             "severity": severity,
             "log_id": log_id,
@@ -1771,6 +1777,7 @@ async def export_logs_endpoint(
         start=start,
         end=end,
         entity_id=entity_id,
+        entity_type=entity_type,
         severity=severity,
         log_id=log_id,
         limit=limit,
@@ -1781,9 +1788,9 @@ async def export_logs_endpoint(
         "filters": filters,
     }
     filter_str = ", ".join(f"{k}={v}" for k, v in filters.items()) or "none"
-    header = "id,timestamp,user_id,action,entity_id,severity,ip_address,details"
+    header = "id,timestamp,user_id,action,entity_type,entity_id,severity,ip_address,details"
     rows = [
-        f"{e.id},{e.timestamp},{e.user_id or ''},{e.action},"
+        f"{e.id},{e.timestamp},{e.user_id or ''},{e.action},{e.entity_type or ''},"
         f"{e.entity_id or ''},{e.severity},{e.ip_address or ''},{json.dumps(e.details)}"
         for e in entries
     ]
