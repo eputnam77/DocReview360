@@ -5,4 +5,4 @@ def test_export_logs_counts() -> None:
     clear_logs()
     log_event("a")
     log_event("b")
-    assert len(export_logs()) == 2
+    assert len(export_logs("alice")) == 2

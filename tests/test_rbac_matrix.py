@@ -33,16 +33,17 @@ set_user_roles = rbac.set_user_roles
 
 def test_default_role_permissions_seed() -> None:
     expected = {
-        "admin": {"create", "read", "update", "delete", "edit_field_x"},
+        "admin": {"create", "read", "update", "delete", "edit_field_x", "view_audit_log"},
         "manager": {"create", "read", "update"},
         "sme": {"read", "edit_field_x"},
         "reviewer": {"read"},
         "editor": {"read", "update"},
         "observer": {"read"},
         "user": {"read"},
+        "auditor": {"view_audit_log"},
     }
     assert ROLE_PERMISSIONS == expected
-    assert len(ROLE_PERMISSIONS) == 7
+    assert len(ROLE_PERMISSIONS) == 8
 
 
 def test_field_level_rbac() -> None:
