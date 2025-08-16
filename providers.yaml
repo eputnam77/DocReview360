@@ -1,0 +1,8 @@
+documenso:
+  api_key: ''
+  healthy: true
+  priority: 1
+local:
+  api_key: ''
+  healthy: false
+  priority: 10

@@ -118,6 +118,18 @@ def request_signature(
     return sig_id, url, meta
 
 
+def health_check() -> bool:
+    """Return ``True`` if the Documenso service is reachable."""
+
+    if not DOCUMENSO_URL:
+        return True
+    try:
+        resp = http_get(f"{DOCUMENSO_URL.rstrip('/')}/health", timeout=5, headers=_auth_headers())
+        return resp.status_code == 200
+    except Exception:  # pragma: no cover - network failure
+        return False
+
+
 def complete_signature(sig_id: str) -> None:
     """Mark a signature request as completed either locally or remotely."""
     if DOCUMENSO_URL:
@@ -286,7 +298,7 @@ def process_webhook(data: Dict[str, str]) -> None:
 
             coro = handle_signature_return(
                 sig_id,
-                certificate_url=cert_url,
+                certificate_url=str(cert_url),
                 signed_at=event.signed_at,
             )
             try:
@@ -332,6 +344,9 @@ class DocumensoProvider:
         self, document_bytes: bytes, certificate_url: str | None, metadata: Dict[str, Any]
     ) -> bool:
         return validate_signature(document_bytes, certificate_url, metadata)
+
+    def health_check(self) -> bool:  # pragma: no cover - simple delegation
+        return health_check()
 
 
 # Register provider on import

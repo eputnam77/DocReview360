@@ -33,6 +33,9 @@ class FailingProvider:
     def validate_signature(self, document_bytes, certificate_url, metadata):
         return False
 
+    def health_check(self) -> bool:  # pragma: no cover - stub
+        return False
+
 
 def _register_certificate(content: bytes) -> str:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
