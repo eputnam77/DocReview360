@@ -29,7 +29,7 @@ def internal_status() -> Dict[str, int]:
     data.update(
         {
             "workflows": len(workflows_module.workflows),
-            "logs": len(logs_module.logs),
+            "logs": logs_module.count_logs(),
         }
     )
     return data
