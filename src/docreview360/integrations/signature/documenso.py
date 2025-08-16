@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 from ...logs import log_event
 from ...secrets import get_secret
+from ... import certs
 from .base import register_provider
 
 # In-memory mapping of signature id -> status
@@ -179,7 +180,7 @@ def validate_signature(
 
     cert: x509.Certificate = cert_info["certificate"]
     signature: bytes = cert_info["signature"]
-    revoked = bool(cert_info.get("revoked"))
+    revoked = cert_info.get("revoked")
 
     now = datetime.utcnow()
     try:
@@ -196,6 +197,8 @@ def validate_signature(
         return False
     if revoked:
         return False
+    if revoked is None and not certs.verify_certificate_status(cert):
+        return False
     try:
         cert.public_key().verify(
             signature,
@@ -209,14 +212,20 @@ def validate_signature(
 
 
 def register_test_certificate(
-    url: str, certificate: x509.Certificate, signature: bytes, *, revoked: bool = False
+    url: str,
+    certificate: x509.Certificate,
+    signature: bytes,
+    *,
+    revoked: bool | None = False,
 ) -> None:
     """Register a certificate for local validation during tests."""
-    _certificates[url] = {
+    info = {
         "certificate": certificate,
         "signature": signature,
-        "revoked": revoked,
     }
+    if revoked is not None:
+        info["revoked"] = revoked
+    _certificates[url] = info
 
 
 def signature_status(sig_id: str) -> str:
