@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, AsyncIterator, Callable, Dict, List, TypeVar, cast, get_type_hints
 
-from sqlalchemy import delete, event, insert, select
+from sqlalchemy import delete, event, func, insert, select
 
 from . import rbac
 from .database import Database, default_url
@@ -225,6 +225,15 @@ def query_logs(
         )
         for row in rows
     ]
+
+
+def count_logs() -> int:
+    """Return the total number of stored log entries."""
+
+    db = _get_db()
+    stmt = select(func.count()).select_from(AuditLog)
+    with db.session() as conn:
+        return int(conn.execute(stmt).scalar_one())
 
 
 def _coerce_details(value: Any) -> Dict[str, Any]:
