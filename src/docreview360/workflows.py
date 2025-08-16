@@ -34,6 +34,8 @@ class WorkflowModel(BaseModel):
     approval_roles: List[str] = []
     # sequence of roles in the order they must approve
     approval_sequence: List[str] = []
+    # how approval steps progress: sequential or parallel
+    mode: str = "sequential"
 
 
 workflows: Dict[str, WorkflowModel] = {}
@@ -256,6 +258,7 @@ def _bootstrap_sample() -> None:
             approval_steps=steps,
             approval_roles=[s.role for s in steps],
             approval_sequence=[s.role for s in sorted(steps, key=lambda s: s.order)],
+            mode="sequential",
         )
 
 
@@ -270,7 +273,10 @@ def register_bot(callback: Callable[[WorkflowModel], None]) -> None:
 
 @log_call
 def create_workflow(
-    project: str, phases: List[str], template: str = "branch-coordination"
+    project: str,
+    phases: List[str],
+    template: str = "branch-coordination",
+    mode: str = "sequential",
 ) -> WorkflowModel:
     """Create a workflow for a project starting at the first phase."""
     wf_id = uuid4().hex
@@ -290,13 +296,16 @@ def create_workflow(
         approval_steps=approval_steps,
         approval_roles=approval_roles,
         approval_sequence=approval_sequence,
+        mode=mode,
     )
     workflows[wf_id] = workflow
 
     # Create initial approval entries for each step
     from .approvals import create_approval
 
+    first_order = min((s.order for s in approval_steps), default=0)
     for step in approval_steps:
+        step_state = "pending" if mode == "parallel" or step.order == first_order else "future"
         create_approval(
             wf_id,
             step.role,
@@ -305,6 +314,9 @@ def create_workflow(
             description=step.description,
             phase_id=workflow.phase,
             required=step.required,
+            role=step.role,
+            order=step.order,
+            state=step_state,
         )
 
     for cb in bot_callbacks:
