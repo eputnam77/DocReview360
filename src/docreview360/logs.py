@@ -362,18 +362,18 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # noqa: C901
                     severity="info",
                     args=args_repr,
                     kwargs=kwargs_repr,
-                    result=repr(result),
+                    result=repr(_redact(result)),
                 )
                 return result
             except Exception as exc:
                 log_event(
                     f.__name__,
                     user_id=user_id,
-                    outcome="error",
+                    outcome="failure",
                     severity="error",
                     args=args_repr,
                     kwargs=kwargs_repr,
-                    error=str(exc),
+                    error=repr(_redact(str(exc))),
                     stacktrace=traceback.format_exc(),
                 )
                 raise
@@ -405,18 +405,18 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # noqa: C901
                     severity="info",
                     args=args_repr,
                     kwargs=kwargs_repr,
-                    result=repr(result),
+                    result=repr(_redact(result)),
                 )
                 return result
             except Exception as exc:
                 log_event(
                     f.__name__,
                     user_id=user_id,
-                    outcome="error",
+                    outcome="failure",
                     severity="error",
                     args=args_repr,
                     kwargs=kwargs_repr,
-                    error=str(exc),
+                    error=repr(_redact(str(exc))),
                     stacktrace=traceback.format_exc(),
                 )
                 raise
