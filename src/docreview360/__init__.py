@@ -39,6 +39,7 @@ __all__ = [
     "plugins_ui",
     "project_init",
     "metabase",
+    "alerts",
     "fed_numbering",
     "editor_loader",
     "onlyoffice_editor",
