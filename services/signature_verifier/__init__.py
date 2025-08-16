@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from uuid import uuid4
 
+from docreview360 import rbac
 from docreview360.approvals import ApprovalModel, approvals
 from docreview360.archive import schedule_archive_purge
 from docreview360.audit import (
@@ -24,6 +25,7 @@ def verify_document_signatures(
     *,
     parallel: bool = False,
     batch_id: str | None = None,
+    username: str = "system",
 ) -> int:
     """Recompute hashes and verify signatures for approvals.
 
@@ -47,6 +49,9 @@ def verify_document_signatures(
     int
         Number of approvals processed.
     """
+
+    if not rbac.has_permission(username, "verification_override"):
+        raise PermissionError("Forbidden")
 
     if batch_id is None:
         batch_id = uuid4().hex
