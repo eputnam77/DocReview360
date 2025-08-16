@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -153,8 +153,8 @@ class AuditLog(Base):
     ip_address: Mapped[str | None] = mapped_column(String)
 
 
-class AuditLogRecord(BaseModel):
-    """Pydantic schema mirroring :class:`AuditLog`."""
+class LogEntry(BaseModel):
+    """Shared Pydantic schema for audit log entries."""
 
     id: str
     timestamp: datetime
@@ -162,10 +162,10 @@ class AuditLogRecord(BaseModel):
     action: str
     entity_id: str | None = None
     details: dict[str, Any] = Field(default_factory=dict)
-    severity: str = "info"
+    severity: Literal["info", "warning", "error"] = "info"
     ip_address: str | None = None
 
-    # Backwards compatibility alias
+    # Backwards compatibility aliases
     @property
     def metadata(self) -> dict[str, Any]:  # pragma: no cover - simple accessor
         return self.details
@@ -177,3 +177,7 @@ class AuditLogRecord(BaseModel):
     @property
     def actor(self) -> str | None:  # pragma: no cover - simple accessor
         return self.user_id
+
+
+# ``AuditLogRecord`` retained for backward compatibility
+AuditLogRecord = LogEntry

@@ -8,15 +8,30 @@ import traceback
 import uuid
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Any, AsyncIterator, Callable, Dict, List, TypeVar, cast, get_type_hints
+from typing import Any, AsyncIterator, Callable, Dict, List, Literal, TypeVar, cast, get_type_hints
 
 from sqlalchemy import delete, event, func, insert, select
 
 from . import rbac
 from .database import Database, default_url
-from .models import AuditLog, AuditLogRecord
+from .models import AuditLog, LogEntry
 
-LogEntry = AuditLogRecord
+__all__ = [
+    "LogEntry",
+    "log_event",
+    "log_verification_failure",
+    "query_logs",
+    "count_logs",
+    "export_logs",
+    "purge_logs",
+    "clear_logs",
+    "log_stream",
+    "register_alert",
+    "register_listener",
+    "unregister_listener",
+    "watch_logs",
+    "log_call",
+]
 
 
 class _LogList(list[LogEntry]):
@@ -73,9 +88,13 @@ def _install_worm_guard(db: Database) -> None:
     engine = db._engine
 
     @event.listens_for(engine, "before_execute", retval=True)
-    def _worm_guard(  # type: ignore[override]
-        conn, clauseelement, multiparams, params, execution_options
-    ):
+    def _worm_guard(
+        conn: Any,
+        clauseelement: Any,
+        multiparams: Any,
+        params: Any,
+        execution_options: Dict[str, Any],
+    ) -> tuple[Any, Any, Any]:
         if (
             isinstance(clauseelement, (Delete, Update))
             and getattr(clauseelement.table, "name", "") == AuditLog.__tablename__
@@ -123,22 +142,23 @@ def log_event(
     user_id: str | None = None,
     *,
     entity_id: str | None = None,
-    severity: str = "info",
+    severity: Literal["info", "warning", "error"] = "info",
     ip: str | None = None,
     **context: Any,
 ) -> LogEntry:
     """Record a log entry in the database and return it."""
 
-    entry = LogEntry(
-        id=str(uuid.uuid4()),
-        timestamp=datetime.now(timezone.utc),
-        user_id=user_id,
-        action=action,
-        entity_id=entity_id or context.pop("entity_id", None),
-        details=context,
-        severity=severity,
-        ip_address=ip or context.get("ip_address") or context.get("ip"),
-    )
+    data = {
+        "id": str(uuid.uuid4()),
+        "timestamp": datetime.now(timezone.utc),
+        "user_id": user_id,
+        "action": action,
+        "entity_id": entity_id or context.pop("entity_id", None),
+        "details": context,
+        "severity": severity,
+        "ip_address": ip or context.get("ip_address") or context.get("ip"),
+    }
+    entry = LogEntry.model_validate(data)
     db = _get_db()
     with db.session() as conn:
         import json
