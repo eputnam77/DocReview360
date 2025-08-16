@@ -13,8 +13,11 @@ def verify_log_chain(
     bucket: str | Path = "tamper_proof_store",
     key: str = "log_chain.json",
     batch_size: int = 100,
+    *,
+    user_id: str = "system",
+    alert_email: str | None = None,
 ) -> bool:
-    """Recompute hash chain and log failures to the audit log.
+    """Recompute hash chain and log the verification result.
 
     Parameters
     ----------
@@ -30,9 +33,23 @@ def verify_log_chain(
     bool
         ``True`` when the current logs match the stored chain, ``False`` otherwise.
     """
-    ok = verify_hash_chain(bucket=bucket, key=key, batch_size=batch_size)
+    ok = verify_hash_chain(bucket=bucket, key=key, batch_size=batch_size, user_id=user_id)
+    log_event(
+        "log_chain_verification",
+        user_id=user_id,
+        result="success" if ok else "mismatch",
+    )
     if not ok:
-        log_event("log_chain_integrity_failure")
+        log_event("log_chain_integrity_failure", user_id=user_id)
+        if alert_email:
+            from docreview360.notifications import send_email
+
+            send_email(
+                "default",
+                alert_email,
+                subject="Log chain verification failed",
+                body="Stored log hash chain does not match current logs.",
+            )
     return ok
 
 
@@ -47,9 +64,15 @@ def schedule_log_chain_verification() -> None:
     bucket = str(cfg.get("bucket", "tamper_proof_store"))
     key = str(cfg.get("key", "log_chain.json"))
     batch_size = int(cfg.get("batch_size", 100))
+    alert_email = str(cfg.get("alert_email", "admin@example.com"))
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["log_chain_verification"] = {
         "task": "docreview360.verify_log_chain",
         "schedule": timedelta(minutes=interval),
-        "kwargs": {"bucket": bucket, "key": key, "batch_size": batch_size},
+        "kwargs": {
+            "bucket": bucket,
+            "key": key,
+            "batch_size": batch_size,
+            "alert_email": alert_email,
+        },
     }
