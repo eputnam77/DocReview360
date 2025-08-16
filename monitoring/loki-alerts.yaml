@@ -8,3 +8,21 @@ groups:
           severity: critical
         annotations:
           summary: High error rate detected
+      - alert: MassApprovals
+        expr: sum(rate({app="docreview360",action="approval_granted"}[5m])) > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Mass approvals detected
+          slack: ops-alerts
+          email: ops@example.com
+      - alert: RepeatedFailedLogins
+        expr: sum(rate({app="docreview360",action="login_failed"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Repeated failed logins detected
+          slack: security-alerts
+          email: sec@example.com
