@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import hashlib
 import os
 import traceback
 import uuid
@@ -15,7 +16,7 @@ from sqlalchemy import delete, event, func, insert, select
 
 from . import log_connectors, rbac
 from .database import Database, default_url
-from .models import AuditLog, LogEntry
+from .models import Approval, AuditLog, LogEntry
 
 __all__ = [
     "LogEntry",
@@ -49,8 +50,9 @@ class _LogList(list[LogEntry]):
         except Exception:
             return
         with db.session() as conn:
-            conn = conn.execution_options(allow_audit_log_mutations=True)
-            conn.execute(delete(AuditLog))
+            conn.execute(
+                delete(AuditLog).execution_options(allow_audit_log_mutations=True)
+            )
 
 
 logs: _LogList = _LogList()
@@ -105,12 +107,15 @@ def _install_worm_guard(db: Database) -> None:
         params: Any,
         execution_options: Dict[str, Any],
     ) -> tuple[Any, Any, Any]:
-        if (
-            isinstance(clauseelement, (Delete, Update))
-            and getattr(clauseelement.table, "name", "") == AuditLog.__tablename__
-        ):
+        target_table = getattr(clauseelement, "table", None)
+        if isinstance(clauseelement, (Delete, Update)) and target_table in {
+            AuditLog.__table__,
+            Approval.__table__,
+        }:
             if not execution_options.get("allow_audit_log_mutations"):
-                raise PermissionError("Audit log entries are immutable")
+                if target_table is AuditLog.__table__:
+                    raise PermissionError("Audit log entries are immutable")
+                raise PermissionError("Approvals are immutable")
         return clauseelement, multiparams, params
 
 
@@ -156,6 +161,8 @@ def log_event(
     severity: Literal["info", "warning", "error"] = "info",
     ip: str | None = None,
     trace_id: str | None = None,
+    document_hash: str | None = None,
+    provider_response: Dict[str, Any] | None = None,
     **context: Any,
 ) -> LogEntry:
     """Record a log entry in the database and return it."""
@@ -163,7 +170,16 @@ def log_event(
     trace = trace_id or TRACE_ID.get(None)
     if trace:
         context.setdefault("trace_id", trace)
+    if document_hash is None:
+        document_hash = context.pop("document_hash", None)
+    if provider_response is None:
+        provider_response = context.pop("provider_response", None)
     timestamp = datetime.now(timezone.utc).isoformat()
+    db = _get_db()
+    with db.session() as conn:
+        prev_hash = conn.execute(
+            select(AuditLog.hash).order_by(AuditLog.timestamp.desc()).limit(1)
+        ).scalar_one_or_none()
     data = {
         "id": str(uuid.uuid4()),
         "timestamp": timestamp,
@@ -174,12 +190,19 @@ def log_event(
         "details": context,
         "severity": severity,
         "ip_address": ip or context.get("ip_address") or context.get("ip"),
+        "prev_hash": prev_hash,
+        "document_hash": document_hash,
+        "provider_response": provider_response or {},
     }
-    entry = LogEntry.model_validate(data)
-    db = _get_db()
-    with db.session() as conn:
-        import json
+    import json
 
+    payload = json.dumps(
+        {k: v for k, v in data.items() if k != "hash"}, sort_keys=True, default=str
+    ).encode()
+    prev_bytes = bytes.fromhex(prev_hash) if prev_hash else b""
+    data["hash"] = hashlib.sha256(prev_bytes + payload).hexdigest()
+    entry = LogEntry.model_validate(data)
+    with db.session() as conn:
         conn.execute(
             insert(AuditLog).values(
                 id=entry.id,
@@ -191,6 +214,10 @@ def log_event(
                 details=json.dumps(entry.details),
                 severity=entry.severity,
                 ip_address=entry.ip_address,
+                prev_hash=entry.prev_hash,
+                hash=entry.hash,
+                document_hash=entry.document_hash,
+                provider_response=json.dumps(entry.provider_response),
             )
         )
     logs.append(entry)
@@ -271,6 +298,10 @@ def query_logs(  # noqa: C901
             details=_coerce_details(row.details),
             severity=row.severity,
             ip_address=row.ip_address,
+            prev_hash=row.prev_hash,
+            hash=row.hash,
+            document_hash=row.document_hash,
+            provider_response=_coerce_details(row.provider_response),
         )
         for row in rows
     ]
