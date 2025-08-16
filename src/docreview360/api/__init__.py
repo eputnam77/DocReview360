@@ -822,7 +822,10 @@ async def get_document_audit_endpoint(
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    return get_audit_log(doc_id)
+    events = get_audit_log(doc_id)
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id=doc_id, target="audit", count=len(events))
+    return events
 
 
 @app.get("/documents/{doc_id}/verify-signature")
@@ -875,7 +878,10 @@ async def add_comment_endpoint(doc_id: str, body: CommentCreate) -> CommentModel
 @app.get("/documents/{doc_id}/comments", response_model=list[CommentModel])
 async def list_comments_endpoint(doc_id: str) -> list[CommentModel]:
     """List comments for a document."""
-    return list_comments(doc_id)
+    comments = list_comments(doc_id)
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id=doc_id, target="comments", count=len(comments))
+    return comments
 
 
 @app.get("/documents/{doc_id}/export")
@@ -1675,7 +1681,7 @@ async def list_logs(
     _: str = Depends(require_audit_access),
 ) -> list[LogEntry]:
     """Return recorded logs with optional filters and pagination."""
-    return query_logs(
+    entries = query_logs(
         action=action,
         user_id=user_id,
         start=start,
@@ -1686,6 +1692,9 @@ async def list_logs(
         limit=limit,
         offset=offset,
     )
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id="logs", count=len(entries))
+    return entries
 
 
 @app.get("/api/audit", response_model=list[LogEntry])
@@ -1702,7 +1711,7 @@ async def list_audit(
     _: str = Depends(require_audit_access),
 ) -> list[LogEntry]:
     """Alias for :func:`list_logs` used by the dashboard."""
-    return query_logs(
+    entries = query_logs(
         action=action,
         user_id=user_id,
         start=start,
@@ -1713,6 +1722,9 @@ async def list_audit(
         limit=limit,
         offset=offset,
     )
+    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+        log_event("read", entity_id="logs", count=len(entries))
+    return entries
 
 
 @app.get("/reports/summary", response_model=SummaryReport)
