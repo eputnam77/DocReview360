@@ -1,10 +1,8 @@
 """Integrity verification tasks for CMS stored documents."""
-
 from __future__ import annotations
 
 import hashlib
 import logging
-import os
 from typing import List
 
 from celery.schedules import crontab
@@ -14,19 +12,9 @@ from .celery_app import app
 from .config import CONFIG_FILE, Config
 from .documents import documents
 from .logs import log_event
-from .sharepoint import SharePointClient
+from .sharepoint import client_from_env
 
 logger = logging.getLogger(__name__)
-
-
-def _client_from_env() -> SharePointClient:
-    """Return a SharePoint client using environment credentials."""
-    site_id = os.getenv("SHAREPOINT_SITE_ID")
-    drive_id = os.getenv("SHAREPOINT_DRIVE_ID")
-    token = os.getenv("SHAREPOINT_TOKEN")
-    if not all([site_id, drive_id, token]):
-        raise ValueError("Missing SharePoint credentials")
-    return SharePointClient(site_id=site_id, drive_id=drive_id, token=token)
 
 
 def verify_integrity() -> List[str]:
@@ -38,7 +26,7 @@ def verify_integrity() -> List[str]:
     if not cfg or cfg.cms.lower() != "sharepoint":
         return []
     try:
-        client = _client_from_env()
+        client = client_from_env()
     except Exception as exc:  # pragma: no cover - environment dependent
         logger.error("Integrity check skipped: %s", exc)
         return []

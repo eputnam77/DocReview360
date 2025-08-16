@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import os
+
+from .secrets import get_secret
 
 
 def _require_secret() -> str:
-    """Return the signature secret from ``DOCREVIEW360_SIGNATURE_SECRET``."""
+    """Return the signature secret from configuration or environment."""
 
-    value = os.getenv("DOCREVIEW360_SIGNATURE_SECRET")
+    value = get_secret("docreview360_signature_secret")
     if not value:
         raise RuntimeError("DOCREVIEW360_SIGNATURE_SECRET environment variable required")
     return value
