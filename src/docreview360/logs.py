@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import os
 import traceback
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, AsyncIterator, Callable, Dict, List, Literal, TypeVar, cast, get_type_hints
 
@@ -34,6 +35,7 @@ __all__ = [
     "watch_logs",
     "log_call",
     "schedule_log_purge",
+    "TRACE_ID",
 ]
 
 
@@ -57,6 +59,7 @@ _listeners: List[Callable[[LogEntry], None]] = []
 
 
 _db: Database | None = None
+TRACE_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar("trace_id", default=None)
 
 SENSITIVE_KEYS = {"password", "token", "secret"}
 
@@ -152,10 +155,14 @@ def log_event(
     entity_type: str | None = None,
     severity: Literal["info", "warning", "error"] = "info",
     ip: str | None = None,
+    trace_id: str | None = None,
     **context: Any,
 ) -> LogEntry:
     """Record a log entry in the database and return it."""
 
+    trace = trace_id or TRACE_ID.get(None)
+    if trace:
+        context.setdefault("trace_id", trace)
     timestamp = datetime.now(timezone.utc).isoformat()
     data = {
         "id": str(uuid.uuid4()),
@@ -213,7 +220,7 @@ def log_verification_failure(user_id: str, ip: str, **context: Any) -> LogEntry:
     )
 
 
-def query_logs(
+def query_logs(  # noqa: C901
     action: str | None = None,
     user_id: str | None = None,
     log_id: str | None = None,

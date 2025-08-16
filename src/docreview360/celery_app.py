@@ -3,20 +3,54 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import httpx
-from celery import Celery
+from celery import Celery, Task
 
 from .backup_utils import create_backup
 from .config import CONFIG_FILE, Config
 from .documents import documents
 from .exporter import export_batch
+from .logs import TRACE_ID, log_event
 from .search import search_index
 
 broker_url = os.environ.get("CELERY_BROKER_URL", "memory://")
 backend_url = os.environ.get("CELERY_RESULT_BACKEND", "cache+memory://")
 app = Celery("docreview360", broker=broker_url, backend=backend_url)
 app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
+
+
+class TracedTask(Task):
+    """Task that propagates ``TRACE_ID`` and logs lifecycle events."""
+
+    def apply_async(
+        self,
+        args: tuple[Any, ...] | None = None,
+        kwargs: dict[str, Any] | None = None,
+        **options: Any,
+    ):
+        trace_id = TRACE_ID.get(None)
+        headers = options.setdefault("headers", {})
+        if trace_id:
+            headers.setdefault("trace_id", trace_id)
+        return super().apply_async(args=args, kwargs=kwargs, **options)
+
+    def __call__(self, *args: Any, **kwargs: Any):
+        trace_id = getattr(getattr(self, "request", None), "headers", {}).get("trace_id")
+        if trace_id:
+            TRACE_ID.set(trace_id)
+        log_event("task_started", task=self.name)
+        try:
+            result = self.run(*args, **kwargs)
+            log_event("task_succeeded", task=self.name)
+            return result
+        except Exception as exc:  # pragma: no cover - defensive
+            log_event("task_failed", task=self.name, error=str(exc), severity="error")
+            raise
+
+
+app.Task = TracedTask
 
 
 def echo(value: str) -> str:

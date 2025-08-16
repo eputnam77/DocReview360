@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -7,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from ..approvals import get_approval, handle_signature_return
-from ..logs import log_event, log_call
+from ..logs import TRACE_ID, log_call, log_event
 
 router = APIRouter()
 
@@ -23,6 +24,9 @@ async def approval_return(
     next: Optional[str] = Query(None),
 ):
     """Process provider return parameters for completed signatures."""
+    trace_id = uuid.uuid4().hex
+    request.state.trace_id = trace_id
+    TRACE_ID.set(trace_id)
     appr = get_approval(approval)
     if appr is None or appr.signature_id != signature:
         log_event(

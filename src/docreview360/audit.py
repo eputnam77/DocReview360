@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .logs import TRACE_ID
 from .object_storage import upload_file
 from .security_compliance import should_purge
 from .settings_manager import load_settings
@@ -111,6 +112,9 @@ def log_audit_event(
         verified_at = datetime.now(timezone.utc)
     if verifier is None and actor is not None:
         verifier = actor
+    trace = context.pop("trace_id", None) or TRACE_ID.get(None)
+    if trace:
+        context.setdefault("trace_id", trace)
     entry = AuditLogEntry(
         id=str(uuid.uuid4()),
         event=event,
