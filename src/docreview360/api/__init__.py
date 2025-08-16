@@ -34,6 +34,7 @@ from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict, Field
 
 from .. import auth, reporting
+from ..rbac import require_permission
 from .. import search as search_mod
 from ..ai_assist import rewrite_text, summarize_text
 from ..ai_balancer import load_state as load_worker_state
@@ -829,7 +830,11 @@ async def get_document_audit_endpoint(
 
 
 @app.get("/documents/{doc_id}/verify-signature")
-async def verify_signature_endpoint(doc_id: str, provider: str | None = None) -> dict[str, object]:
+async def verify_signature_endpoint(
+    doc_id: str,
+    provider: str | None = None,
+    user: auth.User = Depends(require_permission("verification_override")),
+) -> dict[str, object]:
     """Validate the digital signatures associated with ``doc_id``.
 
     Parameters

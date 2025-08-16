@@ -8,11 +8,19 @@ from fastapi import Depends, HTTPException, status
 
 from . import auth
 
-# Default permission table for seven roles. Each role maps to the set of
-# actions it may perform. The table acts as a source of truth for tests and
-# runtime checks.
+# Default permission table for roles. Each role maps to the set of actions it
+# may perform. The table acts as a source of truth for tests and runtime
+# checks.
 ROLE_PERMISSIONS: dict[str, Set[str]] = {
-    "admin": {"create", "read", "update", "delete", "edit_field_x", "view_audit_log"},
+    "admin": {
+        "create",
+        "read",
+        "update",
+        "delete",
+        "edit_field_x",
+        "view_audit_log",
+        "verification_override",
+    },
     "manager": {"create", "read", "update"},
     "sme": {"read", "edit_field_x"},
     "reviewer": {"read"},
@@ -20,10 +28,15 @@ ROLE_PERMISSIONS: dict[str, Set[str]] = {
     "observer": {"read"},
     "user": {"read"},
     "auditor": {"view_audit_log"},
+    "verifier": {"verification_override"},
 }
 
 # In-memory mapping of usernames to role sets
-USER_ROLES: dict[str, Set[str]] = {"alice": {"user", "admin"}, "bob": {"auditor"}, "system": {"admin"}}
+USER_ROLES: dict[str, Set[str]] = {
+    "alice": {"user", "admin"},
+    "bob": {"auditor"},
+    "system": {"admin"},
+}
 
 
 def set_user_roles(username: str, roles: Iterable[str]) -> None:
