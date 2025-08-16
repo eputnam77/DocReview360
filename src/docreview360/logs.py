@@ -148,9 +148,10 @@ def log_event(
 ) -> LogEntry:
     """Record a log entry in the database and return it."""
 
+    timestamp = datetime.now(timezone.utc).isoformat()
     data = {
         "id": str(uuid.uuid4()),
-        "timestamp": datetime.now(timezone.utc),
+        "timestamp": timestamp,
         "user_id": user_id,
         "action": action,
         "entity_id": entity_id or context.pop("entity_id", None),

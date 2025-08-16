@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 
 from docreview360.audit import (
@@ -17,6 +18,14 @@ def test_query_logs_sorted_and_id_lookup() -> None:
     assert [logs[0].id, logs[1].id] == [e1.id, e2.id]
     found = query_logs(log_id=e1.id)
     assert len(found) == 1 and found[0].id == e1.id
+
+
+def test_log_event_timestamp_and_uuid() -> None:
+    clear_logs()
+    entry = log_event("alpha")
+    uuid.UUID(entry.id)
+    assert entry.timestamp.tzinfo == timezone.utc
+    assert entry.timestamp.isoformat().endswith("+00:00")
 
 
 def test_audit_log_sort_and_lookup() -> None:
@@ -45,3 +54,4 @@ def test_query_logs_filters_and_pagination() -> None:
     assert [entry.id for entry in logs] == [e2.id]
     paged = query_logs(limit=1, offset=1)
     assert len(paged) == 1
+
