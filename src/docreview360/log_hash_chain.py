@@ -41,6 +41,7 @@ def batch_hash_logs(
     batch_size: int = 100,
     bucket: str | Path = "tamper_proof_store",
     key: str = "log_chain.json",
+    user_id: str = "system",
 ) -> List[str]:
     """Hash log entries in batches and store the chain in ``bucket``.
 
@@ -54,7 +55,7 @@ def batch_hash_logs(
         File name for the stored chain within ``bucket``.
     """
 
-    entries = export_logs()
+    entries = export_logs(user_id, log_access=False)
     batches = [entries[i : i + batch_size] for i in range(0, len(entries), batch_size)]
     chain = _compute_chain(batches)
     upload_file(bucket, key, json.dumps(chain).encode(), append_only=True)
@@ -66,6 +67,7 @@ def verify_hash_chain(
     batch_size: int = 100,
     bucket: str | Path = "tamper_proof_store",
     key: str = "log_chain.json",
+    user_id: str = "system",
 ) -> bool:
     """Verify the stored hash chain matches current log entries.
 
@@ -77,7 +79,7 @@ def verify_hash_chain(
         stored = json.loads(download_file(bucket, key).decode())
     except Exception:
         return False
-    entries = export_logs()
+    entries = export_logs(user_id, log_access=False)
     batches = [entries[i : i + batch_size] for i in range(0, len(entries), batch_size)]
     current = _compute_chain(batches)
     return stored == current

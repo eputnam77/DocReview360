@@ -273,9 +273,17 @@ def _coerce_details(value: Any) -> Dict[str, Any]:
     return {}
 
 
-def export_logs() -> List[LogEntry]:
-    """Return all logs for export purposes."""
-    return query_logs()
+def export_logs(user_id: str, *, log_access: bool = True) -> List[LogEntry]:
+    """Return all logs for export purposes with access control."""
+
+    if not rbac.has_permission(user_id, "view_audit_log"):
+        if log_access:
+            log_event("audit_log_export", user_id=user_id, status="denied")
+        raise PermissionError("Not authorized to export logs")
+    entries = query_logs()
+    if log_access:
+        log_event("audit_log_export", user_id=user_id, status="success", count=len(entries))
+    return entries
 
 
 def purge_logs(user_id: str, *, reason: str | None = None) -> int:
