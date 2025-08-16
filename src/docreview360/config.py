@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 CONFIG_FILE = Path("docreview360.yaml")
+
+
+@dataclass
+class ConnectorSettings:
+    """Settings for an external log connector."""
+
+    type: str
+    endpoint: str
+    api_key: str | None = None
+    batch_size: int = 1
 
 
 @dataclass
@@ -30,6 +40,8 @@ class Config:
     log_reads: bool = True
     # Pattern for exported filenames; placeholders: {id}, {number}
     filename_template: str = "{id}"
+    # External log connectors configuration
+    log_connectors: list["ConnectorSettings"] = field(default_factory=list)
 
     @classmethod
     def load(cls, path: Path = CONFIG_FILE) -> "Config | None":
@@ -45,6 +57,9 @@ class Config:
         data: dict[str, Any] = raw
         if "database_url" not in data:
             data["database_url"] = None
+        connectors_raw = data.pop("log_connectors", []) or []
+        connectors = [ConnectorSettings(**c) for c in connectors_raw]
+        data["log_connectors"] = connectors
         return cls(**data)
 
     def save(self, path: Path = CONFIG_FILE) -> None:
@@ -52,7 +67,11 @@ class Config:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            data = {k: v for k, v in self.__dict__.items() if v is not None}
+            data = {
+                k: ([c.__dict__ for c in v] if k == "log_connectors" else v)
+                for k, v in self.__dict__.items()
+                if v is not None
+            }
             path.write_text(yaml.safe_dump(data))
         except OSError as exc:
             raise OSError(f"Failed to write config to {path}") from exc
