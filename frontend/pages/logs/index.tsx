@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { API } from "@/lib/api";
 import { useUserStore } from "@/state/user";
+import SeverityBadge, { SeverityLegend } from "@/components/SeverityBadge";
 
 interface LogEntry {
   id: string;
@@ -91,6 +92,7 @@ export default function LiveLogsPage() {
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Live Logs</h1>
+      <SeverityLegend />
       <form className="flex flex-wrap gap-2">
         <Input
           type="date"
@@ -160,7 +162,9 @@ export default function LiveLogsPage() {
                 )}
               </TableCell>
               <TableCell>{log.details?.message || log.action}</TableCell>
-              <TableCell>{log.severity || "info"}</TableCell>
+              <TableCell>
+                <SeverityBadge severity={log.severity} />
+              </TableCell>
             </TableRow>
           ))}
           {logs.length === 0 && (
