@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Table,
   TableBody,
@@ -8,7 +8,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { API } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 
@@ -33,7 +32,9 @@ export default function AuditLogsPage() {
     severity: "",
   });
   const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const PAGE_SIZE = 50;
+  const loader = useRef<HTMLDivElement | null>(null);
 
   const username = useUserStore((s) => s.username);
   const isAdmin = useUserStore((s) => s.isAdmin);
@@ -47,21 +48,37 @@ export default function AuditLogsPage() {
     Object.entries(filters).forEach(([k, v]) => {
       if (v) params.append(k, v as string);
     });
-    params.append("limit", String(PAGE_SIZE));
-    params.append("offset", String(page * PAGE_SIZE));
+    params.append("page", String(page));
+    params.append("size", String(PAGE_SIZE));
 
     fetch(`${API}/audit?${params.toString()}`, {
       headers: { "X-User": username },
     })
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: LogEntry[]) => setLogs(data))
+      .then((data: LogEntry[]) => {
+        setLogs((prev) => (page === 0 ? data : [...prev, ...data]));
+        setHasMore(data.length === PAGE_SIZE);
+      })
       .catch(() => setLogs([]));
   }, [allowed, username, filters, page]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage((p) => p + 1);
+      }
+    });
+    const el = loader.current;
+    if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFilters((f) => ({ ...f, [name]: value }));
     setPage(0);
+    setHasMore(true);
+    setLogs([]);
   };
 
   if (!allowed) {
@@ -162,23 +179,7 @@ export default function AuditLogsPage() {
         </TableBody>
       </Table>
 
-      {/* Pagination */}
-      <div className="flex justify-between">
-        <Button
-          variant="secondary"
-          onClick={() => setPage((p) => Math.max(p - 1, 0))}
-          disabled={page === 0}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => setPage((p) => p + 1)}
-          disabled={logs.length < PAGE_SIZE}
-        >
-          Next
-        </Button>
-      </div>
+      <div ref={loader} />
     </div>
   );
 }

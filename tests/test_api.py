@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
+from docreview360.logs import clear_logs, log_event
 from docreview360.workflows import create_workflow
 
 
@@ -57,6 +58,20 @@ def test_metrics_and_audit_endpoints() -> None:
     data3 = [e for e in resp3.json() if e["action"] != "audit_log_access"]
     data4 = [e for e in resp4.json() if e["action"] != "audit_log_access"]
     assert data3 == data4
+
+
+def test_audit_pagination() -> None:
+    client = TestClient(app)
+    clear_logs()
+    for i in range(3):
+        log_event(f"event_{i}", user_id="alice")
+    headers = {"X-User": "alice"}
+    resp = client.get("/api/audit?page=0&size=2", headers=headers)
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+    resp2 = client.get("/api/audit?page=1&size=2", headers=headers)
+    assert resp2.status_code == 200
+    assert len(resp2.json()) >= 1
 
 
 def test_start_workflow_endpoint() -> None:
