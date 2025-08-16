@@ -30,3 +30,19 @@ def test_log_call_failure_logs_stacktrace_and_error_severity() -> None:
     assert entry.severity == "error"
     assert entry.details["kwargs"]["token"] == "'[REDACTED]'"
     assert "RuntimeError" in entry.details["stacktrace"]
+
+
+def test_log_call_user_context_and_opt_out() -> None:
+    clear_logs()
+
+    @log_call
+    def sample(user: str) -> str:
+        return "ok"
+
+    sample(user="alice")
+    entry = logs[-1]
+    assert entry.user_id == "alice"
+
+    clear_logs()
+    sample(user="alice", audit=False)
+    assert logs == []
