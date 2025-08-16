@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from uuid import uuid4
 
-from docreview360.approvals import approvals
+from docreview360.approvals import ApprovalModel, approvals
 from docreview360.archive import schedule_archive_purge
 from docreview360.audit import (
     log_audit_event,
@@ -16,29 +18,51 @@ from docreview360.integrations.signature import get_provider
 from docreview360.settings_manager import load_settings
 
 
-def verify_document_signatures(scope: str = "approved") -> int:
-    """Recompute hashes and verify signatures for approvals in ``scope``.
+def verify_document_signatures(
+    scope: str = "approved",
+    document_ids: list[str] | None = None,
+    *,
+    parallel: bool = False,
+    batch_id: str | None = None,
+) -> int:
+    """Recompute hashes and verify signatures for approvals.
 
     Parameters
     ----------
     scope:
         Either ``"all"`` to process every approval or a specific approval
-        ``state`` such as ``"approved"``.
+        ``state`` such as ``"approved"``. Ignored when ``document_ids`` is
+        provided.
+    document_ids:
+        Specific document IDs to process.  When ``None`` all approvals within
+        ``scope`` are verified.
+    parallel:
+        When ``True`` approvals are processed concurrently using a thread pool.
+    batch_id:
+        Optional identifier recorded with each audit log entry.  If omitted a
+        unique identifier is generated.
 
     Returns
     -------
     int
         Number of approvals processed.
     """
-    count = 0
-    for approval in approvals.values():
+
+    if batch_id is None:
+        batch_id = uuid4().hex
+
+    document_ids_set = set(document_ids) if document_ids is not None else set()
+
+    def _process(approval: ApprovalModel) -> int:
         if approval.certificate_url is None:
-            continue
-        if scope != "all" and approval.state != scope:
-            continue
+            return 0
+        if not document_ids_set and scope != "all" and approval.state != scope:
+            return 0
+        if document_ids_set and approval.document_id not in document_ids_set:
+            return 0
         document = documents.get(approval.document_id)
         if document is None:
-            continue
+            return 0
         document_bytes = document.content.encode("utf-8")
         current_hash = hashlib.sha256(document_bytes).hexdigest()
         hash_valid = approval.document_hash is None or current_hash == approval.document_hash
@@ -54,8 +78,17 @@ def verify_document_signatures(scope: str = "approved") -> int:
             document_hash=current_hash,
             signature_valid=valid,
             hash_valid=hash_valid,
+            batch_id=batch_id,
         )
-        count += 1
+        return 1
+
+    approvals_iter = list(approvals.values())
+    if parallel:
+        with ThreadPoolExecutor() as pool:
+            return sum(pool.map(_process, approvals_iter))
+    count = 0
+    for approval in approvals_iter:
+        count += _process(approval)
     return count
 
 
