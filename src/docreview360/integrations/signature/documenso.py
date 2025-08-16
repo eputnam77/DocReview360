@@ -96,7 +96,14 @@ def request_signature(
     if workflow_id:
         _sig_workflows[sig_id] = workflow_id
 
-    log_event(f"signature_requested:{document_id}:{user}")
+    log_event(
+        "signature_requested",
+        user_id=user,
+        entity_id=document_id,
+        signature_id=sig_id,
+        workflow_id=workflow_id,
+        approval_id=approval_id,
+    )
     return sig_id, url, meta
 
 
@@ -117,7 +124,7 @@ def complete_signature(sig_id: str) -> None:
             raise KeyError(f"Unknown signature id {sig_id}")
         _signatures[sig_id] = "signed"
 
-    log_event(f"signature_completed:{sig_id}")
+    log_event("signature_completed", entity_id=sig_id)
 
 
 def verify_signature(signature_id: str, document: bytes) -> bool:
@@ -280,7 +287,7 @@ def process_webhook(data: Dict[str, str]) -> None:
                 loop.create_task(coro)
         except (KeyError, ValueError):
             pass
-    log_event(f"signature_webhook:{sig_id}:{status}")
+    log_event("signature_webhook", entity_id=sig_id, status=status)
 
 
 class DocumensoProvider:
