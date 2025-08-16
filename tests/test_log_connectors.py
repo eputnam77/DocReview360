@@ -1,0 +1,55 @@
+from pathlib import Path
+
+import httpx
+import pytest
+import yaml
+from _pytest.monkeypatch import MonkeyPatch
+
+from docreview360 import logs
+from docreview360.config import Config
+from docreview360.log_connectors import ELKConnector, clear_connectors, register_connector
+
+
+def test_config_connectors(tmp_path: Path) -> None:
+    path = tmp_path / "cfg.yaml"
+    data = {
+        "database": "sqlite",
+        "editor": "vim",
+        "cms": "local",
+        "auth": "noop",
+        "log_connectors": [
+            {"type": "elk", "endpoint": "http://elk", "api_key": "k", "batch_size": 2}
+        ],
+    }
+    path.write_text(yaml.safe_dump(data))
+    cfg = Config.load(path)
+    assert cfg is not None
+    assert cfg.log_connectors[0].endpoint == "http://elk"
+    cfg.save(path)
+    saved = yaml.safe_load(path.read_text())
+    assert saved["log_connectors"][0]["api_key"] == "k"
+
+
+@pytest.mark.asyncio
+async def test_elk_connector_batches(monkeypatch: MonkeyPatch) -> None:
+    sent: list[list[dict[str, object]]] = []
+
+    import asyncio
+
+    async def fake_post(self, url, json=None, headers=None):  # type: ignore[no-untyped-def]
+        sent.append(json)
+        return httpx.Response(200, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    connector = ELKConnector("http://elk", api_key="k", batch_size=2)
+    register_connector(connector)
+
+    try:
+        logs.log_event("a")
+        logs.log_event("b")
+        await asyncio.sleep(0.1)
+    finally:
+        clear_connectors()
+        logs.clear_logs()
+    assert len(sent) == 1
+    assert len(sent[0]) == 2
