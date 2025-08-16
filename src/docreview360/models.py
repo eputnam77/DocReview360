@@ -115,6 +115,7 @@ class Workflow(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
     status: Mapped[str] = mapped_column(String(50), index=True)
+    callback_url: Mapped[str | None] = mapped_column(String(200))
 
     project: Mapped[Project] = relationship()
     approvals: Mapped[list["Approval"]] = relationship(back_populates="workflow")
