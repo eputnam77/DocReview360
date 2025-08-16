@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from html import escape
 
 from pydantic import BaseModel
 
@@ -12,6 +13,30 @@ from .documents import documents
 from .search import _expire_temp_assignment, projects
 from .status import internal_status
 from .workflows import workflows
+
+
+def compile_check_report(results: dict[str, Any]) -> tuple[bytes, bytes]:
+    """Return HTML and PDF summaries of ``results``.
+
+    Parameters
+    ----------
+    results:
+        Mapping of check names to their outcomes.
+
+    Returns
+    -------
+    tuple[bytes, bytes]
+        HTML and PDF representations of the report.
+    """
+
+    rows = []
+    for name, value in results.items():
+        rows.append(f"<tr><th>{escape(str(name))}</th><td>{escape(str(value))}</td></tr>")
+    html = (
+        "<html><body><h1>Check Results</h1><table>" + "".join(rows) + "</table></body></html>"
+    ).encode()
+    pdf = f"PDF-PLACEHOLDER\n{html.decode()}".encode()
+    return html, pdf
 
 
 class SummaryReport(BaseModel):
