@@ -14,3 +14,18 @@ The image expects a `PORT` environment variable supplied by the host.
 
 The Dockerfile installs backend and frontend dependencies and builds the Next.js
 UI so the resulting image can run on these providers with minimal setup.
+
+## Secret management
+
+DocReview360 resolves service credentials through a simple vault interface. To
+configure a vault, add a section to `settings.yaml`:
+
+```yaml
+vault:
+  url: http://localhost:8200
+  token: my-dev-token
+```
+
+When configured, provider modules such as the OpenAI and SharePoint clients pull
+their tokens from the vault. If no vault is configured, the application falls
+back to environment variables like `OPENAI_KEY` or `SHAREPOINT_TOKEN`.

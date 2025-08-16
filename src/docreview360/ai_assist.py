@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import os
-
 import httpx
 
 from .ai_utils import synth_compress
+from .secrets import get_secret
 
 __all__ = [
     "_call_openai",
@@ -15,26 +14,25 @@ __all__ = [
     "httpx",
 ]
 
-OPENAI_KEY = os.getenv("OPENAI_KEY")
-
 
 async def _call_openai(prompt: str) -> str:
     """Return completion text for ``prompt`` using ChatGPT.
 
-    If ``OPENAI_KEY`` is not set the prompt is returned reversed so tests
+    If the OpenAI token is unavailable the prompt is returned reversed so tests
     can run without network calls.
     """
     if not prompt.strip():
         raise ValueError("prompt is required")
     prompt = synth_compress(prompt)
-    if not OPENAI_KEY:
+    key = get_secret("openai")
+    if not key:
         return " ".join(reversed(prompt.split()))
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post(
                 "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_KEY}"},
+                headers={"Authorization": f"Bearer {key}"},
                 json={"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": prompt}]},
             )
             resp.raise_for_status()

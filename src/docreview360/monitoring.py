@@ -7,11 +7,12 @@ that tests do not require any external services.
 
 from __future__ import annotations
 
-import os
 from types import ModuleType
 from typing import Dict, Optional, cast
 
 from prometheus_client import Counter, start_http_server
+
+from .secrets import get_secret
 
 try:
     import sentry_sdk as _sentry_sdk
@@ -36,7 +37,7 @@ def init_observability(port: int | None = None, *, dsn: str | None = None) -> Di
         start_http_server(port)
         services["prometheus"] = f"http://localhost:{port}/"
 
-    dsn = dsn or os.getenv("SENTRY_DSN")
+    dsn = dsn or get_secret("sentry_dsn")
     if dsn:
         if sentry_sdk is not None:  # real library available
             sentry_sdk.init(dsn=dsn, traces_sample_rate=1.0)
