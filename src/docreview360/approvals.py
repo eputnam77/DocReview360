@@ -15,11 +15,8 @@ from .audit import log_audit_event
 from .certs import fetch_certificate
 from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
-from .integrations.signature import (
-    get_default_provider,
-    get_default_providers,
-    get_provider,
-)
+from .integrations.registry import get_provider
+from .integrations.signature import get_default_provider, get_default_providers
 from .logs import log_event, log_verification_failure
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
@@ -139,9 +136,7 @@ def get_approval(approval_id: str) -> ApprovalModel | None:
     return approvals.get(approval_id)
 
 
-def list_approvals(
-    workflow: str | None = None, phase_id: str | None = None
-) -> List[ApprovalModel]:
+def list_approvals(workflow: str | None = None, phase_id: str | None = None) -> List[ApprovalModel]:
     items: List[ApprovalModel] = list(approvals.values())
     if workflow is not None:
         items = [a for a in items if a.workflow == workflow]
@@ -426,7 +421,7 @@ def verify_document_hash(approval_id: str, document: bytes) -> bool:
     return approval.document_hash == hashlib.sha256(document).hexdigest()
 
 
-def verify_document_signature(
+def verify_document_signature(  # noqa: C901
     doc_id: str, provider: str | list[str] | None = None
 ) -> dict[str, object]:
     document = get_document(doc_id)
