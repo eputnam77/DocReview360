@@ -14,6 +14,7 @@ def test_log_call_success_redacts_sensitive_data() -> None:
     entry = logs[-1]
     assert entry.severity == "info"
     assert entry.details["kwargs"]["password"] == "'[REDACTED]'"
+    assert entry.details["outcome"] == "success"
 
 
 def test_log_call_failure_logs_stacktrace_and_error_severity() -> None:
@@ -30,6 +31,7 @@ def test_log_call_failure_logs_stacktrace_and_error_severity() -> None:
     assert entry.severity == "error"
     assert entry.details["kwargs"]["token"] == "'[REDACTED]'"
     assert "RuntimeError" in entry.details["stacktrace"]
+    assert entry.details["outcome"] == "failure"
 
 
 def test_log_call_user_context_and_opt_out() -> None:
@@ -44,5 +46,18 @@ def test_log_call_user_context_and_opt_out() -> None:
     assert entry.user_id == "alice"
 
     clear_logs()
-    sample(user="alice", audit=False)
+    sample(user="alice", audit=False)  # type: ignore[call-arg]
     assert logs == []
+
+
+def test_log_call_redacts_sensitive_data_in_result() -> None:
+    clear_logs()
+
+    @log_call
+    def sample() -> dict[str, str]:
+        return {"token": "abc123"}
+
+    sample()
+    entry = logs[-1]
+    assert "[REDACTED]" in entry.details["result"]
+    assert "abc123" not in entry.details["result"]
