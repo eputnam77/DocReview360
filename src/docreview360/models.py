@@ -147,6 +147,7 @@ class AuditLog(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     user_id: Mapped[str | None] = mapped_column(String, index=True)
     action: Mapped[str] = mapped_column(String, index=True)
+    entity_type: Mapped[str | None] = mapped_column(String, index=True)
     entity_id: Mapped[str | None] = mapped_column(String, index=True)
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     severity: Mapped[str] = mapped_column(String, default="info", index=True)
@@ -160,6 +161,7 @@ class LogEntry(BaseModel):
     timestamp: datetime
     user_id: str | None = None
     action: str
+    entity_type: str | None = None
     entity_id: str | None = None
     details: dict[str, Any] = Field(default_factory=dict)
     severity: Literal["info", "warning", "error"] = "info"

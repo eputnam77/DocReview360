@@ -149,6 +149,7 @@ def log_event(
     user_id: str | None = None,
     *,
     entity_id: str | None = None,
+    entity_type: str | None = None,
     severity: Literal["info", "warning", "error"] = "info",
     ip: str | None = None,
     **context: Any,
@@ -161,6 +162,7 @@ def log_event(
         "timestamp": timestamp,
         "user_id": user_id,
         "action": action,
+        "entity_type": entity_type or context.pop("entity_type", None),
         "entity_id": entity_id or context.pop("entity_id", None),
         "details": context,
         "severity": severity,
@@ -177,6 +179,7 @@ def log_event(
                 timestamp=entry.timestamp,
                 user_id=entry.user_id,
                 action=entry.action,
+                entity_type=entry.entity_type,
                 entity_id=entry.entity_id,
                 details=json.dumps(entry.details),
                 severity=entry.severity,
@@ -218,6 +221,7 @@ def query_logs(
     start: datetime | None = None,
     end: datetime | None = None,
     entity_id: str | None = None,
+    entity_type: str | None = None,
     severity: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
@@ -234,6 +238,8 @@ def query_logs(
         stmt = stmt.where(AuditLog.id == log_id)
     if entity_id is not None:
         stmt = stmt.where(AuditLog.entity_id == entity_id)
+    if entity_type is not None:
+        stmt = stmt.where(AuditLog.entity_type == entity_type)
     if severity is not None:
         stmt = stmt.where(AuditLog.severity == severity)
     if start is not None:
@@ -253,6 +259,7 @@ def query_logs(
             timestamp=row.timestamp,
             user_id=row.user_id,
             action=row.action,
+            entity_type=row.entity_type,
             entity_id=row.entity_id,
             details=_coerce_details(row.details),
             severity=row.severity,
