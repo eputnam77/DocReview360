@@ -1883,8 +1883,14 @@ async def dashboard_stream(websocket: WebSocket) -> None:
 
 @app.websocket("/ws/logs")
 async def logs_stream(websocket: WebSocket) -> None:
-    """Stream log events to connected clients."""
+    """Stream log events to connected clients with access control."""
 
+    user = websocket.headers.get("x-user") or websocket.query_params.get("user")
+    if user is None or not has_permission(user, "view_audit_log"):
+        log_event("audit_log_ws_access", user_id=user, status="denied")
+        await websocket.close(code=1008)
+        return
+    log_event("audit_log_ws_access", user_id=user, status="success")
     await websocket.accept()
     try:
         async for entry in log_stream():
