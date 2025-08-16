@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .api.webhooks import emit_verification_completed
 from .audit import log_audit_event
 from .certs import fetch_certificate
 from .documents import get_document, link_approval, unlink_approval
@@ -511,7 +512,9 @@ def verify_document_signature(
         )
         else "fail"
     )
-    return {"status": status, "details": details}
+    result = {"status": status, "details": details}
+    emit_verification_completed(doc_id, status, details)
+    return result
 
 
 def reset_approval(

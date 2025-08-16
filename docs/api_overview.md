@@ -87,6 +87,32 @@ with requests.get('http://localhost:8000/documents/123/verify-signature/stream',
             print(line.decode())
 ```
 
+## Webhooks
+- `POST /webhooks/subscribe` – register a callback URL for events
+
+Clients subscribe by posting:
+
+```json
+{
+  "url": "https://example.com/hooks",
+  "events": ["verification.completed"]
+}
+```
+
+### `verification.completed`
+After each verification run the server POSTs:
+
+```json
+{
+  "event": "verification.completed",
+  "payload": {
+    "doc_id": "123",
+    "status": "pass",
+    "details": []
+  }
+}
+```
+
 ## Plugins
 - `GET /plugins` – list registered plugins
 - `POST /plugins` – load plugins from a module
