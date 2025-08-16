@@ -1661,6 +1661,7 @@ async def list_logs(
     entity_id: str | None = None,
     action: str | None = None,
     severity: str | None = None,
+    log_id: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
     _: str = Depends(require_audit_access),
@@ -1673,6 +1674,7 @@ async def list_logs(
         end=end,
         entity_id=entity_id,
         severity=severity,
+        log_id=log_id,
         limit=limit,
         offset=offset,
     )
@@ -1686,6 +1688,7 @@ async def list_audit(
     entity_id: str | None = None,
     action: str | None = None,
     severity: str | None = None,
+    log_id: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
     _: str = Depends(require_audit_access),
@@ -1698,6 +1701,7 @@ async def list_audit(
         end=end,
         entity_id=entity_id,
         severity=severity,
+        log_id=log_id,
         limit=limit,
         offset=offset,
     )
