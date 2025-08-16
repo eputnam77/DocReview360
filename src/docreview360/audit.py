@@ -79,7 +79,8 @@ AUDIT_LOG_SCHEMA: Dict[str, Any] = AuditLogEntry.model_json_schema()
 
 _AUDIT_LOG_PATH = Path(__file__).with_name("audit.log")
 
-LOG_RETENTION_DAYS = 90
+# Default retention period for compliance audit logs (in days)
+COMPLIANCE_LOG_RETENTION_DAYS = 365 * 7
 
 
 def _compute_hash(data: Dict[str, Any], secret: str | None) -> str:
@@ -188,7 +189,7 @@ def clear_audit_log() -> None:
         _AUDIT_LOG_PATH.unlink()
 
 
-def purge_audit_logs(retention_days: int = LOG_RETENTION_DAYS) -> int:
+def purge_audit_logs(retention_days: int = COMPLIANCE_LOG_RETENTION_DAYS) -> int:
     """Remove audit log entries older than ``retention_days``.
 
     Returns
@@ -228,7 +229,7 @@ def schedule_audit_log_purge() -> None:
 
     settings = load_settings()
     cfg = settings.get("audit_log", {})
-    retention = int(cfg.get("retention_days", LOG_RETENTION_DAYS))
+    retention = int(cfg.get("retention_days", COMPLIANCE_LOG_RETENTION_DAYS))
     interval = int(cfg.get("purge_interval_minutes", 60 * 24))
     app.task(name="docreview360.purge_audit_logs")(purge_audit_logs)
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
