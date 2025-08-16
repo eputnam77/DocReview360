@@ -8,13 +8,13 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional
 from urllib.parse import quote, urlparse
 from uuid import uuid4
+import os
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .api.webhooks import emit_verification_completed
 from .audit import log_audit_event
 from .celery_app import app
-from .certs import fetch_certificate
 from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
 from .integrations.registry import get_provider
@@ -304,32 +304,23 @@ async def _upload_approval_artifacts(
     document: bytes | None,
     certificate_url: str | None,
 ) -> None:
+    """Delegate upload of finalized artifacts to the SharePoint integration."""
     if document is not None and approval.document_hash is not None:
         if hashlib.sha256(document).hexdigest() != approval.document_hash:
             raise ValueError("document hash mismatch")
 
-    from .sharepoint import async_client_from_env
-
-    client = await async_client_from_env()
-    if document is not None:
-        await client.upload_file(f"signed/{approval.id}", document)
-
-    cert_bytes = b""
-    if certificate_url:
-        try:
-            cert_bytes = fetch_certificate(certificate_url)
-        except Exception:
-            cert_bytes = b""
-    if cert_bytes:
-        await client.upload_file(f"certificates/{approval.id}", cert_bytes)
+    from .integrations.sharepoint_upload import upload_final_pdf
 
     assert approval.signed_at is not None
-    props = {
-        "signedDate": approval.signed_at.isoformat(),
-        "certificateUrl": certificate_url or "",
-        "documentHash": approval.document_hash or "",
-    }
-    await client.set_properties(approval.document_id, props)
+    await upload_final_pdf(
+        approval_id=approval.id,
+        item_id=approval.document_id,
+        document=document,
+        document_hash=approval.document_hash,
+        provider_metadata=approval.provider_metadata,
+        signed_at=approval.signed_at,
+        certificate_url=certificate_url,
+    )
 
 
 async def update_approval_state(  # noqa: C901
@@ -444,6 +435,8 @@ def send_for_signature(
             raise KeyError("document not found")
         approval.document_hash = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
 
+    if return_url is None:
+        return_url = os.getenv("SIGNATURE_RETURN_URL")
     callback = f"/approvals/return?approval={approval_id}"
     if return_url:
         callback += f"&next={quote(return_url)}"
