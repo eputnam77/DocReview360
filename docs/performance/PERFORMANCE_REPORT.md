@@ -47,3 +47,13 @@ The recent profiling runs (k6, Lighthouse, cProfile, py-spy and React Profiler) 
 - Dependencies: Celery queue setup
 - Priority: P3
 - ready-for:builder
+
+## Signature Verification Stress Test Results
+
+Stress testing `verify_document_signature` with 50 signed documents and 10 parallel workers yielded:
+
+- Average latency: 0.0046 s
+- Throughput: 589.67 verifications/s
+- Failure rate: 0.00%
+
+Metrics collected via `scripts/signature_stress.py`.
