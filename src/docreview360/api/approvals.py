@@ -1,20 +1,21 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 from typing import AsyncIterator, Optional
 
-import json
-
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
 
+from .. import auth
 from ..approvals import (
     get_approval,
     handle_signature_return,
     verify_document_signature_stream,
 )
 from ..logs import TRACE_ID, log_call, log_event
+from ..rbac import require_permission
 
 router = APIRouter()
 
@@ -70,7 +71,11 @@ async def approval_return(
 
 
 @router.get("/documents/{doc_id}/verify-signature/stream")
-async def verify_signature_stream(doc_id: str, provider: str | None = None) -> StreamingResponse:
+async def verify_signature_stream(
+    doc_id: str,
+    provider: str | None = None,
+    user: auth.User = Depends(require_permission("verification_override")),
+) -> StreamingResponse:
     """Stream signature verification details for ``doc_id``."""
     providers_input: str | list[str] | None = provider
     if provider and "," in provider:

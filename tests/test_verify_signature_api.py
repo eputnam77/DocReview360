@@ -7,10 +7,12 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
+from fastapi.testclient import TestClient
+
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval, send_for_signature
 from docreview360.integrations.signature import documenso
-from fastapi.testclient import TestClient
 
 
 def _register_certificate(
@@ -44,7 +46,10 @@ def sample_doc() -> bytes:
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(app)
+    token = auth.create_access_token({"sub": "alice"})
+    c = TestClient(app)
+    c.headers.update({"Authorization": f"Bearer {token}"})
+    return c
 
 
 def _setup_document(client: TestClient, content: bytes) -> tuple[str, object]:
@@ -65,7 +70,11 @@ def setup_doc(client: TestClient, sample_doc: bytes) -> tuple[str, object]:
     return _setup_document(client, sample_doc)
 
 
-def test_valid_signature(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+def test_valid_signature(
+    client: TestClient,
+    setup_doc: tuple[str, object],
+    sample_doc: bytes,
+) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
     documenso.process_webhook(
@@ -80,7 +89,11 @@ def test_valid_signature(client: TestClient, setup_doc: tuple[str, object], samp
     assert detail["signature_verified"] is True
 
 
-def test_explicit_provider(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+def test_explicit_provider(
+    client: TestClient,
+    setup_doc: tuple[str, object],
+    sample_doc: bytes,
+) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
     documenso.process_webhook(
@@ -95,11 +108,17 @@ def test_explicit_provider(client: TestClient, setup_doc: tuple[str, object], sa
     assert detail["signature_verified"] is True
 
 
-def test_tampered_signature(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+def test_tampered_signature(
+    client: TestClient,
+    setup_doc: tuple[str, object],
+    sample_doc: bytes,
+) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc, tamper=True)
     try:
-        documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": cert_url})
+        documenso.process_webhook(
+            {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+        )
     except Exception:
         pass
 
@@ -112,11 +131,17 @@ def test_tampered_signature(client: TestClient, setup_doc: tuple[str, object], s
     assert detail["signature_verified"] is False
 
 
-def test_expired_certificate(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+def test_expired_certificate(
+    client: TestClient,
+    setup_doc: tuple[str, object],
+    sample_doc: bytes,
+) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc, days_valid=-1)
     try:
-        documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": cert_url})
+        documenso.process_webhook(
+            {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+        )
     except Exception:
         pass
 
@@ -129,11 +154,17 @@ def test_expired_certificate(client: TestClient, setup_doc: tuple[str, object], 
     assert detail["signature_verified"] is False
 
 
-def test_revoked_certificate(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+def test_revoked_certificate(
+    client: TestClient,
+    setup_doc: tuple[str, object],
+    sample_doc: bytes,
+) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc, revoked=True)
     try:
-        documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": cert_url})
+        documenso.process_webhook(
+            {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+        )
     except Exception:
         pass
 
@@ -146,10 +177,16 @@ def test_revoked_certificate(client: TestClient, setup_doc: tuple[str, object], 
     assert detail["signature_verified"] is False
 
 
-def test_altered_document(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+def test_altered_document(
+    client: TestClient,
+    setup_doc: tuple[str, object],
+    sample_doc: bytes,
+) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
-    documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": cert_url})
+    documenso.process_webhook(
+        {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+    )
 
     client.put(f"/documents/{doc_id}", json={"id": doc_id, "content": "tampered"})
 
@@ -187,10 +224,16 @@ def test_non_approved_state(client: TestClient, setup_doc: tuple[str, object]) -
     assert detail["signature_valid"] is False
 
 
-def test_out_of_order_webhook(client: TestClient, setup_doc: tuple[str, object], sample_doc: bytes) -> None:
+def test_out_of_order_webhook(
+    client: TestClient,
+    setup_doc: tuple[str, object],
+    sample_doc: bytes,
+) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
-    documenso.process_webhook({"id": appr.signature_id, "status": "signed", "certificate_url": cert_url})
+    documenso.process_webhook(
+        {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
+    )
     resp = client.get(f"/documents/{doc_id}/verify-signature")
     assert resp.status_code == 200
     assert resp.json()["status"] == "pass"
