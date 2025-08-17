@@ -296,18 +296,22 @@ app = FastAPI(title="DocReview360")
 # configuration.
 allowed_origins = os.getenv("DOCREVIEW360_ALLOW_ORIGINS")
 if allowed_origins:
-    cors_kwargs = {"allow_origins": [o.strip() for o in allowed_origins.split(",") if o.strip()]}
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        allow_origins=[o.strip() for o in allowed_origins.split(",") if o.strip()],
+    )
 else:
     # ``allow_origin_regex`` permits credentials while accepting any origin
-    cors_kwargs = {"allow_origin_regex": ".*"}
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    **cors_kwargs,
-)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        allow_origin_regex=".*",
+    )
 
 # Enable compression for large responses as recommended by the
 # performance profiling report. ``minimum_size`` avoids wasting
@@ -523,15 +527,16 @@ async def create_project_review(
 ) -> ReviewModel:
     """Create a new review entry for a project."""
 
-    review = ReviewModel(
-        id=str(uuid.uuid4()),
-        project_id=project_id,
-        reviewer=x_user or "Anonymous",
-        status=body.status,
-        comment=body.comment,
-        phase_id=body.phase_id,
-        required=body.required,
-    )
+    review_data = {
+        "id": str(uuid.uuid4()),
+        "project_id": project_id,
+        "reviewer": x_user or "Anonymous",
+        "status": body.status,
+        "comment": body.comment,
+        "phase_id": body.phase_id,
+        "required": body.required,
+    }
+    review = ReviewModel(**review_data)
     add_review(review)
     return review
 
@@ -1539,7 +1544,10 @@ async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
     return_to = f"/projects/{wf.project}"
     doc_id = approval.document_id or wf.project
     url = send_for_signature(approval_id, doc_id, approval.reviewer, return_to)
-    return {"id": approval.signature_id, "url": url}
+    sig_id = approval.signature_id
+    if sig_id is None:
+        raise RuntimeError("signature id not set")
+    return {"id": sig_id, "url": url}
 
 
 @app.post("/sign/{doc_id}")
