@@ -446,6 +446,7 @@ export default function TipTapEditorPage() {
   const [history, setHistory] = useState<any[]>([]);
   const docId = "demo";
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved">("saved");
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [insertMenu, setInsertMenu] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -464,21 +465,31 @@ export default function TipTapEditorPage() {
   }, []);
 
   const saveRevision = useCallback(
-    (html: string, immediate = false) => {
+    (html: string, immediate = false, promote = false) => {
       const exec = async () => {
         setSaveStatus("saving");
         try {
           const body: any = { content: html };
+          if (promote) body.promote = true;
           if (yDoc) {
             const update = Y.encodeStateAsUpdate(yDoc);
             body.steps = Array.from(update);
           }
-          await fetch(`/documents/${docId}/revisions`, {
+          const res = await fetch(`/documents/${docId}/revisions`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           });
           setSaveStatus("saved");
+          const data = res.ok ? await res.json() : {};
+          if (data.archiveId) {
+            const a = await fetch(`/archive/${data.archiveId}`);
+            if (a.ok) {
+              const rec = await a.json();
+              const pdf = rec.metadata?.artefact_locations?.pdf;
+              if (pdf) setPdfUrl(pdf);
+            }
+          }
           const resp = await fetch(`/documents/${docId}/revisions`);
           if (resp.ok) {
             setHistory(await resp.json());
@@ -1026,9 +1037,20 @@ export default function TipTapEditorPage() {
             </div>
           )}
         </div>
+        <button
+          onClick={() => saveRevision(editor.getHTML(), true, true)}
+          className="ml-4 px-2 py-1 border rounded"
+        >
+          Submit
+        </button>
         <div className="ml-4 text-sm text-gray-600">
           {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
         </div>
+        {pdfUrl && (
+          <div className="ml-4 text-sm text-gray-600">
+            Archived • <a href={pdfUrl} className="underline" target="_blank" rel="noopener noreferrer">download PDF</a>
+          </div>
+        )}
         <AiSuggestButton
           editor={editor}
           aiSuggestEnabled={aiSuggestEnabled}

@@ -50,11 +50,10 @@ from ..approvals import (
 )
 from ..archive import (
     ArchiveRecord,
+    archive_document as archive_doc,
     get_archive,
     list_archives,
-)
-from ..archive import (
-    archive_document as archive_doc,
+    schedule_archive_purge,
 )
 from ..audit import AuditLogEntry, get_audit_log
 from ..cache import cache_get, cache_set, clear_cache
@@ -157,7 +156,7 @@ SEED_TEMPLATES = [
     {
         "name": "faa_ac",
         "content": (
-            "<h1 style=\"text-align:center; margin-bottom:0\">Advisory Circular</h1>"
+            '<h1 style="text-align:center; margin-bottom:0">Advisory Circular</h1>'
             "<p>This is a seed template.</p>"
         ),
         "metadata": {"label": "FAA Advisory Circular", "type": "tiptap"},
@@ -223,6 +222,7 @@ class RevisionCreate(BaseModel):
 
     content: str
     steps: list[Any] | None = None
+    promote: bool = False
 
 
 class RevisionMeta(BaseModel):
@@ -364,9 +364,8 @@ async def _load_balancer_state() -> None:
     load_worker_state(WORKER_STATE_FILE)
     for tpl in SEED_TEMPLATES:
         if not get_latest_template(tpl["name"]):
-            store_template(
-                tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata")
-            )
+            store_template(tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata"))
+    schedule_archive_purge()
 
 
 @app.on_event("shutdown")
@@ -927,10 +926,14 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
 
 @app.post("/documents/{doc_id}/revisions", status_code=201)
 async def create_revision_endpoint(doc_id: str, body: RevisionCreate) -> dict[str, str]:
-    """Store a new document revision and return its identifier."""
+    """Store a new document revision and optionally archive it."""
     try:
-        _, rev_id = update_document(doc_id, body.content, steps=body.steps)
-        return {"revisionId": rev_id}
+        document, rev_id = update_document(doc_id, body.content, steps=body.steps)
+        result: dict[str, str] = {"revisionId": rev_id}
+        if body.promote:
+            record = archive_doc(document)
+            result["archiveId"] = record.id
+        return result
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
