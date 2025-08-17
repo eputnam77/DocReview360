@@ -7,16 +7,25 @@ import threading
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 from xml.etree.ElementTree import XML
 from zipfile import ZipFile
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import fts
 from .audit import log_audit_event
 from .logs import log_event
+
+
+class DocumentRevision(BaseModel):
+    """Single revision of a document."""
+
+    id: str
+    timestamp: datetime
+    content: str
+    steps: list[Any] | None = None
 
 
 class DocumentModel(BaseModel):
@@ -24,7 +33,7 @@ class DocumentModel(BaseModel):
 
     id: str
     content: str
-    history: List[str] = []
+    history: List[DocumentRevision] = Field(default_factory=list)
     editor: str = "tiptap"
     number: int | None = None
     project: Optional[str] = None
@@ -95,10 +104,16 @@ def import_document(
         content = data.decode()
     doc_id = uuid4().hex
     ingestion_hash = hashlib.sha256(data).hexdigest()
+    revision = DocumentRevision(
+        id=uuid4().hex,
+        timestamp=datetime.now(timezone.utc),
+        content=content,
+        steps=None,
+    )
     document = DocumentModel(
         id=doc_id,
         content=content,
-        history=[],
+        history=[revision],
         number=next_document_number(project),
         project=project,
         user=user,
@@ -187,8 +202,9 @@ def update_document(
     content: str,
     *,
     priority: Optional[int] = None,
-) -> DocumentModel:
-    """Replace document content and store previous version as history."""
+    steps: list[Any] | None = None,
+) -> tuple[DocumentModel, str]:
+    """Replace document content and record a new revision."""
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
@@ -200,8 +216,16 @@ def update_document(
 
     with document_lock:
         old_content = document.content
-        document.history.append(old_content)
+        revision_id = uuid4().hex
         document.content = content
+        document.history.append(
+            DocumentRevision(
+                id=revision_id,
+                timestamp=datetime.now(timezone.utc),
+                content=content,
+                steps=steps,
+            )
+        )
         if priority is not None:
             document.priority = priority
 
@@ -214,16 +238,16 @@ def update_document(
     fts.index_document(doc_id, document.content)
     log_audit_event(doc_id, "updated", actor=document.user, priority=priority)
 
-    return document
+    return document, revision_id
 
 
-def autosave_document(doc_id: str, content: str) -> DocumentModel:
+def autosave_document(doc_id: str, content: str) -> tuple[DocumentModel, str]:
     """Save content if it changed, preserving history."""
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
     if document.content == content:
-        return document
+        return document, document.history[-1].id
     return update_document(doc_id, content)
 
 
@@ -239,15 +263,15 @@ def clear_rereview(doc_id: str) -> None:
 
 
 def get_document_versions(doc_id: str) -> list[str]:
-    """Return the list of previous versions for ``doc_id``."""
+    """Return the list of all versions for ``doc_id``."""
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
-    return document.history.copy()
+    return [rev.content for rev in document.history]
 
 
 def get_document_version(doc_id: str, index: int) -> str:
-    """Return a specific historical version for ``doc_id``."""
+    """Return a specific version for ``doc_id``."""
     versions = get_document_versions(doc_id)
     if index < 0 or index >= len(versions):
         raise IndexError("version index out of range")

@@ -4,7 +4,11 @@ from fastapi.testclient import TestClient
 
 from docreview360.api import app
 from docreview360.audit import clear_audit_log
-from docreview360.documents import autosave_document, import_document
+from docreview360.documents import (
+    autosave_document,
+    import_document,
+    get_document_versions,
+)
 
 
 def test_import_and_edit_document() -> None:
@@ -32,12 +36,12 @@ def test_import_and_edit_document() -> None:
     )
     assert resp.status_code == 200
     assert resp.json()["content"] == updated
-    assert resp.json()["history"] == [content]
+    assert [h["content"] for h in resp.json()["history"]] == [content, updated]
 
     resp = client.get(f"/documents/{doc_id}")
     data = resp.json()
     assert data["content"] == updated
-    assert data["history"] == [content]
+    assert [h["content"] for h in data["history"]] == [content, updated]
 
     resp = client.get(f"/documents/{doc_id}/audit")
     events = [e["event"] for e in resp.json()]
@@ -47,10 +51,10 @@ def test_import_and_edit_document() -> None:
 def test_autosave_document() -> None:
     doc = import_document("doc.md", b"original")
     autosave_document(doc.id, "original")
-    assert doc.history == []
+    assert get_document_versions(doc.id) == ["original"]
     autosave_document(doc.id, "new")
     assert doc.content == "new"
-    assert doc.history == ["original"]
+    assert get_document_versions(doc.id) == ["original", "new"]
     # cleanup to avoid side effects
     from docreview360 import documents as doc_module
     from docreview360 import search as search_module
