@@ -1,5 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 
@@ -398,7 +399,7 @@ function Sidebar(props: SidebarProps) {
   );
 }
 
-export default function TipTapEditorPage() {
+export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string }) {
   // Client-side only rendering to prevent SSR issues
   const [isClient, setIsClient] = useState(false);
 
@@ -443,9 +444,10 @@ export default function TipTapEditorPage() {
     id: number;
   }
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-
   const [history, setHistory] = useState<any[]>([]);
-  const docId = "demo";
+
+  const router = useRouter();
+  const docId = (docIdProp ?? router.query.id) as string | undefined;
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">(
     "saved",
   );
@@ -453,6 +455,7 @@ export default function TipTapEditorPage() {
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    if (!docId) return;
     fetch(`${API}/documents/${docId}/revisions`)
       .then(res => res.json())
       .then(setHistory)
@@ -474,6 +477,7 @@ export default function TipTapEditorPage() {
   const saveRevision = useCallback(
     (html: string, immediate = false, promote = false) => {
       const exec = async () => {
+        if (!docId) return;
         if (typeof window !== "undefined") {
           localStorage.setItem("draft", html);
         }
@@ -583,7 +587,7 @@ export default function TipTapEditorPage() {
         }),
       );
     }
-    if (collabEnabled) {
+    if (collabEnabled && docId) {
       if (!yDoc) {
         const doc = new Y.Doc();
         const hocusProvider = new HocuspocusProvider({
@@ -636,6 +640,7 @@ export default function TipTapEditorPage() {
     collabEnabled,
     yDoc,
     provider,
+    docId,
     headingLockEnabled,
     headingLockExtension,
     indentationEnabled,
@@ -683,17 +688,21 @@ export default function TipTapEditorPage() {
     }
   }, [editor, content]);
 
-  const restoreRevision = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`${API}/documents/${docId}/revisions/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        editor?.commands.setContent(data.content);
+  const restoreRevision = useCallback(
+    async (id: string) => {
+      if (!docId) return;
+      try {
+        const res = await fetch(`${API}/documents/${docId}/revisions/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          editor?.commands.setContent(data.content);
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
-    }
-  }, [docId, editor]);
+    },
+    [docId, editor],
+  );
 
   function getCurrentBlock(editor: any) {
     if (editor.isActive("heading", { level: 1 })) return "h1";
