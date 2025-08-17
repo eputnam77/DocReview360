@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 
 
@@ -19,6 +20,31 @@ def default_url(database: str) -> str:
     if database == "mysql":
         return "mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360"
     raise ValueError(f"Unsupported database '{database}'")
+
+
+def _parse_sql_statements(file: Path) -> list[str]:
+    lines = file.read_text().splitlines()
+    statements: list[str] = []
+    buffer: list[str] = []
+    in_trigger = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        buffer.append(line)
+        if stripped.upper().startswith("CREATE TRIGGER"):
+            in_trigger = True
+        if stripped.upper() == "END;" and in_trigger:
+            statements.append("\n".join(buffer))
+            buffer = []
+            in_trigger = False
+            continue
+        if not in_trigger and stripped.endswith(";"):
+            statements.append("\n".join(buffer).rstrip(";"))
+            buffer = []
+    if buffer:
+        statements.append("\n".join(buffer))
+    return statements
 
 
 class Database:
@@ -87,13 +113,15 @@ class Database:
                 name = file.name
                 if name in applied:
                     continue
-                # sqlite's driver only allows executing one statement at a time
-                # so we split the migration file on semicolons and run each
-                # non-empty command separately. This keeps migration files
-                # portable between SQLite and Postgres.
-                statements = [s.strip() for s in file.read_text().split(";") if s.strip()]
+                statements = _parse_sql_statements(file)
                 for stmt in statements:
-                    conn.execute(text(stmt))
+                    try:
+                        conn.execute(text(stmt))
+                    except OperationalError as exc:
+                        msg = str(exc).lower()
+                        if "duplicate column name" in msg or "already exists" in msg:
+                            continue
+                        raise
                 conn.execute(
                     text("INSERT INTO schema_versions (filename) VALUES (:name)"),
                     {"name": name},
