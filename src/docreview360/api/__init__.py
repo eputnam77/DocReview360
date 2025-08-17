@@ -83,6 +83,7 @@ from ..documents import (
     list_public_documents,
     public_documents_report,
     update_document,
+    DocumentRevision,
 )
 from ..documents import (
     list_documents as list_docs,
@@ -199,6 +200,20 @@ class PluginToggle(BaseModel):
     """Input model for enabling or disabling a plugin."""
 
     name: str
+
+
+class RevisionCreate(BaseModel):
+    """Payload for creating a document revision."""
+
+    content: str
+    steps: list[Any] | None = None
+
+
+class RevisionMeta(BaseModel):
+    """Metadata for a document revision."""
+
+    id: str
+    timestamp: datetime
 
 
 class ProjectCreate(BaseModel):
@@ -870,7 +885,7 @@ async def verify_signature_endpoint(
 async def update_document_endpoint(doc_id: str, document: DocumentModel) -> DocumentModel:
     """Update a document's content and save the previous version."""
     try:
-        updated = update_document(doc_id, document.content, priority=document.priority)
+        updated, _ = update_document(doc_id, document.content, priority=document.priority)
         cache_set(
             "documents",
             json.dumps([d.model_dump(mode="json") for d in list_docs()]),
@@ -887,6 +902,37 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         return updated
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/documents/{doc_id}/revisions", status_code=201)
+async def create_revision_endpoint(doc_id: str, body: RevisionCreate) -> dict[str, str]:
+    """Store a new document revision and return its identifier."""
+    try:
+        _, rev_id = update_document(doc_id, body.content, steps=body.steps)
+        return {"revisionId": rev_id}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/documents/{doc_id}/revisions", response_model=list[RevisionMeta])
+async def list_revisions_endpoint(doc_id: str) -> list[RevisionMeta]:
+    """List revision metadata for a document."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    return [RevisionMeta(id=r.id, timestamp=r.timestamp) for r in document.history]
+
+
+@app.get("/documents/{doc_id}/revisions/{rev_id}", response_model=DocumentRevision)
+async def get_revision_endpoint(doc_id: str, rev_id: str) -> DocumentRevision:
+    """Return a specific revision for a document."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    for rev in document.history:
+        if rev.id == rev_id:
+            return rev
+    raise HTTPException(status_code=404, detail="revision not found")
 
 
 @app.post("/documents/{doc_id}/comments", response_model=CommentModel, status_code=201)

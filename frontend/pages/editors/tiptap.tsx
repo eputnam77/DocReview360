@@ -1,6 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import dynamic from "next/dynamic";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 
 // Core Extensions
@@ -161,6 +161,7 @@ interface SidebarProps {
   rejectSuggestion: (id: number) => void;
   clearSuggestions: () => void;
   history: any[];
+  onRestore: (id: string) => void;
 }
 
 function Sidebar(props: SidebarProps) {
@@ -191,6 +192,7 @@ function Sidebar(props: SidebarProps) {
     rejectSuggestion,
     clearSuggestions,
     history,
+    onRestore,
   } = props;
   return (
     <aside
@@ -396,7 +398,14 @@ function Sidebar(props: SidebarProps) {
           <div className="font-semibold mb-1">History</div>
           <ul className="text-xs text-gray-700 space-y-1">
             {history.map((h: any) => (
-              <li key={h.id}>{h.label}</li>
+              <li key={h.id}>
+                <button
+                  onClick={() => onRestore(h.id)}
+                  className="underline"
+                >
+                  {new Date(h.timestamp).toLocaleString()}
+                </button>
+              </li>
             ))}
           </ul>
         </section>
@@ -438,12 +447,39 @@ export default function TipTapEditorPage() {
   }
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
-  // Version History (dummy)
-  const DUMMY_HISTORY = [
-    { id: 1, label: "Draft - Jul 9, 8:00 am" },
-    { id: 2, label: "AutoSave - Jul 8, 3:30 pm" },
-    { id: 3, label: "Submitted - Jul 7, 12:15 pm" },
-  ];
+  const [history, setHistory] = useState<any[]>([]);
+  const docId = "demo";
+  const [saveStatus, setSaveStatus] = useState<"saving" | "saved">("saved");
+  const saveTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    fetch(`/documents/${docId}/revisions`)
+      .then(res => res.json())
+      .then(setHistory)
+      .catch(() => {});
+  }, [docId]);
+
+  const saveRevision = useCallback((html: string) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      setSaveStatus("saving");
+      try {
+        await fetch(`/documents/${docId}/revisions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: html }),
+        });
+        setSaveStatus("saved");
+        const resp = await fetch(`/documents/${docId}/revisions`);
+        if (resp.ok) {
+          setHistory(await resp.json());
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 500);
+  }, [docId]);
+
 
   // Editor Extensions
   const extensions = useMemo(() => {
@@ -579,10 +615,26 @@ export default function TipTapEditorPage() {
             "tiptap-content focus:outline-none w-full h-full min-h-[400px] max-w-[860px] mx-auto",
         },
       },
-      onUpdate: ({ editor }) => setContent(editor.getHTML()),
+      onUpdate: ({ editor }) => {
+        const html = editor.getHTML();
+        setContent(html);
+        saveRevision(html);
+      },
     },
     [extensions],
   );
+
+  const restoreRevision = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/documents/${docId}/revisions/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        editor?.commands.setContent(data.content);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [docId, editor]);
 
   function getCurrentBlock(editor: any) {
     if (editor.isActive("heading", { level: 1 })) return "h1";
@@ -851,12 +903,9 @@ export default function TipTapEditorPage() {
         >
           <ImageIcon className="w-4 h-4" />
         </button>
-        <button
-          onClick={() => toast.success("Document saved")}
-          className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Save
-        </button>
+        <div className="ml-4 text-sm text-gray-600">
+          {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
+        </div>
         <AiSuggestButton
           editor={editor}
           aiSuggestEnabled={aiSuggestEnabled}
@@ -908,7 +957,8 @@ export default function TipTapEditorPage() {
         acceptSuggestion={acceptSuggestion}
         rejectSuggestion={rejectSuggestion}
         clearSuggestions={clearSuggestions}
-        history={DUMMY_HISTORY}
+        history={history}
+        onRestore={restoreRevision}
       />
     </div>
   );

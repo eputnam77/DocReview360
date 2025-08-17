@@ -69,7 +69,7 @@ def archive_document(
     # Build full metadata for the archived record which may include
     # additional fields like ``public_copy`` or ``source_doc_id``.
     meta = metadata.copy() if metadata else {}
-    meta.setdefault("version_summary", f"v{len(document.history) + 1}")
+    meta.setdefault("version_summary", f"v{len(document.history)}")
     meta.setdefault("retention_policy", "standard")
     if document.public_copy:
         meta.setdefault("public_copy", True)
