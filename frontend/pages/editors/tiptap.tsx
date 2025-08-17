@@ -49,6 +49,12 @@ const TableIcon = dynamic(() => import("lucide-react").then((m) => m.Table));
 const MenuIcon = dynamic(() => import("lucide-react").then((m) => m.Menu));
 const XIcon = dynamic(() => import("lucide-react").then((m) => m.X));
 const Loader2 = dynamic(() => import("lucide-react").then((m) => m.Loader2));
+const IndentIncrease = dynamic(() =>
+  import("lucide-react").then((m) => m.IndentIncrease),
+);
+const IndentDecrease = dynamic(() =>
+  import("lucide-react").then((m) => m.IndentDecrease),
+);
 
 interface NewSuggestion {
   from: number;
@@ -439,6 +445,7 @@ export default function TipTapEditorPage() {
   const [history, setHistory] = useState<any[]>([]);
   const docId = "demo";
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved">("saved");
+  const [insertMenu, setInsertMenu] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -658,13 +665,17 @@ export default function TipTapEditorPage() {
     command: () => void,
     active: boolean,
     title = "",
+    disabled = false,
   ) {
     return (
       <button
         type="button"
-        className={`p-2 rounded ${active ? "bg-indigo-100" : ""}`}
+        className={`p-2 rounded ${active ? "bg-indigo-100" : ""} ${
+          disabled ? "opacity-50 cursor-not-allowed" : ""
+        }`}
         onClick={command}
         title={title}
+        disabled={disabled}
       >
         {icon}
       </button>
@@ -934,6 +945,20 @@ export default function TipTapEditorPage() {
           "Numbered List",
         )}
         {toolbarButton(
+          <IndentIncrease className="w-4 h-4" />,
+          () => (editor.chain() as any).focus().indent().run(),
+          false,
+          "Indent",
+          !indentationEnabled || !(editor.can().chain() as any).focus().indent().run(),
+        )}
+        {toolbarButton(
+          <IndentDecrease className="w-4 h-4" />,
+          () => (editor.chain() as any).focus().outdent().run(),
+          false,
+          "Outdent",
+          !indentationEnabled || !(editor.can().chain() as any).focus().outdent().run(),
+        )}
+        {toolbarButton(
           <Undo2 className="w-4 h-4" />,
           () => editor.chain().focus().undo().run(),
           false,
@@ -945,20 +970,39 @@ export default function TipTapEditorPage() {
           false,
           "Redo",
         )}
-        <button
-          onClick={insertTable}
-          className="ml-2 p-2 rounded bg-gray-200"
-          title="Insert Table"
-        >
-          <TableIcon className="w-4 h-4" />
-        </button>
-        <button
-          onClick={insertImage}
-          className="ml-1 p-2 rounded bg-gray-200"
-          title="Insert Image"
-        >
-          <ImageIcon className="w-4 h-4" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setInsertMenu((prev) => !prev)}
+            className="ml-2 p-2 rounded bg-gray-200"
+            title="Insert"
+          >
+            <MenuIcon className="w-4 h-4" />
+          </button>
+          {insertMenu && (
+            <div className="absolute right-0 mt-1 bg-white border rounded shadow-md z-10">
+              <button
+                onClick={() => {
+                  insertTable();
+                  setInsertMenu(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100 w-full text-left"
+                title="Insert Table"
+              >
+                <TableIcon className="w-4 h-4" /> Table
+              </button>
+              <button
+                onClick={() => {
+                  insertImage();
+                  setInsertMenu(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100 w-full text-left"
+                title="Insert Image"
+              >
+                <ImageIcon className="w-4 h-4" /> Image
+              </button>
+            </div>
+          )}
+        </div>
         <div className="ml-4 text-sm text-gray-600">
           {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
         </div>
