@@ -51,6 +51,7 @@
     "@tiptap/suggestion": "^2.26.1",
     "clsx": "^2.1.1",
     "critters": "^0.0.25",
+    "diff-match-patch": "^1.0.5",
     "formidable": "^3.5.4",
     "lucide-react": "^0.364.0",
     "markreview": "github:eputnam77/MarkReview",
