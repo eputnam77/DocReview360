@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 """Event dispatcher with retry/backoff and dead-letter queue."""
 
+from __future__ import annotations
+
 import time
-from typing import Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List
 
 from .http_client import post as http_post
 
@@ -50,11 +50,7 @@ def dispatch_workflow_event(workflow: "WorkflowModel") -> None:
     if not url:
         return
     if getattr(workflow, "phase", None) and getattr(workflow, "phases", []):
-        event = (
-            "workflow.completed"
-            if workflow.phase == workflow.phases[-1]
-            else "workflow.status"
-        )
+        event = "workflow.completed" if workflow.phase == workflow.phases[-1] else "workflow.status"
     else:
         event = "workflow.status"
     _dispatcher.send(url, event, workflow.model_dump())
