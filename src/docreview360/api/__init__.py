@@ -97,7 +97,7 @@ from ..phases import add_phase, delete_phase, list_phases, rename_phase
 from ..plugins import load_plugins
 from ..plugins import registry as plugin_registry
 from ..profile import get_preferences, update_preferences
-from ..rbac import get_roles, require_role, has_permission
+from ..rbac import get_roles, require_role, has_permission, has_role
 from ..reporting import (
     DashboardEntry,
     SummaryReport,
@@ -130,6 +130,8 @@ from ..template_manager import (
     upload_template as store_template,
     get_latest_template,
     list_stored_templates,
+    approve_template,
+    retire_template,
 )
 from ..watchlist import get_watchlist, toggle_watch
 from ..workflows import (
@@ -931,9 +933,7 @@ async def create_revision_endpoint(
 ) -> dict[str, str]:
     """Store a new document revision and optionally archive it."""
     try:
-        document, rev_id = update_document(
-            doc_id, body.content, steps=body.steps, author=x_user
-        )
+        document, rev_id = update_document(doc_id, body.content, steps=body.steps, author=x_user)
         result: dict[str, str] = {"revisionId": rev_id}
         if body.promote:
             record = archive_doc(document)
@@ -949,10 +949,7 @@ async def list_revisions_endpoint(doc_id: str) -> list[RevisionMeta]:
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="document not found")
-    return [
-        RevisionMeta(id=r.id, timestamp=r.timestamp, author=r.author)
-        for r in document.history
-    ]
+    return [RevisionMeta(id=r.id, timestamp=r.timestamp, author=r.author) for r in document.history]
 
 
 @app.get("/documents/{doc_id}/revisions/{rev_id}", response_model=DocumentRevision)
@@ -1301,10 +1298,21 @@ async def delete_document_type_endpoint(name: str, replacement: str | None = Non
 
 
 @app.get("/templates")
-async def list_templates_endpoint() -> list[dict[str, Any]]:
+async def list_templates_endpoint(
+    user: auth.User = Depends(auth.get_current_user),
+) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
+    is_admin = has_role(user.username, "admin")
     for name, ver in list_stored_templates().items():
-        data = {"id": name, "name": name, "version": ver.version}
+        if not is_admin and (not ver.approved or ver.retired):
+            continue
+        data = {
+            "id": name,
+            "name": name,
+            "version": ver.version,
+            "approved": ver.approved,
+            "retired": ver.retired,
+        }
         data.update(ver.metadata)
         items.append(data)
     return items
@@ -1320,6 +1328,8 @@ async def get_template_endpoint(name: str) -> dict[str, Any]:
         "name": name,
         "version": ver.version,
         "content": ver.content.decode("utf-8", errors="ignore"),
+        "approved": ver.approved,
+        "retired": ver.retired,
     }
     data.update(ver.metadata)
     return data
@@ -1339,7 +1349,29 @@ async def upload_template_endpoint(
         raise HTTPException(status_code=400, detail="invalid metadata") from exc
     content = await file.read()
     version = store_template(name, content, metadata)
-    return {"name": name, "version": version.version, "metadata": version.metadata}
+    return {
+        "name": name,
+        "version": version.version,
+        "metadata": version.metadata,
+        "approved": version.approved,
+        "retired": version.retired,
+    }
+
+
+@app.post("/templates/{name}/approve")
+async def approve_template_endpoint(
+    name: str, user: auth.User = Depends(require_role("admin"))
+) -> dict[str, Any]:
+    ver = approve_template(name)
+    return {"name": name, "version": ver.version, "approved": ver.approved}
+
+
+@app.post("/templates/{name}/retire")
+async def retire_template_endpoint(
+    name: str, user: auth.User = Depends(require_role("admin"))
+) -> dict[str, Any]:
+    ver = retire_template(name)
+    return {"name": name, "version": ver.version, "retired": ver.retired}
 
 
 @app.get("/plugin-marketplace")
