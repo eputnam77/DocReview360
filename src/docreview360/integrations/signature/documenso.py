@@ -25,6 +25,7 @@ from ... import certs
 from ...http_client import get as http_get
 from ...http_client import post as http_post
 from ...logs import log_event
+from ...monitoring import SIGNATURE_FAILURES
 from ...secrets import get_secret
 from .base import register_provider
 
@@ -91,6 +92,7 @@ def request_signature(
             url = data.get("url", f"{DOCUMENSO_URL.rstrip('/')}/sign/{sig_id}")
             meta = data.get("metadata", {})
         except httpx.HTTPError as exc:
+            SIGNATURE_FAILURES.labels("documenso").inc()
             raise RuntimeError("Documenso request failed") from exc
     else:
         sig_id = uuid4().hex

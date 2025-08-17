@@ -11,6 +11,7 @@ from pydantic import BaseModel, HttpUrl, ValidationError
 from ..http_client import post as http_post
 from ..integrations.signature import get_provider
 from ..logs import log_call
+from ..monitoring import HASH_MISMATCHES, WEBHOOK_DELAY
 from ..secrets import get_secret
 
 router = APIRouter()
@@ -98,13 +99,23 @@ async def handle_webhook(
         raise HTTPException(status_code=500, detail="provider secret not configured")
     expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, x_signature):
+        HASH_MISMATCHES.labels(provider_name).inc()
         raise HTTPException(status_code=400, detail="invalid signature")
+
     try:
-        payload = SignatureWebhookPayload.model_validate_json(body).model_dump()
+        payload_model = SignatureWebhookPayload.model_validate_json(body)
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    payload = payload_model.model_dump()
+
     try:
         get_provider(provider_name).process_webhook(payload)
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if payload_model.signed_at is not None:
+        delay = (datetime.utcnow() - payload_model.signed_at).total_seconds()
+        if delay >= 0:
+            WEBHOOK_DELAY.labels(provider_name).observe(delay)
+
     return Response(status_code=204)
