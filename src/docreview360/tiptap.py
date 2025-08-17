@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 from uuid import uuid4
 
-from .documents import DocumentModel, documents, next_document_number
+from .documents import DocumentModel, DocumentRevision, documents, next_document_number
 
 """Utility helpers for TipTap JSON conversions."""
 
@@ -43,10 +43,16 @@ def import_tiptap_document(
     """Create a DocumentModel from TipTap JSON."""
     markdown = tiptap_to_markdown(data)
     doc_id = uuid4().hex
+    revision = DocumentRevision(
+        id=uuid4().hex,
+        timestamp=datetime.now(timezone.utc),
+        content=markdown,
+        steps=None,
+    )
     document = DocumentModel(
         id=doc_id,
         content=markdown,
-        history=[],
+        history=[revision],
         number=next_document_number(project),
         project=project,
         user=user,

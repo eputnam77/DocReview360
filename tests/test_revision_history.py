@@ -38,13 +38,14 @@ def test_upload_increments_version_and_sha256() -> None:
 
     update_document(doc.id, "beta")
     versions = get_document_versions(doc.id)
-    assert len(versions) == 1
+    assert len(versions) == 2
     assert versions[0] == "alpha"
+    assert versions[1] == "beta"
     assert hashlib.sha256(versions[0].encode()).hexdigest() == sha0
 
     update_document(doc.id, "gamma")
     versions = get_document_versions(doc.id)
-    assert len(versions) == 2
+    assert len(versions) == 3
     assert hashlib.sha256(versions[1].encode()).hexdigest() == hashlib.sha256(b"beta").hexdigest()
 
 
@@ -85,10 +86,10 @@ def test_restore_draft_replaces_document_and_logs_new_version() -> None:
     update_document(doc.id, "v1")
     update_document(doc.id, "v2")
     versions = get_document_versions(doc.id)
-    assert versions == ["v0", "v1"]
+    assert versions == ["v0", "v1", "v2"]
 
-    doc = update_document(doc.id, versions[1])  # restore draft 2
+    doc, _ = update_document(doc.id, versions[1])  # restore draft 2
     versions = get_document_versions(doc.id)
     assert doc.content == "v1"
-    assert len(versions) == 3
-    assert len(versions) + 1 == 4
+    assert len(versions) == 4
+    assert versions[-1] == "v1"

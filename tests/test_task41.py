@@ -11,6 +11,6 @@ def test_version_history_access() -> None:
     update_document(doc.id, "v2")
     update_document(doc.id, "v3")
     versions = get_document_versions(doc.id)
-    assert versions == ["v1", "v2"]
+    assert versions == ["v1", "v2", "v3"]
     assert get_document_version(doc.id, 0) == "v1"
     assert get_document_version(doc.id, 1) == "v2"
