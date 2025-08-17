@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { generateDiffHtml } from "../../utils/diff";
+import { logSaveError, isOffline } from "@/utils/saveStatus";
 
 import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "../../components/ExtensionsPanel";
 import InsertMenu from "../../components/InsertMenu";
@@ -485,9 +486,9 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const router = useRouter();
   const docId = (docIdProp ?? router.query.id) as string | undefined;
   const username = useUserStore((s) => s.username);
-  const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">(
-    "saved",
-  );
+  const [saveStatus, setSaveStatus] = useState<
+    "saving" | "saved" | "error" | "offline"
+  >("saved");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -578,6 +579,10 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         if (typeof window !== "undefined") {
           localStorage.setItem("draft", html);
         }
+        if (isOffline()) {
+          setSaveStatus("offline");
+          return;
+        }
         setSaveStatus("saving");
         try {
           const body: any = { content: html };
@@ -607,8 +612,9 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           if (resp.ok) {
             setHistory(await resp.json());
           }
-        } catch {
-          setSaveStatus("error");
+        } catch (err) {
+          const status = await logSaveError(err);
+          setSaveStatus(status);
         }
       };
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -1055,6 +1061,11 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
 
   return (
     <div className="flex flex-col h-screen w-full bg-white">
+      {saveStatus === "offline" && (
+        <div className="bg-yellow-100 text-yellow-800 text-center py-2">
+          You are offline. Changes will sync when connection is restored.
+        </div>
+      )}
       {/* Header Toolbar */}
       <header className="flex items-center gap-2 bg-gray-100 px-6 py-3 border-b w-full">
         <button
@@ -1165,6 +1176,8 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
             ? "Saved"
             : saveStatus === "error"
             ? "Error"
+            : saveStatus === "offline"
+            ? "Offline"
             : ""}
         </div>
         {pdfUrl && (
