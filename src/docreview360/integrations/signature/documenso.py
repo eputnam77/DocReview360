@@ -179,33 +179,41 @@ def validate_signature(
 ) -> bool:
     """Perform cryptographic checks on ``document_bytes`` using ``certificate_url``."""
     if DOCUMENSO_URL:
-        try:
-            resp = http_post(
-                f"{DOCUMENSO_URL.rstrip('/')}/sign/validate",
-                json={
-                    "document": b64encode(document_bytes).decode(),
-                    "certificate_url": certificate_url,
-                    "metadata": metadata,
-                },
-                timeout=5,
-                headers=_auth_headers(),
-            )
-            resp.raise_for_status()
-            return bool(resp.json().get("valid"))
-        except httpx.HTTPError as exc:
-            raise RuntimeError("Documenso request failed") from exc
+        return _remote_validate(document_bytes, certificate_url, metadata)
+    return _local_validate(document_bytes, certificate_url)
 
+
+def _remote_validate(
+    document_bytes: bytes, certificate_url: str | None, metadata: Dict[str, Any]
+) -> bool:
+    """Validate signature against a remote Documenso service."""
+    try:
+        resp = http_post(
+            f"{DOCUMENSO_URL.rstrip('/')}/sign/validate",
+            json={
+                "document": b64encode(document_bytes).decode(),
+                "certificate_url": certificate_url,
+                "metadata": metadata,
+            },
+            timeout=5,
+            headers=_auth_headers(),
+        )
+        resp.raise_for_status()
+        return bool(resp.json().get("valid"))
+    except httpx.HTTPError as exc:
+        raise RuntimeError("Documenso request failed") from exc
+
+
+def _local_validate(document_bytes: bytes, certificate_url: str | None) -> bool:
+    """Validate signature using locally stored certificate data."""
     if not certificate_url:
         return False
-
     cert_info = _certificates.get(certificate_url)
     if not cert_info:
         return False
-
     cert: x509.Certificate = cert_info["certificate"]
     signature: bytes = cert_info["signature"]
     revoked = cert_info.get("revoked")
-
     now = datetime.utcnow()
     pub_key = cert.public_key()
     if not isinstance(pub_key, rsa.RSAPublicKey):
@@ -222,7 +230,6 @@ def validate_signature(
         )
     except Exception:
         return False
-
     if cert.not_valid_before > now or cert.not_valid_after < now:
         return False
     if revoked:
