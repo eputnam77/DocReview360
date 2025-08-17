@@ -26,6 +26,7 @@ class DocumentRevision(BaseModel):
     timestamp: datetime
     content: str
     steps: list[Any] | None = None
+    author: str = ""
 
 
 class DocumentModel(BaseModel):
@@ -109,6 +110,7 @@ def import_document(
         timestamp=datetime.now(timezone.utc),
         content=content,
         steps=None,
+        author=user or "",
     )
     document = DocumentModel(
         id=doc_id,
@@ -203,6 +205,7 @@ def update_document(
     *,
     priority: Optional[int] = None,
     steps: list[Any] | None = None,
+    author: str | None = None,
 ) -> tuple[DocumentModel, str]:
     """Replace document content and record a new revision."""
     document = documents.get(doc_id)
@@ -224,10 +227,13 @@ def update_document(
                 timestamp=datetime.now(timezone.utc),
                 content=content,
                 steps=steps,
+                author=author or document.user or "",
             )
         )
         if priority is not None:
             document.priority = priority
+        if author is not None:
+            document.user = author
 
     if SequenceMatcher(None, old_content, content).ratio() < 0.7:
         with document_lock:
@@ -236,7 +242,7 @@ def update_document(
     # Re-index the updated document
     search_module.add_document(document)
     fts.index_document(doc_id, document.content)
-    log_audit_event(doc_id, "updated", actor=document.user, priority=priority)
+    log_audit_event(doc_id, "updated", actor=author or document.user, priority=priority)
 
     return document, revision_id
 

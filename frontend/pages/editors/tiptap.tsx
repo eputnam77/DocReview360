@@ -20,6 +20,7 @@ import StarterKit from "@tiptap/starter-kit";
 import SlashCommand from "../../extensions/tiptapSlashCommand";
 import sanitizeHtml from "../../utils/sanitize";
 import { API } from "@/lib/api";
+import { useUserStore } from "@/state/user";
 
 // Custom TipTap extensions
 import { tiptapStructure } from "../../extensions/tiptapStructure";
@@ -448,6 +449,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
 
   const router = useRouter();
   const docId = (docIdProp ?? router.query.id) as string | undefined;
+  const username = useUserStore((s) => s.username);
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">(
     "saved",
   );
@@ -456,7 +458,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
 
   useEffect(() => {
     if (!docId) return;
-    fetch(`${API}/documents/${docId}/revisions`)
+    fetch(`${API}/documents/${docId}/revisions`, { headers: { "X-User": username } })
       .then(res => res.json())
       .then(setHistory)
       .catch(() => {
@@ -465,7 +467,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           if (draft) setContent(draft);
         }
       });
-  }, [docId]);
+  }, [docId, username]);
 
   useEffect(() => {
     fetch(`${API}/templates`)
@@ -491,7 +493,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           }
           const res = await fetch(`${API}/documents/${docId}/revisions`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "X-User": username },
             body: JSON.stringify(body),
           });
           setSaveStatus("saved");
@@ -504,7 +506,9 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
               if (pdf) setPdfUrl(pdf);
             }
           }
-          const resp = await fetch(`${API}/documents/${docId}/revisions`);
+          const resp = await fetch(`${API}/documents/${docId}/revisions`, {
+            headers: { "X-User": username },
+          });
           if (resp.ok) {
             setHistory(await resp.json());
           }
