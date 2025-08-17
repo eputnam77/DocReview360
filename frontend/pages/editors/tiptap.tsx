@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import { generateDiffHtml } from "../../utils/diff";
 
 import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "../../components/ExtensionsPanel";
 import InsertMenu from "../../components/InsertMenu";
@@ -173,6 +174,7 @@ interface SidebarProps {
   clearSuggestions: () => void;
   history: any[];
   onRestore: (id: string) => void;
+  onCompare: (id: string) => void;
 }
 
 function Sidebar(props: SidebarProps) {
@@ -211,6 +213,7 @@ function Sidebar(props: SidebarProps) {
     clearSuggestions,
     history,
     onRestore,
+    onCompare,
   } = props;
 
   const extensionItems: ExtensionItem[] = [
@@ -384,12 +387,18 @@ function Sidebar(props: SidebarProps) {
           <div className="font-semibold mb-1">History</div>
           <ul className="text-xs text-gray-700 space-y-1">
             {history.map((h: any) => (
-              <li key={h.id}>
+              <li key={h.id} className="flex items-center gap-2">
                 <button
                   onClick={() => onRestore(h.id)}
                   className="underline"
                 >
                   {new Date(h.timestamp).toLocaleString()}
+                </button>
+                <button
+                  onClick={() => onCompare(h.id)}
+                  className="underline text-blue-600"
+                >
+                  Compare
                 </button>
               </li>
             ))}
@@ -446,6 +455,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   }
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [diffHtml, setDiffHtml] = useState<string | null>(null);
 
   const router = useRouter();
   const docId = (docIdProp ?? router.query.id) as string | undefined;
@@ -700,6 +710,23 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         if (res.ok) {
           const data = await res.json();
           editor?.commands.setContent(data.content);
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [docId, editor],
+  );
+
+  const compareRevision = useCallback(
+    async (id: string) => {
+      if (!docId || !editor) return;
+      try {
+        const res = await fetch(`${API}/documents/${docId}/revisions/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          const current = editor.getHTML();
+          setDiffHtml(generateDiffHtml(data.content, current));
         }
       } catch {
         /* ignore */
@@ -1116,7 +1143,23 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         clearSuggestions={clearSuggestions}
         history={history}
         onRestore={restoreRevision}
+        onCompare={compareRevision}
       />
+      {diffHtml && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded max-w-3xl w-full max-h-[80%] overflow-auto">
+            <div dangerouslySetInnerHTML={{ __html: diffHtml }} />
+            <div className="text-right mt-2">
+              <button
+                onClick={() => setDiffHtml(null)}
+                className="px-2 py-1 border rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
