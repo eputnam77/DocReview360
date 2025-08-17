@@ -564,6 +564,73 @@ def build_approval_pdf(approval_id: str) -> bytes:
     return data
 
 
+def _merge_pdf_parts(parts: list[bytes]) -> bytes:
+    from PyPDF2 import PdfReader, PdfWriter  # type: ignore
+
+    writer = PdfWriter()
+    for part in parts:
+        reader = PdfReader(BytesIO(part))
+        for page in reader.pages:
+            writer.add_page(page)
+    buffer = BytesIO()
+    writer.write(buffer)
+    return buffer.getvalue()
+
+
+def _fallback_summary_pdf(items: list[ApprovalModel]) -> bytes:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    y = 750
+    for approval in items:
+        c.drawString(40, y, f"Approval {approval.id} - {approval.reviewer} ({approval.state})")
+        y -= 20
+        if y < 50:
+            c.showPage()
+            y = 750
+    c.save()
+    return buffer.getvalue()
+
+
+def build_approvals_summary_pdf(project_id: str, actor: str | None = None) -> bytes:
+    """Return a merged PDF of all approvals for ``project_id``."""
+    relevant = [
+        a
+        for a in approvals.values()
+        if (wf := workflows.get(a.workflow)) and wf.project == project_id
+    ]
+    if not relevant:
+        raise KeyError("no approvals for project")
+
+    pdf_parts = []
+    for approval in relevant:
+        try:
+            pdf_parts.append(build_approval_pdf(approval.id))
+        except Exception:
+            pass
+
+    try:
+        summary = _merge_pdf_parts(pdf_parts)
+    except Exception:
+        summary = _fallback_summary_pdf(relevant)
+
+    log_event(
+        "approval_summary_generated",
+        project=project_id,
+        approval_count=len(relevant),
+    )
+    log_audit_event(
+        project_id,
+        "approval_summary_generated",
+        actor=actor,
+        project=project_id,
+        approval_count=len(relevant),
+    )
+    return summary
+
+
 def approval_dashboard() -> List[Dict[str, Any]]:
     """Return approval data including provider configuration and audit trail."""
     data: List[Dict[str, Any]] = []
