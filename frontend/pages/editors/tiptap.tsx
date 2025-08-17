@@ -453,7 +453,7 @@ export default function TipTapEditorPage() {
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    fetch(`/documents/${docId}/revisions`)
+    fetch(`${API}/documents/${docId}/revisions`)
       .then(res => res.json())
       .then(setHistory)
       .catch(() => {});
@@ -477,7 +477,7 @@ export default function TipTapEditorPage() {
             const update = Y.encodeStateAsUpdate(yDoc);
             body.steps = Array.from(update);
           }
-          const res = await fetch(`/documents/${docId}/revisions`, {
+          const res = await fetch(`${API}/documents/${docId}/revisions`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -485,14 +485,14 @@ export default function TipTapEditorPage() {
           setSaveStatus("saved");
           const data = res.ok ? await res.json() : {};
           if (data.archiveId) {
-            const a = await fetch(`/archive/${data.archiveId}`);
+            const a = await fetch(`${API}/archive/${data.archiveId}`);
             if (a.ok) {
               const rec = await a.json();
               const pdf = rec.metadata?.artefact_locations?.pdf;
               if (pdf) setPdfUrl(pdf);
             }
           }
-          const resp = await fetch(`/documents/${docId}/revisions`);
+          const resp = await fetch(`${API}/documents/${docId}/revisions`);
           if (resp.ok) {
             setHistory(await resp.json());
           }
@@ -671,7 +671,7 @@ export default function TipTapEditorPage() {
 
   const restoreRevision = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`/documents/${docId}/revisions/${id}`);
+      const res = await fetch(`${API}/documents/${docId}/revisions/${id}`);
       if (res.ok) {
         const data = await res.json();
         editor?.commands.setContent(data.content);
