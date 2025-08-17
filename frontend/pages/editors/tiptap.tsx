@@ -447,7 +447,9 @@ export default function TipTapEditorPage() {
 
   const [history, setHistory] = useState<any[]>([]);
   const docId = "demo";
-  const [saveStatus, setSaveStatus] = useState<"saving" | "saved">("saved");
+  const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">(
+    "saved",
+  );
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [insertMenu, setInsertMenu] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
@@ -456,7 +458,12 @@ export default function TipTapEditorPage() {
     fetch(`${API}/documents/${docId}/revisions`)
       .then(res => res.json())
       .then(setHistory)
-      .catch(() => {});
+      .catch(() => {
+        if (typeof window !== "undefined") {
+          const draft = localStorage.getItem("draft");
+          if (draft) setContent(draft);
+        }
+      });
   }, [docId]);
 
   useEffect(() => {
@@ -469,6 +476,9 @@ export default function TipTapEditorPage() {
   const saveRevision = useCallback(
     (html: string, immediate = false, promote = false) => {
       const exec = async () => {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("draft", html);
+        }
         setSaveStatus("saving");
         try {
           const body: any = { content: html };
@@ -497,7 +507,7 @@ export default function TipTapEditorPage() {
             setHistory(await resp.json());
           }
         } catch {
-          /* ignore */
+          setSaveStatus("error");
         }
       };
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -668,6 +678,12 @@ export default function TipTapEditorPage() {
     },
     [extensions],
   );
+
+  useEffect(() => {
+    if (editor && editor.getHTML() !== content) {
+      editor.commands.setContent(content);
+    }
+  }, [editor, content]);
 
   const restoreRevision = useCallback(async (id: string) => {
     try {
@@ -1048,7 +1064,13 @@ export default function TipTapEditorPage() {
           Submit
         </button>
         <div className="ml-4 text-sm text-gray-600">
-          {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
+          {saveStatus === "saving"
+            ? "Saving…"
+            : saveStatus === "saved"
+            ? "Saved"
+            : saveStatus === "error"
+            ? "Error"
+            : ""}
         </div>
         {pdfUrl && (
           <div className="ml-4 text-sm text-gray-600">
