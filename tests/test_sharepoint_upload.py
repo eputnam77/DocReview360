@@ -1,21 +1,20 @@
+import sys
+import types
 from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
-
-import sys
-import types
 
 fake_approvals = types.ModuleType("docreview360.approvals")
 fake_approvals.create_approval = lambda *a, **k: None
 fake_approvals.submit_draft_for_approval = lambda *a, **k: None
 sys.modules.setdefault("docreview360.approvals", fake_approvals)
 
-from docreview360.integrations.sharepoint_upload import upload_final_pdf
-
 
 @pytest.mark.asyncio
 async def test_upload_final_pdf_stores_metadata(monkeypatch):
+    from docreview360.integrations.sharepoint_upload import upload_final_pdf
+
     uploaded = {}
     props = {}
 
