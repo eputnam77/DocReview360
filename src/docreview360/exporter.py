@@ -56,6 +56,10 @@ def export_document(
         data = html_doc.encode()
         media = "text/html"
         name = f"{base}.html"
+    elif fmt == "json":
+        data = document.model_dump_json().encode()
+        media = "application/json"
+        name = f"{base}.json"
     elif fmt == "docx":
         xml = (
             "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>"
