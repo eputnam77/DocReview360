@@ -29,5 +29,7 @@ psycopg[binary]==3.2.9
 pymysql==1.1.1
 python-dotenv==1.0.0
 markdown-it-py==3.0.0
+y-py==0.6.2
+ypy-websocket==0.12.4
 
 # Note: docreview360 and govdocverify are local packages and cannot be audited

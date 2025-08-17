@@ -139,6 +139,7 @@ from ..template_manager import (
     retire_template,
 )
 from ..watchlist import get_watchlist, toggle_watch
+from ..collab import router as collab_router
 from ..workflows import (
     WorkflowModel,
     advance_workflow,
@@ -359,6 +360,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(approvals_router)
 app.include_router(webhooks_router)
+app.include_router(collab_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
