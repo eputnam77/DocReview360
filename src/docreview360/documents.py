@@ -9,8 +9,6 @@ from difflib import SequenceMatcher
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
-from xml.etree.ElementTree import XML
-from zipfile import ZipFile
 
 from pydantic import BaseModel, Field
 
@@ -73,21 +71,43 @@ def next_document_number(project: Optional[str] = None) -> int:
         return num
 
 
-def _extract_docx_text(data: bytes) -> str:
-    """Extract text from a DOCX file using minimal parsing.
 
-    This helper only looks for ``word/document.xml`` and ignores styles or
-    complex formatting. It is sufficient for tests and small example files but
-    should be replaced with a full parser for production use.
+
+def _extract_docx_text(data: bytes) -> str:
+    """Extract text from a DOCX file using ``python-docx``.
+
+    Headings become Markdown ``#`` prefixes and tracked changes are represented
+    with ``[INS:...]`` and ``[DEL:...]`` markers.
     """
-    with ZipFile(BytesIO(data)) as zf:
-        xml_data = zf.read("word/document.xml")
-    root = XML(xml_data)
-    texts = [
-        node.text or ""
-        for node in root.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t")
-    ]
-    return "".join(texts)
+    from docx import Document
+
+    doc = Document(BytesIO(data))
+    ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    parts: list[str] = []
+
+    for para in doc.paragraphs:
+        style = para.style.name if para.style is not None else ""
+        prefix = ""
+        if style.startswith("Heading"):
+            try:
+                level = int(style.split()[1])
+            except (IndexError, ValueError):
+                level = 1
+            prefix = "#" * level + " "
+
+        text_piece = ""
+        for child in para._element.iterchildren():
+            if child.tag == f"{ns}r":
+                text_piece += "".join(t.text or "" for t in child.iter(f"{ns}t"))
+            elif child.tag == f"{ns}ins":
+                ins_text = "".join(t.text or "" for t in child.iter(f"{ns}t"))
+                text_piece += f"[INS:{ins_text}]"
+            elif child.tag == f"{ns}del":
+                del_text = "".join(t.text or "" for t in child.iter(f"{ns}t"))
+                text_piece += f"[DEL:{del_text}]"
+        parts.append(prefix + text_piece)
+
+    return "\\n".join(parts)
 
 
 def import_document(
