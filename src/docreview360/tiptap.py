@@ -48,6 +48,7 @@ def import_tiptap_document(
         timestamp=datetime.now(timezone.utc),
         content=markdown,
         steps=None,
+        author=user or "",
     )
     document = DocumentModel(
         id=doc_id,
