@@ -18,6 +18,7 @@ def test_import_and_edit_document() -> None:
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", content, "text/markdown")},
+        data={"user": "alice"},
     )
     assert resp.status_code == 201
     doc = resp.json()
@@ -30,20 +31,23 @@ def test_import_and_edit_document() -> None:
     assert any(d["id"] == doc_id for d in resp.json())
 
     updated = "# Title\n\nUpdated"
-    resp = client.put(
-        f"/documents/{doc_id}",
-        json={"id": doc_id, "content": updated, "history": []},
+    resp = client.post(
+        f"/documents/{doc_id}/revisions",
+        json={"content": updated},
+        headers={"X-User": "bob"},
     )
-    assert resp.status_code == 200
-    assert resp.json()["content"] == updated
-    assert [h["content"] for h in resp.json()["history"]] == [content, updated]
+    assert resp.status_code == 201
 
     resp = client.get(f"/documents/{doc_id}")
     data = resp.json()
     assert data["content"] == updated
     assert [h["content"] for h in data["history"]] == [content, updated]
 
-    resp = client.get(f"/documents/{doc_id}/audit")
+    resp = client.get(f"/documents/{doc_id}/revisions")
+    meta = resp.json()
+    assert [m["author"] for m in meta] == ["alice", "bob"]
+
+    resp = client.get(f"/documents/{doc_id}/audit", headers={"X-User": "alice"})
     events = [e["event"] for e in resp.json()]
     assert events == ["created", "updated"]
 
