@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from docreview360.api import app
 from docreview360.documents import DocumentModel
+from docreview360.exporter import export_document
 
 
 def test_export_markdown_and_html() -> None:
@@ -39,3 +40,11 @@ def test_export_json_roundtrip() -> None:
     model = DocumentModel.model_validate_json(resp.text)
     assert model.id == doc_id
     assert model.content == "Hello *world*"
+
+
+def test_export_pdf_format() -> None:
+    doc = DocumentModel(id="1", content="Hello")
+    data, media, name = export_document(doc, "pdf")
+    assert media == "application/pdf"
+    assert name.endswith(".pdf")
+    assert data.startswith(b"%PDF")

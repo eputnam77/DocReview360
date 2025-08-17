@@ -4,11 +4,12 @@ and FANN-based routing support."""
 from __future__ import annotations
 
 import hashlib
+import os
 from datetime import datetime, timezone
+from io import BytesIO
 from typing import Any, Dict, Iterator, List, Optional
 from urllib.parse import quote, urlparse
 from uuid import uuid4
-import os
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -37,8 +38,6 @@ def _reminder_task(approval_id: str) -> None:
 def _escalation_task(approval_id: str, target: str) -> None:
     """Log an escalation event for ``approval_id``."""
     log_event("approval_escalated", approval_id=approval_id, target=target)
-
-
 
 
 class ApprovalModel(BaseModel):
@@ -417,12 +416,12 @@ async def update_approval_state(  # noqa: C901
     return approval
 
 
-def send_for_signature(
+def send_for_signature(  # noqa: C901
     approval_id: str,
     doc_id: str,
     user: str,
     return_url: str | None = None,
-) -> str:  # noqa: C901
+) -> str:
     approval = approvals[approval_id]
     if approval.state == "approved":
         raise ValueError("approval already signed")
@@ -520,11 +519,60 @@ def get_signed_document(approval_id: str) -> bytes:
     return document.content.encode()
 
 
+def build_approval_pdf(approval_id: str) -> bytes:
+    """Return a PDF of the document with approval details."""
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise KeyError("approval not found")
+    document = get_document(approval.document_id)
+    if document is None:
+        raise KeyError("document not found")
+
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    text = c.beginText(40, 750)
+    for line in document.content.splitlines():
+        text.textLine(line)
+    c.drawText(text)
+    c.showPage()
+    meta = c.beginText(40, 750)
+    meta.textLine(f"Reviewer: {approval.reviewer}")
+    if approval.signed_at:
+        meta.textLine(f"Signed at: {approval.signed_at.isoformat()}")
+    if approval.certificate_url:
+        meta.textLine(f"Certificate: {approval.certificate_url}")
+    c.drawText(meta)
+    c.save()
+    data = buffer.getvalue()
+    log_event(
+        "approval_pdf_generated",
+        approval_id=approval_id,
+        reviewer=approval.reviewer,
+        doc_id=approval.document_id,
+        certificate_url=approval.certificate_url,
+    )
+    log_audit_event(
+        approval.document_id,
+        "approval_pdf_generated",
+        actor=approval.reviewer,
+        approval_id=approval_id,
+        certificate_url=approval.certificate_url,
+    )
+    return data
+
+
 def approval_dashboard() -> List[Dict[str, Any]]:
     """Return approval data including provider configuration and audit trail."""
     data: List[Dict[str, Any]] = []
     for approval in approvals.values():
-        history = [e.model_dump() for e in get_audit_log(approval.document_id) if e.approval_id == approval.id]
+        history = [
+            e.model_dump()
+            for e in get_audit_log(approval.document_id)
+            if e.approval_id == approval.id
+        ]
         data.append(
             {
                 "id": approval.id,
