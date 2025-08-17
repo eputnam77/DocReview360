@@ -36,6 +36,8 @@ class TemplateVersion:
     version: int
     content: bytes
     metadata: Dict[str, Any]
+    approved: bool = False
+    retired: bool = False
 
 
 _template_store: dict[str, List[TemplateVersion]] = {}
@@ -50,9 +52,33 @@ def upload_template(
         raise ValueError("name is required")
     versions = _template_store.setdefault(name, [])
     version = len(versions) + 1
-    record = TemplateVersion(version=version, content=data, metadata=metadata or {})
+    record = TemplateVersion(
+        version=version,
+        content=data,
+        metadata=metadata or {},
+    )
     versions.append(record)
     return record
+
+
+def approve_template(name: str) -> TemplateVersion:
+    """Mark the latest version of ``name`` as approved."""
+
+    ver = get_latest_template(name)
+    if not ver:
+        raise ValueError("template not found")
+    ver.approved = True
+    return ver
+
+
+def retire_template(name: str) -> TemplateVersion:
+    """Mark the latest version of ``name`` as retired."""
+
+    ver = get_latest_template(name)
+    if not ver:
+        raise ValueError("template not found")
+    ver.retired = True
+    return ver
 
 
 def get_latest_template(name: str) -> TemplateVersion | None:
