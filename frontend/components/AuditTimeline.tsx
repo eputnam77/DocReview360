@@ -25,6 +25,19 @@ const TYPE_LABELS: Record<AuditType, string> = {
   phase: "Phase changes",
 };
 
+const APPROVAL_EVENT_LABELS: Record<string, string> = {
+  signature_verified: "Signature verified",
+  signature_hash_mismatch: "Signature hash mismatch",
+  signature_invalid: "Signature invalid",
+  signature_requested: "Signature requested",
+  approval_revoked: "Approval revoked",
+};
+
+const formatMessage = (e: AuditEntry) =>
+  e.type === "approval"
+    ? APPROVAL_EVENT_LABELS[e.message] || e.message
+    : e.message;
+
 export default function AuditTimeline({ events }: Props) {
   const [filters, setFilters] = useState<Record<AuditType, boolean>>({
     approval: true,
@@ -86,10 +99,10 @@ export default function AuditTimeline({ events }: Props) {
                     </span>
                     {e.link ? (
                       <Link href={e.link} className="text-blue-600 hover:underline">
-                        {e.message}
+                        {formatMessage(e)}
                       </Link>
                     ) : (
-                      <span>{e.message}</span>
+                      <span>{formatMessage(e)}</span>
                     )}
                   </li>
                 ))}

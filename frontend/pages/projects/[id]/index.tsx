@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { API } from "@/lib/api";
 import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal } from "@/components";
+import type { AuditEntry } from "@/components/AuditTimeline";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/useProject";
 import { usePhases } from "@/lib/usePhases";
@@ -181,6 +182,21 @@ const DEMO_LOGS: LogEntry[] = [
   { timestamp: "2025-07-04", action: "Draft created", id: "l1", type: "edit" },
   { timestamp: "2025-07-04", action: "Initial review started", id: "l2", type: "review" },
   { timestamp: "2025-07-05", action: "Draft updated", id: "l3", type: "edit" },
+];
+
+const DEMO_APPROVAL_HISTORY: AuditEntry[] = [
+  {
+    id: "h1",
+    timestamp: "2025-07-05T14:31:00Z",
+    message: "signature_verified",
+    type: "approval",
+  },
+  {
+    id: "h2",
+    timestamp: "2025-07-05T14:32:00Z",
+    message: "signature_hash_mismatch",
+    type: "approval",
+  },
 ];
 
 const DEMO_REFERENCE_DOCS: RefDoc[] = [
@@ -362,6 +378,7 @@ export default function ProjectDetailsPage() {
   const [approvals, setApprovals] = useState<Approval[]>(DEMO_APPROVALS);
   const [refDocs, setRefDocs] = useState<RefDoc[]>(DEMO_REFERENCE_DOCS);
   const [logs, setLogs] = useState<LogEntry[]>(DEMO_LOGS);
+  const [historyEvents, setHistoryEvents] = useState<AuditEntry[]>([]);
   const [versions] = useState<VersionEntry[]>(DEMO_VERSIONS);
   const [reviewCount, setReviewCount] = useState(
     DEMO_DISPO_COMMENTS.length,
@@ -378,6 +395,7 @@ export default function ProjectDetailsPage() {
   );
 
   const [showVersions, setShowVersions] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // ▼ permission based on logged in user
   const username = useUserStore((s) => s.username);
@@ -560,6 +578,28 @@ export default function ProjectDetailsPage() {
     );
     remind(targets.map((a) => a.id));
   };
+
+  const viewHistory = useCallback(
+    (aid: string) => {
+      fetch(`${API}/approvals/${aid}/history`, {
+        headers: username ? { "X-User": username } : undefined,
+      })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: any[]) =>
+          setHistoryEvents(
+            data.map((d) => ({
+              id: d.id ?? d.timestamp,
+              timestamp: d.timestamp,
+              message: d.event || d.action || d.message,
+              type: "approval" as const,
+            })),
+          )
+        )
+        .catch(() => setHistoryEvents(DEMO_APPROVAL_HISTORY))
+        .finally(() => setShowHistory(true));
+    },
+    [username],
+  );
 
   const signApproval = async (aid: string) => {
     const existing = approvals.find((a) => a.id === aid);
@@ -836,6 +876,7 @@ export default function ProjectDetailsPage() {
                   setApprovals((prev) => prev.filter((x) => x.id !== id))
                 }
                 onBulkReminder={(ids) => sendReminder(ids)}
+                onHistory={viewHistory}
               />
             </CardContent>
           </Card>
@@ -904,6 +945,14 @@ export default function ProjectDetailsPage() {
         onClose={() => setShowVersions(false)}
         versions={versions}
       />
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-md" onKeyDown={(e) => e.key === "Escape" && setShowHistory(false)}>
+          <DialogHeader>
+            <DialogTitle>Approval History</DialogTitle>
+          </DialogHeader>
+          <AuditTimeline events={historyEvents.length ? historyEvents : DEMO_APPROVAL_HISTORY} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
