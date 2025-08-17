@@ -34,7 +34,7 @@ def _render_template(template: str, document: DocumentModel) -> str:
     return base.replace("/", "_").replace("\\", "_")
 
 
-def export_document(
+def export_document(  # noqa: C901
     document: DocumentModel,
     fmt: str,
     *,
@@ -61,9 +61,10 @@ def export_document(
         media = "application/json"
         name = f"{base}.json"
     elif fmt == "docx":
+        import re
+
         from docx import Document
         from docx.oxml import OxmlElement
-        import re
 
         docx_doc = Document()
         for line in document.content.splitlines():
@@ -80,7 +81,7 @@ def export_document(
             idx = 0
             for match in re.finditer(r"\[(INS|DEL):(.*?)\]", line_text):
                 if match.start() > idx:
-                    p.add_run(line_text[idx:match.start()])
+                    p.add_run(line_text[idx : match.start()])
                 tag, txt = match.group(1).lower(), match.group(2)
                 change = OxmlElement(f"w:{tag}")
                 r = OxmlElement("w:r")
@@ -99,8 +100,17 @@ def export_document(
         media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         name = f"{base}.docx"
     elif fmt == "pdf":
-        placeholder = f"PDF-PLACEHOLDER\n{document.content}"
-        data = placeholder.encode()
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+
+        buffer = BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        text = c.beginText(40, 750)
+        for line in document.content.splitlines():
+            text.textLine(line)
+        c.drawText(text)
+        c.save()
+        data = buffer.getvalue()
         media = "application/pdf"
         name = f"{base}.pdf"
     else:
@@ -111,7 +121,7 @@ def export_document(
 def preview_document(document: DocumentModel, fmt: str, *, length: int = 30) -> str:
     """Return a human-readable preview of a document export."""
     data, media, _ = export_document(document, fmt)
-    text = document.content
+    text: str = document.content
     if media.startswith("text/"):
         text = data.decode()
     return text[:length]

@@ -11,6 +11,7 @@ from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from .. import auth
 from ..approvals import (
     approval_dashboard,
+    build_approval_pdf,
     get_approval,
     get_approval_history,
     get_signed_document,
@@ -18,6 +19,7 @@ from ..approvals import (
     verify_document_hash,
     verify_document_signature_stream,
 )
+from ..audit import log_audit_event
 from ..logs import TRACE_ID, log_call, log_event
 from ..rbac import require_permission
 
@@ -100,6 +102,35 @@ async def download_signed_document(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return Response(content=data, media_type="application/octet-stream")
+
+
+@router.get("/approvals/{approval_id}/pdf")
+@log_call
+async def approval_pdf_endpoint(
+    approval_id: str,
+    user: auth.User = Depends(require_permission("read")),
+) -> Response:
+    """Download a combined PDF for ``approval_id``."""
+    appr = get_approval(approval_id)
+    if appr is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    try:
+        data = build_approval_pdf(approval_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    log_event(
+        "approval_pdf_downloaded",
+        approval_id=approval_id,
+        doc_id=appr.document_id,
+        user_id=user.username,
+    )
+    log_audit_event(
+        appr.document_id,
+        "approval_pdf_downloaded",
+        actor=user.username,
+        approval_id=approval_id,
+    )
+    return Response(content=data, media_type="application/pdf")
 
 
 @router.get("/approvals/{approval_id}/verify-hash")
