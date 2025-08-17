@@ -13,10 +13,10 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableRow from "@tiptap/extension-table-row";
 import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
-import TEMPLATES from "../../data/templates";
 import Lint from "../../extensions/lint";
 import SlashCommand from "../../extensions/tiptapSlashCommand";
 import sanitizeHtml from "../../utils/sanitize";
+import { API } from "@/lib/api";
 
 // Custom TipTap extensions
 import { tiptapHeadingLock } from "../../extensions/tiptapHeadingLock";
@@ -217,16 +217,18 @@ function Sidebar(props: SidebarProps) {
         <section>
           <div className="font-semibold mb-1">Templates</div>
           <ul className="space-y-1 text-sm">
-            {TEMPLATES.filter(t => t.type === "tiptap" || t.type === "both").map(tpl => (
-              <li key={tpl.id}>
-                <button
-                  className="text-indigo-700 underline"
-                  onClick={() => onTemplateLoad(tpl.id)}
-                >
-                  {tpl.label}
-                </button>
-              </li>
-            ))}
+            {templates
+              .filter(t => !t.type || t.type === "tiptap" || t.type === "both")
+              .map(tpl => (
+                <li key={tpl.id || tpl.name}>
+                  <button
+                    className="text-indigo-700 underline"
+                    onClick={() => onTemplateLoad(tpl.id || tpl.name)}
+                  >
+                    {tpl.label || tpl.name || tpl.id}
+                  </button>
+                </li>
+              ))}
           </ul>
         </section>
 
@@ -440,6 +442,7 @@ export default function TipTapEditorPage() {
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
 
   const [aiSuggestEnabled, setAiSuggestEnabled] = useState(false);
   interface Suggestion extends NewSuggestion {
@@ -458,6 +461,13 @@ export default function TipTapEditorPage() {
       .then(setHistory)
       .catch(() => {});
   }, [docId]);
+
+  useEffect(() => {
+    fetch(`${API}/templates`)
+      .then(r => (r.ok ? r.json() : []))
+      .then(setTemplates)
+      .catch(() => setTemplates([]));
+  }, []);
 
   const saveRevision = useCallback((html: string) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -676,51 +686,27 @@ export default function TipTapEditorPage() {
     }
 
     try {
-      console.log("=== TEMPLATE LOAD DEBUG ===");
-      console.log("Loading template:", filename);
-      console.log("Available templates:", TEMPLATES.map(t => ({ id: t.id, type: t.type, label: t.label })));
-
-      // Find the template in the TEMPLATES array
-      const template = TEMPLATES.find(t => t.id === filename);
-      if (!template) {
-        throw new Error(`Template not found: ${filename}. Available templates: ${TEMPLATES.map(t => t.id).join(', ')}`);
-      }
-
-      console.log("Template found:", template.label, "Type:", template.type);
-      console.log("Template content length:", template.content?.length || 0);
-      console.log("Template content preview:", template.content?.substring(0, 100) + "...");
-
-      // Use the template content directly
-      const sanitized = sanitizeHtml(template.content);
-      console.log("Sanitized content length:", sanitized.length);
-      console.log("Sanitized content preview:", sanitized.substring(0, 100) + "...");
-
-      // Test if the content is valid before setting it
+      const res = await fetch(`${API}/templates/${filename}`);
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const sanitized = sanitizeHtml(data.content || "");
       if (!sanitized || sanitized.trim().length === 0) {
         throw new Error("Template content is empty after sanitization");
       }
-
       editor.commands.setContent(sanitized);
       setContent(sanitized);
-
-      console.log("Template loaded successfully");
-      console.log("=== END TEMPLATE LOAD DEBUG ===");
-
-      // Close sidebar after successful template load for better UX
       setSidebarOpen(false);
     } catch (error) {
-      console.error("=== TEMPLATE LOAD ERROR ===");
       console.error("Template load error:", error);
       console.error("Error details:", {
         filename,
-        availableTemplates: TEMPLATES.map(t => t.id),
+        availableTemplates: templates.map(t => t.id || t.name),
         editorExists: !!editor,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
       });
-      console.error("=== END TEMPLATE LOAD ERROR ===");
       toast.error(
         `Failed to load template: ${filename}\n\nError: ${
-          error instanceof Error ? error.message : 'Unknown error'
+          error instanceof Error ? error.message : "Unknown error"
         }`,
       );
     }
