@@ -25,6 +25,7 @@ class DocumentRevision(BaseModel):
     content: str
     steps: list[Any] | None = None
     author: str = ""
+    yjs_updates: list[bytes] | None = None
 
 
 class DocumentModel(BaseModel):
@@ -226,6 +227,7 @@ def update_document(
     priority: Optional[int] = None,
     steps: list[Any] | None = None,
     author: str | None = None,
+    yjs_updates: list[bytes] | None = None,
 ) -> tuple[DocumentModel, str]:
     """Replace document content and record a new revision."""
     document = documents.get(doc_id)
@@ -248,6 +250,7 @@ def update_document(
                 content=content,
                 steps=steps,
                 author=author or document.user or "",
+                yjs_updates=yjs_updates,
             )
         )
         if priority is not None:
@@ -261,7 +264,8 @@ def update_document(
 
     # Re-index the updated document
     search_module.add_document(document)
-    fts.index_document(doc_id, document.content)
+    if document.content:
+        fts.index_document(doc_id, document.content)
     log_audit_event(doc_id, "updated", actor=author or document.user, priority=priority)
 
     return document, revision_id
