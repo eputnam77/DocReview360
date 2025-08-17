@@ -983,7 +983,10 @@ async def list_comments_endpoint(doc_id: str) -> list[CommentModel]:
 
 
 @app.get("/documents/{doc_id}/export")
-async def export_document_endpoint(doc_id: str, fmt: str) -> Response:
+async def export_document_endpoint(
+    doc_id: str,
+    fmt: Literal["markdown", "md", "html", "htm", "docx", "pdf", "json"],
+) -> Response:
     """Return the document converted to the requested format."""
     document = get_document(doc_id)
     if document is None:
