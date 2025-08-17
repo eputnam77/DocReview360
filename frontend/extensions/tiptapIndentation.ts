@@ -1,7 +1,7 @@
 /**
  * TipTap extension adding indentation controls.
  */
-import { Extension } from "@tiptap/core";
+import { Extension, CommandProps } from "@tiptap/core";
 import { Node as PMNode } from "prosemirror-model";
 
 /**
@@ -30,6 +30,54 @@ export function tiptapIndentation() {
           },
         },
       ];
+    },
+    addCommands() {
+      return {
+        indent:
+          () =>
+          ({ state, dispatch }: CommandProps): boolean => {
+            const { from, to } = state.selection;
+            const tr = state.tr;
+
+            state.doc.nodesBetween(from, to, (node: PMNode, pos) => {
+              if (node.type.name === "paragraph" || node.type.name === "listItem") {
+                const level = (node.attrs["data-indent"] || 0) + 1;
+                tr.setNodeMarkup(pos, undefined, {
+                  ...node.attrs,
+                  "data-indent": level,
+                });
+              }
+            });
+
+            if (tr.docChanged) {
+              dispatch?.(tr);
+              return true;
+            }
+            return false;
+          },
+        outdent:
+          () =>
+          ({ state, dispatch }: CommandProps): boolean => {
+            const { from, to } = state.selection;
+            const tr = state.tr;
+
+            state.doc.nodesBetween(from, to, (node: PMNode, pos) => {
+              if (node.type.name === "paragraph" || node.type.name === "listItem") {
+                const level = (node.attrs["data-indent"] || 0) - 1;
+                tr.setNodeMarkup(pos, undefined, {
+                  ...node.attrs,
+                  "data-indent": Math.max(level, 0),
+                });
+              }
+            });
+
+            if (tr.docChanged) {
+              dispatch?.(tr);
+              return true;
+            }
+            return false;
+          },
+      } as Record<string, any>;
     },
   });
 }
