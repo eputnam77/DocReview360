@@ -28,6 +28,7 @@ interface Props {
   onReset: (id: string) => void;
   onRemove: (id: string) => void;
   onBulkReminder: (ids: string[]) => void;
+  onHistory: (id: string) => void;
 }
 
 function classNames(...classes: (string | false | undefined)[]) {
@@ -87,6 +88,7 @@ export default function ApprovalTable({
   onReset,
   onRemove,
   onBulkReminder,
+  onHistory,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -193,43 +195,41 @@ export default function ApprovalTable({
         </TableCell>
         <TableCell>{a.required ? "Yes" : "No"}</TableCell>
         <TableCell className="text-right">
-          {(canEdit || currentUser === a.reviewer) && (
-            <RowMenu>
-              {currentUser === a.reviewer && (
-                <Menu.Item as={Fragment}>
-                  {({ active, close }) => (
-                    <button
-                      role="menuitem"
-                      className={classNames(
-                        "w-full px-3 py-2 text-left text-sm",
-                        active && "bg-indigo-50 dark:bg-gray-800",
-                      )}
-                      onClick={() => {
-                        close();
-                        onSign(a.id);
-                      }}
-                    >
-                      Sign / Approve
-                    </button>
+          <RowMenu>
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  role="menuitem"
+                  className={classNames(
+                    "w-full px-3 py-2 text-left text-sm",
+                    active && "bg-indigo-50 dark:bg-gray-800",
                   )}
-                </Menu.Item>
+                  onClick={() => onHistory(a.id)}
+                >
+                  View history
+                </button>
               )}
-              {canEdit && (
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      role="menuitem"
-                      className={classNames(
-                        "w-full px-3 py-2 text-left text-sm",
-                        active && "bg-indigo-50 dark:bg-gray-800",
-                      )}
-                      onClick={() => onReset(a.id)}
-                    >
-                      Reset
-                    </button>
-                  )}
-                </Menu.Item>
-              )}
+            </Menu.Item>
+            {currentUser === a.reviewer && (
+              <Menu.Item as={Fragment}>
+                {({ active, close }) => (
+                  <button
+                    role="menuitem"
+                    className={classNames(
+                      "w-full px-3 py-2 text-left text-sm",
+                      active && "bg-indigo-50 dark:bg-gray-800",
+                    )}
+                    onClick={() => {
+                      close();
+                      onSign(a.id);
+                    }}
+                  >
+                    Sign / Approve
+                  </button>
+                )}
+              </Menu.Item>
+            )}
+            {canEdit && (
               <Menu.Item>
                 {({ active }) => (
                   <button
@@ -238,30 +238,44 @@ export default function ApprovalTable({
                       "w-full px-3 py-2 text-left text-sm",
                       active && "bg-indigo-50 dark:bg-gray-800",
                     )}
-                    onClick={() => toast("Email sent")}
+                    onClick={() => onReset(a.id)}
                   >
-                    Send email
+                    Reset
                   </button>
                 )}
               </Menu.Item>
-              {canEdit && (
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      role="menuitem"
-                      className={classNames(
-                        "w-full px-3 py-2 text-left text-sm text-red-600",
-                        active && "bg-indigo-50 dark:bg-gray-800",
-                      )}
-                      onClick={() => onRemove(a.id)}
-                    >
-                      Remove
-                    </button>
+            )}
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  role="menuitem"
+                  className={classNames(
+                    "w-full px-3 py-2 text-left text-sm",
+                    active && "bg-indigo-50 dark:bg-gray-800",
                   )}
-                </Menu.Item>
+                  onClick={() => toast("Email sent")}
+                >
+                  Send email
+                </button>
               )}
-            </RowMenu>
-          )}
+            </Menu.Item>
+            {canEdit && (
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    role="menuitem"
+                    className={classNames(
+                      "w-full px-3 py-2 text-left text-sm text-red-600",
+                      active && "bg-indigo-50 dark:bg-gray-800",
+                    )}
+                    onClick={() => onRemove(a.id)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </Menu.Item>
+            )}
+          </RowMenu>
         </TableCell>
       </TableRow>
     );
