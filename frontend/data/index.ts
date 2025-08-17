@@ -1,9 +1,8 @@
 // frontend/data/index.ts
 
-// Export categories/types/constants (adjust to your files)
-// Use the .tsx extension so React components like icons compile correctly
-export * from "./data"; // Re-export constants like CATEGORIES and TEMPLATES
-export * from "./mock"; // If you have mock.ts for MOCK_INSTANCE, MOCK_PROJECTS, etc.
+// Export categories and other shared data modules
+export * from "./categories";
+export * from "./mock"; // Re-export mock data like MOCK_INSTANCE
 
-// You can add more exports here as your app grows.
+// Add more exports here as your app grows.
 // export * from "./otherData";
