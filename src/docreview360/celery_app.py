@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from celery import Celery, Task
@@ -24,17 +24,12 @@ app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
 class TracedTask(Task):
     """Task that propagates ``TRACE_ID`` and logs lifecycle events."""
 
-    def apply_async(
-        self,
-        args: tuple[Any, ...] | None = None,
-        kwargs: dict[str, Any] | None = None,
-        **options: Any,
-    ):
+    def apply_async(self, *args: Any, **kwargs: Any) -> Any:
         trace_id = TRACE_ID.get(None)
-        headers = options.setdefault("headers", {})
+        headers = kwargs.setdefault("headers", {})
         if trace_id:
             headers.setdefault("trace_id", trace_id)
-        return super().apply_async(args=args, kwargs=kwargs, **options)
+        return super().apply_async(*args, **kwargs)
 
     def __call__(self, *args: Any, **kwargs: Any):
         trace_id = getattr(getattr(self, "request", None), "headers", {}).get("trace_id")
@@ -60,7 +55,7 @@ def echo(value: str) -> str:
     return value
 
 
-echo = app.task(name="docreview360.echo")(echo)
+echo = cast(Task, app.task(name="docreview360.echo")(echo))
 
 
 def word_count(text: str) -> int:
@@ -70,7 +65,7 @@ def word_count(text: str) -> int:
     return len(text.split())
 
 
-word_count = app.task(name="docreview360.word_count")(word_count)
+word_count = cast(Task, app.task(name="docreview360.word_count")(word_count))
 
 
 def fetch_length(url: str) -> int:
@@ -82,7 +77,7 @@ def fetch_length(url: str) -> int:
     return len(resp.text)
 
 
-fetch_length = app.task(name="docreview360.fetch_length")(fetch_length)
+fetch_length = cast(Task, app.task(name="docreview360.fetch_length")(fetch_length))
 
 
 def quality_gate(text: str, weights: list[float] | None = None) -> float:
@@ -95,7 +90,7 @@ def quality_gate(text: str, weights: list[float] | None = None) -> float:
     return 0.0 if passed else 1.0
 
 
-app.task(name="docreview360.quality_gate")(quality_gate)
+quality_gate = cast(Task, app.task(name="docreview360.quality_gate")(quality_gate))
 
 
 def export_documents(doc_ids: list[str], fmt: str) -> bytes:
@@ -124,7 +119,7 @@ def export_documents(doc_ids: list[str], fmt: str) -> bytes:
     return export_batch(docs, fmt, name_template=template)
 
 
-app.task(name="docreview360.export_documents")(export_documents)
+export_documents = cast(Task, app.task(name="docreview360.export_documents")(export_documents))
 
 
 def reindex_document(doc_id: str) -> None:
@@ -139,7 +134,7 @@ def reindex_document(doc_id: str) -> None:
     search_index.add_document(doc)
 
 
-app.task(name="docreview360.reindex_document")(reindex_document)
+reindex_document = cast(Task, app.task(name="docreview360.reindex_document")(reindex_document))
 
 
 def create_backup_task(path: str) -> str:
@@ -152,7 +147,7 @@ def create_backup_task(path: str) -> str:
     return str(target)
 
 
-app.task(name="docreview360.create_backup")(create_backup_task)
+create_backup_task = cast(Task, app.task(name="docreview360.create_backup")(create_backup_task))
 
 
 def reindex_all() -> int:
@@ -165,4 +160,4 @@ def reindex_all() -> int:
     return count
 
 
-app.task(name="docreview360.reindex_all")(reindex_all)
+reindex_all = cast(Task, app.task(name="docreview360.reindex_all")(reindex_all))

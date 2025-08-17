@@ -18,7 +18,7 @@ from uuid import uuid4
 import httpx
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from pydantic import BaseModel, HttpUrl, ValidationError
 
 from ... import certs
@@ -207,12 +207,18 @@ def validate_signature(
     revoked = cert_info.get("revoked")
 
     now = datetime.utcnow()
+    pub_key = cert.public_key()
+    if not isinstance(pub_key, rsa.RSAPublicKey):
+        return False
+    algo = cert.signature_hash_algorithm
+    if algo is None:
+        return False
     try:
-        cert.public_key().verify(
+        pub_key.verify(
             cert.signature,
             cert.tbs_certificate_bytes,
             padding.PKCS1v15(),
-            cert.signature_hash_algorithm,
+            algo,
         )
     except Exception:
         return False
@@ -224,7 +230,7 @@ def validate_signature(
     if revoked is None and not certs.verify_certificate_status(cert):
         return False
     try:
-        cert.public_key().verify(
+        pub_key.verify(
             signature,
             document_bytes,
             padding.PKCS1v15(),

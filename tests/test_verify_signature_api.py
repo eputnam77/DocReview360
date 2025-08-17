@@ -11,7 +11,12 @@ from fastapi.testclient import TestClient
 
 from docreview360 import auth
 from docreview360.api import app
-from docreview360.approvals import approvals, create_approval, send_for_signature
+from docreview360.approvals import (
+    ApprovalModel,
+    approvals,
+    create_approval,
+    send_for_signature,
+)
 from docreview360.integrations.signature import documenso
 
 
@@ -52,7 +57,7 @@ def client() -> TestClient:
     return c
 
 
-def _setup_document(client: TestClient, content: bytes) -> tuple[str, object]:
+def _setup_document(client: TestClient, content: bytes) -> tuple[str, ApprovalModel]:
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", content, "text/markdown")},
@@ -65,18 +70,19 @@ def _setup_document(client: TestClient, content: bytes) -> tuple[str, object]:
 
 
 @pytest.fixture
-def setup_doc(client: TestClient, sample_doc: bytes) -> tuple[str, object]:
+def setup_doc(client: TestClient, sample_doc: bytes) -> tuple[str, ApprovalModel]:
     approvals.clear()
     return _setup_document(client, sample_doc)
 
 
 def test_valid_signature(
     client: TestClient,
-    setup_doc: tuple[str, object],
+    setup_doc: tuple[str, ApprovalModel],
     sample_doc: bytes,
 ) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
+    assert appr.signature_id is not None
     documenso.process_webhook(
         {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
     )
@@ -91,11 +97,12 @@ def test_valid_signature(
 
 def test_explicit_provider(
     client: TestClient,
-    setup_doc: tuple[str, object],
+    setup_doc: tuple[str, ApprovalModel],
     sample_doc: bytes,
 ) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
+    assert appr.signature_id is not None
     documenso.process_webhook(
         {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
     )
@@ -110,12 +117,13 @@ def test_explicit_provider(
 
 def test_tampered_signature(
     client: TestClient,
-    setup_doc: tuple[str, object],
+    setup_doc: tuple[str, ApprovalModel],
     sample_doc: bytes,
 ) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc, tamper=True)
     try:
+        assert appr.signature_id is not None
         documenso.process_webhook(
             {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
         )
@@ -133,12 +141,13 @@ def test_tampered_signature(
 
 def test_expired_certificate(
     client: TestClient,
-    setup_doc: tuple[str, object],
+    setup_doc: tuple[str, ApprovalModel],
     sample_doc: bytes,
 ) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc, days_valid=-1)
     try:
+        assert appr.signature_id is not None
         documenso.process_webhook(
             {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
         )
@@ -156,12 +165,13 @@ def test_expired_certificate(
 
 def test_revoked_certificate(
     client: TestClient,
-    setup_doc: tuple[str, object],
+    setup_doc: tuple[str, ApprovalModel],
     sample_doc: bytes,
 ) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc, revoked=True)
     try:
+        assert appr.signature_id is not None
         documenso.process_webhook(
             {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
         )
@@ -179,11 +189,12 @@ def test_revoked_certificate(
 
 def test_altered_document(
     client: TestClient,
-    setup_doc: tuple[str, object],
+    setup_doc: tuple[str, ApprovalModel],
     sample_doc: bytes,
 ) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
+    assert appr.signature_id is not None
     documenso.process_webhook(
         {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
     )
@@ -198,9 +209,10 @@ def test_altered_document(
     assert detail["hash_valid"] is False
 
 
-def test_missing_metadata(client: TestClient, setup_doc: tuple[str, object]) -> None:
+def test_missing_metadata(client: TestClient, setup_doc: tuple[str, ApprovalModel]) -> None:
     doc_id, appr = setup_doc
     try:
+        assert appr.signature_id is not None
         documenso.process_webhook({"id": appr.signature_id, "status": "signed"})
     except Exception:
         pass
@@ -214,7 +226,7 @@ def test_missing_metadata(client: TestClient, setup_doc: tuple[str, object]) -> 
     assert detail["signature_valid"] is False
 
 
-def test_non_approved_state(client: TestClient, setup_doc: tuple[str, object]) -> None:
+def test_non_approved_state(client: TestClient, setup_doc: tuple[str, ApprovalModel]) -> None:
     doc_id, appr = setup_doc
     resp = client.get(f"/documents/{doc_id}/verify-signature")
     assert resp.status_code == 200
@@ -226,11 +238,12 @@ def test_non_approved_state(client: TestClient, setup_doc: tuple[str, object]) -
 
 def test_out_of_order_webhook(
     client: TestClient,
-    setup_doc: tuple[str, object],
+    setup_doc: tuple[str, ApprovalModel],
     sample_doc: bytes,
 ) -> None:
     doc_id, appr = setup_doc
     cert_url = _register_certificate(sample_doc)
+    assert appr.signature_id is not None
     documenso.process_webhook(
         {"id": appr.signature_id, "status": "signed", "certificate_url": cert_url}
     )
@@ -240,6 +253,7 @@ def test_out_of_order_webhook(
 
     stale_cert = _register_certificate(sample_doc, tamper=True)
     try:
+        assert appr.signature_id is not None
         documenso.process_webhook(
             {"id": appr.signature_id, "status": "signed", "certificate_url": stale_cert}
         )

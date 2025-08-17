@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from _pytest.monkeypatch import MonkeyPatch
+
 from docreview360 import archive, config, documents, logs, workflows
 
 
@@ -40,7 +42,7 @@ def test_workflow_lifecycle(tmp_path: Path) -> None:
     assert workflows.get_workflow(wf.id) is not None
 
 
-def test_archive_document(monkeypatch: object) -> None:
+def test_archive_document(monkeypatch: MonkeyPatch) -> None:
     doc = documents.DocumentModel(id="d1", content="hi")
     monkeypatch.setattr(archive, "upload_file", lambda *a, **k: None)
     record = archive.archive_document(doc)

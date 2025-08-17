@@ -39,6 +39,8 @@ def _escalation_task(approval_id: str, target: str) -> None:
     log_event("approval_escalated", approval_id=approval_id, target=target)
 
 
+
+
 class ApprovalModel(BaseModel):
     """Representation of an approval record."""
 
@@ -148,9 +150,11 @@ def create_approval(
         provider_metadata=approval.provider_metadata,
     )
     if reminder_at:
-        _reminder_task.apply_async((approval_id,), eta=reminder_at)
+        app.send_task("docreview360.approval_reminder", (approval_id,), eta=reminder_at)
     if escalate_to and escalation_at:
-        _escalation_task.apply_async((approval_id, escalate_to), eta=escalation_at)
+        app.send_task(
+            "docreview360.approval_escalation", (approval_id, escalate_to), eta=escalation_at
+        )
     return approval
 
 

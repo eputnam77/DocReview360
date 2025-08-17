@@ -62,7 +62,7 @@ async def test_user_response_time() -> None:
     approval = create_approval(workflow.id, "charlie", "doc-chat", due_at, "Test approval")
 
     # Approve it quickly (within a day)
-    update_approval_state(approval.id, "approved")
+    await update_approval_state(approval.id, "approved")
 
     resp = await chat_bot.answer_question("How long does charlie take to respond?")
     # Should indicate a quick response time

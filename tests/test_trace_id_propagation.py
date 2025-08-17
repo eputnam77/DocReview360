@@ -3,6 +3,10 @@ import uuid
 from docreview360.api import approvals as api_approvals
 from docreview360.approvals import ApprovalModel, approvals
 from docreview360.audit import clear_audit_log, log_audit_event
+from typing import cast
+
+from celery import Task
+
 from docreview360.celery_app import echo
 from docreview360.logs import TRACE_ID
 from fastapi import FastAPI
@@ -16,7 +20,7 @@ def test_trace_id_propagates_to_logs_and_provider(monkeypatch) -> None:
         workflow="w1",
         reviewer="r1",
         document_id="d1",
-        signature_id="s1",
+        signature="s1",
         signature_provider="prov",
     )
     approvals[appr.id] = appr
@@ -56,7 +60,7 @@ def test_celery_task_receives_trace_id(monkeypatch) -> None:
 
     monkeypatch.setattr("docreview360.celery_app.log_event", fake_log_event)
     TRACE_ID.set("tid123")
-    echo.delay("hello")
+    cast(Task, echo).delay("hello")
     assert ("task_started", "tid123") in recorded
     assert ("task_succeeded", "tid123") in recorded
 

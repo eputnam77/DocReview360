@@ -47,7 +47,9 @@ def generate_mets(files: dict[str, bytes]) -> str:
 def test_mets_xml_has_premis_event_count() -> None:
     xml = generate_mets({"a.txt": b"a", "b.txt": b"b"})
     root = ET.fromstring(xml)
-    assert root.find("premis").get("count") == "2"
+    premis = root.find("premis")
+    assert premis is not None
+    assert premis.get("count") == "2"
 
 
 # AR-PUR

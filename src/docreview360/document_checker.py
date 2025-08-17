@@ -72,7 +72,7 @@ def _analyze_structure(
     for line in text.splitlines():
         m = header.match(line)
         if m:
-            current = m.group(1).strip().lower()
+            current = cast(str, m.group(1).strip().lower())
             sections[current] = []
         elif current is not None:
             sections[current].append(line)
