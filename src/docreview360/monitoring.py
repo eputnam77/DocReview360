@@ -44,6 +44,23 @@ PROVIDER_HEALTH = Gauge(
     ["provider"],
 )
 
+# Metrics tracking signature request issues and webhook delivery problems.
+SIGNATURE_FAILURES = Counter(
+    "docreview360_signature_failures_total",
+    "Number of failed signature requests",
+    ["provider"],
+)
+WEBHOOK_DELAY = Histogram(
+    "docreview360_webhook_delay_seconds",
+    "Delay between provider event and webhook processing",
+    ["provider"],
+)
+HASH_MISMATCHES = Counter(
+    "docreview360_webhook_hash_mismatch_total",
+    "Number of webhook payloads failing signature validation",
+    ["provider"],
+)
+
 
 def init_observability(port: int | None = None, *, dsn: str | None = None) -> Dict[str, str]:
     """Initialise Prometheus metrics and optional Sentry reporting."""
