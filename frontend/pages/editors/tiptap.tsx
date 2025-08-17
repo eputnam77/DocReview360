@@ -3,6 +3,8 @@ import dynamic from "next/dynamic";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 
+import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "../../components/ExtensionsPanel";
+
 // Core Extensions
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
@@ -13,18 +15,12 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableRow from "@tiptap/extension-table-row";
 import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
-import Lint from "../../extensions/lint";
 import SlashCommand from "../../extensions/tiptapSlashCommand";
 import sanitizeHtml from "../../utils/sanitize";
 import { API } from "@/lib/api";
 
 // Custom TipTap extensions
-import { tiptapHeadingLock } from "../../extensions/tiptapHeadingLock";
-import { tiptapIndentation } from "../../extensions/tiptapIndentation";
-import { tiptapMarkReview } from "../../extensions/tiptapMarkReview";
-import { tiptapSectionNode } from "../../extensions/tiptapSectionNode";
 import { tiptapStructure } from "../../extensions/tiptapStructure";
-import { tiptapWatermark } from "../../extensions/tiptapWatermark";
 import { tiptapYjsCollab } from "../../extensions/tiptapYjsCollab";
 
 // Yjs for collaboration
@@ -140,20 +136,26 @@ interface SidebarProps {
   onTemplateLoad: (filename: string) => void;
   onToggleLint: () => void;
   lintEnabled: boolean;
+  lintStatus: ExtensionStatus;
   onToggleCollab: () => void;
   collabEnabled: boolean;
   onToggleAiSuggest: () => void;
   aiSuggestEnabled: boolean;
   onToggleHeadingLock: () => void;
   headingLockEnabled: boolean;
+  headingLockStatus: ExtensionStatus;
   onToggleIndentation: () => void;
   indentationEnabled: boolean;
+  indentationStatus: ExtensionStatus;
   onToggleSectionNode: () => void;
   sectionNodeEnabled: boolean;
+  sectionNodeStatus: ExtensionStatus;
   onToggleMarkReview: () => void;
   markReviewEnabled: boolean;
+  markReviewStatus: ExtensionStatus;
   onToggleWatermark: () => void;
   watermarkEnabled: boolean;
+  watermarkStatus: ExtensionStatus;
   watermarkText: string;
   onWatermarkText: (text: string) => void;
   suggestions: any[];
@@ -171,20 +173,26 @@ function Sidebar(props: SidebarProps) {
     onTemplateLoad,
     onToggleLint,
     lintEnabled,
+    lintStatus,
     onToggleCollab,
     collabEnabled,
     onToggleAiSuggest,
     aiSuggestEnabled,
     onToggleHeadingLock,
     headingLockEnabled,
+    headingLockStatus,
     onToggleIndentation,
     indentationEnabled,
+    indentationStatus,
     onToggleSectionNode,
     sectionNodeEnabled,
+    sectionNodeStatus,
     onToggleMarkReview,
     markReviewEnabled,
+    markReviewStatus,
     onToggleWatermark,
     watermarkEnabled,
+    watermarkStatus,
     watermarkText,
     onWatermarkText,
     suggestions,
@@ -194,6 +202,56 @@ function Sidebar(props: SidebarProps) {
     history,
     onRestore,
   } = props;
+
+  const extensionItems: ExtensionItem[] = [
+    {
+      id: "lint",
+      label: "Validation (Lint)",
+      enabled: lintEnabled,
+      status: lintStatus,
+      onToggle: onToggleLint,
+    },
+    {
+      id: "heading-lock",
+      label: "Heading Lock",
+      enabled: headingLockEnabled,
+      status: headingLockStatus,
+      onToggle: onToggleHeadingLock,
+    },
+    {
+      id: "indentation",
+      label: "Indentation",
+      enabled: indentationEnabled,
+      status: indentationStatus,
+      onToggle: onToggleIndentation,
+    },
+    {
+      id: "section-node",
+      label: "Section Node",
+      enabled: sectionNodeEnabled,
+      status: sectionNodeStatus,
+      onToggle: onToggleSectionNode,
+      seldomUsed: true,
+    },
+    {
+      id: "mark-review",
+      label: "Mark Review",
+      enabled: markReviewEnabled,
+      status: markReviewStatus,
+      onToggle: onToggleMarkReview,
+      seldomUsed: true,
+    },
+    {
+      id: "watermark",
+      label: "Watermark",
+      enabled: watermarkEnabled,
+      status: watermarkStatus,
+      onToggle: onToggleWatermark,
+      watermarkText,
+      onWatermarkText,
+      seldomUsed: true,
+    },
+  ];
   return (
     <aside
       className={`fixed top-0 right-0 h-full w-80 bg-gray-100 border-l z-50 shadow-lg transform transition-transform duration-200 ${
@@ -230,19 +288,6 @@ function Sidebar(props: SidebarProps) {
                 </li>
               ))}
           </ul>
-        </section>
-
-        {/* Validation (Lint) */}
-        <section>
-          <div className="font-semibold mb-1">Validation (Lint)</div>
-          <button
-            className={`px-2 py-1 rounded w-full ${
-              lintEnabled ? "bg-green-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={onToggleLint}
-          >
-            {lintEnabled ? "Disable Lint" : "Enable Lint"}
-          </button>
         </section>
 
         {/* AI Suggest */}
@@ -309,78 +354,7 @@ function Sidebar(props: SidebarProps) {
           )}
         </section>
 
-        {/* Heading Lock */}
-        <section>
-          <div className="font-semibold mb-1">Heading Lock</div>
-          <button
-            className={`px-2 py-1 rounded w-full ${
-              headingLockEnabled ? "bg-green-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={onToggleHeadingLock}
-          >
-            {headingLockEnabled ? "Disable" : "Enable"} Heading Lock
-          </button>
-        </section>
-
-        {/* Indentation */}
-        <section>
-          <div className="font-semibold mb-1">Indentation</div>
-          <button
-            className={`px-2 py-1 rounded w-full ${
-              indentationEnabled ? "bg-green-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={onToggleIndentation}
-          >
-            {indentationEnabled ? "Disable" : "Enable"} Indentation
-          </button>
-        </section>
-
-        {/* Section Node */}
-        <section>
-          <div className="font-semibold mb-1">Section Node</div>
-          <button
-            className={`px-2 py-1 rounded w-full ${
-              sectionNodeEnabled ? "bg-green-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={onToggleSectionNode}
-          >
-            {sectionNodeEnabled ? "Disable" : "Enable"} Section Node
-          </button>
-        </section>
-
-        {/* Mark Review */}
-        <section>
-          <div className="font-semibold mb-1">Mark Review</div>
-          <button
-            className={`px-2 py-1 rounded w-full ${
-              markReviewEnabled ? "bg-green-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={onToggleMarkReview}
-          >
-            {markReviewEnabled ? "Disable" : "Enable"} Mark Review
-          </button>
-        </section>
-
-        {/* Watermark */}
-        <section>
-          <div className="font-semibold mb-1">Watermark</div>
-          <button
-            className={`px-2 py-1 rounded w-full ${
-              watermarkEnabled ? "bg-green-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={onToggleWatermark}
-          >
-            {watermarkEnabled ? "Disable" : "Enable"} Watermark
-          </button>
-          {watermarkEnabled && (
-            <input
-              className="mt-2 w-full border rounded px-2 py-1 text-sm"
-              value={watermarkText}
-              onChange={(e) => onWatermarkText(e.target.value)}
-              placeholder="Watermark text"
-            />
-          )}
-        </section>
+        <ExtensionsPanel items={extensionItems} />
 
         {/* Collaboration */}
         <section>
@@ -431,13 +405,25 @@ export default function TipTapEditorPage() {
 
   // Lint (validation)
   const [lintEnabled, setLintEnabled] = useState(false);
+  const [lintExtension, setLintExtension] = useState<any>(null);
+  const [lintStatus, setLintStatus] = useState<ExtensionStatus>("idle");
 
   // Optional extensions
   const [headingLockEnabled, setHeadingLockEnabled] = useState(false);
+  const [headingLockExtension, setHeadingLockExtension] = useState<any>(null);
+  const [headingLockStatus, setHeadingLockStatus] = useState<ExtensionStatus>("idle");
   const [indentationEnabled, setIndentationEnabled] = useState(false);
+  const [indentationExtension, setIndentationExtension] = useState<any>(null);
+  const [indentationStatus, setIndentationStatus] = useState<ExtensionStatus>("idle");
   const [sectionNodeEnabled, setSectionNodeEnabled] = useState(false);
+  const [sectionNodeExtension, setSectionNodeExtension] = useState<any>(null);
+  const [sectionNodeStatus, setSectionNodeStatus] = useState<ExtensionStatus>("idle");
   const [markReviewEnabled, setMarkReviewEnabled] = useState(false);
+  const [markReviewExtension, setMarkReviewExtension] = useState<any>(null);
+  const [markReviewStatus, setMarkReviewStatus] = useState<ExtensionStatus>("idle");
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+  const [watermarkExtension, setWatermarkExtension] = useState<any>(null);
+  const [watermarkStatus, setWatermarkStatus] = useState<ExtensionStatus>("idle");
   const [watermarkText, setWatermarkText] = useState("Sample");
 
   // Sidebar
@@ -503,9 +489,9 @@ export default function TipTapEditorPage() {
       Image,
       SlashCommand,
     ];
-    if (lintEnabled) {
+    if (lintEnabled && lintExtension) {
       base.push(
-        Lint.configure({
+        lintExtension.configure({
           rule: {
             match: ({ tr }: { tr: any }) => {
               const issues: any[] = [];
@@ -580,34 +566,40 @@ export default function TipTapEditorPage() {
         );
       }
     }
-    if (headingLockEnabled) {
-      base.push(tiptapHeadingLock());
+    if (headingLockEnabled && headingLockExtension) {
+      base.push(headingLockExtension());
     }
-    if (indentationEnabled) {
-      base.push(tiptapIndentation());
+    if (indentationEnabled && indentationExtension) {
+      base.push(indentationExtension());
     }
-    if (sectionNodeEnabled) {
-      base.push(tiptapSectionNode());
+    if (sectionNodeEnabled && sectionNodeExtension) {
+      base.push(sectionNodeExtension());
     }
-    if (markReviewEnabled) {
-      base.push(tiptapMarkReview());
+    if (markReviewEnabled && markReviewExtension) {
+      base.push(markReviewExtension());
     }
-    if (watermarkEnabled) {
-      base.push(tiptapWatermark(watermarkText));
+    if (watermarkEnabled && watermarkExtension) {
+      base.push(watermarkExtension(watermarkText));
     }
     base.push(tiptapStructure());
     return base;
 
   }, [
     lintEnabled,
+    lintExtension,
     collabEnabled,
     yDoc,
     provider,
     headingLockEnabled,
+    headingLockExtension,
     indentationEnabled,
+    indentationExtension,
     sectionNodeEnabled,
+    sectionNodeExtension,
     markReviewEnabled,
+    markReviewExtension,
     watermarkEnabled,
+    watermarkExtension,
     watermarkText,
   ]);
 
@@ -713,7 +705,20 @@ export default function TipTapEditorPage() {
   }
 
   function handleToggleLint() {
-    setLintEnabled((prev) => !prev);
+    if (lintEnabled) {
+      setLintEnabled(false);
+      setLintExtension(null);
+      setLintStatus("idle");
+      return;
+    }
+    setLintStatus("loading");
+    import("../../extensions/lint")
+      .then((mod) => {
+        setLintExtension(() => mod.default);
+        setLintEnabled(true);
+        setLintStatus("loaded");
+      })
+      .catch(() => setLintStatus("error"));
   }
   function handleToggleCollab() {
     setCollabEnabled((prev) => !prev);
@@ -729,19 +734,84 @@ export default function TipTapEditorPage() {
   }
 
   function handleToggleHeadingLock() {
-    setHeadingLockEnabled((prev) => !prev);
+    if (headingLockEnabled) {
+      setHeadingLockEnabled(false);
+      setHeadingLockExtension(null);
+      setHeadingLockStatus("idle");
+      return;
+    }
+    setHeadingLockStatus("loading");
+    import("../../extensions/tiptapHeadingLock")
+      .then((mod) => {
+        setHeadingLockExtension(() => mod.tiptapHeadingLock);
+        setHeadingLockEnabled(true);
+        setHeadingLockStatus("loaded");
+      })
+      .catch(() => setHeadingLockStatus("error"));
   }
   function handleToggleIndentation() {
-    setIndentationEnabled((prev) => !prev);
+    if (indentationEnabled) {
+      setIndentationEnabled(false);
+      setIndentationExtension(null);
+      setIndentationStatus("idle");
+      return;
+    }
+    setIndentationStatus("loading");
+    import("../../extensions/tiptapIndentation")
+      .then((mod) => {
+        setIndentationExtension(() => mod.tiptapIndentation);
+        setIndentationEnabled(true);
+        setIndentationStatus("loaded");
+      })
+      .catch(() => setIndentationStatus("error"));
   }
   function handleToggleSectionNode() {
-    setSectionNodeEnabled((prev) => !prev);
+    if (sectionNodeEnabled) {
+      setSectionNodeEnabled(false);
+      setSectionNodeExtension(null);
+      setSectionNodeStatus("idle");
+      return;
+    }
+    setSectionNodeStatus("loading");
+    import("../../extensions/tiptapSectionNode")
+      .then((mod) => {
+        setSectionNodeExtension(() => mod.tiptapSectionNode);
+        setSectionNodeEnabled(true);
+        setSectionNodeStatus("loaded");
+      })
+      .catch(() => setSectionNodeStatus("error"));
   }
   function handleToggleMarkReview() {
-    setMarkReviewEnabled((prev) => !prev);
+    if (markReviewEnabled) {
+      setMarkReviewEnabled(false);
+      setMarkReviewExtension(null);
+      setMarkReviewStatus("idle");
+      return;
+    }
+    setMarkReviewStatus("loading");
+    import("../../extensions/tiptapMarkReview")
+      .then((mod) => {
+        setMarkReviewExtension(() => mod.tiptapMarkReview);
+        setMarkReviewEnabled(true);
+        setMarkReviewStatus("loaded");
+      })
+      .catch(() => setMarkReviewStatus("error"));
   }
   function handleToggleWatermark() {
-    setWatermarkEnabled((prev) => !prev);
+    if (watermarkEnabled) {
+      setWatermarkEnabled(false);
+      setWatermarkExtension(null);
+      setWatermarkStatus("idle");
+      return;
+    }
+    setWatermarkStatus("loading");
+    import("../../extensions/tiptapWatermark")
+      .then((mod) => {
+        setWatermarkExtension(() => mod.tiptapWatermark);
+        setWatermarkEnabled(true);
+        setWatermarkStatus("loaded");
+      })
+      .catch(() => setWatermarkStatus("error"));
   }
 
   function handleNewSuggestion(data: NewSuggestion) {
@@ -923,20 +993,26 @@ export default function TipTapEditorPage() {
         onTemplateLoad={handleTemplateLoad}
         onToggleLint={handleToggleLint}
         lintEnabled={lintEnabled}
+        lintStatus={lintStatus}
         onToggleCollab={handleToggleCollab}
         collabEnabled={collabEnabled}
         onToggleAiSuggest={handleToggleAiSuggest}
         aiSuggestEnabled={aiSuggestEnabled}
         onToggleHeadingLock={handleToggleHeadingLock}
         headingLockEnabled={headingLockEnabled}
+        headingLockStatus={headingLockStatus}
         onToggleIndentation={handleToggleIndentation}
         indentationEnabled={indentationEnabled}
+        indentationStatus={indentationStatus}
         onToggleSectionNode={handleToggleSectionNode}
         sectionNodeEnabled={sectionNodeEnabled}
+        sectionNodeStatus={sectionNodeStatus}
         onToggleMarkReview={handleToggleMarkReview}
         markReviewEnabled={markReviewEnabled}
+        markReviewStatus={markReviewStatus}
         onToggleWatermark={handleToggleWatermark}
         watermarkEnabled={watermarkEnabled}
+        watermarkStatus={watermarkStatus}
         watermarkText={watermarkText}
         onWatermarkText={setWatermarkText}
         suggestions={suggestions}
