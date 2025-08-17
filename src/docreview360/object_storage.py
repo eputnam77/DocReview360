@@ -1,4 +1,5 @@
 """Lightweight file-based object storage plug-in."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -28,12 +29,14 @@ def download_file(bucket: str | Path, key: str) -> bytes:
     # dependency on :mod:`boto3` is optional so tests that only use the file
     # system do not require the package.
     if str(bucket).startswith("s3://"):
-        import boto3  # type: ignore
+        from importlib import import_module
+        from typing import Any, cast
 
+        boto3 = cast(Any, import_module("boto3"))
         s3 = boto3.client("s3")
         bucket_name = str(bucket)[5:]
         obj = s3.get_object(Bucket=bucket_name, Key=key)
-        return obj["Body"].read()
+        return cast(bytes, obj["Body"].read())
 
     path = Path(bucket) / key
     return path.read_bytes()
@@ -75,8 +78,10 @@ def upload_file(
 
     # Handle S3 buckets via ``boto3`` if the bucket name is an ``s3://`` URL.
     if str(bucket).startswith("s3://"):
-        import boto3  # type: ignore
+        from importlib import import_module
+        from typing import Any, cast
 
+        boto3 = cast(Any, import_module("boto3"))
         s3 = boto3.client("s3")
         bucket_name = str(bucket)[5:]
         extra: dict[str, object] = {}
