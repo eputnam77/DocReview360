@@ -768,12 +768,14 @@ export default function TipTapEditorPage() {
       .catch(() => setLintStatus("error"));
   }
   function handleToggleCollab() {
-    setCollabEnabled((prev) => !prev);
-    if (!collabEnabled && yDoc && provider) {
-      provider.disconnect();
-      setYDoc(null);
-      setProvider(null);
-    }
+    setCollabEnabled((prev) => {
+      if (prev && provider) {
+        provider.disconnect();
+        setYDoc(null);
+        setProvider(null);
+      }
+      return !prev;
+    });
   }
 
   function handleToggleAiSuggest() {
