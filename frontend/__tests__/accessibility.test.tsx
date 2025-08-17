@@ -1,8 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import React from 'react';
 import axe from 'axe-core';
 import { toolbarButton } from '../components/ToolbarButton';
+
+beforeAll(() => {
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    value: () => null,
+  });
+});
 
 describe('toolbar accessibility', () => {
   it('renders button with proper aria attributes', async () => {
