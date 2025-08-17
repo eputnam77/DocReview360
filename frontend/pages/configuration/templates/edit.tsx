@@ -21,15 +21,6 @@ const SUPPORTED_FORMATS = [
   { value: "TXT", label: "Plain Text / Markdown (.txt, .md)" },
 ];
 
-// Placeholder template data until API is implemented
-const EMPTY_TEMPLATE = {
-  id: "",
-  name: "",
-  docType: "",
-  format: "HTML",
-  content: "",
-};
-
 export default function EditTemplatePage() {
   const router = useRouter();
   const { id } = router.query;
@@ -50,12 +41,20 @@ export default function EditTemplatePage() {
       .catch(() => setDocTypes([]));
 
     if (id) {
-        // Replace with real API call: `/api/templates/${id}`
-        // Populate with empty values until API is ready
-        setName(EMPTY_TEMPLATE.name);
-        setDocType(EMPTY_TEMPLATE.docType);
-        setFormat(EMPTY_TEMPLATE.format || SUPPORTED_FORMATS[0].value);
-        setContent(EMPTY_TEMPLATE.content || "");
+      fetch(`${API}/templates/${id}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((tpl) => {
+          if (!tpl) return;
+          setName(tpl.name || tpl.id || "");
+          setDocType(tpl.docType || tpl.doc_type || "");
+          setFormat(
+            (tpl.format || tpl.type || SUPPORTED_FORMATS[0].value).toUpperCase(),
+          );
+          setContent(tpl.content || "");
+        })
+        .catch(() => {
+          /* ignore fetch errors - keep defaults */
+        });
     }
   }, [id]);
 
