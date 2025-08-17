@@ -33,6 +33,39 @@ export default function WordEditorPage() {
   const [templates, setTemplates] = useState<WordTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [officeReady, setOfficeReady] = useState(false);
+
+  // Verify Office.js is available and required add-ins are installed
+  useEffect(() => {
+    const w = window as any;
+    if (!w.Office) {
+      setError(
+        "Microsoft Office is not available. Install the DocReview360 Word add-in and reload.",
+      );
+      return;
+    }
+
+    w.Office.onReady((info: any) => {
+      if (info.host !== w.Office.HostType.Word) {
+        setError(
+          "This editor requires Microsoft Word. Open the document within Word to continue.",
+        );
+        return;
+      }
+
+      const supported = w.Office.context?.requirements?.isSetSupported(
+        "WordApi",
+        "1.3",
+      );
+      if (!supported) {
+        setError(
+          "Required Office.js APIs are missing. Install or enable the DocReview360 add-ins.",
+        );
+      } else {
+        setOfficeReady(true);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     fetch(`${API}/templates`)
@@ -58,7 +91,9 @@ export default function WordEditorPage() {
     const template = allTemplates.find(t => t.id === templateId || t.name === templateId) || null;
     if (template) {
       setSelectedTemplate(template);
-      setError(null);
+      if (officeReady) {
+        setError(null);
+      }
     }
   };
 
@@ -97,6 +132,11 @@ export default function WordEditorPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
+        {error && (
+          <div className="mb-6 rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Word Template Editor</h1>

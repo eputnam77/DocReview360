@@ -15,6 +15,20 @@ The image expects a `PORT` environment variable supplied by the host.
 The Dockerfile installs backend and frontend dependencies and builds the Next.js
 UI so the resulting image can run on these providers with minimal setup.
 
+## Installing Office add-ins
+
+The Word editor relies on a DocReview360 Office add-in. Install the add-in in
+every environment so the editor can connect to Word:
+
+1. **Local development** – open Word, choose *Insert → Add-ins → Upload My
+   Add-in* and select the DocReview360 manifest.
+2. **Staging / production** – deploy the same manifest through your Microsoft 365
+   admin centre or a SharePoint catalog so that all users receive the add-in.
+3. **Office Online** – sideload the manifest from the browser's *Add-ins* menu or
+   use centralised deployment.
+
+After the add-in is installed, restart Word and the editor will load normally.
+
 ## Secret management
 
 DocReview360 resolves service credentials through a simple vault interface. To
