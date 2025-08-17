@@ -7,6 +7,10 @@ from pathlib import Path
 from celery.schedules import crontab
 
 from .backup_utils import create_backup, restore_backup
+from typing import cast
+
+from celery import Task
+
 from .celery_app import app
 from .stubs import record_task_completion
 
@@ -18,7 +22,7 @@ def create_backup_async(path: str) -> str:
     return target
 
 
-create_backup_async = app.task(name="docreview360.create_backup_async")(create_backup_async)
+create_backup_async = cast(Task, app.task(name="docreview360.create_backup_async")(create_backup_async))
 
 
 def restore_backup_async(path: str) -> None:

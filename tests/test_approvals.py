@@ -125,6 +125,7 @@ def test_handle_signature_return_hash_validation() -> None:
     doc = b"hello"
     appr = create_approval("wf42", "carol", "doc42", document=doc, signature_provider="documenso")
     send_for_signature(appr.id, "doc42", "carol")
+    assert appr.signature_id is not None
     documenso.complete_signature(appr.signature_id)
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test")])
@@ -156,6 +157,7 @@ def test_handle_signature_return_hash_validation() -> None:
         signature_provider="documenso",
     )
     send_for_signature(appr2.id, "doc43", "dave")
+    assert appr2.signature_id is not None
     documenso.complete_signature(appr2.signature_id)
     signature2 = key.sign(b"orig", padding.PKCS1v15(), hashes.SHA256())
     cert_url2 = f"https://test-cert-{uuid4().hex}"
@@ -181,6 +183,7 @@ def test_signature_invalidated() -> None:
     doc = b"hello"
     appr = create_approval("wf99", "carol", "doc99", document=doc, signature_provider="documenso")
     send_for_signature(appr.id, "doc99", "carol")
+    assert appr.signature_id is not None
     # mark as completed but without certificate so verification fails
     documenso.complete_signature(appr.signature_id)
     with pytest.raises(ValueError):
@@ -201,6 +204,7 @@ def test_send_for_signature_authorization_and_lock() -> None:
     doc = b"hello"
     appr3 = create_approval("wf2", "alice", "doc3", document=doc, signature_provider="documenso")
     send_for_signature(appr3.id, "doc3", "alice")
+    assert appr3.signature_id is not None
     documenso.complete_signature(appr3.signature_id)
     key2 = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     subject2 = issuer2 = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test")])
