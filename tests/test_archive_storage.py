@@ -36,6 +36,7 @@ def test_upload_invalid_key(tmp_path: Path) -> None:
 def test_download_roundtrip(tmp_path: Path) -> None:
     path = upload_file(tmp_path, "foo.txt", b"hello")
     assert download_file(tmp_path, "foo.txt") == b"hello"
+    assert isinstance(path, Path)
     assert path.read_bytes() == b"hello"
 
 

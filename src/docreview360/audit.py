@@ -14,24 +14,7 @@ from .logs import TRACE_ID
 from .object_storage import upload_file
 from .security_compliance import should_purge
 from .settings_manager import load_settings
-
-try:  # pragma: no cover - pydantic optional
-    from pydantic import BaseModel, Field
-except Exception:  # pragma: no cover
-
-    class BaseModel:  # type: ignore[no-redef]
-        """Fallback stub when Pydantic is unavailable."""
-
-        def __init__(self, **data: Any) -> None:  # pragma: no cover - simple shim
-            for k, v in data.items():
-                setattr(self, k, v)
-
-        def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:  # pragma: no cover
-            return self.__dict__
-
-        @classmethod
-        def model_json_schema(cls) -> Dict[str, Any]:  # pragma: no cover
-            return {}
+from pydantic import BaseModel, Field
 
 
 class AuditLogEntry(BaseModel):

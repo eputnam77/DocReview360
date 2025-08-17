@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -10,6 +11,7 @@ from docreview360.api import update_document_endpoint
 from docreview360.cms import save_to_cms
 from docreview360.config import Config
 from docreview360.documents import DocumentModel, import_document
+from docreview360.sharepoint import SharePointClient
 
 
 def test_save_to_cms_uploads_via_client() -> None:
@@ -22,7 +24,7 @@ def test_save_to_cms_uploads_via_client() -> None:
         uploaded[path] = data
         return "item42"
 
-    client = SimpleNamespace(upload_file=fake_upload)
+    client = cast(SharePointClient, SimpleNamespace(upload_file=fake_upload))
     item_id = save_to_cms(doc, config=cfg, client=client)
     assert item_id == "item42"
     assert uploaded == {"abc.md": b"hello"}
