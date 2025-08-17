@@ -466,6 +466,66 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const persistPreferences = useCallback(
+    async (overrides: Partial<Record<string, boolean | string>> = {}) => {
+      if (!docId) return;
+      const prefs = {
+        lint: lintEnabled,
+        collab: collabEnabled,
+        ai_suggest: aiSuggestEnabled,
+        heading_lock: headingLockEnabled,
+        indentation: indentationEnabled,
+        section_node: sectionNodeEnabled,
+        mark_review: markReviewEnabled,
+        watermark: watermarkEnabled,
+        watermark_text: watermarkText,
+        ...overrides,
+      };
+      try {
+        await fetch(`${API}/projects/${docId}/preferences`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(prefs),
+        });
+      } catch (err) {
+        console.error("Failed to save preferences", err);
+      }
+    },
+    [
+      docId,
+      lintEnabled,
+      collabEnabled,
+      aiSuggestEnabled,
+      headingLockEnabled,
+      indentationEnabled,
+      sectionNodeEnabled,
+      markReviewEnabled,
+      watermarkEnabled,
+      watermarkText,
+    ],
+  );
+
+  useEffect(() => {
+    if (!docId) return;
+    fetch(`${API}/projects/${docId}/preferences`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setLintEnabled(Boolean(data.lint));
+        setCollabEnabled(Boolean(data.collab));
+        setAiSuggestEnabled(Boolean(data.ai_suggest));
+        setHeadingLockEnabled(Boolean(data.heading_lock));
+        setIndentationEnabled(Boolean(data.indentation));
+        setSectionNodeEnabled(Boolean(data.section_node));
+        setMarkReviewEnabled(Boolean(data.mark_review));
+        setWatermarkEnabled(Boolean(data.watermark));
+        if (typeof data.watermark_text === "string") {
+          setWatermarkText(data.watermark_text);
+        }
+      })
+      .catch(() => undefined);
+  }, [docId]);
+
   useEffect(() => {
     if (!docId) return;
     fetch(`${API}/documents/${docId}/revisions`, { headers: { "X-User": username } })
@@ -810,6 +870,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       setLintEnabled(false);
       setLintExtension(null);
       setLintStatus("idle");
+      persistPreferences({ lint: false });
       return;
     }
     setLintStatus("loading");
@@ -818,22 +879,29 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         setLintExtension(() => mod.default);
         setLintEnabled(true);
         setLintStatus("loaded");
+        persistPreferences({ lint: true });
       })
       .catch(() => setLintStatus("error"));
   }
   function handleToggleCollab() {
     setCollabEnabled((prev) => {
+      const next = !prev;
       if (prev && provider) {
         provider.disconnect();
         setYDoc(null);
         setProvider(null);
       }
-      return !prev;
+      persistPreferences({ collab: next });
+      return next;
     });
   }
 
   function handleToggleAiSuggest() {
-    setAiSuggestEnabled((prev) => !prev);
+    setAiSuggestEnabled((prev) => {
+      const next = !prev;
+      persistPreferences({ ai_suggest: next });
+      return next;
+    });
   }
 
   function handleToggleHeadingLock() {
@@ -841,6 +909,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       setHeadingLockEnabled(false);
       setHeadingLockExtension(null);
       setHeadingLockStatus("idle");
+      persistPreferences({ heading_lock: false });
       return;
     }
     setHeadingLockStatus("loading");
@@ -849,6 +918,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         setHeadingLockExtension(() => mod.tiptapHeadingLock);
         setHeadingLockEnabled(true);
         setHeadingLockStatus("loaded");
+        persistPreferences({ heading_lock: true });
       })
       .catch(() => setHeadingLockStatus("error"));
   }
@@ -857,6 +927,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       setIndentationEnabled(false);
       setIndentationExtension(null);
       setIndentationStatus("idle");
+      persistPreferences({ indentation: false });
       return;
     }
     setIndentationStatus("loading");
@@ -865,6 +936,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         setIndentationExtension(() => mod.tiptapIndentation);
         setIndentationEnabled(true);
         setIndentationStatus("loaded");
+        persistPreferences({ indentation: true });
       })
       .catch(() => setIndentationStatus("error"));
   }
@@ -873,6 +945,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       setSectionNodeEnabled(false);
       setSectionNodeExtension(null);
       setSectionNodeStatus("idle");
+      persistPreferences({ section_node: false });
       return;
     }
     setSectionNodeStatus("loading");
@@ -881,6 +954,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         setSectionNodeExtension(() => mod.tiptapSectionNode);
         setSectionNodeEnabled(true);
         setSectionNodeStatus("loaded");
+        persistPreferences({ section_node: true });
       })
       .catch(() => setSectionNodeStatus("error"));
   }
@@ -889,6 +963,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       setMarkReviewEnabled(false);
       setMarkReviewExtension(null);
       setMarkReviewStatus("idle");
+      persistPreferences({ mark_review: false });
       return;
     }
     setMarkReviewStatus("loading");
@@ -897,6 +972,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         setMarkReviewExtension(() => mod.tiptapMarkReview);
         setMarkReviewEnabled(true);
         setMarkReviewStatus("loaded");
+        persistPreferences({ mark_review: true });
       })
       .catch(() => setMarkReviewStatus("error"));
   }
@@ -905,6 +981,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       setWatermarkEnabled(false);
       setWatermarkExtension(null);
       setWatermarkStatus("idle");
+      persistPreferences({ watermark: false });
       return;
     }
     setWatermarkStatus("loading");
@@ -913,8 +990,14 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         setWatermarkExtension(() => mod.tiptapWatermark);
         setWatermarkEnabled(true);
         setWatermarkStatus("loaded");
+        persistPreferences({ watermark: true, watermark_text: watermarkText });
       })
       .catch(() => setWatermarkStatus("error"));
+  }
+
+  function handleWatermarkText(text: string) {
+    setWatermarkText(text);
+    persistPreferences({ watermark_text: text });
   }
 
   function handleNewSuggestion(data: NewSuggestion) {
@@ -1136,7 +1219,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         watermarkEnabled={watermarkEnabled}
         watermarkStatus={watermarkStatus}
         watermarkText={watermarkText}
-        onWatermarkText={setWatermarkText}
+        onWatermarkText={handleWatermarkText}
         suggestions={suggestions}
         acceptSuggestion={acceptSuggestion}
         rejectSuggestion={rejectSuggestion}

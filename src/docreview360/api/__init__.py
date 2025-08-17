@@ -122,6 +122,11 @@ from ..search import (
     set_project_priority,
     update_project,
 )
+from ..project_preferences import (
+    ProjectPreferences,
+    get_project_preferences,
+    update_project_preferences,
+)
 from ..reviews import ReviewCreate, ReviewModel, add_review, list_reviews
 from ..settings_manager import update_setting
 from ..status import internal_status, public_status
@@ -721,6 +726,22 @@ async def temporary_assign_endpoint(project_id: str, body: TemporaryAssign) -> P
         return assign_temporary(project_id, body.user, body.until)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/projects/{project_id}/preferences", response_model=ProjectPreferences)
+async def get_project_preferences_endpoint(
+    project_id: str,
+) -> ProjectPreferences:
+    """Return editor extension preferences for a project."""
+    return get_project_preferences(project_id)
+
+
+@app.put("/projects/{project_id}/preferences", response_model=ProjectPreferences)
+async def update_project_preferences_endpoint(
+    project_id: str, body: ProjectPreferences
+) -> ProjectPreferences:
+    """Update editor extension preferences for a project."""
+    return update_project_preferences(project_id, body.model_dump())
 
 
 @app.post("/documents/import", status_code=201, response_model=DocumentModel)
