@@ -41,6 +41,7 @@ from ..ai_balancer import load_state as load_worker_state
 from ..ai_balancer import save_state as save_worker_state
 from ..approvals import (
     ApprovalModel,
+    build_approvals_summary_pdf,
     create_approval,
     get_approval,
     list_approvals,
@@ -55,7 +56,7 @@ from ..archive import (
     list_archives,
     schedule_archive_purge,
 )
-from ..audit import AuditLogEntry, get_audit_log
+from ..audit import AuditLogEntry, get_audit_log, log_audit_event
 from ..cache import cache_get, cache_set, clear_cache
 from ..cms import save_to_cms
 from ..comments import CommentModel, add_comment, list_comments
@@ -744,6 +745,35 @@ async def update_project_preferences_endpoint(
 ) -> ProjectPreferences:
     """Update editor extension preferences for a project."""
     return update_project_preferences(project_id, body.model_dump())
+
+
+@app.get("/projects/{project_id}/approvals/pdf")
+async def project_approvals_pdf_endpoint(
+    project_id: str, x_user: str | None = Header(None)
+) -> Response:
+    """Return merged approval PDFs for a project."""
+    try:
+        data = build_approvals_summary_pdf(project_id, actor=x_user)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    log_event(
+        "approval_summary_downloaded",
+        user_id=x_user,
+        project=project_id,
+    )
+    log_audit_event(
+        project_id,
+        "approval_summary_downloaded",
+        actor=x_user,
+        project=project_id,
+    )
+    return Response(
+        data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="approvals-{project_id}.pdf"'
+        },
+    )
 
 
 @app.post("/documents/import", status_code=201, response_model=DocumentModel)

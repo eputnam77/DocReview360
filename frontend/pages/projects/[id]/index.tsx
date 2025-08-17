@@ -18,6 +18,7 @@ import {
     FileEdit,
     History,
     LayoutList,
+    Download,
     Mail,
     Users2
 } from "lucide-react";
@@ -678,6 +679,27 @@ export default function ProjectDetailsPage() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadApprovalSummary = async () => {
+    if (!project) return;
+    try {
+      const res = await fetch(`${API}/projects/${project.id}/approvals/pdf`);
+      if (!res.ok) {
+        toast.error("Failed to download summary");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `approvals-${project.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      toast.error("Download failed");
+    }
+  };
+
   // ▼ save optimistic / autosave placeholder (debounce)
   const autosave = useCallback(() => {
     console.info("autosave stub");
@@ -859,9 +881,14 @@ export default function ProjectDetailsPage() {
               <Users2 className="w-5 h-5" /> Approvals
             </h2>
               {isOwner && (
-                <Button size="sm" onClick={() => sendReminder()}>
-                  <Mail className="w-4 h-4 mr-1" /> Remind Pending
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={downloadApprovalSummary}>
+                    <Download className="w-4 h-4 mr-1" /> Download Summary
+                  </Button>
+                  <Button size="sm" onClick={() => sendReminder()}>
+                    <Mail className="w-4 h-4 mr-1" /> Remind Pending
+                  </Button>
+                </div>
               )}
           </div>
           <Card>
