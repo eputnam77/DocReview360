@@ -141,6 +141,7 @@ interface SidebarProps {
   show: boolean;
   onClose: () => void;
   onTemplateLoad: (filename: string) => void;
+  templates: any[];
   onToggleLint: () => void;
   lintEnabled: boolean;
   lintStatus: ExtensionStatus;
@@ -178,6 +179,7 @@ function Sidebar(props: SidebarProps) {
     show,
     onClose,
     onTemplateLoad,
+    templates,
     onToggleLint,
     lintEnabled,
     lintStatus,
@@ -1080,6 +1082,7 @@ export default function TipTapEditorPage() {
         show={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onTemplateLoad={handleTemplateLoad}
+        templates={templates}
         onToggleLint={handleToggleLint}
         lintEnabled={lintEnabled}
         lintStatus={lintStatus}
