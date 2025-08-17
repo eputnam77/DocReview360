@@ -21,10 +21,11 @@ import { API } from "@/lib/api";
 
 // Custom TipTap extensions
 import { tiptapStructure } from "../../extensions/tiptapStructure";
-import { tiptapYjsCollab } from "../../extensions/tiptapYjsCollab";
+
+// Hocuspocus provider for server-backed collaboration
+import { HocuspocusProvider } from "@hocuspocus/provider";
 
 // Yjs for collaboration
-import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 
 // Icons
@@ -462,26 +463,39 @@ export default function TipTapEditorPage() {
       .catch(() => setTemplates([]));
   }, []);
 
-  const saveRevision = useCallback((html: string) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      setSaveStatus("saving");
-      try {
-        await fetch(`/documents/${docId}/revisions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: html }),
-        });
-        setSaveStatus("saved");
-        const resp = await fetch(`/documents/${docId}/revisions`);
-        if (resp.ok) {
-          setHistory(await resp.json());
+  const saveRevision = useCallback(
+    (html: string, immediate = false) => {
+      const exec = async () => {
+        setSaveStatus("saving");
+        try {
+          const body: any = { content: html };
+          if (yDoc) {
+            const update = Y.encodeStateAsUpdate(yDoc);
+            body.steps = Array.from(update);
+          }
+          await fetch(`/documents/${docId}/revisions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          setSaveStatus("saved");
+          const resp = await fetch(`/documents/${docId}/revisions`);
+          if (resp.ok) {
+            setHistory(await resp.json());
+          }
+        } catch {
+          /* ignore */
         }
-      } catch {
-        /* ignore */
+      };
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (immediate) {
+        exec();
+      } else {
+        saveTimer.current = setTimeout(exec, 500);
       }
-    }, 500);
-  }, [docId]);
+    },
+    [docId, yDoc],
+  );
 
 
   // Editor Extensions
@@ -551,25 +565,29 @@ export default function TipTapEditorPage() {
     if (collabEnabled) {
       if (!yDoc) {
         const doc = new Y.Doc();
-        const webrtcProvider = new WebrtcProvider("tiptap-room", doc);
+        const hocusProvider = new HocuspocusProvider({
+          url: `${API.replace(/^http/, "ws")}/collab`,
+          name: docId,
+          document: doc,
+        });
+        hocusProvider.awareness.setLocalStateField("user", {
+          name: "You",
+          color: "#3b82f6",
+        });
         setYDoc(doc);
-        setProvider(webrtcProvider);
+        setProvider(hocusProvider as any);
         base.push(
           Collaboration.configure({ document: doc }),
           CollaborationCursor.configure({
-            provider: webrtcProvider,
-            user: { name: "You", color: "#3b82f6" },
+            awareness: hocusProvider.awareness,
           }),
-          tiptapYjsCollab(),
         );
       } else if (yDoc && provider) {
         base.push(
           Collaboration.configure({ document: yDoc }),
           CollaborationCursor.configure({
-            provider: provider,
-            user: { name: "You", color: "#3b82f6" },
+            awareness: provider.awareness,
           }),
-          tiptapYjsCollab(),
         );
       }
     }
@@ -628,6 +646,11 @@ export default function TipTapEditorPage() {
         const html = editor.getHTML();
         setContent(html);
         saveRevision(html);
+      },
+      onBlur: ({ editor }) => {
+        const html = editor.getHTML();
+        setContent(html);
+        saveRevision(html, true);
       },
     },
     [extensions],
