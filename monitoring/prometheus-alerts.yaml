@@ -1,0 +1,24 @@
+groups:
+  - name: signature-webhook-alerts
+    rules:
+      - alert: SignatureRequestFailures
+        expr: rate(docreview360_signature_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Signature requests are failing
+      - alert: WebhookDeliveryDelays
+        expr: histogram_quantile(0.95, rate(docreview360_webhook_delay_seconds_bucket[5m])) > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Webhook deliveries are delayed
+      - alert: WebhookHashMismatches
+        expr: rate(docreview360_webhook_hash_mismatch_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Webhook signatures failing validation
