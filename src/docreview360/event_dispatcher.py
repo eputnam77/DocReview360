@@ -3,9 +3,12 @@ from __future__ import annotations
 """Event dispatcher with retry/backoff and dead-letter queue."""
 
 import time
-from typing import Dict, List
+from typing import Dict, List, TYPE_CHECKING
 
 from .http_client import post as http_post
+
+if TYPE_CHECKING:
+    from .workflows import WorkflowModel
 
 # in-memory store of failed events for inspection or replay
 # Each item is a dict with ``url``, ``event`` and ``payload`` keys

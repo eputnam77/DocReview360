@@ -60,7 +60,7 @@ async def approval_return(
         except ValueError:
             signed_at_dt = None
     try:
-        handle_signature_return(
+        await handle_signature_return(
             signature,
             doc_id=appr.document_id,
             certificate_url=certificate_url,
