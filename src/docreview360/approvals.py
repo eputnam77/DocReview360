@@ -83,7 +83,7 @@ approvals: Dict[str, ApprovalModel] = {}
 def create_approval(
     workflow: str,
     reviewer: str,
-    doc_id: str,
+    doc_id: str | None = None,
     due_at: datetime | None = None,
     description: str | None = None,
     *,
@@ -100,6 +100,8 @@ def create_approval(
     state: str = "pending",
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
+    if doc_id is None:
+        doc_id = workflow
     if signature_provider is None:
         signature_provider = get_default_provider()
     approval_id = uuid4().hex

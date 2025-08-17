@@ -192,7 +192,9 @@ class ApprovalCreate(BaseModel):
 
     workflow: str
     reviewer: str
-    doc_id: str
+    # ``doc_id`` used to be required which made quick test setups cumbersome.
+    # It is now optional and defaults to the workflow identifier when omitted.
+    doc_id: str | None = None
     due_at: datetime | None = None
     description: str | None = None
     phase_id: str | None = None
@@ -367,7 +369,12 @@ if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     set_guardrails(contains_pii)
     app.add_middleware(GuardrailsMiddleware, checker=contains_pii)
 
-templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+# Templates are stored one level above this module in ``docreview360/templates``.
+# The previous path incorrectly looked for templates in ``api/templates`` which
+# does not exist, causing ``TemplateNotFound`` errors during E2E tests.
+templates = Jinja2Templates(
+    directory=str(Path(__file__).resolve().parent.parent / "templates")
+)
 
 
 @app.on_event("startup")
