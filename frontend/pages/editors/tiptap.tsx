@@ -1,4 +1,5 @@
 import { EditorContent, useEditor } from "@tiptap/react";
+import { Extension } from "@tiptap/core";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +8,7 @@ import { generateDiffHtml } from "../../utils/diff";
 
 import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "../../components/ExtensionsPanel";
 import InsertMenu from "../../components/InsertMenu";
+import { toolbarButton } from "../../components/ToolbarButton";
 
 // Core Extensions
 import Collaboration from "@tiptap/extension-collaboration";
@@ -58,6 +60,29 @@ const IndentIncrease = dynamic(() =>
 const IndentDecrease = dynamic(() =>
   import("lucide-react").then((m) => m.IndentDecrease),
 );
+const keyboardShortcuts = Extension.create({
+  name: "keyboard-shortcuts",
+  addKeyboardShortcuts() {
+    return {
+      "Mod-]": () => {
+        (this.editor.chain() as any).indent?.().run();
+        return true;
+      },
+      "Mod-[": () => {
+        (this.editor.chain() as any).outdent?.().run();
+        return true;
+      },
+      "Mod-Alt-m": () => {
+        (this.editor.chain() as any).focus().addComment?.().run();
+        return true;
+      },
+      "Mod-Shift-e": () => {
+        (this.editor.chain() as any).focus().toggleTrackChanges?.().run();
+        return true;
+      },
+    };
+  },
+});
 
 interface NewSuggestion {
   from: number;
@@ -608,6 +633,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       TableHeader,
       Image,
       SlashCommand,
+      keyboardShortcuts,
     ];
     if (lintEnabled && lintExtension) {
       base.push(
@@ -809,27 +835,6 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       editor.chain().focus().toggleHeading({ level: 2 }).run();
     else if (val === "h3")
       editor.chain().focus().toggleHeading({ level: 3 }).run();
-  }
-  function toolbarButton(
-    icon: React.ReactNode,
-    command: () => void,
-    active: boolean,
-    title = "",
-    disabled = false,
-  ) {
-    return (
-      <button
-        type="button"
-        className={`p-2 rounded ${active ? "bg-indigo-100" : ""} ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        }`}
-        onClick={command}
-        title={title}
-        disabled={disabled}
-      >
-        {icon}
-      </button>
-    );
   }
 
   async function handleTemplateLoad(filename: string) {
@@ -1056,6 +1061,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           onClick={() => setSidebarOpen(true)}
           className="p-2 rounded bg-gray-200 mr-2"
           aria-label="Open sidebar"
+          role="button"
         >
           <MenuIcon className="w-5 h-5" />
         </button>
