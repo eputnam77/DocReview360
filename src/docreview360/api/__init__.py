@@ -230,6 +230,7 @@ class RevisionMeta(BaseModel):
 
     id: str
     timestamp: datetime
+    author: str
 
 
 class ProjectCreate(BaseModel):
@@ -925,10 +926,14 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
 
 
 @app.post("/documents/{doc_id}/revisions", status_code=201)
-async def create_revision_endpoint(doc_id: str, body: RevisionCreate) -> dict[str, str]:
+async def create_revision_endpoint(
+    doc_id: str, body: RevisionCreate, x_user: str | None = Header(None)
+) -> dict[str, str]:
     """Store a new document revision and optionally archive it."""
     try:
-        document, rev_id = update_document(doc_id, body.content, steps=body.steps)
+        document, rev_id = update_document(
+            doc_id, body.content, steps=body.steps, author=x_user
+        )
         result: dict[str, str] = {"revisionId": rev_id}
         if body.promote:
             record = archive_doc(document)
@@ -944,7 +949,10 @@ async def list_revisions_endpoint(doc_id: str) -> list[RevisionMeta]:
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="document not found")
-    return [RevisionMeta(id=r.id, timestamp=r.timestamp) for r in document.history]
+    return [
+        RevisionMeta(id=r.id, timestamp=r.timestamp, author=r.author)
+        for r in document.history
+    ]
 
 
 @app.get("/documents/{doc_id}/revisions/{rev_id}", response_model=DocumentRevision)
