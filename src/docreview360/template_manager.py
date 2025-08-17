@@ -68,3 +68,9 @@ def list_template_versions(name: str) -> List[TemplateVersion]:
     """Return all stored versions for ``name``."""
 
     return list(_template_store.get(name, []))
+
+
+def list_stored_templates() -> Dict[str, TemplateVersion]:
+    """Return the latest version for each stored template."""
+
+    return {name: versions[-1] for name, versions in _template_store.items()}

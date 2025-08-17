@@ -127,7 +127,11 @@ from ..reviews import ReviewCreate, ReviewModel, add_review, list_reviews
 from ..settings_manager import update_setting
 from ..status import internal_status, public_status
 from ..stubs.task223 import convert_document
-from ..template_manager import upload_template as store_template
+from ..template_manager import (
+    upload_template as store_template,
+    get_latest_template,
+    list_stored_templates,
+)
 from ..watchlist import get_watchlist, toggle_watch
 from ..workflows import (
     WorkflowModel,
@@ -147,6 +151,18 @@ from .webhooks import router as webhooks_router
 load_dotenv()
 
 WORKER_STATE_FILE = Path(os.getenv("DOCREVIEW360_WORKER_STATE", "worker_state.json"))
+
+
+SEED_TEMPLATES = [
+    {
+        "name": "faa_ac",
+        "content": (
+            "<h1 style=\"text-align:center; margin-bottom:0\">Advisory Circular</h1>"
+            "<p>This is a seed template.</p>"
+        ),
+        "metadata": {"label": "FAA Advisory Circular", "type": "tiptap"},
+    }
+]
 
 
 class WorkflowCreate(BaseModel):
@@ -346,6 +362,11 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 @app.on_event("startup")
 async def _load_balancer_state() -> None:
     load_worker_state(WORKER_STATE_FILE)
+    for tpl in SEED_TEMPLATES:
+        if not get_latest_template(tpl["name"]):
+            store_template(
+                tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata")
+            )
 
 
 @app.on_event("shutdown")
@@ -1261,8 +1282,33 @@ async def delete_document_type_endpoint(name: str, replacement: str | None = Non
 
 
 # ---------------------------------------------------------------------------
-# Template upload
+# Template management
 # ---------------------------------------------------------------------------
+
+
+@app.get("/templates")
+async def list_templates_endpoint() -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for name, ver in list_stored_templates().items():
+        data = {"id": name, "name": name, "version": ver.version}
+        data.update(ver.metadata)
+        items.append(data)
+    return items
+
+
+@app.get("/templates/{name}")
+async def get_template_endpoint(name: str) -> dict[str, Any]:
+    ver = get_latest_template(name)
+    if not ver:
+        raise HTTPException(status_code=404, detail="template not found")
+    data: dict[str, Any] = {
+        "id": name,
+        "name": name,
+        "version": ver.version,
+        "content": ver.content.decode("utf-8", errors="ignore"),
+    }
+    data.update(ver.metadata)
+    return data
 
 
 @app.post("/templates", status_code=201)

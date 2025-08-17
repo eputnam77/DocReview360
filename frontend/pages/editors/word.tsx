@@ -7,11 +7,19 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
-import { getAllWordTemplates, getWordTemplate, WordTemplate } from "@/data/templates/wordTemplates";
+import { API } from "@/lib/api";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+
+interface WordTemplate {
+  id: string;
+  url: string;
+  type: string;
+  category?: string;
+  label?: string;
+}
 
 /**
  * Word Template Viewer and Editor
@@ -21,24 +29,33 @@ import { useEffect, useState } from "react";
 export default function WordEditorPage() {
   const router = useRouter();
   const [selectedTemplate, setSelectedTemplate] = useState<WordTemplate | null>(null);
+  const [allTemplates, setAllTemplates] = useState<WordTemplate[]>([]);
   const [templates, setTemplates] = useState<WordTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load available templates
-    const availableTemplates = getAllWordTemplates();
-    setTemplates(availableTemplates);
-
-    // Set default template if available
-    if (availableTemplates.length > 0) {
-      setSelectedTemplate(availableTemplates[0]);
-    }
+    fetch(`${API}/templates`)
+      .then(r => (r.ok ? r.json() : []))
+      .then((data: any[]) => {
+        const wordTemps = data.filter(
+          t => (t.type ?? t.format) === "docx" || (t.type ?? t.format) === "word",
+        );
+        setAllTemplates(wordTemps);
+        setTemplates(wordTemps);
+        if (wordTemps.length > 0) {
+          setSelectedTemplate(wordTemps[0]);
+        }
+      })
+      .catch(() => {
+        setAllTemplates([]);
+        setTemplates([]);
+      });
   }, []);
 
   // Handle template selection
   const handleTemplateSelect = (templateId: string) => {
-    const template = getWordTemplate(templateId);
+    const template = allTemplates.find(t => t.id === templateId || t.name === templateId) || null;
     if (template) {
       setSelectedTemplate(template);
       setError(null);
@@ -102,9 +119,10 @@ export default function WordEditorPage() {
                     Category
                   </label>
                   <Select onValueChange={(category) => {
-                    const filtered = category === 'all'
-                      ? getAllWordTemplates()
-                      : getAllWordTemplates().filter(t => t.category === category);
+                    const filtered =
+                      category === "all"
+                        ? allTemplates
+                        : allTemplates.filter(t => t.category === category);
                     setTemplates(filtered);
                   }}>
                     <SelectTrigger>
