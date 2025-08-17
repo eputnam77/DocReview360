@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "react-hot-toast";
 
 import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "../../components/ExtensionsPanel";
+import InsertMenu from "../../components/InsertMenu";
 
 // Core Extensions
 import Collaboration from "@tiptap/extension-collaboration";
@@ -45,8 +46,6 @@ const ListOrdered = dynamic(() =>
 );
 const Undo2 = dynamic(() => import("lucide-react").then((m) => m.Undo2));
 const Redo2 = dynamic(() => import("lucide-react").then((m) => m.Redo2));
-const ImageIcon = dynamic(() => import("lucide-react").then((m) => m.Image));
-const TableIcon = dynamic(() => import("lucide-react").then((m) => m.Table));
 const MenuIcon = dynamic(() => import("lucide-react").then((m) => m.Menu));
 const XIcon = dynamic(() => import("lucide-react").then((m) => m.X));
 const Loader2 = dynamic(() => import("lucide-react").then((m) => m.Loader2));
@@ -451,7 +450,6 @@ export default function TipTapEditorPage() {
     "saved",
   );
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [insertMenu, setInsertMenu] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -1024,39 +1022,7 @@ export default function TipTapEditorPage() {
           false,
           "Redo",
         )}
-        <div className="relative">
-          <button
-            onClick={() => setInsertMenu((prev) => !prev)}
-            className="ml-2 p-2 rounded bg-gray-200"
-            title="Insert"
-          >
-            <MenuIcon className="w-4 h-4" />
-          </button>
-          {insertMenu && (
-            <div className="absolute right-0 mt-1 bg-white border rounded shadow-md z-10">
-              <button
-                onClick={() => {
-                  insertTable();
-                  setInsertMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100 w-full text-left"
-                title="Insert Table"
-              >
-                <TableIcon className="w-4 h-4" /> Table
-              </button>
-              <button
-                onClick={() => {
-                  insertImage();
-                  setInsertMenu(false);
-                }}
-                className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100 w-full text-left"
-                title="Insert Image"
-              >
-                <ImageIcon className="w-4 h-4" /> Image
-              </button>
-            </div>
-          )}
-        </div>
+        <InsertMenu insertTable={insertTable} insertImage={insertImage} />
         <button
           onClick={() => saveRevision(editor.getHTML(), true, true)}
           className="ml-4 px-2 py-1 border rounded"
