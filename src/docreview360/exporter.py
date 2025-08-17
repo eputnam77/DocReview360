@@ -61,15 +61,40 @@ def export_document(
         media = "application/json"
         name = f"{base}.json"
     elif fmt == "docx":
-        xml = (
-            "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>"
-            "<w:document xmlns:w='http://schemas.openxmlformats.org/wordprocessingml/2006/main'>"
-            f"<w:body><w:p><w:r><w:t>{escape(document.content)}</w:t></w:r></w:p></w:body>"
-            "</w:document>"
-        )
+        from docx import Document
+        from docx.oxml import OxmlElement
+        import re
+
+        docx_doc = Document()
+        for line in document.content.splitlines():
+            m = re.match(r"^(#+)\s+(.*)", line)
+            if m:
+                level = len(m.group(1))
+                text = m.group(2)
+                p = docx_doc.add_heading("", level=level)
+                line_text = text
+            else:
+                p = docx_doc.add_paragraph()
+                line_text = line
+
+            idx = 0
+            for match in re.finditer(r"\[(INS|DEL):(.*?)\]", line_text):
+                if match.start() > idx:
+                    p.add_run(line_text[idx:match.start()])
+                tag, txt = match.group(1).lower(), match.group(2)
+                change = OxmlElement(f"w:{tag}")
+                r = OxmlElement("w:r")
+                t = OxmlElement("w:t")
+                t.text = txt
+                r.append(t)
+                change.append(r)
+                p._element.append(change)
+                idx = match.end()
+            if idx < len(line_text):
+                p.add_run(line_text[idx:])
+
         buffer = BytesIO()
-        with ZipFile(buffer, "w") as zf:
-            zf.writestr("word/document.xml", xml)
+        docx_doc.save(buffer)
         data = buffer.getvalue()
         media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         name = f"{base}.docx"
