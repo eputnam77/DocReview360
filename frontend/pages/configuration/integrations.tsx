@@ -326,7 +326,13 @@ export default function IntegrationsPage() {
           onSubmit={(e) => {
             e.preventDefault();
             if (!newKey.trim()) return;
-            setConfig({ ...config, [newKey]: newValue });
+            let value: string | number | boolean = newValue;
+            if (newValue === "true" || newValue === "false") {
+              value = newValue === "true";
+            } else if (newValue !== "" && !isNaN(Number(newValue))) {
+              value = Number(newValue);
+            }
+            setConfig({ ...config, [newKey]: value });
             setNewKey("");
             setNewValue("");
           }}
@@ -426,7 +432,15 @@ export default function IntegrationsPage() {
                       <Button
                         size="sm"
                         onClick={() => {
-                          setConfig({ ...config, [k]: editValue });
+                          let value: string | number | boolean = editValue;
+                          const current = config[k];
+                          if (typeof current === "boolean") {
+                            value = editValue === "true";
+                          } else if (typeof current === "number") {
+                            const num = Number(editValue);
+                            value = isNaN(num) ? editValue : num;
+                          }
+                          setConfig({ ...config, [k]: value });
                           setEditingId(null);
                           setEditValue("");
                         }}
