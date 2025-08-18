@@ -25,3 +25,25 @@ def test_sql_migrations(tmp_path: Path) -> None:
             text("SELECT COUNT(*) FROM schema_versions WHERE filename='001_add_table.sql'")
         )
         assert result.scalar() == 1
+
+
+def test_migration_adds_entity_type(tmp_path: Path) -> None:
+    """Adding new migrations should modify existing tables."""
+    old = tmp_path / "old_migs"
+    old.mkdir()
+    # copy initial migrations excluding the new one
+    for file in sorted((Path("migrations") / "").glob("00[1-5]_*.sql")):
+        (old / file.name).write_text(file.read_text())
+
+    db_path = tmp_path / "test.db"
+    db = Database(f"sqlite:///{db_path}")
+    db.migrate(migrations_path=old)
+
+    inspector = inspect(db._engine)
+    cols = {c["name"] for c in inspector.get_columns("audit_logs")}
+    assert "entity_type" not in cols
+
+    # applying full migrations should add the column
+    db.migrate()
+    cols = {c["name"] for c in inspector.get_columns("audit_logs")}
+    assert "entity_type" in cols
