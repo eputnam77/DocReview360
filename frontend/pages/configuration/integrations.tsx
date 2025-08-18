@@ -97,6 +97,7 @@ export default function IntegrationsPage() {
   const [newValue, setNewValue] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -110,10 +111,13 @@ export default function IntegrationsPage() {
         setPrimaryProvider(prov.primary);
         setFallbackProvider(prov.fallback);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Failed to fetch integrations", err);
+        toast.error("Failed to load integration settings; using defaults.");
         setConfig(DEFAULT_CONFIG);
         setPrimaryProvider("documenso");
         setFallbackProvider("local");
+        setLoadError("Failed to load integration settings; using defaults.");
       });
   }, []);
 
@@ -205,6 +209,11 @@ export default function IntegrationsPage() {
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Integrations</h1>
+      {loadError && (
+        <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+          {loadError}
+        </div>
+      )}
       <p className="text-sm text-gray-500">
         Changing these options might delete or recreate data. Proceed with
         caution.
