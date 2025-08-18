@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { API } from "@/lib/api";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -27,7 +28,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/token", {
+      const response = await fetch(`${API}/token`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
