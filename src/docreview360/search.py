@@ -134,7 +134,7 @@ class SearchIndex:
             name="Demo Project",
             number=self._next_project_number,
             document_number="DOC-001",
-            user="demo_user",
+            user="alice",  # Changed from "demo_user" to "alice" to match test accounts
             doc_type="General",
             updated=current_time,
         )

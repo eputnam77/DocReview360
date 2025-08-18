@@ -85,7 +85,8 @@ export default function ProjectList() {
   const username = useUserStore((s) => s.username);
 
   useEffect(() => {
-    authenticatedFetch(`${API}/projects`)
+    // Pass the current user to the API call to filter projects
+    authenticatedFetch(`${API}/projects?user=${encodeURIComponent(username)}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any) =>
         setProjects(
@@ -98,7 +99,7 @@ export default function ProjectList() {
         ),
       )
       .catch(() => setProjects([]));
-  }, []);
+  }, [username]);
 
   // Calculate simple stats for this user
   const statAssigned = projects.length;

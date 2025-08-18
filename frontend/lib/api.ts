@@ -20,6 +20,13 @@ export async function authenticatedFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
   
+  // Add x-user header if user is available in localStorage
+  // This is needed for endpoints that filter by user (like /projects)
+  const user = typeof window !== "undefined" ? localStorage.getItem("current_user") : null;
+  if (user) {
+    headers.set("x-user", user);
+  }
+  
   // Prepend API base URL to relative URLs
   let fullUrl = url;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
