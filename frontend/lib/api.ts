@@ -21,10 +21,21 @@ export async function authenticatedFetch(
   }
   
   // Prepend API base URL to relative URLs
-  const fullUrl = url.startsWith('http') ? url : `${API}${url}`;
+  let fullUrl = url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    // Ensure the API base URL doesn't have a trailing slash and the path starts with a slash
+    const baseUrl = API.endsWith('/') ? API.slice(0, -1) : API;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    fullUrl = `${baseUrl}${path}`;
+  }
   
-  return fetch(fullUrl, {
-    ...options,
-    headers,
-  });
+  try {
+    return await fetch(fullUrl, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    console.error(`Failed to fetch ${fullUrl}:`, error);
+    throw error;
+  }
 }
