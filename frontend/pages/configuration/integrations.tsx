@@ -21,6 +21,14 @@ import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 
+const CMS_OPTIONS = [
+  { label: "None", value: "none" },
+  { label: "Local", value: "local" },
+  { label: "SharePoint", value: "sharepoint" },
+  { label: "Confluence", value: "confluence" },
+  { label: "Google Drive", value: "gdrive" },
+] as const;
+
 const integrationOptions = {
   database: [
     { label: "SQLite", value: "sqlite" },
@@ -33,13 +41,6 @@ const integrationOptions = {
     { label: "OnlyOffice", value: "onlyoffice" },
     { label: "XML", value: "xml" },
     { label: "Word", value: "word" },
-  ],
-  cms: [
-    { label: "None", value: "none" },
-    { label: "Local", value: "local" },
-    { label: "SharePoint", value: "sharepoint" },
-    { label: "Confluence", value: "confluence" },
-    { label: "Google Drive", value: "gdrive" },
   ],
   signatureProviders: [
     { label: "Documenso", value: "documenso" },
@@ -67,7 +68,7 @@ const SELECT_OPTIONS: Record<string, { label: string; value: string }[]> = {
     { label: "SAML", value: "saml" },
     { label: "Local", value: "local" },
   ],
-  cms: integrationOptions.cms,
+  cms: CMS_OPTIONS,
   debug: [
     { label: "True", value: "true" },
     { label: "False", value: "false" },
@@ -166,7 +167,7 @@ export default function IntegrationsPage() {
     },
     {
       label: "CMS Integration",
-      value: getLabel(integrationOptions.cms, config.cms),
+      value: getLabel(CMS_OPTIONS, config.cms),
     },
     {
       label: "Auth Provider",
@@ -252,7 +253,7 @@ export default function IntegrationsPage() {
               <SelectValue placeholder="Select CMS option" />
             </SelectTrigger>
             <SelectContent>
-              {integrationOptions.cms.map((opt) => (
+              {CMS_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </SelectItem>
