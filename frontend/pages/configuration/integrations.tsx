@@ -21,10 +21,31 @@ import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 
-const DATABASES = ["postgres", "mysql", "sqlite"];
-const EDITORS = ["tiptap", "onlyoffice", "xml", "word"];
-const CMS_OPTIONS = ["none", "local"];
-const SIGNATURE_PROVIDERS = ["documenso", "local"];
+const integrationOptions = {
+  database: [
+    { label: "SQLite", value: "sqlite" },
+    { label: "Postgres", value: "postgres" },
+    { label: "MySQL", value: "mysql" },
+    { label: "SQL Server", value: "sqlserver" },
+  ],
+  editor: [
+    { label: "TipTap", value: "tiptap" },
+    { label: "OnlyOffice", value: "onlyoffice" },
+    { label: "XML", value: "xml" },
+    { label: "Word", value: "word" },
+  ],
+  cms: [
+    { label: "None", value: "none" },
+    { label: "Local", value: "local" },
+    { label: "SharePoint", value: "sharepoint" },
+    { label: "Confluence", value: "confluence" },
+    { label: "Google Drive", value: "gdrive" },
+  ],
+  signatureProviders: [
+    { label: "Documenso", value: "documenso" },
+    { label: "Local", value: "local" },
+  ],
+} as const;
 
 const SETTING_DESCRIPTIONS: Record<string, string> = {
   database: "The backend database used by the app.",
@@ -39,27 +60,14 @@ const SETTING_DESCRIPTIONS: Record<string, string> = {
 };
 
 const SELECT_OPTIONS: Record<string, { label: string; value: string }[]> = {
-  editor: [
-    { label: "TipTap", value: "tiptap" },
-    { label: "Word", value: "word" },
-  ],
-  database: [
-    { label: "SQLite", value: "sqlite" },
-    { label: "Postgres", value: "postgres" },
-    { label: "MySQL", value: "mysql" },
-    { label: "SQL Server", value: "sqlserver" },
-  ],
+  editor: integrationOptions.editor,
+  database: integrationOptions.database,
   auth: [
     { label: "OIDC", value: "oidc" },
     { label: "SAML", value: "saml" },
     { label: "Local", value: "local" },
   ],
-  cms: [
-    { label: "None", value: "none" },
-    { label: "SharePoint", value: "sharepoint" },
-    { label: "Confluence", value: "confluence" },
-    { label: "Google Drive", value: "gdrive" },
-  ],
+  cms: integrationOptions.cms,
   debug: [
     { label: "True", value: "true" },
     { label: "False", value: "false" },
@@ -178,9 +186,9 @@ export default function IntegrationsPage() {
               <SelectValue placeholder="Select a database" />
             </SelectTrigger>
             <SelectContent>
-              {DATABASES.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
+              {integrationOptions.database.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -196,9 +204,9 @@ export default function IntegrationsPage() {
               <SelectValue placeholder="Select an editor" />
             </SelectTrigger>
             <SelectContent>
-              {EDITORS.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
+              {integrationOptions.editor.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -211,9 +219,9 @@ export default function IntegrationsPage() {
               <SelectValue placeholder="Select CMS option" />
             </SelectTrigger>
             <SelectContent>
-              {CMS_OPTIONS.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
+              {integrationOptions.cms.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -229,9 +237,9 @@ export default function IntegrationsPage() {
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
-              {SIGNATURE_PROVIDERS.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
+              {integrationOptions.signatureProviders.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -247,9 +255,9 @@ export default function IntegrationsPage() {
               <SelectValue placeholder="Select fallback" />
             </SelectTrigger>
             <SelectContent>
-              {SIGNATURE_PROVIDERS.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
+              {integrationOptions.signatureProviders.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
