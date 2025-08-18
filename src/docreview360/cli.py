@@ -39,7 +39,10 @@ def cli() -> None:
 )
 @click.option(
     "--cms",
-    type=click.Choice(["none", "local", "alfresco", "sharepoint"], case_sensitive=False),
+    type=click.Choice(
+        ["none", "local", "sharepoint", "confluence", "gdrive"],
+        case_sensitive=False,
+    ),
     default="none",
     show_default=True,
     prompt=True,
