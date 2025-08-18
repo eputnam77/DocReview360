@@ -1,0 +1,344 @@
+[
+  {
+    "name": "Advisory Circular",
+    "template": "<h1>Advisory Circular</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ],
+    "default_template_id": null,
+    "id": "Advisory Circular",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ]
+  },
+  {
+    "name": "API Guide",
+    "template": "<h1>API Guide</h1>",
+    "workflow": [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ],
+    "default_template_id": null,
+    "id": "API Guide",
+    "phases": [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ]
+  },
+  {
+    "name": "CLI Guide",
+    "template": "<h1>CLI Guide</h1>",
+    "workflow": [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ],
+    "default_template_id": null,
+    "id": "CLI Guide",
+    "phases": [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ]
+  },
+  {
+    "name": "Deviation Memorandum",
+    "template": "<h1>Deviation Memorandum</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination"
+    ],
+    "default_template_id": null,
+    "id": "Deviation Memorandum",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination"
+    ]
+  },
+  {
+    "name": "Exemption",
+    "template": "<h1>Exemption</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ],
+    "default_template_id": null,
+    "id": "Exemption",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ]
+  },
+  {
+    "name": "Federal Register Notice",
+    "template": "<h1>Federal Register Notice</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ],
+    "default_template_id": null,
+    "id": "Federal Register Notice",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ]
+  },
+  {
+    "name": "General Memorandum",
+    "template": "<h1>General Memorandum</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination"
+    ],
+    "default_template_id": null,
+    "id": "General Memorandum",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination"
+    ]
+  },
+  {
+    "name": "Manual",
+    "template": "<h1>Manual</h1>",
+    "workflow": [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ],
+    "default_template_id": null,
+    "id": "Manual",
+    "phases": [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ]
+  },
+  {
+    "name": "Order",
+    "template": "<h1>Order</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ],
+    "default_template_id": null,
+    "id": "Order",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ]
+  },
+  {
+    "name": "Policy Memorandum",
+    "template": "<h1>Policy Memorandum</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination"
+    ],
+    "default_template_id": null,
+    "id": "Policy Memorandum",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination"
+    ]
+  },
+  {
+    "name": "Policy Statement",
+    "template": "<h1>Policy Statement</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ],
+    "default_template_id": null,
+    "id": "Policy Statement",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ]
+  },
+  {
+    "name": "Release Notes",
+    "template": "<h1>Release Notes</h1>",
+    "workflow": [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ],
+    "default_template_id": null,
+    "id": "Release Notes",
+    "phases": [
+      "Draft Development",
+      "Peer Review",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ]
+  },
+  {
+    "name": "Rulemaking",
+    "template": "<h1>Rulemaking</h1>",
+    "workflow": [
+      "Draft Development",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+      "Final Issuance"
+    ],
+    "default_template_id": null,
+    "id": "Rulemaking",
+    "phases": [
+      "Draft Development",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+      "Final Issuance"
+    ]
+  },
+  {
+    "name": "Special Class Airworthiness Criteria",
+    "template": "<h1>Special Class Airworthiness Criteria</h1>",
+    "workflow": [
+      "Draft Development",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+      "Final Issuance"
+    ],
+    "default_template_id": null,
+    "id": "Special Class Airworthiness Criteria",
+    "phases": [
+      "Draft Development",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking",
+      "Final Issuance"
+    ]
+  },
+  {
+    "name": "Special Conditions",
+    "template": "<h1>Special Conditions</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ],
+    "default_template_id": null,
+    "id": "Special Conditions",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ]
+  },
+  {
+    "name": "Standard Operating Procedure",
+    "template": "<h1>Standard Operating Procedure</h1>",
+    "workflow": [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ],
+    "default_template_id": null,
+    "id": "Standard Operating Procedure",
+    "phases": [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Beta Documentation Review",
+      "Release Candidate Review",
+      "General Availability",
+      "Maintenance / Revision Cycle"
+    ]
+  },
+  {
+    "name": "Technical Standard Order",
+    "template": "<h1>Technical Standard Order</h1>",
+    "workflow": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ],
+    "default_template_id": null,
+    "id": "Technical Standard Order",
+    "phases": [
+      "Draft Development",
+      "Final Issuance",
+      "Internal Coordination",
+      "Public Comment / Proposed Rulemaking"
+    ]
+  },
+  {
+    "name": "White Paper",
+    "template": "<h1>White Paper</h1>",
+    "workflow": [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Final Issuance"
+    ],
+    "default_template_id": null,
+    "id": "White Paper",
+    "phases": [
+      "Draft Development",
+      "Peer Review",
+      "Internal Coordination",
+      "Final Issuance"
+    ]
+  }
+]
