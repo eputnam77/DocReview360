@@ -17,7 +17,7 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function LoginPage() {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
-          username: email,
+          username: username,
           password: password,
         }),
       });
@@ -75,16 +75,16 @@ export default function LoginPage() {
         <CardContent>
           <form className="space-y-4" onSubmit={handleLogin} autoComplete="on">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                name="email"
-                placeholder="you@example.com"
-                autoComplete="email"
+                id="username"
+                type="text"
+                name="username"
+                placeholder="alice or bob"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
 
@@ -94,7 +94,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 name="password"
-                placeholder="••••••••"
+                placeholder="password"
                 autoComplete="current-password"
                 required
                 value={password}
@@ -105,6 +105,12 @@ export default function LoginPage() {
             <Button type="submit" className="w-full mt-2" disabled={loading}>
               {loading ? "Signing in..." : "Continue"}
             </Button>
+
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+              <p>Test accounts:</p>
+              <p className="font-mono">alice/password (admin)</p>
+              <p className="font-mono">bob/password (auditor)</p>
+            </div>
 
             <p className="text-center text-sm text-gray-500 dark:text-gray-400">
               Don't have an account?{" "}
