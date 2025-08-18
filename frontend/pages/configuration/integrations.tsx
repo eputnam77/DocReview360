@@ -74,15 +74,6 @@ const SELECT_OPTIONS: Record<string, { label: string; value: string }[]> = {
   ],
 };
 
-const EXTRA_INTEGRATIONS = [
-  { label: "Workflow Engine", value: "Camunda" },
-  { label: "Signatures", value: "Documenso" },
-  { label: "Search Engine", value: "OpenSearch" },
-  { label: "Analytics", value: "Metabase" },
-  { label: "Object Storage", value: "MinIO/S3" },
-  { label: "AI Helpers", value: "AWS Bedrock" },
-  { label: "GitHub Sync", value: "Enabled" },
-];
 
 const DEFAULT_CONFIG: Record<string, string | number | boolean> = {
   database: "sqlite",
@@ -158,6 +149,48 @@ export default function IntegrationsPage() {
       toast.error("Failed to save configuration");
     }
   };
+
+  const getLabel = (
+    opts: readonly { label: string; value: string }[],
+    value: string | number | boolean | null | undefined,
+  ) => opts.find((opt) => opt.value === String(value))?.label || String(value ?? "");
+
+  const extraIntegrations = [
+    {
+      label: "Database",
+      value: getLabel(integrationOptions.database, config.database),
+    },
+    {
+      label: "Document Editor",
+      value: getLabel(integrationOptions.editor, config.editor),
+    },
+    {
+      label: "CMS Integration",
+      value: getLabel(integrationOptions.cms, config.cms),
+    },
+    {
+      label: "Auth Provider",
+      value: getLabel(SELECT_OPTIONS.auth, config.auth),
+    },
+    {
+      label: "Signature Provider",
+      value: getLabel(
+        integrationOptions.signatureProviders,
+        primaryProvider,
+      ),
+    },
+    ...(fallbackProvider
+      ? [
+          {
+            label: "Fallback Signature Provider",
+            value: getLabel(
+              integrationOptions.signatureProviders,
+              fallbackProvider,
+            ),
+          },
+        ]
+      : []),
+  ];
 
   if (!config) {
     return (
@@ -278,7 +311,7 @@ export default function IntegrationsPage() {
       <div className="pt-6">
         <h2 className="text-lg font-semibold mb-2">Additional Integrations</h2>
         <ul className="space-y-1 text-sm list-disc ml-4">
-          {EXTRA_INTEGRATIONS.map((item) => (
+          {extraIntegrations.map((item) => (
             <li key={item.label}>
               <span className="font-medium">{item.label}:</span> {item.value}
             </li>
