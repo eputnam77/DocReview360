@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useUserStore } from "@/state/user";
+import { authenticatedFetch } from "@/lib/api";
 
 export interface Visibility {
   stats: boolean;
@@ -21,7 +22,7 @@ export function useDashboardVisibility() {
 
   useEffect(() => {
     if (!username) return;
-    fetch("/dashboard/visibility", { headers: { "X-User": username } })
+    authenticatedFetch("/dashboard/visibility")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setVis(d))
       .catch(() => {});
@@ -29,9 +30,9 @@ export function useDashboardVisibility() {
 
   const save = () => {
     if (!username) return;
-    fetch("/dashboard/visibility", {
+    authenticatedFetch("/dashboard/visibility", {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-User": username },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(vis),
     }).catch(() => {});
   };

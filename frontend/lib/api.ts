@@ -7,3 +7,21 @@ export const API =
     : typeof window !== "undefined"
       ? `${window.location.protocol}//${window.location.hostname}:8000`
       : "http://localhost:8000";
+
+// Utility function for authenticated API calls
+export async function authenticatedFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  
+  const headers = new Headers(options.headers);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+}

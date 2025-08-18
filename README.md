@@ -158,7 +158,17 @@ Set-Content -Path .env.local -Value "NEXT_PUBLIC_API_BASE=http://localhost:8000"
 npm run dev
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/) and log in with **admin / admin**.
+Open [http://localhost:3000/](http://localhost:3000/) and log in with one of the test accounts:
+
+**Admin Access:**
+- Username: `alice`
+- Password: `password`
+- Roles: user, admin (Full administrative access)
+
+**Non-Admin Access:**
+- Username: `bob`
+- Password: `password`
+- Roles: auditor (Limited access, no admin privileges)
 
 **Note:** The frontend requires the backend server to be running for full functionality (especially the document checker). Ensure the backend is started first.
 
@@ -336,6 +346,10 @@ curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/to
 ```
 Use the token in the `Authorization` header to call `/oidc/me`.
 
+**Test Users:**
+- **Admin:** `alice` / `password` (Has admin privileges)
+- **Non-Admin:** `bob` / `password` (Has auditor role with limited access)
+
 The API is a learning tool. Endpoints return dummy data but illustrate how projects, documents and approvals could work together. The frontend contains a login page, dashboard, project creation form, two editor pages and a review tracker table.
 
 ## Features
@@ -345,6 +359,12 @@ The API is a learning tool. Endpoints return dummy data but illustrate how proje
 - Search with saved queries
 - Simple plugin system for editors and exporters
 - Minimal authentication flow with a login form, dashboard and project creation page
+
+**Test Users:**
+The system comes with two predefined test users for development and testing:
+
+1. **Alice** (`alice` / `password`) - Has admin privileges with full access to all features
+2. **Bob** (`bob` / `password`) - Has auditor role with limited access for testing role-based permissions
 
 Head over to the [documentation](https://example.com/docreview360) for a full tour of the API, CLI options and UI navigation tips. The
 [architecture overview](docs/adr/0001-core-architecture.md) describes how the backend, frontend and future services fit together.

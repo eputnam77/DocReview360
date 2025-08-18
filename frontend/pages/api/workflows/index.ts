@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 
 export default async function handler(
-  _req: NextApiRequest,
+  req: NextApiRequest,
   res: NextApiResponse
 ) {
   try {
-    const r = await fetch(`${API}/workflows`);
+    const r = await authenticatedFetch(`${API}/workflows`);
     const data = r.ok ? await r.json() : [];
     res.status(200).json(data);
   } catch {

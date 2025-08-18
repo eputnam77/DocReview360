@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API } from "./api";
+import { API, authenticatedFetch } from "./api";
 import { toast } from "react-hot-toast";
 import type { Approval } from "@/types";
 
@@ -35,13 +35,13 @@ export function useApprovals({ workflow, phase, id }: Options) {
     enabled: id ? !!id : !!workflow,
     queryFn: async () => {
       if (id) {
-        const res = await fetch(`${API}/approvals/${id}`);
+        const res = await authenticatedFetch(`${API}/approvals/${id}`);
         if (!res.ok) throw new Error("Failed to fetch approval");
         const data = await res.json();
         return mapApproval(data);
       }
       const phaseParam = phase ? `&phase=${encodeURIComponent(phase)}` : "";
-      const res = await fetch(`${API}/approvals?workflow=${workflow}${phaseParam}`);
+      const res = await authenticatedFetch(`${API}/approvals?workflow=${workflow}${phaseParam}`);
       if (!res.ok) throw new Error("Failed to fetch approvals");
       const data = await res.json();
       return Array.isArray(data) ? data.map(mapApproval) : [];
@@ -50,7 +50,7 @@ export function useApprovals({ workflow, phase, id }: Options) {
 
   const approveMutation = useMutation({
     mutationFn: async (aid: string) => {
-      const res = await fetch(`${API}/approvals/${aid}/sign`, {
+      const res = await authenticatedFetch(`${API}/approvals/${aid}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -91,7 +91,7 @@ export function useApprovals({ workflow, phase, id }: Options) {
 
   const resetMutation = useMutation({
     mutationFn: async (aid: string) => {
-      const res = await fetch(`${API}/approvals/${aid}`, {
+      const res = await authenticatedFetch(`${API}/approvals/${aid}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ state: "pending", signature: null }),
@@ -126,7 +126,7 @@ export function useApprovals({ workflow, phase, id }: Options) {
 
   const remindMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const res = await fetch(`${API}/approvals/remind`, {
+      const res = await authenticatedFetch(`${API}/approvals/remind`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
