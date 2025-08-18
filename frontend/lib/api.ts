@@ -20,7 +20,10 @@ export async function authenticatedFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
   
-  return fetch(url, {
+  // Prepend API base URL to relative URLs
+  const fullUrl = url.startsWith('http') ? url : `${API}${url}`;
+  
+  return fetch(fullUrl, {
     ...options,
     headers,
   });
