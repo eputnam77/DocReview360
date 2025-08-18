@@ -1,4 +1,4 @@
-import { API } from "../lib/api";
+import { API, authenticatedFetch } from "../lib/api";
 
 /**
  * Log a failed save attempt and determine the resulting status.
@@ -6,7 +6,7 @@ import { API } from "../lib/api";
  */
 export async function logSaveError(err: unknown): Promise<"offline" | "error"> {
   try {
-    await fetch(`${API}/logs`, {
+    await authenticatedFetch(`${API}/logs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

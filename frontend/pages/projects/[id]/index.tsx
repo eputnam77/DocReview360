@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
 import { cn } from "@/lib/utils";
@@ -450,9 +450,7 @@ export default function ProjectDetailsPage() {
       setLogs(DEMO_LOGS);
       return;
     }
-    fetch(`${API}/audit?entity_id=${id}`, {
-      headers: { "X-User": username },
-    })
+    authenticatedFetch(`${API}/audit?entity_id=${id}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setLogs(
@@ -582,9 +580,7 @@ export default function ProjectDetailsPage() {
 
   const viewHistory = useCallback(
     (aid: string) => {
-      fetch(`${API}/approvals/${aid}/history`, {
-        headers: username ? { "X-User": username } : undefined,
-      })
+      authenticatedFetch(`${API}/approvals/${aid}/history`)
         .then((r) => (r.ok ? r.json() : []))
         .then((data: any[]) =>
           setHistoryEvents(
@@ -638,7 +634,7 @@ export default function ProjectDetailsPage() {
 
   const syncApprovalWithBackend = async (approvalId: string, signatureId: string) => {
     try {
-      const response = await fetch(`${API}/approvals/${approvalId}`, {
+      const response = await authenticatedFetch(`${API}/approvals/${approvalId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -682,7 +678,7 @@ export default function ProjectDetailsPage() {
   const downloadApprovalSummary = async () => {
     if (!project) return;
     try {
-      const res = await fetch(`${API}/projects/${project.id}/approvals/pdf`);
+      const res = await authenticatedFetch(`${API}/projects/${project.id}/approvals/pdf`);
       if (!res.ok) {
         toast.error("Failed to download summary");
         return;

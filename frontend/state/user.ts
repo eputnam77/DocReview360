@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { authenticatedFetch } from "@/lib/api";
 
 interface UserState {
   isAdmin: boolean;
@@ -24,16 +25,20 @@ export const useUserStore = create<UserState>((set) => ({
   setTheme: (value) => set({ theme: value }),
   async initialize() {
     try {
-      const resp = await fetch("/api/users/me", { headers: { "X-User": "alice" } });
-      if (resp.ok) {
-        const data = await resp.json();
-        set({
-          username: data.username,
-          isAdmin: Array.isArray(data.roles) && data.roles.includes("admin"),
-          isAuditor: Array.isArray(data.roles) && data.roles.includes("auditor"),
-        });
+      // Get token from localStorage
+      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+      if (token) {
+        const resp = await authenticatedFetch("/api/users/me");
+        if (resp.ok) {
+          const data = await resp.json();
+          set({
+            username: data.username,
+            isAdmin: Array.isArray(data.roles) && data.roles.includes("admin"),
+            isAuditor: Array.isArray(data.roles) && data.roles.includes("auditor"),
+          });
+        }
       }
-      const prefsResp = await fetch("/api/profile");
+      const prefsResp = await authenticatedFetch("/api/profile");
       if (prefsResp.ok) {
         const pdata = await prefsResp.json();
         const theme = ["system", "light", "dark"].includes(pdata.preferences?.theme)

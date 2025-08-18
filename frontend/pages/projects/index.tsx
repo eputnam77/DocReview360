@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 
 // The Project type: extend as needed
 interface Project {
@@ -85,11 +85,7 @@ export default function ProjectList() {
   const username = useUserStore((s) => s.username);
 
   useEffect(() => {
-    const headers: Record<string, string> = {};
-    if (username) {
-      headers["X-User"] = username;
-    }
-    fetch(`${API}/projects`, { headers })
+    authenticatedFetch(`${API}/projects`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any) =>
         setProjects(
@@ -102,7 +98,7 @@ export default function ProjectList() {
         ),
       )
       .catch(() => setProjects([]));
-  }, [username]);
+  }, []);
 
   // Calculate simple stats for this user
   const statAssigned = projects.length;

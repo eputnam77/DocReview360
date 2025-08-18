@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { authenticatedFetch } from "@/lib/api";
 
 export interface Environment {
   name: string;
@@ -17,12 +18,12 @@ export const useEnvStore = create<EnvState>((set) => ({
   current: undefined,
   envs: {},
   load: async () => {
-    const r = await fetch("/environments");
+    const r = await authenticatedFetch("/environments");
     const data = await r.json();
     set({ current: data.current ?? undefined, envs: data.envs });
   },
   switchEnv: async (name: string) => {
-    await fetch(`/environments/${name}`, { method: "POST" });
+    await authenticatedFetch(`/environments/${name}`, { method: "POST" });
     set((s) => ({ current: s.envs[name] }));
   },
 }));

@@ -10,7 +10,7 @@ import {
   Label,
 } from "@/components";
 import { Avatar } from "@/components/ui/avatar";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 // --- Types ---
@@ -79,7 +79,7 @@ export default function ProfilePage() {
   const [pictureFile, setPictureFile] = useState<File | null>(null);
 
   useEffect(() => {
-    fetch(`${API}/profile`)
+    authenticatedFetch(`${API}/profile`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
@@ -119,7 +119,7 @@ export default function ProfilePage() {
       toast.error("Passwords do not match");
       return;
     }
-    fetch(`${API}/profile`, {
+    authenticatedFetch(`${API}/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...profile, password: password || undefined }),

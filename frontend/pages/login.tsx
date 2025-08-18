@@ -1,7 +1,7 @@
 // app/login/page.tsx  (or pages/login.tsx)
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -14,11 +14,47 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    toast.success("Login submitted"); // replace with real auth logic
+    setLoading(true);
+
+    try {
+      const response = await fetch("/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          username: email,
+          password: password,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Store the token in localStorage or cookies
+        localStorage.setItem("access_token", data.access_token);
+        // Redirect to dashboard
+        router.push("/projects");
+        toast.success("Login successful");
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.detail || "Login failed");
+      }
+    } catch (error) {
+      toast.error("An error occurred during login");
+      console.error("Login error:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -47,6 +83,8 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 autoComplete="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -59,15 +97,17 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
-            <Button type="submit" className="w-full mt-2">
-              Continue
+            <Button type="submit" className="w-full mt-2" disabled={loading}>
+              {loading ? "Signing in..." : "Continue"}
             </Button>
 
             <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              Don’t have an account?{" "}
+              Don't have an account?{" "}
               <a href="/sign-up" className="underline">
                 Sign up
               </a>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { API } from "./api";
+import { API, authenticatedFetch } from "./api";
 import type { ReviewSummary } from "@/types";
 
 export function useReviewSummary(projectId?: string, phaseId?: string) {
@@ -8,7 +8,7 @@ export function useReviewSummary(projectId?: string, phaseId?: string) {
     enabled: !!projectId,
     queryFn: async () => {
       const phaseParam = phaseId ? `?phase=${encodeURIComponent(phaseId)}` : "";
-      const res = await fetch(`${API}/projects/${projectId}/reviews${phaseParam}`);
+      const res = await authenticatedFetch(`${API}/projects/${projectId}/reviews${phaseParam}`);
       if (!res.ok) {
         throw new Error("Failed to fetch reviews");
       }
