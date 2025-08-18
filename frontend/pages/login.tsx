@@ -41,8 +41,9 @@ export default function LoginPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Store the token in localStorage or cookies
+        // Store the token and username in localStorage
         localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("current_user", username);
         // Redirect to dashboard
         router.push("/projects");
         toast.success("Login successful");

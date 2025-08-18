@@ -11,6 +11,7 @@ interface UserState {
   setUsername: (name: string) => void;
   setTheme: (value: "system" | "light" | "dark") => void;
   initialize: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 export const useUserStore = create<UserState>((set) => ({
@@ -31,6 +32,10 @@ export const useUserStore = create<UserState>((set) => ({
         const resp = await authenticatedFetch("/api/users/me");
         if (resp.ok) {
           const data = await resp.json();
+          // Save the current user in localStorage so authenticatedFetch can access it
+          if (typeof window !== "undefined") {
+            localStorage.setItem("current_user", data.username);
+          }
           set({
             username: data.username,
             isAdmin: Array.isArray(data.roles) && data.roles.includes("admin"),
@@ -49,5 +54,17 @@ export const useUserStore = create<UserState>((set) => ({
     } catch {
       // ignore errors and keep defaults
     }
+  },
+  // Logout function to clear user data
+  async logout() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("current_user");
+    }
+    set({
+      isAdmin: false,
+      isAuditor: false,
+      username: "",
+    });
   },
 }));
