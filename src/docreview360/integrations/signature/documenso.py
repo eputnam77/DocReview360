@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import os
 from base64 import b64encode
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Tuple
 from uuid import uuid4
 
@@ -214,7 +214,7 @@ def _local_validate(document_bytes: bytes, certificate_url: str | None) -> bool:
     cert: x509.Certificate = cert_info["certificate"]
     signature: bytes = cert_info["signature"]
     revoked = cert_info.get("revoked")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     pub_key = cert.public_key()
     if not isinstance(pub_key, rsa.RSAPublicKey):
         return False
@@ -230,7 +230,13 @@ def _local_validate(document_bytes: bytes, certificate_url: str | None) -> bool:
         )
     except Exception:
         return False
-    if cert.not_valid_before > now or cert.not_valid_after < now:
+    not_before = getattr(cert, "not_valid_before_utc", None) or cert.not_valid_before
+    not_after = getattr(cert, "not_valid_after_utc", None) or cert.not_valid_after
+    if not_before.tzinfo is None:
+        not_before = not_before.replace(tzinfo=timezone.utc)
+    if not_after.tzinfo is None:
+        not_after = not_after.replace(tzinfo=timezone.utc)
+    if not_before > now or not_after < now:
         return False
     if revoked:
         return False

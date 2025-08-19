@@ -42,7 +42,8 @@ def update_project_preferences(
     current = get_project_preferences(project_id, path=path)
     updates: Dict[str, Any] = {}
     for key, val in prefs.items():
-        if key in current.model_fields:
+        # Access model_fields on the class to avoid Pydantic deprecation
+        if key in ProjectPreferences.model_fields:
             if isinstance(getattr(current, key), bool):
                 updates[key] = bool(val)
             elif key == "watermark_text" and isinstance(val, str):
