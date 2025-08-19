@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response
@@ -114,7 +114,12 @@ async def handle_webhook(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if payload_model.signed_at is not None:
-        delay = (datetime.utcnow() - payload_model.signed_at).total_seconds()
+        # Ensure timezone-aware duration calculation
+        signed_at = payload_model.signed_at
+        if signed_at.tzinfo is None:
+            # Treat naive times as UTC for backwards-compat
+            signed_at = signed_at.replace(tzinfo=timezone.utc)
+        delay = (datetime.now(timezone.utc) - signed_at).total_seconds()
         if delay >= 0:
             WEBHOOK_DELAY.labels(provider_name).observe(delay)
 

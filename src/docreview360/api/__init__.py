@@ -30,6 +30,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
+from contextlib import asynccontextmanager
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -325,7 +326,22 @@ class SignatureProviderPayload(BaseModel):
     fallback: str | None = None
 
 
-app = FastAPI(title="DocReview360")
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    # Startup
+    load_worker_state(WORKER_STATE_FILE)
+    for tpl in SEED_TEMPLATES:
+        if not get_latest_template(tpl["name"]):
+            store_template(tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata"))
+    schedule_archive_purge()
+    try:
+        yield
+    finally:
+        # Shutdown
+        save_worker_state(WORKER_STATE_FILE)
+
+
+app = FastAPI(title="DocReview360", lifespan=_lifespan)
 
 # Add CORS middleware to allow frontend requests
 #
@@ -377,18 +393,7 @@ templates = Jinja2Templates(
 )
 
 
-@app.on_event("startup")
-async def _load_balancer_state() -> None:
-    load_worker_state(WORKER_STATE_FILE)
-    for tpl in SEED_TEMPLATES:
-        if not get_latest_template(tpl["name"]):
-            store_template(tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata"))
-    schedule_archive_purge()
-
-
-@app.on_event("shutdown")
-async def _save_balancer_state() -> None:
-    save_worker_state(WORKER_STATE_FILE)
+# Startup/shutdown now handled via lifespan
 
 
 @app.get("/health")
@@ -958,9 +963,15 @@ async def verify_signature_endpoint(
         if provider and "," in provider:
             providers_input = [p.strip() for p in provider.split(",") if p.strip()]
         return verify_document_signature(doc_id, provider=providers_input)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except KeyError:
+        # If the document cannot be found, surface a consistent 200 response
+        # with a failing status rather than a 404. This aligns the API with
+        # verification semantics used elsewhere where validation problems
+        # (missing approvals, missing certificate, etc.) still return 200
+        # and embed the failure in the payload.
+        return {"status": "fail", "details": []}
     except ValueError as exc:
+        # Bad provider input remains a client error
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

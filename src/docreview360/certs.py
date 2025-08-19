@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, Dict, Tuple
 from urllib.parse import urlparse
 
@@ -79,7 +79,7 @@ def verify_certificate_status(  # noqa: C901
     URL and optional POST payload.
     """
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Try OCSP first when issuer is available
     if issuer is not None:
@@ -119,7 +119,9 @@ def verify_certificate_status(  # noqa: C901
                 if ocsp_resp.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
                     return False
                 single = ocsp_resp.responses[0]
-                next_update = single.next_update
+                next_update = getattr(single, "next_update_utc", None) or single.next_update
+                if next_update is not None and next_update.tzinfo is None:
+                    next_update = next_update.replace(tzinfo=timezone.utc)
                 if next_update is None or next_update < now:
                     return False
                 status = single.cert_status
@@ -162,7 +164,9 @@ def verify_certificate_status(  # noqa: C901
                     crl = x509.load_der_x509_crl(data)
                 except ValueError:
                     crl = x509.load_pem_x509_crl(data)
-                next_update = crl.next_update
+                next_update = getattr(crl, "next_update_utc", None) or crl.next_update
+                if next_update is not None and next_update.tzinfo is None:
+                    next_update = next_update.replace(tzinfo=timezone.utc)
                 if next_update is None or next_update < now:
                     return False
                 _crl_cache[url] = (crl, next_update)
