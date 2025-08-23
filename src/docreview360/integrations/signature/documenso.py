@@ -206,20 +206,16 @@ def _remote_validate(
 
 def _local_validate(document_bytes: bytes, certificate_url: str | None) -> bool:
     """Validate signature using locally stored certificate data."""
-    if not certificate_url:
+
+    if not (certificate_url and (cert_info := _certificates.get(certificate_url))):
         return False
-    cert_info = _certificates.get(certificate_url)
-    if not cert_info:
-        return False
+
     cert: x509.Certificate = cert_info["certificate"]
     signature: bytes = cert_info["signature"]
     revoked = cert_info.get("revoked")
-    now = datetime.now(timezone.utc)
     pub_key = cert.public_key()
-    if not isinstance(pub_key, rsa.RSAPublicKey):
-        return False
     algo = cert.signature_hash_algorithm
-    if algo is None:
+    if not isinstance(pub_key, rsa.RSAPublicKey) or algo is None:
         return False
     try:
         pub_key.verify(
@@ -230,25 +226,20 @@ def _local_validate(document_bytes: bytes, certificate_url: str | None) -> bool:
         )
     except Exception:
         return False
-    not_before = getattr(cert, "not_valid_before_utc", None) or cert.not_valid_before
-    not_after = getattr(cert, "not_valid_after_utc", None) or cert.not_valid_after
-    if not_before.tzinfo is None:
-        not_before = not_before.replace(tzinfo=timezone.utc)
-    if not_after.tzinfo is None:
-        not_after = not_after.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    not_before = (getattr(cert, "not_valid_before_utc", None) or cert.not_valid_before).replace(
+        tzinfo=timezone.utc
+    )
+    not_after = (getattr(cert, "not_valid_after_utc", None) or cert.not_valid_after).replace(
+        tzinfo=timezone.utc
+    )
     if not_before > now or not_after < now:
         return False
-    if revoked:
-        return False
-    if revoked is None and not certs.verify_certificate_status(cert):
+    if revoked or (revoked is None and not certs.verify_certificate_status(cert)):
         return False
     try:
-        pub_key.verify(
-            signature,
-            document_bytes,
-            padding.PKCS1v15(),
-            hashes.SHA256(),
-        )
+        pub_key.verify(signature, document_bytes, padding.PKCS1v15(), hashes.SHA256())
     except Exception:
         return False
     return True
@@ -262,13 +253,24 @@ def register_test_certificate(
     revoked: bool | None = False,
 ) -> None:
     """Register a certificate for local validation during tests."""
+
+    # Normalise the URL so lookups remain consistent with Pydantic's
+    # ``HttpUrl`` serialisation which always includes a trailing slash when no
+    # path is supplied.  Tests often register URLs without the trailing slash
+    # which previously caused mismatches during validation.
+    from urllib.parse import urlparse, urlunparse
+
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/") + "/"
+    normalised = urlunparse(parsed._replace(path=path))
+
     info = {
         "certificate": certificate,
         "signature": signature,
     }
     if revoked is not None:
         info["revoked"] = revoked
-    _certificates[url] = info
+    _certificates[normalised] = info
 
 
 def signature_status(sig_id: str) -> str:
@@ -302,7 +304,14 @@ def process_webhook(data: Dict[str, str]) -> None:
     _signatures[sig_id] = status
     cert_url = event.certificate_url
     if cert_url:
-        _sig_certificates[sig_id] = str(cert_url)
+        # Normalise stored certificate URLs to mirror the behaviour of
+        # :func:`register_test_certificate` and Pydantic's ``HttpUrl``.  This
+        # avoids trailing-slash mismatches during verification.
+        from urllib.parse import urlparse, urlunparse
+
+        parsed = urlparse(str(cert_url))
+        path = parsed.path.rstrip("/") + "/"
+        _sig_certificates[sig_id] = urlunparse(parsed._replace(path=path))
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
         if wf_id:
