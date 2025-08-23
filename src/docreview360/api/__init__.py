@@ -388,9 +388,7 @@ if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
 # Templates are stored one level above this module in ``docreview360/templates``.
 # The previous path incorrectly looked for templates in ``api/templates`` which
 # does not exist, causing ``TemplateNotFound`` errors during E2E tests.
-templates = Jinja2Templates(
-    directory=str(Path(__file__).resolve().parent.parent / "templates")
-)
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 
 
 # Startup/shutdown now handled via lifespan
@@ -782,9 +780,7 @@ async def project_approvals_pdf_endpoint(
     return Response(
         data,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="approvals-{project_id}.pdf"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="approvals-{project_id}.pdf"'},
     )
 
 
@@ -1861,7 +1857,9 @@ async def dashboard(request: Request) -> Response:
 @app.get("/help", response_class=HTMLResponse)
 async def help_page() -> HTMLResponse:
     """Display a lightweight help page rendered from Markdown."""
-    doc_path = Path(__file__).resolve().parent.parent.parent / "docs" / "getting_started.md"
+    # ``__file__`` resides in ``src/docreview360/api``; ascend to the repository
+    # root before resolving the docs directory.
+    doc_path = Path(__file__).resolve().parent.parent.parent.parent / "docs" / "getting_started.md"
     try:
         text = doc_path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
