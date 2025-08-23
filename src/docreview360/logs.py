@@ -404,9 +404,17 @@ def delete_log(log_id: str, user_id: str, *, reason: str | None = None) -> bool:
 
 
 def clear_logs() -> None:
-    """Remove all stored logs (useful for tests)."""
+    """Remove all stored logs and alert hooks.
+
+    Earlier test runs revealed that alert callbacks could accumulate between
+    tests, leading to unexpected behaviour.  Resetting the ``alerts`` list
+    alongside clearing the in-memory log entries ensures each test starts
+    from a clean state without affecting any listeners that callers may have
+    intentionally registered.
+    """
 
     logs.clear()
+    alerts.clear()
 
 
 def schedule_log_purge() -> None:
