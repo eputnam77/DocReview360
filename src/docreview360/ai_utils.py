@@ -292,22 +292,37 @@ def suggest_document_type(text: str) -> str:
     return "sample"
 
 
-def validate_content(text: str) -> tuple[bool, dict[str, Any]]:
-    """Validate content using anomaly detection and return diagnostics."""
+def validate_content(
+    text: str, *, return_diagnostics: bool = False
+) -> bool | tuple[bool, dict[str, Any]]:
+    """Validate ``text`` and optionally return diagnostic details.
+
+    The original implementation returned a ``(bool, diagnostics)`` tuple
+    unconditionally.  Most callers, however, only care about the boolean
+    flag.  Returning a tuple forced them to unpack the value or ended up
+    always evaluating as ``True`` in boolean context.  The function now
+    returns the validation flag by default and only includes the diagnostic
+    information when explicitly requested via ``return_diagnostics=True``.
+    """
+
     diagnostics = fann_feature_dict(text)
     is_valid = bool(text.strip()) and not detect_anomalies(text)
     diagnostics["is_valid"] = is_valid
-    return is_valid, diagnostics
+    if return_diagnostics:
+        return is_valid, diagnostics
+    return is_valid
 
 
 def create_validated_document(
     filename: str, data: bytes, *, user: str | None = None, project: str | None = None
 ) -> "DocumentModel":
     """Create a document after validating its content."""
+
     text = data.decode()
-    is_valid, diagnostics = validate_content(text)
+    is_valid, diagnostics = validate_content(text, return_diagnostics=True)
     if not is_valid:
         raise ValueError(f"Invalid content: {diagnostics}")
+
     from .documents import import_document
 
     return import_document(filename, data, project=project, user=user)
