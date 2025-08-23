@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from threading import Lock
 from typing import Iterable
 
@@ -57,20 +58,16 @@ def assign_technical_writer(
 
     # Ensure all candidates are registered with the balancer.
     for cand in cand_list:
-        try:
-            ai_balancer.register_worker(cand)
-        except ValueError:
+        with suppress(ValueError):
             # Already registered, which is fine for our purposes.
-            pass
+            ai_balancer.register_worker(cand)
 
     # Gather existing workload and priority adjustments for each candidate.
     counts: dict[str, int] = {w: 0 for w in cand_list}
     priority_adj: dict[str, int] = {w: 0 for w in cand_list}
     with project_lock:
         for pid, proj in projects.items():
-            if pid == "demo-project":
-                continue
-            if proj.user in counts:
+            if pid != "demo-project" and proj.user in counts:
                 counts[proj.user] += 1
                 priority_adj[proj.user] += max(proj.priority, 0)
 
@@ -86,9 +83,7 @@ def assign_technical_writer(
     )
     update_project(project_id, user=selected)
     with _balancer_lock:
-        ai_balancer._workers[selected] = (
-            ai_balancer.current_load(selected) + 1
-        )
+        ai_balancer._workers[selected] = ai_balancer.current_load(selected) + 1
     return selected
 
 
