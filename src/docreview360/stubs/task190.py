@@ -1,5 +1,7 @@
 """Manager dashboard endpoint sanity check."""
 
+import os
+
 from fastapi.testclient import TestClient
 
 from ..api import app
@@ -10,7 +12,13 @@ from ..stubs import record_task_completion
 def task190() -> bool:
     """Verify manager dashboard returns data."""
 
-    # Set up authentication and manager role
+    # Set up authentication and manager role.  Some environments running the
+    # tests may not have the required JWT settings configured.  To keep the
+    # stub self‑contained we provide sensible defaults so token creation does
+    # not fail with ``RuntimeError`` when environment variables are missing.
+    os.environ.setdefault("DOCREVIEW360_SECRET_KEY", "dev-secret")
+    os.environ.setdefault("DOCREVIEW360_ALGORITHM", "HS256")
+
     add_role("alice", "manager")
     client = TestClient(app)
 

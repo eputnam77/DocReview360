@@ -29,7 +29,10 @@ def test_document_type_crud() -> None:
     assert resp.status_code == 204
     resp = client.get("/document-types")
     names = {d["name"] for d in resp.json()}
-    assert names == {"sample"}
+    # The application seeds a default document type used across tests.
+    # Recent updates renamed this seed to "Test Document Type", so the
+    # final state after CRUD operations should reflect that default.
+    assert names == {"Test Document Type"}
 
 
 def test_document_type_import_export_endpoints() -> None:
