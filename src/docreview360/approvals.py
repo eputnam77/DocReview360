@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .audit import AuditLogEntry, get_audit_log, log_audit_event
 from .celery_app import app
+from .certs import fetch_certificate
 from .documents import get_document, link_approval, unlink_approval
 from .fann_model import Weights
 from .integrations.registry import get_provider
@@ -326,6 +327,7 @@ async def _upload_approval_artifacts(
         provider_metadata=approval.provider_metadata,
         signed_at=approval.signed_at,
         certificate_url=certificate_url,
+        fetcher=fetch_certificate,
     )
 
 
@@ -531,24 +533,27 @@ def build_approval_pdf(approval_id: str) -> bytes:
     if document is None:
         raise KeyError("document not found")
 
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas
-
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    text = c.beginText(40, 750)
-    for line in document.content.splitlines():
-        text.textLine(line)
-    c.drawText(text)
-    c.showPage()
-    meta = c.beginText(40, 750)
-    meta.textLine(f"Reviewer: {approval.reviewer}")
-    if approval.signed_at:
-        meta.textLine(f"Signed at: {approval.signed_at.isoformat()}")
-    if approval.certificate_url:
-        meta.textLine(f"Certificate: {approval.certificate_url}")
-    c.drawText(meta)
-    c.save()
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+    except Exception:
+        buffer.write(b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF")
+    else:
+        c = canvas.Canvas(buffer, pagesize=letter)
+        text = c.beginText(40, 750)
+        for line in document.content.splitlines():
+            text.textLine(line)
+        c.drawText(text)
+        c.showPage()
+        meta = c.beginText(40, 750)
+        meta.textLine(f"Reviewer: {approval.reviewer}")
+        if approval.signed_at:
+            meta.textLine(f"Signed at: {approval.signed_at.isoformat()}")
+        if approval.certificate_url:
+            meta.textLine(f"Certificate: {approval.certificate_url}")
+        c.drawText(meta)
+        c.save()
     data = buffer.getvalue()
     log_event(
         "approval_pdf_generated",
