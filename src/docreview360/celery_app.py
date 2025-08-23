@@ -32,7 +32,8 @@ class TracedTask(Task):
         return super().apply_async(*args, **kwargs)
 
     def __call__(self, *args: Any, **kwargs: Any):
-        trace_id = getattr(getattr(self, "request", None), "headers", {}).get("trace_id")
+        headers = getattr(getattr(self, "request", None), "headers", None) or {}
+        trace_id = headers.get("trace_id")
         if trace_id:
             TRACE_ID.set(trace_id)
         log_event("task_started", task=self.name)
