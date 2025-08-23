@@ -8,7 +8,7 @@ def test_alert_triggered_on_pattern() -> None:
     def cb(entry: LogEntry) -> None:
         triggered.append(entry.action)
 
-    register_log_alert("error", cb)
     clear_logs()
+    register_log_alert("error", cb)
     log_event("user_error")
     assert triggered == ["user_error"]
