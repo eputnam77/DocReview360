@@ -543,8 +543,13 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
 
     project = ProjectModel(**body.model_dump())
     add_project(project)
-    if body.workflow:
-        # Initialize workflow using the provided phase as the starting phase
+    if body.workflow or body.phase:
+        # Initialize workflow using the provided phase as the starting phase.
+        # The previous implementation only created workflows when a workflow ID
+        # was supplied, which meant providing just a starting ``phase`` left the
+        # project without workflow state and tests expecting phase propagation
+        # failed.  Accept either ``workflow`` or ``phase`` to trigger workflow
+        # creation so configuration-driven phase data is preserved.
         start_phase = body.phase or "start"
         wf = create_workflow(project.id, [start_phase])
         project.workflow = wf.id
