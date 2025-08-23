@@ -25,7 +25,9 @@ def test_integrity_mismatch_triggers_log(monkeypatch) -> None:
             def download_file(self, item_id: str) -> bytes:
                 return b"tampered"
 
-        monkeypatch.setattr("docreview360.integrity._client_from_env", lambda: Dummy())
+        # ``client_from_env`` replaced the older ``_client_from_env`` helper;
+        # patch the new name so the integrity check uses our dummy client.
+        monkeypatch.setattr("docreview360.integrity.client_from_env", lambda: Dummy())
 
         clear_logs()
         mismatches = verify_integrity()

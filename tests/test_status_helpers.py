@@ -14,6 +14,10 @@ def test_status_counts() -> None:
     add_project(ProjectModel(id="s1", name="Status"))
     import_document("d.txt", b"hi", project="s1")
     create_workflow("s1", ["a"])
+    # ``import_document`` and ``create_workflow`` emit their own log entries in
+    # the updated implementation. Clear any side-effects so the test focuses on
+    # the explicit ``log_event`` below.
+    clear_logs()
     log_event("ev")
 
     assert status.public_status() == {"projects": 1, "documents": 1}
