@@ -12,7 +12,7 @@ def test_task145_completed(monkeypatch: pytest.MonkeyPatch) -> None:
         called["cmd"] = args
 
     monkeypatch.setattr(subprocess, "check_call", fake_call)
-    task145("df_plugin")
+    task145("markdown")
     assert called["cmd"][3] == "install"
 
 
