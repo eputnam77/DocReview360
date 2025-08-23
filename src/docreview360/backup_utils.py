@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import gzip
 import json
 from pathlib import Path
@@ -9,6 +10,23 @@ from typing import Any, Dict
 
 from .documents import DocumentModel, documents
 from .logs import LogEntry, logs
+
+
+def _dump_document(doc: DocumentModel) -> Dict[str, Any]:
+    """Return a JSON-serialisable representation of ``doc``.
+
+    ``DocumentModel`` includes ``bytes`` in ``yjs_updates`` which are not
+    JSON serialisable.  We encode those values using base64 so backups can be
+    written without raising ``UnicodeDecodeError``.
+    """
+
+    data = doc.model_dump(mode="json", exclude={"yjs_updates"})
+    yjs = getattr(doc, "yjs_updates", None)
+    if yjs is not None:
+        data["yjs_updates"] = [
+            base64.b64encode(u).decode("ascii") for u in yjs
+        ]
+    return data
 
 
 def create_backup(path: str | Path) -> Path:
@@ -20,7 +38,7 @@ def create_backup(path: str | Path) -> Path:
 
     with document_lock:
         data: Dict[str, Any] = {
-            "documents": [doc.model_dump(mode="json") for doc in documents.values()],
+            "documents": [_dump_document(doc) for doc in documents.values()],
             "logs": [entry.model_dump(mode="json") for entry in logs],
         }
 
@@ -44,6 +62,10 @@ def restore_backup(path: str | Path) -> None:
     with document_lock:
         documents.clear()
         for d in data.get("documents", []):
+            if "yjs_updates" in d and d["yjs_updates"] is not None:
+                d["yjs_updates"] = [
+                    base64.b64decode(u) for u in d["yjs_updates"]
+                ]
             documents[d["id"]] = DocumentModel(**d)
         logs.clear()
         for entry in data.get("logs", []):
