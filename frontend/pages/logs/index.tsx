@@ -95,6 +95,22 @@ export default function LiveLogsPage() {
       .catch(() => setLogs([]));
   }, [allowed, username, filters, page]);
 
+  // Stream new log entries over a WebSocket for real-time updates
+  useEffect(() => {
+    if (!allowed) return;
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/logs`);
+    socket.onmessage = (event) => {
+      try {
+        const entry = JSON.parse(event.data) as LogEntry;
+        setLogs((prev) => [entry, ...prev]);
+      } catch {
+        // ignore malformed messages
+      }
+    };
+    return () => socket.close();
+  }, [allowed]);
+
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && hasMore) {
