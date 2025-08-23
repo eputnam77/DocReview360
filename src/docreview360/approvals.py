@@ -13,7 +13,6 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .api.webhooks import emit_verification_completed
 from .audit import AuditLogEntry, get_audit_log, log_audit_event
 from .celery_app import app
 from .documents import get_document, link_approval, unlink_approval
@@ -731,6 +730,8 @@ def verify_document_signature(
     doc_id: str, provider: str | list[str] | None = None
 ) -> dict[str, object]:
     """Return a summary result for signature verification."""
+    from .api.webhooks import emit_verification_completed
+
     with VERIFICATION_DURATION.labels("api").time():
         details = list(verify_document_signature_stream(doc_id, provider))
         status = (

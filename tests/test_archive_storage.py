@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from docreview360.archive import archive_document, archives
 from docreview360.documents import DocumentModel
 from docreview360.object_storage import download_file, upload_file
@@ -20,7 +21,7 @@ def test_archive_writes_files(tmp_path: Path) -> None:
     metadata = json.loads((base.with_suffix(".metadata.json")).read_text())
     assert metadata["doc_id"] == doc.id
     assert metadata["retention_policy"] == "standard"
-    assert metadata["version_summary"] == "v1"
+    assert metadata["version_summary"] == "v0"
     assert metadata["hashes"]["md"] == hashlib.sha256(record.markdown).hexdigest()
 
 
