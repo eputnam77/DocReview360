@@ -150,10 +150,12 @@ def create_approval(
         provider_metadata=approval.provider_metadata,
     )
     if reminder_at:
-        app.send_task("docreview360.approval_reminder", (approval_id,), eta=reminder_at)
+        app.tasks["docreview360.approval_reminder"].apply_async(
+            (approval_id,), eta=reminder_at
+        )
     if escalate_to and escalation_at:
-        app.send_task(
-            "docreview360.approval_escalation", (approval_id, escalate_to), eta=escalation_at
+        app.tasks["docreview360.approval_escalation"].apply_async(
+            (approval_id, escalate_to), eta=escalation_at
         )
     return approval
 
