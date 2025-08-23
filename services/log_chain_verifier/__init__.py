@@ -56,7 +56,10 @@ def verify_log_chain(
     return ok
 
 
-verify_log_chain = app.task(name="docreview360.verify_log_chain")(verify_log_chain)
+# Expose a Celery task separately so calling ``verify_log_chain`` directly does
+# not trigger task lifecycle logging, which would otherwise interfere with the
+# hash-chain verification performed inside the function.
+verify_log_chain_task = app.task(name="docreview360.verify_log_chain")(verify_log_chain)
 
 
 def schedule_log_chain_verification() -> None:
