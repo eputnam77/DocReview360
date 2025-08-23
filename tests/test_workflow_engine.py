@@ -13,9 +13,10 @@ def test_sequential_progression() -> None:
     approvals.clear()
     workflows.clear()
     wf = create_workflow("p", ["phase"], template="pre-coordination", mode="sequential")
-    items = [a for a in approvals.values() if a.workflow == wf.id]
-    step1 = min(items, key=lambda a: a.order)
-    step2 = max(items, key=lambda a: a.order)
+    items = sorted(
+        [a for a in approvals.values() if a.workflow == wf.id], key=lambda a: a.order
+    )
+    step1, step2 = items[:2]
     assert [a.id for a in engine.active_approvals(wf.id)] == [step1.id]
     with pytest.raises(ValueError):
         asyncio.run(update_approval_state(step2.id, "approved"))
