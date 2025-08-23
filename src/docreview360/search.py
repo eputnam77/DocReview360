@@ -36,6 +36,11 @@ class ProjectModel(BaseModel):
     updated: datetime | None = None  # Add updated field for frontend compatibility
 
     @computed_field
+    def created_at(self) -> datetime:
+        """Expose ``created`` under a ``created_at`` alias for API consistency."""
+        return self.created
+
+    @computed_field
     def phase(self) -> str | None:
         """Return the current workflow phase, if any.
 
