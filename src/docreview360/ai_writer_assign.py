@@ -67,7 +67,9 @@ def assign_technical_writer(
     counts: dict[str, int] = {w: 0 for w in cand_list}
     priority_adj: dict[str, int] = {w: 0 for w in cand_list}
     with project_lock:
-        for proj in projects.values():
+        for pid, proj in projects.items():
+            if pid == "demo-project":
+                continue
             if proj.user in counts:
                 counts[proj.user] += 1
                 priority_adj[proj.user] += max(proj.priority, 0)
