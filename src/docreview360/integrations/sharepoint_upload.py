@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
-from ..certs import fetch_certificate
+from ..certs import fetch_certificate as _fetch_certificate
 
 SIGNED_FOLDER = os.getenv("SHAREPOINT_SIGNED_FOLDER", "signed")
 CERT_FOLDER = os.getenv("SHAREPOINT_CERT_FOLDER", "certificates")
@@ -21,6 +21,7 @@ async def upload_final_pdf(
     signed_at: datetime,
     *,
     certificate_url: str | None = None,
+    fetcher: Callable[[str], bytes] = _fetch_certificate,
 ) -> None:
     """Upload the finalized ``document`` and related metadata to SharePoint.
 
@@ -45,7 +46,7 @@ async def upload_final_pdf(
     cert_bytes = b""
     if certificate_url:
         try:
-            cert_bytes = fetch_certificate(certificate_url)
+            cert_bytes = fetcher(certificate_url)
         except Exception:
             cert_bytes = b""
     if cert_bytes:
