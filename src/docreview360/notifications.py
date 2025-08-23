@@ -16,12 +16,8 @@ class Template:
 # registry of named templates
 TEMPLATES: Dict[str, Template] = {
     "default": Template("{subject}", "{body}"),
-    "due_reminder": Template(
-        "Reminder: {item} due {due_date}", "{item} is due on {due_date}."
-    ),
-    "completion_notice": Template(
-        "{item} completed", "{item} has been completed."
-    ),
+    "due_reminder": Template("Reminder: {item} due {due_date}", "{item} is due on {due_date}."),
+    "completion_notice": Template("{item} completed", "{item} has been completed."),
 }
 # store sent emails for inspection in tests
 sent_emails: List[dict[str, str]] = []
@@ -53,6 +49,10 @@ def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
 
 def send_due_date_reminder(recipient: str, item: str, due_date: str) -> dict[str, str]:
     """Send a reminder that ``item`` is due on ``due_date``."""
+    if "due_reminder" not in TEMPLATES:
+        TEMPLATES["due_reminder"] = Template(
+            "Reminder: {item} due {due_date}", "{item} is due on {due_date}."
+        )
     return send_email("due_reminder", recipient, item=item, due_date=due_date)
 
 

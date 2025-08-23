@@ -21,13 +21,20 @@ def test_documenso_remote(monkeypatch: pytest.MonkeyPatch) -> None:
         url: str,
         json: dict[str, object] | None = None,
         timeout: int | None = None,
+        headers: dict[str, str] | None = None,
+        **_kwargs: object,
     ) -> httpx.Response:
         req = httpx.Request("POST", url)
         if url.endswith("complete"):
             return httpx.Response(200, request=req)
         return httpx.Response(200, json={"id": "sig", "url": "http://remote/sig"}, request=req)
 
-    def fake_get(url: str, timeout: int | None = None) -> httpx.Response:
+    def fake_get(
+        url: str,
+        timeout: int | None = None,
+        headers: dict[str, str] | None = None,
+        **_kwargs: object,
+    ) -> httpx.Response:
         req = httpx.Request("GET", url)
         return httpx.Response(200, json={"status": "signed"}, request=req)
 
