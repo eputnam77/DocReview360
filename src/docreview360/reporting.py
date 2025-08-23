@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any
 from html import escape
+from typing import Any
 
 from pydantic import BaseModel
 
