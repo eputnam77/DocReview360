@@ -45,9 +45,10 @@ def saml_login() -> Response:
 
 
 def test_keycloak_saml_login_flow() -> None:
-    client = TestClient(app_saml)
+    client = TestClient(app_saml, follow_redirects=False)
     resp = client.get("/saml/login")
     assert resp.status_code == 302
+    assert resp.headers["location"] == "https://keycloak/saml"
     token = keycloak_mfa_login("admin", "secret", "123456")
     jwt_token = create_access_token({"sub": "admin"})
     decoded = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -90,4 +91,4 @@ def submit(x_csrf_token: str | None = Header(None)) -> dict[str, bool]:
 def test_missing_csrf_returns_403() -> None:
     client = TestClient(app_csrf)
     assert client.post("/submit").status_code == 403
-    assert client.post("/submit", headers={"X-CSRFToken": "token"}).status_code == 200
+    assert client.post("/submit", headers={"X-CSRF-Token": "token"}).status_code == 200
