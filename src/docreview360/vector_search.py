@@ -33,9 +33,20 @@ def index_document(doc_id: str, content: str) -> None:
         raise ValueError("doc_id and content are required")
     global _total_docs
     tf = _embed(content)
+
+    # If the document already exists, remove its previous contribution to
+    # document frequencies so re-indexing keeps statistics accurate.
+    if doc_id in _vectors:
+        old_tf, _ = _vectors[doc_id]
+        for term in old_tf:
+            _doc_freq[term] -= 1
+            if _doc_freq[term] <= 0:
+                del _doc_freq[term]
+    else:
+        _total_docs += 1
+
     for term in tf:
         _doc_freq[term] += 1
-    _total_docs += 1
     _vectors[doc_id] = (tf, len(content.split()))
 
     if OPENSEARCH_URL:
