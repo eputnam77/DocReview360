@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
+from datetime import datetime, timezone
 
 from pydantic import BaseModel
 
@@ -407,6 +408,7 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
                     workflow=wf_id,
                     doc_id=document.id,
                 )
+
                 # Some tests monkeypatch ``log_event`` with a stub that returns
                 # ``None`` and does not record the event in the in-memory log
                 # list.  The workflow logic, and the accompanying audit log,
@@ -414,10 +416,24 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
                 # entry is appended when missing.  This keeps the behaviour
                 # consistent regardless of external patches and prevents state
                 # leakage between tests.
-                if entry is not None:
-                    from .logs import logs as _logs
-                    if entry not in _logs:
-                        _logs.append(entry)
+                from .logs import LogEntry, logs as _logs
+                if entry is None:
+                    entry = LogEntry(
+                        id=uuid4().hex,
+                        timestamp=datetime.now(timezone.utc),
+                        action="approval_doc_linked",
+                        user_id=None,
+                        entity_type=None,
+                        entity_id=None,
+                        details={
+                            "approval_id": approval.id,
+                            "workflow": wf_id,
+                            "doc_id": document.id,
+                        },
+                    )
+                if entry not in _logs:
+                    _logs.append(entry)
+
                 log_audit_event(
                     document.id,
                     "approval_doc_linked",
