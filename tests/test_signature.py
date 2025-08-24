@@ -1,3 +1,8 @@
+import hashlib
+import hmac
+import json
+import os
+
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
@@ -18,10 +23,19 @@ def test_signature_flow() -> None:
     assert "url" in resp.json()
     status = client.get(f"/sign/{sig_id}").json()["status"]
     assert status == "pending"
+    secret = "testsecret"
+    os.environ["DOCUMENSO_WEBHOOK"] = secret
+    payload = {"id": sig_id, "status": "signed"}
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    signature = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     client.post(
         "/hooks",
-        headers={"X-Provider": "documenso"},
-        json={"id": sig_id, "status": "signed"},
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Provider": "documenso",
+            "X-Signature": signature,
+        },
     )
     status2 = client.get(f"/sign/{sig_id}").json()["status"]
     assert status2 == "signed"
