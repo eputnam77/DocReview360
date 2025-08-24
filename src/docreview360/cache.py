@@ -45,6 +45,8 @@ def _get_client() -> "Redis | None":
 
 
 def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
+    if ttl is not None and ttl < 0:
+        raise ValueError("ttl must be non-negative")
     client = _get_client()
     if client:
         client.set(key, value, ex=ttl)

@@ -21,4 +21,6 @@ def normalize_port(port: int | str | None) -> int:
         value = int(port) if port is not None else 0
     except (TypeError, ValueError):
         return 0
-    return value if value >= 0 else 0
+    if not 0 <= value <= 65535:
+        return 0
+    return value
