@@ -11,4 +11,6 @@ def normalize_description(text: str) -> str:
     the resulting text is empty.
     """
     cleaned = " ".join(text.split()).strip()
-    return cleaned or "N/A"
+    if not cleaned:
+        raise ValueError("description cannot be empty")
+    return cleaned
