@@ -415,6 +415,13 @@ def clear_logs() -> None:
 
     logs.clear()
     alerts.clear()
+    # Tests may register live listeners that mutate the ``logs`` list (for
+    # example by popping entries when they are received).  If such listeners are
+    # left registered they can interfere with subsequent tests, leading to the
+    # surprising empty log list observed in ``test_approval_document_link`` when
+    # the listener from a previous test consumed the event.  Clearing the
+    # listeners here ensures each test starts from a clean slate.
+    _listeners.clear()
 
 
 def schedule_log_purge() -> None:
