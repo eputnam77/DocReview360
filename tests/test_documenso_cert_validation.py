@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -8,7 +9,7 @@ from docreview360 import certs
 from docreview360.integrations.signature import documenso
 
 
-def _make_cert_and_sig(content: bytes):
+def _make_cert_and_sig(content: bytes) -> tuple[x509.Certificate, bytes]:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     name = x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME, "Test")])
     now = datetime.utcnow()
@@ -26,7 +27,7 @@ def _make_cert_and_sig(content: bytes):
     return cert, sig
 
 
-def test_validate_signature_uses_certificate_status(monkeypatch):
+def test_validate_signature_uses_certificate_status(monkeypatch: pytest.MonkeyPatch) -> None:
     content = b"doc"
     cert, sig = _make_cert_and_sig(content)
     url = "https://test-cert-documenso"
@@ -34,7 +35,7 @@ def test_validate_signature_uses_certificate_status(monkeypatch):
 
     calls = {"n": 0}
 
-    def verifier(c: x509.Certificate, fetcher=None) -> bool:
+    def verifier(c: x509.Certificate, fetcher: object | None = None) -> bool:
         calls["n"] += 1
         return True
 
@@ -43,10 +44,9 @@ def test_validate_signature_uses_certificate_status(monkeypatch):
     assert documenso.validate_signature(content, url, {}) is True
     assert calls["n"] == 1
 
-    def verifier_fail(c: x509.Certificate, fetcher=None) -> bool:
+    def verifier_fail(c: x509.Certificate, fetcher: object | None = None) -> bool:
         return False
 
     monkeypatch.setattr(certs, "verify_certificate_status", verifier_fail)
 
     assert documenso.validate_signature(content, url, {}) is False
-

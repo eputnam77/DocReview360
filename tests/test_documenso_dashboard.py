@@ -1,6 +1,16 @@
+import hashlib
+import hmac
+import json
+import os
+from datetime import datetime, timedelta
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
+from docreview360.integrations.signature import documenso
 
 
 def test_dashboard_updates_after_signature() -> None:
@@ -22,10 +32,37 @@ def test_dashboard_updates_after_signature() -> None:
     pending = entry["pending_approvals"]
     assert pending >= 1
 
+    secret = "testsecret"
+    os.environ["DOCUMENSO_WEBHOOK"] = secret
+    cert_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME, "Test")])
+    now = datetime.utcnow()
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(cert_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(days=1))
+        .not_valid_after(now + timedelta(days=1))
+        .sign(cert_key, hashes.SHA256())
+    )
+    content = b"hi"
+    cert_sig = cert_key.sign(content, padding.PKCS1v15(), hashes.SHA256())
+    cert_url = "https://dashboard-cert"
+    documenso.register_test_certificate(cert_url, cert, cert_sig)
+
+    payload = {"id": sig, "status": "signed", "certificate_url": cert_url}
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    signature = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     client.post(
         "/hooks",
-        headers={"X-Provider": "documenso"},
-        json={"id": sig, "status": "signed"},
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Provider": "documenso",
+            "X-Signature": signature,
+        },
     )
     entry2 = next(e for e in client.get("/reports/dashboard").json() if e["id"] == "d1")
     assert entry2["pending_approvals"] == pending - 1
