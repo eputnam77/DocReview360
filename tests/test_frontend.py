@@ -17,4 +17,6 @@ def test_frontend_skeleton() -> None:
     assert "zustand" in deps
 
     index_src = (Path(__file__).parent.parent / "frontend" / "pages" / "index.tsx").read_text()
-    assert "useCounterStore" in index_src
+    # The home page should ping the API and redirect to login
+    assert "/ping" in index_src
+    assert "router.push(\"/login\")" in index_src
