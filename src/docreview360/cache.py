@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Dict, cast
+import time
+from typing import TYPE_CHECKING, Any, Dict, Tuple, cast
 
 if TYPE_CHECKING:
     from redis import Redis
@@ -13,7 +14,10 @@ try:
 except Exception:
     _redis = None
 
-_cache: Dict[str, Any] = {}
+# Local in-memory fallback cache. When Redis is unavailable we store a
+# tuple of ``(value, expires_at)`` where ``expires_at`` is a monotonic
+# timestamp or ``None`` for items without a TTL.
+_cache: Dict[str, Tuple[Any, float | None]] = {}
 _UNREACHABLE = object()
 _client: "Redis | None | object" = None
 
@@ -45,14 +49,22 @@ def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
     if client:
         client.set(key, value, ex=ttl)
     else:
-        _cache[key] = value
+        expires = time.monotonic() + ttl if ttl is not None else None
+        _cache[key] = (value, expires)
 
 
 def cache_get(key: str) -> Any:
     client = _get_client()
     if client:
         return client.get(key)
-    return _cache.get(key)
+    item = _cache.get(key)
+    if not item:
+        return None
+    value, expires = item
+    if expires is not None and expires <= time.monotonic():
+        _cache.pop(key, None)
+        return None
+    return value
 
 
 def clear_cache() -> None:
