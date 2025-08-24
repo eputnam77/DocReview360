@@ -13,6 +13,7 @@ import os
 from base64 import b64encode
 from datetime import datetime, timezone
 from typing import Any, Dict, Tuple
+from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
 
 import httpx
@@ -39,6 +40,14 @@ _sig_workflows: Dict[str, str] = {}
 _sig_certificates: Dict[str, str] = {}
 # certificate url -> certificate data
 _certificates: Dict[str, Dict[str, Any]] = {}
+
+
+def _normalise_cert_url(url: str) -> str:
+    """Return ``url`` with a trailing slash to ensure consistent lookups."""
+
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/") + "/"
+    return urlunparse(parsed._replace(path=path))
 
 
 class DocumensoWebhook(BaseModel):
@@ -125,9 +134,10 @@ def health_check() -> bool:
 
     if not DOCUMENSO_URL:
         return True
+    url = DOCUMENSO_URL
     try:
-        resp = http_get(f"{DOCUMENSO_URL.rstrip('/')}/health", timeout=5, headers=_auth_headers())
-        return resp.status_code == 200
+        resp = http_get(f"{url.rstrip('/')}/health", timeout=5, headers=_auth_headers())
+        return int(resp.status_code) == 200
     except Exception:  # pragma: no cover - network failure
         return False
 
@@ -187,9 +197,12 @@ def _remote_validate(
     document_bytes: bytes, certificate_url: str | None, metadata: Dict[str, Any]
 ) -> bool:
     """Validate signature against a remote Documenso service."""
+    url = DOCUMENSO_URL
+    if not url:
+        raise RuntimeError("DOCUMENSO_URL not configured")
     try:
         resp = http_post(
-            f"{DOCUMENSO_URL.rstrip('/')}/sign/validate",
+            f"{url.rstrip('/')}/sign/validate",
             json={
                 "document": b64encode(document_bytes).decode(),
                 "certificate_url": certificate_url,
@@ -207,6 +220,8 @@ def _remote_validate(
 def _local_validate(document_bytes: bytes, certificate_url: str | None) -> bool:
     """Validate signature using locally stored certificate data."""
 
+    if certificate_url:
+        certificate_url = _normalise_cert_url(certificate_url)
     if not (certificate_url and (cert_info := _certificates.get(certificate_url))):
         return False
 
@@ -254,16 +269,7 @@ def register_test_certificate(
 ) -> None:
     """Register a certificate for local validation during tests."""
 
-    # Normalise the URL so lookups remain consistent with Pydantic's
-    # ``HttpUrl`` serialisation which always includes a trailing slash when no
-    # path is supplied.  Tests often register URLs without the trailing slash
-    # which previously caused mismatches during validation.
-    from urllib.parse import urlparse, urlunparse
-
-    parsed = urlparse(url)
-    path = parsed.path.rstrip("/") + "/"
-    normalised = urlunparse(parsed._replace(path=path))
-
+    normalised = _normalise_cert_url(url)
     info = {
         "certificate": certificate,
         "signature": signature,
@@ -304,14 +310,7 @@ def process_webhook(data: Dict[str, str]) -> None:
     _signatures[sig_id] = status
     cert_url = event.certificate_url
     if cert_url:
-        # Normalise stored certificate URLs to mirror the behaviour of
-        # :func:`register_test_certificate` and Pydantic's ``HttpUrl``.  This
-        # avoids trailing-slash mismatches during verification.
-        from urllib.parse import urlparse, urlunparse
-
-        parsed = urlparse(str(cert_url))
-        path = parsed.path.rstrip("/") + "/"
-        _sig_certificates[sig_id] = urlunparse(parsed._replace(path=path))
+        _sig_certificates[sig_id] = _normalise_cert_url(str(cert_url))
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
         if wf_id:
