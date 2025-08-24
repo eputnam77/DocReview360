@@ -1953,7 +1953,13 @@ async def list_logs(
         offset=offset,
     )
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
-        log_event("read", entity_id="logs", count=len(entries))
+        # Accessing the operational logs should be treated the same as auditing
+        # the audit log itself.  Previously this endpoint logged the action as
+        # ``read`` which caused an extra entry compared to the dedicated audit
+        # endpoint, making their outputs diverge in tests.  Using the
+        # ``audit_log_access`` action keeps the semantics aligned and prevents
+        # spurious differences when clients fetch logs via either route.
+        log_event("audit_log_access", entity_id="logs", count=len(entries))
     return entries
 
 
@@ -1992,7 +1998,7 @@ async def list_audit(
         offset=offset,
     )
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
-        log_event("read", entity_id="logs", count=len(entries))
+        log_event("audit_log_access", entity_id="logs", count=len(entries))
     return entries
 
 
