@@ -97,6 +97,8 @@ def __getattr__(name: str) -> Any:
 def placeholder(multiplier: int = 1) -> int:
     """Return ``42`` multiplied by ``multiplier``."""
 
+    if not isinstance(multiplier, int):
+        raise TypeError("multiplier must be an integer")
     if multiplier < 0:
         raise ValueError("multiplier must be non-negative")
 

@@ -1,16 +1,31 @@
+import importlib
+import sys
+
 import pytest
 
-from docreview360 import placeholder
+import docreview360 as dr
 
 
-def test_placeholder_default() -> None:
-    assert placeholder() == 42
-
-
-def test_placeholder_multiplier() -> None:
-    assert placeholder(2) == 84
+def test_placeholder_basic() -> None:
+    assert dr.placeholder(2) == 84
 
 
 def test_placeholder_negative() -> None:
     with pytest.raises(ValueError):
-        placeholder(-1)
+        dr.placeholder(-1)
+
+
+def test_placeholder_type_error() -> None:
+    with pytest.raises(TypeError):
+        dr.placeholder("3")
+
+
+def test_lazy_import_watchlist() -> None:
+    import docreview360
+
+    sys.modules.pop("docreview360.watchlist", None)
+    docreview360.__dict__.pop("watchlist", None)
+    importlib.reload(docreview360)
+    assert "watchlist" not in docreview360.__dict__
+    module = docreview360.watchlist
+    assert module is docreview360.watchlist
