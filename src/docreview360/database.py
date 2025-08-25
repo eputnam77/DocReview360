@@ -111,8 +111,14 @@ class Database:
         """Apply model and SQL migrations."""
         from .models import Base
 
+        # ``Base.metadata.create_all`` may implicitly commit transactions which
+        # interferes with any outer transactional context.  Applying the model
+        # creations and raw SQL migrations in separate ``begin`` blocks avoids
+        # "closed transaction" errors when subsequent statements are executed.
         with self._engine.begin() as conn:
             Base.metadata.create_all(conn)
+
+        with self._engine.begin() as conn:
             self._apply_sql_migrations(migrations_path, conn)
 
     def _apply_sql_migrations(self, path: str | Path | None, conn: Any | None = None) -> None:
@@ -147,16 +153,12 @@ class Database:
                 text("INSERT INTO schema_versions (filename) VALUES (:name)"),
                 {"name": name},
             )
-            # Explicitly commit after each migration to ensure visibility even
-            # when callers reuse the engine with new connections. While the
-            # surrounding ``begin`` context should commit automatically, some
-            # test environments observed missing tables when a new connection
-            # inspected the schema immediately after migration. Committing
-            # here avoids that race condition.
-            try:
-                conn.commit()
-            except Exception:
-                pass
+        # When a connection is provided by the caller we rely on its enclosing
+        # transaction to commit.  ``migrate`` now invokes this function within a
+        # dedicated ``begin`` block ensuring all executed statements are
+        # committed together.  Explicit commits here previously interacted poorly
+        # with context-managed transactions leading to ``InvalidRequestError``
+        # during migrations.
 
     def drop_all(self) -> None:
         """Drop all database tables. Useful for tests."""
