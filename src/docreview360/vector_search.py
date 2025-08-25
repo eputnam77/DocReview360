@@ -94,6 +94,8 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
     """Return ``top_k`` document ids ranked by cosine similarity."""
     if not query.strip():
         raise ValueError("query must not be empty")
+    if top_k <= 0:
+        raise ValueError("top_k must be positive")
 
     if OPENSEARCH_URL:
         try:
@@ -104,10 +106,7 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
             )
             resp.raise_for_status()
             hits = resp.json().get("hits", {}).get("hits", [])
-            return [
-                (hit["_id"], float(hit.get("_score", 0)))
-                for hit in hits
-            ]
+            return [(hit["_id"], float(hit.get("_score", 0))) for hit in hits]
         except httpx.HTTPError as exc:
             raise RuntimeError("OpenSearch request failed") from exc
 
