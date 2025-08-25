@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
+import re
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -29,7 +30,17 @@ def default_url(database: str) -> str:
 
 
 def _parse_sql_statements(file: Path) -> list[str]:
-    lines = file.read_text().splitlines()
+    """Return individual SQL statements from ``file``.
+
+    The parser is aware of ``CREATE TRIGGER`` blocks whose terminating
+    ``END;`` may appear on a separate line. To keep the implementation
+    lightweight we normalise ``END`` blocks followed by optional
+    whitespace and a semicolon into a single ``END;`` token using a
+    regular expression before processing line-by-line.
+    """
+
+    content = re.sub(r"END\s*;", "END;", file.read_text(), flags=re.IGNORECASE)
+    lines = content.splitlines()
     statements: list[str] = []
     buffer: list[str] = []
     in_trigger = False
@@ -45,7 +56,7 @@ def _parse_sql_statements(file: Path) -> list[str]:
         if upper.startswith("CREATE TRIGGER"):
             in_trigger = True
         if upper.startswith("END;") and in_trigger:
-            statements.append("\n".join(buffer))
+            statements.append("\n".join(buffer).rstrip(";"))
             buffer = []
             in_trigger = False
             continue
@@ -53,7 +64,7 @@ def _parse_sql_statements(file: Path) -> list[str]:
             statements.append("\n".join(buffer).rstrip(";"))
             buffer = []
     if buffer:
-        statements.append("\n".join(buffer))
+        statements.append("\n".join(buffer).rstrip(";"))
     return statements
 
 
@@ -72,12 +83,11 @@ class Database:
         self.url = url
         if url.startswith("sqlite"):
             if url == "sqlite:///:memory:":
-                # Use a shared-cache in-memory database so that connections used
-                # in different parts of the code see the same data. This avoids
-                # the database being cleared when the first connection closes,
-                # which previously caused flaky tests.
-                url = "sqlite+pysqlite:///:memory:?cache=shared"
-                connect_args = {"check_same_thread": False, "uri": True}
+                # ``StaticPool`` keeps the in-memory database alive for the
+                # lifetime of this engine while ensuring each ``Database``
+                # instance gets its own isolated database.
+                url = "sqlite+pysqlite:///:memory:"
+                connect_args = {"check_same_thread": False}
             else:
                 connect_args = {"check_same_thread": False}
             self._engine = create_engine(url, connect_args=connect_args, poolclass=StaticPool)
@@ -139,7 +149,10 @@ class Database:
     def drop_all(self) -> None:
         """Drop all database tables. Useful for tests."""
         from .models import Base
+        from sqlalchemy import inspect
 
         Base.metadata.drop_all(self._engine)
         with self._engine.begin() as conn:
-            conn.execute(text("DROP TABLE IF EXISTS schema_versions"))
+            inspector = inspect(conn)
+            for table in inspector.get_table_names():
+                conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
