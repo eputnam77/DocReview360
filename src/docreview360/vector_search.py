@@ -71,10 +71,22 @@ def index_document(doc_id: str, content: str) -> None:
 
 
 def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
-    """Return the cosine similarity between two vectors."""
-    dot = sum(x * y for x, y in zip(a, b))
-    na = sqrt(sum(x * x for x in a))
-    nb = sqrt(sum(y * y for y in b))
+    """Return the cosine similarity between two vectors.
+
+    The previous implementation silently truncated the longer iterable when
+    the vectors had different lengths because :func:`zip` stops at the
+    shortest input. This produced incorrect scores and hid programming
+    mistakes.  We now eagerly realise both iterables and validate that their
+    lengths match, raising ``ValueError`` otherwise.
+    """
+
+    a_list = list(a)
+    b_list = list(b)
+    if len(a_list) != len(b_list):
+        raise ValueError("vectors must be of equal length")
+    dot = sum(x * y for x, y in zip(a_list, b_list))
+    na = sqrt(sum(x * x for x in a_list))
+    nb = sqrt(sum(y * y for y in b_list))
     if na == 0 or nb == 0:
         return 0.0
     return dot / (na * nb)
