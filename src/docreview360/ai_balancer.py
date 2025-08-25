@@ -1,20 +1,6 @@
-"""Simple AI workload balancer."""
+"""Simple in-memory worker load balancer used by the AI writer assigner."""
 
 from __future__ import annotations
-
-from typing import Dict
-import json
-"""Simple in-memory worker load balancer used by the AI writer assigner.
-
-The original implementation relied on :class:`Dict` and :mod:`json` but forgot
-to import them, meaning any call to :func:`save_state` or :func:`load_state`
-would raise a ``NameError`` at runtime.  These functions are exercised by the
-tests added in this kata and are intended to persist the registry to disk.  The
-missing imports rendered them unusable and represented a real defect.
-
-We now import the required modules explicitly and document the purpose of the
-registry.
-"""
 
 from pathlib import Path
 from typing import Dict
@@ -121,6 +107,8 @@ def load_state(path: str | Path) -> None:
         return
     with file.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
+    if not isinstance(data, dict):
+        raise ValueError("invalid registry format")
     _workers.clear()
     for key, value in data.items():
         _workers[str(key)] = int(value)

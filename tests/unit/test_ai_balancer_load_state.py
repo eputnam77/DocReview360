@@ -1,0 +1,23 @@
+import json
+from pathlib import Path
+import pytest
+
+from docreview360 import ai_balancer
+
+
+def test_load_state_invalid_format(tmp_path: Path) -> None:
+    file = tmp_path / "state.json"
+    file.write_text("[]")
+    ai_balancer.reset()
+    with pytest.raises(ValueError):
+        ai_balancer.load_state(file)
+
+
+def test_duplicate_registration_and_cleanup() -> None:
+    ai_balancer.reset()
+    ai_balancer.register_worker("w1")
+    with pytest.raises(ValueError):
+        ai_balancer.register_worker("w1")
+    ai_balancer.assign_job()
+    ai_balancer.complete_job("w1")
+    assert ai_balancer.deregister_worker("w1") == 0

@@ -23,6 +23,8 @@ class VaultClient:
 
     def store(self, provider: str, secret: str, *, ttl: timedelta | None = None) -> None:
         """Store ``secret`` for ``provider`` with optional ``ttl``."""
+        if ttl is not None and ttl.total_seconds() <= 0:
+            raise ValueError("ttl must be positive")
         expiry = datetime.utcnow() + (ttl or timedelta(days=90))
         with self._lock:
             self._secrets[provider] = (secret, expiry)
