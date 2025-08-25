@@ -215,11 +215,13 @@ def _response_time_question(lower: str) -> str | None:
     for approval in user_approvals:
         if approval.due_at and approval.signed_at:
             try:
-                signed_at = datetime.fromisoformat(approval.signed_at.replace("Z", "+00:00"))
-                if signed_at <= approval.due_at:
+                signed_at = approval.signed_at
+                if isinstance(signed_at, str):
+                    signed_at = datetime.fromisoformat(signed_at.replace("Z", "+00:00"))
+                if isinstance(signed_at, datetime) and signed_at <= approval.due_at:
                     response_times.append((approval.due_at - signed_at).days)
             except Exception:
-                pass
+                continue
     if not response_times:
         return f"I don't have enough data to determine {user}'s typical response time."
     avg_days = sum(response_times) / len(response_times)

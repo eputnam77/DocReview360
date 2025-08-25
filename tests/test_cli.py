@@ -225,3 +225,8 @@ def test_migrate_roundtrip(tmp_path: Path) -> None:
         tc=test_content,
         docs=[d.content for d in documents.values()],
     )
+
+    # Ensure global state does not leak into subsequent tests
+    documents.clear()
+    logs.clear()
+    document_types.clear()
