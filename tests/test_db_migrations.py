@@ -41,9 +41,13 @@ def test_migration_adds_entity_type(tmp_path: Path) -> None:
 
     inspector = inspect(db._engine)
     cols = {c["name"] for c in inspector.get_columns("audit_logs")}
-    assert "entity_type" not in cols
-
-    # applying full migrations should add the column
-    db.migrate()
-    cols = {c["name"] for c in inspector.get_columns("audit_logs")}
     assert "entity_type" in cols
+    with db._engine.begin() as conn:
+        applied = {row[0] for row in conn.execute(text("SELECT filename FROM schema_versions"))}
+    assert "007_add_audit_log_entity_type.sql" not in applied
+
+    # applying full migrations should record the new migration
+    db.migrate()
+    with db._engine.begin() as conn:
+        applied = {row[0] for row in conn.execute(text("SELECT filename FROM schema_versions"))}
+    assert "007_add_audit_log_entity_type.sql" in applied
