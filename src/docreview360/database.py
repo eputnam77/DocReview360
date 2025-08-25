@@ -12,12 +12,18 @@ from sqlalchemy.pool import StaticPool
 
 
 def default_url(database: str) -> str:
-    """Return a default SQLAlchemy URL for the given backend."""
-    if database == "sqlite":
+    """Return a default SQLAlchemy URL for the given backend.
+
+    The ``database`` argument is treated case-insensitively and accepts common
+    synonyms (e.g. ``"postgresql"``).
+    """
+
+    db = database.lower()
+    if db in {"sqlite", "sqlite3"}:
         return "sqlite:///docreview360.db"
-    if database == "postgres":
+    if db in {"postgres", "postgresql"}:
         return "postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360"
-    if database == "mysql":
+    if db in {"mysql"}:
         return "mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360"
     raise ValueError(f"Unsupported database '{database}'")
 
@@ -29,17 +35,21 @@ def _parse_sql_statements(file: Path) -> list[str]:
     in_trigger = False
     for line in lines:
         stripped = line.strip()
-        if not stripped:
+        if not stripped or stripped.startswith("--"):
             continue
-        buffer.append(line)
-        if stripped.upper().startswith("CREATE TRIGGER"):
+        code = stripped.split("--", 1)[0].strip()
+        if not code:
+            continue
+        buffer.append(code)
+        upper = code.upper()
+        if upper.startswith("CREATE TRIGGER"):
             in_trigger = True
-        if stripped.upper() == "END;" and in_trigger:
+        if upper.startswith("END;") and in_trigger:
             statements.append("\n".join(buffer))
             buffer = []
             in_trigger = False
             continue
-        if not in_trigger and stripped.endswith(";"):
+        if not in_trigger and code.endswith(";"):
             statements.append("\n".join(buffer).rstrip(";"))
             buffer = []
     if buffer:

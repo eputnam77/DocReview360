@@ -9,3 +9,10 @@ def test_default_url_postgres() -> None:
 def test_default_url_mysql() -> None:
     url = default_url("mysql")
     assert url.startswith("mysql+pymysql://")
+
+
+def test_default_url_case_insensitive() -> None:
+    assert default_url("Postgres") == default_url("postgres")
+    assert default_url("MYSQL").startswith("mysql+pymysql://")
+    assert default_url("SQLITE").startswith("sqlite:///")
+    assert default_url("postgresql").startswith("postgresql+psycopg://")
