@@ -112,13 +112,19 @@ class Database:
         from .models import Base
 
         # ``Base.metadata.create_all`` may implicitly commit transactions which
-        # interferes with any outer transactional context.  Applying the model
-        # creations and raw SQL migrations in separate ``begin`` blocks avoids
-        # "closed transaction" errors when subsequent statements are executed.
+        # interferes with any outer transactional context.  However using two
+        # separate ``begin`` blocks for model creation and SQL migrations causes
+        # new in-memory SQLite databases to be created when the connection is
+        # closed after the first block.  When running the full test suite this
+        # resulted in migrations being applied to a fresh database and all
+        # previously created tables being lost, yielding an empty schema.
+        #
+        # Executing both operations within a single transactional ``begin``
+        # block ensures that the same connection (and therefore the same
+        # in-memory database) is used throughout and that all statements are
+        # committed together.
         with self._engine.begin() as conn:
             Base.metadata.create_all(conn)
-
-        with self._engine.begin() as conn:
             self._apply_sql_migrations(migrations_path, conn)
 
     def _apply_sql_migrations(self, path: str | Path | None, conn: Any | None = None) -> None:
