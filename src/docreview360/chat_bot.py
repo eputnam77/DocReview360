@@ -264,6 +264,7 @@ def _repo_content_question(lower: str) -> str | None:
     if not keywords:
         return None
     root = Path(__file__).resolve().parents[2]
+    best_match: Path | None = None
     for path in root.rglob("*"):
         if not path.is_file():
             continue
@@ -274,9 +275,18 @@ def _repo_content_question(lower: str) -> str | None:
         except Exception:
             continue
         if all(k in text for k in keywords):
-            return (
-                f"I found information about {' '.join(keywords)} in " f"{path.relative_to(root)}."
-            )
+            # Prefer README files when multiple documents contain the keywords.
+            if "readme" in path.name.lower():
+                return (
+                    f"I found information about {' '.join(keywords)} in "
+                    f"{path.relative_to(root)}."
+                )
+            if best_match is None:
+                best_match = path
+    if best_match:
+        return (
+            f"I found information about {' '.join(keywords)} in " f"{best_match.relative_to(root)}."
+        )
     return f"I couldn't find information about {' '.join(keywords)} in DocReview360."
 
 
