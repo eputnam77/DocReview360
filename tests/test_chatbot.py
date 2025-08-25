@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import asyncio
 
 import pytest
 
@@ -6,7 +7,6 @@ from docreview360 import chat_bot
 from docreview360.approvals import create_approval, update_approval_state
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.search import ProjectModel, add_project
-import pytest
 from docreview360.workflows import create_workflow
 from docreview360.search import projects
 
@@ -99,6 +99,14 @@ async def test_repo_content_question() -> None:
 
 
 @pytest.mark.asyncio
+async def test_repo_content_question_fallback() -> None:
+    resp = await chat_bot.answer_question(
+        "Where can I find information about pymysql in DocReview360?"
+    )
+    assert "pyproject.toml" in resp
+
+
+@pytest.mark.asyncio
 async def test_writing_style_question() -> None:
     resp = await chat_bot.answer_question("How should I handle passive voice in writing?")
     assert "active voice" in resp.lower()
@@ -108,3 +116,8 @@ async def test_writing_style_question() -> None:
 async def test_unknown_question() -> None:
     resp = await chat_bot.answer_question("What is the meaning of life?")
     assert "I can help answer questions about DocReview360" in resp
+
+
+def test_empty_question() -> None:
+    with pytest.raises(ValueError):
+        asyncio.run(chat_bot.answer_question("   "))
