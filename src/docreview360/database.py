@@ -87,14 +87,28 @@ class Database:
             if url == "sqlite:///:memory:":
                 # ``StaticPool`` keeps the in-memory database alive for the
                 # lifetime of this engine while ensuring each ``Database``
-                # instance gets its own isolated database.
+                # instance gets its own isolated database.  However the database
+                # vanishes once the final connection is closed.  Some parts of
+                # the test-suite inspect the engine after migrations have run,
+                # which previously yielded an empty schema because the migration
+                # connection had been closed.  We retain a dedicated connection
+                # to keep the in-memory database alive for the lifetime of the
+                # ``Database`` instance.
                 url = "sqlite+pysqlite:///:memory:"
                 connect_args = {"check_same_thread": False}
+                self._engine = create_engine(
+                    url, connect_args=connect_args, poolclass=StaticPool
+                )
+                self._conn = self._engine.connect()
             else:
                 connect_args = {"check_same_thread": False}
-            self._engine = create_engine(url, connect_args=connect_args, poolclass=StaticPool)
+                self._engine = create_engine(
+                    url, connect_args=connect_args, poolclass=StaticPool
+                )
+                self._conn = None
         else:
             self._engine = create_engine(url)
+            self._conn = None
 
     def initialize(self) -> None:
         """Validate the connection by executing a lightweight query."""
@@ -104,8 +118,17 @@ class Database:
     @contextmanager
     def session(self) -> Iterator[Any]:
         """Yield a connection context."""
-        with self._engine.begin() as conn:
-            yield conn
+        if self._conn is not None:
+            trans = self._conn.begin()
+            try:
+                yield self._conn
+                trans.commit()
+            except Exception:
+                trans.rollback()
+                raise
+        else:
+            with self._engine.begin() as conn:
+                yield conn
 
     def migrate(self, migrations_path: str | Path | None = None) -> None:
         """Apply model and SQL migrations."""
@@ -123,9 +146,14 @@ class Database:
         # block ensures that the same connection (and therefore the same
         # in-memory database) is used throughout and that all statements are
         # committed together.
-        with self._engine.begin() as conn:
-            Base.metadata.create_all(conn)
-            self._apply_sql_migrations(migrations_path, conn)
+        conn = self._conn or self._engine.connect()
+        try:
+            with conn.begin():
+                Base.metadata.create_all(conn)
+                self._apply_sql_migrations(migrations_path, conn)
+        finally:
+            if self._conn is None:
+                conn.close()
 
     def _apply_sql_migrations(self, path: str | Path | None, conn: Any | None = None) -> None:
         """Execute raw SQL migrations if available."""
