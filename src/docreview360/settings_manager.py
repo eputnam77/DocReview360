@@ -22,6 +22,8 @@ def load_settings(path: Path = SETTINGS_FILE) -> Dict[str, Any]:
         data = yaml.safe_load(path.read_text()) or {}
     except yaml.YAMLError as exc:
         raise ValueError(f"Invalid YAML in {path}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"Settings in {path} must be a mapping")
     vault_cfg = data.get("vault")
     if isinstance(vault_cfg, dict):
         configure_vault(vault_cfg)
