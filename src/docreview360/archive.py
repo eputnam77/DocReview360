@@ -184,6 +184,14 @@ def purge_archives(
                     path.unlink()
                 except Exception:
                     pass
+            # Clean up empty document directories to avoid leaving behind
+            # orphaned folders after purging. This previously caused empty
+            # directories to accumulate on disk.
+            try:
+                if base_dir.exists() and not any(base_dir.iterdir()):
+                    base_dir.rmdir()
+            except Exception:
+                pass
             archives.pop(archive_id, None)
             removed += 1
     return removed
