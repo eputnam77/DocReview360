@@ -48,6 +48,13 @@ def change_bars(old: str, new: str) -> List[Tuple[str, str]]:
 
     result: List[Tuple[str, str]] = []
     for line in ndiff(old.splitlines(), new.splitlines()):
+        if line.startswith("? "):
+            # ``difflib.ndiff`` emits hint lines prefixed with ``?`` to show
+            # intra-line changes. These lines are not part of the actual
+            # content and should be ignored. Previously they were treated as
+            # ``unchanged`` which exposed artefacts like ``? ^^`` in the
+            # output. Skipping them keeps the change-bar data clean.
+            continue
         if line.startswith("+ "):
             result.append(("added", line[2:]))
         elif line.startswith("- "):

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
-import re
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
+
+from .models import Base
 
 
 def default_url(database: str) -> str:
@@ -145,12 +147,19 @@ class Database:
                 text("INSERT INTO schema_versions (filename) VALUES (:name)"),
                 {"name": name},
             )
+            # Explicitly commit after each migration to ensure visibility even
+            # when callers reuse the engine with new connections. While the
+            # surrounding ``begin`` context should commit automatically, some
+            # test environments observed missing tables when a new connection
+            # inspected the schema immediately after migration. Committing
+            # here avoids that race condition.
+            try:
+                conn.commit()
+            except Exception:
+                pass
 
     def drop_all(self) -> None:
         """Drop all database tables. Useful for tests."""
-        from .models import Base
-        from sqlalchemy import inspect
-
         Base.metadata.drop_all(self._engine)
         with self._engine.begin() as conn:
             inspector = inspect(conn)
