@@ -6,7 +6,14 @@ from docreview360 import chat_bot
 from docreview360.approvals import create_approval, update_approval_state
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.search import ProjectModel, add_project
+import pytest
 from docreview360.workflows import create_workflow
+from docreview360.search import projects
+
+
+@pytest.fixture(autouse=True)
+def _clear_projects() -> None:
+    projects.clear()
 
 
 @pytest.mark.asyncio
