@@ -268,7 +268,30 @@ def _bootstrap_sample() -> None:
         )
 
 
-if os.getenv("DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP") != "1":
+"""Workflows bootstrap behaviour
+---------------------------------
+
+Historically the module executed :func:`_bootstrap_sample` on import unless an
+environment variable named ``DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP`` was set to
+``"1"``.  The default behaviour (running the bootstrap) is convenient for the
+real application which wants some seed data at startup.  For tests and for
+light‑weight usage this proved problematic as the bootstrap initialises the
+database and touches a number of other modules which may not be configured.  In
+the minimal test environment used in this kata the eager bootstrap attempted to
+run database migrations during import which raised
+``sqlalchemy.exc.InvalidRequestError`` and prevented the package from even being
+imported.
+
+To make the module safe to import in isolation we now *skip* bootstrapping by
+default.  Setting ``DOCREVIEW360_ENABLE_SAMPLE_BOOTSTRAP=1`` re‑enables the
+previous behaviour.  This mirrors the intent – seeding data should be an
+explicit choice – and keeps application behaviour intact when the new variable
+is used.
+"""
+
+# Only perform the sample bootstrap when explicitly enabled.  This keeps tests
+# fast and avoids touching the database merely by importing the module.
+if os.getenv("DOCREVIEW360_ENABLE_SAMPLE_BOOTSTRAP") == "1":
     _bootstrap_sample()
 
 
