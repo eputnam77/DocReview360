@@ -10,9 +10,7 @@ from docreview360.integrations.signature import base
 os.environ.setdefault("DOCREVIEW360_DATABASE_URL", "sqlite:///:memory:")
 db_mod.Database.migrate = lambda self, *args, **kwargs: None  # type: ignore[misc]
 import docreview360.logs as logs_mod
-logs_mod.log_event = lambda *a, **k: None  # type: ignore[misc]
 import docreview360.audit as audit_mod
-audit_mod.log_audit_event = lambda *a, **k: None  # type: ignore[misc]
 from services.provider_health import check_provider_health  # noqa: E402
 
 
@@ -55,6 +53,8 @@ class BadProvider:
 
 
 def test_health_job_updates_status(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(logs_mod, "log_event", lambda *a, **k: None)
+    monkeypatch.setattr(audit_mod, "log_audit_event", lambda *a, **k: None)
     path = tmp_path / "providers.yaml"
     monkeypatch.setattr(provider_store, "PROVIDERS_FILE", path)
     monkeypatch.setattr(provider_store, "DEFAULT_PROVIDERS", {})

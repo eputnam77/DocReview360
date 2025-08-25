@@ -7,9 +7,7 @@ import docreview360.database as db_mod
 os.environ.setdefault("DOCREVIEW360_DATABASE_URL", "sqlite:///:memory:")
 db_mod.Database.migrate = lambda self, *args, **kwargs: None  # type: ignore[misc]
 import docreview360.logs as logs_mod
-logs_mod.log_event = lambda *a, **k: None  # type: ignore[misc]
 import docreview360.audit as audit_mod
-audit_mod.log_audit_event = lambda *a, **k: None  # type: ignore[misc]
 from docreview360 import provider_store
 from docreview360.approvals import approvals, create_approval, send_for_signature
 from docreview360.documents import DocumentModel, documents
@@ -59,6 +57,8 @@ class OkProvider:
 
 
 def test_send_for_signature_failover(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(logs_mod, "log_event", lambda *a, **k: None)
+    monkeypatch.setattr(audit_mod, "log_audit_event", lambda *a, **k: None)
     path = tmp_path / "providers.yaml"
     monkeypatch.setattr(provider_store, "PROVIDERS_FILE", path)
     monkeypatch.setattr(provider_store, "DEFAULT_PROVIDERS", {})
