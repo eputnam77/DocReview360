@@ -270,6 +270,14 @@ def _repo_content_question(lower: str) -> str | None:
             continue
         if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".ico"}:
             continue
+        # Ignore lock files and other generated artefacts which can be very
+        # large and rarely contain helpful documentation.  Without this the
+        # search would often return ``poetry.lock`` before ``pyproject.toml``
+        # simply because it is encountered first in the ``rglob`` walk.
+        # ``poetry.lock`` does mention dependencies such as ``pymysql`` but we
+        # want to surface human authored files instead.
+        if path.name.lower().endswith(".lock"):
+            continue
         try:
             text = path.read_text(encoding="utf-8", errors="ignore").lower()
         except Exception:
