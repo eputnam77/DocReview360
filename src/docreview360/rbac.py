@@ -79,7 +79,8 @@ def has_role(username: str, role: str) -> bool:
 def has_permission(username: str, action: str) -> bool:
     """Return ``True`` if ``username`` may perform ``action`` based on roles."""
     roles = {r.lower() for r in get_roles(username)}
-    return any(action in ROLE_PERMISSIONS.get(r, set()) for r in roles)
+    act = action.lower()
+    return any(act in ROLE_PERMISSIONS.get(r, set()) for r in roles)
 
 
 def require_role(role: str) -> Callable[[auth.User], auth.User]:
