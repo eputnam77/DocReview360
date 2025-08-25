@@ -127,6 +127,11 @@ def test_cosine_zero():
     assert vs._cosine([0], [1]) == 0.0
 
 
+def test_cosine_length_mismatch():
+    with pytest.raises(ValueError):
+        vs._cosine([1, 2], [1])
+
+
 def test_index_document_empty():
     vs.clear()
     with pytest.raises(ValueError):
