@@ -24,6 +24,10 @@ def _load() -> Dict[str, Set[str]]:
 
 def _save(watchlist: Dict[str, Set[str]]) -> None:
     serializable = {u: sorted(list(v)) for u, v in watchlist.items()}
+    # Ensure the directory exists when a custom ``DOCREV_WATCHLIST_FILE`` points
+    # to a non-existent folder.  Without this ``write_text`` would raise a
+    # ``FileNotFoundError`` and the caller would lose watchlist updates.
+    WATCHLIST_FILE.parent.mkdir(parents=True, exist_ok=True)
     WATCHLIST_FILE.write_text(json.dumps(serializable, indent=2))
 
 
