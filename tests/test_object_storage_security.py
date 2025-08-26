@@ -29,3 +29,12 @@ def test_validate_rejects_windows_style(tmp_path) -> None:
     with pytest.raises(ValueError):
         _validate_key("..\\evil.txt")
 
+
+def test_rejects_drive_specifier_anywhere(tmp_path) -> None:
+    bucket = tmp_path / "bucket"
+    bucket.mkdir()
+    # A colon in later path segments should be rejected to prevent Windows
+    # drive specifiers sneaking into file names.
+    with pytest.raises(ValueError):
+        upload_file(bucket, "safe/C:evil.txt", b"data")
+
