@@ -4,39 +4,69 @@ from __future__ import annotations
 
 from typing import Callable, Iterable, Set
 
+"""Simple role based access helpers.
+
+The tests in this kata reload the :mod:`docreview360.rbac` module multiple
+times using :func:`importlib`.  A straight re-import would create a brand new
+``USER_ROLES`` mapping for every load which means that different module
+instances no longer share the same in-memory role assignments.  FastAPI
+dependencies captured during the first import would keep referencing the
+original mapping and therefore miss any roles added later, leading to
+``403 Forbidden`` responses even though a role had been granted in the latest
+module instance.
+
+To make the role store resilient across reloads we stash the state in a small
+private module (``docreview360._rbac_state``).  Subsequent imports simply reuse
+the same dictionary so all parts of the application observe consistent role
+changes regardless of how many times the module is re-imported.
+"""
+
 from fastapi import Depends, HTTPException, status
 
 from . import auth
+import sys
+from types import SimpleNamespace
+
+# A shared state container that survives module reloads.  ``importlib`` based
+# tests load :mod:`docreview360.rbac` multiple times which would normally create
+# independent ``USER_ROLES`` dictionaries.  Storing the mapping on a dedicated
+# module keeps the state consistent across imports.
+_state = sys.modules.setdefault("docreview360._rbac_state", SimpleNamespace())
 
 # Default permission table for roles. Each role maps to the set of actions it
-# may perform. The table acts as a source of truth for tests and runtime
-# checks.
-ROLE_PERMISSIONS: dict[str, Set[str]] = {
-    "admin": {
-        "create",
-        "read",
-        "update",
-        "delete",
-        "edit_field_x",
-        "view_audit_log",
-        "verification_override",
-    },
-    "manager": {"create", "read", "update"},
-    "sme": {"read", "edit_field_x"},
-    "reviewer": {"read"},
-    "editor": {"read", "update"},
-    "observer": {"read"},
-    "user": {"read"},
-    "auditor": {"view_audit_log"},
-    "verifier": {"verification_override"},
-}
+# may perform.  ``ROLE_PERMISSIONS`` is effectively constant but placing it on
+# the shared state keeps behaviour predictable when reloading.
+if not hasattr(_state, "ROLE_PERMISSIONS"):
+    _state.ROLE_PERMISSIONS = {
+        "admin": {
+            "create",
+            "read",
+            "update",
+            "delete",
+            "edit_field_x",
+            "view_audit_log",
+            "verification_override",
+        },
+        "manager": {"create", "read", "update"},
+        "sme": {"read", "edit_field_x"},
+        "reviewer": {"read"},
+        "editor": {"read", "update"},
+        "observer": {"read"},
+        "user": {"read"},
+        "auditor": {"view_audit_log"},
+        "verifier": {"verification_override"},
+    }
+ROLE_PERMISSIONS: dict[str, Set[str]] = _state.ROLE_PERMISSIONS
 
-# In-memory mapping of usernames to role sets
-USER_ROLES: dict[str, Set[str]] = {
-    "alice": {"user", "admin"},
-    "bob": {"auditor"},
-    "system": {"admin"},
-}
+# In-memory mapping of usernames to role sets.  Stored on ``_state`` so that all
+# imports share the same dictionary.
+if not hasattr(_state, "USER_ROLES"):
+    _state.USER_ROLES = {
+        "alice": {"user", "admin"},
+        "bob": {"auditor"},
+        "system": {"admin"},
+    }
+USER_ROLES: dict[str, Set[str]] = _state.USER_ROLES
 
 
 def set_user_roles(username: str, roles: Iterable[str]) -> None:
