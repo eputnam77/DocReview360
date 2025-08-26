@@ -35,6 +35,10 @@ class ProjectModel(BaseModel):
     temp_until: datetime | None = None
     updated: datetime | None = None  # Add updated field for frontend compatibility
     description: str | None = None
+    # Store the initially requested phase even when no workflow is associated.
+    # This allows the API to surface a project's phase before a workflow has
+    # been created.
+    initial_phase: str | None = None
 
     @computed_field
     def created_at(self) -> datetime:
@@ -52,7 +56,7 @@ class ProjectModel(BaseModel):
             wf = get_workflow(self.workflow)
             if wf:
                 return wf.phase
-        return None
+        return self.initial_phase
 
     @computed_field
     def current_phase_id(self) -> str | None:
@@ -61,7 +65,7 @@ class ProjectModel(BaseModel):
             wf = get_workflow(self.workflow)
             if wf:
                 return wf.phase
-        return None
+        return self.initial_phase
 
     @computed_field
     def status(self) -> str:
