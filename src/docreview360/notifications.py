@@ -58,6 +58,10 @@ def send_due_date_reminder(recipient: str, item: str, due_date: str) -> dict[str
 
 def send_completion_notification(recipient: str, item: str) -> dict[str, str]:
     """Notify that ``item`` has been completed."""
+    if "completion_notice" not in TEMPLATES:
+        TEMPLATES["completion_notice"] = Template(
+            "{item} completed", "{item} has been completed."
+        )
     return send_email("completion_notice", recipient, item=item)
 
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import Generator
 
+import json
 import pytest
 from fastapi.testclient import TestClient
 
@@ -226,8 +227,15 @@ class TestNameChangePropagation:
         resp = client.post("/projects", json=project_data)
         assert resp.status_code == 201
 
-        # Delete the document type
-        resp = client.delete(f"/document-types/{doc_type_name}")
+        # Delete the document type, specifying a replacement so dependent
+        # projects can transition cleanly.  The API now requires a replacement
+        # when the type is in use.
+        add_document_type(
+            DocumentTypeModel(name="Replacement", template="<h1>R</h1>", workflow=[])
+        )
+        resp = client.delete(
+            f"/document-types/{doc_type_name}", params={"replacement": "Replacement"}
+        )
         assert resp.status_code == 204
 
         # Verify the project still exists but may have null/empty doc_type
@@ -268,12 +276,17 @@ class TestNameChangePropagation:
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
         assert resp.status_code == 200
 
-        # Check logs for the name change
-        resp = client.get("/logs")
+        # Check logs for the name change.  Accessing the operational logs
+        # requires an authenticated request; the original test missed the
+        # ``X-User`` header and was receiving a ``401`` response instead of the
+        # expected log entries.
+        headers = {"X-User": "alice"}
+        resp = client.get("/logs", headers=headers)
         assert resp.status_code == 200
 
-        # Verify logs contain references to the new name
-        # This is a basic check - actual log format may vary
+        # Ensure the logs endpoint returned some entries. The intention here is
+        # to verify that access to the log API succeeds once authenticated.
+        assert resp.json(), "no log entries returned"
 
     def test_name_change_in_reports(self) -> None:
         """Test that name changes are reflected in system reports."""
@@ -436,8 +449,8 @@ class TestNameChangePropagation:
         )
 
         resp = client.put("/document-types/Another Doc Type", json=updated_doc_type.model_dump())
-        # Should handle gracefully - either fail with appropriate error or handle conflict
-        assert resp.status_code in [400, 409, 422]
+        # Renaming to an existing name should now result in a conflict error
+        assert resp.status_code == 409
 
         # Test renaming non-existent item
         resp = client.put("/document-types/Non-existent", json=updated_doc_type.model_dump())
