@@ -27,6 +27,14 @@ def add_template(name: str, subject: str, body: str) -> None:
     """Register a new template."""
     if not name:
         raise ValueError("name required")
+    # Accidentally overwriting an existing template can lead to subtle bugs
+    # in calling code that relies on a particular subject/body format.  The
+    # previous implementation silently replaced any existing entry which meant
+    # callers had no indication that a template name had already been used.
+    # Instead of clobbering the old template, refuse the update so the caller
+    # can make an explicit choice.
+    if name in TEMPLATES:
+        raise ValueError(f"template '{name}' already exists")
     TEMPLATES[name] = Template(subject, body)
 
 
