@@ -75,6 +75,8 @@ CUSTOM_STYLE_RULES: list[Callable[[str], bool]] = []
 
 def apply_feedback_template(template: str, text: str) -> str:
     """Insert `text` into the feedback template."""
+    if "{text}" not in template:
+        raise ValueError("Feedback template must contain '{text}' placeholder.")
     return template.replace("{text}", text)
 
 
@@ -87,7 +89,7 @@ def add_feedback_template(name: str, template: str) -> None:
 
 def add_prompt_template(name: str, template: str) -> None:
     """Register a new prompt template for the Prompt-Engine."""
-    if "{text}" not in template and not re.search(r"\{[a-zA-Z_]+\}", template):
+    if "{text}" not in template and not re.search(r"\{[a-zA-Z_][a-zA-Z0-9_]*\}", template):
         raise ValueError("Prompt template must contain at least one placeholder.")
     PROMPT_TEMPLATES[name] = template
 
@@ -98,7 +100,8 @@ def render_prompt(name: str, **context: str) -> str:
     try:
         return tmpl.format(**context)
     except KeyError as e:
-        raise ValueError(f"Missing placeholder in prompt context: {e}") from e
+        missing = e.args[0]
+        raise ValueError(f"Missing placeholder in prompt context: {missing}") from e
 
 
 def generate_feedback(name: str, text: str) -> str:
