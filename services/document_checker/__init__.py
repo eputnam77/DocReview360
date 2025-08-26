@@ -10,14 +10,19 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     text = path.read_text(encoding="utf-8")
 
     grammar = []
-    words = re.split(r"\s+", text)
+    # ``re.split`` on whitespace leaves punctuation attached to tokens which
+    # meant sequences like "word, word" were missed by the repeated word
+    # detector.  Extract plain word tokens instead so adjacent words separated
+    # only by punctuation are also compared.
+    words = re.findall(r"[A-Za-z0-9']+", text)
     for i in range(len(words) - 1):
         if words[i].lower() == words[i + 1].lower():
             grammar.append(f"repeated word '{words[i]}'")
 
     accessibility = []
     img_tag = re.compile(r"<img [^>]*>", re.I)
-    alt_attr = re.compile(r"alt=\"[^\"]*\"", re.I)
+    # Accept both single and double quoted ``alt`` attributes
+    alt_attr = re.compile(r"alt=(?:\"[^\"]*\"|'[^']*')", re.I)
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
     aria_label = re.compile(r"aria-label=\"[^\"]*\"", re.I)
 

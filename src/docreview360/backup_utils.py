@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import gzip
 import json
 from pathlib import Path
@@ -63,9 +64,13 @@ def restore_backup(path: str | Path) -> None:
         documents.clear()
         for d in data.get("documents", []):
             if "yjs_updates" in d and d["yjs_updates"] is not None:
-                d["yjs_updates"] = [
-                    base64.b64decode(u) for u in d["yjs_updates"]
-                ]
+                updates = d["yjs_updates"]
+                if not isinstance(updates, list):
+                    raise ValueError("yjs_updates must be a list")
+                try:
+                    d["yjs_updates"] = [base64.b64decode(u, validate=True) for u in updates]
+                except (binascii.Error, TypeError) as exc:
+                    raise ValueError("Invalid base64 in yjs_updates") from exc
             documents[d["id"]] = DocumentModel(**d)
         logs.clear()
         for entry in data.get("logs", []):
