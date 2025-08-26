@@ -28,7 +28,10 @@ def initialize_high_risk_terms(path: str | Path | None = None) -> None:
         data = resources.files(__package__).joinpath("quality_terms.json").read_text()
     else:
         data = Path(path).read_text()
-    _HIGH_RISK_TERMS = set(json.loads(data))
+    # Normalise the loaded terms to lowercase.  Without this a configuration
+    # file containing capitalised words would never match because
+    # ``high_risk_warnings`` lowercases the input text before searching.
+    _HIGH_RISK_TERMS = {t.lower() for t in json.loads(data)}
 
 
 initialize_high_risk_terms()

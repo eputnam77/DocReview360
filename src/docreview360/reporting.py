@@ -150,7 +150,13 @@ def throughput_data(days: int = 7) -> list[ThroughputEntry]:
     counts: dict[str, int] = {}
     for a in approvals.values():
         if a.state == "approved" and a.signed_at:
-            day = datetime.fromisoformat(a.signed_at).date()
+            # ``signed_at`` used to be stored as an ISO-formatted string but is
+            # now a ``datetime`` instance.  Older data or tests may still provide
+            # a string, so support both formats gracefully.
+            if isinstance(a.signed_at, str):
+                day = datetime.fromisoformat(a.signed_at).date()
+            else:
+                day = a.signed_at.date()
             if day >= cutoff:
                 counts[str(day)] = counts.get(str(day), 0) + 1
     return [ThroughputEntry(date=d, approvals=c) for d, c in sorted(counts.items())]
