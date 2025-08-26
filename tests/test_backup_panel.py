@@ -20,3 +20,5 @@ def test_schedule_daily_backup(tmp_path: Path) -> None:
     schedule_daily_backup(str(tmp_path / "daily.gz"))
     entry = app.conf.beat_schedule["daily_backup"]
     assert entry["args"][0] == str(tmp_path / "daily.gz")
+    # Ensure the Celery beat entry points at the asynchronous task name
+    assert entry["task"] == "docreview360.create_backup_async"
