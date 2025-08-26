@@ -49,9 +49,13 @@ def toggle_watch(user: str, project_id: str) -> List[str]:
 
 def get_watchlist(user: str) -> List[str]:
     """Return the sorted watchlist for ``user``."""
+    if not user:
+        raise ValueError("user required")
     return sorted(_watchlist.get(user, set()))
 
 
 def get_watchers(project_id: str) -> List[str]:
     """Return users watching the given project."""
+    if not project_id:
+        raise ValueError("project_id required")
     return sorted(u for u, projects in _watchlist.items() if project_id in projects)
