@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { API } from "@/lib/api";
 
 export default function LoginPage() {
@@ -116,9 +117,9 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-gray-500 dark:text-gray-400">
               Don't have an account?{" "}
-              <a href="/sign-up" className="underline">
+              <Link href="/signup" className="underline">
                 Sign up
-              </a>
+              </Link>
             </p>
           </form>
         </CardContent>
