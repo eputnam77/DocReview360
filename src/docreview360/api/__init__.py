@@ -401,19 +401,15 @@ async def health_check() -> dict[str, str]:
 
 
 @app.get("/users/me")
-async def current_user_endpoint(x_user: str | None = Header(None)) -> dict[str, Any]:
-    """Return information about the current user.
-
-    The frontend uses this endpoint to hydrate the global user store. In a real
-    deployment this would rely on session middleware or OIDC claims.
-    """
-    if not x_user:
-        raise HTTPException(status_code=401, detail="Missing user")
-    roles = list(get_roles(x_user))
+async def current_user_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return information about the current user."""
+    roles = list(get_roles(current_user.username))
     return {
-        "username": x_user,
+        "username": current_user.username,
         "is_admin": "admin" in roles,
-        "active": auth.is_active(x_user),
+        "active": auth.is_active(current_user.username),
         "roles": roles,
     }
 
@@ -445,28 +441,30 @@ class UserStatusPayload(BaseModel):
 
 
 @app.get("/profile")
-async def get_profile(x_user: str | None = Header(None)) -> dict[str, Any]:
+async def get_profile(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
     """Return profile information for the current user."""
 
-    if not x_user:
-        raise HTTPException(status_code=401, detail="Missing user")
     return {
-        "username": x_user,
-        "preferences": get_preferences(x_user),
-        "roles": sorted(get_roles(x_user)),
+        "username": current_user.username,
+        "preferences": get_preferences(current_user.username),
+        "roles": sorted(get_roles(current_user.username)),
     }
 
 
 @app.put("/profile")
 async def update_profile(
-    body: PreferencePayload, x_user: str | None = Header(None)
+    body: PreferencePayload,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Persist profile preference updates."""
 
-    if not x_user:
-        raise HTTPException(status_code=401, detail="Missing user")
     prefs = {k: v for k, v in body.model_dump().items() if v is not None}
-    return {"username": x_user, "preferences": update_preferences(x_user, prefs)}
+    return {
+        "username": current_user.username,
+        "preferences": update_preferences(current_user.username, prefs),
+    }
 
 
 @app.post("/admin/users/{username}/status")
@@ -1795,9 +1793,17 @@ async def get_sign_status(sig_id: str) -> dict[str, str]:
 
 
 @app.post("/token", response_model=auth.Token)
-async def token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+async def token(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
     token_resp = await auth.login_for_access_token(form_data)
+    response.set_cookie(
+        "access_token",
+        token_resp.access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
     log_event(
         "login",
         user_id=form_data.username,
@@ -1816,6 +1822,13 @@ async def oidc_token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.T
 async def read_current_user(current_user: auth.User = Depends(auth.get_current_user)) -> auth.User:
     """Return the authenticated user."""
     return current_user
+
+
+@app.post("/logout")
+async def logout(response: Response) -> dict[str, str]:
+    """Clear authentication cookie."""
+    response.delete_cookie("access_token")
+    return {"detail": "Logged out"}
 
 
 @app.get("/oidc/me")
