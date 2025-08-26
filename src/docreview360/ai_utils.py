@@ -269,7 +269,13 @@ def fann_feature_dict(text: str) -> dict[str, float]:
 
 def _fann_score(text: str, weights: Optional[list[float]] = None) -> float:
     """Compute a pseudo neural score using a logistic function."""
-    weights = weights or _FANN_WEIGHTS
+    # ``weights`` previously relied on the truthiness of the supplied list.
+    # This meant that calling ``_fann_score(text, [])`` would fall back to the
+    # global ``_FANN_WEIGHTS`` instead of using the explicitly provided empty
+    # sequence.  Test suite tasks intentionally exercise the ability to supply
+    # a zeroed weight vector to obtain a neutral (0.5) score, so we need to
+    # distinguish between ``None`` and an empty list.
+    weights = _FANN_WEIGHTS if weights is None else weights
     features = _fann_features(text)
     linear = sum(w * f for w, f in zip(weights, features))
     return 1.0 / (1.0 + math.exp(-linear))
