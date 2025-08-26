@@ -249,6 +249,14 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
     # original implementation simply replaced the entry in ``document_types`` and
     # left existing projects stale.
     if doc_type.name != name:
+        # Prevent accidental overwrites when renaming to an already existing
+        # document type. Previously the code unconditionally removed the old
+        # entry and inserted the new one, clobbering any existing type with the
+        # same name.  This surfaced in tests expecting a 409 Conflict when
+        # attempting to rename to an existing name.
+        if doc_type.name in document_types:
+            raise ValueError(f"Document type '{doc_type.name}' already exists")
+
         from .search import projects  # Local import to avoid circular dependency
 
         for proj in projects.values():

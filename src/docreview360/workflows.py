@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -41,8 +42,20 @@ class WorkflowModel(BaseModel):
     mode: str = "sequential"
     callback_url: str | None = None
 
-
-workflows: Dict[str, WorkflowModel] = {}
+# ``workflows`` is a module level registry that many tests mutate.  Some test
+# modules reload ``docreview360.workflows`` which would ordinarily create a new
+# dictionary and leave previously imported references pointing to the stale
+# object.  Subsequent tests that imported ``workflows`` early would then operate
+# on the old mapping, leading to surprising ``KeyError`` failures.  To keep a
+# single shared registry across reloads we store the dictionary on the package
+# object and reuse it when the module is imported again.
+_pkg = sys.modules.get(__name__.rpartition('.')[0])
+if _pkg is not None and hasattr(_pkg, "_workflows_store"):
+    workflows = getattr(_pkg, "_workflows_store")  # type: ignore[assignment]
+else:
+    workflows: Dict[str, WorkflowModel] = {}
+    if _pkg is not None:
+        setattr(_pkg, "_workflows_store", workflows)
 
 # Registered callbacks mimicking agileagents bot webhooks
 bot_callbacks: list[Callable[[WorkflowModel], None]] = []
