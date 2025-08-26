@@ -33,11 +33,17 @@ class VaultClient:
         """Return the secret for ``provider`` if present or via env vars."""
         with self._lock:
             item = self._secrets.get(provider)
-        if item:
-            secret, expiry = item
-            if datetime.utcnow() >= expiry:
-                raise RuntimeError("secret expired")
-            return secret
+            if item:
+                secret, expiry = item
+                # Expired secrets should not linger in the in-memory store.
+                # Previously they remained even after an expiry check failed
+                # which caused every subsequent lookup to raise ``RuntimeError``
+                # and prevented falling back to environment variables.  Remove
+                # the stale entry so callers can retry or rely on env vars.
+                if datetime.utcnow() >= expiry:
+                    self._secrets.pop(provider, None)
+                    raise RuntimeError("secret expired")
+                return secret
         # Fallback to environment variables using common suffixes
         base = provider.upper()
         for suffix in ("", "_TOKEN", "_KEY", "_SECRET"):
