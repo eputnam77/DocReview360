@@ -34,6 +34,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
+        credentials: "include",
         body: new URLSearchParams({
           username: username,
           password: password,
@@ -41,11 +42,7 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        // Store the token and username in localStorage
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("current_user", username);
-        // Redirect to dashboard
+        // Cookie is set by the server; simply redirect
         router.push("/projects");
         toast.success("Login successful");
       } else {

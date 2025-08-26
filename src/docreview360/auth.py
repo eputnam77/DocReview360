@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -30,8 +30,8 @@ OIDC_SECRET_KEY = _require_env("DOCREVIEW360_OIDC_SECRET_KEY")
 OIDC_ALGORITHM = _require_env("DOCREVIEW360_OIDC_ALGORITHM")
 OIDC_TOKEN_EXPIRE_MINUTES = int(_require_env("DOCREVIEW360_OIDC_EXPIRE_MINUTES"))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token", auto_error=False)
 
 
 class Token(BaseModel):
@@ -113,7 +113,10 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
     return str(jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme)) -> User:
+    token = request.cookies.get("access_token") or token
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str | None = payload.get("sub")
@@ -166,8 +169,11 @@ def create_id_token(data: Dict[str, Any], expires_delta: timedelta | None = None
     return str(jwt.encode(to_encode, OIDC_SECRET_KEY, algorithm=OIDC_ALGORITHM))
 
 
-def get_current_user_oidc(token: str = Depends(oidc_scheme)) -> User:
+def get_current_user_oidc(request: Request, token: str | None = Depends(oidc_scheme)) -> User:
     """Validate ID token and return the associated user."""
+    token = request.cookies.get("access_token") or token
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     try:
         payload = jwt.decode(token, OIDC_SECRET_KEY, algorithms=[OIDC_ALGORITHM])
         username: str | None = payload.get("sub")
