@@ -550,13 +550,27 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     project = ProjectModel(**body.model_dump())
     add_project(project)
 
-    # Handle workflow assignment.  Supplying ``body.workflow`` references an
-    # existing workflow and should simply attach that reference to the project.
-    # Previously a new workflow was created even when one was provided, causing
-    # the stored workflow id to diverge from the caller's value.  We now only
-    # create a workflow when none was supplied but a starting ``phase`` was
-    # specified.
+    # Handle workflow assignment.  ``body.workflow`` may either reference an
+    # existing workflow or specify the identifier for a new workflow.  Earlier
+    # revisions always created a new workflow even when one already existed,
+    # while the subsequent fix assumed the identifier was pre-existing and never
+    # created a workflow.  Both behaviours caused inconsistencies: callers could
+    # end up with a dangling reference or with a mismatched identifier.  The
+    # logic below strikes a balance by creating a minimal workflow only when the
+    # supplied identifier does not already exist.
     if body.workflow:
+        if body.workflow not in workflows:
+            workflows[body.workflow] = WorkflowModel(
+                id=body.workflow,
+                project=project.id,
+                phase=body.phase or body.workflow,
+                phases=[body.phase or body.workflow],
+                template=body.workflow,
+                approval_steps=[],
+                approval_roles=[],
+                approval_sequence=[],
+                mode="sequential",
+            )
         project.workflow = body.workflow
     elif body.phase:
         start_phase = body.phase
@@ -1306,6 +1320,9 @@ async def update_document_type_endpoint(
         return update_document_type(name, doc_type)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        # Renaming to an existing document type should surface as a conflict
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get("/document-types/{name}/usage", response_model=dict[str, Any])
@@ -1362,13 +1379,12 @@ async def delete_document_type_endpoint(name: str, replacement: str | None = Non
             for project in projects_using_doc_type:
                 update_project(project.id, doc_type=replacement)
         else:
-            # No replacement provided; clear the document type reference on
-            # affected projects.  Earlier behaviour rejected such deletions with
-            # HTTP 400 which prevented cascade cleanup.  Tests expect the delete
-            # to succeed and leave the project in place with an empty
-            # ``doc_type`` field.
-            for project in projects_using_doc_type:
-                update_project(project.id, doc_type=None)
+            # Document type in use but no replacement provided -> reject with
+            # a clear message so callers know how to resolve the conflict.
+            raise HTTPException(
+                status_code=400,
+                detail=f"Document type '{name}' is in use. Please specify a replacement.",
+            )
 
     # Delete the document type
     try:
