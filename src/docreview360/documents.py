@@ -10,7 +10,8 @@ from io import BytesIO
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from base64 import b64encode
+from pydantic import BaseModel, Field, field_serializer
 
 from . import fts
 from .audit import log_audit_event
@@ -26,6 +27,22 @@ class DocumentRevision(BaseModel):
     steps: list[Any] | None = None
     author: str = ""
     yjs_updates: list[bytes] | None = None
+
+    @field_serializer("yjs_updates", when_used="json")
+    def _ser_updates(self, updates: list[bytes] | None) -> list[str] | None:
+        """Return base64 strings for binary Yjs updates.
+
+        ``pydantic`` attempts to decode ``bytes`` as UTF-8 when serialising to
+        JSON which fails for arbitrary binary data.  The dashboard API
+        serialises full document models including revision history; any binary
+        ``yjs_updates`` therefore triggered ``UnicodeDecodeError`` during
+        ``model_dump``.  Encoding the updates as base64 preserves the data while
+        keeping the output JSON serialisable.
+        """
+
+        if updates is None:
+            return None
+        return [b64encode(u).decode("ascii") for u in updates]
 
 
 class DocumentModel(BaseModel):

@@ -1,6 +1,25 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from docreview360.api import app
+from docreview360.doc_types import DocumentTypeModel, document_types
+
+
+@pytest.fixture(autouse=True)
+def _reset_doc_types() -> None:
+    """Start each test with a single seeded document type.
+
+    Many tests mutate the global ``document_types`` registry without
+    resetting it which causes later tests to observe leftover types.  The
+    CRUD tests expect only the application's default seed to remain after
+    deleting their temporary type.  We therefore clear the registry and add
+    back a single "Test Document Type" before each test.
+    """
+
+    document_types.clear()
+    document_types["Test Document Type"] = DocumentTypeModel(
+        name="Test Document Type", template=""
+    )
 
 
 def test_document_type_crud() -> None:
