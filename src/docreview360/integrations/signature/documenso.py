@@ -327,7 +327,7 @@ def process_webhook(data: Dict[str, str]) -> None:
 
             coro = handle_signature_return(
                 sig_id,
-                certificate_url=str(cert_url),
+                certificate_url=str(cert_url) if cert_url else None,
                 signed_at=event.signed_at,
             )
             try:
