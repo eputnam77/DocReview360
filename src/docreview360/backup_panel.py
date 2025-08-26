@@ -36,7 +36,7 @@ def schedule_daily_backup(path: str) -> None:
     """Configure a daily Celery beat task creating backups."""
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["daily_backup"] = {
-        "task": "docreview360.create_backup",
+        "task": "docreview360.create_backup_async",
         "schedule": crontab(hour=2, minute=0),
         "args": (path,),
     }
