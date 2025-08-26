@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -50,9 +51,9 @@ function EntityLink({
     return <span className="text-gray-400">Entity not found</span>;
   }
   return (
-    <a href={`/${type}/${id}`} className="text-blue-600 hover:underline">
+    <Link href={`/${type}/${id}`} className="text-blue-600 hover:underline">
       {id}
-    </a>
+    </Link>
   );
 }
 
