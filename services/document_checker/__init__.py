@@ -12,7 +12,7 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     grammar = []
     words = re.split(r"\s+", text)
     for i in range(len(words) - 1):
-        if words[i] == words[i + 1]:
+        if words[i].lower() == words[i + 1].lower():
             grammar.append(f"repeated word '{words[i]}'")
 
     accessibility = []
