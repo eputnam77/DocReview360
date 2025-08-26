@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CommentModel(BaseModel):
@@ -17,9 +17,11 @@ class CommentModel(BaseModel):
     document: str
     user: str
     text: str
-    mentions: list[str] = []
+    mentions: list[str] = Field(default_factory=list)
     parent: Optional[str] = None
-    created: datetime = datetime.now(timezone.utc)
+    created: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
 
 _comments: Dict[str, List[CommentModel]] = {}

@@ -6,6 +6,17 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
+def _validate_key(key: str) -> None:
+    """Raise :class:`ValueError` if ``key`` attempts path traversal."""
+    if (
+        not key
+        or key.startswith("/")
+        or key.endswith("/")
+        or ".." in Path(key).parts
+    ):
+        raise ValueError("invalid key")
+
+
 def download_file(bucket: str | Path, key: str) -> bytes:
     """Return the contents of ``bucket``/``key``.
 
@@ -22,8 +33,7 @@ def download_file(bucket: str | Path, key: str) -> bytes:
         The file contents.
     """
 
-    if not key or key.startswith("/") or key.endswith("/"):
-        raise ValueError("invalid key")
+    _validate_key(key)
 
     # Support reading from S3 when ``bucket`` is an ``s3://`` URL. The
     # dependency on :mod:`boto3` is optional so tests that only use the file
@@ -73,8 +83,7 @@ def upload_file(
         Location of the written file or S3 URI.
     """
 
-    if not key or key.startswith("/") or key.endswith("/"):
-        raise ValueError("invalid key")
+    _validate_key(key)
 
     # Handle S3 buckets via ``boto3`` if the bucket name is an ``s3://`` URL.
     if str(bucket).startswith("s3://"):
