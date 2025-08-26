@@ -19,6 +19,7 @@ __all__ = [
     "exporter",
     "reporting",
     "archive",
+    "audit",
     "deploy",
     "comments",
     "tiptap",
@@ -64,6 +65,8 @@ __all__ = [
     "quality",
     "review_analytics",
     "integrity",
+    "integrations",
+    "stubs",
 ]
 
 
@@ -88,8 +91,19 @@ def __getattr__(name: str) -> Any:
     """
 
     if name in __all__:
-        module = import_module(f".{name}", __name__)
-        setattr(sys.modules[__name__], name, module)
+        # ``__getattr__`` may be called multiple times for the same attribute.
+        # Earlier implementations cached the imported module on the package
+        # itself which meant that if another piece of code removed the
+        # submodule from ``sys.modules`` we ended up returning a stale module
+        # object that ``importlib.reload`` could not locate.  To keep the API
+        # robust we always look up the submodule in ``sys.modules`` and import
+        # it if missing.  We purposely avoid caching the attribute on the
+        # package so subsequent lookups remain in sync with ``sys.modules``.
+
+        full_name = f"{__name__}.{name}"
+        module = sys.modules.get(full_name)
+        if module is None:
+            module = import_module(f".{name}", __name__)
         return module
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
@@ -97,7 +111,11 @@ def __getattr__(name: str) -> Any:
 def placeholder(multiplier: int = 1) -> int:
     """Return ``42`` multiplied by ``multiplier``."""
 
-    if not isinstance(multiplier, int):
+    # ``bool`` is a subclass of ``int`` which would previously slip through the
+    # ``isinstance`` check.  Accepting booleans as a multiplier is surprising
+    # (``True`` behaving like ``1``) and makes error messages harder to debug, so
+    # we explicitly reject them.
+    if isinstance(multiplier, bool) or not isinstance(multiplier, int):
         raise TypeError("multiplier must be an integer")
     if multiplier < 0:
         raise ValueError("multiplier must be non-negative")

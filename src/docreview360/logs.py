@@ -406,22 +406,15 @@ def delete_log(log_id: str, user_id: str, *, reason: str | None = None) -> bool:
 def clear_logs() -> None:
     """Remove all stored logs and alert hooks.
 
-    Earlier test runs revealed that alert callbacks could accumulate between
-    tests, leading to unexpected behaviour.  Resetting the ``alerts`` list
-    alongside clearing the in-memory log entries ensures each test starts
-    from a clean state without affecting any listeners that callers may have
-    intentionally registered.
+    ``clear_logs`` used to also wipe out any registered live listeners.  This
+    proved surprising for callers that wanted to keep listening for future
+    events after resetting the log storage.  The responsibility for managing
+    listeners now lies with the caller via ``register_listener`` and
+    ``unregister_listener``.
     """
 
     logs.clear()
     alerts.clear()
-    # Tests may register live listeners that mutate the ``logs`` list (for
-    # example by popping entries when they are received).  If such listeners are
-    # left registered they can interfere with subsequent tests, leading to the
-    # surprising empty log list observed in ``test_approval_document_link`` when
-    # the listener from a previous test consumed the event.  Clearing the
-    # listeners here ensures each test starts from a clean slate.
-    _listeners.clear()
 
 
 def schedule_log_purge() -> None:
