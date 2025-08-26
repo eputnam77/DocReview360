@@ -54,6 +54,8 @@ class ReviewTrends:
         scores = self.trend(project)
         if not scores:
             return []
+        if window <= 0:
+            raise ValueError("window must be positive")
         return [
             sum(scores[i : i + window]) / len(scores[i : i + window])
             for i in range(len(scores) - window + 1)

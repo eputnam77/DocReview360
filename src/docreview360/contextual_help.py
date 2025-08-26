@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from html import escape
 from typing import Dict, Optional
 
 
@@ -34,7 +35,14 @@ def tooltip_html(topic: str) -> str:
     item = get_help(topic)
     if not item:
         return ""
-    tooltip = f'<span class="tooltip" data-tip="{item.text}">?</span>'
+    # Escape user supplied text and video URLs to avoid HTML injection when
+    # rendering inside attributes.  Previously the values were inserted
+    # verbatim which allowed malicious content to break out of the attribute or
+    # inject script tags.
+    tooltip = f'<span class="tooltip" data-tip="{escape(item.text, quote=True)}">?</span>'
     if item.video:
-        tooltip += f'<iframe src="{item.video}" frameborder="0" class="help-video"></iframe>'
+        tooltip += (
+            f'<iframe src="{escape(item.video, quote=True)}" '
+            f'frameborder="0" class="help-video"></iframe>'
+        )
     return tooltip

@@ -264,7 +264,13 @@ def _repo_content_question(lower: str) -> str | None:
     if not keywords:
         return None
     root = Path(__file__).resolve().parents[2]
+    # Keep track of the "best" match found.  We prefer README files and
+    # `pyproject.toml` over `requirements.txt` because they contain richer
+    # documentation about dependencies.  Previously the first match returned by
+    # ``Path.rglob`` was used which depended on the filesystem traversal order
+    # and often surfaced ``requirements.txt`` before ``pyproject.toml``.
     best_match: Path | None = None
+    best_rank = -1
     for path in root.rglob("*"):
         if not path.is_file():
             continue
@@ -283,14 +289,16 @@ def _repo_content_question(lower: str) -> str | None:
         except Exception:
             continue
         if all(k in text for k in keywords):
-            # Prefer README files when multiple documents contain the keywords.
-            if "readme" in path.name.lower():
+            name = path.name.lower()
+            if "readme" in name:
                 return (
                     f"I found information about {' '.join(keywords)} in "
                     f"{path.relative_to(root)}."
                 )
-            if best_match is None:
+            rank = 2 if name == "pyproject.toml" else 1 if name == "requirements.txt" else 0
+            if rank > best_rank:
                 best_match = path
+                best_rank = rank
     if best_match:
         return (
             f"I found information about {' '.join(keywords)} in " f"{best_match.relative_to(root)}."
