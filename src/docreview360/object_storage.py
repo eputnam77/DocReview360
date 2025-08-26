@@ -3,17 +3,27 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 def _validate_key(key: str) -> None:
-    """Raise :class:`ValueError` if ``key`` attempts path traversal."""
-    if (
-        not key
-        or key.startswith("/")
-        or key.endswith("/")
-        or ".." in Path(key).parts
-    ):
+    """Raise :class:`ValueError` if ``key`` attempts path traversal.
+
+    The original implementation only relied on :class:`pathlib.Path` to split the
+    key which meant Windows-style separators (``"\\"``) were treated as normal
+    characters on POSIX systems.  As a result a key like ``"..\\secret"`` would
+    bypass the ``".."`` check and could be interpreted as a parent directory on a
+    Windows host.  Normalising separators ensures traversal attempts are caught
+    consistently across platforms.
+    """
+
+    if not key or key.startswith("/") or key.endswith("/"):
+        raise ValueError("invalid key")
+
+    normalized = key.replace("\\", "/")
+    first = normalized.split("/")[0]
+    parts = PurePosixPath(normalized).parts
+    if ":" in first or ".." in parts:
         raise ValueError("invalid key")
 
 

@@ -21,6 +21,8 @@ def create_template(name: str, subject: str, body: str, task: str | None = None)
     """Create and register a new template."""
     if not name:
         raise ValueError("name required")
+    if name in TEMPLATES:
+        raise ValueError(f"template '{name}' already exists")
     template = EmailTemplate(name=name, subject=subject, body=body, task=task)
     TEMPLATES[name] = template
     return template
