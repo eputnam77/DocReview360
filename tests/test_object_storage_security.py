@@ -1,6 +1,6 @@
 import pytest
 
-from docreview360.object_storage import download_file, upload_file
+from docreview360.object_storage import _validate_key, download_file, upload_file
 
 
 def test_upload_rejects_path_traversal(tmp_path):
@@ -19,4 +19,13 @@ def test_download_rejects_path_traversal(tmp_path):
     outside.write_text("secret", encoding="utf-8")
     with pytest.raises(ValueError):
         download_file(bucket, "../secret.txt")
+
+
+def test_validate_rejects_windows_style(tmp_path) -> None:
+    bucket = tmp_path / "bucket"
+    bucket.mkdir()
+    with pytest.raises(ValueError):
+        upload_file(bucket, "..\\evil.txt", b"data")
+    with pytest.raises(ValueError):
+        _validate_key("..\\evil.txt")
 

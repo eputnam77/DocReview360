@@ -35,6 +35,9 @@ def list_phases() -> List[str]:
 
 def add_phase(name: str) -> None:
     """Add a new phase if it does not already exist."""
+    name = name.strip()
+    if not name:
+        raise ValueError("phase name cannot be empty")
     if name not in _phases:
         _phases.append(name)
 
@@ -52,6 +55,9 @@ def rename_phase(old: str, new: str) -> None:
 
     Raises KeyError if ``old`` does not exist.
     """
+    new = new.strip()
+    if not new:
+        raise ValueError("new phase name cannot be empty")
     try:
         idx = _phases.index(old)
     except ValueError as exc:
