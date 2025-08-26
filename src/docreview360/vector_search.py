@@ -18,8 +18,19 @@ _total_docs = 0
 
 
 def _embed(text: str) -> Counter[str]:
-    """Return term frequency counter for ``text``."""
-    return Counter(text.lower().split())
+    """Return term frequency counter for ``text``.
+
+    The previous implementation simply split on whitespace which meant tokens
+    retained surrounding punctuation.  A document containing ``"world!"`` would
+    therefore never match a search for ``"world"``.  Normalise tokens by
+    extracting only alphanumeric word segments so punctuation is ignored and
+    search queries behave more intuitively.
+    """
+
+    import re
+
+    tokens = re.findall(r"\b\w+\b", text.lower())
+    return Counter(tokens)
 
 
 def index_document(doc_id: str, content: str) -> None:
