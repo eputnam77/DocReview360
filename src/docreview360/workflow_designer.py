@@ -21,7 +21,11 @@ def clone_workflow(wf_id: str, reviewers: Iterable[str] | None = None) -> Workfl
         phases=list(original.phases),
         reviewers=list(reviewers or original.reviewers),
         template=original.template,
-        approval_steps=[s.model_copy() for s in original.approval_steps],
+        # ``ApprovalStep`` instances may originate from an older import of the
+        # ``workflows`` module.  Serialising each step ensures Pydantic rebuilds
+        # them using the current model class, avoiding cross-module validation
+        # errors.
+        approval_steps=[s.model_dump() for s in original.approval_steps],
     )
     workflows[clone.id] = clone
     record_task_completion(144)
