@@ -44,6 +44,22 @@ class SandboxProvider:
         # Idempotent: setting again to signed is harmless
         _signatures[sig_id] = "signed"
 
+    def signature_status(self, sig_id: str) -> str:
+        """Return the current status for ``sig_id``.
+
+        The API expects providers to expose a way to query the state of a
+        signature request.  The sandbox provider keeps state in the local
+        ``_signatures`` dictionary so we simply look it up and raise ``KeyError``
+        when the id is unknown.  This mirrors the behaviour of the real
+        Documenso implementation and allows repeated webhook deliveries to be
+        safely ignored.
+        """
+
+        try:
+            return _signatures[sig_id]
+        except KeyError as exc:  # pragma: no cover - defensive
+            raise KeyError(f"Unknown signature id {sig_id}") from exc
+
     def verify_signature(self, signature_id: str, document: bytes) -> bool:
         return _signatures.get(signature_id) == "signed"
 
