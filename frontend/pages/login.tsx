@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import Link from "next/link";
 import { API } from "@/lib/api";
 
