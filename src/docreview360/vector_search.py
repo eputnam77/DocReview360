@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections import Counter, defaultdict
-from math import log, sqrt
+from math import log, sqrt, isfinite
 from typing import Dict, Iterable, List, Tuple
 
 import httpx
@@ -95,6 +95,12 @@ def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
     b_list = list(b)
     if len(a_list) != len(b_list):
         raise ValueError("vectors must be of equal length")
+    # Guard against non-finite values.  ``math`` operations propagate NaNs and
+    # infinities resulting in ``nan`` similarity scores which are difficult for
+    # callers to handle.  Reject such inputs early with a clear error.
+    for val in a_list + b_list:
+        if not isfinite(val):
+            raise ValueError("vectors must contain only finite numbers")
     dot = sum(x * y for x, y in zip(a_list, b_list))
     na = sqrt(sum(x * x for x in a_list))
     nb = sqrt(sum(y * y for y in b_list))

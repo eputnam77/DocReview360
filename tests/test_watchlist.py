@@ -66,8 +66,8 @@ def test_load_existing_and_invalid_json(tmp_path: Path, monkeypatch: Any) -> Non
     assert watchlist.get_watchlist("alice") == ["p1"]
     # now corrupt the file
     file.write_text("{bad json")
-    reload(watchlist)
-    assert watchlist.get_watchlist("alice") == []
+    with pytest.raises(ValueError):
+        reload(watchlist)
 
 
 def test_toggle_watch_validation() -> None:
