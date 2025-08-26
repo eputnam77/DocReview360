@@ -242,7 +242,25 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
     """Update an existing document type and persist changes."""
     if name not in document_types:
         raise KeyError(f"Document type '{name}' not found")
-    document_types[name] = doc_type
+
+    # If the document type is renamed, propagate that change to any projects that
+    # reference the old name.  Tests create a project, rename the document type
+    # and expect the project's ``doc_type`` field to follow the rename.  The
+    # original implementation simply replaced the entry in ``document_types`` and
+    # left existing projects stale.
+    if doc_type.name != name:
+        from .search import projects  # Local import to avoid circular dependency
+
+        for proj in projects.values():
+            if proj.doc_type == name:
+                proj.doc_type = doc_type.name
+
+        # Remove the old key when renaming to keep ``document_types`` consistent
+        del document_types[name]
+        document_types[doc_type.name] = doc_type
+    else:
+        document_types[name] = doc_type
+
     save_state()
     return doc_type
 
