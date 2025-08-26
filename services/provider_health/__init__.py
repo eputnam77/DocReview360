@@ -31,6 +31,8 @@ check_provider_health_task = app.task(name="docreview360.check_provider_health")
 
 def schedule_provider_health_checks(interval_minutes: int = 5) -> None:
     """Schedule periodic provider health checks."""
+    if interval_minutes <= 0:
+        raise ValueError("interval_minutes must be positive")
 
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["provider_health"] = {

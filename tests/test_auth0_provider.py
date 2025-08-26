@@ -1,3 +1,4 @@
+import pytest
 from jose import jwt
 
 from docreview360.auth0_provider import verify_auth0_token
@@ -11,3 +12,17 @@ def test_verify_auth0_token() -> None:
     token = jwt.encode({"sub": "123", "aud": AUDIENCE, "iss": ISSUER}, SECRET, algorithm="HS256")
     claims = verify_auth0_token(token, SECRET, ISSUER, AUDIENCE)
     assert claims["sub"] == "123"
+
+
+@pytest.mark.parametrize(
+    "secret,issuer,audience,msg",
+    [
+        ("", ISSUER, AUDIENCE, "secret required"),
+        (SECRET, "", AUDIENCE, "issuer required"),
+        (SECRET, ISSUER, "", "audience required"),
+    ],
+)
+def test_verify_auth0_requires_fields(secret, issuer, audience, msg):
+    token = jwt.encode({"sub": "123", "aud": AUDIENCE, "iss": ISSUER}, SECRET, algorithm="HS256")
+    with pytest.raises(ValueError, match=msg):
+        verify_auth0_token(token, secret, issuer, audience)

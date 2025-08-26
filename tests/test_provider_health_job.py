@@ -19,7 +19,7 @@ def _no_db_migrations(monkeypatch: pytest.MonkeyPatch) -> None:
 
 import docreview360.logs as logs_mod
 import docreview360.audit as audit_mod
-from services.provider_health import check_provider_health  # noqa: E402
+from services.provider_health import check_provider_health, schedule_provider_health_checks  # noqa: E402
 
 
 class GoodProvider:
@@ -80,3 +80,12 @@ def test_health_job_updates_status(tmp_path: Path, monkeypatch) -> None:
     assert result == {"good": True, "bad": False}
     data = provider_store.load_providers(path)
     assert data["bad"]["healthy"] is False
+
+
+def test_schedule_health_checks_invalid_interval() -> None:
+    from docreview360.celery_app import app
+
+    with pytest.raises(ValueError):
+        schedule_provider_health_checks(0)
+    schedule_provider_health_checks(1)
+    assert "provider_health" in app.conf.beat_schedule
