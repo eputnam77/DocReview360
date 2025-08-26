@@ -427,8 +427,16 @@ def clear_logs() -> None:
 def schedule_log_purge() -> None:
     """Configure periodic purging of expired operational logs."""
 
-    from .celery_app import app
-    from .settings_manager import load_settings
+    # Use absolute imports here rather than relative ones.  When this module is
+    # imported as ``docreview360.logs`` the relative import works, but some test
+    # environments load the module directly from the source path which leaves
+    # ``__package__`` unset.  In that situation a relative import like
+    # ``from .celery_app`` raises ``ImportError: attempted relative import with
+    # no known parent package``.  Importing via the fully-qualified package name
+    # is resilient in both cases and fixes the failing test.
+
+    from docreview360.celery_app import app
+    from docreview360.settings_manager import load_settings
 
     settings = load_settings()
     cfg = settings.get("logs", {})
