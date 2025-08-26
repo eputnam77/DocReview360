@@ -268,6 +268,7 @@ class ProjectUpdate(BaseModel):
     # Allow updating the current phase via workflow state
     phase: str | None = None
     workflow: str | None = None
+    description: str | None = None
 
 
 class CommentCreate(BaseModel):
@@ -342,6 +343,13 @@ async def _lifespan(app: FastAPI):
 
 
 app = FastAPI(title="DocReview360", lifespan=_lifespan)
+
+
+@app.get("/ping")
+async def ping() -> dict[str, str]:
+    """Lightweight health check endpoint used by the frontend."""
+
+    return {"status": "ok"}
 
 # Add CORS middleware to allow frontend requests
 #
@@ -692,9 +700,12 @@ async def update_project_endpoint(
                 doc_type = body.doc_type
             if body.workflow is not None:
                 workflow = body.workflow
+            if body.description is not None:
+                description = body.description
 
         project_user = user or sme
         project_doc_type = doc_type or docType
+        project_description = description
 
         workflow_id, workflow_set = _resolve_workflow(
             request, workflow_provided, workflow, body, project_id
@@ -707,6 +718,7 @@ async def update_project_endpoint(
             doc_type=project_doc_type,
             workflow=workflow_id,
             workflow_set=workflow_set,
+            description=project_description,
         )
 
         _update_workflow_phase(request, body, updated_project)

@@ -4,9 +4,22 @@ import os
 os.environ.setdefault("DOCREVIEW360_DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP", "1")
 
+import pytest
+
 from docreview360.database import Database  # noqa: E402
 
-Database._apply_sql_migrations = lambda self, path: None
+
+@pytest.fixture(autouse=True)
+def _disable_migrations(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent expensive SQL migrations during API tests.
+
+    The previous implementation patched ``Database._apply_sql_migrations`` at
+    import time which affected subsequent tests by leaving the method
+    permanently replaced.  Using ``monkeypatch`` ensures the original function
+    is restored after each test.
+    """
+
+    monkeypatch.setattr(Database, "_apply_sql_migrations", lambda self, path: None)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
