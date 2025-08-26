@@ -34,6 +34,7 @@ class ProjectModel(BaseModel):
     temp_user: Optional[str] = None
     temp_until: datetime | None = None
     updated: datetime | None = None  # Add updated field for frontend compatibility
+    description: str | None = None
 
     @computed_field
     def created_at(self) -> datetime:
@@ -208,6 +209,7 @@ def update_project(
     name: str | None = None,
     user: str | None = None,
     doc_type: str | None = None,
+    description: str | None = None,
     workflow: str | None = None,
     workflow_set: bool = False,
 ) -> ProjectModel:
@@ -220,6 +222,8 @@ def update_project(
             project.user = user
         if doc_type is not None:
             project.doc_type = doc_type
+        if description is not None:
+            project.description = description
         # When the caller explicitly provided the workflow field (even if None),
         # update it accordingly. Otherwise leave it unchanged.
         if workflow_set:
