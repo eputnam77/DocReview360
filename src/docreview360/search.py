@@ -310,6 +310,12 @@ def assign_temporary(
     temporary assignment.  Long assignments beyond ``TEMP_ASSIGN_MAX_DAYS``
     require ``approved`` to be ``True``.
     """
+    # ``until`` was previously required to be timezone-aware.  Passing a naive
+    # ``datetime`` (common in tests and callers) raised a ``TypeError`` when
+    # compared against ``datetime.now(UTC)``.  Treat naive values as UTC to make
+    # the helper more forgiving.
+    if until.tzinfo is None:
+        until = until.replace(tzinfo=UTC)
     with project_lock:
         project = projects[project_id]
         if (until - datetime.now(UTC)).days > TEMP_ASSIGN_MAX_DAYS and not approved:
