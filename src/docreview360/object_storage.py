@@ -21,9 +21,12 @@ def _validate_key(key: str) -> None:
         raise ValueError("invalid key")
 
     normalized = key.replace("\\", "/")
-    first = normalized.split("/")[0]
     parts = PurePosixPath(normalized).parts
-    if ":" in first or ".." in parts:
+    # ``PurePosixPath`` does not treat ``":"`` specially so a key like
+    # ``"safe/C:secret"`` would previously pass validation even though it
+    # contains a Windows drive specifier.  Reject keys containing a colon in
+    # *any* segment to avoid platform specific path tricks.
+    if ":" in normalized or ".." in parts:
         raise ValueError("invalid key")
 
 

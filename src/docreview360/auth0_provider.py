@@ -10,6 +10,12 @@ def verify_auth0_token(token: str, secret: str, issuer: str, audience: str) -> d
     """Validate an Auth0 JWT and return its claims."""
     if not token:
         raise ValueError("token required")
+    if not secret:
+        raise ValueError("secret required")
+    if not issuer:
+        raise ValueError("issuer required")
+    if not audience:
+        raise ValueError("audience required")
     try:
         claims = jwt.decode(
             token,
