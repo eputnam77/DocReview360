@@ -18,8 +18,12 @@ def _load() -> Dict[str, Set[str]]:
         return {u: set(v) for u, v in data.items()}
     except FileNotFoundError:
         return {}
-    except json.JSONDecodeError:
-        return {}
+    except json.JSONDecodeError as exc:
+        # Previously a malformed watchlist file resulted in an empty
+        # dictionary being returned which silently discarded all saved
+        # watchers.  Propagate the issue so callers are aware that the
+        # persistence layer is corrupt instead of quietly losing data.
+        raise ValueError(f"Invalid JSON in watchlist file: {WATCHLIST_FILE}") from exc
 
 
 def _save(watchlist: Dict[str, Set[str]]) -> None:
@@ -38,6 +42,8 @@ def toggle_watch(user: str, project_id: str) -> List[str]:
     """Toggle ``project_id`` in ``user``'s watchlist and return updated list."""
     if not user or not project_id:
         raise ValueError("user and project_id required")
+    user = user.strip()
+    project_id = project_id.strip()
     starred = _watchlist.setdefault(user, set())
     if project_id in starred:
         starred.remove(project_id)
@@ -51,11 +57,12 @@ def get_watchlist(user: str) -> List[str]:
     """Return the sorted watchlist for ``user``."""
     if not user:
         raise ValueError("user required")
-    return sorted(_watchlist.get(user, set()))
+    return sorted(_watchlist.get(user.strip(), set()))
 
 
 def get_watchers(project_id: str) -> List[str]:
     """Return users watching the given project."""
     if not project_id:
         raise ValueError("project_id required")
-    return sorted(u for u, projects in _watchlist.items() if project_id in projects)
+    pid = project_id.strip()
+    return sorted(u for u, projects in _watchlist.items() if pid in projects)
