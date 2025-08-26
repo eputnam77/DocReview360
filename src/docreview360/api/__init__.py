@@ -572,10 +572,16 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
                 mode="sequential",
             )
         project.workflow = body.workflow
-    elif body.phase:
-        start_phase = body.phase
-        wf = create_workflow(project.id, [start_phase])
-        project.workflow = wf.id
+    # Previously a workflow was automatically created whenever a phase was
+    # supplied, even if the caller did not request one.  This behaviour made it
+    # impossible to create a project without a workflow.  Now we only create a
+    # workflow when an explicit ``workflow`` identifier is provided.  Projects can
+    # still record their starting phase without being tied to a workflow.
+
+    if body.phase and not body.workflow:
+        # Preserve the starting phase so the project reflects configuration even
+        # before a workflow is assigned.
+        project.initial_phase = body.phase
 
     # Clear all project-related caches to ensure fresh data
     clear_cache()
@@ -1545,6 +1551,12 @@ async def rename_phase_endpoint(name: str, body: PhaseModel) -> list[str]:
         wf.phases = [body.name if p == name else p for p in wf.phases]
         if wf.phase == name:
             wf.phase = body.name
+
+    # Update any projects that stored the phase before a workflow was created.
+    from ..search import projects
+    for proj in projects.values():
+        if getattr(proj, "initial_phase", None) == name:
+            proj.initial_phase = body.name
 
     return list_phases()
 

@@ -696,7 +696,16 @@ def verify_document_signature_stream(  # noqa: C901
         if approval.document_id != doc_id:
             continue
         hash_valid = approval.document_hash == doc_hash
-        signature_valid = approval.state == "approved" and approval.signature_id is not None
+        # A signature cannot be considered valid unless the approval has been
+        # approved, a signature identifier exists and the corresponding
+        # certificate was provided.  The previous implementation only checked for
+        # the presence of ``signature_id`` which incorrectly marked signatures as
+        # valid even when no certificate metadata was available.
+        signature_valid = (
+            approval.state == "approved"
+            and approval.signature_id is not None
+            and approval.certificate_url is not None
+        )
         certificate_present = approval.certificate_url is not None
         provider_results: dict[str, bool] = {}
         provider_valid = False

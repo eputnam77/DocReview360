@@ -20,6 +20,12 @@ def test_placeholder_type_error() -> None:
         dr.placeholder("3")
 
 
+def test_placeholder_bool_rejected() -> None:
+    """Booleans should not be treated as integers."""
+    with pytest.raises(TypeError):
+        dr.placeholder(True)
+
+
 def test_lazy_import_watchlist() -> None:
     import docreview360
 
