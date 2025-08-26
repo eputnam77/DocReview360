@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.logs import clear_logs, log_event
 from docreview360.workflows import create_workflow
@@ -195,7 +196,9 @@ def test_users_me_endpoint() -> None:
     assert resp.status_code == 404  # This endpoint doesn't exist, should return 404
 
     # Test the correct endpoint that does exist
-    resp = client.get("/users/me", headers={"X-User": "alice"})
+    token = auth.create_access_token({"sub": "alice"})
+    client.cookies.set("access_token", token)
+    resp = client.get("/users/me")
     assert resp.status_code == 200
     data = resp.json()
     assert data["username"] == "alice"

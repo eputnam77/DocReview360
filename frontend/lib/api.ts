@@ -11,22 +11,10 @@ export const API =
 // Utility function for authenticated API calls
 export async function authenticatedFetch(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  
   const headers = new Headers(options.headers);
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-  
-  // Add x-user header if user is available in localStorage
-  // This is needed for endpoints that filter by user (like /projects)
-  const user = typeof window !== "undefined" ? localStorage.getItem("current_user") : null;
-  if (user) {
-    headers.set("x-user", user);
-  }
-  
+
   // Prepend API base URL to relative URLs
   let fullUrl = url;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -35,11 +23,12 @@ export async function authenticatedFetch(
     const path = url.startsWith('/') ? url : `/${url}`;
     fullUrl = `${baseUrl}${path}`;
   }
-  
+
   try {
     return await fetch(fullUrl, {
       ...options,
       headers,
+      credentials: "include",
     });
   } catch (error) {
     console.error(`Failed to fetch ${fullUrl}:`, error);
