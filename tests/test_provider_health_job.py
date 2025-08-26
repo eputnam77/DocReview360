@@ -2,13 +2,21 @@
 from pathlib import Path
 
 import os
+import pytest
 import docreview360.database as db_mod
 
 from docreview360 import provider_store
 from docreview360.integrations.signature import base
 
 os.environ.setdefault("DOCREVIEW360_DATABASE_URL", "sqlite:///:memory:")
-db_mod.Database.migrate = lambda self, *args, **kwargs: None  # type: ignore[misc]
+
+
+@pytest.fixture(autouse=True)
+def _no_db_migrations(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid running the real database migrations in these tests."""
+
+    monkeypatch.setattr(db_mod.Database, "migrate", lambda self, *a, **k: None)
+
 import docreview360.logs as logs_mod
 import docreview360.audit as audit_mod
 from services.provider_health import check_provider_health  # noqa: E402
