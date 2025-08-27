@@ -36,9 +36,15 @@ def get_provider(name: str) -> Any:
 
 
 def providers() -> Dict[str, ProviderInfo]:
-    """Return the full provider registry."""
+    """Return a copy of the full provider registry.
 
-    return _providers
+    Returning the internal dictionary previously exposed the registry to
+    accidental external mutation.  Callers modifying the returned mapping would
+    inadvertently affect global state.  Returning a shallow copy prevents this
+    class of bugs while keeping the API simple.
+    """
+
+    return dict(_providers)
 
 
 def provider_names() -> List[str]:
