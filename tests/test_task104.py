@@ -6,3 +6,9 @@ def test_can_toggle_numbering() -> None:
     assert can_toggle_numbering("admin", rbac)
     assert not can_toggle_numbering("viewer", rbac)
     assert not can_toggle_numbering("missing", rbac)
+
+
+def test_can_toggle_numbering_handles_none() -> None:
+    """Gracefully handle roles with ``None`` permission mapping."""
+    rbac = {"admin": None}
+    assert not can_toggle_numbering("admin", rbac)
