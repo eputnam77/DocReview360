@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -33,18 +33,31 @@ def get_template(name: str) -> EmailTemplate | None:
     return TEMPLATES.get(name)
 
 
+_UNSET: Any = object()
+
+
 def update_template(
-    name: str, subject: str | None = None, body: str | None = None, task: str | None = None
+    name: str,
+    subject: str | None | Any = _UNSET,
+    body: str | None | Any = _UNSET,
+    task: str | None | Any = _UNSET,
 ) -> EmailTemplate:
-    """Update fields of an existing template and return it."""
+    """Update fields of an existing template and return it.
+
+    Using a sentinel allows callers to explicitly clear optional fields by
+    passing ``None``. Previously ``task=None`` was indistinguishable from the
+    default argument, making it impossible to remove an assigned task from a
+    template.
+    """
+
     tmpl = TEMPLATES.get(name)
     if tmpl is None:
         raise KeyError(f"template '{name}' not found")
-    if subject is not None:
+    if subject is not _UNSET:
         tmpl.subject = subject
-    if body is not None:
+    if body is not _UNSET:
         tmpl.body = body
-    if task is not None:
+    if task is not _UNSET:
         tmpl.task = task
     return tmpl
 
