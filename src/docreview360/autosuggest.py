@@ -26,7 +26,11 @@ async def suggest(host: HttpUrl, text: str, index: str = "documents") -> list[Su
     async with httpx.AsyncClient() as client:
         resp = await client.post(url, json=payload, timeout=5)
         resp.raise_for_status()
-        data = resp.json()["suggest"][0]["options"]
+        # ``_suggest`` responses nest suggestions under the name provided in
+        # the request.  The previous implementation attempted to index into the
+        # ``suggest`` dict using ``[0]`` which raised ``TypeError``.  Correctly
+        # navigate to the "simple" suggestion list before extracting options.
+        data = resp.json()["suggest"]["simple"][0]["options"]
 
     record_task_completion(135)
     return [Suggestion(text=o["text"], score=o.get("_score", 0.0)) for o in data]

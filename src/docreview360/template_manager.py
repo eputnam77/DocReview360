@@ -55,7 +55,7 @@ def upload_template(
     record = TemplateVersion(
         version=version,
         content=data,
-        metadata=metadata or {},
+        metadata=(metadata.copy() if metadata else {}),
     )
     versions.append(record)
     return record
