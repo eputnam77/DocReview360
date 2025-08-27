@@ -1,0 +1,37 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from docreview360 import doc_types
+from docreview360.doc_types import DocumentTypeModel, document_types
+from docreview360 import search
+
+
+def setup_function(_):
+    document_types.clear()
+    search.search_index.projects.clear()
+
+
+def test_save_and_load_state(tmp_path, monkeypatch):
+    monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
+    doc = DocumentTypeModel(name="T", template="tpl")
+    doc_types.add_document_type(doc)
+    document_types.clear()
+    assert doc_types.load_state() is True
+    assert document_types["T"].template == "tpl"
+
+
+def test_update_propagates_and_conflicts(tmp_path, monkeypatch):
+    monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
+    old = DocumentTypeModel(name="Old", template="t")
+    existing = DocumentTypeModel(name="Existing", template="t")
+    doc_types.add_document_type(old)
+    doc_types.add_document_type(existing)
+    project = search.ProjectModel(id="p1", name="P", doc_type="Old")
+    search.search_index.add_project(project)
+    updated = DocumentTypeModel(name="New", template="t")
+    doc_types.update_document_type("Old", updated)
+    assert search.projects["p1"].doc_type == "New"
+    with pytest.raises(ValueError):
+        doc_types.update_document_type("New", DocumentTypeModel(name="Existing", template="t"))
