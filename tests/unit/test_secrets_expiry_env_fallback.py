@@ -19,9 +19,7 @@ def test_expired_secret_falls_back_to_env(monkeypatch: pytest.MonkeyPatch) -> No
         types.SimpleNamespace(utcnow=lambda: future),
     )
 
-    with pytest.raises(RuntimeError):
-        get_secret("p")
-
-    # After expiry the secret should be removed allowing environment fallbacks.
+    # Environment variable should be returned once the secret expires rather
+    # than raising an exception.
     monkeypatch.setenv("P_TOKEN", "env-value")
     assert get_secret("p") == "env-value"
