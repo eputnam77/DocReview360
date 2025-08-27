@@ -9,7 +9,11 @@ async def test_task135_completed(monkeypatch):
     async def fake_post(self, url, json=None, timeout=None):
         req = httpx.Request("POST", url)
         return httpx.Response(
-            200, json={"suggest": [{"options": [{"text": "foo", "_score": 1.0}]}]}, request=req
+            200,
+            json={
+                "suggest": {"simple": [{"options": [{"text": "foo", "_score": 1.0}]}]}
+            },
+            request=req,
         )
 
     monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
