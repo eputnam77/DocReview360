@@ -1,4 +1,6 @@
 import pytest
+from typing import cast
+
 from docreview360.metadata import normalize_description
 
 
@@ -9,3 +11,9 @@ def test_normalize_description_strips_whitespace():
 def test_normalize_description_empty_raises():
     with pytest.raises(ValueError):
         normalize_description('   \n\t')
+
+
+def test_normalize_description_rejects_non_string() -> None:
+    """Passing a non-string should raise ``TypeError``."""
+    with pytest.raises(TypeError):
+        normalize_description(cast(str, 123))
