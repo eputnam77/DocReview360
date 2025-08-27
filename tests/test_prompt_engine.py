@@ -14,6 +14,13 @@ def test_synth_compress(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result == "Ths tst"
 
 
+def test_synth_compress_handles_punctuation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stop words with trailing punctuation should be removed."""
+    monkeypatch.setattr(ai, "synth_enabled", True)
+    result = ai.synth_compress("The, quick and easy")
+    assert result == ", qck sy"
+
+
 def test_suggest_export_format() -> None:
     assert ai.suggest_export_format("an image here") == "pdf"
     assert ai.suggest_export_format("data table included") == "xlsx"
