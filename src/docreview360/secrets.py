@@ -41,9 +41,12 @@ class VaultClient:
                 # and prevented falling back to environment variables.  Remove
                 # the stale entry so callers can retry or rely on env vars.
                 if datetime.utcnow() >= expiry:
+                    # Secret expired – remove and fall through to env vars
+                    # instead of raising which previously prevented callers
+                    # from transparently using configured fallbacks.
                     self._secrets.pop(provider, None)
-                    raise RuntimeError("secret expired")
-                return secret
+                else:
+                    return secret
         # Fallback to environment variables using common suffixes
         base = provider.upper()
         for suffix in ("", "_TOKEN", "_KEY", "_SECRET"):

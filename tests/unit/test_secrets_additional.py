@@ -19,8 +19,9 @@ def test_store_get_and_expiry(monkeypatch: pytest.MonkeyPatch):
     # simulate time after expiry
     future = datetime.utcnow() + timedelta(seconds=2)
     monkeypatch.setattr(secrets, "datetime", types.SimpleNamespace(utcnow=lambda: future))
-    with pytest.raises(RuntimeError):
-        get_secret("p1")
+    # Expired secrets should now return ``None`` allowing callers to fall back
+    # to other sources without needing to catch an exception.
+    assert get_secret("p1") is None
 
 
 def test_env_fallback(monkeypatch: pytest.MonkeyPatch):
