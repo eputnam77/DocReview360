@@ -89,7 +89,13 @@ def add_feedback_template(name: str, template: str) -> None:
 
 def add_prompt_template(name: str, template: str) -> None:
     """Register a new prompt template for the Prompt-Engine."""
-    if "{text}" not in template and not re.search(r"\{[a-zA-Z_][a-zA-Z0-9_]*\}", template):
+    # ``str.format`` uses double braces to escape literal ``{`` and ``}``.  The
+    # previous implementation incorrectly treated strings like ``"{{name}}`` as
+    # containing a real placeholder which later resulted in ``{name}`` appearing
+    # verbatim when rendering.  Use negative look-arounds to ensure braces are
+    # not escaped and require at least one real placeholder.
+    placeholder = re.search(r"(?<!\{)\{[a-zA-Z_][a-zA-Z0-9_]*\}(?!\})", template)
+    if not placeholder:
         raise ValueError("Prompt template must contain at least one placeholder.")
     PROMPT_TEMPLATES[name] = template
 
@@ -119,8 +125,10 @@ def synth_compress(text: str) -> str:
     """Reduce token count by removing stop words and vowels when enabled."""
     if not synth_enabled:
         return text
-    words = [w for w in text.split() if w.lower() not in SYNTH_STOP_WORDS]
-    no_vowels = "".join(ch for ch in " ".join(words) if ch.lower() not in "aeiou")
+    pattern = re.compile(r"\b(" + "|".join(re.escape(w) for w in SYNTH_STOP_WORDS) + r")\b", re.I)
+    cleaned = pattern.sub("", text)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    no_vowels = "".join(ch for ch in cleaned if ch.lower() not in "aeiou")
     return no_vowels
 
 

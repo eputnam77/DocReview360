@@ -1,5 +1,5 @@
-import json
 import gzip
+import json
 from pathlib import Path
 
 import pytest
@@ -22,6 +22,14 @@ def test_run_checks_supports_single_quote_alt(tmp_path: Path) -> None:
     assert result["accessibility"] == []
 
 
+def test_run_checks_supports_single_quote_aria_label(tmp_path: Path) -> None:
+    """Buttons with single quoted aria labels should pass accessibility checks."""
+    path = tmp_path / "btn.html"
+    path.write_text("<button aria-label='Go'></button>")
+    result = run_checks(path)
+    assert result["accessibility"] == []
+
+
 # backup_utils restore invalid base64
 def test_restore_backup_invalid_base64(tmp_path: Path) -> None:
     data = {
@@ -35,3 +43,4 @@ def test_restore_backup_invalid_base64(tmp_path: Path) -> None:
         json.dump(data, fh)
     with pytest.raises(ValueError):
         restore_backup(target)
+

@@ -24,7 +24,8 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     # Accept both single and double quoted ``alt`` attributes
     alt_attr = re.compile(r"alt=(?:\"[^\"]*\"|'[^']*')", re.I)
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
-    aria_label = re.compile(r"aria-label=\"[^\"]*\"", re.I)
+    # Support both single and double quoted ``aria-label`` attributes.
+    aria_label = re.compile(r"aria-label=(?:\"[^\"]*\"|'[^']*')", re.I)
 
     for match in img_tag.finditer(text):
         if not alt_attr.search(match.group(0)):
