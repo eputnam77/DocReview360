@@ -38,7 +38,11 @@ def _register_certificate(
     )
     signature = key.sign(content, padding.PKCS1v15(), hashes.SHA256())
     if tamper:
-        signature = b"\x00" + signature[1:]
+        # Flipping the last byte reliably corrupts the signature regardless of
+        # the padding bytes prepended by PKCS#1 v1.5. Changing the first byte as
+        # done previously often had no effect because RSA signatures typically
+        # start with ``0x00``. A corrupted signature should fail validation.
+        signature = signature[:-1] + bytes([signature[-1] ^ 0xFF])
     url = f"https://test-cert-{uuid4().hex}"
     documenso.register_test_certificate(url, cert, signature, revoked=revoked)
     return url
