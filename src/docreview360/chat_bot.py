@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -255,50 +256,56 @@ STOP_WORDS = {
     "do",
 }
 
+# Directories that do not contain useful project documentation.  Walking these
+# trees (in particular ``node_modules``) is extremely expensive and previously
+# caused tests querying repository content to spend tens of seconds scanning
+# unrelated files.  Ignoring them keeps lookups fast even in large workspaces.
+_SKIP_DIRS = {"node_modules", ".git", "dist", "build", "frontend"}
 
-def _repo_content_question(lower: str) -> str | None:
+
+def _repo_content_question(lower: str, root: Path | None = None) -> str | None:
     if "docreview360" not in lower and "docreview" not in lower:
         return None
     words = re.findall(r"[a-z0-9]+", lower)
     keywords = [w for w in words if w not in STOP_WORDS]
     if not keywords:
         return None
-    root = Path(__file__).resolve().parents[2]
+    root = root or Path(__file__).resolve().parents[2]
     # Keep track of the "best" match found.  We prefer README files and
     # `pyproject.toml` over `requirements.txt` because they contain richer
     # documentation about dependencies.  Previously the first match returned by
     # ``Path.rglob`` was used which depended on the filesystem traversal order
-    # and often surfaced ``requirements.txt`` before ``pyproject.toml``.
+    # and often surfaced ``requirements.txt`` before ``pyproject.toml``.  Using
+    # :func:`os.walk` lets us skip heavy directories up front.
     best_match: Path | None = None
     best_rank = -1
-    for path in root.rglob("*"):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".ico"}:
-            continue
-        # Ignore lock files and other generated artefacts which can be very
-        # large and rarely contain helpful documentation.  Without this the
-        # search would often return ``poetry.lock`` before ``pyproject.toml``
-        # simply because it is encountered first in the ``rglob`` walk.
-        # ``poetry.lock`` does mention dependencies such as ``pymysql`` but we
-        # want to surface human authored files instead.
-        if path.name.lower().endswith(".lock"):
-            continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="ignore").lower()
-        except Exception:
-            continue
-        if all(k in text for k in keywords):
-            name = path.name.lower()
-            if "readme" in name:
-                return (
-                    f"I found information about {' '.join(keywords)} in "
-                    f"{path.relative_to(root)}."
-                )
-            rank = 2 if name == "pyproject.toml" else 1 if name == "requirements.txt" else 0
-            if rank > best_rank:
-                best_match = path
-                best_rank = rank
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        for filename in filenames:
+            path = Path(dirpath) / filename
+            if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".ico"}:
+                continue
+            # Ignore lock files and other generated artefacts which can be very
+            # large and rarely contain helpful documentation.  Without this the
+            # search would often return ``poetry.lock`` before ``pyproject.toml``
+            # simply because it is encountered first in the directory walk.
+            if path.name.lower().endswith(".lock"):
+                continue
+            try:
+                text = path.read_text(encoding="utf-8", errors="ignore").lower()
+            except Exception:
+                continue
+            if all(k in text for k in keywords):
+                name = path.name.lower()
+                if "readme" in name:
+                    return (
+                        f"I found information about {' '.join(keywords)} in "
+                        f"{path.relative_to(root)}."
+                    )
+                rank = 2 if name == "pyproject.toml" else 1 if name == "requirements.txt" else 0
+                if rank > best_rank:
+                    best_match = path
+                    best_rank = rank
     if best_match:
         return (
             f"I found information about {' '.join(keywords)} in " f"{best_match.relative_to(root)}."

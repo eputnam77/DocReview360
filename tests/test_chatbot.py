@@ -121,3 +121,12 @@ async def test_unknown_question() -> None:
 def test_empty_question() -> None:
     with pytest.raises(ValueError):
         asyncio.run(chat_bot.answer_question("   "))
+
+def test_repo_content_question_skips_node_modules(tmp_path) -> None:
+    root = tmp_path
+    nm = root / "node_modules"
+    nm.mkdir()
+    (nm / "pkg.txt").write_text("pymysql", encoding="utf-8")
+    resp = chat_bot._repo_content_question("docreview360 pymysql", root=root)
+    assert "couldn't find" in resp.lower()
+
