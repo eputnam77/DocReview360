@@ -38,3 +38,12 @@ def test_rejects_drive_specifier_anywhere(tmp_path) -> None:
     with pytest.raises(ValueError):
         upload_file(bucket, "safe/C:evil.txt", b"data")
 
+
+def test_rejects_empty_path_segment(tmp_path) -> None:
+    bucket = tmp_path / "bucket"
+    bucket.mkdir()
+    with pytest.raises(ValueError):
+        upload_file(bucket, "a//b", b"data")
+    with pytest.raises(ValueError):
+        _validate_key("a//b")
+

@@ -245,7 +245,11 @@ def structural_pattern_score(text: str) -> float:
 
 def _fann_features(text: str) -> list[float]:
     """Return simple numeric features for the faux FANN network."""
-    words = text.lower().split()
+    # Mirroring ``services.document_checker`` we need to extract word tokens
+    # without punctuation so repeated sequences like ``"bad, bad"`` are counted.
+    # ``str.split`` left trailing commas attached to tokens which meant the
+    # repetition detector missed such cases and skewed scores.
+    words = re.findall(r"[A-Za-z0-9']+", text.lower())
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
     unique_ratio = len(set(text)) / (len(text) or 1)
 
