@@ -6,6 +6,7 @@ import pytest
 
 from services.document_checker import run_checks
 from src.docreview360.backup_utils import restore_backup
+from services.document_checker import detect_anomalies
 
 
 def test_run_checks_detects_punctuation_repeats(tmp_path: Path) -> None:
@@ -43,4 +44,9 @@ def test_restore_backup_invalid_base64(tmp_path: Path) -> None:
         json.dump(data, fh)
     with pytest.raises(ValueError):
         restore_backup(target)
+
+
+def test_detect_anomalies_counts_punctuated_repeats() -> None:
+    """Repeated words separated by punctuation should trigger anomalies."""
+    assert detect_anomalies("bad, bad", threshold=0.5)
 

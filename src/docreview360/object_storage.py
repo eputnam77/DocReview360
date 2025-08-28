@@ -21,6 +21,11 @@ def _validate_key(key: str) -> None:
         raise ValueError("invalid key")
 
     normalized = key.replace("\\", "/")
+    # Reject empty path segments to prevent ambiguous or accidental absolute
+    # paths.  ``PurePosixPath`` collapses consecutive separators so we detect
+    # them before normalisation.
+    if "//" in normalized:
+        raise ValueError("invalid key")
     parts = PurePosixPath(normalized).parts
     # ``PurePosixPath`` does not treat ``":"`` specially so a key like
     # ``"safe/C:secret"`` would previously pass validation even though it
