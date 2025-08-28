@@ -125,8 +125,16 @@ def synth_compress(text: str) -> str:
     """Reduce token count by removing stop words and vowels when enabled."""
     if not synth_enabled:
         return text
-    pattern = re.compile(r"\b(" + "|".join(re.escape(w) for w in SYNTH_STOP_WORDS) + r")\b", re.I)
-    cleaned = pattern.sub("", text)
+    if SYNTH_STOP_WORDS:
+        pattern = re.compile(
+            r"\b(" + "|".join(re.escape(w) for w in SYNTH_STOP_WORDS) + r")\b",
+            re.I,
+        )
+        cleaned = pattern.sub("", text)
+    else:
+        # Building a regex with an empty group results in ``re.error``.  When no
+        # stop words are configured we simply operate on the original text.
+        cleaned = text
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     no_vowels = "".join(ch for ch in cleaned if ch.lower() not in "aeiou")
     return no_vowels
@@ -338,8 +346,10 @@ def create_validated_document(
     filename: str, data: bytes, *, user: str | None = None, project: str | None = None
 ) -> "DocumentModel":
     """Create a document after validating its content."""
-
-    text = data.decode()
+    try:
+        text = data.decode()
+    except UnicodeDecodeError as exc:
+        raise ValueError("data must be valid UTF-8") from exc
     is_valid, diagnostics = validate_content(text, return_diagnostics=True)
     if not is_valid:
         raise ValueError(f"Invalid content: {diagnostics}")
