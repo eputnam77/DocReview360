@@ -43,7 +43,11 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
 
 
 def detect_anomalies(text: str, threshold: float = 0.7) -> bool:
-    words = re.split(r"\s+", text.lower())
+    # ``re.split`` left punctuation attached to tokens so sequences like
+    # ``"bad, bad"`` were treated as different words and missed by the
+    # repetition counter.  Extract plain word tokens instead so punctuation
+    # does not shield repeated words from detection.
+    words = re.findall(r"[A-Za-z0-9']+", text.lower())
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
     unique_ratio = len(set(text)) / max(len(text), 1)
     features = [len(text) / 1000, unique_ratio, repeated]
