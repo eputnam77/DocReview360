@@ -77,5 +77,11 @@ def cache_get(key: str) -> Any:
 def clear_cache() -> None:
     client = _get_client()
     if client:
-        client.flushdb()
+        try:
+            client.flushdb()
+        except Exception:
+            # In tests or degraded environments the Redis instance may be
+            # unreachable.  Clearing the local fallback cache should still
+            # succeed so callers are not left with stale data.
+            pass
     _cache.clear()

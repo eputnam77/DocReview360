@@ -57,12 +57,20 @@ def restore_backup(path: str | Path) -> None:
     with gzip.open(target, "rt", encoding="utf-8") as fh:
         data = json.load(fh)
 
+    if not isinstance(data, dict):
+        raise ValueError("backup must contain a JSON object")
+
+    docs = data.get("documents", [])
+    logs_data = data.get("logs", [])
+    if not isinstance(docs, list) or not isinstance(logs_data, list):
+        raise ValueError("documents and logs must be lists")
+
     # Use document lock to prevent race conditions during restore
     from .documents import document_lock
 
     with document_lock:
         documents.clear()
-        for d in data.get("documents", []):
+        for d in docs:
             if "yjs_updates" in d and d["yjs_updates"] is not None:
                 updates = d["yjs_updates"]
                 if not isinstance(updates, list):
@@ -73,5 +81,5 @@ def restore_backup(path: str | Path) -> None:
                     raise ValueError("Invalid base64 in yjs_updates") from exc
             documents[d["id"]] = DocumentModel(**d)
         logs.clear()
-        for entry in data.get("logs", []):
+        for entry in logs_data:
             logs.append(LogEntry(**entry))
