@@ -40,10 +40,10 @@ _watchlist: Dict[str, Set[str]] = _load()
 
 def toggle_watch(user: str, project_id: str) -> List[str]:
     """Toggle ``project_id`` in ``user``'s watchlist and return updated list."""
-    if not user or not project_id:
-        raise ValueError("user and project_id required")
     user = user.strip()
     project_id = project_id.strip()
+    if not user or not project_id:
+        raise ValueError("user and project_id required")
     starred = _watchlist.setdefault(user, set())
     if project_id in starred:
         starred.remove(project_id)
@@ -55,14 +55,15 @@ def toggle_watch(user: str, project_id: str) -> List[str]:
 
 def get_watchlist(user: str) -> List[str]:
     """Return the sorted watchlist for ``user``."""
+    user = user.strip()
     if not user:
         raise ValueError("user required")
-    return sorted(_watchlist.get(user.strip(), set()))
+    return sorted(_watchlist.get(user, set()))
 
 
 def get_watchers(project_id: str) -> List[str]:
     """Return users watching the given project."""
-    if not project_id:
-        raise ValueError("project_id required")
     pid = project_id.strip()
+    if not pid:
+        raise ValueError("project_id required")
     return sorted(u for u, projects in _watchlist.items() if pid in projects)

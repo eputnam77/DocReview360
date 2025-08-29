@@ -21,7 +21,12 @@ def _ensure_tls(kwargs: dict) -> None:
     """
 
     verify = kwargs.get("verify")
-    if verify in (False, None):
+    # Guard against any falsey values (``False``, ``0``, ``""``).  The previous
+    # implementation only considered ``False`` and ``None`` which meant passing
+    # other falsey values like an empty string accidentally disabled certificate
+    # verification.  Normalising all falsey values ensures TLS checks are
+    # consistently enforced.
+    if not verify:
         kwargs["verify"] = _tls_context
     elif isinstance(verify, ssl.SSLContext) and verify.minimum_version < ssl.TLSVersion.TLSv1_2:
         verify.minimum_version = ssl.TLSVersion.TLSv1_2
