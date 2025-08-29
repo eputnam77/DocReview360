@@ -16,6 +16,6 @@ def parse_login_gov_response(saml_response: str) -> str:
 
     ns = {"saml2": "urn:oasis:names:tc:SAML:2.0:assertion"}
     name_id = root.find(".//saml2:Subject/saml2:NameID", ns)
-    if name_id is None or not name_id.text:
+    if name_id is None or not (name_id.text and name_id.text.strip()):
         raise ValueError("NameID not found")
-    return name_id.text
+    return name_id.text.strip()
