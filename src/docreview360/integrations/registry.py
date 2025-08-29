@@ -24,8 +24,8 @@ def register_provider(
     """Register ``provider`` under ``name`` with optional ``metadata``."""
 
     provider_name = name or getattr(provider, "name", None)
-    if provider_name is None:
-        raise ValueError("provider must define a 'name'")
+    if not provider_name:
+        raise ValueError("provider must define a non-empty 'name'")
     _providers[provider_name] = ProviderInfo(provider, metadata or {})
 
 
