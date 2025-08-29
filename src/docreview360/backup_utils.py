@@ -76,6 +76,8 @@ def restore_backup(path: str | Path) -> None:
     # temporary containers preserves the original state if validation fails.
     new_docs: Dict[str, DocumentModel] = {}
     for d in docs:
+        if not isinstance(d, dict):
+            raise ValueError("documents entries must be objects")
         if "yjs_updates" in d and d["yjs_updates"] is not None:
             updates = d["yjs_updates"]
             if not isinstance(updates, list):
