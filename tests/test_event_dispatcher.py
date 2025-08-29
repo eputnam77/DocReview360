@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib
 
+import pytest
+
 from docreview360 import event_dispatcher
 
 
@@ -60,3 +62,10 @@ def test_dead_letter_queue_on_failure(monkeypatch):
 
     assert calls["count"] == 2
     assert event_dispatcher.dead_letter_queue[-1]["url"] == "http://callback"
+
+
+def test_dispatcher_rejects_invalid_retry_count() -> None:
+    with pytest.raises(ValueError):
+        event_dispatcher.EventDispatcher(retries=0)
+    with pytest.raises(ValueError):
+        event_dispatcher.EventDispatcher(retries=-1)
