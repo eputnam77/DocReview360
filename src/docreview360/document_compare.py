@@ -19,6 +19,8 @@ def track_changes(old: str, new: str) -> str:
 
 def influence_map(docs: Dict[str, str], threshold: float = 0.5) -> Dict[Tuple[str, str], float]:
     """Return mapping of document pairs with similarity above ``threshold``."""
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("threshold must be between 0 and 1")
     keys = list(docs)
     mapping: Dict[Tuple[str, str], float] = {}
     for i, k1 in enumerate(keys):
