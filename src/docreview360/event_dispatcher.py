@@ -36,8 +36,13 @@ class EventDispatcher:
                     return
             except Exception:  # pragma: no cover - network errors
                 pass
-            time.sleep(delay)
-            delay *= 2
+            # ``time.sleep`` was previously called unconditionally which meant
+            # we slept once more even after the final failed attempt.  This
+            # unnecessarily slowed down callers without offering any benefit.
+            # Only sleep when another retry will be attempted.
+            if attempt < self.retries - 1:
+                time.sleep(delay)
+                delay *= 2
         dead_letter_queue.append({"url": url, "event": event, "payload": payload})
 
 
