@@ -12,3 +12,13 @@ def test_parse_login_gov_response() -> None:
     )
     encoded = b64encode(saml.encode()).decode()
     assert parse_login_gov_response(encoded) == "user@example.com"
+
+
+def test_parse_login_gov_response_blank() -> None:
+    """Whitespace-only input should raise an explicit error."""
+    try:
+        parse_login_gov_response("   ")
+    except ValueError as exc:
+        assert "saml_response" in str(exc)
+    else:  # pragma: no cover - defensive
+        raise AssertionError("ValueError not raised for blank input")
