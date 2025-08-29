@@ -19,9 +19,7 @@ class CommentModel(BaseModel):
     text: str
     mentions: list[str] = Field(default_factory=list)
     parent: Optional[str] = None
-    created: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 _comments: Dict[str, List[CommentModel]] = {}
@@ -44,9 +42,12 @@ def _extract_mentions(text: str) -> list[str]:
 
 def add_comment(document: str, user: str, text: str, parent: str | None = None) -> CommentModel:
     """Store a comment for the given document parsing mentions and emoji."""
-    if not document or not user or not text:
+    if not document or not user or not text or not text.strip():
+        # ``text`` previously allowed strings containing only whitespace which
+        # produced empty, unusable comments.  Reject such input so callers must
+        # provide meaningful content.
         raise ValueError("document, user and text are required")
-    text = _replace_emojis(text)
+    text = _replace_emojis(text.strip())
     mentions = _extract_mentions(text)
     comment = CommentModel(
         id=uuid4().hex,

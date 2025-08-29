@@ -21,8 +21,8 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
 
     accessibility = []
     img_tag = re.compile(r"<img [^>]*>", re.I)
-    # Accept both single and double quoted ``alt`` attributes
-    alt_attr = re.compile(r"alt=(?:\"[^\"]*\"|'[^']*')", re.I)
+    # Accept single, double quoted or unquoted ``alt`` attributes
+    alt_attr = re.compile(r"alt=(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I)
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
     # Support both single and double quoted ``aria-label`` attributes.
     aria_label = re.compile(r"aria-label=(?:\"[^\"]*\"|'[^']*')", re.I)
