@@ -68,18 +68,28 @@ def restore_backup(path: str | Path) -> None:
     # Use document lock to prevent race conditions during restore
     from .documents import document_lock
 
+    # Validate and construct objects **before** mutating global state.  The
+    # previous implementation cleared ``documents`` and ``logs`` up-front which
+    # meant any subsequent error (for example invalid base64 in
+    # ``yjs_updates``) would leave the application with an empty in-memory
+    # store even though the restore failed.  Building the new structures in
+    # temporary containers preserves the original state if validation fails.
+    new_docs: Dict[str, DocumentModel] = {}
+    for d in docs:
+        if "yjs_updates" in d and d["yjs_updates"] is not None:
+            updates = d["yjs_updates"]
+            if not isinstance(updates, list):
+                raise ValueError("yjs_updates must be a list")
+            try:
+                d["yjs_updates"] = [base64.b64decode(u, validate=True) for u in updates]
+            except (binascii.Error, TypeError) as exc:
+                raise ValueError("Invalid base64 in yjs_updates") from exc
+        new_docs[d["id"]] = DocumentModel(**d)
+
+    new_logs = [LogEntry(**entry) for entry in logs_data]
+
     with document_lock:
         documents.clear()
-        for d in docs:
-            if "yjs_updates" in d and d["yjs_updates"] is not None:
-                updates = d["yjs_updates"]
-                if not isinstance(updates, list):
-                    raise ValueError("yjs_updates must be a list")
-                try:
-                    d["yjs_updates"] = [base64.b64decode(u, validate=True) for u in updates]
-                except (binascii.Error, TypeError) as exc:
-                    raise ValueError("Invalid base64 in yjs_updates") from exc
-            documents[d["id"]] = DocumentModel(**d)
+        documents.update(new_docs)
         logs.clear()
-        for entry in logs_data:
-            logs.append(LogEntry(**entry))
+        logs.extend(new_logs)
