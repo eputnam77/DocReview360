@@ -53,7 +53,10 @@ def _feature_weights(doc_type: str | None) -> Sequence[float] | None:
 def high_risk_warnings(text: str) -> list[str]:
     """Return list of risky terms present in ``text``."""
     lower = text.lower()
-    return [term for term in _HIGH_RISK_TERMS if term in lower]
+    # ``_HIGH_RISK_TERMS`` is a set which results in arbitrary iteration order
+    # making the return value non-deterministic.  Present the results sorted so
+    # callers and tests receive a stable, predictable order.
+    return sorted(term for term in _HIGH_RISK_TERMS if term in lower)
 
 
 def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = None) -> float:
@@ -63,7 +66,7 @@ def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = N
     more influence for specific document categories.
     High-risk terms automatically reduce the score by a set penalty.
     """
-    score = predict_weighted(text, weights, _feature_weights(doc_type))
+    score = float(predict_weighted(text, weights, _feature_weights(doc_type)))
     if high_risk_warnings(text):
         score *= _HIGH_RISK_PENALTY
     return score
