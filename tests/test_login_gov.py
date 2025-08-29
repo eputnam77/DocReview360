@@ -1,5 +1,7 @@
 from base64 import b64encode
 
+import pytest
+
 from docreview360.login_gov import parse_login_gov_response
 
 
@@ -22,3 +24,34 @@ def test_parse_login_gov_response_blank() -> None:
         assert "saml_response" in str(exc)
     else:  # pragma: no cover - defensive
         raise AssertionError("ValueError not raised for blank input")
+
+
+def test_parse_login_gov_response_invalid_base64() -> None:
+    """Non-base64 input should raise a clear error."""
+    with pytest.raises(ValueError):
+        parse_login_gov_response("not base64")
+
+
+def test_parse_login_gov_response_missing_nameid() -> None:
+    """Responses lacking ``NameID`` should be rejected."""
+    saml = (
+        "<saml2:Response xmlns:saml2='urn:oasis:names:tc:SAML:2.0:assertion'>"
+        "<saml2:Assertion><saml2:Subject>"  # no NameID element
+        "</saml2:Subject></saml2:Assertion></saml2:Response>"
+    )
+    encoded = b64encode(saml.encode()).decode()
+    with pytest.raises(ValueError):
+        parse_login_gov_response(encoded)
+
+
+def test_parse_login_gov_response_whitespace_nameid() -> None:
+    """Whitespace-only NameID values should be treated as missing."""
+    saml = (
+        "<saml2:Response xmlns:saml2='urn:oasis:names:tc:SAML:2.0:assertion'>"
+        "<saml2:Assertion><saml2:Subject>"
+        "<saml2:NameID>   </saml2:NameID>"
+        "</saml2:Subject></saml2:Assertion></saml2:Response>"
+    )
+    encoded = b64encode(saml.encode()).decode()
+    with pytest.raises(ValueError):
+        parse_login_gov_response(encoded)

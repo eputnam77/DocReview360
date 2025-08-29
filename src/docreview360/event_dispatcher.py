@@ -19,6 +19,8 @@ class EventDispatcher:
     """Send events to callbacks with retry and backoff."""
 
     def __init__(self, retries: int = 3, backoff: float = 0.1) -> None:
+        if retries < 1:
+            raise ValueError("retries must be at least 1")
         self.retries = retries
         self.backoff = backoff
 

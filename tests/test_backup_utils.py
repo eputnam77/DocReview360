@@ -35,5 +35,23 @@ def test_restore_invalid_base64(tmp_path):
     p = tmp_path / "bad.gz"
     with gzip.open(p, "wt", encoding="utf-8") as fh:
         json.dump(data, fh)
+    documents["orig"] = DocumentModel(id="orig", content="y")
     with pytest.raises(ValueError):
         bu.restore_backup(p)
+    # State should remain untouched on failure
+    assert "orig" in documents
+
+
+def test_restore_rejects_non_dict_documents(tmp_path):
+    """Non-dict entries in the document list should raise an error."""
+    data = {"documents": [123], "logs": []}
+    p = tmp_path / "bad2.gz"
+    with gzip.open(p, "wt", encoding="utf-8") as fh:
+        json.dump(data, fh)
+    documents["orig"] = DocumentModel(id="orig", content="z")
+    logs.append(LogEntry(id="l1", timestamp=datetime.now(timezone.utc), action="a"))
+    with pytest.raises(ValueError):
+        bu.restore_backup(p)
+    # Existing state should remain
+    assert list(documents.keys()) == ["orig"]
+    assert logs and logs[0].id == "l1"
