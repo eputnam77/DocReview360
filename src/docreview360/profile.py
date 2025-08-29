@@ -37,8 +37,10 @@ def update_preferences(user: str, prefs: Dict[str, Any]) -> Dict[str, Any]:
     cleaned: Dict[str, Any] = {}
     for key, val in prefs.items():
         if key == "theme":
-            if isinstance(val, str) and val.lower() in VALID_THEMES:
-                cleaned[key] = val.lower()
+            if isinstance(val, str):
+                normalised = val.strip().lower()
+                if normalised in VALID_THEMES:
+                    cleaned[key] = normalised
         elif key == "reduce_motion":
             if isinstance(val, str):
                 cleaned[key] = val.strip().lower() in {"1", "true", "yes", "on"}

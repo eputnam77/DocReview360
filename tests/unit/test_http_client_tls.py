@@ -52,3 +52,18 @@ def test_custom_context_upgraded(monkeypatch):
     assert captured["verify"] is ctx
     assert ctx.minimum_version is ssl.TLSVersion.TLSv1_2
 
+
+def test_empty_string_verify(monkeypatch):
+    """Falsey but non-boolean values like "" should still enable TLS checks."""
+
+    captured = {}
+
+    def fake_get(url, **kwargs):
+        captured["verify"] = kwargs.get("verify")
+        return httpx.Response(200)
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    http_client.get("https://example.com", verify="")
+
+    assert captured["verify"] is http_client._tls_context
+
