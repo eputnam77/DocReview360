@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timezone
 
 import httpx
 import pytest
@@ -7,7 +8,12 @@ from _pytest.monkeypatch import MonkeyPatch
 
 from docreview360 import logs
 from docreview360.config import Config
-from docreview360.log_connectors import ELKConnector, clear_connectors, register_connector
+from docreview360.log_connectors import (
+    ELKConnector,
+    CloudWatchConnector,
+    clear_connectors,
+    register_connector,
+)
 
 
 def test_config_connectors(tmp_path: Path) -> None:
@@ -53,3 +59,21 @@ async def test_elk_connector_batches(monkeypatch: MonkeyPatch) -> None:
         logs.clear_logs()
     assert len(sent) == 1
     assert len(sent[0]) == 2
+
+
+@pytest.mark.asyncio
+async def test_cloudwatch_connector_uses_epoch(monkeypatch: MonkeyPatch) -> None:
+    class Dummy:
+        def __init__(self) -> None:
+            self.events: list[dict[str, object]] | None = None
+
+        def put_log_events(self, *, logGroupName, logStreamName, logEvents):  # type: ignore[no-untyped-def]
+            self.events = logEvents
+
+    connector = CloudWatchConnector("group")
+    connector._client = Dummy()  # type: ignore[assignment]
+    entry = logs.LogEntry(id="1", timestamp=datetime.now(timezone.utc), action="x")
+    await connector._send_batch([entry])
+    assert connector._client.events is not None  # type: ignore[union-attr]
+    ts = connector._client.events[0]["timestamp"]  # type: ignore[index]
+    assert ts > 1_000_000_000_000  # milliseconds since Unix epoch
