@@ -15,6 +15,8 @@ WATCHLIST_FILE = Path(
 def _load() -> Dict[str, Set[str]]:
     try:
         data = json.loads(WATCHLIST_FILE.read_text())
+        if not isinstance(data, dict):
+            raise ValueError(f"Watchlist file must contain a JSON object: {WATCHLIST_FILE}")
         return {u: set(v) for u, v in data.items()}
     except FileNotFoundError:
         return {}
