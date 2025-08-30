@@ -238,6 +238,10 @@ def hash_new_log_segments(
     int
         Number of segments hashed during this invocation.
     """
+    if segment_size <= 0:
+        raise ValueError("segment_size must be positive")
+    if retention_days < 0:
+        raise ValueError("retention_days must be non-negative")
 
     if not _AUDIT_LOG_PATH.exists():
         return 0
