@@ -18,7 +18,10 @@ def load_envs(path: Path | None = None) -> Dict[str, Dict[str, str]]:
     path = path or ENV_FILE
     if not path.exists():
         return {}
-    return yaml.safe_load(path.read_text()) or {}
+    data = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(data, dict):
+        raise ValueError("Environment configuration must be a mapping")
+    return data
 
 
 def add_environment(name: str, url: str, color: str, path: Path | None = None) -> None:
@@ -26,6 +29,7 @@ def add_environment(name: str, url: str, color: str, path: Path | None = None) -
     path = path or ENV_FILE
     data = load_envs(path)
     data[name] = {"url": url, "color": color}
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(data))
 
 

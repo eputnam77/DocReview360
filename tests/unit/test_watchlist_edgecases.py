@@ -16,6 +16,15 @@ def test_load_invalid_json_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         wl._load()
 
 
+def test_load_non_mapping_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Structured JSON that is not an object should be rejected."""
+    bad_file = tmp_path / "watchlist.json"
+    bad_file.write_text('["a"]')
+    monkeypatch.setattr(wl, "WATCHLIST_FILE", bad_file)
+    with pytest.raises(ValueError):
+        wl._load()
+
+
 def test_toggle_normalises_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Leading/trailing whitespace should be ignored when toggling watches."""
     file_path = tmp_path / "watchlist.json"
