@@ -31,6 +31,13 @@ def test_run_checks_supports_single_quote_aria_label(tmp_path: Path) -> None:
     assert result["accessibility"] == []
 
 
+def test_run_checks_empty_nested_button(tmp_path: Path) -> None:
+    path = tmp_path / "btn2.html"
+    path.write_text("<button><span></span></button>")
+    result = run_checks(path)
+    assert "button missing label" in result["accessibility"]
+
+
 # backup_utils restore invalid base64
 def test_restore_backup_invalid_base64(tmp_path: Path) -> None:
     data = {

@@ -50,6 +50,18 @@ def test_cache_fallback_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cache.cache_get("a") is None
 
 
+def test_cache_ttl_zero_means_no_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A TTL of zero should behave like no expiration."""
+    cache._client = None
+    monkeypatch.setattr(cache, "_redis", None)
+    cache.clear_cache()
+    fake_time = [0.0]
+    monkeypatch.setattr(cache.time, "monotonic", lambda: fake_time[0])
+    cache.cache_set("k", "v", ttl=0)
+    fake_time[0] = 100.0
+    assert cache.cache_get("k") == "v"
+
+
 def test_cache_import_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "redis", None)
     import docreview360.cache as c
