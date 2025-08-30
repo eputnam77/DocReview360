@@ -73,16 +73,19 @@ CUSTOM_STYLE_RULES: list[Callable[[str], bool]] = []
 # ---------------------------------------------------------------------------
 
 
+_FEEDBACK_PLACEHOLDER = re.compile(r"(?<!\{)\{text\}(?!\})")
+
+
 def apply_feedback_template(template: str, text: str) -> str:
     """Insert `text` into the feedback template."""
-    if "{text}" not in template:
+    if not _FEEDBACK_PLACEHOLDER.search(template):
         raise ValueError("Feedback template must contain '{text}' placeholder.")
     return template.replace("{text}", text)
 
 
 def add_feedback_template(name: str, template: str) -> None:
     """Register a new feedback template."""
-    if "{text}" not in template:
+    if not _FEEDBACK_PLACEHOLDER.search(template):
         raise ValueError("Feedback template must contain '{text}' placeholder.")
     FEEDBACK_TEMPLATES[name] = template
 
