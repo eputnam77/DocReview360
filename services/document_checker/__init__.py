@@ -34,7 +34,11 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     for match in button_tag.finditer(text):
         attrs = match.group(1)
         body = match.group(2)
-        if not aria_label.search(attrs) and body.strip() == "":
+        # Remove nested tags when checking for visible text. Without this,
+        # buttons containing only empty markup like ``<span></span>`` were not
+        # flagged as missing labels.
+        text_only = re.sub(r"<[^>]+>", "", body).strip()
+        if not aria_label.search(attrs) and text_only == "":
             accessibility.append("button missing label")
 
     style_ok = not detect_anomalies(text)

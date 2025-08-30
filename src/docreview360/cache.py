@@ -48,9 +48,9 @@ def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
     if ttl is not None and ttl < 0:
         raise ValueError("ttl must be non-negative")
     # A TTL of ``0`` should behave like ``None`` (no expiration) to mirror
-    # common cache semantics such as Redis. Previously the local fallback cache
-    # treated ``0`` as an immediate expiry making values vanish right after
-    # insertion. Normalize ``0`` to ``None`` for consistent behaviour.
+    # common cache semantics such as Redis. Without this normalisation the
+    # local fallback cache would treat ``0`` as an immediate expiry, causing
+    # values to vanish right after insertion.
     ttl_arg = ttl if ttl not in (None, 0) else None
     client = _get_client()
     if client:
