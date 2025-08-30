@@ -6,6 +6,7 @@ import asyncio
 from typing import Any, List
 
 import httpx
+import time
 
 from .models import LogEntry
 
@@ -81,7 +82,12 @@ class CloudWatchConnector(LogConnector):
     async def _send_batch(self, batch: List[dict[str, Any]]) -> None:
         client = self._client_instance()
         loop = asyncio.get_running_loop()
-        events = [{"timestamp": int(loop.time() * 1000), "message": str(entry)} for entry in batch]
+        # ``loop.time()`` returns a monotonic clock which is not tied to the
+        # Unix epoch. CloudWatch expects timestamps in milliseconds since epoch
+        # and using the monotonic clock resulted in values near zero which were
+        # rejected or mis-ordered. Use ``time.time()`` to generate proper epoch
+        # timestamps.
+        events = [{"timestamp": int(time.time() * 1000), "message": str(entry)} for entry in batch]
         await loop.run_in_executor(
             None,
             lambda: client.put_log_events(
