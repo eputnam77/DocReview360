@@ -68,3 +68,14 @@ def test_rejects_newlines_and_null_bytes(tmp_path) -> None:
     with pytest.raises(ValueError):
         _validate_key("nul\x00.txt")
 
+
+def test_rejects_leading_trailing_whitespace(tmp_path) -> None:
+    bucket = tmp_path / "bucket"
+    bucket.mkdir()
+    with pytest.raises(ValueError):
+        upload_file(bucket, " file.txt", b"data")
+    with pytest.raises(ValueError):
+        upload_file(bucket, "file.txt ", b"data")
+    with pytest.raises(ValueError):
+        _validate_key(" file.txt")
+

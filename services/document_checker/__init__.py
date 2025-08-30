@@ -21,11 +21,15 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
 
     accessibility = []
     img_tag = re.compile(r"<img [^>]*>", re.I)
-    # Accept single, double quoted or unquoted ``alt`` attributes
-    alt_attr = re.compile(r"alt=(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I)
+    # Accept attributes with optional whitespace around the equals sign and
+    # support single, double quoted or unquoted ``alt`` values.
+    alt_attr = re.compile(
+        r"alt\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I
+    )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
-    # Support both single and double quoted ``aria-label`` attributes.
-    aria_label = re.compile(r"aria-label=(?:\"[^\"]*\"|'[^']*')", re.I)
+    # ``aria-label`` attributes may also include surrounding whitespace. Allow
+    # both quoting styles while normalising incidental spaces.
+    aria_label = re.compile(r"aria-label\s*=\s*(?:\"[^\"]*\"|'[^']*')", re.I)
 
     for match in img_tag.finditer(text):
         if not alt_attr.search(match.group(0)):

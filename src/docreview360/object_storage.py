@@ -19,6 +19,10 @@ def _validate_key(key: str) -> None:
 
     if not key or key.startswith("/") or key.endswith("/"):
         raise ValueError("invalid key")
+    # Leading or trailing spaces can produce confusing files that are hard to
+    # reference later. Treat such keys as invalid early.
+    if key != key.strip():
+        raise ValueError("invalid key")
 
     normalized = key.replace("\\", "/")
     # Newline or null bytes in paths can lead to log injection or truncation
