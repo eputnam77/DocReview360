@@ -10,3 +10,10 @@ def test_button_empty_aria_label() -> None:
     html = "<button aria-label=''> </button>"
     issues = audit_html(html)
     assert "button missing label" in issues
+
+
+def test_button_nested_empty_span() -> None:
+    """Buttons containing only empty tags should still be flagged."""
+    html = "<button><span></span></button>"
+    issues = audit_html(html)
+    assert "button missing label" in issues
