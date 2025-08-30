@@ -25,6 +25,10 @@ def audit_html(html: str) -> List[str]:
         if not _ALT_ATTR.search(img_match):
             issues.append("image missing alt text")
     for attrs, body in _BUTTON_TAG.findall(html):
-        if not _ARIA_LABEL.search(attrs) and not body.strip():
+        # Strip any nested HTML tags when determining if the button has
+        # visible text.  Previously ``<button><span></span></button>`` was
+        # treated as having a label because the inner markup wasn't removed.
+        text = re.sub(r"<[^>]+>", "", body).strip()
+        if not _ARIA_LABEL.search(attrs) and not text:
             issues.append("button missing label")
     return issues

@@ -126,9 +126,14 @@ def export_document(  # noqa: C901
 def preview_document(document: DocumentModel, fmt: str, *, length: int = 30) -> str:
     """Return a human-readable preview of a document export."""
     data, media, _ = export_document(document, fmt)
-    text: str = document.content
-    if media.startswith("text/"):
+    # For textual formats (``text/*`` or JSON) show the exported representation.
+    # The previous implementation returned the original document content for
+    # ``application/json`` which was misleading when callers expected to preview
+    # the JSON payload.
+    if media.startswith("text/") or media == "application/json":
         text = data.decode()
+    else:
+        text = document.content
     return text[:length]
 
 
