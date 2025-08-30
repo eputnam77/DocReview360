@@ -12,3 +12,13 @@ def test_sync_temp_reassignments() -> None:
     count = sync_temp_reassignments(records)
     assert count == 1
     assert projects[pid].temp_user == "bob"
+
+
+def test_sync_temp_reassignments_naive_date() -> None:
+    projects.clear()
+    pid = "p124"
+    projects[pid] = ProjectModel(id=pid, name="x")
+    records = [{"project": pid, "user": "carol", "until": "2030-01-01"}]
+    count = sync_temp_reassignments(records)
+    assert count == 1
+    assert projects[pid].temp_user == "carol"

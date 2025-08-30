@@ -26,6 +26,8 @@ def _validate_key(key: str) -> None:
     # them before normalisation.
     if "//" in normalized:
         raise ValueError("invalid key")
+    if "/./" in normalized or normalized.startswith("./") or normalized.endswith("/."):
+        raise ValueError("invalid key")
     parts = PurePosixPath(normalized).parts
     # ``PurePosixPath`` does not treat ``":"`` specially so a key like
     # ``"safe/C:secret"`` would previously pass validation even though it
