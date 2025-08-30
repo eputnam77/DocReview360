@@ -391,9 +391,16 @@ def _normalize(text: str) -> str:
 
 
 def _match_all_terms(text: str, terms: list[str]) -> bool:
-    """Return ``True`` if all ``terms`` are present in ``text``."""
+    """Return ``True`` if all ``terms`` appear as whole words in ``text``.
+
+    The previous implementation simply performed substring checks which meant a
+    search term like ``"cat"`` would match a document containing the word
+    ``"scatter"``.  By tokenising the normalised text we ensure matches respect
+    word boundaries and avoid surprising false positives.
+    """
     normalized = _normalize(text)
-    return all(term in normalized for term in terms)
+    tokens = set(normalized.split())
+    return all(term in tokens for term in terms)
 
 
 def _candidate_ids(terms: list[str]) -> set[str]:
