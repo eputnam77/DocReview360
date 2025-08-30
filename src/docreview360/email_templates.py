@@ -54,10 +54,16 @@ def update_template(
     if tmpl is None:
         raise KeyError(f"template '{name}' not found")
     if subject is not _UNSET:
+        if not isinstance(subject, str):
+            raise TypeError("subject must be a string")
         tmpl.subject = subject
     if body is not _UNSET:
+        if not isinstance(body, str):
+            raise TypeError("body must be a string")
         tmpl.body = body
     if task is not _UNSET:
+        if task is not None and not isinstance(task, str):
+            raise TypeError("task must be a string or None")
         tmpl.task = task
     return tmpl
 

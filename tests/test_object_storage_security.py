@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.object_storage import _validate_key, download_file, upload_file
 
 
@@ -55,4 +54,17 @@ def test_rejects_dot_segments(tmp_path) -> None:
         upload_file(bucket, "a/./b", b"data")
     with pytest.raises(ValueError):
         _validate_key("a/./b")
+
+
+def test_rejects_newlines_and_null_bytes(tmp_path) -> None:
+    bucket = tmp_path / "bucket"
+    bucket.mkdir()
+    with pytest.raises(ValueError):
+        upload_file(bucket, "evil\n.txt", b"data")
+    with pytest.raises(ValueError):
+        upload_file(bucket, "evil\r.txt", b"data")
+    with pytest.raises(ValueError):
+        _validate_key("evil\n.txt")
+    with pytest.raises(ValueError):
+        _validate_key("nul\x00.txt")
 
