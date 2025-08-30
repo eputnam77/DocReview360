@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from importlib import resources
 from pathlib import Path
 from typing import Sequence
@@ -60,8 +61,10 @@ def high_risk_warnings(text: str) -> list[str]:
     lower = text.lower()
     # ``_HIGH_RISK_TERMS`` is a set which results in arbitrary iteration order
     # making the return value non-deterministic.  Present the results sorted so
-    # callers and tests receive a stable, predictable order.
-    return sorted(term for term in _HIGH_RISK_TERMS if term in lower)
+    # callers and tests receive a stable, predictable order. Use word-boundary
+    # matching so substrings inside larger words do not trigger false
+    # positives.
+    return sorted(term for term in _HIGH_RISK_TERMS if re.search(rf"\b{re.escape(term)}\b", lower))
 
 
 def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = None) -> float:
