@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from datetime import datetime, timedelta
 from threading import Lock
 from typing import Callable, Dict, Optional
@@ -47,8 +48,12 @@ class VaultClient:
                     self._secrets.pop(provider, None)
                 else:
                     return secret
-        # Fallback to environment variables using common suffixes
-        base = provider.upper()
+        # Fallback to environment variables using common suffixes.  Provider
+        # identifiers may include characters not valid in environment variable
+        # names such as hyphens.  Normalise to uppercase underscores so a
+        # provider like ``"my-service"`` correctly maps to ``MY_SERVICE``
+        # based variables.
+        base = re.sub(r"[^A-Z0-9]", "_", provider.upper())
         for suffix in ("", "_TOKEN", "_KEY", "_SECRET"):
             value = os.getenv(f"{base}{suffix}")
             if value:
