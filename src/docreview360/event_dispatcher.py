@@ -45,7 +45,14 @@ class EventDispatcher:
             if attempt < self.retries - 1:
                 time.sleep(delay)
                 delay *= 2
-        dead_letter_queue.append({"url": url, "event": event, "payload": payload})
+        # ``payload`` may be mutated by callers after ``send`` returns. Store a
+        # deep copy so the dead letter queue preserves the original event data
+        # for later inspection or replay.
+        from copy import deepcopy
+
+        dead_letter_queue.append(
+            {"url": url, "event": event, "payload": deepcopy(payload)}
+        )
 
 
 _dispatcher = EventDispatcher()

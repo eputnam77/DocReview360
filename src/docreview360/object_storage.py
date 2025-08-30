@@ -21,6 +21,10 @@ def _validate_key(key: str) -> None:
         raise ValueError("invalid key")
 
     normalized = key.replace("\\", "/")
+    # Newline or null bytes in paths can lead to log injection or truncation
+    # issues on some filesystems. Treat such keys as invalid early.
+    if any(c in normalized for c in ("\n", "\r", "\x00")):
+        raise ValueError("invalid key")
     # Reject empty path segments to prevent ambiguous or accidental absolute
     # paths.  ``PurePosixPath`` collapses consecutive separators so we detect
     # them before normalisation.
