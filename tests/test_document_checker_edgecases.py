@@ -31,6 +31,27 @@ def test_run_checks_supports_single_quote_aria_label(tmp_path: Path) -> None:
     assert result["accessibility"] == []
 
 
+def test_run_checks_supports_spaced_alt(tmp_path: Path) -> None:
+    path = tmp_path / "img-spaced.html"
+    path.write_text('<img src="a.png" alt = "desc">')
+    result = run_checks(path)
+    assert result["accessibility"] == []
+
+
+def test_run_checks_supports_spaced_aria_label(tmp_path: Path) -> None:
+    path = tmp_path / "btn-spaced.html"
+    path.write_text('<button aria-label = "Go"></button>')
+    result = run_checks(path)
+    assert result["accessibility"] == []
+
+
+def test_run_checks_detects_missing_alt(tmp_path: Path) -> None:
+    path = tmp_path / "img-missing.html"
+    path.write_text('<img src="a.png">')
+    result = run_checks(path)
+    assert "image missing alt text" in result["accessibility"]
+
+
 def test_run_checks_empty_nested_button(tmp_path: Path) -> None:
     path = tmp_path / "btn2.html"
     path.write_text("<button><span></span></button>")
