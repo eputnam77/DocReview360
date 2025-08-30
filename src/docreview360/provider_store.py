@@ -43,6 +43,8 @@ def load_providers(path: Path | None = None) -> Dict[str, Dict[str, Any]]:
         data = yaml.safe_load(path.read_text()) or {}
     except yaml.YAMLError as exc:  # pragma: no cover - defensive
         raise ValueError(f"Invalid YAML in {path}") from exc
+    if not isinstance(data, dict):
+        raise ValueError("providers file must contain a mapping")
     # ensure expected structure and defaults
     for name, cfg in DEFAULT_PROVIDERS.items():
         data.setdefault(name, cfg.copy())
