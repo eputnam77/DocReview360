@@ -26,14 +26,19 @@ def _validate_key(key: str) -> None:
     # them before normalisation.
     if "//" in normalized:
         raise ValueError("invalid key")
-    if "/./" in normalized or normalized.startswith("./") or normalized.endswith("/."):
+    if (
+        normalized == "."
+        or "/./" in normalized
+        or normalized.startswith("./")
+        or normalized.endswith("/.")
+    ):
         raise ValueError("invalid key")
     parts = PurePosixPath(normalized).parts
     # ``PurePosixPath`` does not treat ``":"`` specially so a key like
     # ``"safe/C:secret"`` would previously pass validation even though it
     # contains a Windows drive specifier.  Reject keys containing a colon in
     # *any* segment to avoid platform specific path tricks.
-    if ":" in normalized or ".." in parts:
+    if ":" in normalized or ".." in parts or "." in parts:
         raise ValueError("invalid key")
 
 
@@ -104,6 +109,8 @@ def upload_file(
     """
 
     _validate_key(key)
+    if retention_days < 0:
+        raise ValueError("retention_days must be non-negative")
 
     # Handle S3 buckets via ``boto3`` if the bucket name is an ``s3://`` URL.
     if str(bucket).startswith("s3://"):
