@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Set
 from pydantic import BaseModel, computed_field
 
 from . import fts
-from .cache import cache_get, cache_set
+from .cache import cache_get, cache_set, cache_delete
 from .documents import DocumentModel, documents
 from .workflows import get_workflow
 
@@ -475,7 +475,7 @@ def search(
             data = json.loads(cached)
             return [DocumentModel.model_validate(d) for d in data]
         except Exception:
-            pass
+            cache_delete(cache_key)
     terms = _normalize(query).split()
     if not terms:
         candidate_ids = set(documents.keys())
