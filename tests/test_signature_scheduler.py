@@ -126,3 +126,29 @@ def test_cli_verify_signatures() -> None:
     assert "Processed 1 approvals" in result.output
     events = get_audit_log(doc.id)
     assert "batch_id" in events[-1].context
+
+
+def test_verify_document_signatures_empty_document_ids(monkeypatch) -> None:
+    approvals.clear()
+    doc = import_document("doc.txt", b"hello")
+    approvals["a1"] = ApprovalModel(
+        id="a1",
+        workflow="wf",
+        reviewer="alice",
+        document_id=doc.id,
+        state="approved",
+        signature_provider="stub",
+        signature_id="s1",
+        document_hash=None,
+        certificate_url="cert",
+        provider_metadata={},
+    )
+
+    class DummyProvider:
+        def validate_signature(self, *args, **kwargs):
+            return True
+
+    monkeypatch.setattr(signature_verifier, "get_provider", lambda name: DummyProvider())
+
+    processed = signature_verifier.verify_document_signatures.run(document_ids=[])
+    assert processed == 0

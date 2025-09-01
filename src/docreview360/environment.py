@@ -18,7 +18,10 @@ def load_envs(path: Path | None = None) -> Dict[str, Dict[str, str]]:
     path = path or ENV_FILE
     if not path.exists():
         return {}
-    data = yaml.safe_load(path.read_text()) or {}
+    try:
+        data = yaml.safe_load(path.read_text()) or {}
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Invalid YAML in {path}") from exc
     if not isinstance(data, dict):
         raise ValueError("Environment configuration must be a mapping")
     return data
