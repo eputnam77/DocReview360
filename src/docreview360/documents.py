@@ -61,7 +61,11 @@ class DocumentModel(BaseModel):
     # Flag to mark public copies and track originating document
     public_copy: bool = False
     source_document_id: str | None = None
-    approval_ids: List[str] = []
+    # ``approval_ids`` previously used a mutable list as the default value.
+    # In ``pydantic`` models this list is shared between instances which meant
+    # adding an approval to one document unexpectedly appeared on others.
+    # Using ``default_factory`` gives each model its own list.
+    approval_ids: List[str] = Field(default_factory=list)
 
 
 # Stored documents keyed by id
