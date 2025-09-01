@@ -54,7 +54,12 @@ class SharePointClient:
         response.raise_for_status()
         payload = response.json()
         values = payload.get("value", [])
-        return [str(entry.get("id")) for entry in values if "id" in entry]
+        ids: List[str] = []
+        for entry in values:
+            entry_id = entry.get("id")
+            if isinstance(entry_id, (str, int)):
+                ids.append(str(entry_id))
+        return ids
 
     def set_properties(self, item_id: str, properties: dict[str, str]) -> None:
         """Update SharePoint item metadata properties."""
@@ -97,7 +102,7 @@ class SharePointClient:
         # Trigger workflow approvals if configured
         if workflow is not None:
             if reviewer_model:
-                approval_id = submit_draft_for_approval(
+                approval = submit_draft_for_approval(
                     workflow,
                     reviewer or "manager",
                     item_id,
@@ -107,24 +112,26 @@ class SharePointClient:
                     extra_reviewer=extra_reviewer,
                     reviewer_model=reviewer_model,
                 )
-                if approval_id:
-                    approval_ids.append(approval_id)
+                if approval:
+                    approval_ids.append(approval.id)
             else:
                 if score < threshold:
-                    approval_id = create_approval(
+                    approval = create_approval(
                         workflow,
                         extra_reviewer,
+                        doc_id=item_id,
                         description="Auto risk review",
                     )
-                    if approval_id:
-                        approval_ids.append(approval_id)
-                approval_id = create_approval(
+                    if approval:
+                        approval_ids.append(approval.id)
+                approval = create_approval(
                     workflow,
                     reviewer or "manager",
+                    doc_id=item_id,
                     description="Primary review",
                 )
-                if approval_id:
-                    approval_ids.append(approval_id)
+                if approval:
+                    approval_ids.append(approval.id)
 
         # Auto-tag SharePoint with workflow + scoring info
         metadata = {
