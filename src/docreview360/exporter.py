@@ -28,8 +28,15 @@ def _render_template(template: str, document: DocumentModel) -> str:
 
     try:
         base = template.format(id=document.id, number=document.number or "")
-    except KeyError as exc:  # pragma: no cover - defensive
-        raise ValueError(f"Unknown placeholder {exc.args[0]!r} in filename template") from exc
+    except (KeyError, IndexError) as exc:  # pragma: no cover - defensive
+        # ``str.format`` raises ``KeyError`` for unknown named fields and
+        # ``IndexError`` for stray positional fields such as ``"{0}"``.  The
+        # latter previously bubbled up as an ``IndexError`` which callers were
+        # not expecting.  Surface both as a ``ValueError`` so users receive a
+        # clear, consistent error regardless of placeholder style.
+        raise ValueError(
+            f"Unknown placeholder {exc.args[0]!r} in filename template"
+        ) from exc
     # Avoid path traversal via placeholders
     return base.replace("/", "_").replace("\\", "_")
 

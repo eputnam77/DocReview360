@@ -1279,7 +1279,15 @@ async def chat_bot_endpoint(body: TextBody) -> dict[str, str]:
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
 async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel:
     """Create a new document type."""
-    add_document_type(doc_type)
+    from fastapi import HTTPException
+
+    try:
+        add_document_type(doc_type)
+    except ValueError as exc:
+        # Normalise validation errors into a 400 response so API clients
+        # receive a predictable status code instead of an internal server
+        # error when providing invalid data.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return doc_type
 
 

@@ -223,6 +223,14 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
     """Store a document type in memory and persist it."""
     if isinstance(doc_type, dict):
         doc_type = DocumentTypeModel(**doc_type)
+    # Avoid accidental overwrites; callers should use ``update_document_type``
+    # when modifying existing entries.  Previously ``add_document_type`` would
+    # silently replace an existing document type which caused confusing test
+    # failures where a duplicate definition clobbered the original.
+    if not doc_type.name.strip():
+        raise ValueError("Document type name must not be empty")
+    if doc_type.name in document_types:
+        raise ValueError(f"Document type '{doc_type.name}' already exists")
     document_types[doc_type.name] = doc_type
     save_state()
     return doc_type
