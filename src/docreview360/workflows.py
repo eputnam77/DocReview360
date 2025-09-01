@@ -8,7 +8,7 @@ from typing import Callable, Dict, List, Optional
 from uuid import uuid4
 from datetime import datetime, timezone
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .event_dispatcher import dispatch_workflow_event
 from .logs import log_call
@@ -30,14 +30,18 @@ class WorkflowModel(BaseModel):
     project: str
     phase: str
     phases: List[str]
-    reviewers: List[str] = []
+    # Several list fields previously used mutable list defaults which were
+    # shared across model instances.  This led to workflows unexpectedly
+    # inheriting reviewers or approval configuration from prior instances.
+    # ``default_factory`` ensures each workflow receives its own list.
+    reviewers: List[str] = Field(default_factory=list)
     document: Optional[str] = None
     template: str = "branch-coordination"
-    approval_steps: List[ApprovalStep] = []
+    approval_steps: List[ApprovalStep] = Field(default_factory=list)
     # distinct roles participating in approvals
-    approval_roles: List[str] = []
+    approval_roles: List[str] = Field(default_factory=list)
     # sequence of roles in the order they must approve
-    approval_sequence: List[str] = []
+    approval_sequence: List[str] = Field(default_factory=list)
     # how approval steps progress: sequential or parallel
     mode: str = "sequential"
     callback_url: str | None = None
