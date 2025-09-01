@@ -266,6 +266,7 @@ omit = [
   "src/docreview360/records.py",
   "src/docreview360/git_hooks.py",
   "src/docreview360/api.py",
+  "src/docreview360/api/*",
 ]
 
 
