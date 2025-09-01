@@ -230,7 +230,17 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
     if not doc_type.name.strip():
         raise ValueError("Document type name must not be empty")
     if doc_type.name in document_types:
-        raise ValueError(f"Document type '{doc_type.name}' already exists")
+        # Adding the exact same document type multiple times should be
+        # idempotent.  Several tests seed a "Test Doc" type and expect calls
+        # that repeat that seed not to fail.  The previous implementation
+        # always raised ``ValueError`` which made subsequent identical inserts
+        # blow up even though no data would actually change.  We now treat an
+        # identical re-add as a no-op while still erroring on conflicting
+        # definitions to guard against accidental overwrites.
+        existing = document_types[doc_type.name]
+        if existing.model_dump() != doc_type.model_dump():
+            raise ValueError(f"Document type '{doc_type.name}' already exists")
+        return existing
     document_types[doc_type.name] = doc_type
     save_state()
     return doc_type

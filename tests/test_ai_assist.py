@@ -43,6 +43,12 @@ async def test_call_openai_fallback() -> None:
 
 
 @pytest.mark.asyncio
+async def test_call_openai_empty() -> None:
+    with pytest.raises(ValueError):
+        await ai_assist._call_openai(" ")
+
+
+@pytest.mark.asyncio
 async def test_rewrite_validation() -> None:
     with pytest.raises(ValueError):
         await ai_assist.rewrite_text("  ")
@@ -115,3 +121,13 @@ async def test_call_openai_with_synth(monkeypatch: pytest.MonkeyPatch) -> None:
     result = await ai_assist._call_openai("This is a test")
     assert result == "tst Ths"
     monkeypatch.setattr(ai_utils, "synth_enabled", False)
+
+
+@pytest.mark.asyncio
+async def test_rewrite_and_summarize(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake(prompt: str) -> str:
+        return "ok"
+
+    monkeypatch.setattr(ai_assist, "_call_openai", fake)
+    assert await ai_assist.rewrite_text("text") == "ok"
+    assert await ai_assist.summarize_text("text") == "ok"

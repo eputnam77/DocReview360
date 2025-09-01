@@ -1,5 +1,10 @@
+import io
+import importlib
+from types import SimpleNamespace
+
 import pytest
-from docreview360.object_storage import _validate_key, download_file, upload_file
+
+from docreview360.object_storage import upload_file, download_file, _validate_key
 
 
 def test_upload_rejects_path_traversal(tmp_path):
@@ -79,3 +84,34 @@ def test_rejects_leading_trailing_whitespace(tmp_path) -> None:
     with pytest.raises(ValueError):
         _validate_key(" file.txt")
 
+
+def test_s3_upload_download(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    class Client:
+        def get_object(self, Bucket, Key):
+            return {"Body": io.BytesIO(b"data")}
+
+        def put_object(self, Bucket, Key, Body, **extra):
+            calls.update(extra)
+
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda name: SimpleNamespace(client=lambda _: Client()),
+    )
+
+    assert download_file("s3://bucket", "key") == b"data"
+    uri = upload_file("s3://bucket", "key", b"x", append_only=True, retention_days=2)
+    assert uri == "s3://bucket/key"
+    assert "ObjectLockRetainUntilDate" in calls
+
+
+def test_upload_retention_and_append(tmp_path):
+    with pytest.raises(ValueError):
+        upload_file(tmp_path, "k", b"d", retention_days=-1)
+    bucket = tmp_path / "b"
+    bucket.mkdir()
+    (bucket / "f").write_text("x")
+    with pytest.raises(FileExistsError):
+        upload_file(bucket, "f", b"y", append_only=True)
