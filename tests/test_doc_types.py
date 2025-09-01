@@ -40,6 +40,9 @@ def test_update_propagates_and_conflicts(tmp_path, monkeypatch):
 def test_add_document_type_conflict(tmp_path, monkeypatch):
     monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
     doc = DocumentTypeModel(name="Dup", template="t")
-    doc_types.add_document_type(doc)
+    first = doc_types.add_document_type(doc)
+    # Re-adding the exact same definition is a no-op
+    assert doc_types.add_document_type(doc) is first
+    # A conflicting definition with the same name should still error
     with pytest.raises(ValueError):
-        doc_types.add_document_type(doc)
+        doc_types.add_document_type(DocumentTypeModel(name="Dup", template="other"))

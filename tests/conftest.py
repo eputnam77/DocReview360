@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from docreview360.doc_types import DEFAULT_DOC_TYPE_PHASES, DocumentTypeModel, document_types
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR / "src"))
 sys.path.insert(0, str(BASE_DIR))
@@ -54,3 +56,20 @@ def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers used throughout the tests."""
 
     config.addinivalue_line("markers", "asyncio: run test as async")
+
+
+@pytest.fixture(autouse=True)
+def _reset_document_types() -> None:
+    """Ensure global document type registry is reset between tests.
+
+    Tests frequently mutate the ``document_types`` mapping which otherwise
+    persists across modules due to being backed by a JSON file.  This fixture
+    rebuilds the default document types before each test so that individual
+    tests don't interfere with each other.
+    """
+
+    document_types.clear()
+    for name, phases in DEFAULT_DOC_TYPE_PHASES.items():
+        document_types[name] = DocumentTypeModel(
+            name=name, template=f"<h1>{name}</h1>", workflow=phases
+        )
