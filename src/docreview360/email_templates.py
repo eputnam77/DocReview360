@@ -19,8 +19,20 @@ TEMPLATES: Dict[str, EmailTemplate] = {}
 
 def create_template(name: str, subject: str, body: str, task: str | None = None) -> EmailTemplate:
     """Create and register a new template."""
-    if not name:
+    # ``dataclasses`` do not enforce type annotations at runtime which meant
+    # callers could accidentally pass non-string values for ``subject`` or
+    # ``body`` and end up with malformed templates.  Additionally a name
+    # consisting solely of whitespace previously slipped through the simple
+    # truthiness check.  Validate the inputs explicitly to avoid subtle bugs in
+    # downstream formatting code.
+    if not isinstance(name, str) or not name.strip():
         raise ValueError("name required")
+    if not isinstance(subject, str):
+        raise TypeError("subject must be a string")
+    if not isinstance(body, str):
+        raise TypeError("body must be a string")
+    if task is not None and not isinstance(task, str):
+        raise TypeError("task must be a string or None")
     if name in TEMPLATES:
         raise ValueError(f"template '{name}' already exists")
     template = EmailTemplate(name=name, subject=subject, body=body, task=task)
