@@ -30,6 +30,13 @@ def test_env_fallback(monkeypatch: pytest.MonkeyPatch):
     assert get_secret("p2") == "env"
 
 
+def test_blank_provider_rejected():
+    with pytest.raises(ValueError):
+        store_secret("   ", "x")
+    with pytest.raises(ValueError):
+        get_secret("")
+
+
 def test_schedule_rotation_and_configure(monkeypatch: pytest.MonkeyPatch):
     called = {}
 
