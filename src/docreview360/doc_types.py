@@ -163,6 +163,7 @@ DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 # Persistence helpers
 # --------------------------
 
+
 def save_state() -> None:
     """Persist document_types to disk."""
     try:
@@ -198,6 +199,7 @@ def load_state() -> bool:
 # Bootstrapping
 # --------------------------
 
+
 def _bootstrap_sample() -> None:
     """Create default document types with predefined phases if none exist."""
     if not document_types:
@@ -218,6 +220,7 @@ if not load_state():
 # --------------------------
 # CRUD Operations
 # --------------------------
+
 
 def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentTypeModel:
     """Store a document type in memory and persist it."""
@@ -304,6 +307,7 @@ def delete_document_type(name: str) -> None:
 # Import / Export
 # --------------------------
 
+
 def export_document_types(path: str | Path) -> None:
     """Serialize document types to ``path`` as JSON."""
     try:
@@ -328,13 +332,21 @@ def import_document_types(path: str | Path) -> None:
     if not isinstance(data, list):
         raise ValueError("JSON must contain a list of document types")
 
-    document_types.clear()
+    # Build a temporary mapping first so a validation error does not leave the
+    # global ``document_types`` in a partially updated state.  The previous
+    # implementation cleared the existing entries before validating the payload,
+    # meaning a single bad item could wipe the in-memory registry while still
+    # raising an exception.  By validating into ``temp`` we ensure atomic
+    # replacement only when the input is entirely valid.
+    temp: dict[str, DocumentTypeModel] = {}
     for item in data:
         try:
             doc = DocumentTypeModel(**item)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
-        document_types[doc.name] = doc
+        temp[doc.name] = doc
+    document_types.clear()
+    document_types.update(temp)
     save_state()
 
 
@@ -354,19 +366,22 @@ def import_document_types_json(data: str) -> None:
     if not isinstance(payload, list):
         raise ValueError("JSON must contain a list of document types")
 
-    document_types.clear()
+    temp: dict[str, DocumentTypeModel] = {}
     for item in payload:
         try:
             doc = DocumentTypeModel(**item)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
-        document_types[doc.name] = doc
+        temp[doc.name] = doc
+    document_types.clear()
+    document_types.update(temp)
     save_state()
 
 
 # --------------------------
 # Utility
 # --------------------------
+
 
 def list_all_phases() -> list[str]:
     """Return a sorted list of all unique phases across all document types."""
