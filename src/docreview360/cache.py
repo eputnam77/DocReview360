@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import time
 from typing import TYPE_CHECKING, Any, Dict, Tuple, cast
@@ -45,8 +46,11 @@ def _get_client() -> "Redis | None":
 
 
 def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
-    if ttl is not None and ttl < 0:
-        raise ValueError("ttl must be non-negative")
+    if ttl is not None:
+        if isinstance(ttl, float) and not math.isfinite(ttl):
+            raise ValueError("ttl must be finite")
+        if ttl < 0:
+            raise ValueError("ttl must be non-negative")
     # A TTL of ``0`` should behave like ``None`` (no expiration) to mirror
     # common cache semantics such as Redis. Without this normalisation the
     # local fallback cache would treat ``0`` as an immediate expiry, causing
@@ -58,6 +62,16 @@ def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
     else:
         expires = time.monotonic() + ttl_arg if ttl_arg is not None else None
         _cache[key] = (value, expires)
+
+
+def cache_delete(key: str) -> None:
+    client = _get_client()
+    if client:
+        try:
+            client.delete(key)
+        except Exception:
+            pass
+    _cache.pop(key, None)
 
 
 def cache_get(key: str) -> Any:
