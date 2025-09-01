@@ -28,14 +28,27 @@ def _get_client() -> "Redis | None":
     if _client is None and _redis is not None:
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         try:
-            client = cast(
-                "Redis",
-                _redis.Redis.from_url(
-                    url,
-                    socket_connect_timeout=0.1,
-                    socket_timeout=0.1,
-                ),
-            )
+            redis_cls = getattr(_redis, "Redis", None)
+            if redis_cls is None:
+                raise AttributeError("redis client not available")
+            # Some test environments provide a lightweight Redis stub where the
+            # ``Redis`` attribute is a simple callable rather than a class with a
+            # ``from_url`` constructor.  The previous implementation always
+            # attempted to call ``Redis.from_url`` which raised ``AttributeError``
+            # for such stubs and permanently marked the client as unreachable.
+            # To make the helper more robust we fall back to invoking ``Redis``
+            # directly when ``from_url`` is missing.
+            if hasattr(redis_cls, "from_url"):
+                client = cast(
+                    "Redis",
+                    redis_cls.from_url(
+                        url,
+                        socket_connect_timeout=0.1,
+                        socket_timeout=0.1,
+                    ),
+                )
+            else:  # pragma: no cover - exercised in tests
+                client = cast("Redis", redis_cls(url))
             client.ping()
             _client = client
         except Exception:
