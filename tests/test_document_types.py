@@ -2,7 +2,14 @@ from fastapi.testclient import TestClient
 import pytest
 
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, document_types
+from docreview360.doc_types import (
+    DocumentTypeModel,
+    add_document_type,
+    document_types,
+    export_document_types,
+    import_document_types_json,
+    list_all_phases,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -52,6 +59,39 @@ def test_document_type_crud() -> None:
     # Recent updates renamed this seed to "Test Document Type", so the
     # final state after CRUD operations should reflect that default.
     assert names == {"Test Document Type"}
+
+
+def test_idempotent_add() -> None:
+    """Adding the same document type twice should be a no-op."""
+    doc = DocumentTypeModel(name="Duplicate", template="<h1>Dup</h1>")
+    first = add_document_type(doc)
+    second = add_document_type(doc)
+    assert first is second
+    assert document_types["Duplicate"].template == "<h1>Dup</h1>"
+
+
+def test_conflicting_add() -> None:
+    """Adding a type with the same name but different data should error."""
+    add_document_type(DocumentTypeModel(name="Conflict", template="<h1>One</h1>"))
+    with pytest.raises(ValueError):
+        add_document_type(DocumentTypeModel(name="Conflict", template="<h1>Two</h1>"))
+
+
+def test_export_error(tmp_path):
+    dest_dir = tmp_path / "dir"
+    dest_dir.mkdir()
+    with pytest.raises(ValueError):
+        export_document_types(dest_dir)
+
+
+def test_import_document_types_json_error() -> None:
+    with pytest.raises(ValueError):
+        import_document_types_json("{}")
+
+
+def test_list_all_phases() -> None:
+    phases = list_all_phases()
+    assert isinstance(phases, list)
 
 
 def test_document_type_import_export_endpoints() -> None:

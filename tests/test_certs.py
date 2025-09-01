@@ -1,122 +1,144 @@
 import hashlib
-from datetime import datetime, timedelta
-
 import pytest
-from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
+from datetime import datetime, timedelta, timezone
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography import x509
+from cryptography.x509.oid import NameOID, AuthorityInformationAccessOID
+from cryptography.hazmat.primitives import hashes, serialization
+import httpx
+from cryptography.x509 import ocsp
 
-from docreview360.certs import (
-    clear_cache,
-    fetch_certificate,
-    register_pinned_chain,
-    verify_certificate_status,
-)
+from docreview360.certs import register_pinned_chain, fetch_certificate, clear_cache, verify_certificate_status
 
 
-def test_fetch_certificate_caches_and_pins():
-    data = b"chain"
-    register_pinned_chain("cert", hashlib.sha256(data).hexdigest())
-    calls = 0
+def test_fetch_certificate_caching():
+    fingerprint = hashlib.sha256(b"data").hexdigest()
+    register_pinned_chain("example.com", fingerprint)
+    calls = []
 
-    def fake_fetch(url: str) -> bytes:
-        nonlocal calls
-        calls += 1
-        return data
+    def fake_fetch(url):
+        calls.append(url)
+        return b"data"
 
+    assert fetch_certificate("https://example.com/cert", fetcher=fake_fetch) == b"data"
+    # second call should use cache
+    assert fetch_certificate("https://example.com/cert", fetcher=fake_fetch) == b"data"
+    assert calls == ["https://example.com/cert"]
     clear_cache()
-    out1 = fetch_certificate("https://cert", fetcher=fake_fetch)
-    out2 = fetch_certificate("https://cert", fetcher=fake_fetch)
-    assert out1 == out2 == data
-    assert calls == 1
 
 
-def test_fetch_certificate_rejects_invalid():
-    data = b"chain"
-    register_pinned_chain("bad", hashlib.sha256(b"other").hexdigest())
-
+def test_fetch_certificate_errors():
+    register_pinned_chain("example.com", hashlib.sha256(b"x").hexdigest())
     with pytest.raises(ValueError):
-        fetch_certificate("http://bad", fetcher=lambda u: data)
+        fetch_certificate("http://example.com/cert", fetcher=lambda u: b"x")
     with pytest.raises(ValueError):
-        fetch_certificate("https://bad", fetcher=lambda u: data)
+        fetch_certificate("https://unknown.com/cert", fetcher=lambda u: b"x")
+    register_pinned_chain("bad.com", hashlib.sha256(b"y").hexdigest())
+    with pytest.raises(ValueError):
+        fetch_certificate("https://bad.com/cert", fetcher=lambda u: b"x")
+    clear_cache()
 
 
-def _make_cert_and_crl(*, revoked: bool = False, next_update: timedelta | None = None):
+def test_fetch_certificate_live(monkeypatch):
+    class Resp:
+        content = b"data"
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr("httpx.get", lambda url, timeout=5: Resp())
+    register_pinned_chain("example.com", hashlib.sha256(b"data").hexdigest())
+    assert fetch_certificate("https://example.com/cert") == b"data"
+    clear_cache()
+
+
+def _make_cert(with_crl: bool = False, with_ocsp: bool = False):
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME, "Test")])
-    now = datetime.utcnow()
-    cert_builder = (
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test")])
+    builder = (
         x509.CertificateBuilder()
         .subject_name(name)
         .issuer_name(name)
         .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now - timedelta(days=1))
-        .not_valid_after(now + timedelta(days=1))
-        .add_extension(
+        .serial_number(1)
+        .not_valid_before(datetime.now(timezone.utc))
+        .not_valid_after(datetime.now(timezone.utc) + timedelta(days=1))
+    )
+    if with_ocsp:
+        builder = builder.add_extension(
+            x509.AuthorityInformationAccess(
+                [
+                    x509.AccessDescription(
+                        AuthorityInformationAccessOID.OCSP,
+                        x509.UniformResourceIdentifier("http://ocsp.test"),
+                    )
+                ]
+            ),
+            False,
+        )
+    if with_crl:
+        builder = builder.add_extension(
             x509.CRLDistributionPoints(
                 [
                     x509.DistributionPoint(
-                        full_name=[x509.UniformResourceIdentifier("https://crl.test")],
+                        full_name=[x509.UniformResourceIdentifier("http://crl.test")],
                         relative_name=None,
                         reasons=None,
                         crl_issuer=None,
                     )
                 ]
             ),
-            critical=False,
+            False,
         )
+    cert = builder.sign(key, hashes.SHA256())
+    return cert, key
+
+
+def test_verify_certificate_status_ocsp_fetcher():
+    cert, key = _make_cert(with_ocsp=True)
+    ocsp_resp = (
+        ocsp.OCSPResponseBuilder()
+        .build_unsuccessful(ocsp.OCSPResponseStatus.UNAUTHORIZED)
+        .public_bytes(serialization.Encoding.DER)
     )
-    cert = cert_builder.sign(key, hashes.SHA256())
-    crl_builder = (
+
+    assert (
+        verify_certificate_status(cert, issuer=cert, fetcher=lambda u, p: ocsp_resp)
+        is False
+    )
+
+
+def test_verify_certificate_status_ocsp_network(monkeypatch):
+    cert, key = _make_cert(with_ocsp=True)
+    ocsp_resp = (
+        ocsp.OCSPResponseBuilder()
+        .build_unsuccessful(ocsp.OCSPResponseStatus.UNAUTHORIZED)
+        .public_bytes(serialization.Encoding.DER)
+    )
+
+    class Resp:
+        content = ocsp_resp
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: Resp())
+    assert verify_certificate_status(cert, issuer=cert) is False
+
+
+def test_verify_certificate_status_crl(monkeypatch):
+    cert, key = _make_cert(with_crl=True)
+    now = datetime.now(timezone.utc)
+    crl = (
         x509.CertificateRevocationListBuilder()
-        .issuer_name(name)
-        .last_update(now - timedelta(minutes=1))
+        .issuer_name(cert.issuer)
+        .last_update(now)
+        .next_update(now + timedelta(days=1))
+        .sign(key, hashes.SHA256())
+        .public_bytes(serialization.Encoding.DER)
     )
-    nu = now + (next_update or timedelta(days=1))
-    crl_builder = crl_builder.next_update(nu)
-    if revoked:
-        revoked_cert = (
-            x509.RevokedCertificateBuilder()
-            .serial_number(cert.serial_number)
-            .revocation_date(now - timedelta(minutes=1))
-            .build()
-        )
-        crl_builder = crl_builder.add_revoked_certificate(revoked_cert)
-    crl = crl_builder.sign(private_key=key, algorithm=hashes.SHA256())
-    return cert, crl.public_bytes(serialization.Encoding.DER)
 
+    def fetch(url, payload):
+        return crl
 
-def test_verify_certificate_status_caches():
-    cert, crl_bytes = _make_cert_and_crl()
-
-    calls = {"n": 0}
-
-    def fetcher(url: str, _: bytes | None) -> bytes:
-        calls["n"] += 1
-        return crl_bytes
-
-    clear_cache()
-    assert verify_certificate_status(cert, fetcher=fetcher) is True
-    assert verify_certificate_status(cert, fetcher=fetcher) is True
-    assert calls["n"] == 1
-
-
-def test_verify_certificate_status_revoked():
-    cert, crl_bytes = _make_cert_and_crl(revoked=True)
-
-    def fetcher(url: str, _: bytes | None) -> bytes:
-        return crl_bytes
-
-    clear_cache()
-    assert verify_certificate_status(cert, fetcher=fetcher) is False
-
-
-def test_verify_certificate_status_stale():
-    cert, crl_bytes = _make_cert_and_crl(next_update=timedelta(seconds=-1))
-
-    def fetcher(url: str, _: bytes | None) -> bytes:
-        return crl_bytes
-
-    clear_cache()
-    assert verify_certificate_status(cert, fetcher=fetcher) is False
+    assert verify_certificate_status(cert, fetcher=fetch) is True

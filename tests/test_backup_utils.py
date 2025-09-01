@@ -2,6 +2,9 @@ import base64
 import gzip
 import json
 from pathlib import Path
+import base64
+import json
+import gzip
 
 import pytest
 
@@ -28,6 +31,18 @@ def test_create_and_restore_backup(tmp_path):
     bu.restore_backup(backup_path)
     assert documents["1"].content == "hi"
     assert logs[0].action == "create"
+
+
+def test_dump_encodes_yjs(tmp_path):
+    doc = DocumentModel(id="1", content="hi")
+    doc.__dict__["yjs_updates"] = [b"abc"]
+    documents[doc.id] = doc
+    path = bu.create_backup(tmp_path / "b.gz")
+    data = gzip.open(path, "rt", encoding="utf-8")
+    with data as fh:
+        payload = json.load(fh)
+    encoded = payload["documents"][0]["yjs_updates"][0]
+    assert encoded == base64.b64encode(b"abc").decode("ascii")
 
 
 def test_restore_invalid_base64(tmp_path):

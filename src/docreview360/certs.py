@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 import httpx
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID, ExtensionOID
 
@@ -107,24 +107,24 @@ def verify_certificate_status(  # noqa: C901
                 if fetcher is None:
                     resp = httpx.post(
                         url,
-                        content=req.public_bytes(),
+                        content=req.public_bytes(serialization.Encoding.DER),
                         headers={"Content-Type": "application/ocsp-request"},
                         timeout=5,
                     )
                     resp.raise_for_status()
                     data = resp.content
                 else:
-                    data = fetcher(url, req.public_bytes())
+                    data = fetcher(url, req.public_bytes(serialization.Encoding.DER))
                 ocsp_resp = ocsp.load_der_ocsp_response(data)
                 if ocsp_resp.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
                     return False
-                single = ocsp_resp.responses[0]
+                single = next(iter(ocsp_resp.responses))
                 next_update = getattr(single, "next_update_utc", None) or single.next_update
                 if next_update is not None and next_update.tzinfo is None:
                     next_update = next_update.replace(tzinfo=timezone.utc)
                 if next_update is None or next_update < now:
                     return False
-                status = single.cert_status
+                status = single.certificate_status
                 _ocsp_cache[cache_key] = (status, next_update)
             if status == ocsp.OCSPCertStatus.REVOKED:
                 return False
