@@ -85,8 +85,11 @@ def restore_backup(path: str | Path) -> None:
 
     # Use document lock to prevent race conditions during restore
     from .documents import document_lock
-
-    new_docs = {doc.id: doc for doc in (_parse_document(d) for d in docs)}
+    parsed_docs = [_parse_document(d) for d in docs]
+    ids = [doc.id for doc in parsed_docs]
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate document ids in backup")
+    new_docs = {doc.id: doc for doc in parsed_docs}
     new_logs = [_parse_log(e) for e in logs_data]
 
     with document_lock:
