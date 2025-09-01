@@ -35,3 +35,11 @@ def test_update_propagates_and_conflicts(tmp_path, monkeypatch):
     assert search.projects["p1"].doc_type == "New"
     with pytest.raises(ValueError):
         doc_types.update_document_type("New", DocumentTypeModel(name="Existing", template="t"))
+
+
+def test_add_document_type_conflict(tmp_path, monkeypatch):
+    monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
+    doc = DocumentTypeModel(name="Dup", template="t")
+    doc_types.add_document_type(doc)
+    with pytest.raises(ValueError):
+        doc_types.add_document_type(doc)
