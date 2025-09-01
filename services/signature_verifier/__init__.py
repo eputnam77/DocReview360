@@ -66,6 +66,12 @@ def verify_document_signatures(
         batch_id = uuid4().hex
 
     document_ids_set = set(document_ids) if document_ids is not None else set()
+    # An explicitly provided empty list of document IDs should result in no
+    # work being performed. Previously an empty list was treated the same as
+    # ``None`` which caused all approvals within ``scope`` to be processed
+    # unintentionally.
+    if document_ids is not None and not document_ids_set:
+        return 0
 
     def _process(approval: ApprovalModel) -> int:
         if approval.certificate_url is None:
