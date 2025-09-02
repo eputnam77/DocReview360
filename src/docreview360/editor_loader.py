@@ -14,8 +14,12 @@ def load_plugins(loaders: Iterable[Callable[[], str]]) -> List[str]:
     """
     names: List[str] = []
     for loader in loaders:
+        if not callable(loader):
+            raise TypeError("loader must be callable")
         name = loader()
         if not isinstance(name, str):
             raise TypeError("loader must return plugin name")
+        if not name:
+            raise ValueError("plugin name cannot be empty")
         names.append(name)
     return names

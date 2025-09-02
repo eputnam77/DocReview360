@@ -22,6 +22,8 @@ def index_document(doc_id: str, content: str) -> None:
     ValueError
         If either argument is empty.
     """
+    doc_id = doc_id.strip()
+    content = content.strip()
     if not doc_id or not content:
         raise ValueError("doc_id and content are required")
     # ``fts5`` tables happily accept multiple rows with the same ``id``
@@ -46,6 +48,7 @@ def search(query: str) -> List[str]:
 
 def remove_document(doc_id: str) -> None:
     """Remove a document from the index."""
+    doc_id = doc_id.strip()
     if not doc_id:
         raise ValueError("doc_id required")
     _conn.execute("DELETE FROM docs WHERE id = ?", (doc_id,))

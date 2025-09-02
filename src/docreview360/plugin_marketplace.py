@@ -170,7 +170,7 @@ PLUGIN_DATA = {
 
 def list_available() -> list[str]:
     """Return the list of installable packages."""
-    return list(PLUGIN_DATA.keys())
+    return sorted(PLUGIN_DATA.keys())
 
 
 def get_plugin_info(name: str) -> dict[str, Any] | None:
