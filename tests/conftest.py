@@ -1,15 +1,24 @@
 import asyncio
+import importlib
 import os
 import sys
 from pathlib import Path
 
 import pytest
 
-from docreview360.doc_types import DEFAULT_DOC_TYPE_PHASES, DocumentTypeModel, document_types
-
+# Ensure the source package is importable before referencing it.  Previously the
+# ``sys.path`` manipulation occurred *after* importing from ``docreview360``,
+# causing ``ModuleNotFoundError`` during test collection on systems where the
+# package wasn't installed.  By inserting the repository paths up front we make
+# the package available for import in a clean, deterministic way.
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR / "src"))
 sys.path.insert(0, str(BASE_DIR))
+
+doc_types = importlib.import_module("docreview360.doc_types")
+DEFAULT_DOC_TYPE_PHASES = doc_types.DEFAULT_DOC_TYPE_PHASES
+DocumentTypeModel = doc_types.DocumentTypeModel
+document_types = doc_types.document_types
 
 os.environ.setdefault("DOCREVIEW360_SECRET_KEY", "test-secret")
 os.environ.setdefault("DOCREVIEW360_ALGORITHM", "HS256")
