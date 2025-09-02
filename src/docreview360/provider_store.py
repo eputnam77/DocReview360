@@ -45,6 +45,15 @@ def load_providers(path: Path | None = None) -> Dict[str, Dict[str, Any]]:
         raise ValueError(f"Invalid YAML in {path}") from exc
     if not isinstance(data, dict):
         raise ValueError("providers file must contain a mapping")
+    # Each provider definition must itself be a mapping so callers do not end up
+    # with unexpected primitive values which would later break lookups in
+    # :func:`get_active_providers`.  Previously a value such as ``"documenso:
+    # invalid"`` would be accepted and propagated as a plain string, leading to
+    # attribute errors when accessed as a mapping.  Validate eagerly and raise a
+    # helpful error instead.
+    for name, cfg in list(data.items()):
+        if not isinstance(cfg, dict):
+            raise ValueError(f"configuration for provider '{name}' must be a mapping")
     # ensure expected structure and defaults
     for name, cfg in DEFAULT_PROVIDERS.items():
         data.setdefault(name, cfg.copy())
