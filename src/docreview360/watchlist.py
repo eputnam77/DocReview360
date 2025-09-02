@@ -11,7 +11,11 @@ from typing import Dict, List, Set
 # with a ``~`` prefix which ``Path`` does not automatically expand.  Expanding
 # here keeps behaviour intuitive and mirrors common shell expectations.
 WATCHLIST_FILE = Path(
-    os.environ.get("DOCREV_WATCHLIST_FILE", str(Path(__file__).with_name("watchlist.json")))
+    os.path.expandvars(
+        os.environ.get(
+            "DOCREV_WATCHLIST_FILE", str(Path(__file__).with_name("watchlist.json"))
+        )
+    )
 ).expanduser()
 
 
