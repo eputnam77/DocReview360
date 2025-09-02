@@ -32,6 +32,8 @@ def tiptap_to_markdown(data: Dict[str, Any]) -> str:
         if not isinstance(para, dict) or para.get("type") != "paragraph":
             raise ValueError("Invalid TipTap paragraph")
         parts = para.get("content", [])
+        if not isinstance(parts, list):
+            raise ValueError("Invalid TipTap paragraph")
         text = "".join(part.get("text", "") for part in parts if part.get("type") == "text")
         lines.append(text)
     return "\n".join(lines)

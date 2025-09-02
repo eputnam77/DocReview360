@@ -50,6 +50,8 @@ def upload_template(
 
     if not name:
         raise ValueError("name is required")
+    if metadata is not None and not isinstance(metadata, dict):
+        raise ValueError("metadata must be a mapping")
     versions = _template_store.setdefault(name, [])
     version = len(versions) + 1
     record = TemplateVersion(
