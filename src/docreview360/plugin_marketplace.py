@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from typing import Any
+import copy
 
 from .stubs import record_task_completion
 
@@ -179,8 +180,15 @@ def get_plugin_info(name: str) -> dict[str, Any] | None:
 
 def list_plugins_with_info() -> list[dict[str, Any]]:
     """Return detailed information about all available plugins."""
+    # ``PLUGIN_DATA`` stores the canonical metadata for each plugin. Returning
+    # the raw dictionaries leaks internal state to callers who might
+    # accidentally mutate the module level constants.  Tests simulate such
+    # modification and previously observed that updating a returned plugin dict
+    # changed ``PLUGIN_DATA`` itself.  To avoid these side effects we return
+    # deep copies so callers can safely manipulate the result without affecting
+    # the catalogue.
     return [
-        {"id": plugin_id, **plugin_info}
+        {"id": plugin_id, **copy.deepcopy(plugin_info)}
         for plugin_id, plugin_info in PLUGIN_DATA.items()
     ]
 
