@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
+from copy import deepcopy
 
 from .stubs import record_task_completion
 
@@ -57,7 +58,7 @@ def upload_template(
     record = TemplateVersion(
         version=version,
         content=data,
-        metadata=(metadata.copy() if metadata else {}),
+        metadata=(deepcopy(metadata) if metadata else {}),
     )
     versions.append(record)
     return record
