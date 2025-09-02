@@ -25,8 +25,13 @@ sent_emails: List[dict[str, str]] = []
 
 def add_template(name: str, subject: str, body: str) -> None:
     """Register a new template."""
-    if not name:
+    # ``name`` may come from user input.  ``if not name`` would allow values
+    # consisting solely of whitespace which produce awkward template keys such
+    # as ``" "`` that are hard to reference later.  Normalise by requiring a
+    # non-empty string after trimming.
+    if not isinstance(name, str) or not name.strip():
         raise ValueError("name required")
+    name = name.strip()
     # Accidentally overwriting an existing template can lead to subtle bugs
     # in calling code that relies on a particular subject/body format.  The
     # previous implementation silently replaced any existing entry which meant

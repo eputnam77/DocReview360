@@ -30,7 +30,17 @@ async def suggest(host: HttpUrl, text: str, index: str = "documents") -> list[Su
         # the request.  The previous implementation attempted to index into the
         # ``suggest`` dict using ``[0]`` which raised ``TypeError``.  Correctly
         # navigate to the "simple" suggestion list before extracting options.
-        data = resp.json()["suggest"]["simple"][0]["options"]
+        #
+        # OpenSearch may legitimately return an empty list of suggestions.  The
+        # earlier implementation blindly indexed ``[0]`` which raised
+        # ``IndexError`` in such cases.  Gracefully handle missing or empty
+        # results by returning an empty suggestion list.
+        body = resp.json()
+        simple = body.get("suggest", {}).get("simple", [])
+        if simple:
+            options = simple[0].get("options", [])
+        else:
+            options = []
 
     record_task_completion(135)
-    return [Suggestion(text=o["text"], score=o.get("_score", 0.0)) for o in data]
+    return [Suggestion(text=o["text"], score=o.get("_score", 0.0)) for o in options]
