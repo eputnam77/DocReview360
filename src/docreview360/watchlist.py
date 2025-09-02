@@ -7,9 +7,12 @@ import os
 from pathlib import Path
 from typing import Dict, List, Set
 
+# Resolve the watchlist location.  ``DOCREV_WATCHLIST_FILE`` may contain a path
+# with a ``~`` prefix which ``Path`` does not automatically expand.  Expanding
+# here keeps behaviour intuitive and mirrors common shell expectations.
 WATCHLIST_FILE = Path(
     os.environ.get("DOCREV_WATCHLIST_FILE", str(Path(__file__).with_name("watchlist.json")))
-)
+).expanduser()
 
 
 def _load() -> Dict[str, Set[str]]:
