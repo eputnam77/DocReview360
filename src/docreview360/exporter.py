@@ -27,7 +27,12 @@ def _render_template(template: str, document: DocumentModel) -> str:
     """
 
     try:
-        base = template.format(id=document.id, number=document.number or "")
+        # ``document.number`` is an ``int`` and ``0`` is a valid value.  Using
+        # ``or`` would treat ``0`` as falsy and substitute an empty string,
+        # yielding filenames like ``doc-.md``.  Explicitly check for ``None`` so
+        # that ``0`` is preserved.
+        number = document.number if document.number is not None else ""
+        base = template.format(id=document.id, number=number)
     except (KeyError, IndexError) as exc:  # pragma: no cover - defensive
         # ``str.format`` raises ``KeyError`` for unknown named fields and
         # ``IndexError`` for stray positional fields such as ``"{0}"``.  The
@@ -132,6 +137,8 @@ def export_document(  # noqa: C901
 
 def preview_document(document: DocumentModel, fmt: str, *, length: int = 30) -> str:
     """Return a human-readable preview of a document export."""
+    if length < 0:
+        raise ValueError("length must be non-negative")
     data, media, _ = export_document(document, fmt)
     # For textual formats (``text/*`` or JSON) show the exported representation.
     # The previous implementation returned the original document content for
