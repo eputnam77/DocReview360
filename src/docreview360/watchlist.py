@@ -20,7 +20,14 @@ def _load() -> Dict[str, Set[str]]:
         data = json.loads(WATCHLIST_FILE.read_text())
         if not isinstance(data, dict):
             raise ValueError(f"Watchlist file must contain a JSON object: {WATCHLIST_FILE}")
-        return {u: set(v) for u, v in data.items()}
+        result: Dict[str, Set[str]] = {}
+        for user, projects in data.items():
+            if not isinstance(projects, list):
+                raise ValueError(
+                    f"Watchlist entries must be lists: {WATCHLIST_FILE}"
+                )
+            result[str(user)] = set(map(str, projects))
+        return result
     except FileNotFoundError:
         return {}
     except json.JSONDecodeError as exc:
