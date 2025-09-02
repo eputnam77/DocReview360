@@ -20,3 +20,20 @@ def test_watchlist_file_expands_user(tmp_path: Path, monkeypatch: pytest.MonkeyP
     wl._watchlist.clear()
     wl.toggle_watch("user", "proj")
     assert expected.exists()
+
+
+def test_watchlist_file_expands_env_vars(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Custom paths may include environment variables which should be expanded."""
+
+    monkeypatch.setenv("BASE", str(tmp_path))
+    monkeypatch.setenv("DOCREV_WATCHLIST_FILE", "$BASE/w.json")
+
+    import docreview360.watchlist as wl
+    wl = importlib.reload(wl)
+
+    expected = tmp_path / "w.json"
+    assert wl.WATCHLIST_FILE == expected
+    wl._watchlist.clear()
+    wl.toggle_watch("u", "p")
+    assert wl.get_watchers("p") == ["u"]
+    assert expected.exists()
