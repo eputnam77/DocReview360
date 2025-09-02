@@ -123,7 +123,14 @@ class PluginManager:
                 reader = PyPDF2.PdfReader(file)
                 text = ""
                 for page in reader.pages:
-                    text += page.extract_text() + "\n"
+                    # ``extract_text`` may return ``None`` for pages without
+                    # extractable content.  The previous implementation
+                    # attempted to concatenate ``None`` which raised a
+                    # ``TypeError`` and aborted extraction.  Treat missing text
+                    # as an empty string so callers always receive a string
+                    # result and other pages can still contribute their
+                    # content.
+                    text += (page.extract_text() or "") + "\n"
                 return text
         except Exception as e:
             logger.error(f"Error extracting PDF text: {e}")
