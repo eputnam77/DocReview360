@@ -17,8 +17,15 @@ def create_archival_folder(base: str | Path, project_id: str) -> Path:
         # that contains only whitespace would create confusing folders like
         # ``" "`` on disk.  Normalise by rejecting such values early.
         raise ValueError("project_id must be provided")
+    # Prevent path traversal.  ``Path(project_id)`` normalises separators but
+    # still yields multiple parts for values like ``"../etc"`` or ``"a/b"``.
+    # Restrict project identifiers to a single path segment without special
+    # values so archived files cannot escape the configured base directory.
+    pid_path = Path(project_id)
+    if pid_path.is_absolute() or len(pid_path.parts) != 1 or pid_path.parts[0] in {"..", "."}:
+        raise ValueError("project_id must be a simple name")
     base_path = Path(base)
     date_part = datetime.now(timezone.utc).strftime("%Y%m%d")
-    folder = base_path / project_id / date_part
+    folder = base_path / pid_path.name / date_part
     folder.mkdir(parents=True, exist_ok=True)
     return folder
