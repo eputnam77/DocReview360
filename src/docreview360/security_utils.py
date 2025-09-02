@@ -38,6 +38,12 @@ def create_signature(data: str, secret: str | None = None) -> str:
 
 def verify_signature(data: str, signature: str, secret: str | None = None) -> bool:
     """Verify a signature created with :func:`create_signature`."""
-
-    expected = create_signature(data, secret)
+    try:
+        expected = create_signature(data, secret)
+    except ValueError:
+        # ``create_signature`` raises ``ValueError`` when an empty string is
+        # supplied for ``secret``.  Verification should be a boolean check
+        # rather than propagating the exception; callers expect ``False`` when
+        # verification cannot proceed due to an invalid secret.
+        return False
     return hmac.compare_digest(expected, signature)

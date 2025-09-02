@@ -94,6 +94,21 @@ def test_plugin_manager_with_plugins(tmp_path):
     assert status == {name: True for name in pm.available_plugins}
 
 
+def test_extract_pdf_text_handles_none(tmp_path):
+    pm = PluginManager()
+    # Create a reader whose page returns ``None`` from ``extract_text``
+    class DummyReader:
+        def __init__(self, fh) -> None:
+            self.pages = [SimpleNamespace(extract_text=lambda: None)]
+
+    pm.available_plugins["pypdf2"] = SimpleNamespace(PdfReader=DummyReader)
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_text("placeholder", encoding="utf-8")
+
+    # Should not raise and should return a string (just a newline)
+    assert pm.extract_pdf_text(str(pdf)) == "\n"
+
+
 def test_plugin_load_branches(monkeypatch):
     def fake_import(name: str):
         if name == "textstat" or name == "docx":
