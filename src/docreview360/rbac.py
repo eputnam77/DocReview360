@@ -1,31 +1,31 @@
-"""Role-based access control helpers."""
+"""Role-based access control helpers.
 
-from __future__ import annotations
-
-from typing import Callable, Iterable, Set
-
-"""Simple role based access helpers.
+Simple role based access helpers.
 
 The tests in this kata reload the :mod:`docreview360.rbac` module multiple
-times using :func:`importlib`.  A straight re-import would create a brand new
+times using :func:`importlib`. A straight re-import would create a brand new
 ``USER_ROLES`` mapping for every load which means that different module
-instances no longer share the same in-memory role assignments.  FastAPI
+instances no longer share the same in-memory role assignments. FastAPI
 dependencies captured during the first import would keep referencing the
 original mapping and therefore miss any roles added later, leading to
 ``403 Forbidden`` responses even though a role had been granted in the latest
 module instance.
 
 To make the role store resilient across reloads we stash the state in a small
-private module (``docreview360._rbac_state``).  Subsequent imports simply reuse
+private module (``docreview360._rbac_state``). Subsequent imports simply reuse
 the same dictionary so all parts of the application observe consistent role
 changes regardless of how many times the module is re-imported.
 """
 
+from __future__ import annotations
+
+import sys
+from types import SimpleNamespace
+from typing import Callable, Iterable, Set
+
 from fastapi import Depends, HTTPException, status
 
 from . import auth
-import sys
-from types import SimpleNamespace
 
 # A shared state container that survives module reloads.  ``importlib`` based
 # tests load :mod:`docreview360.rbac` multiple times which would normally create
@@ -72,7 +72,7 @@ USER_ROLES: dict[str, Set[str]] = _state.USER_ROLES
 def set_user_roles(username: str, roles: Iterable[str]) -> None:
     """Assign ``roles`` to ``username`` replacing any existing mapping.
 
-    Role names are normalised to lower-case so that lookups become
+    Role names are normalized to lower-case so that lookups become
     case-insensitive.  This mirrors how roles are typically stored in
     backing stores and avoids subtle bugs where callers pass ``"Admin"``
     instead of ``"admin"``.
@@ -85,7 +85,7 @@ def add_role(username: str, role: str) -> None:
     """Add a single ``role`` to ``username``.
 
     The provided ``role`` is stored in lower-case to keep the mapping
-    normalised.  Re-adding an existing role is a no-op.
+    normalized.  Re-adding an existing role is a no-op.
     """
 
     USER_ROLES.setdefault(username, set()).add(role.lower())

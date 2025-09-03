@@ -13,7 +13,7 @@ def _validate_key(key: str) -> None:
     key which meant Windows-style separators (``"\\"``) were treated as normal
     characters on POSIX systems.  As a result a key like ``"..\\secret"`` would
     bypass the ``".."`` check and could be interpreted as a parent directory on a
-    Windows host.  Normalising separators ensures traversal attempts are caught
+    Windows host.  Normalizing separators ensures traversal attempts are caught
     consistently across platforms.
     """
 
@@ -31,7 +31,7 @@ def _validate_key(key: str) -> None:
         raise ValueError("invalid key")
     # Reject empty path segments to prevent ambiguous or accidental absolute
     # paths.  ``PurePosixPath`` collapses consecutive separators so we detect
-    # them before normalisation.
+    # them before normalization.
     if "//" in normalized:
         raise ValueError("invalid key")
     if (
