@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def _ensure_repo(repo: Path, branch: str, remote: Path | None) -> None:
-    """Initialise ``repo`` as a git repository if needed.
+    """Initialize ``repo`` as a git repository if needed.
 
     Optionally sets the ``remote`` URL and creates ``branch`` if the
     repository didn't exist. This avoids re-running ``git init`` for

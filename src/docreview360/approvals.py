@@ -283,7 +283,7 @@ async def handle_signature_return(  # noqa: C901
         # where signatures are accepted based solely on the callback.  Treat
         # the signature as valid in this case but still log the failed
         # verification for observability.  If a certificate URL *is* supplied
-        # we keep the strict behaviour and surface an error.
+        # we keep the strict behavior and surface an error.
         log_verification_failure(
             approval.reviewer,
             client_ip or "",

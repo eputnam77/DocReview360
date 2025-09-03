@@ -1,10 +1,18 @@
 [
   {
-    "name": "Test Doc",
-    "template": "<h1>Test</h1>",
-    "workflow": [],
+    "name": "Test Document Type",
+    "template": "<h1>Test Template</h1>",
+    "workflow": [
+      "draft",
+      "review",
+      "approve"
+    ],
     "default_template_id": null,
-    "id": "Test Doc",
-    "phases": []
+    "id": "Test Document Type",
+    "phases": [
+      "draft",
+      "review",
+      "approve"
+    ]
   }
 ]

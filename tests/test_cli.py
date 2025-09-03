@@ -126,7 +126,7 @@ def test_migrate_roundtrip(tmp_path: Path) -> None:
     add_document_type(DocumentTypeModel(name=test_doc_type_name, template=test_template))
 
     # Verify initial state.  The logging subsystem may record additional
-    # entries (e.g. database initialisation), so capture the count rather than
+    # entries (e.g. database initialization), so capture the count rather than
     # assuming a fixed value.
     assert len(documents) == 1, f"Expected 1 document, got {len(documents)}"
     initial_log_count = len(logs)
