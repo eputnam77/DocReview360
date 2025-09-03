@@ -63,7 +63,7 @@ HASH_MISMATCHES = Counter(
 
 
 def init_observability(port: int | None = None, *, dsn: str | None = None) -> Dict[str, str]:
-    """Initialise Prometheus metrics and optional Sentry reporting."""
+    """Initialize Prometheus metrics and optional Sentry reporting."""
 
     services: Dict[str, str] = {}
 

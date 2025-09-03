@@ -25,7 +25,7 @@ class ReviewerProfile:
 
 
 class ReviewerModel:
-    """Minimal model capturing reviewer behaviour."""
+    """Minimal model capturing reviewer behavior."""
 
     def __init__(self) -> None:
         self._profiles: Dict[str, ReviewerProfile] = {}

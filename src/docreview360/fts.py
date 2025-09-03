@@ -30,7 +30,7 @@ def index_document(doc_id: str, content: str) -> None:
     # which would cause searches to return duplicate document identifiers
     # when re-indexing existing documents.  The real system performs an
     # upsert so repeated indexing replaces the previous content.  Mirror
-    # that behaviour here by deleting any existing row before inserting
+    # that behavior here by deleting any existing row before inserting
     # the new one.
     _conn.execute("DELETE FROM docs WHERE id = ?", (doc_id,))
     _conn.execute(

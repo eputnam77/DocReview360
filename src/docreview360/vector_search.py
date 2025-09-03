@@ -87,7 +87,7 @@ def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
     The previous implementation silently truncated the longer iterable when
     the vectors had different lengths because :func:`zip` stops at the
     shortest input. This produced incorrect scores and hid programming
-    mistakes.  We now eagerly realise both iterables and validate that their
+    mistakes.  We now eagerly realize both iterables and validate that their
     lengths match, raising ``ValueError`` otherwise.
     """
 

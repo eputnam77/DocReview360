@@ -75,7 +75,7 @@ __all__ = [
 # required for the lightweight helper modules used in our tests.  Eagerly
 # importing them causes ``ModuleNotFoundError`` during test collection.  To keep
 # the public API intact while avoiding heavy imports, we expose submodules lazily
-# via ``__getattr__``.  This mirrors the behaviour of packages like ``numpy`` or
+# via ``__getattr__``.  This mirrors the behavior of packages like ``numpy`` or
 # ``pandas`` where modules are loaded on first access.
 
 import sys
@@ -87,7 +87,7 @@ def __getattr__(name: str) -> Any:
     """Dynamically import submodules on first access.
 
     This allows ``from docreview360 import chat_bot`` without importing the
-    entire dependency graph when the package is initialised.
+    entire dependency graph when the package is initialized.
     """
 
     if name in __all__:

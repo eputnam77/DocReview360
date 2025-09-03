@@ -7,7 +7,7 @@ def setup_function(_):
     clear_cache()
 
 
-def test_cache_ttl_behaviour():
+def test_cache_ttl_behavior():
     cache_set("a", 1, ttl=0)
     assert cache_get("a") == 1
     cache_set("b", 2, ttl=1)
