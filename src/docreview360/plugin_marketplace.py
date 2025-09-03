@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 import subprocess
 import sys
 from typing import Any
-import copy
 
 from .stubs import record_task_completion
 
@@ -186,7 +186,7 @@ def list_plugins_with_info() -> list[dict[str, Any]]:
     # modification and previously observed that updating a returned plugin dict
     # changed ``PLUGIN_DATA`` itself.  To avoid these side effects we return
     # deep copies so callers can safely manipulate the result without affecting
-    # the catalogue.
+    # the catalog.
     return [
         {"id": plugin_id, **copy.deepcopy(plugin_info)}
         for plugin_id, plugin_info in PLUGIN_DATA.items()
