@@ -1284,7 +1284,7 @@ async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel
     try:
         add_document_type(doc_type)
     except ValueError as exc:
-        # Normalise validation errors into a 400 response so API clients
+        # Normalize validation errors into a 400 response so API clients
         # receive a predictable status code instead of an internal server
         # error when providing invalid data.
         raise HTTPException(status_code=400, detail=str(exc)) from exc

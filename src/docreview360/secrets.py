@@ -56,7 +56,7 @@ class VaultClient:
                     return secret
         # Fallback to environment variables using common suffixes.  Provider
         # identifiers may include characters not valid in environment variable
-        # names such as hyphens.  Normalise to uppercase underscores so a
+        # names such as hyphens.  Normalize to uppercase underscores so a
         # provider like ``"my-service"`` correctly maps to ``MY_SERVICE``
         # based variables.
         base = re.sub(r"[^A-Z0-9]", "_", provider.upper())
