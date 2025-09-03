@@ -15,9 +15,9 @@ def create_archival_folder(base: str | Path, project_id: str) -> Path:
     if not project_id or not project_id.strip():
         # ``project_id`` is used as part of the path.  An empty string or one
         # that contains only whitespace would create confusing folders like
-        # ``" "`` on disk.  Normalise by rejecting such values early.
+        # ``" "`` on disk.  Normalize by rejecting such values early.
         raise ValueError("project_id must be provided")
-    # Prevent path traversal.  ``Path(project_id)`` normalises separators but
+    # Prevent path traversal.  ``Path(project_id)`` normalizes separators but
     # still yields multiple parts for values like ``"../etc"`` or ``"a/b"``.
     # Restrict project identifiers to a single path segment without special
     # values so archived files cannot escape the configured base directory.

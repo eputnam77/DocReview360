@@ -15,7 +15,7 @@ EDITOR_PLUGINS = {
 
 def render_editor(document: DocumentModel) -> str:
     """Return an HTML snippet for the editor configured on ``document``."""
-    # Normalise the editor name so callers can pass values with varying
+    # Normalize the editor name so callers can pass values with varying
     # capitalisation or surrounding whitespace.  The previous implementation
     # performed a direct dictionary lookup which meant values like
     # ``" OnlyOffice "`` failed to resolve even though the plugin exists.  By

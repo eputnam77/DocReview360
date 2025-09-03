@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Set
 from pydantic import BaseModel, computed_field
 
 from . import fts
-from .cache import cache_get, cache_set, cache_delete
+from .cache import cache_delete, cache_get, cache_set
 from .documents import DocumentModel, documents
 from .workflows import get_workflow
 
@@ -384,7 +384,7 @@ def overdue_high_priority() -> list[str]:
 
 
 def _normalize(text: str) -> str:
-    """Return a whitespace-normalised lowercase string."""
+    """Return a whitespace-normalized lowercase string."""
 
     cleaned = re.sub(r"[^\w]+", " ", text)
     return cleaned.lower().strip()
@@ -395,7 +395,7 @@ def _match_all_terms(text: str, terms: list[str]) -> bool:
 
     The previous implementation simply performed substring checks which meant a
     search term like ``"cat"`` would match a document containing the word
-    ``"scatter"``.  By tokenising the normalised text we ensure matches respect
+    ``"scatter"``.  By tokenizing the normalized text we ensure matches respect
     word boundaries and avoid surprising false positives.
     """
     normalized = _normalize(text)

@@ -28,7 +28,7 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
     # ``aria-label`` attributes may also include surrounding whitespace. Allow
-    # both quoting styles while normalising incidental spaces.
+    # both quoting styles while normalizing incidental spaces.
     aria_label = re.compile(r"aria-label\s*=\s*(?:\"[^\"]*\"|'[^']*')", re.I)
 
     for match in img_tag.finditer(text):
