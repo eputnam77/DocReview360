@@ -28,6 +28,6 @@ Development files under `.dev/` are excluded from packages, while CI workflows
 reside in `.github/`. Documentation lives in `docs/` and is built with MkDocs.
 
 ## Consequences
-This layout favours discoverability over a minimal distribution tarball.
+This layout favors discoverability over a minimal distribution tarball.
 Optional pieces can be ignored during installation but remain documented and
 tested alongside the code.

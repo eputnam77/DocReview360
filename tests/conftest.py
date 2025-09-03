@@ -46,7 +46,7 @@ def pytest_pyfunc_call(pyfuncitem: pytest.Function) -> bool | None:
 
     The kata environment may not include ``pytest-asyncio``. This hook
     provides a very small event loop runner so tests marked as async can
-    still execute.  It mirrors the minimal behaviour of the real plugin
+    still execute.  It mirrors the minimal behavior of the real plugin
     by detecting coroutine functions and running them to completion.
     """
 

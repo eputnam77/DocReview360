@@ -9,7 +9,7 @@ from typing import Dict, List, Set
 
 # Resolve the watchlist location.  ``DOCREV_WATCHLIST_FILE`` may contain a path
 # with a ``~`` prefix which ``Path`` does not automatically expand.  Expanding
-# here keeps behaviour intuitive and mirrors common shell expectations.
+# here keeps behavior intuitive and mirrors common shell expectations.
 WATCHLIST_FILE = Path(
     os.path.expandvars(
         os.environ.get(

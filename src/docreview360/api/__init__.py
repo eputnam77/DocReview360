@@ -554,7 +554,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     # existing workflow or specify the identifier for a new workflow.  Earlier
     # revisions always created a new workflow even when one already existed,
     # while the subsequent fix assumed the identifier was pre-existing and never
-    # created a workflow.  Both behaviours caused inconsistencies: callers could
+    # created a workflow.  Both behaviors caused inconsistencies: callers could
     # end up with a dangling reference or with a mismatched identifier.  The
     # logic below strikes a balance by creating a minimal workflow only when the
     # supplied identifier does not already exist.
@@ -573,7 +573,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
             )
         project.workflow = body.workflow
     # Previously a workflow was automatically created whenever a phase was
-    # supplied, even if the caller did not request one.  This behaviour made it
+    # supplied, even if the caller did not request one.  This behavior made it
     # impossible to create a project without a workflow.  Now we only create a
     # workflow when an explicit ``workflow`` identifier is provided.  Projects can
     # still record their starting phase without being tied to a workflow.

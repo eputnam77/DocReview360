@@ -19,7 +19,7 @@ def normalize_port(port: int | str | float | None) -> int:
     """
     try:
         # ``int`` will happily truncate floats (e.g. ``123.5`` -> ``123``) which
-        # is rarely the desired behaviour for port numbers. Treat non-integer
+        # is rarely the desired behavior for port numbers. Treat non-integer
         # floats as invalid so callers don't accidentally bind to an unexpected
         # port when a decimal value is supplied.
         if isinstance(port, float) and not port.is_integer():

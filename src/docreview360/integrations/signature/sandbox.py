@@ -50,7 +50,7 @@ class SandboxProvider:
         The API expects providers to expose a way to query the state of a
         signature request.  The sandbox provider keeps state in the local
         ``_signatures`` dictionary so we simply look it up and raise ``KeyError``
-        when the id is unknown.  This mirrors the behaviour of the real
+        when the id is unknown.  This mirrors the behavior of the real
         Documenso implementation and allows repeated webhook deliveries to be
         safely ignored.
         """
