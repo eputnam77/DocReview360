@@ -23,7 +23,7 @@ every environment so the editor can connect to Word:
 1. **Local development** – open Word, choose *Insert → Add-ins → Upload My
    Add-in* and select the DocReview360 manifest.
 2. **Staging / production** – deploy the same manifest through your Microsoft 365
-   admin centre or a SharePoint catalog so that all users receive the add-in.
+   admin center or a SharePoint catalog so that all users receive the add-in.
 3. **Office Online** – sideload the manifest from the browser's *Add-ins* menu or
    use centralised deployment.
 
