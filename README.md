@@ -2,7 +2,7 @@
 
 Lightweight document workflows—CLI, API, and React UI in one repo.
 
-**DocReview360** lets teams organise files, route them through quick approval steps, and track status at a glance. The prototype ships with:
+**DocReview360** lets teams organize files, route them through quick approval steps, and track status at a glance. The prototype ships with:
 
 * a FastAPI backend
 * a minimal React/Next.js frontend
@@ -392,7 +392,7 @@ the workflow can be.
 
 ## Deploy with Docker
 
-Running the app inside containers is a handy way to share it on a server or your favourite cloud provider. The repository already contains a `Dockerfile` and a `docker-compose.yml` so you can start quickly.
+Running the app inside containers is a handy way to share it on a server or your favorite cloud provider. The repository already contains a `Dockerfile` and a `docker-compose.yml` so you can start quickly.
 
 See `docs/deployment.md` for platform-specific notes about environment variables and database setup on Render, Heroku, Fly.io and Railway.
 
