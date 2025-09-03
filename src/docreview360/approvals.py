@@ -205,7 +205,7 @@ def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:
     return None
 
 
-async def handle_signature_return(
+async def handle_signature_return(  # noqa: C901
     signature_id: str,
     *,
     doc_id: str | None = None,
@@ -442,7 +442,7 @@ def send_for_signature(  # noqa: C901
     if approval.state == "approved":
         raise ValueError("approval already signed")
     if user != approval.reviewer and user not in approval.delegates:
-        raise PermissionError("not authorised to send for signature")
+        raise PermissionError("not authorized to send for signature")
     if approval.document_id != doc_id:
         unlink_approval(approval.document_id, approval.id)
         approval.document_id = doc_id
