@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections import Counter, defaultdict
-from math import log, sqrt, isfinite
+from math import isfinite, log, sqrt
 from typing import Dict, Iterable, List, Tuple
 
 import httpx
@@ -22,7 +22,7 @@ def _embed(text: str) -> Counter[str]:
 
     The previous implementation simply split on whitespace which meant tokens
     retained surrounding punctuation.  A document containing ``"world!"`` would
-    therefore never match a search for ``"world"``.  Normalise tokens by
+    therefore never match a search for ``"world"``.  Normalize tokens by
     extracting only alphanumeric word segments so punctuation is ignored and
     search queries behave more intuitively.
     """

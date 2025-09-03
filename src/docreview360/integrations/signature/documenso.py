@@ -42,7 +42,7 @@ _sig_certificates: Dict[str, str] = {}
 _certificates: Dict[str, Dict[str, Any]] = {}
 
 
-def _normalise_cert_url(url: str) -> str:
+def _normalize_cert_url(url: str) -> str:
     """Return ``url`` with a trailing slash to ensure consistent lookups."""
 
     parsed = urlparse(url)
@@ -221,7 +221,7 @@ def _local_validate(document_bytes: bytes, certificate_url: str | None) -> bool:
     """Validate signature using locally stored certificate data."""
 
     if certificate_url:
-        certificate_url = _normalise_cert_url(certificate_url)
+        certificate_url = _normalize_cert_url(certificate_url)
     if not (certificate_url and (cert_info := _certificates.get(certificate_url))):
         return False
 
@@ -269,14 +269,14 @@ def register_test_certificate(
 ) -> None:
     """Register a certificate for local validation during tests."""
 
-    normalised = _normalise_cert_url(url)
+    normalized = _normalize_cert_url(url)
     info = {
         "certificate": certificate,
         "signature": signature,
     }
     if revoked is not None:
         info["revoked"] = revoked
-    _certificates[normalised] = info
+    _certificates[normalized] = info
 
 
 def signature_status(sig_id: str) -> str:
@@ -310,7 +310,7 @@ def process_webhook(data: Dict[str, str]) -> None:
     _signatures[sig_id] = status
     cert_url = event.certificate_url
     if cert_url:
-        _sig_certificates[sig_id] = _normalise_cert_url(str(cert_url))
+        _sig_certificates[sig_id] = _normalize_cert_url(str(cert_url))
     if status == "signed":
         wf_id = _sig_workflows.get(sig_id)
         if wf_id:

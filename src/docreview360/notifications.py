@@ -27,7 +27,7 @@ def add_template(name: str, subject: str, body: str) -> None:
     """Register a new template."""
     # ``name`` may come from user input.  ``if not name`` would allow values
     # consisting solely of whitespace which produce awkward template keys such
-    # as ``" "`` that are hard to reference later.  Normalise by requiring a
+    # as ``" "`` that are hard to reference later.  Normalize by requiring a
     # non-empty string after trimming.
     if not isinstance(name, str) or not name.strip():
         raise ValueError("name required")

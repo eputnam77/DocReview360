@@ -34,7 +34,7 @@ def initialize_high_risk_terms(path: str | Path | None = None) -> None:
     if not isinstance(loaded, list) or not all(isinstance(t, str) for t in loaded):
         raise ValueError("high risk terms must be a JSON list of strings")
 
-    # Normalise the loaded terms to lowercase.  Without this a configuration
+    # Normalize the loaded terms to lowercase.  Without this a configuration
     # file containing capitalised words would never match because
     # ``high_risk_warnings`` lowercases the input text before searching.
     _HIGH_RISK_TERMS = {t.lower() for t in loaded}

@@ -2,9 +2,8 @@
 
 from pathlib import Path
 
-import pytest
-
 import docreview360.watchlist as wl
+import pytest
 
 
 def test_load_invalid_json_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -25,14 +24,14 @@ def test_load_non_mapping_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         wl._load()
 
 
-def test_toggle_normalises_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_toggle_normalizes_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Leading/trailing whitespace should be ignored when toggling watches."""
     file_path = tmp_path / "watchlist.json"
     monkeypatch.setattr(wl, "WATCHLIST_FILE", file_path)
     wl._watchlist.clear()
     wl.toggle_watch(" alice ", " project-1 ")
     assert wl.get_watchlist("alice") == ["project-1"]
-    # Toggling again with normalised strings should remove the entry
+    # Toggling again with normalized strings should remove the entry
     wl.toggle_watch("alice", "project-1")
     assert wl.get_watchlist("alice") == []
 

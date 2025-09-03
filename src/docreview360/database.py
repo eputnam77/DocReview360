@@ -36,7 +36,7 @@ def _parse_sql_statements(file: Path) -> list[str]:
 
     The parser is aware of ``CREATE TRIGGER`` blocks whose terminating
     ``END;`` may appear on a separate line. To keep the implementation
-    lightweight we normalise ``END`` blocks followed by optional
+    lightweight we normalize ``END`` blocks followed by optional
     whitespace and a semicolon into a single ``END;`` token using a
     regular expression before processing line-by-line.
     """

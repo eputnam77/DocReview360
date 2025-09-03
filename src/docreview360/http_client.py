@@ -25,7 +25,7 @@ def _ensure_tls(kwargs: dict) -> None:
     # ``True`` which would otherwise fall back to httpx's default context that may
     # permit TLS versions older than 1.2.  Only explicit :class:`ssl.SSLContext`
     # objects or custom CA bundle paths are honoured.  Everything else is
-    # normalised to our hardened context to ensure consistent TLS enforcement.
+    # normalized to our hardened context to ensure consistent TLS enforcement.
     if isinstance(verify, ssl.SSLContext):
         if verify.minimum_version < ssl.TLSVersion.TLSv1_2:
             verify.minimum_version = ssl.TLSVersion.TLSv1_2
