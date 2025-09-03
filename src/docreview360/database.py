@@ -98,7 +98,7 @@ class Database:
             self._engine = create_engine(
                 url, connect_args=connect_args, poolclass=StaticPool
             )
-            # initialise the pool connection and return it so the database
+            # initialize the pool connection and return it so the database
             # persists but no connection remains checked out
             with self._engine.connect() as _:
                 pass

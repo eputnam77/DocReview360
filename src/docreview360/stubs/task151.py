@@ -54,7 +54,7 @@ def task151(doc_type: str | None = None, reviewers: Iterable[str] | None = None)
         reviewers or [],
     )
 
-    # Ensure workflow exists to mirror UI behaviour
+    # Ensure workflow exists to mirror UI behavior
     if get_workflow(wf_id) is None:
         raise RuntimeError("workflow creation failed")
 

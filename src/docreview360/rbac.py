@@ -35,7 +35,7 @@ _state = sys.modules.setdefault("docreview360._rbac_state", SimpleNamespace())
 
 # Default permission table for roles. Each role maps to the set of actions it
 # may perform.  ``ROLE_PERMISSIONS`` is effectively constant but placing it on
-# the shared state keeps behaviour predictable when reloading.
+# the shared state keeps behavior predictable when reloading.
 if not hasattr(_state, "ROLE_PERMISSIONS"):
     _state.ROLE_PERMISSIONS = {
         "admin": {
@@ -99,7 +99,7 @@ def get_roles(username: str) -> set[str]:
 def has_role(username: str, role: str) -> bool:
     """Return ``True`` if ``username`` is assigned ``role``.
 
-    The check is case-insensitive to match the behaviour of
+    The check is case-insensitive to match the behavior of
     :func:`add_role` and :func:`set_user_roles`.
     """
 

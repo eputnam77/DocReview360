@@ -13,7 +13,7 @@ import yaml
 PROVIDERS_FILE = Path("providers.yaml")
 
 # Default providers shipped with the application. These mirror previous
-# behaviour which used a primary ``documenso`` provider and a ``local``
+# behavior which used a primary ``documenso`` provider and a ``local``
 # fallback provider.
 DEFAULT_PROVIDERS: Dict[str, Dict[str, Any]] = {
     "documenso": {"api_key": "", "priority": 1, "healthy": True},

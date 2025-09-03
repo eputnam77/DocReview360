@@ -285,14 +285,14 @@ def _bootstrap_sample() -> None:
         )
 
 
-"""Workflows bootstrap behaviour
+"""Workflows bootstrap behavior
 ---------------------------------
 
 Historically the module executed :func:`_bootstrap_sample` on import unless an
 environment variable named ``DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP`` was set to
-``"1"``.  The default behaviour (running the bootstrap) is convenient for the
+``"1"``.  The default behavior (running the bootstrap) is convenient for the
 real application which wants some seed data at startup.  For tests and for
-light‑weight usage this proved problematic as the bootstrap initialises the
+light‑weight usage this proved problematic as the bootstrap initializes the
 database and touches a number of other modules which may not be configured.  In
 the minimal test environment used in this kata the eager bootstrap attempted to
 run database migrations during import which raised
@@ -301,8 +301,8 @@ imported.
 
 To make the module safe to import in isolation we now *skip* bootstrapping by
 default.  Setting ``DOCREVIEW360_ENABLE_SAMPLE_BOOTSTRAP=1`` re‑enables the
-previous behaviour.  This mirrors the intent – seeding data should be an
-explicit choice – and keeps application behaviour intact when the new variable
+previous behavior.  This mirrors the intent – seeding data should be an
+explicit choice – and keeps application behavior intact when the new variable
 is used.
 """
 
@@ -453,7 +453,7 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
                 # ``None`` and does not record the event in the in-memory log
                 # list.  The workflow logic, and the accompanying audit log,
                 # rely on this event being present so we defensively ensure the
-                # entry is appended when missing.  This keeps the behaviour
+                # entry is appended when missing.  This keeps the behavior
                 # consistent regardless of external patches and prevents state
                 # leakage between tests.
                 from .logs import LogEntry, logs as _logs

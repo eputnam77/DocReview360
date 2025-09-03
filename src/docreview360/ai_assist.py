@@ -19,12 +19,12 @@ __all__ = [
 # authentication key at module level.  The original implementation looked up
 # the secret on every call which meant the module had no ``OPENAI_KEY``
 # attribute and the tests failed with ``AttributeError``.  Storing the key in a
-# module level variable keeps the behaviour identical (it's still loaded from
+# module level variable keeps the behavior identical (it's still loaded from
 # ``get_secret`` at import time) while allowing tests and callers to override it
 # easily.
 
-# The key is resolved at import time so the default behaviour is unchanged – if
-# the secret is missing the fallback behaviour (reversing the prompt) is still
+# The key is resolved at import time so the default behavior is unchanged – if
+# the secret is missing the fallback behavior (reversing the prompt) is still
 # triggered.
 OPENAI_KEY = get_secret("openai")
 
@@ -40,7 +40,7 @@ async def _call_openai(prompt: str) -> str:
     prompt = synth_compress(prompt)
     # ``OPENAI_KEY`` is resolved at import time and may be monkeypatched during
     # tests.  Using the module level variable avoids repeated secret lookups and
-    # mirrors the behaviour expected by the tests.
+    # mirrors the behavior expected by the tests.
     key = OPENAI_KEY
     if not key:
         return " ".join(reversed(prompt.split()))
