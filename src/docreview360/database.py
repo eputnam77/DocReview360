@@ -21,7 +21,13 @@ def default_url(database: str) -> str:
     synonyms (e.g. ``"postgresql"``).
     """
 
-    db = database.lower()
+    # ``database`` values coming from environment variables or user input may
+    # include incidental whitespace (e.g. ``" postgres "``).  The previous
+    # implementation lowercased the value but didn't strip spaces which caused
+    # otherwise valid backend names to be rejected.  Normalise by trimming
+    # surrounding whitespace before the comparison so common variants resolve
+    # correctly.
+    db = database.strip().lower()
     if db in {"sqlite", "sqlite3"}:
         return "sqlite:///docreview360.db"
     if db in {"postgres", "postgresql"}:

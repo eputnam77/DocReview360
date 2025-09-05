@@ -152,6 +152,12 @@ def predict_weighted(
 
     x = _fann_features(text)
     if feature_weights is not None:
+        # ``zip`` truncates to the shortest iterable which previously allowed a
+        # shorter ``feature_weights`` sequence to silently drop features from the
+        # calculation, yielding incorrect predictions.  Validate that the weight
+        # vector matches the feature length so any mismatch is flagged early.
+        if len(feature_weights) != len(x):
+            raise ValueError("feature_weights must match feature vector length")
         x = [xi * wi for xi, wi in zip(x, feature_weights)]
     h_raw = [
         sum(w * xi for w, xi in zip(row, x)) + b
