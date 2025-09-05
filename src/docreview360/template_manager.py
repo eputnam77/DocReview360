@@ -13,11 +13,25 @@ TEMPLATES_DIR = Path("templates/golden")
 
 
 def save_template(name: str, content: str, root: Path = TEMPLATES_DIR) -> Path:
-    """Save ``content`` under ``name`` in ``root`` and return the path."""
+    """Save ``content`` under ``name`` in ``root`` and return the path.
+
+    ``name`` previously accepted arbitrary strings which allowed directory
+    traversal like ``"../evil"`` or subdirectory components such as
+    ``"foo/bar"``.  This could write files outside the intended template
+    directory.  Restrict names to simple file stems by validating with
+    :class:`pathlib.Path` and rejecting any values that resolve to multiple
+    parts or special references.
+    """
+
     if not name:
         raise ValueError("name is required")
+
+    stem = Path(name)
+    if stem.is_absolute() or len(stem.parts) != 1 or stem.parts[0] in {"..", "."}:
+        raise ValueError("name must be a simple file name")
+
     root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{name}.md"
+    path = root / f"{stem.name}.md"
     path.write_text(content)
     record_task_completion(143)
     return path

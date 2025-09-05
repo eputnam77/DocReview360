@@ -36,8 +36,17 @@ def _replace_emojis(text: str) -> str:
 
 
 def _extract_mentions(text: str) -> list[str]:
-    """Return ``@user`` mentions from ``text``."""
-    return re.findall(r"@(\w+)", text)
+    r"""Return ``@user`` mentions from ``text``.
+
+    Usernames in DocReview360 may contain hyphens or ``+`` characters which the
+    previous implementation failed to capture because it relied on ``\w+``.  As a
+    result ``@bob-smith`` was truncated to ``bob`` in the ``mentions`` list and
+    the stored comment text was left with the original hyphenated reference.  To
+    ensure mention parsing mirrors the more permissive emoji syntax we accept
+    word characters, ``-`` and ``+`` when extracting usernames.
+    """
+
+    return re.findall(r"@([\w+-]+)", text)
 
 
 def add_comment(document: str, user: str, text: str, parent: str | None = None) -> CommentModel:
