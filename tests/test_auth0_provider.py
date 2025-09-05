@@ -14,6 +14,17 @@ def test_verify_auth0_token() -> None:
     assert claims["sub"] == "123"
 
 
+def test_verify_auth0_token_invalid() -> None:
+    # malformed token should raise ValueError
+    with pytest.raises(ValueError):
+        verify_auth0_token("not-a-token", SECRET, ISSUER, AUDIENCE)
+
+
+def test_verify_auth0_token_type_check() -> None:
+    with pytest.raises(TypeError):
+        verify_auth0_token(123, SECRET, ISSUER, AUDIENCE)
+
+
 @pytest.mark.parametrize(
     "secret,issuer,audience,msg",
     [
