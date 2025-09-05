@@ -156,3 +156,12 @@ def test_search_top_k_positive(monkeypatch):
     vs.index_document("1", "alpha")
     with pytest.raises(ValueError):
         vs.search("alpha", top_k=0)
+
+
+def test_index_document_type_validation():
+    """Non-string identifiers or content should raise ``ValueError``."""
+    vs.clear()
+    with pytest.raises(ValueError):
+        vs.index_document(123, "text")  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        vs.index_document("id", 123)  # type: ignore[arg-type]

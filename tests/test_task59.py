@@ -18,6 +18,12 @@ def test_should_purge() -> None:
     assert not should_purge(datetime.now(timezone.utc), 5)
 
 
+def test_should_purge_naive_datetime() -> None:
+    """Naive ``datetime`` objects should be treated as UTC timestamps."""
+    old = datetime.utcnow() - timedelta(days=10)
+    assert should_purge(old, 5)
+
+
 def test_should_purge_validation() -> None:
     with pytest.raises(ValueError):
         should_purge(datetime.now(timezone.utc), 0)
