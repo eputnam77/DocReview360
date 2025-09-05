@@ -29,8 +29,12 @@ def create_template(name: str, subject: str, body: str, task: str | None = None)
         raise ValueError("name required")
     if not isinstance(subject, str):
         raise TypeError("subject must be a string")
+    if not subject.strip():
+        raise ValueError("subject required")
     if not isinstance(body, str):
         raise TypeError("body must be a string")
+    if not body.strip():
+        raise ValueError("body required")
     if task is not None and not isinstance(task, str):
         raise TypeError("task must be a string or None")
     if name in TEMPLATES:
@@ -68,10 +72,14 @@ def update_template(
     if subject is not _UNSET:
         if not isinstance(subject, str):
             raise TypeError("subject must be a string")
+        if not subject.strip():
+            raise ValueError("subject required")
         tmpl.subject = subject
     if body is not _UNSET:
         if not isinstance(body, str):
             raise TypeError("body must be a string")
+        if not body.strip():
+            raise ValueError("body required")
         tmpl.body = body
     if task is not _UNSET:
         if task is not None and not isinstance(task, str):
