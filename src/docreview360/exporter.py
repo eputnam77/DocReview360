@@ -43,7 +43,12 @@ def _render_template(template: str, document: DocumentModel) -> str:
             f"Unknown placeholder {exc.args[0]!r} in filename template"
         ) from exc
     # Avoid path traversal via placeholders
-    return base.replace("/", "_").replace("\\", "_")
+    safe = base.replace("/", "_").replace("\\", "_")
+    # Strip newline and null characters which could lead to confusing or
+    # truncated filenames on some file systems.
+    for ch in ("\n", "\r", "\x00"):
+        safe = safe.replace(ch, "_")
+    return safe
 
 
 def export_document(  # noqa: C901
