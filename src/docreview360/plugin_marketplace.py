@@ -195,6 +195,11 @@ def list_plugins_with_info() -> list[dict[str, Any]]:
 
 def install_plugin(name: str) -> None:
     """Install a plugin via ``pip``."""
+    # Reject names consisting solely of whitespace which previously slipped
+    # through the ``not name`` check and produced a confusing "Unknown plugin"
+    # error instead of indicating that the caller failed to provide a real
+    # identifier.
+    name = name.strip()
     if not name:
         raise ValueError("name is required")
 

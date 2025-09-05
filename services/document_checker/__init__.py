@@ -29,7 +29,9 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
     # ``aria-label`` attributes may also include surrounding whitespace. Allow
     # both quoting styles while normalizing incidental spaces.
-    aria_label = re.compile(r"aria-label\s*=\s*(?:\"[^\"]*\"|'[^']*')", re.I)
+    aria_label = re.compile(
+        r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)')", re.I
+    )
 
     for match in img_tag.finditer(text):
         if not alt_attr.search(match.group(0)):
@@ -42,7 +44,11 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
         # buttons containing only empty markup like ``<span></span>`` were not
         # flagged as missing labels.
         text_only = re.sub(r"<[^>]+>", "", body).strip()
-        if not aria_label.search(attrs) and text_only == "":
+        m = aria_label.search(attrs)
+        label = ""
+        if m:
+            label = (m.group(1) or m.group(2) or "").strip()
+        if (not label) and text_only == "":
             accessibility.append("button missing label")
 
     style_ok = not detect_anomalies(text)
