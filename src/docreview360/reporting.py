@@ -116,6 +116,14 @@ def widget_counts(user: str | None = None) -> dict[str, int]:
     If ``user`` is provided the counts are restricted to that user.
     """
 
+    # Temporary project assignments can expire over time.  The previous
+    # implementation counted projects without first clearing expired
+    # ``temp_user`` values which left stale assignments reflected in the
+    # dashboard metrics.  Normalize the project state before computing counts so
+    # widgets reflect the current assignments.
+    for proj in projects.values():
+        _expire_temp_assignment(proj)
+
     if user is None:
         assigned = sum(1 for p in projects.values() if p.user or p.temp_user)
         active = sum(1 for p in projects.values() if p.temp_user)
