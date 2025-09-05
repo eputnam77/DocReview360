@@ -25,3 +25,10 @@ def test_create_archival_folder_success(tmp_path):
     assert folder.is_dir()
     # Folder should be nested under base/project/date
     assert folder.parent.parent == tmp_path
+
+
+def test_create_archival_folder_strips_whitespace(tmp_path):
+    """Leading/trailing whitespace in project ids should be ignored."""
+    folder = create_archival_folder(tmp_path, '  spaced  ')
+    assert folder.parent.parent == tmp_path
+    assert folder.parent.name == 'spaced'
