@@ -17,6 +17,14 @@ def create_archival_folder(base: str | Path, project_id: str) -> Path:
         # that contains only whitespace would create confusing folders like
         # ``" "`` on disk.  Normalize by rejecting such values early.
         raise ValueError("project_id must be provided")
+
+    # ``Path`` treats leading and trailing whitespace as significant.  Without
+    # stripping first we could end up creating directories named ``" project "``
+    # which are almost impossible to reference from the command line.  Normalise
+    # the identifier before any further validation so the generated folder name
+    # is clean and predictable.
+    project_id = project_id.strip()
+
     # Prevent path traversal.  ``Path(project_id)`` normalizes separators but
     # still yields multiple parts for values like ``"../etc"`` or ``"a/b"``.
     # Restrict project identifiers to a single path segment without special

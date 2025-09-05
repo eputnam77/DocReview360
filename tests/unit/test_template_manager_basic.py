@@ -61,3 +61,11 @@ def test_save_template_requires_name(tmp_path: Path):
     tm = importlib.import_module('docreview360.template_manager')
     with pytest.raises(ValueError):
         tm.save_template('', 'x', root=tmp_path)
+
+
+def test_save_template_rejects_path_traversal(tmp_path: Path):
+    tm = importlib.import_module('docreview360.template_manager')
+    with pytest.raises(ValueError):
+        tm.save_template('../evil', 'x', root=tmp_path)
+    with pytest.raises(ValueError):
+        tm.save_template('sub/dir', 'x', root=tmp_path)
