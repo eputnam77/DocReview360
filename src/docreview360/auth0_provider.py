@@ -8,6 +8,8 @@ from jose.exceptions import JWTError
 
 def verify_auth0_token(token: str, secret: str, issuer: str, audience: str) -> dict[str, Any]:
     """Validate an Auth0 JWT and return its claims."""
+    if not isinstance(token, str):
+        raise TypeError("token must be a string")
     if not token:
         raise ValueError("token required")
     if not secret:
