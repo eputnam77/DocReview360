@@ -252,6 +252,13 @@ def hash_new_log_segments(
             start = int(_AUDIT_ANCHOR_PATH.read_text())
         except Exception:
             start = 0
+    # ``start`` is stored on disk and may become negative if a previous run
+    # crashed mid-write or the file was tampered with.  Python slices treat
+    # negative indices as offsets from the end which would skip earlier log
+    # entries and corrupt the audit trail.  Clamp to zero so we always
+    # process from the beginning when encountering a corrupt anchor value.
+    if start < 0:
+        start = 0
 
     with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
         lines = fh.readlines()

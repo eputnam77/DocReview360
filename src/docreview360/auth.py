@@ -185,6 +185,6 @@ def get_current_user_oidc(request: Request, token: str | None = Depends(oidc_sch
             detail="Invalid token",
         ) from exc
     user = FAKE_USERS_DB.get(username)
-    if user is None:
+    if not user or not user.get("active", True):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
-    return User(username=username)
+    return User(username=username, active=True)

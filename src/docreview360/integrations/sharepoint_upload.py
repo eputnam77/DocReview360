@@ -17,7 +17,7 @@ async def upload_final_pdf(
     item_id: str,
     document: bytes | None,
     document_hash: str | None,
-    provider_metadata: Dict[str, Any],
+    provider_metadata: Dict[str, Any] | None,
     signed_at: datetime,
     *,
     certificate_url: str | None = None,
@@ -58,6 +58,7 @@ async def upload_final_pdf(
         "documentHash": document_hash or "",
     }
 
+    provider_metadata = provider_metadata or {}
     tx_id = provider_metadata.get("transaction_id") or provider_metadata.get("envelope_id")
     if tx_id:
         props["transactionId"] = str(tx_id)
