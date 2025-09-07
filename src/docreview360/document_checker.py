@@ -91,16 +91,28 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
     text = path.read_text(encoding="utf-8")
 
     grammar = []
-    words = re.split(r"\s+", text)
+    # ``re.split`` on whitespace leaves punctuation attached to tokens which
+    # meant sequences like "word, word" were missed by the repeated word
+    # detector. Extract plain word tokens instead so adjacent words separated
+    # only by punctuation are also compared.
+    words = re.findall(r"[A-Za-z0-9']+", text)
     for i in range(len(words) - 1):
-        if words[i] == words[i + 1]:
+        if words[i].lower() == words[i + 1].lower():
             grammar.append(f"repeated word '{words[i]}'")
 
     accessibility = []
     img_tag = re.compile(r"<img [^>]*>", re.I)
-    alt_attr = re.compile(r"alt=\"[^\"]*\"", re.I)
+    # Accept attributes with optional whitespace around the equals sign and
+    # support single, double quoted or unquoted ``alt`` values.
+    alt_attr = re.compile(
+        r"alt\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I
+    )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
-    aria_label = re.compile(r"aria-label=\"[^\"]*\"", re.I)
+    # ``aria-label`` attributes may also include surrounding whitespace. Allow
+    # both quoting styles while normalizing incidental spaces.
+    aria_label = re.compile(
+        r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)')", re.I
+    )
 
     for match in img_tag.finditer(text):
         if not alt_attr.search(match.group(0)):
@@ -109,7 +121,15 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
     for match in button_tag.finditer(text):
         attrs = match.group(1)
         body = match.group(2)
-        if not aria_label.search(attrs) and body.strip() == "":
+        # Remove nested tags when checking for visible text. Without this,
+        # buttons containing only empty markup like ``<span></span>`` were not
+        # flagged as missing labels.
+        text_only = re.sub(r"<[^>]+>", "", body).strip()
+        m = aria_label.search(attrs)
+        label = ""
+        if m:
+            label = (m.group(1) or m.group(2) or "").strip()
+        if (not label) and text_only == "":
             accessibility.append("button missing label")
 
     style_issues = _style_issues(text)
@@ -129,7 +149,11 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
 
 
 def _detect_anomalies(text: str, threshold: float = 0.7) -> bool:
-    words = re.split(r"\s+", text.lower())
+    # ``re.split`` left punctuation attached to tokens so sequences like
+    # ``"bad, bad"`` were treated as different words and missed by the
+    # repetition counter.  Extract plain word tokens instead so punctuation
+    # does not shield repeated words from detection.
+    words = re.findall(r"[A-Za-z0-9']+", text.lower())
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
     unique_ratio = len(set(text)) / max(len(text), 1)
     features = [len(text) / 1000, unique_ratio, repeated]
