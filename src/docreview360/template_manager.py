@@ -20,13 +20,14 @@ def save_template(name: str, content: str, root: Path = TEMPLATES_DIR) -> Path:
     ``"foo/bar"``.  This could write files outside the intended template
     directory.  Restrict names to simple file stems by validating with
     :class:`pathlib.Path` and rejecting any values that resolve to multiple
-    parts or special references.
+    parts or special references.  Names consisting solely of whitespace were
+    also inadvertently accepted, creating files that were awkward to manage.
     """
 
-    if not name:
+    if not isinstance(name, str) or not name.strip():
         raise ValueError("name is required")
 
-    stem = Path(name)
+    stem = Path(name.strip())
     if stem.is_absolute() or len(stem.parts) != 1 or stem.parts[0] in {"..", "."}:
         raise ValueError("name must be a simple file name")
 
