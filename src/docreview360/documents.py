@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from base64 import b64encode
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from base64 import b64encode
 from pydantic import BaseModel, Field, field_serializer
 
 from . import fts
@@ -331,12 +331,15 @@ def get_document_version(doc_id: str, index: int) -> str:
 
 def set_document_editor(doc_id: str, editor: str) -> DocumentModel:
     """Set the preferred editor for ``doc_id`` and return the document."""
-    if not editor:
+    if not isinstance(editor, str):
+        raise TypeError("editor must be a string")
+    editor_name = editor.strip()
+    if not editor_name:
         raise ValueError("editor required")
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"document '{doc_id}' not found")
-    document.editor = editor
+    document.editor = editor_name
     return document
 
 
