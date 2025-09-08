@@ -31,6 +31,14 @@ def add_template(name: str, subject: str, body: str) -> None:
     # non-empty string after trimming.
     if not isinstance(name, str) or not name.strip():
         raise ValueError("name required")
+    if not isinstance(subject, str):
+        raise TypeError("subject must be a string")
+    if not subject.strip():
+        raise ValueError("subject required")
+    if not isinstance(body, str):
+        raise TypeError("body must be a string")
+    if not body.strip():
+        raise ValueError("body required")
     name = name.strip()
     # Accidentally overwriting an existing template can lead to subtle bugs
     # in calling code that relies on a particular subject/body format.  The
