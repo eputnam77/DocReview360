@@ -54,3 +54,14 @@ def test_submit_draft_routes_highest_preference():
         "wf2", None, "doc2", text, weights, reviewer_model=model
     )
     assert approval2.reviewer == "bob"
+
+
+def test_anomalous_reviewers_ignore_no_decisions() -> None:
+    """Reviewers without decisions should not be flagged as anomalous."""
+    model = ReviewerModel()
+    model.update_preferences("alice", "text")
+    model.record_decision("alice", True)
+    model.record_decision("alice", False)
+    model.update_preferences("bob", "text")  # no decisions recorded
+    reviewers = model.anomalous_reviewers()
+    assert "bob" not in reviewers

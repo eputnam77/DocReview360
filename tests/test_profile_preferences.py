@@ -55,3 +55,19 @@ def test_update_preferences_theme_stripped(monkeypatch: pytest.MonkeyPatch) -> N
     result = profile.update_preferences("carol", {"theme": " Light "})
     assert result["theme"] == "light"
     assert store["prefs_carol"]["theme"] == "light"
+
+
+def test_update_preferences_requires_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
+    store: dict[str, dict[str, object]] = {}
+
+    def load() -> dict[str, dict[str, object]]:
+        return store
+
+    def update(key: str, value: dict[str, object]) -> None:
+        store[key] = value
+
+    monkeypatch.setattr(profile, "load_settings", load)
+    monkeypatch.setattr(profile, "update_setting", update)
+
+    with pytest.raises(TypeError):
+        profile.update_preferences("dave", [("theme", "dark")])
