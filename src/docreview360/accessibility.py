@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 from typing import List
 
-_IMG_TAG = re.compile(r"<img [^>]*>", re.IGNORECASE)
+# ``<img>`` tags without any attributes such as ``<img>`` previously failed to
+# match because a space was required after the tag name.  Use a word boundary so
+# both bare tags and those with attributes are handled uniformly.
+_IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 # ``alt`` attributes may be quoted or unquoted.  The previous pattern only
 # recognised quoted variants which wrongly flagged valid markup like
 # ``<img alt=logo>``.  Allow unquoted values that end at whitespace or ``>``.
@@ -15,7 +18,14 @@ _BUTTON_TAG = re.compile(r"<button([^>]*)>(.*?)</button>", re.IGNORECASE | re.DO
 # effectively the same as having no label at all.  The previous regular
 # expression used ``*`` which matched empty strings and therefore failed to
 # flag ``aria-label=""`` as an issue.
-_ARIA_LABEL = re.compile(r"aria-label\s*=\s*(?:\"[^\"]+\"|'[^']+')", re.IGNORECASE)
+# ``aria-label`` attributes may appear without quotes.  The former pattern only
+# matched quoted values which caused valid markup like ``aria-label=Submit`` to
+# be reported as missing a label.  Allow a third capture group for unquoted
+# values while still ensuring at least one character is present.
+_ARIA_LABEL = re.compile(
+    r"aria-label\s*=\s*(?:\"[^\"]+\"|'[^']+'|[^\s>\'\"]+)",
+    re.IGNORECASE,
+)
 
 
 def audit_html(html: str) -> List[str]:
