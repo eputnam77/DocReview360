@@ -20,18 +20,24 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
             grammar.append(f"repeated word '{words[i]}'")
 
     accessibility = []
-    img_tag = re.compile(r"<img [^>]*>", re.I)
+    # ``<img>`` tags may appear without any attributes (e.g. ``<img>``).  The
+    # previous regular expression required at least one space after ``<img``
+    # which meant such tags were silently ignored and missing ``alt`` text was
+    # not reported.  Match a word boundary instead so tags with or without
+    # attributes are captured.
+    img_tag = re.compile(r"<img\b[^>]*>", re.I)
     # Accept attributes with optional whitespace around the equals sign and
     # support single, double quoted or unquoted ``alt`` values.
-    alt_attr = re.compile(
-        r"alt\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I
-    )
+    alt_attr = re.compile(r"alt\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I)
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
     # ``aria-label`` attributes may also include surrounding whitespace. Allow
     # both quoting styles while normalizing incidental spaces.
-    aria_label = re.compile(
-        r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)')", re.I
-    )
+    # ``aria-label`` values can legally be unquoted provided they contain no
+    # whitespace or special characters.  Limiting the expression to quoted
+    # values incorrectly flagged buttons using the unquoted form as missing a
+    # label.  Support an additional unquoted capture group so all valid
+    # syntaxes are handled.
+    aria_label = re.compile(r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>\'\"]+))", re.I)
 
     for match in img_tag.finditer(text):
         if not alt_attr.search(match.group(0)):
@@ -47,7 +53,7 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
         m = aria_label.search(attrs)
         label = ""
         if m:
-            label = (m.group(1) or m.group(2) or "").strip()
+            label = (m.group(1) or m.group(2) or m.group(3) or "").strip()
         if (not label) and text_only == "":
             accessibility.append("button missing label")
 
