@@ -110,6 +110,15 @@ class ReviewerModel:
 
         if not self._profiles:
             return []
-        rates = {r: self.approval_rate(r) for r in self._profiles}
+        # Reviewers without any decisions artificially skew the average when
+        # treated as having a perfect approval rate.  Filter them out so only
+        # those with recorded decisions are considered for anomaly detection.
+        rates = {
+            r: self.approval_rate(r)
+            for r, prof in self._profiles.items()
+            if prof.decisions
+        }
+        if not rates:
+            return []
         avg = sum(rates.values()) / len(rates)
         return [r for r, rate in rates.items() if abs(rate - avg) > threshold]
