@@ -33,6 +33,8 @@ def update_preferences(user: str, prefs: Dict[str, Any]) -> Dict[str, Any]:
     prefs:
         Mapping of preference keys to values.
     """
+    if not isinstance(prefs, dict):
+        raise TypeError("prefs must be a mapping")
     current = get_preferences(user)
     cleaned: Dict[str, Any] = {}
     for key, val in prefs.items():
