@@ -36,7 +36,7 @@ def _replace_emojis(text: str) -> str:
 
 
 def _extract_mentions(text: str) -> list[str]:
-    r"""Return ``@user`` mentions from ``text``.
+    r"""Return unique ``@user`` mentions from ``text`` preserving order.
 
     Usernames in DocReview360 may contain hyphens or ``+`` characters which the
     previous implementation failed to capture because it relied on ``\w+``.  As a
@@ -44,9 +44,20 @@ def _extract_mentions(text: str) -> list[str]:
     the stored comment text was left with the original hyphenated reference.  To
     ensure mention parsing mirrors the more permissive emoji syntax we accept
     word characters, ``-`` and ``+`` when extracting usernames.
+
+    Mention strings may appear multiple times in the comment body.  The previous
+    helper returned duplicates which could lead to repeated notifications for the
+    same user.  Collect mentions while tracking those already seen so each user
+    is listed at most once in the order of first appearance.
     """
 
-    return re.findall(r"@([\w+-]+)", text)
+    seen: set[str] = set()
+    result: list[str] = []
+    for name in re.findall(r"@([\w+-]+)", text):
+        if name not in seen:
+            seen.add(name)
+            result.append(name)
+    return result
 
 
 def add_comment(document: str, user: str, text: str, parent: str | None = None) -> CommentModel:
