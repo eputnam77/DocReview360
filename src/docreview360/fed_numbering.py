@@ -38,4 +38,5 @@ def can_toggle_numbering(role: str, rbac: Mapping[str, Mapping[str, bool] | None
     perms = rbac.get(role) or {}
     if not isinstance(perms, Mapping):
         return False
-    return perms.get("toggle_numbering", False)
+    value = perms.get("toggle_numbering")
+    return value if isinstance(value, bool) else False

@@ -25,3 +25,11 @@ def test_update_template_validates_types():
         et.update_template("demo", body=object())
     with pytest.raises(TypeError):
         et.update_template("demo", task=123)
+
+
+def test_delete_template_validates_name() -> None:
+    """Deleting templates should validate the provided name."""
+    with pytest.raises(ValueError):
+        et.delete_template("   ")
+    with pytest.raises(TypeError):
+        et.delete_template(123)  # type: ignore[arg-type]
