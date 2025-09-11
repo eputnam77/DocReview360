@@ -199,6 +199,8 @@ def install_plugin(name: str) -> None:
     # through the ``not name`` check and produced a confusing "Unknown plugin"
     # error instead of indicating that the caller failed to provide a real
     # identifier.
+    if not isinstance(name, str):
+        raise TypeError("name must be a string")
     name = name.strip()
     if not name:
         raise ValueError("name is required")

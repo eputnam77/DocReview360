@@ -22,9 +22,20 @@ _ocsp_cache: Dict[Tuple[str, int], Tuple[ocsp.OCSPCertStatus, datetime]] = {}
 
 
 def register_pinned_chain(host: str, fingerprint: str) -> None:
-    """Register expected ``fingerprint`` for ``host``."""
+    """Register expected ``fingerprint`` for ``host``.
 
-    _pinned_chains[host] = fingerprint
+    ``host`` names and certificate fingerprints may be supplied in mixed case.
+    ``fetch_certificate`` normalises the host extracted from URLs to
+    lowercase and computes fingerprints using ``hexdigest`` (which returns a
+    lowercase string).  Without normalising the inputs here, registering a
+    pinned chain with ``Example.COM`` or an uppercase fingerprint would fail
+    lookup and trigger an ``untrusted certificate host`` or ``certificate
+    chain mismatch`` error even though the values logically match.  Storing
+    both pieces of information lower‑cased ensures comparisons are
+    case‑insensitive and deterministic across platforms.
+    """
+
+    _pinned_chains[host.lower()] = fingerprint.lower()
 
 
 def clear_cache() -> None:
@@ -54,11 +65,11 @@ def fetch_certificate(url: str, *, fetcher: Callable[[str], bytes] | None = None
     else:
         data = fetcher(url)
 
-    host = parsed.hostname or ""
+    host = (parsed.hostname or "").lower()
     pinned = _pinned_chains.get(host)
-    if not pinned:
+    if pinned is None:
         raise ValueError("untrusted certificate host")
-    fingerprint = hashlib.sha256(data).hexdigest()
+    fingerprint = hashlib.sha256(data).hexdigest().lower()
     if fingerprint != pinned:
         raise ValueError("certificate chain mismatch")
 

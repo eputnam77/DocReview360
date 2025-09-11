@@ -29,9 +29,15 @@ def load_envs(path: Path | None = None) -> Dict[str, Dict[str, str]]:
 
 def add_environment(name: str, url: str, color: str, path: Path | None = None) -> None:
     """Persist a new environment record."""
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("name required")
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError("url required")
+    if not isinstance(color, str) or not color.strip():
+        raise ValueError("color required")
     path = path or ENV_FILE
     data = load_envs(path)
-    data[name] = {"url": url, "color": color}
+    data[name.strip()] = {"url": url.strip(), "color": color.strip()}
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(data))
 
