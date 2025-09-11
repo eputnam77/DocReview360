@@ -90,6 +90,10 @@ def update_template(
 
 def delete_template(name: str) -> None:
     """Remove ``name`` from the registry."""
+    if not isinstance(name, str):
+        raise TypeError("name must be a string")
+    if not name.strip():
+        raise ValueError("name is required")
     try:
         del TEMPLATES[name]
     except KeyError as exc:

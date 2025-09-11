@@ -58,7 +58,13 @@ class Config:
         if "database_url" not in data:
             data["database_url"] = None
         connectors_raw = data.pop("log_connectors", []) or []
-        connectors = [ConnectorSettings(**c) for c in connectors_raw]
+        if not isinstance(connectors_raw, list):
+            raise ValueError("log_connectors must be a list")
+        connectors = []
+        for c in connectors_raw:
+            if not isinstance(c, dict):
+                raise ValueError("log_connectors entries must be objects")
+            connectors.append(ConnectorSettings(**c))
         data["log_connectors"] = connectors
         return cls(**data)
 
