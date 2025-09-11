@@ -30,10 +30,30 @@ def test_save_to_cms_uploads_via_client() -> None:
     assert uploaded == {"abc.md": b"hello"}
 
 
+def test_save_to_cms_strips_cms_setting(monkeypatch) -> None:
+    """Whitespace around the CMS name should not prevent uploads."""
+    doc = DocumentModel(id="xyz", content="hi")
+    cfg = Config(database="sqlite", editor="tiptap", cms=" sharepoint ", auth="oidc")
+
+    uploaded: dict[str, bytes] = {}
+
+    class Dummy:
+        def upload_file(self, path: str, data: bytes) -> str:
+            uploaded[path] = data
+            return "x1"
+
+    monkeypatch.setattr("docreview360.cms.client_from_env", lambda: Dummy())
+    item_id = save_to_cms(doc, config=cfg)
+    assert item_id == "x1"
+    assert uploaded == {"xyz.md": b"hi"}
+
+
 @pytest.mark.asyncio
 async def test_update_endpoint_calls_save(monkeypatch) -> None:
     doc = import_document("doc.md", b"start")
-    cfg = Config(database="sqlite", editor="tiptap", cms="sharepoint", auth="oidc")
+    # Intentionally include whitespace around the CMS value to ensure the API
+    # normalises the configuration before deciding whether to save.
+    cfg = Config(database="sqlite", editor="tiptap", cms=" sharepoint ", auth="oidc")
 
     monkeypatch.setattr("docreview360.api.Config.load", lambda path: cfg)
 

@@ -86,9 +86,18 @@ def store_secret(provider: str, secret: str, *, ttl: timedelta | None = None) ->
     _vault.store(provider, secret, ttl=ttl)
 
 
-def schedule_rotation(provider: str, loader: Callable[[], str], interval: timedelta) -> None:
-    """Schedule automatic rotation of ``provider`` secret."""
-    asyncio.create_task(_vault.rotate(provider, loader, interval))
+def schedule_rotation(
+    provider: str, loader: Callable[[], str], interval: timedelta
+) -> asyncio.Task:
+    """Schedule automatic rotation of ``provider`` secret and return the task.
+
+    Returning the created :class:`asyncio.Task` allows callers (and tests) to
+    manage the background coroutine if needed, such as cancelling it during
+    shutdown. Previously the task handle was lost, which also made it difficult
+    to prevent 'coroutine was never awaited' warnings when `asyncio.create_task`
+    was monkeypatched.
+    """
+    return asyncio.create_task(_vault.rotate(provider, loader, interval))
 
 
 def configure_vault(config: Dict[str, str]) -> None:
