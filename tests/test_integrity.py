@@ -39,3 +39,36 @@ def test_integrity_mismatch_triggers_log(monkeypatch) -> None:
     finally:
         documents.clear()
         documents.update(backup)
+
+
+def test_integrity_handles_whitespace_in_config(monkeypatch) -> None:
+    """The integrity check should still run when the CMS name has whitespace."""
+    backup = documents.copy()
+    documents.clear()
+    try:
+        data = b"same"
+        digest = hashlib.sha256(data).hexdigest()
+        doc = DocumentModel(id="1", content="same", ingestion_hash=digest)
+        documents[doc.id] = doc
+
+        called: dict[str, bool] = {}
+
+        monkeypatch.setattr(
+            Config,
+            "load",
+            lambda path: Config(database="db", editor="ed", cms=" sharepoint ", auth="none"),
+        )
+
+        class Dummy:
+            def download_file(self, item_id: str) -> bytes:
+                called["download"] = True
+                return data
+
+        monkeypatch.setattr("docreview360.integrity.client_from_env", lambda: Dummy())
+
+        mismatches = verify_integrity()
+        assert called.get("download")
+        assert mismatches == []
+    finally:
+        documents.clear()
+        documents.update(backup)
