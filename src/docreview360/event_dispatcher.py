@@ -21,6 +21,13 @@ class EventDispatcher:
     def __init__(self, retries: int = 3, backoff: float = 0.1) -> None:
         if retries < 1:
             raise ValueError("retries must be at least 1")
+        # ``time.sleep`` raises ``ValueError`` when passed a negative value. If
+        # callers accidentally supply a negative backoff, the exception would be
+        # raised deep inside :meth:`send` after the first failed request rather
+        # than at construction time.  Validate the argument eagerly so misuse is
+        # reported with a clear error message.
+        if backoff < 0:
+            raise ValueError("backoff must be non-negative")
         self.retries = retries
         self.backoff = backoff
 
