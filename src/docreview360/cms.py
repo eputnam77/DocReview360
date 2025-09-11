@@ -44,7 +44,11 @@ def save_to_cms(
         The item id returned by SharePoint or ``None`` when no upload was
         performed because the CMS is not configured for SharePoint.
     """
-    if config.cms.lower() != "sharepoint":
+    # Normalise value to handle configuration files that may include
+    # accidental surrounding whitespace. Without stripping, a value like
+    # ``"sharepoint "`` would prevent uploads even though the intention was
+    # clearly to enable the SharePoint backend.
+    if config.cms.strip().lower() != "sharepoint":
         return None
 
     if client is None:

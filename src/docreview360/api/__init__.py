@@ -1023,7 +1023,10 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         # Clear cached search results so subsequent queries reflect the update
         clear_cache()
         cfg = Config.load(CONFIG_FILE)
-        if cfg and cfg.cms.lower() == "sharepoint":
+        # ``cms`` may contain stray whitespace from configuration files. Strip
+        # it to avoid silently skipping uploads when the value is
+        # ``"sharepoint "``.
+        if cfg and cfg.cms.strip().lower() == "sharepoint":
             try:
                 save_to_cms(updated, config=cfg)
             except Exception as exc:  # pragma: no cover - best effort

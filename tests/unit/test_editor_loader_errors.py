@@ -13,3 +13,11 @@ def test_load_plugins_rejects_empty_name() -> None:
 
     with pytest.raises(ValueError):
         editor_loader.load_plugins([loader])
+
+
+def test_load_plugins_rejects_non_string_name() -> None:
+    def loader():
+        return 123  # type: ignore[return-value]
+
+    with pytest.raises(TypeError):
+        editor_loader.load_plugins([loader])
