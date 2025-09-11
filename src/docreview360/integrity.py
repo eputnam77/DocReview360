@@ -23,7 +23,10 @@ def verify_integrity() -> List[str]:
     Returns a list of document ids where the CMS copy differs.
     """
     cfg = Config.load(CONFIG_FILE)
-    if not cfg or cfg.cms.lower() != "sharepoint":
+    # ``cms`` values may come from configuration files where users sometimes
+    # leave stray whitespace. Normalise before comparing so a value like
+    # ``"sharepoint "`` still enables the integrity check.
+    if not cfg or cfg.cms.strip().lower() != "sharepoint":
         return []
     try:
         client = client_from_env()
