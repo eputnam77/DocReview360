@@ -12,9 +12,15 @@ def _require_secret() -> str:
     """Return the signature secret from configuration or environment."""
 
     value = get_secret("docreview360_signature_secret")
-    if not value:
-        raise RuntimeError("DOCREVIEW360_SIGNATURE_SECRET environment variable required")
-    return value
+    # Configuration mistakes can leave the secret set to an empty or whitespace
+    # only string.  ``hmac.new`` would happily accept such values resulting in
+    # signatures that are effectively unprotected.  Treat missing or blank
+    # secrets as a configuration error and fail fast with a clear message.
+    if not value or not value.strip():
+        raise RuntimeError(
+            "DOCREVIEW360_SIGNATURE_SECRET environment variable required"
+        )
+    return value.strip()
 
 
 def create_signature(data: str, secret: str | None = None) -> str:

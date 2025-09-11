@@ -58,8 +58,10 @@ def _get_client() -> "Redis | None":
     return cast("Redis | None", _client)
 
 
-def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
+def cache_set(key: str, value: Any, ttl: int | float | None = None) -> None:
     if ttl is not None:
+        if not isinstance(ttl, (int, float)):
+            raise TypeError("ttl must be int or float")
         if isinstance(ttl, float) and not math.isfinite(ttl):
             raise ValueError("ttl must be finite")
         if ttl < 0:
