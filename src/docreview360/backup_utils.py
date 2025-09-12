@@ -73,7 +73,16 @@ def restore_backup(path: str | Path) -> None:
     if not target.exists():
         raise FileNotFoundError(target)
     with gzip.open(target, "rt", encoding="utf-8") as fh:
-        data = json.load(fh)
+        try:
+            data = json.load(fh)
+        except json.JSONDecodeError as exc:
+            # ``restore_backup`` previously leaked ``JSONDecodeError`` when the
+            # gzipped file contained malformed JSON.  Callers expect a generic
+            # :class:`ValueError` for any format issues, mirroring the checks
+            # below for incorrect data types.  Re-wrap the exception so clients
+            # receive a consistent error surface regardless of where parsing
+            # failed.
+            raise ValueError("backup must contain valid JSON") from exc
 
     if not isinstance(data, dict):
         raise ValueError("backup must contain a JSON object")
@@ -85,6 +94,7 @@ def restore_backup(path: str | Path) -> None:
 
     # Use document lock to prevent race conditions during restore
     from .documents import document_lock
+
     parsed_docs = [_parse_document(d) for d in docs]
     ids = [doc.id for doc in parsed_docs]
     if len(ids) != len(set(ids)):
