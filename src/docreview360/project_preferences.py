@@ -45,7 +45,15 @@ def update_project_preferences(
         # Access model_fields on the class to avoid Pydantic deprecation
         if key in ProjectPreferences.model_fields:
             if isinstance(getattr(current, key), bool):
-                updates[key] = bool(val)
+                if isinstance(val, str):
+                    updates[key] = val.strip().lower() in {
+                        "1",
+                        "true",
+                        "yes",
+                        "on",
+                    }
+                else:
+                    updates[key] = bool(val)
             elif key == "watermark_text" and isinstance(val, str):
                 updates[key] = val
     updated = current.model_copy(update=updates)
