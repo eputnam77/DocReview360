@@ -37,6 +37,7 @@ def create_template(name: str, subject: str, body: str, task: str | None = None)
         raise ValueError("body required")
     if task is not None and not isinstance(task, str):
         raise TypeError("task must be a string or None")
+    name = name.strip()
     if name in TEMPLATES:
         raise ValueError(f"template '{name}' already exists")
     template = EmailTemplate(name=name, subject=subject, body=body, task=task)
