@@ -25,3 +25,11 @@ def test_invalid_help_inputs_and_missing_tooltip() -> None:
     with pytest.raises(ValueError):
         register_help("", "")
     assert tooltip_html("nope") == ""
+
+
+def test_topic_lookup_strips_whitespace() -> None:
+    register_help(" spaced ", "text")
+    assert get_help("spaced") is not None
+    assert get_help(" spaced ") is not None
+    html = tooltip_html(" spaced ")
+    assert html != ""

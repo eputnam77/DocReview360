@@ -63,15 +63,29 @@ HASH_MISMATCHES = Counter(
 
 
 def init_observability(port: int | None = None, *, dsn: str | None = None) -> Dict[str, str]:
-    """Initialize Prometheus metrics and optional Sentry reporting."""
+    """Initialize Prometheus metrics and optional Sentry reporting.
+
+    ``prometheus_client.start_http_server`` raises ``OSError`` when the
+    requested port is already bound.  Previously this bubbled up to callers
+    which made the helper unreliable in test environments where arbitrary
+    ports may be in use.  The function now falls back to an ephemeral port on
+    such errors and returns the actual URL used by the metrics server.  The
+    ``port`` argument accepts ``0`` to explicitly request an ephemeral port.
+    """
 
     services: Dict[str, str] = {}
 
     if port is not None:
-        if port <= 0 or port >= 65536:
-            raise ValueError("port must be between 1 and 65535")
-        start_http_server(port)
-        services["prometheus"] = f"http://localhost:{port}/"
+        if port < 0 or port >= 65536:
+            raise ValueError("port must be between 0 and 65535")
+        try:
+            httpd, _thread = start_http_server(port)
+        except OSError:
+            # When the desired port is already in use choose an ephemeral port
+            # instead of failing hard.  This keeps tests deterministic even if
+            # other services temporarily bind the requested port.
+            httpd, _thread = start_http_server(0)
+        services["prometheus"] = f"http://localhost:{httpd.server_port}/"
 
     dsn = dsn or get_secret("sentry_dsn")
     if dsn:

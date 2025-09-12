@@ -20,6 +20,7 @@ _HELP: Dict[str, HelpItem] = {}
 
 def register_help(topic: str, text: str, video: str | None = None) -> None:
     """Register a help snippet for ``topic`` with optional video."""
+    topic = topic.strip()
     if not topic or not text:
         raise ValueError("topic and text required")
     _HELP[topic] = HelpItem(text=text, video=video)
@@ -27,7 +28,7 @@ def register_help(topic: str, text: str, video: str | None = None) -> None:
 
 def get_help(topic: str) -> HelpItem | None:
     """Return help item for ``topic`` or ``None``."""
-    return _HELP.get(topic)
+    return _HELP.get(topic.strip())
 
 
 def tooltip_html(topic: str) -> str:
