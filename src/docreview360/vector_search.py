@@ -58,7 +58,11 @@ def index_document(doc_id: str, content: str) -> None:
 
     for term in tf:
         _doc_freq[term] += 1
-    _vectors[doc_id] = (tf, len(content.split()))
+    # ``len(content.split())`` counted tokens separated solely by whitespace and
+    # misreported lengths for inputs like ``"foo-bar"`` which our tokenizer splits
+    # into two words.  Store the length based on the tokenised representation so
+    # the metadata remains consistent with the embedding.
+    _vectors[doc_id] = (tf, sum(tf.values()))
 
     if OPENSEARCH_URL:
         try:
