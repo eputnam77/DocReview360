@@ -78,3 +78,11 @@ def test_detect_anomalies_counts_punctuated_repeats() -> None:
     """Repeated words separated by punctuation should trigger anomalies."""
     assert detect_anomalies("bad, bad", threshold=0.5)
 
+
+def test_detect_anomalies_token_unique_ratio() -> None:
+    """Uniqueness should be measured on word tokens, not raw characters."""
+    # ``"aaaaaa"`` yields a higher anomaly score when uniqueness is measured by
+    # characters. Using a threshold between the old and new scores ensures the
+    # function now evaluates based on word-level uniqueness.
+    assert not detect_anomalies("aaaaaa", threshold=0.48)
+

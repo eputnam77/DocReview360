@@ -69,7 +69,13 @@ def detect_anomalies(text: str, threshold: float = 0.7) -> bool:
     # does not shield repeated words from detection.
     words = re.findall(r"[A-Za-z0-9']+", text.lower())
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
-    unique_ratio = len(set(text)) / max(len(text), 1)
+    # ``unique_ratio`` was previously calculated using the set of raw
+    # characters which drastically underestimated diversity for inputs that
+    # reused characters across different words (e.g. ``"aaaa bbbb"``).  This
+    # skewed the anomaly score and could flip the result around the threshold.
+    # Measuring uniqueness at the token level instead yields a stable metric
+    # aligned with the repeated word detector above.
+    unique_ratio = len(set(words)) / max(len(words), 1)
     features = [len(text) / 1000, unique_ratio, repeated]
     weights = [0.0, -0.1, 1.2]
     linear = sum(w * f for w, f in zip(weights, features))

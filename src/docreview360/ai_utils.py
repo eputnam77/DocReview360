@@ -262,7 +262,11 @@ def _fann_features(text: str) -> list[float]:
     # repetition detector missed such cases and skewed scores.
     words = re.findall(r"[A-Za-z0-9']+", text.lower())
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
-    unique_ratio = len(set(text)) / (len(text) or 1)
+    # ``unique_ratio`` previously measured character diversity which meant a
+    # sentence like ``"aa bb"`` appeared highly unique despite containing only
+    # two distinct words.  Compute the ratio using token counts instead so the
+    # score reflects linguistic variety.
+    unique_ratio = len(set(words)) / (len(words) or 1)
 
     sentence_count = sum(text.count(ch) for ch in ".!?") or 1
     word_count = len(words) or 1
