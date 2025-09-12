@@ -165,3 +165,14 @@ def test_index_document_type_validation():
         vs.index_document(123, "text")  # type: ignore[arg-type]
     with pytest.raises(ValueError):
         vs.index_document("id", 123)  # type: ignore[arg-type]
+
+
+def test_index_document_token_length(monkeypatch):
+    """Punctuation-separated words should count towards document length."""
+    vs.clear()
+    monkeypatch.setattr(vs, "OPENSEARCH_URL", "")
+    monkeypatch.setattr(vs, "PGVECTOR_URL", "")
+    vs.index_document("1", "foo-bar")
+    tf, length = vs._vectors["1"]
+    # Tokeniser splits "foo-bar" into two words, so length should be 2
+    assert length == sum(tf.values()) == 2
