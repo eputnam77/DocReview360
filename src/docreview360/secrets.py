@@ -29,6 +29,8 @@ class VaultClient:
         provider = provider.strip()
         if not provider:
             raise ValueError("provider must be non-empty")
+        if not isinstance(secret, str):
+            raise TypeError("secret must be a string")
         if ttl is not None and ttl.total_seconds() <= 0:
             raise ValueError("ttl must be positive")
         expiry = datetime.utcnow() + (ttl or timedelta(days=90))
@@ -92,7 +94,7 @@ def store_secret(provider: str, secret: str, *, ttl: timedelta | None = None) ->
 
 def schedule_rotation(
     provider: str, loader: Callable[[], str], interval: timedelta
-) -> asyncio.Task:
+) -> asyncio.Task[None]:
     """Schedule automatic rotation of ``provider`` secret and return the task.
 
     Returning the created :class:`asyncio.Task` allows callers (and tests) to
@@ -107,4 +109,3 @@ def schedule_rotation(
 def configure_vault(config: Dict[str, str]) -> None:
     """Configure the global vault client from settings."""
     _vault.configure(url=config.get("url"), token=config.get("token"))
-
