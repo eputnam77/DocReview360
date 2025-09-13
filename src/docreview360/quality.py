@@ -59,12 +59,17 @@ def _feature_weights(doc_type: str | None) -> Sequence[float] | None:
 def high_risk_warnings(text: str) -> list[str]:
     """Return list of risky terms present in ``text``."""
     lower = text.lower()
-    # ``_HIGH_RISK_TERMS`` is a set which results in arbitrary iteration order
-    # making the return value non-deterministic.  Present the results sorted so
-    # callers and tests receive a stable, predictable order. Use word-boundary
-    # matching so substrings inside larger words do not trigger false
-    # positives.
-    return sorted(term for term in _HIGH_RISK_TERMS if re.search(rf"\b{re.escape(term)}\b", lower))
+    # Preserve the order in which risky terms appear in ``text`` so callers can
+    # present warnings alongside the offending words.  Sorting the terms made
+    # the output deterministic but lost this positional information.  Tokenise
+    # the input and collect unique matches in encounter order.  Using ``findall``
+    # with ``\b`` boundaries ensures substrings inside larger words do not
+    # trigger false positives.
+    found: list[str] = []
+    for word in re.findall(r"\b\w+\b", lower):
+        if word in _HIGH_RISK_TERMS and word not in found:
+            found.append(word)
+    return found
 
 
 def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = None) -> float:
