@@ -13,6 +13,24 @@ def test_load_state_invalid_format(tmp_path: Path) -> None:
         ai_balancer.load_state(file)
 
 
+def test_load_state_negative_values(tmp_path: Path) -> None:
+    """Negative job counts should be rejected."""
+    file = tmp_path / "state.json"
+    file.write_text(json.dumps({"w1": -1}))
+    ai_balancer.reset()
+    with pytest.raises(ValueError):
+        ai_balancer.load_state(file)
+
+
+def test_load_state_non_integer_values(tmp_path: Path) -> None:
+    """Non-integer job counts should raise ``ValueError``."""
+    file = tmp_path / "state.json"
+    file.write_text(json.dumps({"w1": "oops"}))
+    ai_balancer.reset()
+    with pytest.raises(ValueError):
+        ai_balancer.load_state(file)
+
+
 def test_duplicate_registration_and_cleanup() -> None:
     ai_balancer.reset()
     ai_balancer.register_worker("w1")
