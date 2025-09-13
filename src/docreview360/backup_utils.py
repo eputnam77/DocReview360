@@ -75,13 +75,13 @@ def restore_backup(path: str | Path) -> None:
     with gzip.open(target, "rt", encoding="utf-8") as fh:
         try:
             data = json.load(fh)
-        except json.JSONDecodeError as exc:
-            # ``restore_backup`` previously leaked ``JSONDecodeError`` when the
-            # gzipped file contained malformed JSON.  Callers expect a generic
-            # :class:`ValueError` for any format issues, mirroring the checks
-            # below for incorrect data types.  Re-wrap the exception so clients
-            # receive a consistent error surface regardless of where parsing
-            # failed.
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            # ``restore_backup`` previously leaked ``JSONDecodeError`` or
+            # ``UnicodeDecodeError`` when the gzipped file contained malformed
+            # or non-UTF-8 JSON.  Callers expect a generic :class:`ValueError`
+            # for any format issues, mirroring the checks below for incorrect
+            # data types.  Re-wrap the exception so clients receive a consistent
+            # error surface regardless of where parsing failed.
             raise ValueError("backup must contain valid JSON") from exc
 
     if not isinstance(data, dict):
