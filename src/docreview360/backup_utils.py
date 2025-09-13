@@ -72,17 +72,23 @@ def restore_backup(path: str | Path) -> None:
     target = Path(path)
     if not target.exists():
         raise FileNotFoundError(target)
-    with gzip.open(target, "rt", encoding="utf-8") as fh:
-        try:
-            data = json.load(fh)
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            # ``restore_backup`` previously leaked ``JSONDecodeError`` or
-            # ``UnicodeDecodeError`` when the gzipped file contained malformed
-            # or non-UTF-8 JSON.  Callers expect a generic :class:`ValueError`
-            # for any format issues, mirroring the checks below for incorrect
-            # data types.  Re-wrap the exception so clients receive a consistent
-            # error surface regardless of where parsing failed.
-            raise ValueError("backup must contain valid JSON") from exc
+    try:
+        with gzip.open(target, "rt", encoding="utf-8") as fh:
+            try:
+                data = json.load(fh)
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                # ``restore_backup`` previously leaked ``JSONDecodeError`` or
+                # ``UnicodeDecodeError`` when the gzipped file contained malformed
+                # or non-UTF-8 JSON.  Callers expect a generic :class:`ValueError`
+                # for any format issues, mirroring the checks below for incorrect
+                # data types.  Re-wrap the exception so clients receive a consistent
+                # error surface regardless of where parsing failed.
+                raise ValueError("backup must contain valid JSON") from exc
+    except OSError as exc:
+        # ``gzip.open`` or ``json.load`` may raise ``OSError`` when the file is
+        # not actually a gzip archive.  Present a uniform ``ValueError`` so
+        # callers don't have to special-case the underlying compression layer.
+        raise ValueError("backup must be a valid gzip file") from exc
 
     if not isinstance(data, dict):
         raise ValueError("backup must contain a JSON object")
