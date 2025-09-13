@@ -28,7 +28,15 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     img_tag = re.compile(r"<img\b[^>]*>", re.I)
     # Accept attributes with optional whitespace around the equals sign and
     # support single, double quoted or unquoted ``alt`` values.
-    alt_attr = re.compile(r"alt\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I)
+    # Capture the ``alt`` value so we can verify it contains meaningful text.
+    # Merely checking for the attribute's presence previously treated values like
+    # ``alt=""`` or ``alt="   "`` as valid even though they provide no
+    # descriptive alternative.  Optional capture groups allow us to extract the
+    # quoted or unquoted value and ensure it isn't empty or just whitespace.
+    alt_attr = re.compile(
+        r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))",
+        re.I,
+    )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
     # ``aria-label`` attributes may also include surrounding whitespace. Allow
     # both quoting styles while normalizing incidental spaces.
@@ -40,7 +48,10 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     aria_label = re.compile(r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>\'\"]+))", re.I)
 
     for match in img_tag.finditer(text):
-        if not alt_attr.search(match.group(0)):
+        m = alt_attr.search(match.group(0))
+        # Treat the attribute as missing when absent or when it contains only
+        # whitespace which fails to convey any meaning to assistive technology.
+        if not m or not (m.group(1) or m.group(2) or m.group(3) or "").strip():
             accessibility.append("image missing alt text")
 
     for match in button_tag.finditer(text):

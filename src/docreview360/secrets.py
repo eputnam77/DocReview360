@@ -24,6 +24,8 @@ class VaultClient:
 
     def store(self, provider: str, secret: str, *, ttl: timedelta | None = None) -> None:
         """Store ``secret`` for ``provider`` with optional ``ttl``."""
+        if not isinstance(provider, str):
+            raise TypeError("provider must be a string")
         provider = provider.strip()
         if not provider:
             raise ValueError("provider must be non-empty")
@@ -35,6 +37,8 @@ class VaultClient:
 
     def get(self, provider: str) -> Optional[str]:
         """Return the secret for ``provider`` if present or via env vars."""
+        if not isinstance(provider, str):
+            raise TypeError("provider must be a string")
         provider = provider.strip()
         if not provider:
             raise ValueError("provider must be non-empty")
