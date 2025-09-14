@@ -118,7 +118,14 @@ def log_audit_event(
     data["verified_at"] = entry.verified_at.isoformat()
     _AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _AUDIT_LOG_PATH.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(data) + "\n")
+        # ``_compute_hash`` serialises using ``default=str`` so it gracefully
+        # handles non-JSON-native types like ``datetime`` in the ``context``.
+        # When persisting the entry we previously called ``json.dumps`` without
+        # this option which meant the log function succeeded in computing the
+        # hash but then crashed trying to write the event if the context
+        # contained such objects.  Use the same ``default=str`` behaviour so the
+        # log remains writable for any data that can be hashed above.
+        fh.write(json.dumps(data, default=str) + "\n")
     return entry
 
 
