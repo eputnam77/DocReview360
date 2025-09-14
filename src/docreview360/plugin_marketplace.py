@@ -174,8 +174,20 @@ def list_available() -> list[str]:
 
 
 def get_plugin_info(name: str) -> dict[str, Any] | None:
-    """Get detailed information about a specific plugin."""
-    return PLUGIN_DATA.get(name)
+    """Get detailed information about a specific plugin.
+
+    Returning the raw metadata dictionary exposes the internal ``PLUGIN_DATA``
+    mapping to accidental mutation by callers.  In tests this manifested when a
+    consumer modified the returned structure and permanently altered the
+    catalogue.  To keep the registry immutable from the outside we return a deep
+    copy so callers can freely manipulate the result without affecting the
+    stored definition.
+    """
+
+    info = PLUGIN_DATA.get(name)
+    if info is None:
+        return None
+    return copy.deepcopy(info)
 
 
 def list_plugins_with_info() -> list[dict[str, Any]]:
