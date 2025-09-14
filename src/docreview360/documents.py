@@ -129,7 +129,11 @@ def _extract_docx_text(data: bytes) -> str:
                 text_piece += f"[DEL:{del_text}]"
         parts.append(prefix + text_piece)
 
-    return "\\n".join(parts)
+    # Join paragraphs using real newline characters.  The previous
+    # implementation mistakenly used the string ``"\\n"`` which produced a
+    # literal backslash followed by ``n`` in the output instead of an actual
+    # line break, yielding unreadable text when importing DOCX files.
+    return "\n".join(parts)
 
 
 def import_document(
@@ -144,7 +148,14 @@ def import_document(
     if filename.lower().endswith(".docx"):
         content = _extract_docx_text(data)
     else:
-        content = data.decode()
+        try:
+            content = data.decode()
+        except UnicodeDecodeError as exc:
+            # ``bytes.decode`` raises ``UnicodeDecodeError`` for malformed
+            # input.  Surface a friendlier ``ValueError`` so callers can handle
+            # import problems without depending on the exact exception type and
+            # avoid leaking information about the underlying codec.
+            raise ValueError("document bytes must be valid UTF-8") from exc
     doc_id = uuid4().hex
     ingestion_hash = hashlib.sha256(data).hexdigest()
     revision = DocumentRevision(
