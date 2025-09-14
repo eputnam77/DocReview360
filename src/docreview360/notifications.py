@@ -55,11 +55,13 @@ def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
     """Render ``template`` using ``context`` and store it in :data:`sent_emails`."""
     if not isinstance(recipient, str):
         raise TypeError("recipient must be a string")
+    recipient = recipient.strip()
     if not recipient:
         raise ValueError("recipient required")
-    tmpl = TEMPLATES.get(template)
+    tmpl_name = template.strip()
+    tmpl = TEMPLATES.get(tmpl_name)
     if tmpl is None:
-        raise KeyError(f"template '{template}' not found")
+        raise KeyError(f"template '{tmpl_name}' not found")
     try:
         subject = tmpl.subject.format(**context)
         body = tmpl.body.format(**context)
@@ -82,9 +84,7 @@ def send_due_date_reminder(recipient: str, item: str, due_date: str) -> dict[str
 def send_completion_notification(recipient: str, item: str) -> dict[str, str]:
     """Notify that ``item`` has been completed."""
     if "completion_notice" not in TEMPLATES:
-        TEMPLATES["completion_notice"] = Template(
-            "{item} completed", "{item} has been completed."
-        )
+        TEMPLATES["completion_notice"] = Template("{item} completed", "{item} has been completed.")
     return send_email("completion_notice", recipient, item=item)
 
 
