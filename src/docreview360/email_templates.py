@@ -46,8 +46,18 @@ def create_template(name: str, subject: str, body: str, task: str | None = None)
 
 
 def get_template(name: str) -> EmailTemplate | None:
-    """Return a template by ``name`` if it exists."""
-    return TEMPLATES.get(name)
+    """Return a template by ``name`` if it exists.
+
+    ``create_template`` normalises template names by stripping surrounding
+    whitespace.  Callers passing a name with incidental spaces to
+    :func:`get_template` would therefore fail to retrieve an existing
+    template even though :func:`create_template` accepted it.  Normalise the
+    lookup key here so the API behaves consistently regardless of
+    whitespace around the provided name.
+    """
+    if not isinstance(name, str):
+        raise TypeError("name must be a string")
+    return TEMPLATES.get(name.strip())
 
 
 _UNSET: Any = object()
@@ -67,6 +77,9 @@ def update_template(
     template.
     """
 
+    if not isinstance(name, str):
+        raise TypeError("name must be a string")
+    name = name.strip()
     tmpl = TEMPLATES.get(name)
     if tmpl is None:
         raise KeyError(f"template '{name}' not found")
@@ -90,10 +103,18 @@ def update_template(
 
 
 def delete_template(name: str) -> None:
-    """Remove ``name`` from the registry."""
+    """Remove ``name`` from the registry.
+
+    Similar to :func:`get_template`, callers may accidentally include
+    surrounding whitespace when deleting templates.  The previous
+    implementation attempted the deletion with the unmodified string which
+    resulted in a ``KeyError`` even though the template existed.  Strip the
+    name first so lookups are consistent across the module.
+    """
     if not isinstance(name, str):
         raise TypeError("name must be a string")
-    if not name.strip():
+    name = name.strip()
+    if not name:
         raise ValueError("name is required")
     try:
         del TEMPLATES[name]
