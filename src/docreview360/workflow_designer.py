@@ -19,7 +19,7 @@ def clone_workflow(wf_id: str, reviewers: Iterable[str] | None = None) -> Workfl
         project=original.project,
         phase=original.phase,
         phases=list(original.phases),
-        reviewers=list(reviewers or original.reviewers),
+        reviewers=list(original.reviewers if reviewers is None else reviewers),
         template=original.template,
         # ``ApprovalStep`` instances may originate from an older import of the
         # ``workflows`` module.  Serialising each step ensures Pydantic rebuilds
