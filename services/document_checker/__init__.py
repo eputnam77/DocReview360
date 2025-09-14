@@ -74,6 +74,14 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
 
 
 def detect_anomalies(text: str, threshold: float = 0.7) -> bool:
+    # ``threshold`` represents a probability and therefore must fall within the
+    # inclusive range ``[0, 1]``.  The previous implementation accepted any
+    # floating point number which could lead to nonsensical behaviour (e.g.
+    # a threshold of ``-1`` always reporting anomalies).  Validate the value so
+    # callers receive a clear error when passing an invalid threshold.
+    if not 0 <= threshold <= 1:
+        raise ValueError("threshold must be between 0 and 1")
+
     # ``re.split`` left punctuation attached to tokens so sequences like
     # ``"bad, bad"`` were treated as different words and missed by the
     # repetition counter.  Extract plain word tokens instead so punctuation
