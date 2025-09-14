@@ -25,6 +25,10 @@ def _validate_key(key: str) -> None:
         raise ValueError("invalid key")
 
     normalized = key.replace("\\", "/")
+    # After normalizing Windows separators ensure the key still isn't absolute
+    # or pointing to a directory via a trailing slash.
+    if normalized.startswith("/") or normalized.endswith("/"):
+        raise ValueError("invalid key")
     # Newline or null bytes in paths can lead to log injection or truncation
     # issues on some filesystems. Treat such keys as invalid early.
     if any(c in normalized for c in ("\n", "\r", "\x00")):

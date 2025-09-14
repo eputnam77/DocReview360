@@ -115,3 +115,17 @@ def test_upload_retention_and_append(tmp_path):
     (bucket / "f").write_text("x")
     with pytest.raises(FileExistsError):
         upload_file(bucket, "f", b"y", append_only=True)
+
+
+def test_rejects_backslash_edges(tmp_path) -> None:
+    bucket = tmp_path / "b"
+    bucket.mkdir()
+    # Leading or trailing backslashes should be treated as invalid
+    with pytest.raises(ValueError):
+        upload_file(bucket, "\\evil.txt", b"x")
+    with pytest.raises(ValueError):
+        upload_file(bucket, "dir\\", b"x")
+    with pytest.raises(ValueError):
+        _validate_key("\\evil.txt")
+    with pytest.raises(ValueError):
+        _validate_key("dir\\")
