@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import numbers
 import re
 from pathlib import Path
 
@@ -34,7 +35,7 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     # descriptive alternative.  Optional capture groups allow us to extract the
     # quoted or unquoted value and ensure it isn't empty or just whitespace.
     alt_attr = re.compile(
-        r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))",
+        r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/]+))",
         re.I,
     )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
@@ -45,7 +46,10 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     # values incorrectly flagged buttons using the unquoted form as missing a
     # label.  Support an additional unquoted capture group so all valid
     # syntaxes are handled.
-    aria_label = re.compile(r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>\'\"]+))", re.I)
+    aria_label = re.compile(
+        r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))",
+        re.I,
+    )
 
     for match in img_tag.finditer(text):
         m = alt_attr.search(match.group(0))
@@ -75,10 +79,11 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
 
 def detect_anomalies(text: str, threshold: float = 0.7) -> bool:
     # ``threshold`` represents a probability and therefore must fall within the
-    # inclusive range ``[0, 1]``.  The previous implementation accepted any
-    # floating point number which could lead to nonsensical behaviour (e.g.
-    # a threshold of ``-1`` always reporting anomalies).  Validate the value so
-    # callers receive a clear error when passing an invalid threshold.
+    # inclusive range ``[0, 1]``.  Non-numeric inputs previously surfaced a
+    # cryptic ``TypeError`` from the comparison operators.  Validate the type
+    # explicitly so callers receive a clear message.
+    if not isinstance(threshold, numbers.Real):
+        raise TypeError("threshold must be a real number")
     if not 0 <= threshold <= 1:
         raise ValueError("threshold must be between 0 and 1")
 
