@@ -79,7 +79,7 @@ class SharePointClient:
         weights: Weights,
         *,
         workflow: str | None = None,
-        reviewer: str | None = "manager",
+        reviewer: str | None = None,
         extra_reviewer: str = "policy",
         threshold: float = 0.5,
         reviewer_model: ReviewerModel | None = None,
@@ -104,7 +104,7 @@ class SharePointClient:
             if reviewer_model:
                 approval = submit_draft_for_approval(
                     workflow,
-                    reviewer or "manager",
+                    reviewer,
                     item_id,
                     text,
                     weights,
