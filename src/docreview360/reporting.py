@@ -153,7 +153,8 @@ class ThroughputEntry(BaseModel):
 
 def throughput_data(days: int = 7) -> list[ThroughputEntry]:
     """Return approvals completed per day for the last ``days`` days."""
-
+    if days <= 0:
+        raise ValueError("days must be positive")
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days - 1)).date()
     counts: dict[str, int] = {}
     for a in approvals.values():
