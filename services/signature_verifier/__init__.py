@@ -20,6 +20,45 @@ from docreview360.monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
 from docreview360.settings_manager import load_settings
 
 
+def _process_approval(
+    approval: ApprovalModel,
+    document_ids_set: set[str],
+    scope: str,
+    batch_id: str,
+) -> int:
+    """Validate the signature for ``approval`` and record the outcome."""
+    if approval.certificate_url is None:
+        return 0
+    if not document_ids_set and scope != "all" and approval.state != scope:
+        return 0
+    if document_ids_set and approval.document_id not in document_ids_set:
+        return 0
+    document = documents.get(approval.document_id)
+    if document is None:
+        return 0
+    document_bytes = document.content.encode("utf-8")
+    current_hash = hashlib.sha256(document_bytes).hexdigest()
+    hash_valid = approval.document_hash is None or current_hash == approval.document_hash
+    provider = get_provider(approval.signature_provider)
+    try:
+        valid = provider.validate_signature(
+            document_bytes, approval.certificate_url, approval.provider_metadata
+        )
+    except Exception:
+        valid = False
+    log_audit_event(
+        approval.document_id,
+        "signature_validation",
+        approval_id=approval.id,
+        provider=approval.signature_provider,
+        document_hash=current_hash,
+        signature_valid=valid,
+        hash_valid=hash_valid,
+        batch_id=batch_id,
+    )
+    return 1
+
+
 def verify_document_signatures(
     scope: str = "approved",
     document_ids: list[str] | None = None,
@@ -74,33 +113,7 @@ def verify_document_signatures(
         return 0
 
     def _process(approval: ApprovalModel) -> int:
-        if approval.certificate_url is None:
-            return 0
-        if not document_ids_set and scope != "all" and approval.state != scope:
-            return 0
-        if document_ids_set and approval.document_id not in document_ids_set:
-            return 0
-        document = documents.get(approval.document_id)
-        if document is None:
-            return 0
-        document_bytes = document.content.encode("utf-8")
-        current_hash = hashlib.sha256(document_bytes).hexdigest()
-        hash_valid = approval.document_hash is None or current_hash == approval.document_hash
-        provider = get_provider(approval.signature_provider)
-        valid = provider.validate_signature(
-            document_bytes, approval.certificate_url, approval.provider_metadata
-        )
-        log_audit_event(
-            approval.document_id,
-            "signature_validation",
-            approval_id=approval.id,
-            provider=approval.signature_provider,
-            document_hash=current_hash,
-            signature_valid=valid,
-            hash_valid=hash_valid,
-            batch_id=batch_id,
-        )
-        return 1
+        return _process_approval(approval, document_ids_set, scope, batch_id)
 
     with VERIFICATION_DURATION.labels("background").time():
         approvals_iter = list(approvals.values())
