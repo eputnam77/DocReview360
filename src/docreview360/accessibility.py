@@ -13,7 +13,7 @@ _IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 # recognised quoted variants which wrongly flagged valid markup like
 # ``<img alt=logo>``.  Allow unquoted values that end at whitespace or ``>``.
 _ALT_ATTR = re.compile(
-    r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))",
+    r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/]+))",
     re.IGNORECASE,
 )
 _BUTTON_TAG = re.compile(r"<button([^>]*)>(.*?)</button>", re.IGNORECASE | re.DOTALL)
@@ -26,7 +26,7 @@ _BUTTON_TAG = re.compile(r"<button([^>]*)>(.*?)</button>", re.IGNORECASE | re.DO
 # be reported as missing a label.  Allow a third capture group for unquoted
 # values while still ensuring at least one character is present.
 _ARIA_LABEL = re.compile(
-    r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>\'\"]+))",
+    r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))",
     re.IGNORECASE,
 )
 
