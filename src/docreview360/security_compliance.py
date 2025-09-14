@@ -33,7 +33,7 @@ def should_purge(created: datetime, retention_days: int) -> bool:
 
 def generate_compliance_pdf(data_flow: str) -> bytes:
     """Return a minimal PDF blob describing the data flow."""
-    if not data_flow:
+    if not data_flow or not data_flow.strip():
         raise ValueError("data_flow required")
     header = b"%PDF-1.4\n"
     # Append a minimal EOF marker so PDF parsers recognise the end of the

@@ -84,7 +84,11 @@ fetch_length = cast(Task, app.task(name="docreview360.fetch_length")(fetch_lengt
 def quality_gate(text: str, weights: list[float] | None = None) -> float:
     """Return anomaly score for ``text`` using the provided model weights."""
     if weights is None:
-        weights = [0.0, -0.1, 1.2, 0.0]
+        # ``_fann_features`` returns six values.  Previous defaults only
+        # provided four weights which caused :func:`lint_text` to silently drop
+        # features.  Use a full-length weight vector so the entire feature set
+        # contributes to the quality gate and matches the new validation logic.
+        weights = [0.0, -0.1, 1.2, 0.0, 0.0, 0.0]
     from .wasm_plugin import lint_text
 
     passed = lint_text(text, weights)
