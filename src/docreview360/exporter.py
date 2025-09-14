@@ -142,6 +142,8 @@ def export_document(  # noqa: C901
 
 def preview_document(document: DocumentModel, fmt: str, *, length: int = 30) -> str:
     """Return a human-readable preview of a document export."""
+    if not isinstance(length, int):
+        raise TypeError("length must be an integer")
     if length < 0:
         raise ValueError("length must be non-negative")
     data, media, _ = export_document(document, fmt)

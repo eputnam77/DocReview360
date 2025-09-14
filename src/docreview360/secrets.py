@@ -31,8 +31,11 @@ class VaultClient:
             raise ValueError("provider must be non-empty")
         if not isinstance(secret, str):
             raise TypeError("secret must be a string")
-        if ttl is not None and ttl.total_seconds() <= 0:
-            raise ValueError("ttl must be positive")
+        if ttl is not None:
+            if not isinstance(ttl, timedelta):
+                raise TypeError("ttl must be a datetime.timedelta")
+            if ttl.total_seconds() <= 0:
+                raise ValueError("ttl must be positive")
         expiry = datetime.utcnow() + (ttl or timedelta(days=90))
         with self._lock:
             self._secrets[provider] = (secret, expiry)

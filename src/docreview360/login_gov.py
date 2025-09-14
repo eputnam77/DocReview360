@@ -6,7 +6,9 @@ from base64 import b64decode
 
 def parse_login_gov_response(saml_response: str) -> str:
     """Return the ``NameID`` from a base64 encoded SAML response."""
-    if not saml_response or not saml_response.strip():
+    if not isinstance(saml_response, str):
+        raise TypeError("saml_response must be a string")
+    if not saml_response.strip():
         raise ValueError("saml_response required")
     try:
         xml_bytes = b64decode(saml_response)
