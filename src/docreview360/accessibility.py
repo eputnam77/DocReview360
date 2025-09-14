@@ -12,8 +12,12 @@ _IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 # ``alt`` attributes may be quoted or unquoted.  The previous pattern only
 # recognised quoted variants which wrongly flagged valid markup like
 # ``<img alt=logo>``.  Allow unquoted values that end at whitespace or ``>``.
+# Disallow quotes within unquoted ``alt`` values and ensure the attribute ends
+# before any invalid characters like stray quotes.  Without the lookahead a tag
+# such as ``alt=foo"`` would be interpreted as having the value ``foo`` even
+# though the trailing quote renders the markup invalid.
 _ALT_ATTR = re.compile(
-    r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/]+))",
+    r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))(?=[\s>/])",
     re.IGNORECASE,
 )
 _BUTTON_TAG = re.compile(r"<button([^>]*)>(.*?)</button>", re.IGNORECASE | re.DOTALL)

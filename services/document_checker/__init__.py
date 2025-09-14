@@ -35,7 +35,7 @@ def run_checks(file_path: str | Path) -> dict[str, object]:
     # descriptive alternative.  Optional capture groups allow us to extract the
     # quoted or unquoted value and ensure it isn't empty or just whitespace.
     alt_attr = re.compile(
-        r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/]+))",
+        r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))(?=[\s>/])",
         re.I,
     )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
@@ -82,7 +82,7 @@ def detect_anomalies(text: str, threshold: float = 0.7) -> bool:
     # inclusive range ``[0, 1]``.  Non-numeric inputs previously surfaced a
     # cryptic ``TypeError`` from the comparison operators.  Validate the type
     # explicitly so callers receive a clear message.
-    if not isinstance(threshold, numbers.Real):
+    if not isinstance(threshold, numbers.Real) or isinstance(threshold, bool):
         raise TypeError("threshold must be a real number")
     if not 0 <= threshold <= 1:
         raise ValueError("threshold must be between 0 and 1")
