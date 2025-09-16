@@ -18,3 +18,19 @@ def test_schedule_log_chain_verification(monkeypatch):
     assert entry["kwargs"]["bucket"] == "tamper_proof_store"
     assert entry["kwargs"]["key"] == "log_chain.json"
 
+
+def test_schedule_log_chain_verification_respects_missing_email(monkeypatch):
+    """Explicit ``None`` should disable email alerts rather than use 'None'."""
+
+    monkeypatch.setattr(
+        lcv,
+        "load_settings",
+        lambda: {"log_chain_verification": {"alert_email": None}},
+    )
+    app.conf.beat_schedule = {}
+
+    lcv.schedule_log_chain_verification()
+
+    entry = app.conf.beat_schedule["log_chain_verification"]
+    assert entry["kwargs"]["alert_email"] is None
+

@@ -53,6 +53,8 @@ def add_template(name: str, subject: str, body: str) -> None:
 
 def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
     """Render ``template`` using ``context`` and store it in :data:`sent_emails`."""
+    if not isinstance(template, str):
+        raise TypeError("template must be a string")
     if not isinstance(recipient, str):
         raise TypeError("recipient must be a string")
     recipient = recipient.strip()
