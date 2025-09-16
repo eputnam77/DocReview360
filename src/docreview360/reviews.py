@@ -15,7 +15,7 @@ class ReviewModel(BaseModel):
     reviewer: str
     status: str = "pending"
     comment: str = ""
-    created: datetime = datetime.now(UTC)
+    created: datetime = Field(default_factory=lambda: datetime.now(UTC))
     phase_id: str | None = Field(default=None, alias="phaseId")
     required: bool = True
 
