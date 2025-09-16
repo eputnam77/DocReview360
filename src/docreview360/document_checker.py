@@ -101,21 +101,28 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
             grammar.append(f"repeated word '{words[i]}'")
 
     accessibility = []
-    img_tag = re.compile(r"<img [^>]*>", re.I)
+    img_tag = re.compile(r"<img\b[^>]*>", re.I)
     # Accept attributes with optional whitespace around the equals sign and
-    # support single, double quoted or unquoted ``alt`` values.
+    # support single, double quoted or unquoted ``alt`` values. Capture the
+    # value so we can ensure it isn't empty or pure whitespace which would not
+    # help assistive technology.  This mirrors the stricter validation performed
+    # by the service implementation.
     alt_attr = re.compile(
-        r"alt\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.I
+        r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))(?=[\s>/])",
+        re.I,
     )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
     # ``aria-label`` attributes may also include surrounding whitespace. Allow
     # both quoting styles while normalizing incidental spaces.
     aria_label = re.compile(
-        r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)')", re.I
+        r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))",
+        re.I,
     )
 
     for match in img_tag.finditer(text):
-        if not alt_attr.search(match.group(0)):
+        m = alt_attr.search(match.group(0))
+        value = (m.group(1) or m.group(2) or m.group(3) or "").strip() if m else ""
+        if not value:
             accessibility.append("image missing alt text")
 
     for match in button_tag.finditer(text):
@@ -126,9 +133,7 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
         # flagged as missing labels.
         text_only = re.sub(r"<[^>]+>", "", body).strip()
         m = aria_label.search(attrs)
-        label = ""
-        if m:
-            label = (m.group(1) or m.group(2) or "").strip()
+        label = (m.group(1) or m.group(2) or m.group(3) or "").strip() if m else ""
         if (not label) and text_only == "":
             accessibility.append("button missing label")
 
