@@ -20,6 +20,17 @@ def test_add_template_validates_subject_and_body():
         n.TEMPLATES.update(original)
 
 
+def test_send_email_requires_string_template():
+    original = n.TEMPLATES.copy()
+    try:
+        with pytest.raises(TypeError) as excinfo:
+            n.send_email(object(), "user@example.com", subject="s", body="b")
+        assert "template must be a string" in str(excinfo.value)
+    finally:
+        n.TEMPLATES.clear()
+        n.TEMPLATES.update(original)
+
+
 def test_send_email_errors_and_defaults(monkeypatch):
     original = n.TEMPLATES.copy()
     n.sent_emails.clear()

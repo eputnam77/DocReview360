@@ -58,6 +58,8 @@ def export_document(  # noqa: C901
     name_template: str | None = None,
 ) -> tuple[bytes, str, str]:
     """Convert a document into ``fmt`` and return bytes, media type and filename."""
+    if not isinstance(fmt, str):
+        raise TypeError("fmt must be a string")
     fmt = fmt.lower()
     if guardrails_checker is not None and guardrails_checker(document.content):
         raise ValueError("Content failed guardrails validation")
