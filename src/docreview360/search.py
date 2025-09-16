@@ -7,11 +7,11 @@ import re
 import threading
 import uuid
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, Field, computed_field
 
 from . import fts
 from .cache import cache_delete, cache_get, cache_set
@@ -30,7 +30,7 @@ class ProjectModel(BaseModel):
     doc_type: str | None = None
     workflow: str | None = None
     priority: int = 0
-    created: datetime = datetime.now(UTC)
+    created: datetime = Field(default_factory=lambda: datetime.now(UTC))
     temp_user: Optional[str] = None
     temp_until: datetime | None = None
     updated: datetime | None = None  # Add updated field for frontend compatibility
@@ -127,7 +127,7 @@ class SavedSearch:
     id: str
     query: str
     user: str | None = None
-    created: datetime = datetime.now(UTC)
+    created: datetime = field(default_factory=lambda: datetime.now(UTC))
     count: int = 0
 
 
@@ -327,16 +327,26 @@ def assign_temporary(
 
 def _expire_temp_assignment(project: ProjectModel, *, lock_held: bool = False) -> None:
     """Clear ``project.temp_user`` when the temporary period has ended."""
-    if project.temp_user and project.temp_until and datetime.now(UTC) >= project.temp_until:
-        if lock_held:
-            # Lock is already held by caller, modify directly
+
+    if not project.temp_user or not project.temp_until:
+        return
+
+    until = project.temp_until
+    if until.tzinfo is None:
+        until = until.replace(tzinfo=UTC)
+
+    if datetime.now(UTC) < until:
+        return
+
+    if lock_held:
+        # Lock is already held by caller, modify directly
+        project.temp_user = None
+        project.temp_until = None
+    else:
+        # Acquire lock before modifying
+        with project_lock:
             project.temp_user = None
             project.temp_until = None
-        else:
-            # Acquire lock before modifying
-            with project_lock:
-                project.temp_user = None
-                project.temp_until = None
 
 
 def list_projects(user: str | None = None) -> list[ProjectModel]:
