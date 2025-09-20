@@ -182,7 +182,8 @@ def import_document(
     from . import search as search_module
 
     search_module.add_document(document)
-    fts.index_document(doc_id, content)
+    if content.strip():
+        fts.index_document(doc_id, content)
     log_audit_event(
         doc_id,
         "created",
