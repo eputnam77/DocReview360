@@ -7,6 +7,8 @@ that tests do not require any external services.
 
 from __future__ import annotations
 
+import socket
+from contextlib import closing
 from types import ModuleType
 from typing import Dict, Optional, cast
 
@@ -62,6 +64,24 @@ HASH_MISMATCHES = Counter(
 )
 
 
+def _reserve_port() -> int:
+    """Return an available TCP port on localhost."""
+
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _start_prometheus_server(port: int) -> int:
+    """Start the Prometheus HTTP server and return the bound port."""
+
+    result = start_http_server(port)
+    if isinstance(result, tuple):
+        httpd, _thread = result
+        return int(httpd.server_port)
+    return port
+
+
 def init_observability(port: int | None = None, *, dsn: str | None = None) -> Dict[str, str]:
     """Initialize Prometheus metrics and optional Sentry reporting.
 
@@ -78,14 +98,15 @@ def init_observability(port: int | None = None, *, dsn: str | None = None) -> Di
     if port is not None:
         if port < 0 or port >= 65536:
             raise ValueError("port must be between 0 and 65535")
+        attempt = port
+        if attempt == 0:
+            attempt = _reserve_port()
         try:
-            httpd, _thread = start_http_server(port)
+            actual_port = _start_prometheus_server(attempt)
         except OSError:
-            # When the desired port is already in use choose an ephemeral port
-            # instead of failing hard.  This keeps tests deterministic even if
-            # other services temporarily bind the requested port.
-            httpd, _thread = start_http_server(0)
-        services["prometheus"] = f"http://localhost:{httpd.server_port}/"
+            fallback = _reserve_port()
+            actual_port = _start_prometheus_server(fallback)
+        services["prometheus"] = f"http://localhost:{actual_port}/"
 
     dsn = dsn or get_secret("sentry_dsn")
     if dsn:
