@@ -318,7 +318,8 @@ def assign_temporary(
         until = until.replace(tzinfo=UTC)
     with project_lock:
         project = projects[project_id]
-        if (until - datetime.now(UTC)).days > TEMP_ASSIGN_MAX_DAYS and not approved:
+        remaining = until - datetime.now(UTC)
+        if remaining > timedelta(days=TEMP_ASSIGN_MAX_DAYS) and not approved:
             raise ValueError("Manager approval required for long assignment")
         project.temp_user = user
         project.temp_until = until
