@@ -270,8 +270,13 @@ def hash_new_log_segments(
     with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
         lines = fh.readlines()
 
+    total_lines = len(lines)
+    if start > total_lines:
+        start = total_lines
+
     new_lines = lines[start:]
     if not new_lines:
+        _AUDIT_ANCHOR_PATH.write_text(str(total_lines))
         return 0
 
     count = 0

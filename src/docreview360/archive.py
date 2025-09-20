@@ -12,7 +12,7 @@ from uuid import uuid4
 from .security_compliance import should_purge
 from .settings_manager import load_settings
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from .documents import DocumentModel
 from .exporter import export_document
@@ -26,7 +26,7 @@ class ArchiveRecord(BaseModel):
     id: str
     document_id: str
     timestamp: datetime
-    metadata: Dict[str, Any] = {}
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     markdown: bytes
     html: bytes
     docx: bytes
