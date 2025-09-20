@@ -34,8 +34,9 @@ class TracedTask(Task):
     def __call__(self, *args: Any, **kwargs: Any):
         headers = getattr(getattr(self, "request", None), "headers", None) or {}
         trace_id = headers.get("trace_id")
+        token = None
         if trace_id:
-            TRACE_ID.set(trace_id)
+            token = TRACE_ID.set(trace_id)
         log_event("task_started", task=self.name)
         try:
             result = self.run(*args, **kwargs)
@@ -44,6 +45,9 @@ class TracedTask(Task):
         except Exception as exc:  # pragma: no cover - defensive
             log_event("task_failed", task=self.name, error=str(exc), severity="error")
             raise
+        finally:
+            if token is not None:
+                TRACE_ID.reset(token)
 
 
 app.Task = TracedTask
