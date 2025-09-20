@@ -105,7 +105,9 @@ def create_approval(
     if signature_provider is None:
         signature_provider = get_default_provider()
     approval_id = uuid4().hex
-    doc_hash = hashlib.sha256(document).hexdigest() if document else None
+    doc_hash = (
+        hashlib.sha256(document).hexdigest() if document is not None else None
+    )
     approval = ApprovalModel(
         id=approval_id,
         workflow=workflow,
