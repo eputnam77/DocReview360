@@ -106,6 +106,9 @@ def schedule_rotation(
     to prevent 'coroutine was never awaited' warnings when `asyncio.create_task`
     was monkeypatched.
     """
+
+    if interval.total_seconds() <= 0:
+        raise ValueError("interval must be positive")
     return asyncio.create_task(_vault.rotate(provider, loader, interval))
 
 
