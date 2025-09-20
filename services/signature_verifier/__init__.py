@@ -25,17 +25,17 @@ def _process_approval(
     document_ids_set: set[str],
     scope: str,
     batch_id: str,
-) -> int:
+) -> tuple[int, str | None]:
     """Validate the signature for ``approval`` and record the outcome."""
     if approval.certificate_url is None:
-        return 0
+        return 0, None
     if not document_ids_set and scope != "all" and approval.state != scope:
-        return 0
+        return 0, None
     if document_ids_set and approval.document_id not in document_ids_set:
-        return 0
+        return 0, None
     document = documents.get(approval.document_id)
     if document is None:
-        return 0
+        return 0, None
     document_bytes = document.content.encode("utf-8")
     current_hash = hashlib.sha256(document_bytes).hexdigest()
     hash_valid = approval.document_hash is None or current_hash == approval.document_hash
@@ -56,7 +56,8 @@ def _process_approval(
         hash_valid=hash_valid,
         batch_id=batch_id,
     )
-    return 1
+    status = "success" if valid and hash_valid else "failure"
+    return 1, status
 
 
 def verify_document_signatures(
@@ -112,19 +113,24 @@ def verify_document_signatures(
     if document_ids is not None and not document_ids_set:
         return 0
 
-    def _process(approval: ApprovalModel) -> int:
+    def _process(approval: ApprovalModel) -> tuple[int, str | None]:
         return _process_approval(approval, document_ids_set, scope, batch_id)
 
     with VERIFICATION_DURATION.labels("background").time():
         approvals_iter = list(approvals.values())
+        results: list[tuple[int, str | None]]
         if parallel:
             with ThreadPoolExecutor() as pool:
-                count = sum(pool.map(_process, approvals_iter))
+                results = list(pool.map(_process, approvals_iter))
         else:
-            count = 0
-            for approval in approvals_iter:
-                count += _process(approval)
-    VERIFICATION_COUNTER.labels("background", "success").inc(count)
+            results = [_process(approval) for approval in approvals_iter]
+    count = sum(processed for processed, _ in results)
+    success = sum(1 for processed, status in results if processed and status == "success")
+    failure = sum(1 for processed, status in results if processed and status == "failure")
+    if success:
+        VERIFICATION_COUNTER.labels("background", "success").inc(success)
+    if failure:
+        VERIFICATION_COUNTER.labels("background", "failure").inc(failure)
     return count
 
 
