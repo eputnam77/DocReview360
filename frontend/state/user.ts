@@ -1,6 +1,19 @@
 import { create } from "zustand";
 import { authenticatedFetch } from "@/lib/api";
 
+const SESSION_COOKIE_NAMES = ["access_token", "session", "sessionid"];
+
+const hasSessionCookie = () => {
+  if (typeof document === "undefined" || !document.cookie) {
+    return false;
+  }
+
+  const cookies = document.cookie.split(";").map((cookie) => cookie.trim());
+  return cookies.some((cookie) =>
+    SESSION_COOKIE_NAMES.some((name) => cookie.startsWith(`${name}=`)),
+  );
+};
+
 interface UserState {
   isAdmin: boolean;
   isAuditor: boolean;
@@ -11,7 +24,7 @@ interface UserState {
   setAuditor: (value: boolean) => void;
   setUsername: (name: string) => void;
   setTheme: (value: "system" | "light" | "dark") => void;
-  initialize: () => Promise<void>;
+  initialize: (force?: boolean) => Promise<void>;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -27,8 +40,19 @@ export const useUserStore = create<UserState>((set, get) => ({
   setAuditor: (value) => set({ isAuditor: value }),
   setUsername: (name) => set({ username: name }),
   setTheme: (value) => set({ theme: value }),
-  async initialize() {
-    if (get().initialized) {
+  async initialize(force = false) {
+    if (get().initialized && !force) {
+      return;
+    }
+
+    if (!force && !hasSessionCookie()) {
+      set({
+        isAdmin: false,
+        isAuditor: false,
+        username: "",
+        theme: "system",
+        initialized: true,
+      });
       return;
     }
 
@@ -74,7 +98,7 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
   async refresh() {
     set({ initialized: false });
-    await get().initialize();
+    await get().initialize(true);
   },
   // Logout function to clear user data
   async logout() {

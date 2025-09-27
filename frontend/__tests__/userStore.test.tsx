@@ -32,9 +32,14 @@ const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const originalRefresh = useUserStore.getState().refresh;
 
+const clearSessionCookies = () => {
+  document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+};
+
 describe("user store", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearSessionCookies();
     useUserStore.setState({
       isAdmin: false,
       isAuditor: false,
@@ -46,6 +51,7 @@ describe("user store", () => {
   });
 
   afterEach(() => {
+    clearSessionCookies();
     useUserStore.setState({
       isAdmin: false,
       isAuditor: false,
@@ -56,7 +62,20 @@ describe("user store", () => {
     });
   });
 
+  it("skips the session fetch when no access token is present", async () => {
+    await useUserStore.getState().initialize();
+
+    expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+    const state = useUserStore.getState();
+    expect(state.username).toBe("");
+    expect(state.isAdmin).toBe(false);
+    expect(state.isAuditor).toBe(false);
+    expect(state.initialized).toBe(true);
+  });
+
   it("returns early when /users/me responds with 401", async () => {
+    document.cookie = "access_token=test; path=/";
+
     mockAuthenticatedFetch.mockResolvedValueOnce(
       new Response(null, { status: 401 }),
     );
@@ -73,6 +92,8 @@ describe("user store", () => {
   });
 
   it("hydrates the user and profile after a successful session fetch", async () => {
+    document.cookie = "access_token=test; path=/";
+
     const sessionResponse = {
       ok: true,
       status: 200,
@@ -113,6 +134,7 @@ describe("login page", () => {
   beforeEach(() => {
     pushMock.mockReset();
     vi.clearAllMocks();
+    clearSessionCookies();
     useUserStore.setState({
       isAdmin: false,
       isAuditor: false,
@@ -128,6 +150,7 @@ describe("login page", () => {
       global.fetch = originalFetch;
     }
     useUserStore.setState({ refresh: originalRefresh });
+    clearSessionCookies();
   });
 
   it("refreshes the user store after a successful login", async () => {
