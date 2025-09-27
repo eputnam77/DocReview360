@@ -1,7 +1,11 @@
-documenso:
+sandbox:
   api_key: ''
   healthy: true
   priority: 1
+documenso:
+  api_key: ''
+  healthy: true
+  priority: 5
 local:
   api_key: ''
   healthy: false
