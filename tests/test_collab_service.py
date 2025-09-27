@@ -1,6 +1,9 @@
+import pytest
 from docreview360.api import app
 from docreview360.documents import DocumentModel, documents
 from fastapi.testclient import TestClient
+
+pytest.importorskip("y_py")
 from y_py import YDoc, apply_update, encode_state_as_update
 
 
@@ -39,3 +42,4 @@ def test_yjs_collaboration_real_time() -> None:
 
     # Ensure updates were persisted for reconciliation
     assert documents[doc_id].history[-1].yjs_updates is not None
+    documents.pop(doc_id, None)
