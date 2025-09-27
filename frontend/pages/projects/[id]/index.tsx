@@ -578,25 +578,22 @@ export default function ProjectDetailsPage() {
     remind(targets.map((a) => a.id));
   };
 
-  const viewHistory = useCallback(
-    (aid: string) => {
-      authenticatedFetch(`${API}/approvals/${aid}/history`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data: any[]) =>
-          setHistoryEvents(
-            data.map((d) => ({
-              id: d.id ?? d.timestamp,
-              timestamp: d.timestamp,
-              message: d.event || d.action || d.message,
-              type: "approval" as const,
-            })),
-          )
-        )
-        .catch(() => setHistoryEvents(DEMO_APPROVAL_HISTORY))
-        .finally(() => setShowHistory(true));
-    },
-    [username],
-  );
+  const viewHistory = useCallback((aid: string) => {
+    authenticatedFetch(`${API}/approvals/${aid}/history`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) =>
+        setHistoryEvents(
+          data.map((d) => ({
+            id: d.id ?? d.timestamp,
+            timestamp: d.timestamp,
+            message: d.event || d.action || d.message,
+            type: "approval" as const,
+          })),
+        ),
+      )
+      .catch(() => setHistoryEvents(DEMO_APPROVAL_HISTORY))
+      .finally(() => setShowHistory(true));
+  }, []);
 
   const signApproval = async (aid: string) => {
     const existing = approvals.find((a) => a.id === aid);
@@ -604,7 +601,7 @@ export default function ProjectDetailsPage() {
       toast.error("Approval already completed.");
       return;
     }
-    if (existing?.reviewer !== user?.name) {
+    if (existing?.reviewer !== username) {
       toast.error("You are not assigned to this approval.");
       return;
     }
@@ -891,7 +888,7 @@ export default function ProjectDetailsPage() {
             <CardContent className="overflow-x-auto">
               <ApprovalTable
                 approvals={approvalsForPhase}
-                currentUser={user?.name}
+                currentUser={username}
                 canEdit={canEdit}
                 onSign={signApproval}
                 onReset={resetApprovalLocal}
