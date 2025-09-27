@@ -69,12 +69,6 @@ vi.mock("@/components", () => {
     ProjectSummaryBar: () => React.createElement("div", null),
     KpiCards: () => React.createElement("div", null),
     PhaseAdvanceModal: () => React.createElement("div", null),
-    Table: primitiveStub("table"),
-    TableHeader: primitiveStub("thead"),
-    TableBody: primitiveStub("tbody"),
-    TableRow: primitiveStub("tr"),
-    TableHead: primitiveStub("th"),
-    TableCell: primitiveStub("td"),
   };
 });
 
@@ -96,10 +90,23 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTitle: primitiveStub("div"),
 }));
 
-vi.mock("@headlessui/react", () => ({
-  Disclosure: () => React.createElement("div", null),
-  Transition: ({ children }: React.PropsWithChildren) => React.createElement(React.Fragment, null, children),
-}));
+vi.mock("@headlessui/react", () => {
+  const React = require("react");
+  const Disclosure: any = ({ children }: { children: any }) =>
+    React.createElement(
+      React.Fragment,
+      null,
+      typeof children === "function" ? children({ open: true }) : children,
+    );
+  Disclosure.Button = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement("button", props, children);
+
+  return {
+    Disclosure,
+    Transition: ({ children }: React.PropsWithChildren) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
 
 vi.mock("@/lib/api", () => ({
   API: "http://example.com",
@@ -185,8 +192,9 @@ describe("ProjectDetailsPage", () => {
   });
 
   it("renders without crashing and forwards currentUser to ApprovalTable", () => {
-    expect(() => renderToString(<ProjectDetailsPage />)).not.toThrow();
+    const html = renderToString(<ProjectDetailsPage />);
 
+    expect(html).toContain("<table");
     expect(approvalTableSpy).toHaveBeenCalled();
     const currentUsers = approvalTableSpy.mock.calls.map(([props]: [Record<string, unknown>]) => props.currentUser);
     expect(currentUsers).toContain("alice");
