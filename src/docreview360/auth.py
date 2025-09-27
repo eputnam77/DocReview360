@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os
+import warnings
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Callable, Dict, TypeVar
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -12,23 +13,65 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 
 
-def _require_env(name: str) -> str:
-    """Return the value of ``name`` or raise a ``RuntimeError`` if missing."""
+T = TypeVar("T")
+
+
+def _env_or_default(
+    name: str,
+    *,
+    default: str,
+    cast: Callable[[str], T] | None = None,
+) -> T:
+    """Return an environment variable or fall back to a development default.
+
+    When ``name`` is unset, the ``default`` is returned and a ``RuntimeWarning``
+    is emitted so production deployments surface the misconfiguration while
+    developers can rely on sensible defaults.
+    """
 
     value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"{name} environment variable required")
-    return value
+    if value is None or value == "":
+        warnings.warn(
+            f"{name} environment variable not set; using development default",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        value = default
+
+    return cast(value) if cast else value  # type: ignore[return-value]
 
 
-SECRET_KEY = _require_env("DOCREVIEW360_SECRET_KEY")
-ALGORITHM = _require_env("DOCREVIEW360_ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(_require_env("DOCREVIEW360_ACCESS_EXPIRE_MINUTES"))
+DEFAULT_SECRET_KEY = "docreview360-dev-secret"
+DEFAULT_ALGORITHM = "HS256"
+DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+SECRET_KEY = _env_or_default(
+    "DOCREVIEW360_SECRET_KEY", default=DEFAULT_SECRET_KEY
+)
+ALGORITHM = _env_or_default(
+    "DOCREVIEW360_ALGORITHM", default=DEFAULT_ALGORITHM
+)
+ACCESS_TOKEN_EXPIRE_MINUTES = _env_or_default(
+    "DOCREVIEW360_ACCESS_EXPIRE_MINUTES",
+    default=str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES),
+    cast=int,
+)
 
 # separate secret for the OIDC flow
-OIDC_SECRET_KEY = _require_env("DOCREVIEW360_OIDC_SECRET_KEY")
-OIDC_ALGORITHM = _require_env("DOCREVIEW360_OIDC_ALGORITHM")
-OIDC_TOKEN_EXPIRE_MINUTES = int(_require_env("DOCREVIEW360_OIDC_EXPIRE_MINUTES"))
+DEFAULT_OIDC_SECRET_KEY = "docreview360-oidc-dev-secret"
+DEFAULT_OIDC_TOKEN_EXPIRE_MINUTES = 30
+
+OIDC_SECRET_KEY = _env_or_default(
+    "DOCREVIEW360_OIDC_SECRET_KEY", default=DEFAULT_OIDC_SECRET_KEY
+)
+OIDC_ALGORITHM = _env_or_default(
+    "DOCREVIEW360_OIDC_ALGORITHM", default=DEFAULT_ALGORITHM
+)
+OIDC_TOKEN_EXPIRE_MINUTES = _env_or_default(
+    "DOCREVIEW360_OIDC_EXPIRE_MINUTES",
+    default=str(DEFAULT_OIDC_TOKEN_EXPIRE_MINUTES),
+    cast=int,
+)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token", auto_error=False)
