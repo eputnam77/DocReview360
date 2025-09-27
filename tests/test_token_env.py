@@ -20,3 +20,35 @@ def test_env_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     token = auth.create_access_token({"sub": "bob"})
     payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
     assert payload["sub"] == "bob"
+
+
+def test_defaults_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in (
+        "DOCREVIEW360_SECRET_KEY",
+        "DOCREVIEW360_ALGORITHM",
+        "DOCREVIEW360_ACCESS_EXPIRE_MINUTES",
+        "DOCREVIEW360_OIDC_SECRET_KEY",
+        "DOCREVIEW360_OIDC_ALGORITHM",
+        "DOCREVIEW360_OIDC_EXPIRE_MINUTES",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    module_name = "docreview360.auth"
+    sys.modules.pop(module_name, None)
+
+    src_root = Path(__file__).resolve().parents[1] / "src"
+    sys.path.insert(0, str(src_root))
+    with pytest.warns(RuntimeWarning):
+        auth = importlib.import_module(module_name)
+    sys.path.remove(str(src_root))
+
+    assert auth.SECRET_KEY == "docreview360-dev-secret"
+    assert auth.ALGORITHM == "HS256"
+    assert auth.ACCESS_TOKEN_EXPIRE_MINUTES == 30
+    assert auth.OIDC_SECRET_KEY == "docreview360-oidc-dev-secret"
+    assert auth.OIDC_ALGORITHM == "HS256"
+    assert auth.OIDC_TOKEN_EXPIRE_MINUTES == 30
+
+    token = auth.create_access_token({"sub": "alice"})
+    payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+    assert payload["sub"] == "alice"
