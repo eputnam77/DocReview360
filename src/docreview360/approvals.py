@@ -80,6 +80,11 @@ class ApprovalModel(BaseModel):
 approvals: Dict[str, ApprovalModel] = {}
 
 
+class SignedApprovalImmutableError(ValueError):
+    """Raised when attempting to mutate a signed approval."""
+
+
+
 def create_approval(
     workflow: str,
     reviewer: str,
@@ -356,7 +361,9 @@ async def update_approval_state(  # noqa: C901
 ) -> ApprovalModel:
     approval = approvals[approval_id]
     if approval.state == "approved":
-        raise ValueError("signed approvals cannot be modified; reset required")
+        raise SignedApprovalImmutableError(
+            "signed approvals cannot be modified; reset required"
+        )
     wf = workflows.get(approval.workflow)
     if state == "approved" and wf and wf.mode == "sequential":
         for a in approvals.values():
