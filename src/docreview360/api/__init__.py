@@ -42,6 +42,7 @@ from ..ai_balancer import load_state as load_worker_state
 from ..ai_balancer import save_state as save_worker_state
 from ..approvals import (
     ApprovalModel,
+    SignedApprovalImmutableError,
     build_approvals_summary_pdf,
     create_approval,
     get_approval,
@@ -1791,6 +1792,8 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
             signature_id=body.signature_id,
             due_at=body.due_at,
         )
+    except SignedApprovalImmutableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
