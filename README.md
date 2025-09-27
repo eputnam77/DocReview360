@@ -120,8 +120,13 @@ cd DocReview360
 # source .venv/bin/activate  # On Mac/Linux
 # .venv\Scripts\activate     # On Windows
 
-# Start the backend server
+# Start the backend server on macOS/Linux
 uvicorn docreview360.api:app --reload --port 8000
+```
+
+```powershell
+# Start the backend server on Windows PowerShell (auto-loads .env when present)
+pwsh -File scripts/windows/start-backend.ps1
 ```
 
 **Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with GovDocVerify.
@@ -132,7 +137,17 @@ uvicorn docreview360.api:app --reload --port 8000
 - **Health Check:** Test the server at http://localhost:8000/health
 - **GovDocVerify Integration:** The document checker requires this backend to process files
 
-The `--reload` flag auto‑reloads on code changes—handy in development.
+Pass secrets on the command line when you do not want to persist them:
+
+```powershell
+pwsh -File scripts/windows/start-backend.ps1 `
+  -SecretKey "your-secret" `
+  -AccessExpireMinutes 60
+```
+
+The script falls back to the development defaults from `src/docreview360/auth.py` when
+variables are absent and automatically reads overrides from a `.env` file in the project
+root. The `--reload` flag auto‑reloads on code changes—handy in development.
 
 ---
 
