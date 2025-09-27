@@ -23,7 +23,7 @@ import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
 import SlashCommand from "../../extensions/tiptapSlashCommand";
 import sanitizeHtml from "../../utils/sanitize";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 
 // Custom TipTap extensions
@@ -34,6 +34,37 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 
 // Yjs for collaboration
 import * as Y from "yjs";
+
+export function createTiptapApi(fetcher: typeof authenticatedFetch = authenticatedFetch) {
+  return {
+    fetchPreferences: (docId: string) =>
+      fetcher(`${API}/projects/${docId}/preferences`),
+    savePreferences: (docId: string, prefs: Record<string, unknown>) =>
+      fetcher(`${API}/projects/${docId}/preferences`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prefs),
+      }),
+    fetchRevisions: (docId: string, username: string) =>
+      fetcher(`${API}/documents/${docId}/revisions`, {
+        headers: { "X-User": username },
+      }),
+    createRevision: (docId: string, username: string, body: Record<string, unknown>) =>
+      fetcher(`${API}/documents/${docId}/revisions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User": username,
+        },
+        body: JSON.stringify(body),
+      }),
+    fetchRevision: (docId: string, revisionId: string) =>
+      fetcher(`${API}/documents/${docId}/revisions/${revisionId}`),
+    fetchArchive: (archiveId: string) => fetcher(`${API}/archive/${archiveId}`),
+    fetchTemplates: () => fetcher(`${API}/templates`),
+    fetchTemplate: (filename: string) => fetcher(`${API}/templates/${filename}`),
+  } as const;
+}
 
 // Icons
 const Bold = dynamic(() => import("lucide-react").then((m) => m.Bold));
@@ -118,6 +149,7 @@ function AiSuggestButton({
       const res = await fetch("/api/ai-suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           text: selectedText,
         }),
@@ -483,9 +515,10 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [history, setHistory] = useState<any[]>([]);
   const [diffHtml, setDiffHtml] = useState<string | null>(null);
 
+  const api = useMemo(() => createTiptapApi(), []);
   const router = useRouter();
   const docId = (docIdProp ?? router.query.id) as string | undefined;
-  const username = useUserStore((s) => s.username);
+  const username = useUserStore((s) => s.username) ?? "";
   const [saveStatus, setSaveStatus] = useState<
     "saving" | "saved" | "error" | "offline"
   >("saved");
@@ -508,16 +541,13 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         ...overrides,
       };
       try {
-        await fetch(`${API}/projects/${docId}/preferences`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(prefs),
-        });
+        await api.savePreferences(docId, prefs);
       } catch (err) {
         console.error("Failed to save preferences", err);
       }
     },
     [
+      api,
       docId,
       lintEnabled,
       collabEnabled,
@@ -533,7 +563,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
 
   useEffect(() => {
     if (!docId) return;
-    fetch(`${API}/projects/${docId}/preferences`)
+    api.fetchPreferences(docId)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
@@ -550,11 +580,11 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         }
       })
       .catch(() => undefined);
-  }, [docId]);
+  }, [api, docId]);
 
   useEffect(() => {
     if (!docId) return;
-    fetch(`${API}/documents/${docId}/revisions`, { headers: { "X-User": username } })
+    api.fetchRevisions(docId, username)
       .then(res => res.json())
       .then(setHistory)
       .catch(() => {
@@ -563,14 +593,14 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           if (draft) setContent(draft);
         }
       });
-  }, [docId, username]);
+  }, [api, docId, username]);
 
   useEffect(() => {
-    fetch(`${API}/templates`)
+    api.fetchTemplates()
       .then(r => (r.ok ? r.json() : []))
       .then(setTemplates)
       .catch(() => setTemplates([]));
-  }, []);
+  }, [api]);
 
   const saveRevision = useCallback(
     (html: string, immediate = false, promote = false) => {
@@ -591,24 +621,18 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
             const update = Y.encodeStateAsUpdate(yDoc);
             body.steps = Array.from(update);
           }
-          const res = await fetch(`${API}/documents/${docId}/revisions`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-User": username },
-            body: JSON.stringify(body),
-          });
+          const res = await api.createRevision(docId, username, body);
           setSaveStatus("saved");
           const data = res.ok ? await res.json() : {};
           if (data.archiveId) {
-            const a = await fetch(`${API}/archive/${data.archiveId}`);
+            const a = await api.fetchArchive(data.archiveId);
             if (a.ok) {
               const rec = await a.json();
               const pdf = rec.metadata?.artefact_locations?.pdf;
               if (pdf) setPdfUrl(pdf);
             }
           }
-          const resp = await fetch(`${API}/documents/${docId}/revisions`, {
-            headers: { "X-User": username },
-          });
+          const resp = await api.fetchRevisions(docId, username);
           if (resp.ok) {
             setHistory(await resp.json());
           }
@@ -624,7 +648,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         saveTimer.current = setTimeout(exec, 500);
       }
     },
-    [docId, yDoc],
+    [api, docId, username, yDoc],
   );
 
 
@@ -798,7 +822,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     async (id: string) => {
       if (!docId) return;
       try {
-        const res = await fetch(`${API}/documents/${docId}/revisions/${id}`);
+        const res = await api.fetchRevision(docId, id);
         if (res.ok) {
           const data = await res.json();
           editor?.commands.setContent(data.content);
@@ -807,14 +831,14 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         /* ignore */
       }
     },
-    [docId, editor],
+    [api, docId, editor],
   );
 
   const compareRevision = useCallback(
     async (id: string) => {
       if (!docId || !editor) return;
       try {
-        const res = await fetch(`${API}/documents/${docId}/revisions/${id}`);
+        const res = await api.fetchRevision(docId, id);
         if (res.ok) {
           const data = await res.json();
           const current = editor.getHTML();
@@ -824,7 +848,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         /* ignore */
       }
     },
-    [docId, editor],
+    [api, docId, editor],
   );
 
   function getCurrentBlock(editor: any) {
@@ -850,7 +874,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     }
 
     try {
-      const res = await fetch(`${API}/templates/${filename}`);
+      const res = await api.fetchTemplate(filename);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       const sanitized = sanitizeHtml(data.content || "");
