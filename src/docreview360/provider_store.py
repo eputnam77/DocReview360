@@ -12,11 +12,12 @@ import yaml
 # freezing the path at function definition time.
 PROVIDERS_FILE = Path("providers.yaml")
 
-# Default providers shipped with the application. These mirror previous
-# behavior which used a primary ``documenso`` provider and a ``local``
-# fallback provider.
+# Default providers shipped with the application. These defaults prioritise the
+# built-in ``sandbox`` provider for local development, keep ``documenso`` as the
+# first cloud fallback, and retain ``local`` as the final escape hatch.
 DEFAULT_PROVIDERS: Dict[str, Dict[str, Any]] = {
-    "documenso": {"api_key": "", "priority": 1, "healthy": True},
+    "sandbox": {"api_key": "", "priority": 1, "healthy": True},
+    "documenso": {"api_key": "", "priority": 5, "healthy": True},
     "local": {"api_key": "", "priority": 10, "healthy": True},
 }
 

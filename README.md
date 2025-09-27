@@ -59,6 +59,11 @@ uv pip install --upgrade pip pre-commit
 pre-commit install
 ```
 
+DocReview360 ships with the built-in ``sandbox`` signature provider enabled for
+local development. Set ``SIGNATURE_PROVIDER=documenso`` (or provide a fallback
+list) when you want to use Documenso's hosted service—remember that Documenso
+will deliver callbacks to ``POST /hooks/documenso``.
+
 *(Need a plain‑Python fallback? See “🐍 Virtual‑env fallback” below.)*
 
 ---
@@ -87,6 +92,7 @@ $env:DOCREVIEW360_OIDC_EXPIRE_MINUTES="30"
 
 # Optional:
 # DOCREVIEW360_SIGNATURE_SECRET  (digital signatures)
+# SIGNATURE_PROVIDER=sandbox  (default order: sandbox → Documenso → local; Documenso will send webhooks to /hooks/documenso)
 # NEXT_PUBLIC_API_BASE=http://localhost:8000  (frontend → backend, leave blank to use dashboard host)
 # DOCREVIEW360_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000  (frontend host(s) allowed by CORS)
 ```

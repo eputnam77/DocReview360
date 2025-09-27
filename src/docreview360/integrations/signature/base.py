@@ -60,13 +60,13 @@ def get_default_providers() -> list[str]:
     ``SIGNATURE_PROVIDER_PRIMARY`` take precedence for the primary provider
     while ``SIGNATURE_PROVIDER_FALLBACK`` may specify a comma-separated list of
     fallback providers. If neither are set, values are read from the persisted
-    settings file with a final fallback to ``["documenso", "local"]``.
+    settings file with a final fallback to ``["sandbox", "documenso", "local"]``.
     """
 
     env_primary = os.getenv("SIGNATURE_PROVIDER") or os.getenv("SIGNATURE_PROVIDER_PRIMARY")
     env_fallback = os.getenv("SIGNATURE_PROVIDER_FALLBACK")
     if env_primary or env_fallback:
-        providers_list = [env_primary or "documenso"]
+        providers_list = [env_primary or "sandbox"]
         if env_fallback:
             providers_list.extend([p.strip() for p in env_fallback.split(",") if p.strip()])
         return providers_list
@@ -76,8 +76,8 @@ def get_default_providers() -> list[str]:
         return get_active_providers()
     except Exception:  # pragma: no cover - defensive
         settings = load_settings()
-        primary = str(settings.get("signature_provider_primary", "documenso"))
-        fallback_setting = settings.get("signature_provider_fallback", "local")
+        primary = str(settings.get("signature_provider_primary", "sandbox"))
+        fallback_setting = settings.get("signature_provider_fallback", "documenso,local")
         fallbacks: list[str] = []
         if fallback_setting:
             if isinstance(fallback_setting, str):

@@ -41,7 +41,13 @@ pipx install uv poetry
    export DOCREVIEW360_OIDC_ALGORITHM=HS256
    export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
    # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
+   # Optional: SIGNATURE_PROVIDER=sandbox (default sandbox avoids Documenso webhooks; switch to "documenso" to receive callbacks at /hooks/documenso)
    ```
+
+   The application prioritises the built-in ``sandbox`` signature provider in
+   development. Set ``SIGNATURE_PROVIDER=documenso`` (or a comma-separated
+   fallback list) to use Documenso instead, and ensure the ``/hooks/documenso``
+   endpoint is reachable so webhook callbacks succeed.
 
    When testing, refer to secrets in `tests/conftest.py`.
    Run the CLI wizard to set up your config:
