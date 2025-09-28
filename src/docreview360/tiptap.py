@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 from uuid import uuid4
 
+from . import fts
 from .documents import DocumentModel, DocumentRevision, documents, next_document_number
 
 """Utility helpers for TipTap JSON conversions."""
@@ -49,6 +51,7 @@ def import_tiptap_document(
 ) -> DocumentModel:
     """Create a DocumentModel from TipTap JSON."""
     markdown = tiptap_to_markdown(data)
+    ingestion_hash = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     doc_id = uuid4().hex
     revision = DocumentRevision(
         id=uuid4().hex,
@@ -65,9 +68,12 @@ def import_tiptap_document(
         project=project,
         user=user,
         date=datetime.now(timezone.utc),
+        ingestion_hash=ingestion_hash,
     )
     documents[doc_id] = document
     from . import search as search_module
 
     search_module.add_document(document)
+    if markdown.strip():
+        fts.index_document(doc_id, markdown)
     return document
