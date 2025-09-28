@@ -121,7 +121,8 @@ cd DocReview360
 # .venv\Scripts\activate     # On Windows
 
 # Start the backend server on macOS/Linux
-uvicorn docreview360.api:app --reload --port 8000
+uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+# Binding to 0.0.0.0 lets Playwright and other remote browsers reach the dev server.
 ```
 
 ```powershell
