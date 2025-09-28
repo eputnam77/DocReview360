@@ -7,7 +7,7 @@ from io import BytesIO
 from typing import Callable, Iterable, Optional
 from zipfile import ZipFile
 
-from .documents import DocumentModel
+from .documents import DocumentModel, sanitize_content
 
 # Customisable guardrails checker; return True if content is invalid
 guardrails_checker: Optional[Callable[[str], bool]] = None
@@ -61,16 +61,20 @@ def export_document(  # noqa: C901
     if not isinstance(fmt, str):
         raise TypeError("fmt must be a string")
     fmt = fmt.lower()
-    if guardrails_checker is not None and guardrails_checker(document.content):
-        raise ValueError("Content failed guardrails validation")
+    sanitized_content = sanitize_content(document.content)
+    if guardrails_checker is not None:
+        if guardrails_checker(sanitized_content):
+            raise ValueError("Content failed guardrails validation")
+    elif sanitized_content != document.content:
+        raise ValueError("Content failed built-in guardrails validation")
     template = name_template or "{id}"
     base = _render_template(template, document)
     if fmt in ("markdown", "md"):
-        data = document.content.encode()
+        data = sanitized_content.encode()
         media = "text/markdown"
         name = f"{base}.md"
     elif fmt in ("html", "htm"):
-        body = escape(document.content)
+        body = escape(sanitized_content)
         html_doc = f"<html><body><pre>{body}</pre></body></html>"
         data = html_doc.encode()
         media = "text/html"
