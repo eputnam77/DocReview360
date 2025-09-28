@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
@@ -6,12 +9,17 @@ from docreview360 import auth
 from docreview360.api import app
 
 
+@pytest.fixture(autouse=True)
+def configure_roles(tmp_path: Path) -> None:
+    rbac.configure_role_repository(tmp_path / "roles.db")
+
+
 def test_admin_access_control() -> None:
     client = TestClient(app)
 
     # Clear any existing roles for alice to ensure clean state
-    rbac.USER_ROLES.clear()
-    rbac.USER_ROLES["alice"] = {"user"}
+    rbac.reset_role_assignments()
+    rbac.set_user_roles("alice", ["user"])
 
     # token for user "alice"
     resp = client.post("/token", data={"username": "alice", "password": "password"})
