@@ -66,6 +66,61 @@ bot_callbacks: list[Callable[[WorkflowModel], None]] = []
 
 bot_callbacks.append(dispatch_workflow_event)
 
+
+def _log_template_issue(template_name: str, reason: str) -> None:
+    """Log workflow template validation issues for operators."""
+
+    try:
+        from .logs import log_event
+    except Exception:
+        return
+
+    try:
+        log_event(
+            "workflow_template_invalid",
+            severity="error",
+            template=template_name,
+            reason=reason,
+        )
+    except Exception:
+        # Logging failures should not mask the underlying validation error.
+        pass
+
+
+def _raise_template_error(template_name: str, reason: str) -> None:
+    """Log and raise an error describing template ordering issues."""
+
+    _log_template_issue(template_name, reason)
+    raise ValueError(
+        f"Workflow template '{template_name}' has invalid approval order: {reason}"
+    )
+
+
+def _validate_template_orders(template_name: str, steps: List[ApprovalStep]) -> None:
+    """Ensure approval steps have strictly increasing integer order values."""
+
+    last_order: int | None = None
+    for step in steps:
+        order = step.order
+        if not isinstance(order, int) or isinstance(order, bool):
+            _raise_template_error(
+                template_name,
+                f"step '{step.role}' uses non-integer order value {order!r}",
+            )
+        if order < 0:
+            _raise_template_error(
+                template_name,
+                f"step '{step.role}' uses negative order value {order}",
+            )
+        if last_order is not None and order <= last_order:
+            comparison = "duplicate" if order == last_order else "regression"
+            _raise_template_error(
+                template_name,
+                f"step '{step.role}' introduces {comparison}: order {order} after {last_order}",
+            )
+        last_order = order
+
+
 # Workflow templates keyed by name
 workflow_templates: Dict[str, List[ApprovalStep]] = {
     "branch-coordination": [
@@ -241,6 +296,9 @@ workflow_templates: Dict[str, List[ApprovalStep]] = {
     ],
 }
 
+for _template_name, _steps in workflow_templates.items():
+    _validate_template_orders(_template_name, _steps)
+
 
 @log_call
 def list_roles() -> list[str]:
@@ -258,6 +316,7 @@ def get_approval_steps_for_phase(
         steps = workflow_templates[workflow]
     except KeyError as exc:
         raise KeyError(f"Unknown workflow '{workflow}'") from exc
+    _validate_template_orders(workflow, steps)
     return [step.model_copy() for step in steps]
 
 
