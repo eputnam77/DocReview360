@@ -151,6 +151,7 @@ from ..workflows import (
     get_workflow,
     list_workflows,
     start_workflow,
+    workflow_templates,
     workflows,
     list_roles,
 )
@@ -551,28 +552,49 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     project = ProjectModel(**body.model_dump())
     add_project(project)
 
-    # Handle workflow assignment.  ``body.workflow`` may either reference an
-    # existing workflow or specify the identifier for a new workflow.  Earlier
-    # revisions always created a new workflow even when one already existed,
-    # while the subsequent fix assumed the identifier was pre-existing and never
-    # created a workflow.  Both behaviors caused inconsistencies: callers could
-    # end up with a dangling reference or with a mismatched identifier.  The
-    # logic below strikes a balance by creating a minimal workflow only when the
-    # supplied identifier does not already exist.
+    # Handle workflow assignment when a template has been provided.  Rather than
+    # manually constructing a minimal ``WorkflowModel`` we now delegate to
+    # :func:`create_workflow`, ensuring approval steps and workflow metadata are
+    # initialized consistently with the template definition.
     if body.workflow:
-        if body.workflow not in workflows:
-            workflows[body.workflow] = WorkflowModel(
-                id=body.workflow,
-                project=project.id,
-                phase=body.phase or body.workflow,
-                phases=[body.phase or body.workflow],
-                template=body.workflow,
-                approval_steps=[],
-                approval_roles=[],
-                approval_sequence=[],
-                mode="sequential",
-            )
-        project.workflow = body.workflow
+        doc_type_obj = get_document_type(body.doc_type) if body.doc_type else None
+        phases: list[str] = []
+        if doc_type_obj:
+            phases = list(doc_type_obj.phases)
+
+        if body.phase:
+            if phases:
+                if body.phase in phases:
+                    idx = phases.index(body.phase)
+                    phases = phases[idx:] + phases[:idx]
+                else:
+                    phases = [body.phase] + [p for p in phases if p != body.phase]
+            else:
+                phases = [body.phase]
+
+        if not phases:
+            fallback_phase = body.phase or "start"
+            phases = [fallback_phase]
+
+        doc_default_template = (
+            doc_type_obj.default_template_id
+            if doc_type_obj and doc_type_obj.default_template_id
+            else None
+        )
+        requested_template = body.workflow
+        if requested_template in workflow_templates:
+            template_name = requested_template
+        elif (
+            doc_default_template is not None
+            and doc_default_template in workflow_templates
+        ):
+            template_name = doc_default_template
+        else:
+            template_name = "branch-coordination"
+
+        workflow = create_workflow(project.id, phases, template=template_name)
+        project.workflow = workflow.id
+        project.initial_phase = workflow.phase
     # Previously a workflow was automatically created whenever a phase was
     # supplied, even if the caller did not request one.  This behavior made it
     # impossible to create a project without a workflow.  Now we only create a
