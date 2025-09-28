@@ -353,6 +353,7 @@ async def ping() -> dict[str, str]:
 
     return {"status": "ok"}
 
+
 # Add CORS middleware to allow frontend requests
 #
 # Previously, the API only allowed requests from hard-coded localhost
@@ -485,9 +486,9 @@ async def set_user_status(
 ) -> dict[str, Any]:
     """Set the active status for ``username`` (admin only)."""
 
-    if username not in auth.FAKE_USERS_DB:
+    if not auth.USER_REPOSITORY.get_user(username):
         raise HTTPException(status_code=404, detail="User not found")
-    auth.FAKE_USERS_DB[username]["active"] = body.active
+    auth.USER_REPOSITORY.set_active(username, body.active)
     return {"username": username, "active": body.active}
 
 
@@ -584,10 +585,7 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
         requested_template = body.workflow
         if requested_template in workflow_templates:
             template_name = requested_template
-        elif (
-            doc_default_template is not None
-            and doc_default_template in workflow_templates
-        ):
+        elif doc_default_template is not None and doc_default_template in workflow_templates:
             template_name = doc_default_template
         else:
             template_name = "branch-coordination"
@@ -1588,6 +1586,7 @@ async def rename_phase_endpoint(name: str, body: PhaseModel) -> list[str]:
 
     # Update any projects that stored the phase before a workflow was created.
     from ..search import projects
+
     for proj in projects.values():
         if getattr(proj, "initial_phase", None) == name:
             proj.initial_phase = body.name
