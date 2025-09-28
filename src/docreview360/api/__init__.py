@@ -61,7 +61,7 @@ from ..archive import (
 from ..audit import AuditLogEntry, get_audit_log, log_audit_event
 from ..cache import cache_get, cache_set, clear_cache
 from ..cms import save_to_cms
-from ..comments import CommentModel, add_comment, list_comments
+from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..doc_types import (
@@ -1097,7 +1097,8 @@ async def get_revision_endpoint(doc_id: str, rev_id: str) -> DocumentRevision:
 @app.post("/documents/{doc_id}/comments", response_model=CommentModel, status_code=201)
 async def add_comment_endpoint(doc_id: str, body: CommentCreate) -> CommentModel:
     """Create a comment on the given document."""
-    return add_comment(doc_id, body.user, body.text, parent=body.parent)
+    comment = add_comment(doc_id, body.user, body.text, parent=body.parent)
+    return render_comment_for_response(comment)
 
 
 @app.get("/documents/{doc_id}/comments", response_model=list[CommentModel])
@@ -1106,7 +1107,7 @@ async def list_comments_endpoint(doc_id: str) -> list[CommentModel]:
     comments = list_comments(doc_id)
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id, target="comments", count=len(comments))
-    return comments
+    return [render_comment_for_response(comment) for comment in comments]
 
 
 @app.get("/documents/{doc_id}/export")
