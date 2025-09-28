@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -10,6 +11,20 @@ from pydantic import BaseModel, Field, ValidationError, computed_field
 
 # Path to store persistent data
 DATA_FILE = Path("document_types.json")
+
+
+def _env_flag_enabled(value: str | None) -> bool:
+    """Interpret truthy string values for the persistence feature flag."""
+
+    if value is None:
+        return True
+    normalized = value.strip().lower()
+    return normalized not in {"0", "false", "no", "off"}
+
+
+DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE = _env_flag_enabled(
+    os.getenv("DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE")
+)
 
 
 class DocumentTypeModel(BaseModel):
@@ -212,9 +227,12 @@ def _bootstrap_sample() -> None:
 
 
 # Load from disk or bootstrap
-if not load_state():
+if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE and load_state():
+    pass
+else:
     _bootstrap_sample()
-    save_state()
+    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        save_state()
 
 
 # --------------------------
@@ -245,7 +263,8 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
             raise ValueError(f"Document type '{doc_type.name}' already exists")
         return existing
     document_types[doc_type.name] = doc_type
-    save_state()
+    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        save_state()
     return doc_type
 
 
@@ -290,7 +309,8 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
     else:
         document_types[name] = doc_type
 
-    save_state()
+    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        save_state()
     return doc_type
 
 
@@ -298,7 +318,8 @@ def delete_document_type(name: str) -> None:
     """Delete a document type by name and persist changes."""
     try:
         del document_types[name]
-        save_state()
+        if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+            save_state()
     except KeyError as exc:
         raise KeyError(f"Document type '{name}' not found") from exc
 
@@ -347,7 +368,8 @@ def import_document_types(path: str | Path) -> None:
         temp[doc.name] = doc
     document_types.clear()
     document_types.update(temp)
-    save_state()
+    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        save_state()
 
 
 def export_document_types_json() -> str:
@@ -375,7 +397,8 @@ def import_document_types_json(data: str) -> None:
         temp[doc.name] = doc
     document_types.clear()
     document_types.update(temp)
-    save_state()
+    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        save_state()
 
 
 # --------------------------
