@@ -1,5 +1,13 @@
-from docreview360 import rbac
+from pathlib import Path
+
 import pytest
+
+from docreview360 import rbac
+
+
+@pytest.fixture(autouse=True)
+def configure_roles(tmp_path: Path) -> None:
+    rbac.configure_role_repository(tmp_path / "roles.db")
 
 
 def test_has_permission_case_insensitive() -> None:
