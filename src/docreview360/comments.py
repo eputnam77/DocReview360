@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
+from html import escape, unescape
 from typing import Dict, List, Optional
 from uuid import uuid4
 
@@ -24,6 +25,15 @@ class CommentModel(BaseModel):
 
 _comments: Dict[str, List[CommentModel]] = {}
 _emoji = {"smile": "😄", "thumbsup": "👍", "rocket": "🚀"}
+
+# Document the small amount of formatting that survives sanitisation.  Mentions and
+# emoji short codes remain functional while everything else is escaped to render as
+# plain text in HTML clients.
+COMMENT_ALLOWED_FORMATTING = (
+    "Plain text only. The platform preserves newline characters, ``@mentions`` and "
+    "emoji short codes such as ``:rocket:`` while escaping any HTML or Markdown"
+    " markup."
+)
 
 
 def _replace_emojis(text: str) -> str:
@@ -60,6 +70,25 @@ def _extract_mentions(text: str) -> list[str]:
     return result
 
 
+def _sanitize_comment_text(text: str) -> str:
+    """Return text safe for storage and rendering in HTML contexts."""
+
+    sanitized = escape(text, quote=False)
+    return _replace_emojis(sanitized)
+
+
+def render_comment_for_response(comment: CommentModel) -> CommentModel:
+    """Return a copy of ``comment`` with sanitised text for API responses.
+
+    The helper ensures each response flows through a single, well-documented
+    sanitisation path.  ``COMMENT_ALLOWED_FORMATTING`` describes the formatting that
+    survives this process for client renderers.
+    """
+
+    safe_text = _sanitize_comment_text(unescape(comment.text))
+    return comment.model_copy(update={"text": safe_text})
+
+
 def add_comment(document: str, user: str, text: str, parent: str | None = None) -> CommentModel:
     """Store a comment for the given document parsing mentions and emoji."""
     if not document or not user or not text or not text.strip():
@@ -67,13 +96,13 @@ def add_comment(document: str, user: str, text: str, parent: str | None = None) 
         # produced empty, unusable comments.  Reject such input so callers must
         # provide meaningful content.
         raise ValueError("document, user and text are required")
-    text = _replace_emojis(text.strip())
-    mentions = _extract_mentions(text)
+    sanitized_text = _sanitize_comment_text(text.strip())
+    mentions = _extract_mentions(sanitized_text)
     comment = CommentModel(
         id=uuid4().hex,
         document=document,
         user=user,
-        text=text,
+        text=sanitized_text,
         mentions=mentions,
         parent=parent,
     )
