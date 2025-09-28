@@ -63,10 +63,10 @@ pipx install uv poetry
 5. **Start the backend API server**
 
    ```bash
-   uvicorn docreview360.api:app --reload
+   uvicorn docreview360.api:app --reload --host 0.0.0.0
    ```
 
-   This launches the FastAPI backend on port 8000.
+   This launches the FastAPI backend on port 8000 and binds to all interfaces so Playwright or remote browsers can reach it.
 
 6. **Set up and run the React frontend (Node.js 18+ required)**
 
