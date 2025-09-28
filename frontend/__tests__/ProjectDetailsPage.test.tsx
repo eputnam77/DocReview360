@@ -1,7 +1,10 @@
 import React from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProjectDetailsPage from "../pages/projects/[id]";
+import AuditTimeline from "@/components/AuditTimeline";
+import { Disclosure, Transition } from "@headlessui/react";
 import { useUserStore } from "@/state/user";
 
 const approvalTableSpy = vi.fn();
@@ -54,18 +57,22 @@ vi.mock("lucide-react", () => {
 });
 
 function primitiveStub(tag: keyof React.JSX.IntrinsicElements) {
-  return ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
-    React.createElement(tag, props, children);
+  return React.forwardRef<HTMLElement, React.PropsWithChildren<Record<string, unknown>>>(
+    ({ children, ...props }, ref) => React.createElement(tag, { ...props, ref }, children),
+  );
 }
 
-vi.mock("@/components", () => {
+vi.mock("@/components", async () => {
   const React = require("react");
+  const auditTimelineModule = await vi.importActual<
+    typeof import("@/components/AuditTimeline")
+  >("@/components/AuditTimeline");
   return {
     ApprovalTable: (props: Record<string, unknown>) => {
       approvalTableSpy(props);
       return React.createElement("div", { "data-testid": "approval-table" });
     },
-    AuditTimeline: () => React.createElement("div", null),
+    AuditTimeline: auditTimelineModule.default,
     ProjectSummaryBar: () => React.createElement("div", null),
     KpiCards: () => React.createElement("div", null),
     PhaseAdvanceModal: () => React.createElement("div", null),
@@ -92,19 +99,74 @@ vi.mock("@/components/ui/dialog", () => ({
 
 vi.mock("@headlessui/react", () => {
   const React = require("react");
-  const Disclosure: any = ({ children }: { children: any }) =>
-    React.createElement(
-      React.Fragment,
-      null,
-      typeof children === "function" ? children({ open: true }) : children,
+
+  const forwardRefSymbol = Symbol.for("react.forward_ref");
+
+  const ensureSupportsRef = (element: any) => {
+    const type = element?.type;
+    if (!type) return false;
+    if (typeof type === "string") return true;
+    if (typeof type === "object" && type !== null && type.$$typeof === forwardRefSymbol) {
+      return true;
+    }
+    return false;
+  };
+
+  const Transition = ({ show = true, as: Component = React.Fragment, children }: any) => {
+    if (!show) {
+      return null;
+    }
+
+    const resolved = typeof children === "function" ? children({}) : children;
+
+    if (!React.isValidElement(resolved)) {
+      return React.createElement(Component, null, resolved);
+    }
+
+    if (!ensureSupportsRef(resolved)) {
+      throw new Error("Did you forget to passthrough the `ref` to the actual DOM node?");
+    }
+
+    const childRef = resolved.ref ?? React.createRef();
+
+    return React.createElement(Component, null, React.cloneElement(resolved, { ref: childRef }));
+  };
+
+  const DisclosureContext = React.createContext<any>(null);
+
+  const Disclosure: any = ({ children, defaultOpen = false }: any) => {
+    const [open, setOpen] = React.useState(defaultOpen);
+    const toggle = React.useCallback(() => setOpen((value: boolean) => !value), []);
+    const contextValue = React.useMemo(() => ({ open, toggle }), [open, toggle]);
+    const renderedChildren =
+      typeof children === "function" ? children({ open }) : children;
+
+    return React.createElement(
+      DisclosureContext.Provider,
+      { value: contextValue },
+      renderedChildren,
     );
-  Disclosure.Button = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
-    React.createElement("button", props, children);
+  };
+
+  Disclosure.Button = React.forwardRef(
+    ({ children, onClick, ...props }: any, ref: any) => {
+      const context = React.useContext(DisclosureContext);
+      if (!context) {
+        throw new Error("Disclosure.Button must be used within Disclosure");
+      }
+
+      const handleClick = (event: any) => {
+        context.toggle();
+        onClick?.(event);
+      };
+
+      return React.createElement("button", { ...props, onClick: handleClick, ref }, children);
+    },
+  );
 
   return {
     Disclosure,
-    Transition: ({ children }: React.PropsWithChildren) =>
-      React.createElement(React.Fragment, null, children),
+    Transition,
   };
 });
 
@@ -198,5 +260,29 @@ describe("ProjectDetailsPage", () => {
     expect(approvalTableSpy).toHaveBeenCalled();
     const currentUsers = approvalTableSpy.mock.calls.map(([props]: [Record<string, unknown>]) => props.currentUser);
     expect(currentUsers).toContain("alice");
+  });
+
+  it("allows expanding the audit history panel with the real Transition", () => {
+    const HistoryPanel = () => (
+      <Disclosure defaultOpen>
+        {({ open }) => (
+          <>
+            <Disclosure.Button>Audit History</Disclosure.Button>
+            <Transition show={open}>
+              <AuditTimeline events={[]} />
+            </Transition>
+          </>
+        )}
+      </Disclosure>
+    );
+
+    const { unmount } = render(<HistoryPanel />);
+    const toggle = screen.getByRole("button", { name: /audit history/i });
+
+    fireEvent.click(toggle);
+
+    expect(() => fireEvent.click(toggle)).not.toThrow();
+
+    unmount();
   });
 });
