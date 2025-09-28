@@ -16,21 +16,41 @@ from pydantic import BaseModel
 T = TypeVar("T")
 
 
+SAFE_DEFAULT_ENVS = {"", "dev", "development", "test", "testing"}
+
+
+def _current_environment() -> str:
+    """Return the current deployment environment in lowercase."""
+
+    return os.getenv("DOCREVIEW360_ENV", "").strip().lower()
+
+
 def _env_or_default(
     name: str,
     *,
     default: str,
     cast: Callable[[str], T] | None = None,
+    required: bool = False,
+    allow_defaults_in: set[str] = SAFE_DEFAULT_ENVS,
 ) -> T:
     """Return an environment variable or fall back to a development default.
 
     When ``name`` is unset, the ``default`` is returned and a ``RuntimeWarning``
-    is emitted so production deployments surface the misconfiguration while
-    developers can rely on sensible defaults.
+    is emitted when the current environment (``DOCREVIEW360_ENV``) is one of the
+    development environments listed in ``allow_defaults_in``. When ``required``
+    is ``True`` and the environment is outside that allow-list, a
+    :class:`RuntimeError` is raised so production deployments fail fast instead
+    of silently using insecure defaults.
     """
 
     value = os.getenv(name)
     if value is None or value == "":
+        current_env = _current_environment()
+        if required and current_env not in allow_defaults_in:
+            raise RuntimeError(
+                f"{name} environment variable must be set for the"
+                f" {current_env or 'production'} environment."
+            )
         warnings.warn(
             f"{name} environment variable not set; using development default",
             RuntimeWarning,
@@ -46,7 +66,7 @@ DEFAULT_ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 SECRET_KEY = _env_or_default(
-    "DOCREVIEW360_SECRET_KEY", default=DEFAULT_SECRET_KEY
+    "DOCREVIEW360_SECRET_KEY", default=DEFAULT_SECRET_KEY, required=True
 )
 ALGORITHM = _env_or_default(
     "DOCREVIEW360_ALGORITHM", default=DEFAULT_ALGORITHM
@@ -62,7 +82,7 @@ DEFAULT_OIDC_SECRET_KEY = "docreview360-oidc-dev-secret"
 DEFAULT_OIDC_TOKEN_EXPIRE_MINUTES = 30
 
 OIDC_SECRET_KEY = _env_or_default(
-    "DOCREVIEW360_OIDC_SECRET_KEY", default=DEFAULT_OIDC_SECRET_KEY
+    "DOCREVIEW360_OIDC_SECRET_KEY", default=DEFAULT_OIDC_SECRET_KEY, required=True
 )
 OIDC_ALGORITHM = _env_or_default(
     "DOCREVIEW360_OIDC_ALGORITHM", default=DEFAULT_ALGORITHM
