@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
+from filelock import FileLock
 from pydantic import BaseModel, Field, ValidationError, computed_field
 
 # Path to store persistent data
@@ -48,6 +51,14 @@ class DocumentTypeModel(BaseModel):
 
 # In-memory store
 document_types: Dict[str, DocumentTypeModel] = {}
+
+# Track persisted version metadata for optimistic locking
+_STATE_VERSION: int = 0
+_STATE_UPDATED_AT: str | None = None
+
+
+class StaleStateError(RuntimeError):
+    """Raised when attempting to persist stale in-memory document type data."""
 
 # Default phases per document type
 DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
@@ -179,34 +190,128 @@ DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 # --------------------------
 
 
-def save_state() -> None:
-    """Persist document_types to disk."""
+def _state_lock() -> FileLock:
+    """Return a file-based lock guarding state persistence."""
+
+    return FileLock(str(DATA_FILE) + ".lock")
+
+
+def _atomic_write(path: Path, data: str) -> None:
+    """Write ``data`` to ``path`` atomically using a temporary file."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=path.parent, delete=False
+    ) as tmp_file:
+        tmp_file.write(data)
+        tmp_name = tmp_file.name
+    os.replace(tmp_name, path)
+
+
+def _load_persisted_payload() -> Tuple[list[dict[str, Any]], int, str | None, bool]:
+    """Return persisted document types, version, timestamp and file presence."""
+
+    exists = DATA_FILE.exists()
+    if not exists:
+        return [], 0, None, False
     try:
-        json_data = [doc.model_dump() for doc in document_types.values()]
-        DATA_FILE.write_text(json.dumps(json_data, indent=2))
-    except OSError as exc:
-        raise RuntimeError(f"Failed to save document types to {DATA_FILE}") from exc
+        payload = json.loads(DATA_FILE.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Failed to read document types from {DATA_FILE}") from exc
+
+    if isinstance(payload, list):
+        return payload, 0, None, True
+    if not isinstance(payload, dict):
+        raise ValueError("Saved document types must be a list or mapping")
+
+    if "document_types" not in payload:
+        raise ValueError("Saved document types mapping must include 'document_types'")
+
+    document_payload = payload["document_types"]
+    if not isinstance(document_payload, list):
+        raise ValueError("Saved document types mapping must include a list under 'document_types'")
+
+    version = payload.get("version")
+    if not isinstance(version, int):
+        raise ValueError("Saved document types version must be an integer")
+
+    updated_at = payload.get("updated_at")
+    if updated_at is not None and not isinstance(updated_at, str):
+        raise ValueError("Saved document types updated_at must be a string when provided")
+
+    return document_payload, version, updated_at, True
+
+
+def save_state(expected_version: int | None = None) -> None:
+    """Persist document_types to disk with optimistic locking."""
+
+    global _STATE_VERSION, _STATE_UPDATED_AT
+
+    documents = [doc.model_dump() for doc in document_types.values()]
+    if expected_version is None:
+        expected_version = _STATE_VERSION
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    with _state_lock():
+        _, current_version, _, _ = _load_persisted_payload()
+        file_version = current_version
+
+        if file_version != expected_version:
+            raise StaleStateError(
+                "Document types changed on disk while attempting to save. "
+                "Reload the state before retrying the save."
+            )
+
+        new_version = file_version + 1
+        payload = {
+            "version": new_version,
+            "updated_at": timestamp,
+            "document_types": documents,
+        }
+
+        try:
+            serialized = json.dumps(payload, indent=2)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("Failed to serialize document types for persistence") from exc
+
+        try:
+            _atomic_write(DATA_FILE, serialized)
+        except OSError as exc:
+            raise RuntimeError(f"Failed to save document types to {DATA_FILE}") from exc
+
+        _STATE_VERSION = new_version
+        _STATE_UPDATED_AT = timestamp
 
 
 def load_state() -> bool:
     """Load document_types from disk. Returns True if loaded, False if file missing."""
-    if not DATA_FILE.exists():
-        return False
-    try:
-        data = json.loads(DATA_FILE.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Failed to read document types from {DATA_FILE}") from exc
 
-    if not isinstance(data, list):
-        raise ValueError("Saved document types must be a list")
+    global _STATE_VERSION, _STATE_UPDATED_AT
+
+    with _state_lock():
+        try:
+            payload, version, updated_at, exists = _load_persisted_payload()
+        except RuntimeError:
+            raise
+        except ValueError as exc:
+            raise ValueError("Invalid document types data on disk") from exc
+
+    if not exists:
+        _STATE_VERSION = 0
+        _STATE_UPDATED_AT = None
+        return False
 
     document_types.clear()
-    for item in data:
+    for item in payload:
         try:
             doc = DocumentTypeModel(**item)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry in saved file: {item}") from exc
         document_types[doc.name] = doc
+
+    _STATE_VERSION = version
+    _STATE_UPDATED_AT = updated_at
     return True
 
 
@@ -242,6 +347,7 @@ else:
 
 def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentTypeModel:
     """Store a document type in memory and persist it."""
+    expected_version = _STATE_VERSION
     if isinstance(doc_type, dict):
         doc_type = DocumentTypeModel(**doc_type)
     # Avoid accidental overwrites; callers should use ``update_document_type``
@@ -262,9 +368,15 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
         if existing.model_dump() != doc_type.model_dump():
             raise ValueError(f"Document type '{doc_type.name}' already exists")
         return existing
+    previous_state = dict(document_types)
     document_types[doc_type.name] = doc_type
     if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        save_state()
+        try:
+            save_state(expected_version=expected_version)
+        except Exception:
+            document_types.clear()
+            document_types.update(previous_state)
+            raise
     return doc_type
 
 
@@ -282,6 +394,9 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
     """Update an existing document type and persist changes."""
     if name not in document_types:
         raise KeyError(f"Document type '{name}' not found")
+
+    expected_version = _STATE_VERSION
+    previous_state = dict(document_types)
 
     # If the document type is renamed, propagate that change to any projects that
     # reference the old name.  Tests create a project, rename the document type
@@ -310,16 +425,28 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
         document_types[name] = doc_type
 
     if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        save_state()
+        try:
+            save_state(expected_version=expected_version)
+        except Exception:
+            document_types.clear()
+            document_types.update(previous_state)
+            raise
     return doc_type
 
 
 def delete_document_type(name: str) -> None:
     """Delete a document type by name and persist changes."""
+    expected_version = _STATE_VERSION
+    previous_state = dict(document_types)
     try:
         del document_types[name]
         if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-            save_state()
+            try:
+                save_state(expected_version=expected_version)
+            except Exception:
+                document_types.clear()
+                document_types.update(previous_state)
+                raise
     except KeyError as exc:
         raise KeyError(f"Document type '{name}' not found") from exc
 
@@ -343,6 +470,8 @@ def export_document_types(path: str | Path) -> None:
 
 def import_document_types(path: str | Path) -> None:
     """Load document types from a JSON file and persist."""
+    expected_version = _STATE_VERSION
+    previous_state = dict(document_types)
     try:
         data = json.loads(Path(path).read_text())
     except OSError as exc:
@@ -369,7 +498,12 @@ def import_document_types(path: str | Path) -> None:
     document_types.clear()
     document_types.update(temp)
     if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        save_state()
+        try:
+            save_state(expected_version=expected_version)
+        except Exception:
+            document_types.clear()
+            document_types.update(previous_state)
+            raise
 
 
 def export_document_types_json() -> str:
@@ -380,6 +514,8 @@ def export_document_types_json() -> str:
 
 def import_document_types_json(data: str) -> None:
     """Load document types from a JSON string and persist."""
+    expected_version = _STATE_VERSION
+    previous_state = dict(document_types)
     try:
         payload = json.loads(data)
     except json.JSONDecodeError as exc:
@@ -398,7 +534,12 @@ def import_document_types_json(data: str) -> None:
     document_types.clear()
     document_types.update(temp)
     if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        save_state()
+        try:
+            save_state(expected_version=expected_version)
+        except Exception:
+            document_types.clear()
+            document_types.update(previous_state)
+            raise
 
 
 # --------------------------
