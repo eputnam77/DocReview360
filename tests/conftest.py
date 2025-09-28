@@ -26,6 +26,7 @@ os.environ.setdefault("DOCREVIEW360_ACCESS_EXPIRE_MINUTES", "30")
 os.environ.setdefault("DOCREVIEW360_OIDC_SECRET_KEY", "test-oidc")
 os.environ.setdefault("DOCREVIEW360_OIDC_ALGORITHM", "HS256")
 os.environ.setdefault("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
+os.environ.setdefault("DOCREVIEW360_REQUIRE_MFA", "0")
 
 
 @pytest.fixture(autouse=True)
@@ -38,6 +39,7 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_OIDC_SECRET_KEY", "test-oidc")
     monkeypatch.setenv("DOCREVIEW360_OIDC_ALGORITHM", "HS256")
     monkeypatch.setenv("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
+    monkeypatch.setenv("DOCREVIEW360_REQUIRE_MFA", "0")
 
 
 @pytest.hookimpl

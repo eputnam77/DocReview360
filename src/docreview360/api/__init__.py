@@ -1874,9 +1874,11 @@ async def get_sign_status(sig_id: str) -> dict[str, str]:
 
 
 @app.post("/token", response_model=auth.Token)
-async def token(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+async def token(
+    request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends()
+) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
-    token_resp = await auth.login_for_access_token(form_data)
+    token_resp = await auth.login_for_access_token(form_data, request)
     response.set_cookie(
         "access_token",
         token_resp.access_token,
@@ -1894,9 +1896,11 @@ async def token(response: Response, form_data: OAuth2PasswordRequestForm = Depen
 
 
 @app.post("/oidc/token", response_model=auth.Token)
-async def oidc_token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+async def oidc_token(
+    request: Request, form_data: OAuth2PasswordRequestForm = Depends()
+) -> auth.Token:
     """Return an ID token using the OIDC flow."""
-    return await auth.login_for_oidc_token(form_data)
+    return await auth.login_for_oidc_token(form_data, request)
 
 
 @app.get("/me")
