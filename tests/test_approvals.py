@@ -11,13 +11,17 @@ from fastapi.testclient import TestClient
 
 from docreview360.api import app
 from docreview360.approvals import (
+    SignatureValidationError,
     approvals,
     create_approval,
     handle_signature_return,
+    refresh_signature_validation_policy,
     send_for_signature,
 )
+from docreview360.audit import clear_audit_log, get_audit_log
 from docreview360.documents import import_document
 from docreview360.integrations.signature import documenso
+from docreview360.logs import clear_logs, logs
 
 
 def test_approval_lifecycle() -> None:
@@ -188,6 +192,66 @@ def test_signature_invalidated() -> None:
     documenso.complete_signature(appr.signature_id)
     with pytest.raises(ValueError):
         asyncio.run(handle_signature_return(appr.signature_id, document=doc))
+
+
+def test_callback_without_certificate_rejected_by_default(monkeypatch) -> None:
+    approvals.clear()
+    clear_logs()
+    clear_audit_log()
+    monkeypatch.delenv("DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK", raising=False)
+    refresh_signature_validation_policy()
+
+    doc = import_document("doc-no-cert", b"hello")
+    appr = create_approval(
+        "wf-no-cert",
+        "eve",
+        doc.id,
+        document=b"hello",
+        signature_provider="documenso",
+    )
+    send_for_signature(appr.id, doc.id, "eve")
+    documenso.complete_signature(appr.signature_id)
+
+    with pytest.raises(SignatureValidationError) as excinfo:
+        asyncio.run(handle_signature_return(appr.signature_id))
+
+    assert excinfo.value.detail["error"] == "missing_certificate"
+    assert excinfo.value.detail["approval_id"] == appr.id
+
+
+def test_callback_without_certificate_allows_flagged_fallback(monkeypatch) -> None:
+    approvals.clear()
+    clear_logs()
+    clear_audit_log()
+    monkeypatch.setenv("DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK", "true")
+    refresh_signature_validation_policy()
+
+    doc = import_document("doc-fallback", b"hello")
+    appr = create_approval(
+        "wf-fallback",
+        "frank",
+        doc.id,
+        document=b"hello",
+        signature_provider="documenso",
+    )
+    send_for_signature(appr.id, doc.id, "frank")
+    documenso.complete_signature(appr.signature_id)
+
+    asyncio.run(handle_signature_return(appr.signature_id))
+
+    assert appr.state == "approved"
+    event = next(e for e in reversed(logs) if e.action == "signature_validation_bypassed")
+    assert event.severity == "warning"
+    assert event.details["reason"] == "missing_certificate"
+
+    audit_events = get_audit_log(doc.id)
+    bypass = [e for e in audit_events if e.event == "signature_validation_bypassed"]
+    assert bypass, "expected audit log entry for validation bypass"
+    assert bypass[-1].context["fallback_enabled"] is True
+    assert bypass[-1].context["reason"] == "missing_certificate"
+
+    monkeypatch.delenv("DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK", raising=False)
+    refresh_signature_validation_policy()
 
 
 def test_send_for_signature_authorization_and_lock() -> None:
