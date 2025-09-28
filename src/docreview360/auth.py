@@ -93,6 +93,17 @@ OIDC_TOKEN_EXPIRE_MINUTES = _env_or_default(
     cast=int,
 )
 
+
+def _as_bool(value: str) -> bool:
+    """Return ``True`` when ``value`` represents an enabled boolean."""
+
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+REQUIRE_MFA = _env_or_default(
+    "DOCREVIEW360_REQUIRE_MFA", default="false", cast=_as_bool
+)
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token", auto_error=False)
 
@@ -196,27 +207,51 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
     return User(username=username, active=True)
 
 
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
+async def _extract_otp(request: Request | None) -> str:
+    """Return the submitted one-time password if present."""
+
+    if request is None:
+        return ""
+    form = await request.form()
+    otp = form.get("otp")
+    return str(otp or "")
+
+
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request | None = None,
+) -> Token:
     """Issue a short-lived JWT bearer token."""
 
-    user = authenticate_user(form_data.username, form_data.password)
+    if REQUIRE_MFA:
+        otp = await _extract_otp(request)
+        user = authenticate_mfa(form_data.username, form_data.password, otp)
+    else:
+        user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username, password, or OTP",
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token({"sub": user.username}, access_token_expires)
     return Token(access_token=access_token, token_type="bearer")
 
 
-async def login_for_oidc_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
+async def login_for_oidc_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request | None = None,
+) -> Token:
     """Return an ID token for valid credentials using a separate secret."""
-    user = authenticate_user(form_data.username, form_data.password)
+    if REQUIRE_MFA:
+        otp = await _extract_otp(request)
+        user = authenticate_mfa(form_data.username, form_data.password, otp)
+    else:
+        user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username, password, or OTP",
         )
     token_expires = timedelta(minutes=OIDC_TOKEN_EXPIRE_MINUTES)
     id_token = create_id_token({"sub": user.username}, token_expires)
