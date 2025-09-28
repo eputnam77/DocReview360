@@ -3,9 +3,7 @@ from docreview360.documents import DocumentModel
 
 
 def setup_function(_):
-    search.search_index.projects.clear()
-    search.search_index.index.clear()
-    search.search_index._next_project_number = 1
+    search._reset_state_for_testing()
 
 
 def test_search_index_flow():
@@ -16,4 +14,4 @@ def test_search_index_flow():
     assert "hello" in search.search_index.index
     search.search_index.remove_document("d1")
     assert search.search_index.index["hello"] == set()
-    assert search.next_project_number() == 2
+    assert search.next_project_number() == 3

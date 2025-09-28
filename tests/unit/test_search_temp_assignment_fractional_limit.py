@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from docreview360.search import (
-    ProjectModel,
     TEMP_ASSIGN_MAX_DAYS,
+    ProjectModel,
     assign_temporary,
     project_lock,
     projects,
