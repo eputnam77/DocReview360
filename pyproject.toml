@@ -25,6 +25,7 @@ dependencies = [
   "fonttools==4.58.5",
   "Pillow==11.3.0",
   "click==8.1.8",
+  "filelock==3.18.0",
   "PyYAML==6.0.2",
   "zipp==3.19.1",
   "wikipedia==1.4.0",
