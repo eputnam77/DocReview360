@@ -4,7 +4,7 @@ This walkthrough helps you explore DocReview360 from the perspective of a new us
 
 ## 1. Access the projects page
 
-1. Start the server with `uvicorn docreview360.api:app --reload`.
+1. Start the server with `uvicorn docreview360.api:app --reload --host 0.0.0.0` so remote browsers and Playwright tests can reach it.
 2. Open `http://127.0.0.1:8000/` in your browser.
 3. Sign in with the credentials from your `docreview360.yml` file (the defaults are `admin/admin`).
 4. The projects page greets you and provides links to the editor and API docs.

@@ -125,4 +125,5 @@ if (-not (Test-Path $venvPython)) {
 }
 
 Write-Host "Starting DocReview360 backend with $venvPython" -ForegroundColor Green
-& $venvPython -m uvicorn docreview360.api:app --reload
+# Bind to 0.0.0.0 so Playwright and other remote browsers can reach the dev server.
+& $venvPython -m uvicorn docreview360.api:app --reload --host 0.0.0.0
