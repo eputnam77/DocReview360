@@ -46,6 +46,8 @@ dependencies = [
   "psycopg[binary]==3.2.9",
   "pymysql==1.1.1",
   "python-dotenv==1.0.0",
+  "bcrypt==4.2.0",
+  "pyotp==2.9.0",
   "markdown-it-py==3.0.0",
   "y-py==0.6.2",
   "ypy-websocket==0.12.4",

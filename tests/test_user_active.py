@@ -38,7 +38,7 @@ def test_inactive_users_not_assigned_and_cannot_authenticate() -> None:
         chosen = writer_assign.assign_technical_writer("p1", ["alice", "bob"], cfg)
         assert chosen == "alice"
     finally:
-        auth.FAKE_USERS_DB["bob"]["active"] = True
+        auth.USER_REPOSITORY.set_active("bob", True)
         search.projects.clear()
         search.projects.update(snap_projects)
         writer_assign.projects = search.projects
