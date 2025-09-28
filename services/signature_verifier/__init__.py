@@ -93,9 +93,9 @@ def verify_document_signatures(
 
     # The background verification task typically runs as the ``system`` user
     # which should always possess the required permission.  Some tests mutate
-    # ``rbac.USER_ROLES`` and forget to restore the default mapping leaving the
-    # system account without any roles.  Ensure the account retains its admin
-    # role before performing the permission check.
+    # the role assignments and forget to restore the default mapping leaving
+    # the system account without any roles.  Ensure the account retains its
+    # admin role before performing the permission check.
     if username == "system" and not rbac.has_role("system", "admin"):
         rbac.add_role("system", "admin")
 
