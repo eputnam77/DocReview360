@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { forwardRef, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export type AuditType = "approval" | "review" | "edit" | "phase";
@@ -38,7 +38,7 @@ const formatMessage = (e: AuditEntry) =>
     ? APPROVAL_EVENT_LABELS[e.message] || e.message
     : e.message;
 
-export default function AuditTimeline({ events }: Props) {
+const AuditTimeline = forwardRef<HTMLDivElement, Props>(({ events }, ref) => {
   const [filters, setFilters] = useState<Record<AuditType, boolean>>({
     approval: true,
     review: true,
@@ -64,7 +64,7 @@ export default function AuditTimeline({ events }: Props) {
     setFilters((f) => ({ ...f, [type]: !f[type] }));
 
   return (
-    <div className="space-y-4">
+    <div ref={ref} className="space-y-4">
       <div className="flex flex-wrap gap-2 text-sm">
         {(Object.keys(TYPE_LABELS) as AuditType[]).map((t) => (
           <label key={t} className="flex items-center gap-1">
@@ -112,5 +112,9 @@ export default function AuditTimeline({ events }: Props) {
       ))}
     </div>
   );
-}
+});
+
+AuditTimeline.displayName = "AuditTimeline";
+
+export default AuditTimeline;
 
