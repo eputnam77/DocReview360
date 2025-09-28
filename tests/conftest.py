@@ -84,3 +84,16 @@ def _reset_document_types() -> None:
         document_types[name] = DocumentTypeModel(
             name=name, template=f"<h1>{name}</h1>", workflow=phases
         )
+
+
+@pytest.fixture(autouse=True)
+def _reset_search(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Provide an isolated persistent store for the search module per test."""
+
+    db_dir = tmp_path_factory.mktemp("search-db")
+    db_path = db_dir / "state.db"
+    monkeypatch.setenv("DOCREVIEW360_SEARCH_DB", str(db_path))
+
+    import docreview360.search as search_module
+
+    search_module._reset_state_for_testing(db_path=db_path)
