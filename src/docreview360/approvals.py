@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import os
 from datetime import datetime, timezone
+from functools import lru_cache
 from io import BytesIO
 from typing import Any, Dict, Iterator, List, Optional
 from urllib.parse import quote, urlparse
@@ -80,9 +81,52 @@ class ApprovalModel(BaseModel):
 approvals: Dict[str, ApprovalModel] = {}
 
 
+class SignatureValidationError(ValueError):
+    """Raised when a signature callback fails validation."""
+
+    def __init__(self, detail: Dict[str, Any]):
+        self.detail = detail
+        message = str(detail.get("message", "signature validation failed"))
+        super().__init__(message)
+
+
+_SIGNATURE_FALLBACK_ENV = "DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK"
+
+
+def _load_approvals_settings() -> Dict[str, Any]:
+    try:
+        from .settings_manager import load_settings
+    except Exception:  # pragma: no cover - settings manager unavailable
+        return {}
+
+    settings = load_settings()
+    cfg = settings.get("approvals", {})
+    if isinstance(cfg, dict):
+        return cfg
+    return {}
+
+
+@lru_cache(maxsize=1)
+def _approvals_settings_cached() -> Dict[str, Any]:
+    return _load_approvals_settings()
+
+
+def _allow_signature_validation_fallback() -> bool:
+    env = os.getenv(_SIGNATURE_FALLBACK_ENV)
+    if env is not None:
+        return env.strip().lower() in {"1", "true", "yes", "on"}
+    settings = _approvals_settings_cached()
+    return bool(settings.get("allow_signature_validation_fallback", False))
+
+
+def refresh_signature_validation_policy() -> None:
+    """Clear cached approval settings (primarily for tests)."""
+
+    _approvals_settings_cached.cache_clear()
+
+
 class SignedApprovalImmutableError(ValueError):
     """Raised when attempting to mutate a signed approval."""
-
 
 
 def create_approval(
@@ -110,9 +154,7 @@ def create_approval(
     if signature_provider is None:
         signature_provider = get_default_provider()
     approval_id = uuid4().hex
-    doc_hash = (
-        hashlib.sha256(document).hexdigest() if document is not None else None
-    )
+    doc_hash = hashlib.sha256(document).hexdigest() if document is not None else None
     approval = ApprovalModel(
         id=approval_id,
         workflow=workflow,
@@ -158,9 +200,7 @@ def create_approval(
         provider_metadata=approval.provider_metadata,
     )
     if reminder_at:
-        app.tasks["docreview360.approval_reminder"].apply_async(
-            (approval_id,), eta=reminder_at
-        )
+        app.tasks["docreview360.approval_reminder"].apply_async((approval_id,), eta=reminder_at)
     if escalate_to and escalation_at:
         app.tasks["docreview360.approval_escalation"].apply_async(
             (approval_id, escalate_to), eta=escalation_at
@@ -308,7 +348,43 @@ async def handle_signature_return(  # noqa: C901
             approval_id=approval.id,
             provider_metadata=approval.provider_metadata,
         )
-        if certificate_url or approval.certificate_url or document_param is not None:
+        missing_certificate = not (certificate_url or approval.certificate_url)
+        explicit_document_supplied = document_param is not None
+        fallback_enabled = _allow_signature_validation_fallback()
+        if missing_certificate and not fallback_enabled and not explicit_document_supplied:
+            detail = {
+                "error": "missing_certificate",
+                "message": "Signature validation failed: certificate is required.",
+                "approval_id": approval.id,
+                "signature_id": signature_id,
+                "provider": approval.signature_provider,
+                "doc_id": doc_id,
+            }
+            raise SignatureValidationError(detail)
+        if missing_certificate and fallback_enabled and not explicit_document_supplied:
+            log_event(
+                "signature_validation_bypassed",
+                severity="warning",
+                approval_id=approval.id,
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+                doc_id=doc_id,
+                fallback_enabled=True,
+                reason="missing_certificate",
+                provider_metadata=approval.provider_metadata,
+            )
+            log_audit_event(
+                doc_id,
+                "signature_validation_bypassed",
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+                approval_id=approval.id,
+                status="fallback",
+                fallback_enabled=True,
+                reason="missing_certificate",
+                provider_metadata=approval.provider_metadata,
+            )
+        else:
             # A document or certificate was supplied explicitly yet verification
             # failed – treat this as a hard error.  When neither is provided the
             # caller expects a best-effort check and we accept the signature.
@@ -361,9 +437,7 @@ async def update_approval_state(  # noqa: C901
 ) -> ApprovalModel:
     approval = approvals[approval_id]
     if approval.state == "approved":
-        raise SignedApprovalImmutableError(
-            "signed approvals cannot be modified; reset required"
-        )
+        raise SignedApprovalImmutableError("signed approvals cannot be modified; reset required")
     wf = workflows.get(approval.workflow)
     if state == "approved" and wf and wf.mode == "sequential":
         for a in approvals.values():
@@ -466,9 +540,7 @@ def send_for_signature(  # noqa: C901
             document = DocumentModel(id=doc_id, content="", history=[])
             documents[doc_id] = document
             link_approval(doc_id, approval.id)
-        approval.document_hash = hashlib.sha256(
-            document.content.encode("utf-8")
-        ).hexdigest()
+        approval.document_hash = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
 
     if return_url is None:
         return_url = os.getenv("SIGNATURE_RETURN_URL")
