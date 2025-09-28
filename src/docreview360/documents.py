@@ -3,19 +3,104 @@
 from __future__ import annotations
 
 import hashlib
+import mimetypes
+import re
 import threading
 from base64 import b64encode
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from uuid import uuid4
 
+import bleach
 from pydantic import BaseModel, Field, field_serializer
 
 from . import fts
 from .audit import log_audit_event
 from .logs import log_event
+from .settings_manager import load_settings
+
+
+DEFAULT_ALLOWED_MIME_TYPES: frozenset[str] = frozenset(
+    {
+        "text/plain",
+        "text/markdown",
+        "text/html",
+        "application/json",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+)
+DEFAULT_MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MiB
+
+# Bleach's defaults omit headings which are common in Markdown content.  Extend the
+# whitelist so Markdown-style HTML headings survive sanitisation while still
+# removing unsafe elements such as ``<script>``.
+_SANITIZE_TAGS: frozenset[str] = frozenset(
+    set(bleach.sanitizer.ALLOWED_TAGS)
+    | {"h1", "h2", "h3", "h4", "h5", "h6", "pre", "code"}
+)
+
+_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
+
+
+def _load_document_policy() -> tuple[int, frozenset[str]]:
+    """Return upload policy from settings or sensible defaults."""
+
+    settings = load_settings()
+    doc_settings = settings.get("documents", {}) if isinstance(settings, dict) else {}
+    max_size = doc_settings.get("max_upload_size", DEFAULT_MAX_UPLOAD_SIZE)
+    try:
+        size_limit = int(max_size)
+    except (TypeError, ValueError):
+        size_limit = DEFAULT_MAX_UPLOAD_SIZE
+
+    allowed = doc_settings.get("allowed_mime_types", DEFAULT_ALLOWED_MIME_TYPES)
+    if isinstance(allowed, Iterable) and not isinstance(allowed, (str, bytes)):
+        allowed_set = frozenset(str(item) for item in allowed)
+    else:
+        allowed_set = DEFAULT_ALLOWED_MIME_TYPES
+
+    if not allowed_set:
+        allowed_set = DEFAULT_ALLOWED_MIME_TYPES
+
+    return size_limit, allowed_set
+
+
+def sanitize_content(content: str) -> str:
+    """Scrub HTML/Markdown content using Bleach."""
+
+    stripped = _SCRIPT_RE.sub("", content)
+    return bleach.clean(
+        stripped,
+        tags=_SANITIZE_TAGS,
+        attributes=bleach.sanitizer.ALLOWED_ATTRIBUTES,
+        protocols=bleach.sanitizer.ALLOWED_PROTOCOLS,
+        strip=True,
+    )
+
+
+def _detect_mime_type(data: bytes, filename: str) -> str:
+    """Best-effort MIME detection using ``python-magic`` with fallbacks."""
+
+    mime: str | None = None
+    try:  # pragma: no cover - dependency errors fall back to mimetypes
+        import magic  # type: ignore[import-not-found]
+
+    except Exception:  # pragma: no cover - optional dependency
+        magic = None  # type: ignore[assignment]
+
+    if magic is not None:
+        try:
+            detector = magic.Magic(mime=True)
+            mime = detector.from_buffer(data)
+        except Exception:  # pragma: no cover - libmagic failure
+            mime = None
+
+    if not mime:
+        mime, _ = mimetypes.guess_type(filename)
+
+    return mime or "application/octet-stream"
 
 
 class DocumentRevision(BaseModel):
@@ -145,6 +230,14 @@ def import_document(
     priority: Optional[int] = None,
 ) -> DocumentModel:
     """Create a document from uploaded bytes."""
+    size_limit, allowed_types = _load_document_policy()
+    if len(data) > size_limit:
+        raise ValueError("document exceeds configured size limit")
+
+    mime_type = _detect_mime_type(data, filename)
+    if mime_type not in allowed_types:
+        raise ValueError(f"unsupported MIME type: {mime_type}")
+
     if filename.lower().endswith(".docx"):
         content = _extract_docx_text(data)
     else:
@@ -156,6 +249,8 @@ def import_document(
             # import problems without depending on the exact exception type and
             # avoid leaking information about the underlying codec.
             raise ValueError("document bytes must be valid UTF-8") from exc
+    content = sanitize_content(content)
+
     doc_id = uuid4().hex
     ingestion_hash = hashlib.sha256(data).hexdigest()
     revision = DocumentRevision(
