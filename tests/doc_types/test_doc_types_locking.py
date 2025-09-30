@@ -27,8 +27,8 @@ def doc_types(tmp_path, monkeypatch):
 
 
 def test_concurrent_save_raises_stale_error(doc_types, monkeypatch):
-    doc_a = doc_types.DocumentTypeModel(name="TypeA", template="", workflow=[])
-    doc_b = doc_types.DocumentTypeModel(name="TypeB", template="", workflow=[])
+    doc_a = doc_types.DocumentTypeModel(name="TypeA", template="", workflow=["Phase"])
+    doc_b = doc_types.DocumentTypeModel(name="TypeB", template="", workflow=["Phase"])
 
     original_atomic = doc_types._atomic_write
     write_started = threading.Event()
@@ -65,7 +65,7 @@ def test_concurrent_save_raises_stale_error(doc_types, monkeypatch):
 
 
 def test_stale_state_detection_on_external_change(doc_types):
-    first = doc_types.DocumentTypeModel(name="Persisted", template="", workflow=[])
+    first = doc_types.DocumentTypeModel(name="Persisted", template="", workflow=["Phase"])
     doc_types.add_document_type(first)
     expected_version = doc_types._STATE_VERSION
 
@@ -73,12 +73,12 @@ def test_stale_state_detection_on_external_change(doc_types):
         "version": expected_version + 1,
         "updated_at": "2024-01-01T00:00:00Z",
         "document_types": [
-            {"name": "External", "template": "", "workflow": []},
+            {"name": "External", "template": "", "workflow": ["Phase"]},
         ],
     }
     doc_types._atomic_write(doc_types.DATA_FILE, json.dumps(external_payload, indent=2))
 
-    stale = doc_types.DocumentTypeModel(name="Stale", template="", workflow=[])
+    stale = doc_types.DocumentTypeModel(name="Stale", template="", workflow=["Phase"])
     doc_types.document_types[stale.name] = stale
 
     with pytest.raises(doc_types.StaleStateError) as excinfo:

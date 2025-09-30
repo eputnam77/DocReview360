@@ -34,7 +34,8 @@ class TestFrontendBackendIntegration:
         # Add test configuration
         add_document_type(DocumentTypeModel(
             name="Test Doc Type",
-            template="<h1>Test</h1>"
+            template="<h1>Test</h1>",
+            workflow=["Test Phase"],
         ))
         add_phase("Test Phase")
 
@@ -206,7 +207,8 @@ class TestFrontendBackendIntegration:
         # Add test configuration
         add_document_type(DocumentTypeModel(
             name="Consistency Test Doc",
-            template="<h1>Consistency</h1>"
+            template="<h1>Consistency</h1>",
+            workflow=["Consistency Phase"],
         ))
         add_phase("Consistency Phase")
 

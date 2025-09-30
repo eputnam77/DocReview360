@@ -94,12 +94,15 @@ def test_doc_type_errors(tmp_path, monkeypatch):
     doc_types.document_types.clear()
     doc_types.save_state()
     # invalid rename to existing
-    a = doc_types.DocumentTypeModel(name="A", template="t")
-    b = doc_types.DocumentTypeModel(name="B", template="t")
+    a = doc_types.DocumentTypeModel(name="A", template="t", workflow=["Phase"])
+    b = doc_types.DocumentTypeModel(name="B", template="t", workflow=["Phase"])
     doc_types.add_document_type(a)
     doc_types.add_document_type(b)
     with pytest.raises(ValueError):
-        doc_types.update_document_type("A", doc_types.DocumentTypeModel(name="B", template="t"))
+        doc_types.update_document_type(
+            "A",
+            doc_types.DocumentTypeModel(name="B", template="t", workflow=["Phase"]),
+        )
     # export to directory
     with pytest.raises(ValueError):
         doc_types.export_document_types(tmp_path)

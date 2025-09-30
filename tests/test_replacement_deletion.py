@@ -41,10 +41,10 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type 1", template="<h1>Test 1</h1>", workflow=[])
+            DocumentTypeModel(name="Test Doc Type 1", template="<h1>Test 1</h1>", workflow=["Phase"])
         )
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type 2", template="<h1>Test 2</h1>", workflow=[])
+            DocumentTypeModel(name="Test Doc Type 2", template="<h1>Test 2</h1>", workflow=["Phase"])
         )
 
         # Create project using the document type
@@ -79,11 +79,11 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=["Phase"])
         )
         add_document_type(
             DocumentTypeModel(
-                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=["Phase"]
             )
         )
 
@@ -122,7 +122,7 @@ class TestReplacementDeletion:
 
         # Create document type
         add_document_type(
-            DocumentTypeModel(name="Unused Doc Type", template="<h1>Unused</h1>", workflow=[])
+            DocumentTypeModel(name="Unused Doc Type", template="<h1>Unused</h1>", workflow=["Phase"])
         )
 
         # Delete without replacement (should succeed)
@@ -142,7 +142,7 @@ class TestReplacementDeletion:
 
         # Create document type
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=[])
+            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=["Phase"])
         )
 
         # Create project using the document type
@@ -274,11 +274,11 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=["Phase"])
         )
         add_document_type(
             DocumentTypeModel(
-                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=["Phase"]
             )
         )
 
@@ -318,7 +318,7 @@ class TestReplacementDeletion:
 
         # Create document type
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=[])
+            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=["Phase"])
         )
 
         # Create project using the document type
@@ -337,11 +337,11 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=["Phase"])
         )
         add_document_type(
             DocumentTypeModel(
-                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=["Phase"]
             )
         )
 

@@ -47,7 +47,9 @@ async def test_template_suggestion() -> None:
 
 @pytest.mark.asyncio
 async def test_document_types() -> None:
-    add_document_type(DocumentTypeModel(name="Test Doc", template="<h1>Test</h1>"))
+    add_document_type(
+        DocumentTypeModel(name="Test Doc", template="<h1>Test</h1>", workflow=["Phase"])
+    )
     resp = await chat_bot.answer_question("What document types are available?")
     assert "Test Doc" in resp
 

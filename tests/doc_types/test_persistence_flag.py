@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 
+import pytest
+
 import docreview360.doc_types as doc_types_module
 
 
@@ -44,7 +46,22 @@ def test_import_with_persistence_writes_file(tmp_path, monkeypatch):
         data_file = tmp_path / "document_types.json"
         assert data_file.exists(), "Bootstrap should write defaults when persistence is enabled"
         payload = json.loads(data_file.read_text())
-        assert isinstance(payload, list)
-        assert payload, "Persisted payload should include default document types"
+        entries = payload.get("document_types", payload) if isinstance(payload, dict) else payload
+        assert isinstance(entries, list)
+        assert entries, "Persisted payload should include default document types"
+    finally:
+        _restore_module(original_cwd, monkeypatch)
+
+
+def test_persistence_disabled_emits_warning(tmp_path, monkeypatch):
+    """Disabling persistence should raise a runtime warning on import."""
+
+    original_cwd = Path.cwd()
+    monkeypatch.setenv("DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", "0")
+    monkeypatch.chdir(tmp_path)
+    with pytest.warns(RuntimeWarning, match="will not be saved"):
+        module = importlib.reload(doc_types_module)
+    try:
+        assert module.DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE is False
     finally:
         _restore_module(original_cwd, monkeypatch)
