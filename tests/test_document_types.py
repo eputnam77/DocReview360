@@ -25,7 +25,7 @@ def _reset_doc_types() -> None:
 
     document_types.clear()
     document_types["Test Document Type"] = DocumentTypeModel(
-        name="Test Document Type", template=""
+        name="Test Document Type", template="", workflow=["Seed"]
     )
 
 
@@ -63,7 +63,7 @@ def test_document_type_crud() -> None:
 
 def test_idempotent_add() -> None:
     """Adding the same document type twice should be a no-op."""
-    doc = DocumentTypeModel(name="Duplicate", template="<h1>Dup</h1>")
+    doc = DocumentTypeModel(name="Duplicate", template="<h1>Dup</h1>", workflow=["Phase"])
     first = add_document_type(doc)
     second = add_document_type(doc)
     assert first is second
@@ -72,9 +72,13 @@ def test_idempotent_add() -> None:
 
 def test_conflicting_add() -> None:
     """Adding a type with the same name but different data should error."""
-    add_document_type(DocumentTypeModel(name="Conflict", template="<h1>One</h1>"))
+    add_document_type(
+        DocumentTypeModel(name="Conflict", template="<h1>One</h1>", workflow=["Phase"])
+    )
     with pytest.raises(ValueError):
-        add_document_type(DocumentTypeModel(name="Conflict", template="<h1>Two</h1>"))
+        add_document_type(
+            DocumentTypeModel(name="Conflict", template="<h1>Two</h1>", workflow=["Phase"])
+        )
 
 
 def test_export_error(tmp_path):
@@ -97,7 +101,7 @@ def test_list_all_phases() -> None:
 def test_document_type_import_export_endpoints() -> None:
     client = TestClient(app)
 
-    data = {"name": "policy", "template": "<h1>Policy</h1>"}
+    data = {"name": "policy", "template": "<h1>Policy</h1>", "workflow": ["Phase"]}
     resp = client.post("/document-types", json=data)
     assert resp.status_code == 201
 

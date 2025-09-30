@@ -126,7 +126,8 @@ class TestConfigurationPropagation:
         # Initial configuration
         add_document_type(DocumentTypeModel(
             name="Initial Doc Type",
-            template="<h1>Initial</h1>"
+            template="<h1>Initial</h1>",
+            workflow=["Initial Phase"],
         ))
         add_phase("Initial Phase")
 
@@ -148,7 +149,8 @@ class TestConfigurationPropagation:
 
         add_document_type(DocumentTypeModel(
             name="Updated Doc Type",
-            template="<h1>Updated</h1>"
+            template="<h1>Updated</h1>",
+            workflow=["Updated Phase"],
         ))
         add_phase("Updated Phase")
 
@@ -173,7 +175,8 @@ class TestConfigurationPropagation:
         # Add configuration
         add_document_type(DocumentTypeModel(
             name="Consistency Test Doc",
-            template="<h1>Consistency</h1>"
+            template="<h1>Consistency</h1>",
+            workflow=["Consistency Phase"],
         ))
         add_phase("Consistency Phase")
 
@@ -212,7 +215,8 @@ class TestConfigurationPropagation:
         try:
             add_document_type(DocumentTypeModel(
                 name="",  # Empty name
-                template="<h1>Test</h1>"
+                template="<h1>Test</h1>",
+                workflow=["Phase"],
             ))
         except Exception:
             # Should handle validation errors gracefully
@@ -241,7 +245,8 @@ class TestConfigurationPropagation:
         for i in range(10):
             add_document_type(DocumentTypeModel(
                 name=f"Performance Test Doc {i}",
-                template=f"<h1>Performance {i}</h1>"
+                template=f"<h1>Performance {i}</h1>",
+                workflow=[f"Performance Phase {i}"]
             ))
             add_phase(f"Performance Phase {i}")
 

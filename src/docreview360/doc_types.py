@@ -1,16 +1,23 @@
-"""In-memory + persisted document type management with default bootstrapping."""
+"""In-memory + persisted document type management with default bootstrapping.
+
+When document type persistence is disabled via
+``DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE``, this module emits a runtime
+warning to make it clear that any customization happens in-memory only and will
+not survive a restart.
+"""
 
 from __future__ import annotations
 
 import json
 import os
 import tempfile
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from filelock import FileLock
-from pydantic import BaseModel, Field, ValidationError, computed_field
+from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator
 
 # Path to store persistent data
 DATA_FILE = Path("document_types.json")
@@ -28,6 +35,13 @@ def _env_flag_enabled(value: str | None) -> bool:
 DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE = _env_flag_enabled(
     os.getenv("DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE")
 )
+
+if not DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+    warnings.warn(
+        "Document type persistence is disabled; customizations will not be saved.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
 
 
 class DocumentTypeModel(BaseModel):
@@ -47,6 +61,30 @@ class DocumentTypeModel(BaseModel):
     def phases(self) -> list[str]:
         """Surface ``workflow`` as ``phases`` for consumers expecting that key."""
         return self.workflow
+
+
+class _WorkflowPayload(BaseModel):
+    """Validation shim to enforce non-empty workflow definitions."""
+
+    workflow: List[str]
+
+    @field_validator("workflow")
+    @classmethod
+    def ensure_non_empty(cls, value: List[str]) -> List[str]:
+        if not value:
+            raise ValueError("Document types must include at least one workflow phase")
+        return value
+
+
+def _validate_workflow(doc_type: DocumentTypeModel) -> None:
+    """Raise :class:`ValidationError` if ``doc_type`` lacks workflow phases."""
+
+    try:
+        _WorkflowPayload.model_validate({"workflow": doc_type.workflow})
+    except ValidationError as exc:  # pragma: no cover - defensive
+        raise ValidationError.from_exception_data(
+            DocumentTypeModel.__name__, exc.errors()
+        ) from exc
 
 
 # In-memory store
@@ -306,6 +344,7 @@ def load_state() -> bool:
     for item in payload:
         try:
             doc = DocumentTypeModel(**item)
+            _validate_workflow(doc)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry in saved file: {item}") from exc
         document_types[doc.name] = doc
@@ -350,6 +389,9 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
     expected_version = _STATE_VERSION
     if isinstance(doc_type, dict):
         doc_type = DocumentTypeModel(**doc_type)
+    else:
+        doc_type = DocumentTypeModel.model_validate(doc_type.model_dump())
+    _validate_workflow(doc_type)
     # Avoid accidental overwrites; callers should use ``update_document_type``
     # when modifying existing entries.  Previously ``add_document_type`` would
     # silently replace an existing document type which caused confusing test
@@ -397,6 +439,9 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
 
     expected_version = _STATE_VERSION
     previous_state = dict(document_types)
+
+    doc_type = DocumentTypeModel.model_validate(doc_type.model_dump())
+    _validate_workflow(doc_type)
 
     # If the document type is renamed, propagate that change to any projects that
     # reference the old name.  Tests create a project, rename the document type
@@ -492,6 +537,7 @@ def import_document_types(path: str | Path) -> None:
     for item in data:
         try:
             doc = DocumentTypeModel(**item)
+            _validate_workflow(doc)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
         temp[doc.name] = doc
@@ -528,6 +574,7 @@ def import_document_types_json(data: str) -> None:
     for item in payload:
         try:
             doc = DocumentTypeModel(**item)
+            _validate_workflow(doc)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
         temp[doc.name] = doc
