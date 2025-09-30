@@ -8,9 +8,169 @@ from typing import Callable, Iterable, Optional
 from zipfile import ZipFile
 
 from .documents import DocumentModel, sanitize_content
+from .logs import log_event
+from .settings_manager import load_settings
 
 # Customisable guardrails checker; return True if content is invalid
 guardrails_checker: Optional[Callable[[str], bool]] = None
+
+
+class ExportSizeLimitError(ValueError):
+    """Raised when an export exceeds the configured size ceiling."""
+
+    def __init__(
+        self,
+        document_id: str,
+        fmt: str,
+        limit: int,
+        size: int,
+    ) -> None:
+        self.document_id = document_id
+        self.format = fmt
+        self.limit = limit
+        self.size = size
+        super().__init__(
+            f"{fmt.upper()} export for document {document_id} exceeded the"
+            f" {limit} byte limit (generated {size} bytes)"
+        )
+
+
+class _SizeLimitedBuffer(BytesIO):
+    """Bytes buffer that tracks whether a configured size limit was exceeded."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__()
+        self._limit = limit
+        self._exceeded = False
+
+    @property
+    def exceeded(self) -> bool:
+        return self._exceeded
+
+    def _check(self, prospective_size: int) -> None:
+        if prospective_size > self._limit:
+            self._exceeded = True
+
+    def write(self, b: bytes | bytearray | memoryview) -> int:  # type: ignore[override]
+        if self.closed:
+            try:
+                return super().write(b)
+            except ValueError:
+                return 0
+        self._check(self.tell() + len(b))
+        return super().write(b)
+
+    def seek(self, offset: int, whence: int = 0) -> int:  # type: ignore[override]
+        if self.closed:
+            try:
+                return super().seek(offset, whence)
+            except ValueError:
+                return 0
+        position = super().seek(offset, whence)
+        self._check(position)
+        return position
+
+    def tell(self) -> int:  # type: ignore[override]
+        if self.closed:
+            try:
+                return super().tell()
+            except ValueError:
+                return 0
+        return super().tell()
+
+
+_FORMAT_ALIASES: dict[str, str] = {
+    "md": "markdown",
+    "htm": "html",
+}
+
+
+DEFAULT_EXPORT_SIZE_LIMITS: dict[str, int] = {
+    "docx": 5 * 1024 * 1024,
+    "pdf": 5 * 1024 * 1024,
+}
+
+
+def _load_export_limits() -> dict[str, int | None]:
+    """Return export size ceilings keyed by format with sane defaults."""
+
+    settings = load_settings()
+    exports_cfg = settings.get("exports", {}) if isinstance(settings, dict) else {}
+    limits_cfg = exports_cfg.get("size_limits", {})
+    limits: dict[str, int | None] = {}
+    if isinstance(limits_cfg, dict):
+        for key, raw in limits_cfg.items():
+            fmt = str(key).lower()
+            try:
+                value = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if value <= 0:
+                limits[fmt] = None
+            else:
+                limits[fmt] = value
+    for fmt, default in DEFAULT_EXPORT_SIZE_LIMITS.items():
+        limits.setdefault(fmt, default)
+    return limits
+
+
+def _get_export_size_limit(fmt: str) -> int | None:
+    """Return the configured export size ceiling for ``fmt`` (or ``None``)."""
+
+    limits = _load_export_limits()
+    return limits.get(fmt)
+
+
+def _canonical_format(fmt: str) -> str:
+    """Return the canonical format key for ``fmt``."""
+
+    return _FORMAT_ALIASES.get(fmt, fmt)
+
+
+def _raise_export_size_error(
+    document: DocumentModel,
+    fmt: str,
+    limit: int,
+    size: int,
+) -> None:
+    """Log and raise an :class:`ExportSizeLimitError`."""
+
+    log_event(
+        "export_size_limit_exceeded",
+        entity_type="document",
+        entity_id=document.id,
+        severity="warning",
+        fmt=fmt,
+        size=size,
+        limit=limit,
+    )
+    raise ExportSizeLimitError(document.id, fmt, limit, size)
+
+
+def _make_buffer(
+    fmt: str,
+    limit: int | None = None,
+) -> tuple[BytesIO, int | None]:
+    """Return a buffer for export with a configured size ceiling."""
+
+    if limit is None:
+        limit = _get_export_size_limit(fmt)
+    if limit is None:
+        return BytesIO(), None
+
+    return _SizeLimitedBuffer(limit), limit
+
+
+def _ensure_size_within_limit(
+    document: DocumentModel,
+    fmt: str,
+    limit: int | None,
+    size: int,
+) -> None:
+    if limit is None:
+        return
+    if size > limit:
+        _raise_export_size_error(document, fmt, limit, size)
 
 
 def set_guardrails(checker: Callable[[str], bool] | None) -> None:
@@ -61,6 +221,8 @@ def export_document(  # noqa: C901
     if not isinstance(fmt, str):
         raise TypeError("fmt must be a string")
     fmt = fmt.lower()
+    canonical_fmt = _canonical_format(fmt)
+    limit = _get_export_size_limit(canonical_fmt)
     sanitized_content = sanitize_content(document.content)
     if guardrails_checker is not None:
         if guardrails_checker(sanitized_content):
@@ -73,16 +235,19 @@ def export_document(  # noqa: C901
         data = sanitized_content.encode()
         media = "text/markdown"
         name = f"{base}.md"
+        _ensure_size_within_limit(document, canonical_fmt, limit, len(data))
     elif fmt in ("html", "htm"):
         body = escape(sanitized_content)
         html_doc = f"<html><body><pre>{body}</pre></body></html>"
         data = html_doc.encode()
         media = "text/html"
         name = f"{base}.html"
+        _ensure_size_within_limit(document, canonical_fmt, limit, len(data))
     elif fmt == "json":
         data = document.model_dump_json().encode()
         media = "application/json"
         name = f"{base}.json"
+        _ensure_size_within_limit(document, canonical_fmt, limit, len(data))
     elif fmt == "docx":
         import re
 
@@ -117,9 +282,12 @@ def export_document(  # noqa: C901
             if idx < len(line_text):
                 p.add_run(line_text[idx:])
 
-        buffer = BytesIO()
+        buffer, buffer_limit = _make_buffer(canonical_fmt, limit)
         docx_doc.save(buffer)
+        if isinstance(buffer, _SizeLimitedBuffer) and buffer_limit is not None and buffer.exceeded:
+            _raise_export_size_error(document, canonical_fmt, buffer_limit, buffer.tell())
         data = buffer.getvalue()
+        _ensure_size_within_limit(document, canonical_fmt, buffer_limit, len(data))
         media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         name = f"{base}.docx"
     elif fmt == "pdf":
@@ -127,18 +295,24 @@ def export_document(  # noqa: C901
             from reportlab.lib.pagesizes import letter
             from reportlab.pdfgen import canvas
         except Exception:  # pragma: no cover - optional dependency
-            buffer = BytesIO()
+            buffer, buffer_limit = _make_buffer(canonical_fmt, limit)
             buffer.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF")
+            if isinstance(buffer, _SizeLimitedBuffer) and buffer_limit is not None and buffer.exceeded:
+                _raise_export_size_error(document, canonical_fmt, buffer_limit, buffer.tell())
             data = buffer.getvalue()
+            _ensure_size_within_limit(document, canonical_fmt, buffer_limit, len(data))
         else:
-            buffer = BytesIO()
+            buffer, buffer_limit = _make_buffer(canonical_fmt, limit)
             c = canvas.Canvas(buffer, pagesize=letter)
             text = c.beginText(40, 750)
             for line in document.content.splitlines():
                 text.textLine(line)
             c.drawText(text)
             c.save()
+            if isinstance(buffer, _SizeLimitedBuffer) and buffer_limit is not None and buffer.exceeded:
+                _raise_export_size_error(document, canonical_fmt, buffer_limit, buffer.tell())
             data = buffer.getvalue()
+            _ensure_size_within_limit(document, canonical_fmt, buffer_limit, len(data))
         media = "application/pdf"
         name = f"{base}.pdf"
     else:
@@ -172,8 +346,15 @@ def export_batch(
 ) -> bytes:
     """Export multiple documents of the same format as a ZIP archive."""
     buffer = BytesIO()
+    fmt_lower = fmt.lower()
+    canonical_fmt = _canonical_format(fmt_lower)
+    limit = _get_export_size_limit(canonical_fmt)
+    total_size = 0
     with ZipFile(buffer, "w") as zf:
         for doc in documents:
             data, _, name = export_document(doc, fmt, name_template=name_template)
+            _ensure_size_within_limit(doc, canonical_fmt, limit, len(data))
+            total_size += len(data)
+            _ensure_size_within_limit(doc, canonical_fmt, limit, total_size)
             zf.writestr(name, data)
     return buffer.getvalue()
