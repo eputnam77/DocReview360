@@ -10,7 +10,7 @@ from base64 import b64encode
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 from uuid import uuid4
 
 import bleach
@@ -28,6 +28,7 @@ DEFAULT_ALLOWED_MIME_TYPES: frozenset[str] = frozenset(
         "text/markdown",
         "text/html",
         "application/json",
+        "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
 )
@@ -44,7 +45,61 @@ _SANITIZE_TAGS: frozenset[str] = frozenset(
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
 
 
-def _load_document_policy() -> tuple[int, frozenset[str]]:
+IngestionPipeline = Callable[[bytes, str], str]
+
+
+class IngestionRegistry:
+    """Thread-safe registry mapping MIME types to ingestion pipelines."""
+
+    def __init__(self) -> None:
+        self._pipelines: dict[str, IngestionPipeline] = {}
+        self._lock = threading.Lock()
+
+    def register(self, mime_type: str, pipeline: IngestionPipeline) -> None:
+        with self._lock:
+            self._pipelines[mime_type.lower()] = pipeline
+
+    def unregister(self, mime_type: str) -> None:
+        with self._lock:
+            self._pipelines.pop(mime_type.lower(), None)
+
+    def get(self, mime_type: str) -> IngestionPipeline | None:
+        with self._lock:
+            return self._pipelines.get(mime_type.lower())
+
+    def items(self) -> dict[str, IngestionPipeline]:
+        with self._lock:
+            return dict(self._pipelines)
+
+
+ingestion_registry = IngestionRegistry()
+
+
+def register_ingestion_pipeline(mime_type: str, pipeline: IngestionPipeline) -> None:
+    """Register ``pipeline`` for ``mime_type``."""
+
+    ingestion_registry.register(mime_type, pipeline)
+
+
+def unregister_ingestion_pipeline(mime_type: str) -> None:
+    """Remove any registered pipeline for ``mime_type``."""
+
+    ingestion_registry.unregister(mime_type)
+
+
+def get_ingestion_pipeline(mime_type: str) -> IngestionPipeline | None:
+    """Return the pipeline registered for ``mime_type`` if any."""
+
+    return ingestion_registry.get(mime_type)
+
+
+_DOCX_MIME_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+_PDF_MIME_TYPE = "application/pdf"
+
+
+def _load_document_policy() -> tuple[int, frozenset[str], Mapping[str, Any]]:
     """Return upload policy from settings or sensible defaults."""
 
     settings = load_settings()
@@ -64,7 +119,7 @@ def _load_document_policy() -> tuple[int, frozenset[str]]:
     if not allowed_set:
         allowed_set = DEFAULT_ALLOWED_MIME_TYPES
 
-    return size_limit, allowed_set
+    return size_limit, allowed_set, doc_settings
 
 
 def sanitize_content(content: str) -> str:
@@ -221,6 +276,65 @@ def _extract_docx_text(data: bytes) -> str:
     return "\n".join(parts)
 
 
+def _default_docx_ingestion(data: bytes, filename: str) -> str:
+    return _extract_docx_text(data)
+
+
+register_ingestion_pipeline(_DOCX_MIME_TYPE, _default_docx_ingestion)
+
+
+def _extract_pdf_text(data: bytes) -> str:
+    """Extract textual content from a PDF using optional dependencies."""
+
+    try:
+        from pdfminer.high_level import extract_text  # type: ignore[import-not-found]
+    except Exception:  # pragma: no cover - optional dependency
+        extract_text = None  # type: ignore[assignment]
+
+    if extract_text is not None:
+        try:
+            return extract_text(BytesIO(data)) or ""
+        except Exception:  # pragma: no cover - pdfminer failure
+            pass
+
+    try:
+        from pypdf import PdfReader  # type: ignore[import-not-found]
+    except Exception:  # pragma: no cover - optional dependency
+        PdfReader = None  # type: ignore[assignment]
+
+    if PdfReader is not None:
+        try:
+            reader = PdfReader(BytesIO(data))
+            return "\n".join(filter(None, (page.extract_text() or "" for page in reader.pages)))
+        except Exception:  # pragma: no cover - pypdf failure
+            pass
+
+    raise ValueError("PDF ingestion requires pdfminer.six or pypdf")
+
+
+def _default_pdf_ingestion(data: bytes, filename: str) -> str:
+    return _extract_pdf_text(data)
+
+
+def _ensure_default_pipelines(doc_settings: Mapping[str, Any]) -> None:
+    """Register or remove built-in pipelines based on configuration."""
+
+    if doc_settings.get("enable_pdf_ingestion"):
+        if get_ingestion_pipeline(_PDF_MIME_TYPE) is None:
+            register_ingestion_pipeline(_PDF_MIME_TYPE, _default_pdf_ingestion)
+    else:
+        pipeline = get_ingestion_pipeline(_PDF_MIME_TYPE)
+        if pipeline is _default_pdf_ingestion:
+            unregister_ingestion_pipeline(_PDF_MIME_TYPE)
+
+
+def _decode_text_payload(data: bytes) -> str:
+    try:
+        return data.decode()
+    except UnicodeDecodeError as exc:
+        raise ValueError("document bytes must be valid UTF-8") from exc
+
+
 def import_document(
     filename: str,
     data: bytes,
@@ -230,7 +344,7 @@ def import_document(
     priority: Optional[int] = None,
 ) -> DocumentModel:
     """Create a document from uploaded bytes."""
-    size_limit, allowed_types = _load_document_policy()
+    size_limit, allowed_types, doc_settings = _load_document_policy()
     if len(data) > size_limit:
         raise ValueError("document exceeds configured size limit")
 
@@ -238,17 +352,27 @@ def import_document(
     if mime_type not in allowed_types:
         raise ValueError(f"unsupported MIME type: {mime_type}")
 
-    if filename.lower().endswith(".docx"):
-        content = _extract_docx_text(data)
+    _ensure_default_pipelines(doc_settings)
+
+    pipeline = get_ingestion_pipeline(mime_type)
+    if pipeline is None and filename.lower().endswith(".docx"):
+        pipeline = _default_docx_ingestion
+
+    if mime_type == _PDF_MIME_TYPE:
+        if pipeline is None:
+            raise ValueError(
+                "no PDF ingestion pipeline available; enable documents.enable_pdf_ingestion or register a custom pipeline"
+            )
+        if pipeline is _default_pdf_ingestion and not doc_settings.get("enable_pdf_ingestion", False):
+            raise ValueError(
+                "PDF ingestion is disabled; set documents.enable_pdf_ingestion to true"
+            )
+
+    if pipeline is not None:
+        content = pipeline(data, filename)
     else:
-        try:
-            content = data.decode()
-        except UnicodeDecodeError as exc:
-            # ``bytes.decode`` raises ``UnicodeDecodeError`` for malformed
-            # input.  Surface a friendlier ``ValueError`` so callers can handle
-            # import problems without depending on the exact exception type and
-            # avoid leaking information about the underlying codec.
-            raise ValueError("document bytes must be valid UTF-8") from exc
+        content = _decode_text_payload(data)
+
     content = sanitize_content(content)
 
     doc_id = uuid4().hex
