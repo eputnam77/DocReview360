@@ -41,10 +41,10 @@ def test_markdown_to_tiptap_ignores_empty_lines():
 
 
 def test_tiptap_unsupported_node_type_error_message():
-    data = {"type": "doc", "content": [{"type": "table", "content": []}]}
+    data = {"type": "doc", "content": [{"type": "fancyWidget", "content": []}]}
     with pytest.raises(ValueError) as exc:
         tiptap.tiptap_to_markdown(data)
-    assert "table" in str(exc.value)
+    assert "fancyWidget" in str(exc.value)
 
 
 def test_tiptap_unsupported_mark_type_error_message():
@@ -57,7 +57,7 @@ def test_tiptap_unsupported_mark_type_error_message():
                     {
                         "type": "text",
                         "text": "Hello",
-                        "marks": [{"type": "underline"}],
+                        "marks": [{"type": "rainbow"}],
                     }
                 ],
             }
@@ -65,4 +65,4 @@ def test_tiptap_unsupported_mark_type_error_message():
     }
     with pytest.raises(ValueError) as exc:
         tiptap.tiptap_to_markdown(data)
-    assert "underline" in str(exc.value)
+    assert "rainbow" in str(exc.value)

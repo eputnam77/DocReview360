@@ -12,7 +12,7 @@ DocReview360 exposes a JSON API that lets you manage projects, documents and app
 
 ## Documents
 - `POST /documents/import` – import a file
-- `POST /documents/tiptap` – import content from the TipTap editor
+- `POST /documents/tiptap` – import content from the TipTap editor (set `link_duplicates=true` to reuse an existing match)
 - `GET /documents` – list documents
 - `GET /documents/{doc_id}` – get a document
 - `PUT /documents/{doc_id}` – update content

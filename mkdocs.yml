@@ -6,6 +6,7 @@ nav:
   - CLI Reference: cli.md
   - UI Guide: ui.md
   - API Overview: api_overview.md
+  - TipTap Content: tiptap-supported-content.md
   - Usage Scenarios: scenarios.md
   - Developer Guide: developer.md
   - High Risk Terms: high_risk_terms.md
