@@ -53,8 +53,8 @@ def test_saved_search_created_timestamp_is_unique(monkeypatch) -> None:
 
     monkeypatch.setattr(search, "datetime", _StubDateTime)
 
-    first = search.SavedSearch(id="s1", query="foo")
-    second = search.SavedSearch(id="s2", query="bar")
+    first = search.SavedSearch(id="s1", query="foo", user="alice")
+    second = search.SavedSearch(id="s2", query="bar", user="bob")
 
     assert first.created != second.created
 

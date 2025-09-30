@@ -47,7 +47,7 @@ def test_search_workflow_and_saved_queries() -> None:
     assert "p1" in alerts
 
     # Saved searches and stats
-    save_search("hello")
+    save_search("hello", user="system")
     save_search("hello", user="alice")
     assert len(list_saved_searches()) == 2
     assert len(list_saved_searches(user="alice")) == 1
