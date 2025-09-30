@@ -12,7 +12,10 @@ from docreview360.doc_types import (
 
 def test_update_nonexistent_type_raises() -> None:
     with pytest.raises(KeyError):
-        update_document_type("missing", DocumentTypeModel(name="x", template="t"))
+        update_document_type(
+            "missing",
+            DocumentTypeModel(name="x", template="t", workflow=["Phase"]),
+        )
 
 
 def test_export_to_directory_error(tmp_path: Path) -> None:

@@ -123,7 +123,11 @@ def test_migrate_roundtrip(tmp_path: Path) -> None:
     # Create document and verify it was created
     import_document(test_filename, test_content.encode())
     log_event(test_event)
-    add_document_type(DocumentTypeModel(name=test_doc_type_name, template=test_template))
+    add_document_type(
+        DocumentTypeModel(
+            name=test_doc_type_name, template=test_template, workflow=["Phase"]
+        )
+    )
 
     # Verify initial state.  The logging subsystem may record additional
     # entries (e.g. database initialization), so capture the count rather than

@@ -220,9 +220,21 @@ class TestConfigurationPropagation:
 
         # Add test document types
         test_types = [
-            DocumentTypeModel(name="Policy Document", template="<h1>Policy</h1>"),
-            DocumentTypeModel(name="Procedure Manual", template="<h1>Procedure</h1>"),
-            DocumentTypeModel(name="Technical Spec", template="<h1>Technical</h1>"),
+            DocumentTypeModel(
+                name="Policy Document",
+                template="<h1>Policy</h1>",
+                workflow=["Draft"],
+            ),
+            DocumentTypeModel(
+                name="Procedure Manual",
+                template="<h1>Procedure</h1>",
+                workflow=["Draft"],
+            ),
+            DocumentTypeModel(
+                name="Technical Spec",
+                template="<h1>Technical</h1>",
+                workflow=["Draft"],
+            ),
         ]
 
         for doc_type in test_types:
