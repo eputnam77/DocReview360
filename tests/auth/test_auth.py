@@ -19,6 +19,17 @@ def fresh_auth() -> auth:
     """Reload the auth module so environment overrides take effect."""
 
     module = importlib.reload(auth)
+    password = module.DEMO_USER_DEFAULTS["alice"]["password"]
+    otp_secret = module.DEMO_USER_DEFAULTS["alice"].get("otp_secret")
+    record = module.USER_REPOSITORY.get_user("alice")
+    if record is None or not module.UserRepository.verify_password(password, record.password_hash):
+        module.USER_REPOSITORY.create_user("alice", password, otp_secret=otp_secret)
+        record = module.USER_REPOSITORY.get_user("alice")
+    elif otp_secret and record.otp_secret != otp_secret:
+        module.USER_REPOSITORY.update_otp_secret("alice", otp_secret)
+        record = module.USER_REPOSITORY.get_user("alice")
+    if record and not record.active:
+        module.USER_REPOSITORY.set_active("alice", True)
     return module
 
 

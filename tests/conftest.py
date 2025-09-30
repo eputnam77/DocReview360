@@ -34,6 +34,7 @@ os.environ.setdefault("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
 os.environ.setdefault("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
 os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
 os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
+os.environ.setdefault("DOCREVIEW360_SEED_DEMO_USERS", "0")
 
 
 @pytest.fixture(autouse=True)
@@ -54,6 +55,7 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
     monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
     monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
+    monkeypatch.setenv("DOCREVIEW360_SEED_DEMO_USERS", "0")
 
 
 @pytest.hookimpl
@@ -101,7 +103,9 @@ def _reset_document_types() -> None:
 
 
 @pytest.fixture(autouse=True)
-def _reset_search(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+def _reset_search(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Provide an isolated persistent store for the search module per test."""
 
     db_dir = tmp_path_factory.mktemp("search-db")
