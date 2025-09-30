@@ -63,6 +63,13 @@ HASH_MISMATCHES = Counter(
     ["provider"],
 )
 
+# Metrics tracking approval artifact upload reliability.
+APPROVAL_UPLOAD_RETRIES = Counter(
+    "docreview360_approval_upload_retries_total",
+    "Retry attempts and exhausted retries when uploading approval artifacts",
+    ["status"],
+)
+
 
 def _reserve_port() -> int:
     """Return an available TCP port on localhost."""
