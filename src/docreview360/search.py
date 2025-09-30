@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -20,7 +21,10 @@ from pydantic import BaseModel, Field, computed_field
 from . import fts
 from .cache import cache_delete, cache_get, cache_set
 from .documents import DocumentModel, documents
+from .logs import log_event
 from .workflows import get_workflow
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectModel(BaseModel):
@@ -130,9 +134,10 @@ class SavedSearch:
 
     id: str
     query: str
-    user: str | None = None
+    user: str
     created: datetime = field(default_factory=lambda: datetime.now(UTC))
     count: int = 0
+    flagged_for_review: bool = False
 
 
 DEFAULT_PROJECT_ID = "demo-project"
@@ -198,7 +203,8 @@ class SearchRepository:
                 query TEXT NOT NULL,
                 user TEXT,
                 created TEXT NOT NULL,
-                count INTEGER NOT NULL
+                count INTEGER NOT NULL,
+                flagged INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS counters (
                 query TEXT PRIMARY KEY,
@@ -208,6 +214,30 @@ class SearchRepository:
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+            """
+        )
+        self._ensure_saved_search_schema(conn)
+        self._backfill_saved_search_users(conn)
+
+    def _ensure_saved_search_schema(self, conn: sqlite3.Connection) -> None:
+        """Ensure optional columns for saved searches are present."""
+
+        info = conn.execute("PRAGMA table_info(saved_searches)").fetchall()
+        column_names = {row["name"] for row in info}
+        if "flagged" not in column_names:
+            conn.execute(
+                "ALTER TABLE saved_searches ADD COLUMN flagged INTEGER NOT NULL DEFAULT 0"
+            )
+
+    def _backfill_saved_search_users(self, conn: sqlite3.Connection) -> None:
+        """Assign a placeholder user for legacy saved searches without one."""
+
+        conn.execute(
+            """
+            UPDATE saved_searches
+            SET user = 'unknown',
+                flagged = 1
+            WHERE user IS NULL OR TRIM(user) = ''
             """
         )
 
@@ -220,21 +250,57 @@ class SearchRepository:
             with self._connection() as conn:
                 project_rows = conn.execute("SELECT id, payload FROM projects").fetchall()
                 projects: dict[str, ProjectModel] = {}
+                cleared_workflows: list[tuple[str, str]] = []
                 for row in project_rows:
                     project = ProjectModel.model_validate_json(row["payload"])
+                    if project.workflow and not get_workflow(project.workflow):
+                        cleared_workflows.append((project.id, project.workflow))
+                        project.workflow = None
+                        conn.execute(
+                            "UPDATE projects SET payload = ? WHERE id = ?",
+                            (
+                                json.dumps(project.model_dump(mode="json")),
+                                project.id,
+                            ),
+                        )
                     projects[project.id] = project
 
+                for project_id, workflow_id in cleared_workflows:
+                    logger.warning(
+                        "Project %s referenced missing workflow %s; clearing stale pointer",
+                        project_id,
+                        workflow_id,
+                    )
+
                 saved_rows = conn.execute(
-                    "SELECT id, query, user, created, count FROM saved_searches"
+                    "SELECT id, query, user, created, count, flagged FROM saved_searches"
                 ).fetchall()
                 saved: dict[str, SavedSearch] = {}
+                flagged_searches: list[str] = []
                 for row in saved_rows:
+                    user = row["user"]
+                    flagged = bool(row["flagged"])
+                    if not user or not str(user).strip():
+                        user = "unknown"
+                        flagged = True
+                        flagged_searches.append(row["id"])
+                        conn.execute(
+                            "UPDATE saved_searches SET user = ?, flagged = 1 WHERE id = ?",
+                            (user, row["id"]),
+                        )
                     saved[row["id"]] = SavedSearch(
                         id=row["id"],
                         query=row["query"],
-                        user=row["user"],
+                        user=user,
                         created=datetime.fromisoformat(row["created"]),
                         count=row["count"],
+                        flagged_for_review=flagged,
+                    )
+
+                if flagged_searches:
+                    logger.warning(
+                        "Backfilled creator for saved searches missing attribution: %s",
+                        ", ".join(flagged_searches),
                     )
 
                 counter_rows = conn.execute(
@@ -277,8 +343,8 @@ class SearchRepository:
             with self._connection() as conn:
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO saved_searches (id, query, user, created, count)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO saved_searches (id, query, user, created, count, flagged)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
                         saved_search.id,
@@ -286,6 +352,7 @@ class SearchRepository:
                         saved_search.user,
                         saved_search.created.isoformat(),
                         saved_search.count,
+                        int(saved_search.flagged_for_review),
                     ),
                 )
 
@@ -485,7 +552,7 @@ def add_document(document: DocumentModel) -> None:
     search_index.add_document(document)
 
 
-def save_search(query: str, user: str | None = None) -> SavedSearch:
+def save_search(query: str, user: str) -> SavedSearch:
     """Store a search query for later reuse.
 
     Parameters
@@ -493,7 +560,7 @@ def save_search(query: str, user: str | None = None) -> SavedSearch:
     query:
         Raw search string which must not be empty.
     user:
-        Optional username used for scoping saved searches.
+        Username used for scoping saved searches.
 
     Returns
     -------
@@ -503,12 +570,21 @@ def save_search(query: str, user: str | None = None) -> SavedSearch:
 
     if not query.strip():
         raise ValueError("query must not be empty")
+    if not user or not user.strip():
+        raise ValueError("user must not be empty")
 
     with saved_search_lock:
         search_id = str(len(saved_searches) + 1)
-        record = SavedSearch(id=search_id, query=query, user=user)
+        record = SavedSearch(id=search_id, query=query, user=user, flagged_for_review=False)
         saved_searches[search_id] = record
         _repository.save_saved_search(record)
+        log_event(
+            "saved_search_created",
+            user_id=user,
+            entity_id=search_id,
+            entity_type="saved_search",
+            query=query,
+        )
         return record
 
 
