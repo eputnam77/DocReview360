@@ -78,9 +78,13 @@ cp .env.example .env           # template included
 export DOCREVIEW360_SECRET_KEY=your-secret
 export DOCREVIEW360_ALGORITHM=HS256
 export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+export DOCREVIEW360_TOKEN_ISSUER=docreview360.local
+export DOCREVIEW360_TOKEN_AUDIENCE=docreview360-users
 export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
 export DOCREVIEW360_OIDC_ALGORITHM=HS256
 export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+export DOCREVIEW360_OIDC_TOKEN_ISSUER=docreview360-oidc.local
+export DOCREVIEW360_OIDC_TOKEN_AUDIENCE=docreview360-oidc
 # Treat any non-dev/test value (for example ``production``) as production.
 # When set, missing secrets trigger a startup failure instead of a warning.
 export DOCREVIEW360_ENV=dev
@@ -89,9 +93,13 @@ export DOCREVIEW360_ENV=dev
 $env:DOCREVIEW360_SECRET_KEY="your-secret"
 $env:DOCREVIEW360_ALGORITHM="HS256"
 $env:DOCREVIEW360_ACCESS_EXPIRE_MINUTES="30"
+$env:DOCREVIEW360_TOKEN_ISSUER="docreview360.local"
+$env:DOCREVIEW360_TOKEN_AUDIENCE="docreview360-users"
 $env:DOCREVIEW360_OIDC_SECRET_KEY="your-oidc-secret"
 $env:DOCREVIEW360_OIDC_ALGORITHM="HS256"
 $env:DOCREVIEW360_OIDC_EXPIRE_MINUTES="30"
+$env:DOCREVIEW360_OIDC_TOKEN_ISSUER="docreview360-oidc.local"
+$env:DOCREVIEW360_OIDC_TOKEN_AUDIENCE="docreview360-oidc"
 # Treat any non-dev/test value (for example ``production``) as production.
 # When set, missing secrets trigger a startup failure instead of a warning.
 $env:DOCREVIEW360_ENV="dev"
@@ -101,6 +109,7 @@ $env:DOCREVIEW360_ENV="dev"
 # SIGNATURE_PROVIDER=sandbox  (default order: sandbox → Documenso → local; Documenso will send webhooks to /hooks/documenso)
 # NEXT_PUBLIC_API_BASE=http://localhost:8000  (frontend → backend, leave blank to use dashboard host)
 # DOCREVIEW360_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000  (frontend host(s) allowed by CORS)
+# When authenticating with HTTP-only cookies also send an X-CSRF-Token header that matches the csrf_token cookie value.
 ```
 
 Run the CLI wizard to generate `docreview360.yml`:

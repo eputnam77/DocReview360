@@ -27,6 +27,13 @@ os.environ.setdefault("DOCREVIEW360_OIDC_SECRET_KEY", "test-oidc")
 os.environ.setdefault("DOCREVIEW360_OIDC_ALGORITHM", "HS256")
 os.environ.setdefault("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
 os.environ.setdefault("DOCREVIEW360_REQUIRE_MFA", "0")
+os.environ.setdefault("DOCREVIEW360_MAX_FAILED_ATTEMPTS", "5")
+os.environ.setdefault("DOCREVIEW360_LOCKOUT_SECONDS", "300")
+os.environ.setdefault("DOCREVIEW360_USER_DB", str(Path("tests") / "docreview360_users.db"))
+os.environ.setdefault("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
+os.environ.setdefault("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
+os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
+os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
 
 
 @pytest.fixture(autouse=True)
@@ -40,6 +47,13 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_OIDC_ALGORITHM", "HS256")
     monkeypatch.setenv("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
     monkeypatch.setenv("DOCREVIEW360_REQUIRE_MFA", "0")
+    monkeypatch.setenv("DOCREVIEW360_MAX_FAILED_ATTEMPTS", "5")
+    monkeypatch.setenv("DOCREVIEW360_LOCKOUT_SECONDS", "300")
+    monkeypatch.setenv("DOCREVIEW360_USER_DB", str(Path("tests") / "docreview360_users.db"))
+    monkeypatch.setenv("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
+    monkeypatch.setenv("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
+    monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
+    monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
 
 
 @pytest.hookimpl
