@@ -9,6 +9,7 @@ import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, TypeVar
 
@@ -114,6 +115,11 @@ def _as_bool(value: str) -> bool:
 
 
 REQUIRE_MFA = _env_or_default("DOCREVIEW360_REQUIRE_MFA", default="false", cast=_as_bool)
+SEED_DEMO_USERS = _env_or_default(
+    "DOCREVIEW360_SEED_DEMO_USERS",
+    default="false",
+    cast=_as_bool,
+)
 
 MAX_FAILED_ATTEMPTS = _env_or_default(
     "DOCREVIEW360_MAX_FAILED_ATTEMPTS",
@@ -138,6 +144,186 @@ USER_DB_PATH = _env_or_default(
     "DOCREVIEW360_USER_DB",
     default=_default_user_db_path(),
 )
+
+DEMO_USER_DEFAULTS: dict[str, dict[str, str]] = {
+    "alice": {
+        "password": "Alice!Demo123",
+        "otp_secret": "123456",
+    },
+    "bob": {
+        "password": "Bob!Demo12345",
+        "otp_secret": "123456",
+    },
+}
+
+
+class PasswordPolicyError(ValueError):
+    """Raised when a password fails to meet the configured policy."""
+
+
+def _has_uppercase(value: str, _: str) -> bool:
+    return any(char.isupper() for char in value)
+
+
+def _has_lowercase(value: str, _: str) -> bool:
+    return any(char.islower() for char in value)
+
+
+def _has_digits(value: str, _: str) -> bool:
+    return any(char.isdigit() for char in value)
+
+
+def _has_symbols(value: str, symbol_chars: str) -> bool:
+    return any(char in symbol_chars for char in value)
+
+
+CHARACTER_CLASS_CHECKS: dict[str, Callable[[str, str], bool]] = {
+    "uppercase": _has_uppercase,
+    "lowercase": _has_lowercase,
+    "digits": _has_digits,
+    "symbols": _has_symbols,
+}
+
+CHARACTER_CLASS_LABELS = {
+    "uppercase": "uppercase letters",
+    "lowercase": "lowercase letters",
+    "digits": "numbers",
+    "symbols": "symbols",
+}
+
+
+@dataclass(frozen=True)
+class PasswordPolicy:
+    """Configurable password policy loaded from settings."""
+
+    min_length: int
+    character_classes: tuple[str, ...]
+    min_character_classes: int
+    disallow_reuse: bool
+    symbol_characters: str
+
+    @classmethod
+    def load(cls) -> "PasswordPolicy":
+        """Build a policy instance from persisted settings."""
+
+        default_classes = ("lowercase", "uppercase", "digits", "symbols")
+        config: dict[str, Any] = {
+            "min_length": 12,
+            "character_classes": default_classes,
+            "min_character_classes": 3,
+            "disallow_reuse": True,
+            "symbol_characters": "!@#$%^&*()-_=+[]{}|;:,.<>/?",
+        }
+
+        try:
+            from .settings_manager import load_settings
+        except Exception:
+            return cls(**config)
+
+        try:
+            settings = load_settings()
+        except Exception:
+            return cls(**config)
+
+        auth_settings = settings.get("auth") if isinstance(settings, dict) else None
+        policy_settings = (
+            auth_settings.get("password_policy", {}) if isinstance(auth_settings, dict) else {}
+        )
+
+        if isinstance(policy_settings, dict):
+            min_length = policy_settings.get("min_length")
+            if isinstance(min_length, int) and min_length > 0:
+                config["min_length"] = min_length
+
+            classes = policy_settings.get("character_classes")
+            if isinstance(classes, (list, tuple)):
+                processed = tuple(
+                    str(item).strip().lower()
+                    for item in classes
+                    if str(item).strip().lower() in CHARACTER_CLASS_CHECKS
+                )
+                if processed:
+                    config["character_classes"] = processed
+
+            min_classes = policy_settings.get("min_character_classes")
+            if isinstance(min_classes, int) and min_classes > 0:
+                config["min_character_classes"] = min_classes
+
+            disallow_reuse = policy_settings.get("disallow_reuse")
+            if isinstance(disallow_reuse, bool):
+                config["disallow_reuse"] = disallow_reuse
+
+            symbol_chars = policy_settings.get("symbol_characters")
+            if isinstance(symbol_chars, str) and symbol_chars:
+                config["symbol_characters"] = symbol_chars
+
+        valid_classes = tuple(
+            cls_name
+            for cls_name in config["character_classes"]
+            if cls_name in CHARACTER_CLASS_CHECKS
+        )
+        if not valid_classes:
+            valid_classes = default_classes
+
+        min_classes_required = min(config["min_character_classes"], len(valid_classes))
+        if min_classes_required <= 0:
+            min_classes_required = len(valid_classes)
+
+        return cls(
+            min_length=config["min_length"],
+            character_classes=valid_classes,
+            min_character_classes=min_classes_required,
+            disallow_reuse=config["disallow_reuse"],
+            symbol_characters=config["symbol_characters"],
+        )
+
+    def validate(self, password: str, *, existing_hash: str | None = None) -> None:
+        """Raise :class:`PasswordPolicyError` when ``password`` violates the policy."""
+
+        errors: list[str] = []
+
+        if len(password) < self.min_length:
+            errors.append(f"Password must be at least {self.min_length} characters long.")
+
+        present_classes = [
+            cls_name
+            for cls_name in self.character_classes
+            if CHARACTER_CLASS_CHECKS[cls_name](password, self.symbol_characters)
+        ]
+
+        if len(present_classes) < self.min_character_classes:
+            labels = [CHARACTER_CLASS_LABELS.get(name, name) for name in self.character_classes]
+            if self.min_character_classes >= len(self.character_classes):
+                errors.append(
+                    "Password must include characters from all of the following classes: "
+                    + ", ".join(labels)
+                    + "."
+                )
+            else:
+                errors.append(
+                    "Password must include at least "
+                    f"{self.min_character_classes} of the following character classes: "
+                    + ", ".join(labels)
+                    + "."
+                )
+
+        if self.disallow_reuse and existing_hash:
+            try:
+                reused = UserRepository.verify_password(password, existing_hash)
+            except Exception:
+                reused = False
+            if reused:
+                errors.append("Password must differ from the previously used password.")
+
+        if errors:
+            raise PasswordPolicyError(" ".join(errors))
+
+
+@lru_cache(maxsize=1)
+def _password_policy() -> PasswordPolicy:
+    """Return the cached password policy instance."""
+
+    return PasswordPolicy.load()
 
 
 @dataclass(slots=True)
@@ -185,32 +371,30 @@ class UserRepository:
                 """
             )
             conn.commit()
-        self._seed_defaults()
+        if SEED_DEMO_USERS:
+            self._seed_defaults()
 
     def _seed_defaults(self) -> None:
-        defaults = {
-            "alice": {
-                "password": "password",
-                "otp_secret": "123456",
-            },
-            "bob": {
-                "password": "password",
-                "otp_secret": "123456",
-            },
-        }
         legacy_totp = {"JBSWY3DPEHPK3PXP", "JBSWY3DPEHPK3PXQ"}
-        for username, data in defaults.items():
+        for username, data in DEMO_USER_DEFAULTS.items():
             existing = self.get_user(username)
             if existing:
                 if existing.otp_secret in legacy_totp and data.get("otp_secret"):
                     self.update_otp_secret(username, data["otp_secret"])
                 continue
-            self.create_user(
-                username,
-                data["password"],
-                otp_secret=data.get("otp_secret"),
-                active=True,
-            )
+            try:
+                self.create_user(
+                    username,
+                    data["password"],
+                    otp_secret=data.get("otp_secret"),
+                    active=True,
+                )
+            except PasswordPolicyError as exc:  # pragma: no cover - defensive
+                raise RuntimeError(
+                    "Unable to seed demo user credentials because the password policy "
+                    "rejected the configured defaults. Adjust the policy in settings "
+                    "or disable seeding via DOCREVIEW360_SEED_DEMO_USERS."
+                ) from exc
 
     def create_user(
         self,
@@ -222,6 +406,9 @@ class UserRepository:
     ) -> None:
         """Create or replace a user with a hashed password."""
 
+        existing = self.get_user(username)
+        existing_hash = existing.password_hash if existing else None
+        _password_policy().validate(password, existing_hash=existing_hash)
         password_hash = self.hash_password(password)
         with self._connection() as conn:
             conn.execute(
@@ -432,11 +619,13 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
 
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
-    to_encode.update({
-        "exp": expire,
-        "iss": TOKEN_ISSUER,
-        "aud": TOKEN_AUDIENCE,
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iss": TOKEN_ISSUER,
+            "aud": TOKEN_AUDIENCE,
+        }
+    )
     return str(jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
 
 
@@ -544,11 +733,13 @@ def create_id_token(data: Dict[str, Any], expires_delta: timedelta | None = None
 
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
-    to_encode.update({
-        "exp": expire,
-        "iss": OIDC_TOKEN_ISSUER,
-        "aud": OIDC_TOKEN_AUDIENCE,
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iss": OIDC_TOKEN_ISSUER,
+            "aud": OIDC_TOKEN_AUDIENCE,
+        }
+    )
     return str(jwt.encode(to_encode, OIDC_SECRET_KEY, algorithm=OIDC_ALGORITHM))
 
 
