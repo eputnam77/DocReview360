@@ -66,6 +66,26 @@ Run the `init` wizard or edit the file to change:
 
 After modifying the file, restart the server so the changes take effect.
 
+### Enable PDF ingestion
+
+DocReview360 can now ingest PDF uploads by converting them to plain text during
+import. The converter is behind an explicit feature flag so existing
+deployments stay unchanged. Enable it in `docreview360.yml`:
+
+```yaml
+documents:
+  enable_pdf_ingestion: true
+  allowed_mime_types:
+    - application/pdf
+    - text/markdown
+    - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+```
+
+Install either `pdfminer.six` or `pypdf` in your environment so the default
+adapter can extract text from the uploaded file. Integrators can replace the
+built-in adapter or add additional ones by calling
+`docreview360.documents.register_ingestion_pipeline()` with a custom function.
+
 ## 5. Explore the latest features
 
 - **GraphQL read layer**: query projects and documents with `execute_query` in `docreview360.graphql_api`.
