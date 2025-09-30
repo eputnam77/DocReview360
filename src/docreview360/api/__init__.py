@@ -298,7 +298,7 @@ class SavedSearchCreate(BaseModel):
     """Input model for creating saved searches."""
 
     query: str
-    user: str | None = None
+    user: str
 
 
 class TextBody(BaseModel):
