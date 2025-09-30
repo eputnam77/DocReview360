@@ -96,7 +96,8 @@ class TestEndToEndConfigurationFlow:
         # Initial configuration
         add_document_type(DocumentTypeModel(
             name="Initial Doc Type",
-            template="<h1>Initial</h1>"
+            template="<h1>Initial</h1>",
+            workflow=["Initial Phase"],
         ))
         add_phase("Initial Phase")
 
@@ -117,7 +118,8 @@ class TestEndToEndConfigurationFlow:
 
         add_document_type(DocumentTypeModel(
             name="Updated Doc Type",
-            template="<h1>Updated</h1>"
+            template="<h1>Updated</h1>",
+            workflow=["Updated Phase"],
         ))
         add_phase("Updated Phase")
 
@@ -162,7 +164,8 @@ class TestEndToEndConfigurationFlow:
         try:
             add_document_type(DocumentTypeModel(
                 name="",  # Invalid empty name
-                template="<h1>Invalid</h1>"
+                template="<h1>Invalid</h1>",
+                workflow=["Phase"],
             ))
         except Exception:
             # Should handle validation errors gracefully
@@ -193,7 +196,8 @@ class TestEndToEndConfigurationFlow:
         # Setup configuration
         add_document_type(DocumentTypeModel(
             name="Persistence Test Doc",
-            template="<h1>Persistence</h1>"
+            template="<h1>Persistence</h1>",
+            workflow=["Persistence Phase"],
         ))
         add_phase("Persistence Phase")
 
@@ -264,7 +268,8 @@ class TestEndToEndConfigurationFlow:
         # Recover by adding configuration
         add_document_type(DocumentTypeModel(
             name="Recovery Test Doc",
-            template="<h1>Recovery</h1>"
+            template="<h1>Recovery</h1>",
+            workflow=["Recovery Phase"],
         ))
         add_phase("Recovery Phase")
 
@@ -290,7 +295,8 @@ class TestEndToEndConfigurationFlow:
         for i in range(10):
             add_document_type(DocumentTypeModel(
                 name=f"Performance Test Doc {i}",
-                template=f"<h1>Performance {i}</h1>"
+                template=f"<h1>Performance {i}</h1>",
+                workflow=[f"Performance Phase {i}"],
             ))
             add_phase(f"Performance Phase {i}")
 
