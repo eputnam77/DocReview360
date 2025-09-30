@@ -19,6 +19,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -899,12 +900,14 @@ async def import_document_endpoint(
 
 
 @app.post("/documents/tiptap", status_code=201, response_model=DocumentModel)
-async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
+async def import_tiptap_endpoint(
+    body: dict[str, Any], link_duplicates: bool = Query(False)
+) -> DocumentModel:
     """Import a TipTap JSON document."""
     from ..tiptap import import_tiptap_document
 
     try:
-        document = import_tiptap_document(body)
+        document = import_tiptap_document(body, link_duplicates=link_duplicates)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     log_event(
