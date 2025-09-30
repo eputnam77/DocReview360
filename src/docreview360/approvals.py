@@ -3,12 +3,13 @@ and FANN-based routing support."""
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from io import BytesIO
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, NamedTuple, Optional
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
@@ -22,7 +23,7 @@ from .fann_model import Weights
 from .integrations.registry import get_provider
 from .integrations.signature import get_default_provider, get_default_providers
 from .logs import log_event, log_verification_failure
-from .monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
+from .monitoring import APPROVAL_UPLOAD_RETRIES, VERIFICATION_COUNTER, VERIFICATION_DURATION
 from .provider_store import set_provider_health
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
@@ -32,13 +33,32 @@ from .workflows import workflows
 @app.task(name="docreview360.approval_reminder")
 def _reminder_task(approval_id: str) -> None:
     """Log a reminder event for ``approval_id``."""
-    log_event("approval_reminder", approval_id=approval_id)
+    approval = _resolve_pending_approval("approval_reminder", approval_id)
+    if approval is None:
+        return
+    log_event(
+        "approval_reminder",
+        approval_id=approval_id,
+        reviewer=approval.reviewer,
+        workflow=approval.workflow,
+        doc_id=approval.document_id,
+    )
 
 
 @app.task(name="docreview360.approval_escalation")
 def _escalation_task(approval_id: str, target: str) -> None:
     """Log an escalation event for ``approval_id``."""
-    log_event("approval_escalated", approval_id=approval_id, target=target)
+    approval = _resolve_pending_approval("approval_escalated", approval_id)
+    if approval is None:
+        return
+    log_event(
+        "approval_escalated",
+        approval_id=approval_id,
+        target=target,
+        reviewer=approval.reviewer,
+        workflow=approval.workflow,
+        doc_id=approval.document_id,
+    )
 
 
 class ApprovalModel(BaseModel):
@@ -91,6 +111,68 @@ class SignatureValidationError(ValueError):
 
 
 _SIGNATURE_FALLBACK_ENV = "DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK"
+
+
+class _RetryPolicy(NamedTuple):
+    max_attempts: int
+    base_delay: float
+    max_delay: float
+
+
+_DEFAULT_RETRY_POLICY = _RetryPolicy(max_attempts=3, base_delay=0.5, max_delay=5.0)
+
+
+def _coerce_positive_float(value: Any, default: float) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return default
+    if result < 0:
+        return default
+    return result
+
+
+def _upload_retry_policy() -> _RetryPolicy:
+    settings = _approvals_settings_cached()
+    cfg = settings.get("upload_retry", {})
+    if not isinstance(cfg, dict):
+        return _DEFAULT_RETRY_POLICY
+    max_attempts = cfg.get("max_attempts", _DEFAULT_RETRY_POLICY.max_attempts)
+    try:
+        attempts = int(max_attempts)
+    except (TypeError, ValueError):
+        attempts = _DEFAULT_RETRY_POLICY.max_attempts
+    if attempts < 1:
+        attempts = 1
+    base_delay = _coerce_positive_float(cfg.get("base_delay"), _DEFAULT_RETRY_POLICY.base_delay)
+    max_delay = _coerce_positive_float(cfg.get("max_delay"), _DEFAULT_RETRY_POLICY.max_delay)
+    if max_delay < base_delay:
+        max_delay = base_delay
+    return _RetryPolicy(max_attempts=attempts, base_delay=base_delay, max_delay=max_delay)
+
+
+def _resolve_pending_approval(event: str, approval_id: str) -> ApprovalModel | None:
+    approval = approvals.get(approval_id)
+    if approval is None:
+        log_event(
+            f"{event}_skipped",
+            severity="warning",
+            approval_id=approval_id,
+            reason="missing_approval",
+        )
+        return None
+    if approval.state != "pending":
+        log_event(
+            f"{event}_skipped",
+            severity="info",
+            approval_id=approval_id,
+            reason="approval_not_pending",
+            state=approval.state,
+            reviewer=approval.reviewer,
+            workflow=approval.workflow,
+        )
+        return None
+    return approval
 
 
 def _load_approvals_settings() -> Dict[str, Any]:
@@ -459,10 +541,38 @@ async def update_approval_state(  # noqa: C901
         approval.due_at = due_at
     if state == "approved":
         approval.signed_at = signed_at or datetime.now(timezone.utc)
-        try:
-            await _upload_approval_artifacts(approval, document, certificate_url)
-        except Exception:
-            pass
+        policy = _upload_retry_policy()
+        attempt = 1
+        delay = policy.base_delay
+        while True:
+            try:
+                await _upload_approval_artifacts(approval, document, certificate_url)
+                break
+            except Exception as exc:
+                if attempt >= policy.max_attempts:
+                    APPROVAL_UPLOAD_RETRIES.labels("exhausted").inc()
+                    log_event(
+                        "approval_upload_failed",
+                        severity="error",
+                        approval_id=approval.id,
+                        workflow=approval.workflow,
+                        provider=approval.signature_provider,
+                        attempts=attempt,
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                    )
+                    break
+                APPROVAL_UPLOAD_RETRIES.labels("retry").inc()
+                wait = delay if delay > 0 else 0
+                if wait:
+                    await asyncio.sleep(wait)
+                attempt += 1
+                if policy.base_delay <= 0:
+                    delay = 0
+                elif delay <= 0:
+                    delay = policy.base_delay
+                else:
+                    delay = min(delay * 2, policy.max_delay)
     else:
         approval.signed_at = None
         approval.certificate_url = None
