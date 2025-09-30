@@ -71,6 +71,8 @@ def _env_or_default(
 DEFAULT_SECRET_KEY = "docreview360-dev-secret"
 DEFAULT_ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
+DEFAULT_TOKEN_ISSUER = "docreview360.local"
+DEFAULT_TOKEN_AUDIENCE = "docreview360-users"
 
 SECRET_KEY = _env_or_default("DOCREVIEW360_SECRET_KEY", default=DEFAULT_SECRET_KEY, required=True)
 ALGORITHM = _env_or_default("DOCREVIEW360_ALGORITHM", default=DEFAULT_ALGORITHM)
@@ -79,10 +81,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = _env_or_default(
     default=str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES),
     cast=int,
 )
+TOKEN_ISSUER = _env_or_default("DOCREVIEW360_TOKEN_ISSUER", default=DEFAULT_TOKEN_ISSUER)
+TOKEN_AUDIENCE = _env_or_default("DOCREVIEW360_TOKEN_AUDIENCE", default=DEFAULT_TOKEN_AUDIENCE)
 
 # separate secret for the OIDC flow
 DEFAULT_OIDC_SECRET_KEY = "docreview360-oidc-dev-secret"
 DEFAULT_OIDC_TOKEN_EXPIRE_MINUTES = 30
+DEFAULT_OIDC_TOKEN_ISSUER = "docreview360-oidc.local"
+DEFAULT_OIDC_TOKEN_AUDIENCE = "docreview360-oidc"
 
 OIDC_SECRET_KEY = _env_or_default(
     "DOCREVIEW360_OIDC_SECRET_KEY", default=DEFAULT_OIDC_SECRET_KEY, required=True
@@ -92,6 +98,12 @@ OIDC_TOKEN_EXPIRE_MINUTES = _env_or_default(
     "DOCREVIEW360_OIDC_EXPIRE_MINUTES",
     default=str(DEFAULT_OIDC_TOKEN_EXPIRE_MINUTES),
     cast=int,
+)
+OIDC_TOKEN_ISSUER = _env_or_default(
+    "DOCREVIEW360_OIDC_TOKEN_ISSUER", default=DEFAULT_OIDC_TOKEN_ISSUER
+)
+OIDC_TOKEN_AUDIENCE = _env_or_default(
+    "DOCREVIEW360_OIDC_TOKEN_AUDIENCE", default=DEFAULT_OIDC_TOKEN_AUDIENCE
 )
 
 
@@ -420,16 +432,48 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
 
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "iss": TOKEN_ISSUER,
+        "aud": TOKEN_AUDIENCE,
+    })
     return str(jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
 
 
+def _require_csrf_token(request: Request) -> None:
+    """Ensure the request presents a valid CSRF token when using cookie auth."""
+
+    csrf_cookie = request.cookies.get("csrf_token")
+    csrf_header = request.headers.get("X-CSRF-Token")
+    if not csrf_cookie or not csrf_header:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Missing CSRF token",
+        )
+    if not secrets.compare_digest(str(csrf_cookie), str(csrf_header)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
+        )
+
+
 def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme)) -> User:
-    token = request.cookies.get("access_token") or token
+    cookie_token = request.cookies.get("access_token")
+    if not token and cookie_token:
+        _require_csrf_token(request)
+        token = cookie_token
+    elif not token:
+        token = cookie_token
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            audience=TOKEN_AUDIENCE,
+            issuer=TOKEN_ISSUER,
+        )
         username: str | None = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -500,17 +544,32 @@ def create_id_token(data: Dict[str, Any], expires_delta: timedelta | None = None
 
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "iss": OIDC_TOKEN_ISSUER,
+        "aud": OIDC_TOKEN_AUDIENCE,
+    })
     return str(jwt.encode(to_encode, OIDC_SECRET_KEY, algorithm=OIDC_ALGORITHM))
 
 
 def get_current_user_oidc(request: Request, token: str | None = Depends(oidc_scheme)) -> User:
     """Validate ID token and return the associated user."""
-    token = request.cookies.get("access_token") or token
+    cookie_token = request.cookies.get("access_token")
+    if not token and cookie_token:
+        _require_csrf_token(request)
+        token = cookie_token
+    elif not token:
+        token = cookie_token
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     try:
-        payload = jwt.decode(token, OIDC_SECRET_KEY, algorithms=[OIDC_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            OIDC_SECRET_KEY,
+            algorithms=[OIDC_ALGORITHM],
+            audience=OIDC_TOKEN_AUDIENCE,
+            issuer=OIDC_TOKEN_ISSUER,
+        )
         username: str | None = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
