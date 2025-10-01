@@ -44,6 +44,12 @@ When configured, provider modules such as the OpenAI and SharePoint clients pull
 their tokens from the vault. If no vault is configured, the application falls
 back to environment variables like `OPENAI_KEY` or `SHAREPOINT_TOKEN`.
 
+## Role permissions
+
+Role-to-permission mappings are sourced from `settings.yaml`.  See
+[`docs/rbac_configuration.md`](./rbac_configuration.md) for guidance on updating
+the matrix and using the CLI helpers to inspect or modify roles.
+
 ## Documenso circuit breaker
 
 The Documenso connector automatically pauses remote requests after repeated
