@@ -2,7 +2,7 @@ import docreview360.comments as comments
 
 
 def test_add_comment_parses_emojis_and_mentions_with_hyphen() -> None:
-    comments._comments.clear()
+    comments.reset_comment_state()
     c = comments.add_comment("doc", "alice", "Hi @bob-smith :rocket:")
     assert c.mentions == ["bob-smith"]
     assert "🚀" in c.text
@@ -11,6 +11,6 @@ def test_add_comment_parses_emojis_and_mentions_with_hyphen() -> None:
 
 
 def test_add_comment_deduplicates_mentions() -> None:
-    comments._comments.clear()
+    comments.reset_comment_state()
     c = comments.add_comment("doc", "alice", "Hello @bob @bob @bob")
     assert c.mentions == ["bob"]
