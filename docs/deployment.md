@@ -43,3 +43,33 @@ vault:
 When configured, provider modules such as the OpenAI and SharePoint clients pull
 their tokens from the vault. If no vault is configured, the application falls
 back to environment variables like `OPENAI_KEY` or `SHAREPOINT_TOKEN`.
+
+## Documenso circuit breaker
+
+The Documenso connector automatically pauses remote requests after repeated
+HTTP failures and falls back to the in-memory stub. Tune the circuit breaker via
+environment variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCUMENSO_FAILURE_THRESHOLD` | `3` | Number of consecutive HTTP errors allowed within the window. |
+| `DOCUMENSO_FAILURE_WINDOW_SECONDS` | `60` | Rolling time window used to evaluate failures. |
+| `DOCUMENSO_FAILURE_COOLDOWN_SECONDS` | `300` | Duration to wait before attempting to recover the remote integration. |
+
+While the breaker is open the `SIGNATURE_FAILURES` counter exposes the HTTP
+failure reason in its `reason` label and `providers.yaml` is updated with
+`documenso.healthy: false`. Once the upstream service is stable you can
+re-enable Documenso by either editing `providers.yaml` to mark the provider as
+healthy or by running the helper below from the project root:
+
+```bash
+poetry run python - <<'PY'
+from docreview360.provider_store import set_provider_health
+
+set_provider_health("documenso", True)
+PY
+```
+
+The breaker automatically resets after the cooldown period, but manually
+flipping the health flag lets operators restore the remote provider immediately
+after verifying that Documenso is back online.
