@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -12,10 +13,30 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .logs import TRACE_ID
 from .object_storage import upload_file
 from .security_compliance import should_purge
 from .settings_manager import load_settings
+
+logger = logging.getLogger(__name__)
+
+
+class AuditLogIntegrityError(RuntimeError):
+    """Raised when a persisted audit log entry fails validation."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str,
+        document_id: str | None = None,
+        entry_id: str | None = None,
+        raw_entry: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.reason = reason
+        self.document_id = document_id
+        self.entry_id = entry_id
+        self.raw_entry = raw_entry
 
 
 class AuditLogEntry(BaseModel):
@@ -66,8 +87,10 @@ AUDIT_LOG_SCHEMA: Dict[str, Any] = AuditLogEntry.model_json_schema()
 _AUDIT_LOG_PATH = Path(__file__).with_name("audit.log")
 _AUDIT_ANCHOR_PATH = _AUDIT_LOG_PATH.with_suffix(".anchor")
 
-# Default retention period for compliance audit logs (in days)
-COMPLIANCE_LOG_RETENTION_DAYS = 365 * 7
+DEFAULT_AUDIT_LOG_SETTINGS: Dict[str, int] = {
+    "retention_days": 365 * 7,
+    "purge_interval_minutes": 60 * 24,
+}
 
 
 def _compute_hash(data: Dict[str, Any], secret: str | None) -> str:
@@ -91,6 +114,8 @@ def log_audit_event(
     **context: Any,
 ) -> AuditLogEntry:
     """Record an :class:`AuditLogEntry` for ``document_id`` and return it."""
+
+    from .logs import TRACE_ID  # local import to avoid circular import during module load
 
     if verified_at is None:
         verified_at = datetime.now(timezone.utc)
@@ -129,6 +154,83 @@ def log_audit_event(
     return entry
 
 
+def _load_audit_log_settings() -> Dict[str, int]:
+    settings = load_settings()
+    cfg = settings.get("audit_log", {})
+    data = DEFAULT_AUDIT_LOG_SETTINGS.copy()
+    if isinstance(cfg, dict):
+        for key, value in cfg.items():
+            if key not in data:
+                continue
+            try:
+                data[key] = int(value)
+            except (TypeError, ValueError):
+                logger.warning("Ignoring non-integer audit log setting '%s'", key)
+    return data
+
+
+def _dispatch_verification_tasks() -> None:
+    try:
+        from .integrity import verify_integrity
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Unable to import integrity task: %s", exc)
+    else:
+        try:
+            verify_integrity.delay()
+        except AttributeError:
+            try:
+                verify_integrity()
+            except Exception as call_exc:  # pragma: no cover - integrity runtime failure
+                logger.warning("Integrity verification call failed: %s", call_exc)
+        except Exception as exc:  # pragma: no cover - Celery transport specific
+            logger.warning("Failed to enqueue verify_integrity task: %s", exc)
+
+    try:
+        hash_new_log_segments()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to hash new audit log segments: %s", exc)
+
+
+def _raise_corruption(
+    *,
+    reason: str,
+    message: str,
+    document_id: str | None,
+    entry_id: str | None,
+    raw_entry: str | None,
+) -> None:
+    context: Dict[str, Any] = {
+        "reason": reason,
+    }
+    if document_id:
+        context["document"] = document_id
+    if entry_id:
+        context["entry_id"] = entry_id
+
+    try:
+        from .logs import log_event as _log_event
+    except Exception:  # pragma: no cover - defensive lazy import
+        logger.exception("Unable to import log_event for corruption alert")
+    else:
+        try:
+            _log_event(
+                "audit_log_corruption_detected",
+                severity="error",
+                **context,
+            )
+        except Exception:  # pragma: no cover - logging backend failures
+            logger.exception("Failed to emit audit_log_corruption_detected event")
+
+    _dispatch_verification_tasks()
+    raise AuditLogIntegrityError(
+        message,
+        reason=reason,
+        document_id=document_id,
+        entry_id=entry_id,
+        raw_entry=raw_entry,
+    )
+
+
 def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogEntry]:
     """Return the audit log for ``document_id`` sorted by timestamp."""
 
@@ -140,17 +242,37 @@ def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogE
             try:
                 data = json.loads(line)
             except json.JSONDecodeError:
-                continue
+                _raise_corruption(
+                    reason="malformed_json",
+                    message="Encountered malformed audit log entry",
+                    document_id=document_id,
+                    entry_id=None,
+                    raw_entry=line.strip(),
+                )
             if data.get("document_id") != document_id:
                 continue
             try:
                 expected = _compute_hash({k: v for k, v in data.items() if k != "hash"}, secret)
                 if secret and not hmac.compare_digest(expected, data.get("hash", "")):
-                    continue
+                    _raise_corruption(
+                        reason="hash_mismatch",
+                        message="Audit log entry failed HMAC verification",
+                        document_id=document_id,
+                        entry_id=str(data.get("id")),
+                        raw_entry=json.dumps(data, default=str),
+                    )
                 data["verified_at"] = datetime.fromisoformat(data["verified_at"])
                 events.append(AuditLogEntry(**data))
-            except Exception:
-                continue
+            except AuditLogIntegrityError:
+                raise
+            except Exception as exc:
+                _raise_corruption(
+                    reason="unreadable_entry",
+                    message=f"Failed to hydrate audit log entry: {exc}",
+                    document_id=document_id,
+                    entry_id=str(data.get("id")),
+                    raw_entry=json.dumps(data, default=str),
+                )
     events.sort(key=lambda e: e.verified_at)
     return events
 
@@ -165,17 +287,37 @@ def get_audit_entry(entry_id: str, secret: str | None = None) -> AuditLogEntry |
             try:
                 data = json.loads(line)
             except json.JSONDecodeError:
-                continue
+                _raise_corruption(
+                    reason="malformed_json",
+                    message="Encountered malformed audit log entry",
+                    document_id=None,
+                    entry_id=entry_id,
+                    raw_entry=line.strip(),
+                )
             if data.get("id") != entry_id:
                 continue
             try:
                 expected = _compute_hash({k: v for k, v in data.items() if k != "hash"}, secret)
                 if secret and not hmac.compare_digest(expected, data.get("hash", "")):
-                    return None
+                    _raise_corruption(
+                        reason="hash_mismatch",
+                        message="Audit log entry failed HMAC verification",
+                        document_id=str(data.get("document_id")),
+                        entry_id=entry_id,
+                        raw_entry=json.dumps(data, default=str),
+                    )
                 data["verified_at"] = datetime.fromisoformat(data["verified_at"])
                 return AuditLogEntry(**data)
-            except Exception:
-                return None
+            except AuditLogIntegrityError:
+                raise
+            except Exception as exc:
+                _raise_corruption(
+                    reason="unreadable_entry",
+                    message=f"Failed to hydrate audit log entry: {exc}",
+                    document_id=str(data.get("document_id")),
+                    entry_id=entry_id,
+                    raw_entry=json.dumps(data, default=str),
+                )
     return None
 
 
@@ -186,7 +328,7 @@ def clear_audit_log() -> None:
         _AUDIT_LOG_PATH.unlink()
 
 
-def purge_audit_logs(retention_days: int = COMPLIANCE_LOG_RETENTION_DAYS) -> int:
+def purge_audit_logs(retention_days: int | None = None) -> int:
     """Remove audit log entries older than ``retention_days``.
 
     Returns
@@ -194,6 +336,9 @@ def purge_audit_logs(retention_days: int = COMPLIANCE_LOG_RETENTION_DAYS) -> int
     int
         Number of entries removed.
     """
+
+    if retention_days is None:
+        retention_days = _load_audit_log_settings()["retention_days"]
 
     if not _AUDIT_LOG_PATH.exists():
         return 0
@@ -296,10 +441,11 @@ def schedule_audit_log_purge() -> None:
     """Configure periodic purging of expired audit log entries."""
     from .celery_app import app
 
-    settings = load_settings()
-    cfg = settings.get("audit_log", {})
-    retention = int(cfg.get("retention_days", COMPLIANCE_LOG_RETENTION_DAYS))
-    interval = int(cfg.get("purge_interval_minutes", 60 * 24))
+    cfg = _load_audit_log_settings()
+    retention = cfg["retention_days"]
+    interval = cfg.get(
+        "purge_interval_minutes", DEFAULT_AUDIT_LOG_SETTINGS["purge_interval_minutes"]
+    )
     app.task(name="docreview360.purge_audit_logs")(purge_audit_logs)
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["purge_audit_logs"] = {
