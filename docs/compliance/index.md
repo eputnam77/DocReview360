@@ -28,3 +28,12 @@ Archives remain at 365 days. These values can be adjusted in ``settings.yaml``::
 Reducing the retention period will cause a scheduled purge job to remove items
 older than the configured number of days. Increasing the interval allows less
 frequent purge runs if desired.
+
+## Audit log integrity monitoring
+
+DocReview360 continuously validates audit log append operations. If a malformed
+entry or an HMAC verification failure is encountered the platform emits an
+``audit_log_corruption_detected`` event, triggers an immediate audit log hash
+refresh and re-runs the SharePoint integrity task. Operators can monitor the
+event stream or alerting pipelines for this action to quickly investigate
+tampering attempts.

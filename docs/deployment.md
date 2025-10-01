@@ -79,3 +79,19 @@ PY
 The breaker automatically resets after the cooldown period, but manually
 flipping the health flag lets operators restore the remote provider immediately
 after verifying that Documenso is back online.
+
+## Responding to audit log corruption alerts
+
+The audit subsystem raises an ``audit_log_corruption_detected`` event whenever a
+malformed or tampered entry is encountered. When the event fires DocReview360
+automatically replays the SharePoint integrity task and re-hashes the audit log
+segments so the append-only anchor store stays in sync. Operators should:
+
+1. Inspect the audit log tail (`tail -n50 src/docreview360/audit.log`) to confirm
+   the offending entry.
+2. Review the SharePoint verification task result in the worker logs to ensure
+   document hashes match expectations.
+3. Export the refreshed anchors from ``tamper_proof_store/`` for offline
+   comparison if a regulatory review is underway.
+4. Open an incident if the corruption originated from an unexpected source or if
+   anchors diverge after the automated recovery.
