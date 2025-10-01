@@ -5,10 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
+import yaml
 
+from . import rbac
 from .config import CONFIG_FILE, Config
 from .database import default_url
 from .migration import export_instance, import_instance
+from .settings_manager import load_settings
 
 
 @click.group()
@@ -155,6 +158,94 @@ def import_cmd(path: str) -> None:  # "import" is a keyword
         click.echo("Import completed")
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+@cli.group()
+def rbac_admin() -> None:
+    """Manage role definitions stored in ``settings.yaml``."""
+
+    return None
+
+
+@rbac_admin.command("show")
+def rbac_show() -> None:
+    """Display the current role to permission mapping."""
+
+    rbac.reload_role_permissions(force=True)
+    mapping = rbac.get_role_permissions()
+    if not mapping:
+        click.echo("No roles defined")
+        return
+    for role in sorted(mapping):
+        permissions = ", ".join(sorted(mapping[role])) or "(no permissions)"
+        click.echo(f"{role}: {permissions}")
+
+
+@rbac_admin.command("set-role")
+@click.argument("role")
+@click.option(
+    "--permission",
+    "permissions",
+    multiple=True,
+    help="Permission to assign to the role (repeat for multiple).",
+)
+@click.option(
+    "--config-path",
+    default=lambda: str(rbac.settings_manager.SETTINGS_FILE),
+    show_default=True,
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Path to the settings file storing role definitions.",
+)
+@click.option(
+    "--merge/--replace",
+    default=False,
+    show_default=True,
+    help="Merge with existing permissions instead of replacing them.",
+)
+def rbac_set_role(
+    role: str,
+    permissions: tuple[str, ...],
+    config_path: Path,
+    merge: bool,
+) -> None:
+    """Update or create ``role`` with the supplied permissions."""
+
+    normalized_role = role.strip().lower()
+    if not normalized_role:
+        raise click.BadParameter("Role name must not be empty", param_hint="role")
+
+    normalized_permissions = {
+        perm.strip().lower() for perm in permissions if perm.strip()
+    }
+
+    settings = load_settings(config_path)
+    rbac_config = settings.setdefault("rbac", {})
+    roles_config = rbac_config.setdefault("roles", {})
+    existing: list[str] = []
+    if merge and normalized_role in roles_config:
+        current = roles_config[normalized_role]
+        if isinstance(current, dict):
+            candidate = current.get("permissions", [])
+        else:
+            candidate = current
+        if isinstance(candidate, str):
+            existing = [candidate]
+        elif isinstance(candidate, list):
+            existing = [str(item) for item in candidate]
+        elif isinstance(candidate, tuple):
+            existing = [str(item) for item in candidate]
+    normalized_permissions.update(perm.strip().lower() for perm in existing if perm)
+    roles_config[normalized_role] = sorted(normalized_permissions)
+
+    try:
+        config_path.write_text(yaml.safe_dump(settings, sort_keys=True))
+    except OSError as exc:  # pragma: no cover - defensive
+        raise click.ClickException(f"Failed to update settings: {exc}") from exc
+
+    rbac.reload_role_permissions(force=True)
+    click.echo(
+        f"Updated role '{normalized_role}' with {len(normalized_permissions)} permission(s)"
+    )
 
 
 @cli.group()
