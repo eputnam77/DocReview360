@@ -7,11 +7,12 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from threading import RLock
-from typing import Callable, Iterable, Iterator, Mapping, Set
+from typing import Any, Callable, Iterable, Iterator, Mapping, Set
 
 from fastapi import Depends, HTTPException, status
 
-from . import auth
+from . import auth, settings_manager
+from .audit import log_audit_event
 
 
 class RoleRepositoryError(RuntimeError):
@@ -160,7 +161,7 @@ def _role_store_path_from_env() -> str:
     return os.getenv("DOCREVIEW360_RBAC_DB", _default_role_store_path())
 
 
-ROLE_PERMISSIONS: dict[str, Set[str]] = {
+_DEFAULT_ROLE_PERMISSIONS: Mapping[str, Set[str]] = {
     "admin": {
         "create",
         "read",
@@ -180,6 +181,13 @@ ROLE_PERMISSIONS: dict[str, Set[str]] = {
     "verifier": {"verification_override"},
 }
 
+ROLE_PERMISSIONS: dict[str, Set[str]] = {
+    role: set(perms) for role, perms in _DEFAULT_ROLE_PERMISSIONS.items()
+}
+
+_ROLE_PERMISSIONS_MTIME: float | None = None
+_ROLE_PERMISSIONS_LOCK = RLock()
+
 _ROLE_CACHE = _RoleCache()
 _ROLE_REPOSITORY = RoleRepository(_role_store_path_from_env())
 
@@ -195,7 +203,17 @@ def configure_role_repository(path: str | os.PathLike[str]) -> None:
 def _with_repository(
     operation: Callable[[RoleRepository], None],
     username: str | None = None,
+    *,
+    actor: str | None = None,
+    context: Mapping[str, Any] | None = None,
+    reset: bool = False,
+    reset_include_defaults: bool | None = None,
 ) -> None:
+    base_context = dict(context or {})
+    try:
+        before_roles = _ROLE_REPOSITORY.get_roles(username) if username else set()
+    except RoleRepositoryError as exc:  # pragma: no cover - defensive
+        raise RoleBackendError("role store operation failed") from exc
     try:
         operation(_ROLE_REPOSITORY)
     except RoleRepositoryError as exc:  # pragma: no cover - defensive
@@ -205,33 +223,98 @@ def _with_repository(
             _ROLE_CACHE.invalidate()
         else:
             _ROLE_CACHE.invalidate(username)
+        audit_actor = actor or "system"
+        if username is not None:
+            try:
+                after_roles = _ROLE_REPOSITORY.get_roles(username)
+            except RoleRepositoryError as exc:  # pragma: no cover - defensive
+                raise RoleBackendError("role store operation failed") from exc
+            added = sorted(after_roles - before_roles)
+            removed = sorted(before_roles - after_roles)
+            if added or removed:
+                roles_before = sorted(before_roles)
+                roles_after = sorted(after_roles)
+                for role in added:
+                    event_context = {
+                        "target_user": username,
+                        "role": role,
+                        "roles_before": roles_before,
+                        "roles_after": roles_after,
+                        **base_context,
+                    }
+                    log_audit_event(
+                        f"rbac::{username}",
+                        "role_added",
+                        actor=audit_actor,
+                        **event_context,
+                    )
+                for role in removed:
+                    event_context = {
+                        "target_user": username,
+                        "role": role,
+                        "roles_before": roles_before,
+                        "roles_after": roles_after,
+                        **base_context,
+                    }
+                    log_audit_event(
+                        f"rbac::{username}",
+                        "role_removed",
+                        actor=audit_actor,
+                        **event_context,
+                    )
+        if reset:
+            reset_context = {"include_defaults": reset_include_defaults, **base_context}
+            log_audit_event(
+                "rbac::global",
+                "roles_reset",
+                actor=audit_actor,
+                **reset_context,
+            )
 
 
-def set_user_roles(username: str, roles: Iterable[str]) -> None:
+def set_user_roles(
+    username: str,
+    roles: Iterable[str],
+    *,
+    actor: str | None = None,
+    context: Mapping[str, Any] | None = None,
+) -> None:
     """Assign ``roles`` to ``username`` replacing any existing mapping."""
 
     def _op(repo: RoleRepository) -> None:
         repo.set_roles(username, roles)
 
-    _with_repository(_op, username=username)
+    _with_repository(_op, username=username, actor=actor, context=context)
 
 
-def add_role(username: str, role: str) -> None:
+def add_role(
+    username: str,
+    role: str,
+    *,
+    actor: str | None = None,
+    context: Mapping[str, Any] | None = None,
+) -> None:
     """Add a single ``role`` to ``username``."""
 
     def _op(repo: RoleRepository) -> None:
         repo.add_role(username, role)
 
-    _with_repository(_op, username=username)
+    _with_repository(_op, username=username, actor=actor, context=context)
 
 
-def remove_role(username: str, role: str) -> None:
+def remove_role(
+    username: str,
+    role: str,
+    *,
+    actor: str | None = None,
+    context: Mapping[str, Any] | None = None,
+) -> None:
     """Remove ``role`` from ``username``."""
 
     def _op(repo: RoleRepository) -> None:
         repo.remove_role(username, role)
 
-    _with_repository(_op, username=username)
+    _with_repository(_op, username=username, actor=actor, context=context)
 
 
 def get_roles(username: str) -> set[str]:
@@ -252,6 +335,7 @@ def has_role(username: str, role: str) -> bool:
 def has_permission(username: str, action: str) -> bool:
     """Return ``True`` if ``username`` may perform ``action`` based on roles."""
 
+    reload_role_permissions()
     roles = {r.lower() for r in get_roles(username)}
     act = action.lower()
     return any(act in ROLE_PERMISSIONS.get(r, set()) for r in roles)
@@ -266,7 +350,12 @@ def list_role_assignments() -> Mapping[str, Set[str]]:
         raise RoleBackendError("role store operation failed") from exc
 
 
-def reset_role_assignments(include_defaults: bool = True) -> None:
+def reset_role_assignments(
+    include_defaults: bool = True,
+    *,
+    actor: str | None = None,
+    context: Mapping[str, Any] | None = None,
+) -> None:
     """Clear all assignments and optionally restore default roles."""
 
     def _op(repo: RoleRepository) -> None:
@@ -274,7 +363,102 @@ def reset_role_assignments(include_defaults: bool = True) -> None:
         if include_defaults:
             repo.seed_defaults()
 
-    _with_repository(_op)
+    _with_repository(
+        _op,
+        actor=actor,
+        context=context,
+        reset=True,
+        reset_include_defaults=include_defaults,
+    )
+
+
+def _normalize_permission(action: str) -> str:
+    return action.strip().lower()
+
+
+def _coerce_permissions(raw: Mapping[str, Any]) -> dict[str, Set[str]]:
+    mapping: dict[str, Set[str]] = {}
+    for role, values in raw.items():
+        normalized_role = _normalize_role(str(role))
+        if not normalized_role:
+            continue
+        permissions: set[str] = set()
+        candidate: Any
+        if isinstance(values, Mapping):
+            candidate = values.get("permissions", [])
+        else:
+            candidate = values
+        if candidate is None:
+            permissions = set()
+        elif isinstance(candidate, str):
+            permission = _normalize_permission(candidate)
+            if permission:
+                permissions.add(permission)
+        elif isinstance(candidate, Iterable):
+            for item in candidate:
+                if isinstance(item, str):
+                    permission = _normalize_permission(item)
+                    if permission:
+                        permissions.add(permission)
+        else:
+            continue
+        mapping[normalized_role] = permissions
+    return mapping
+
+
+def _load_role_permissions_from_settings() -> dict[str, Set[str]]:
+    settings = settings_manager.load_settings(settings_manager.SETTINGS_FILE)
+    configured: Mapping[str, Any] | None = None
+    rbac_cfg = settings.get("rbac")
+    if isinstance(rbac_cfg, Mapping):
+        candidate = rbac_cfg.get("roles") or rbac_cfg.get("role_permissions")
+        if isinstance(candidate, Mapping):
+            configured = candidate
+    if configured is None:
+        candidate = settings.get("role_permissions")
+        if isinstance(candidate, Mapping):
+            configured = candidate
+    permissions = {
+        role: set(perms) for role, perms in _DEFAULT_ROLE_PERMISSIONS.items()
+    }
+    if configured:
+        overrides = _coerce_permissions(configured)
+        for role, perms in overrides.items():
+            permissions[role] = perms
+    return permissions
+
+
+def reload_role_permissions(force: bool = False) -> None:
+    """Reload role permissions from settings when they change."""
+
+    global _ROLE_PERMISSIONS_MTIME
+    path = settings_manager.SETTINGS_FILE
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:  # pragma: no cover - defensive
+        mtime = None
+    with _ROLE_PERMISSIONS_LOCK:
+        if (
+            not force
+            and ROLE_PERMISSIONS
+            and _ROLE_PERMISSIONS_MTIME == mtime
+        ):
+            return
+        permissions = _load_role_permissions_from_settings()
+        ROLE_PERMISSIONS.clear()
+        for role, perms in permissions.items():
+            ROLE_PERMISSIONS[role] = set(perms)
+        _ROLE_PERMISSIONS_MTIME = mtime
+
+
+def get_role_permissions() -> Mapping[str, Set[str]]:
+    """Return the current role-to-permission mapping."""
+
+    reload_role_permissions()
+    return ROLE_PERMISSIONS
+
+
+reload_role_permissions(force=True)
 
 
 def require_role(role: str) -> Callable[[auth.User], auth.User]:
