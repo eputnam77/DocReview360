@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from ..logs import log_event
-
 
 def record_task_completion(task_id: int) -> None:
     """Log completion of a stub task.
@@ -24,6 +22,11 @@ def record_task_completion(task_id: int) -> None:
     task_id:
         Identifier of the task being executed.
     """
+    try:
+        from ..logs import log_event
+    except Exception:
+        return
+
     try:
         log_event("task_completed", entity_id=str(task_id))
     except Exception:
