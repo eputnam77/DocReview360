@@ -50,7 +50,7 @@ PROVIDER_HEALTH = Gauge(
 SIGNATURE_FAILURES = Counter(
     "docreview360_signature_failures_total",
     "Number of failed signature requests",
-    ["provider"],
+    ["provider", "reason"],
 )
 WEBHOOK_DELAY = Histogram(
     "docreview360_webhook_delay_seconds",
