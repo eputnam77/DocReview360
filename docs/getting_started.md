@@ -57,6 +57,22 @@ pipx install uv poetry
    fallback list) to use Documenso instead, and ensure the ``/hooks/documenso``
    endpoint is reachable so webhook callbacks succeed.
 
+   Optional authentication flags control multi-factor requirements and rate
+   limiting. You can pre-set them to the development defaults used by
+   `docreview360.auth` to silence startup warnings:
+
+   ```bash
+   export DOCREVIEW360_REQUIRE_MFA=false
+   export DOCREVIEW360_SEED_DEMO_USERS=false
+   export DOCREVIEW360_MAX_FAILED_ATTEMPTS=5
+   export DOCREVIEW360_LOCKOUT_SECONDS=300
+   export DOCREVIEW360_USER_DB="$(pwd)/docreview360_users.db"
+   ```
+
+   Leaving these environment variables unset is also acceptable during local
+   development. The server logs a `RuntimeWarning` for each missing value to
+   highlight that `_env_or_default` fell back to development-safe defaults.
+
    When testing, refer to secrets in `tests/conftest.py`.
    Run the CLI wizard to set up your config:
 
