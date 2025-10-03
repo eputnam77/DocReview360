@@ -222,6 +222,14 @@ def _create_stub_signature(
     return sig_id, url, meta
 
 
+def register_stub_signature(sig_id: str, workflow_id: str | None = None) -> None:
+    """Record ``sig_id`` in the local stub registry when created externally."""
+
+    _signatures.setdefault(sig_id, "pending")
+    if workflow_id:
+        _sig_workflows[sig_id] = workflow_id
+
+
 def request_signature(
     document_id: str,
     user: str,

@@ -73,6 +73,9 @@ class _WorkflowPayload(BaseModel):
     def ensure_non_empty(cls, value: List[str]) -> List[str]:
         if not value:
             raise ValueError("Document types must include at least one workflow phase")
+        for phase in value:
+            if not isinstance(phase, str) or not phase.strip():
+                raise ValueError("Workflow phases must be non-empty strings")
         return value
 
 
@@ -93,6 +96,10 @@ document_types: Dict[str, DocumentTypeModel] = {}
 # Track persisted version metadata for optimistic locking
 _STATE_VERSION: int = 0
 _STATE_UPDATED_AT: str | None = None
+# Remember which persistence backend the in-memory state reflects so switching
+# ``DATA_FILE`` between tests (or at runtime) transparently reloads the new
+# store instead of tripping optimistic locking checks.
+_ACTIVE_DATA_FILE: Path = DATA_FILE
 
 
 class StaleStateError(RuntimeError):
@@ -280,10 +287,62 @@ def _load_persisted_payload() -> Tuple[list[dict[str, Any]], int, str | None, bo
     return document_payload, version, updated_at, True
 
 
+def _populate_from_payload(
+    payload: list[dict[str, Any]], version: int, updated_at: str | None
+) -> None:
+    """Load ``payload`` into ``document_types`` and update metadata."""
+
+    global _STATE_VERSION, _STATE_UPDATED_AT
+
+    document_types.clear()
+    for item in payload:
+        try:
+            doc = DocumentTypeModel(**item)
+            _validate_workflow(doc)
+        except ValidationError as exc:
+            raise ValueError(f"Invalid document type entry in saved file: {item}") from exc
+        document_types[doc.name] = doc
+
+    _STATE_VERSION = version
+    _STATE_UPDATED_AT = updated_at
+
+
+def _ensure_current_store_loaded() -> None:
+    """Reload persisted state when ``DATA_FILE`` changes between calls."""
+
+    global _ACTIVE_DATA_FILE, _STATE_VERSION, _STATE_UPDATED_AT
+
+    if DATA_FILE == _ACTIVE_DATA_FILE:
+        return
+
+    _ACTIVE_DATA_FILE = DATA_FILE
+    _STATE_VERSION = 0
+    _STATE_UPDATED_AT = None
+
+    if not DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        document_types.clear()
+        return
+
+    with _state_lock():
+        try:
+            payload, version, updated_at, exists = _load_persisted_payload()
+        except RuntimeError:
+            raise
+        except ValueError as exc:
+            raise ValueError("Invalid document types data on disk") from exc
+
+    if exists:
+        _populate_from_payload(payload, version, updated_at)
+    else:
+        document_types.clear()
+
+
 def save_state(expected_version: int | None = None) -> None:
     """Persist document_types to disk with optimistic locking."""
 
     global _STATE_VERSION, _STATE_UPDATED_AT
+
+    _ensure_current_store_loaded()
 
     documents = [doc.model_dump() for doc in document_types.values()]
     if expected_version is None:
@@ -292,7 +351,14 @@ def save_state(expected_version: int | None = None) -> None:
     timestamp = datetime.now(timezone.utc).isoformat()
 
     with _state_lock():
-        _, current_version, _, _ = _load_persisted_payload()
+        _, current_version, _, exists = _load_persisted_payload()
+        if not exists and expected_version:
+            # When switching persistence backends (e.g., during tests) the
+            # in-memory version may reflect the previous file.  Treat the
+            # fresh store as version 0 to avoid spurious StaleStateError and
+            # allow the new file to be initialised.
+            expected_version = 0
+            current_version = 0
         file_version = current_version
 
         if file_version != expected_version:
@@ -327,6 +393,8 @@ def load_state() -> bool:
 
     global _STATE_VERSION, _STATE_UPDATED_AT
 
+    _ensure_current_store_loaded()
+
     with _state_lock():
         try:
             payload, version, updated_at, exists = _load_persisted_payload()
@@ -340,17 +408,7 @@ def load_state() -> bool:
         _STATE_UPDATED_AT = None
         return False
 
-    document_types.clear()
-    for item in payload:
-        try:
-            doc = DocumentTypeModel(**item)
-            _validate_workflow(doc)
-        except ValidationError as exc:
-            raise ValueError(f"Invalid document type entry in saved file: {item}") from exc
-        document_types[doc.name] = doc
-
-    _STATE_VERSION = version
-    _STATE_UPDATED_AT = updated_at
+    _populate_from_payload(payload, version, updated_at)
     return True
 
 
@@ -386,6 +444,7 @@ else:
 
 def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentTypeModel:
     """Store a document type in memory and persist it."""
+    _ensure_current_store_loaded()
     expected_version = _STATE_VERSION
     if isinstance(doc_type, dict):
         doc_type = DocumentTypeModel(**doc_type)
@@ -424,16 +483,19 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
 
 def get_document_type(name: str) -> DocumentTypeModel | None:
     """Retrieve a document type by name."""
+    _ensure_current_store_loaded()
     return document_types.get(name)
 
 
 def list_document_types() -> list[DocumentTypeModel]:
     """Return all known document types."""
+    _ensure_current_store_loaded()
     return list(document_types.values())
 
 
 def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentTypeModel:
     """Update an existing document type and persist changes."""
+    _ensure_current_store_loaded()
     if name not in document_types:
         raise KeyError(f"Document type '{name}' not found")
 
@@ -481,6 +543,7 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
 
 def delete_document_type(name: str) -> None:
     """Delete a document type by name and persist changes."""
+    _ensure_current_store_loaded()
     expected_version = _STATE_VERSION
     previous_state = dict(document_types)
     try:
@@ -503,10 +566,12 @@ def delete_document_type(name: str) -> None:
 
 def export_document_types(path: str | Path) -> None:
     """Serialize document types to ``path`` as JSON."""
+    _ensure_current_store_loaded()
     try:
         dest = Path(path)
         if dest.is_dir():
             raise ValueError(f"Export path {dest} must be a file")
+        dest.parent.mkdir(parents=True, exist_ok=True)
         json_data = [doc.model_dump() for doc in document_types.values()]
         dest.write_text(json.dumps(json_data, indent=2))
     except OSError as exc:
@@ -515,6 +580,7 @@ def export_document_types(path: str | Path) -> None:
 
 def import_document_types(path: str | Path) -> None:
     """Load document types from a JSON file and persist."""
+    _ensure_current_store_loaded()
     expected_version = _STATE_VERSION
     previous_state = dict(document_types)
     try:
@@ -540,6 +606,8 @@ def import_document_types(path: str | Path) -> None:
             _validate_workflow(doc)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
+        if doc.name in temp and temp[doc.name].model_dump() != doc.model_dump():
+            raise ValueError(f"Duplicate document type '{doc.name}' in import payload")
         temp[doc.name] = doc
     document_types.clear()
     document_types.update(temp)
@@ -554,12 +622,14 @@ def import_document_types(path: str | Path) -> None:
 
 def export_document_types_json() -> str:
     """Return document types as a JSON string."""
+    _ensure_current_store_loaded()
     json_data = [doc.model_dump() for doc in document_types.values()]
     return json.dumps(json_data, indent=2)
 
 
 def import_document_types_json(data: str) -> None:
     """Load document types from a JSON string and persist."""
+    _ensure_current_store_loaded()
     expected_version = _STATE_VERSION
     previous_state = dict(document_types)
     try:
@@ -577,6 +647,8 @@ def import_document_types_json(data: str) -> None:
             _validate_workflow(doc)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
+        if doc.name in temp and temp[doc.name].model_dump() != doc.model_dump():
+            raise ValueError(f"Duplicate document type '{doc.name}' in import payload")
         temp[doc.name] = doc
     document_types.clear()
     document_types.update(temp)
@@ -596,6 +668,7 @@ def import_document_types_json(data: str) -> None:
 
 def list_all_phases() -> list[str]:
     """Return a sorted list of all unique phases across all document types."""
+    _ensure_current_store_loaded()
     phases = set()
     for doc in document_types.values():
         for phase in doc.workflow:
