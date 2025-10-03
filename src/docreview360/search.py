@@ -16,7 +16,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from . import fts
 from .cache import cache_delete, cache_get, cache_set
@@ -37,6 +37,7 @@ class ProjectModel(BaseModel):
     user: Optional[str] = None
     doc_type: str | None = None
     workflow: str | None = None
+    requested_workflow: str | None = None
     priority: int = 0
     created: datetime = Field(default_factory=lambda: datetime.now(UTC))
     temp_user: Optional[str] = None
@@ -126,6 +127,12 @@ class ProjectModel(BaseModel):
                 else:
                     return 25
         return 0  # Default progress for projects without workflows
+
+    @model_validator(mode="after")
+    def _ensure_requested_workflow(self) -> "ProjectModel":
+        if self.requested_workflow is None and self.workflow:
+            self.requested_workflow = self.workflow
+        return self
 
 
 @dataclass
@@ -250,26 +257,27 @@ class SearchRepository:
             with self._connection() as conn:
                 project_rows = conn.execute("SELECT id, payload FROM projects").fetchall()
                 projects: dict[str, ProjectModel] = {}
-                cleared_workflows: list[tuple[str, str]] = []
+                missing_workflows: list[tuple[str, str]] = []
                 for row in project_rows:
                     project = ProjectModel.model_validate_json(row["payload"])
+                    if project.requested_workflow is None and project.workflow:
+                        project.requested_workflow = project.workflow
                     if project.workflow and not get_workflow(project.workflow):
-                        cleared_workflows.append((project.id, project.workflow))
-                        project.workflow = None
-                        conn.execute(
-                            "UPDATE projects SET payload = ? WHERE id = ?",
-                            (
-                                json.dumps(project.model_dump(mode="json")),
-                                project.id,
-                            ),
-                        )
+                        missing_workflows.append((project.id, project.workflow))
                     projects[project.id] = project
 
-                for project_id, workflow_id in cleared_workflows:
+                for project_id, workflow_id in missing_workflows:
                     logger.warning(
-                        "Project %s referenced missing workflow %s; clearing stale pointer",
+                        "Project %s referenced missing workflow %s; clearing workflow pointer",
                         project_id,
                         workflow_id,
+                    )
+                    project = projects[project_id]
+                    project.requested_workflow = workflow_id
+                    project.workflow = None
+                    conn.execute(
+                        "UPDATE projects SET payload = ? WHERE id = ?",
+                        (json.dumps(project.model_dump(mode="json")), project_id),
                     )
 
                 saved_rows = conn.execute(
@@ -441,6 +449,9 @@ class SearchIndex:
 
 _repository = SearchRepository()
 _loaded_projects, _loaded_saved_searches, _loaded_counters, _next_number = _repository.load_state()
+for _project in _loaded_projects.values():
+    if _project.workflow is None and _project.requested_workflow:
+        _project.workflow = _project.requested_workflow
 search_index = SearchIndex(_loaded_projects, _next_number)
 projects = search_index.projects
 saved_searches: Dict[str, SavedSearch] = dict(_loaded_saved_searches)
@@ -461,6 +472,9 @@ def _reload_state_from_repository() -> None:
     """Hydrate in-memory state from the persistent repository."""
 
     loaded_projects, loaded_saved, loaded_counters, next_number = _repository.load_state()
+    for project in loaded_projects.values():
+        if project.workflow is None and project.requested_workflow:
+            project.workflow = project.requested_workflow
     with project_lock:
         search_index.projects.clear()
         search_index.projects.update(loaded_projects)
@@ -510,6 +524,8 @@ def add_project(project: ProjectModel) -> None:
         # Set updated field to current time if not already set
         if project.updated is None:
             project.updated = datetime.now(UTC)
+        if project.workflow and not project.requested_workflow:
+            project.requested_workflow = project.workflow
         search_index.add_project(project)
         _persist_project(project, next_project_number=search_index._next_project_number)
 
@@ -539,8 +555,10 @@ def update_project(
         # update it accordingly. Otherwise leave it unchanged.
         if workflow_set:
             project.workflow = workflow
+            project.requested_workflow = workflow
         elif workflow is not None:
             project.workflow = workflow
+            project.requested_workflow = workflow
         # Update the updated timestamp
         project.updated = datetime.now(UTC)
         _persist_project(project)
