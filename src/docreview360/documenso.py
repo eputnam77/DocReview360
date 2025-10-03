@@ -10,6 +10,7 @@ from .integrations.signature.documenso import (
     DOCUMENSO_URL,
     complete_signature,
     process_webhook,
+    register_stub_signature,
     request_signature,
     signature_status as _doc_signature_status,
 )
@@ -26,9 +27,12 @@ def signature_status(sig_id: str) -> str:
     """
 
     provider = get_provider()
-    if hasattr(provider, "signature_status"):
-        return provider.signature_status(sig_id)  # type: ignore[return-value]
-    return _doc_signature_status(sig_id)
+    try:
+        return _doc_signature_status(sig_id)
+    except KeyError:
+        if hasattr(provider, "signature_status"):
+            return provider.signature_status(sig_id)  # type: ignore[return-value]
+        raise
 
 __all__ = [
     "DOCUMENSO_URL",
@@ -36,4 +40,5 @@ __all__ = [
     "complete_signature",
     "signature_status",
     "process_webhook",
+    "register_stub_signature",
 ]

@@ -251,7 +251,8 @@ class TestFrontendBackendIntegration:
         # Test users/me endpoint (used by frontend)
         token = auth.create_access_token({"sub": "alice"})
         client.cookies.set("access_token", token)
-        resp = client.get("/users/me")
+        client.cookies.set("csrf_token", "frontend-csrf")
+        resp = client.get("/users/me", headers={"X-CSRF-Token": "frontend-csrf"})
         assert resp.status_code == 200
 
         user_data = resp.json()
