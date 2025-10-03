@@ -77,6 +77,7 @@ from ..doc_types import (
 )
 from ..documenso import (
     complete_signature,
+    register_stub_signature,
     signature_status,
 )
 from ..documents import (
@@ -1851,12 +1852,15 @@ async def sign_document(
     approval: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a signature request for ``doc_id`` using the active provider."""
-    sig_id, url, _meta = get_provider().request_signature(
+    provider = get_provider()
+    sig_id, url, _meta = provider.request_signature(
         doc_id,
         user,
         workflow_id=workflow,
         approval_id=approval,
     )
+    if getattr(provider, "name", None) != "documenso":
+        register_stub_signature(sig_id, workflow)
     return {"id": sig_id, "url": url}
 
 

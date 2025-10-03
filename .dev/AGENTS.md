@@ -63,6 +63,10 @@ Use `ruff format` to auto-format before re-running checks.
 ruff check src tests
 pytest -q --cov=src --cov-branch
 mkdocs build --strict   # only when documentation changes
+pytest -q -m e2e        # end-to-end sanity sweep
+pytest -q --cov=src --cov-branch --cov-report=term --cov-fail-under=90
+mutmut run              # mutation safety net
+trivy fs .              # container/image vulnerability scan
 ```
 
 If a tool is unavailable in the sandbox, note it in the PR and proceed with the checks that are supported here.
