@@ -11,13 +11,21 @@ from typing import Sequence
 import numpy as np
 
 from .ml.features import FANN_FEATURE_NAMES, quality_features
-from .ml.onnx_infer import get_model_metadata, get_session, infer as onnx_infer
+from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session, infer as onnx_infer
 
 _HIGH_RISK_TERMS: set[str] = set()
 _HIGH_RISK_PENALTY: float = 0.9  # Multiply score by this if risky terms are present
 
 _MODEL_PATH = Path(__file__).resolve().parent / "models" / "quality_critic.onnx"
-_MODEL_METADATA = get_model_metadata(_MODEL_PATH)
+try:
+    _MODEL_METADATA = get_model_metadata(_MODEL_PATH)
+except Exception:
+    _MODEL_METADATA = ModelMetadata(
+        path=_MODEL_PATH,
+        sha256="",
+        version=None,
+        custom_metadata={},
+    )
 _FLAG_NAMES: tuple[str, ...] = tuple(
     name.strip()
     for name in (_MODEL_METADATA.custom_metadata.get("docreview360:flags") or "").split(",")
@@ -115,6 +123,12 @@ def quality_assessment(text: str, *, doc_type: str | None = None) -> QualityAsse
     return QualityAssessment(score=score, raw_score=raw_score, flags=flags_tuple)
 
 
+def quality_model_metadata() -> "ModelMetadata":
+    """Return cached metadata describing the quality critic model."""
+
+    return _MODEL_METADATA
+
+
 def approval_likelihood(
     text: str,
     critic: object | None = None,
@@ -172,4 +186,5 @@ __all__ = [
     "high_risk_warnings",
     "initialize_high_risk_terms",
     "quality_assessment",
+    "quality_model_metadata",
 ]

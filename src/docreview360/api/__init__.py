@@ -111,6 +111,7 @@ from ..reporting import (
     generate_summary,
     manager_dashboard,
     user_dashboard,
+    WidgetMetrics,
     widget_counts,
 )
 from ..search import (
@@ -2259,8 +2260,8 @@ async def user_dashboard_endpoint(x_user: str | None = Header(None)) -> list[Das
     return user_dashboard(x_user)
 
 
-@app.get("/dashboard/widgets")
-async def get_widget_counts(x_user: str | None = Header(None)) -> dict[str, int]:
+@app.get("/dashboard/widgets", response_model=WidgetMetrics)
+async def get_widget_counts(x_user: str | None = Header(None)) -> WidgetMetrics:
     """Return assignment and approval counts for dashboard widgets."""
 
     return widget_counts(x_user)

@@ -31,6 +31,7 @@ __all__ = [
     "MODEL_FILENAME",
     "evaluate_compliance",
     "model_path",
+    "compliance_model_metadata",
 ]
 
 
@@ -179,3 +180,15 @@ def evaluate_compliance(
     return ComplianceClassification(
         probability=probability, failing_rules=failing, features=features, source=source
     )
+
+
+def compliance_model_metadata() -> "ModelMetadata | None":
+    """Return metadata describing the compliance critic when available."""
+
+    if _onnx is None:
+        return None
+    try:
+        session = _onnx.get_session(model_path())
+        return _onnx.get_model_metadata(session)
+    except Exception:
+        return None

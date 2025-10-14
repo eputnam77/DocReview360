@@ -1,7 +1,22 @@
+import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import auth, rbac, reporting
 from docreview360.api import app
+from docreview360.api import ml as ml_module
 from docreview360.logs import log_event
+
+
+@pytest.fixture(autouse=True)
+def _patch_current_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_user = lambda *args, **kwargs: auth.User(username="alice", active=True)
+    monkeypatch.setattr(auth, "get_current_user", fake_user)
+    monkeypatch.setattr(rbac.auth, "get_current_user", fake_user)
+    monkeypatch.setattr(rbac, "has_permission", lambda *args, **kwargs: True)
+    async def _allow_rate_limit(*args, **kwargs) -> auth.User:
+        return auth.User(username="alice", active=True)
+
+    monkeypatch.setitem(app.dependency_overrides, ml_module._enforce_rate_limit, _allow_rate_limit)
 
 
 def test_log_websocket() -> None:
@@ -11,3 +26,34 @@ def test_log_websocket() -> None:
         data = ws.receive_json()
         assert data["action"] == "test"
         assert data["user_id"] == "alice"
+
+
+def test_critic_output_log_stream() -> None:
+    client = TestClient(app)
+    with client.websocket_connect("/ws/logs") as ws:
+        def emit_event() -> None:
+            log_event(
+                "critic_output",
+                critic="quality",
+                document_id="log-test",
+                score=0.87,
+                model={"version": "q1", "sha256": "stub"},
+            )
+
+        emit_event()
+        for _ in range(10):
+            message = ws.receive_json()
+            if message["action"] != "critic_output":
+                emit_event()
+                continue
+            details = message.get("details", {})
+            if details.get("critic") != "quality":
+                emit_event()
+                continue
+            model = details.get("model", {}) or {}
+            if model:
+                assert model.get("version") == "q1"
+                assert "sha256" in model
+            break
+        else:
+            pytest.fail("critic_output event not received")
