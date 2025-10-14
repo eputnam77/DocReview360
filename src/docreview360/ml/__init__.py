@@ -11,13 +11,37 @@ from .onnx_infer import (
     get_session,
     infer,
 )
+from .training import (
+    BenchmarkResult,
+    ModelSummary,
+    TrainingResult,
+    ValidationReport,
+    benchmark_onnx_cpu,
+    format_model_summary,
+    format_validation_report,
+    read_labelled_corpus,
+    summarize_model,
+    train_critic_from_corpus,
+    train_critic_from_csv,
+)
 
 __all__ = [
+    "BenchmarkResult",
     "ModelMetadata",
+    "ModelSummary",
+    "TrainingResult",
+    "ValidationReport",
     "clear_session_cache",
+    "benchmark_onnx_cpu",
+    "format_model_summary",
+    "format_validation_report",
     "get_model_metadata",
     "get_session",
     "infer",
+    "read_labelled_corpus",
+    "summarize_model",
+    "train_critic_from_corpus",
+    "train_critic_from_csv",
 ]
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checkers only
