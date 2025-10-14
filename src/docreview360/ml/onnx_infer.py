@@ -17,6 +17,7 @@ __all__ = [
     "get_model_metadata",
     "get_session",
     "infer",
+    "metadata_to_context",
 ]
 
 
@@ -121,3 +122,16 @@ def get_model_metadata(
     with _LOCK:
         _METADATA_CACHE[path] = info
     return info
+
+
+def metadata_to_context(meta: ModelMetadata | None) -> dict[str, str] | None:
+    """Return a serialisable summary for ``meta`` including hash and version."""
+
+    if meta is None:
+        return None
+    context: dict[str, str] = {"sha256": meta.sha256, "path": str(meta.path)}
+    if meta.version:
+        context["version"] = meta.version
+    for key, value in meta.custom_metadata.items():
+        context[key] = str(value)
+    return context
