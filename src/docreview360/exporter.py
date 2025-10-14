@@ -8,12 +8,19 @@ from typing import Any, Callable, Iterable, Optional
 from zipfile import ZipFile
 
 from .documents import DocumentModel, sanitize_content
+from .guardrails import (
+    GuardrailDiagnostics,
+    GuardrailThresholds,
+    evaluate_guardrails,
+    load_guardrail_thresholds,
+)
 from .logs import log_event
 from .settings_manager import load_settings
 
 # Customisable guardrails checker; return True if content is invalid
 guardrails_checker: Optional[Callable[[str], bool]] = None
 guardrails_diagnostics: Optional[dict[str, Any]] = None
+guardrail_thresholds: GuardrailThresholds | None = None
 
 
 class ExportSizeLimitError(ValueError):
@@ -174,10 +181,16 @@ def _ensure_size_within_limit(
         _raise_export_size_error(document, fmt, limit, size)
 
 
-def set_guardrails(checker: Callable[[str], bool] | None) -> None:
-    """Register a guardrails validation function."""
-    global guardrails_checker
+def set_guardrails(
+    checker: Callable[[str], bool] | None,
+    *,
+    thresholds: GuardrailThresholds | None = None,
+) -> None:
+    """Register a guardrails validation function and thresholds."""
+
+    global guardrails_checker, guardrail_thresholds
     guardrails_checker = checker
+    guardrail_thresholds = thresholds or load_guardrail_thresholds()
 
 
 def get_guardrails_diagnostics() -> Optional[dict[str, Any]]:
@@ -186,19 +199,13 @@ def get_guardrails_diagnostics() -> Optional[dict[str, Any]]:
     return guardrails_diagnostics.copy() if guardrails_diagnostics else None
 
 
-def _record_guardrails_diagnostics(text: str) -> None:
-    from .ml.compliance_classifier import evaluate_compliance
-
-    classification = evaluate_compliance(text)
+def _record_guardrails_diagnostics(text: str) -> GuardrailDiagnostics:
     global guardrails_diagnostics
-    guardrails_diagnostics = {
-        "compliance": {
-            "probability": classification.probability,
-            "failing_rules": classification.failing_rules,
-            "features": dict(classification.features),
-            "source": classification.source,
-        }
-    }
+
+    thresholds = guardrail_thresholds or load_guardrail_thresholds()
+    diagnostics = evaluate_guardrails(text, thresholds=thresholds)
+    guardrails_diagnostics = diagnostics.asdict()
+    return diagnostics
 
 
 def _render_template(template: str, document: DocumentModel) -> str:
@@ -244,7 +251,9 @@ def export_document(  # noqa: C901
     canonical_fmt = _canonical_format(fmt)
     limit = _get_export_size_limit(canonical_fmt)
     sanitized_content = sanitize_content(document.content)
-    _record_guardrails_diagnostics(sanitized_content)
+    diagnostics = _record_guardrails_diagnostics(sanitized_content)
+    if diagnostics.blocked:
+        raise ValueError("Content failed critic guardrails validation")
     if guardrails_checker is not None:
         if guardrails_checker(sanitized_content):
             raise ValueError("Content failed guardrails validation")
