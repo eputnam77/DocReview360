@@ -2,7 +2,6 @@ from types import SimpleNamespace
 
 from docreview360 import sharepoint
 from docreview360.approvals import ApprovalModel
-from docreview360.ml.torch_models import build_clarity_critic
 from docreview360.sharepoint import SharePointClient
 
 
@@ -10,7 +9,11 @@ def test_upload_with_scoring_uses_reviewer_model(monkeypatch):
     client = SharePointClient("s", "d", "t")
     monkeypatch.setattr(client, "upload_file", lambda path, data: "item1")
     monkeypatch.setattr(client, "set_properties", lambda item_id, metadata: None)
-    monkeypatch.setattr(sharepoint, "approval_likelihood", lambda text, critic: 0.6)
+    monkeypatch.setattr(
+        sharepoint,
+        "quality_assessment",
+        lambda text: SimpleNamespace(score=0.6, raw_score=0.6, flags=(0.1, 0.2, 0.3)),
+    )
 
     def fake_submit(
         workflow,
@@ -32,7 +35,7 @@ def test_upload_with_scoring_uses_reviewer_model(monkeypatch):
     item_id, score, approvals = client.upload_with_scoring(
         "p",
         b"hi",
-        build_clarity_critic(),
+        None,
         workflow="wf",
         reviewer=None,
         reviewer_model=SimpleNamespace(route_draft=lambda text: "auto"),
