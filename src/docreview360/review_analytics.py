@@ -8,6 +8,7 @@ from typing import Dict, List, Sequence
 from .ai_utils import _fann_features
 from .document_compare import version_similarity
 from .quality import approval_likelihood
+from .ml.torch_models import TinyCritic
 
 
 def estimate_review_effort(text: str) -> float:
@@ -63,11 +64,11 @@ class ReviewTrends:
 
 
 def detect_anomalous_document(
-    text: str, weights, history: Sequence[float], threshold: float = 0.3
+    text: str, critic: TinyCritic, history: Sequence[float], threshold: float = 0.3
 ) -> tuple[bool, float]:
     """Return ``(is_anomalous, score)`` for ``text`` given ``history`` scores."""
 
-    score = approval_likelihood(text, weights)
+    score = approval_likelihood(text, critic)
     if not history:
         return False, score
     avg = sum(history) / len(history)

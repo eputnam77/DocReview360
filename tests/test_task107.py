@@ -1,15 +1,16 @@
 from pathlib import Path
 
 from docreview360.ai_utils import FANN_FEATURE_NAMES, _fann_features
-from docreview360.fann_model import load_weights, predict, save_weights, train_model
+from docreview360.ml.torch_models import load_critic, save_critic, train_critic, build_clarity_critic
 
 
 def test_train_and_predict(tmp_path: Path) -> None:
-    weights = train_model(["ok", "bad bad"], [0, 1], epochs=5)
-    path = save_weights(weights, tmp_path / "model.json")
-    loaded = load_weights(path)
-    score_bad = predict("bad bad", loaded)
-    score_ok = predict("ok", loaded)
+    critic = build_clarity_critic()
+    train_critic(critic, ["ok", "bad bad"], [0, 1], epochs=100, lr=0.05)
+    path = save_critic(critic, tmp_path / "model.pt")
+    loaded = load_critic(path)
+    score_bad = loaded.predict("bad bad")
+    score_ok = loaded.predict("ok")
     assert 0 <= score_bad <= 1 and 0 <= score_ok <= 1
 
 
