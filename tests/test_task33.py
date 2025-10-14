@@ -7,6 +7,8 @@ from docreview360.reporting import summary_csv
 def test_summary_csv_helper() -> None:
     csv = summary_csv()
     assert csv.startswith("projects")
+    header = csv.splitlines()[0]
+    assert "avg_quality_score" in header
 
 
 def test_summary_csv_endpoint() -> None:

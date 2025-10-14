@@ -77,6 +77,18 @@ SIGNATURE_ANOMALIES = Counter(
     ["outcome"],
 )
 
+# Critic evaluation telemetry for latency distribution and anomaly tracking.
+CRITIC_LATENCY = Histogram(
+    "docreview360_critic_latency_seconds",
+    "Latency observed when evaluating critic models",
+    ["critic"],
+)
+CRITIC_ANOMALY_EVENTS = Counter(
+    "docreview360_critic_anomalies_total",
+    "Anomalous critic outcomes grouped by critic and outcome type",
+    ["critic", "outcome"],
+)
+
 
 def _reserve_port() -> int:
     """Return an available TCP port on localhost."""
