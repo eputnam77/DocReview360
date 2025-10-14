@@ -36,6 +36,14 @@ if TYPE_CHECKING:  # pragma: no cover - used for type checkers only
         train_critic,
         update_critic,
     )
+    from .routing_critic import (
+        ROUTING_FEATURE_NAMES,
+        RoutingCritic,
+        RoutingExample,
+        export_routing_critic_to_onnx,
+        routing_feature_vector,
+        train_routing_critic,
+    )
 
 _TORCH_EXPORTS = {
     "CriticConfig",
@@ -53,7 +61,16 @@ _TORCH_EXPORTS = {
     "update_critic",
 }
 
-__all__ += sorted(_TORCH_EXPORTS)
+_ROUTING_EXPORTS = {
+    "ROUTING_FEATURE_NAMES",
+    "RoutingCritic",
+    "RoutingExample",
+    "export_routing_critic_to_onnx",
+    "routing_feature_vector",
+    "train_routing_critic",
+}
+
+__all__ += sorted(_TORCH_EXPORTS | _ROUTING_EXPORTS)
 
 
 def __getattr__(name: str) -> Any:
@@ -61,4 +78,8 @@ def __getattr__(name: str) -> Any:
         from . import torch_models
 
         return getattr(torch_models, name)
+    if name in _ROUTING_EXPORTS:
+        from . import routing_critic
+
+        return getattr(routing_critic, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
