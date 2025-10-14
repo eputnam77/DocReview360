@@ -68,6 +68,7 @@ class ReviewerModel:
         self._model_path = Path(model_path) if model_path else _DEFAULT_ROUTING_MODEL
         self._session = get_session(self._model_path, providers=providers)
         metadata = get_model_metadata(self._session)
+        self._metadata = metadata
         reviewers_meta = metadata.custom_metadata.get("docreview360:reviewers", "")
         reviewers = tuple(
             filter(None, (name.strip() for name in reviewers_meta.split(",")))
@@ -309,4 +310,10 @@ class ReviewerModel:
     @property
     def latency_buckets(self) -> Dict[str, int]:
         return dict(self._latency_buckets)
+
+    @property
+    def model_metadata(self) -> "ModelMetadata":
+        """Return metadata describing the underlying routing critic."""
+
+        return self._metadata
         
