@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from html import escape
 from io import BytesIO
-from typing import Callable, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 from zipfile import ZipFile
 
 from .documents import DocumentModel, sanitize_content
@@ -13,6 +13,7 @@ from .settings_manager import load_settings
 
 # Customisable guardrails checker; return True if content is invalid
 guardrails_checker: Optional[Callable[[str], bool]] = None
+guardrails_diagnostics: Optional[dict[str, Any]] = None
 
 
 class ExportSizeLimitError(ValueError):
@@ -179,6 +180,27 @@ def set_guardrails(checker: Callable[[str], bool] | None) -> None:
     guardrails_checker = checker
 
 
+def get_guardrails_diagnostics() -> Optional[dict[str, Any]]:
+    """Return the most recent guardrails diagnostics payload."""
+
+    return guardrails_diagnostics.copy() if guardrails_diagnostics else None
+
+
+def _record_guardrails_diagnostics(text: str) -> None:
+    from .ml.compliance_classifier import evaluate_compliance
+
+    classification = evaluate_compliance(text)
+    global guardrails_diagnostics
+    guardrails_diagnostics = {
+        "compliance": {
+            "probability": classification.probability,
+            "failing_rules": classification.failing_rules,
+            "features": dict(classification.features),
+            "source": classification.source,
+        }
+    }
+
+
 def _render_template(template: str, document: DocumentModel) -> str:
     """Return ``template`` formatted with document attributes.
 
@@ -199,9 +221,7 @@ def _render_template(template: str, document: DocumentModel) -> str:
         # latter previously bubbled up as an ``IndexError`` which callers were
         # not expecting.  Surface both as a ``ValueError`` so users receive a
         # clear, consistent error regardless of placeholder style.
-        raise ValueError(
-            f"Unknown placeholder {exc.args[0]!r} in filename template"
-        ) from exc
+        raise ValueError(f"Unknown placeholder {exc.args[0]!r} in filename template") from exc
     # Avoid path traversal via placeholders
     safe = base.replace("/", "_").replace("\\", "_")
     # Strip newline and null characters which could lead to confusing or
@@ -224,6 +244,7 @@ def export_document(  # noqa: C901
     canonical_fmt = _canonical_format(fmt)
     limit = _get_export_size_limit(canonical_fmt)
     sanitized_content = sanitize_content(document.content)
+    _record_guardrails_diagnostics(sanitized_content)
     if guardrails_checker is not None:
         if guardrails_checker(sanitized_content):
             raise ValueError("Content failed guardrails validation")
@@ -297,7 +318,11 @@ def export_document(  # noqa: C901
         except Exception:  # pragma: no cover - optional dependency
             buffer, buffer_limit = _make_buffer(canonical_fmt, limit)
             buffer.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF")
-            if isinstance(buffer, _SizeLimitedBuffer) and buffer_limit is not None and buffer.exceeded:
+            if (
+                isinstance(buffer, _SizeLimitedBuffer)
+                and buffer_limit is not None
+                and buffer.exceeded
+            ):
                 _raise_export_size_error(document, canonical_fmt, buffer_limit, buffer.tell())
             data = buffer.getvalue()
             _ensure_size_within_limit(document, canonical_fmt, buffer_limit, len(data))
@@ -309,7 +334,11 @@ def export_document(  # noqa: C901
                 text.textLine(line)
             c.drawText(text)
             c.save()
-            if isinstance(buffer, _SizeLimitedBuffer) and buffer_limit is not None and buffer.exceeded:
+            if (
+                isinstance(buffer, _SizeLimitedBuffer)
+                and buffer_limit is not None
+                and buffer.exceeded
+            ):
                 _raise_export_size_error(document, canonical_fmt, buffer_limit, buffer.tell())
             data = buffer.getvalue()
             _ensure_size_within_limit(document, canonical_fmt, buffer_limit, len(data))
