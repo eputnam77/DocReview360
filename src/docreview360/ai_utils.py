@@ -26,6 +26,7 @@ from .ml.features import (
     structural_pattern_score,
     style_guide_score,
 )
+from .ml.compliance_classifier import evaluate_compliance
 from .quality import QUALITY_FLAG_NAMES, quality_assessment
 
 # Backwards-compatible alias for tests patching GovDocVerify integration.
@@ -39,6 +40,7 @@ def _count_syllables(word: str) -> int:
     """Backward compatible alias for :func:`docreview360.ml.features.count_syllables`."""
 
     return count_syllables(word)
+
 
 if TYPE_CHECKING:
     from .documents import DocumentModel
@@ -228,6 +230,13 @@ def validate_content(
         "raw_score": assessment.raw_score,
         "flags": dict(zip(QUALITY_FLAG_NAMES, assessment.flags)),
     }
+    compliance = evaluate_compliance(text)
+    diagnostics["compliance"] = {
+        "probability": compliance.probability,
+        "failing_rules": compliance.failing_rules,
+        "features": dict(compliance.features),
+        "source": compliance.source,
+    }  
     has_text = bool(text.strip())
     has_anomaly = any(flag >= DEFAULT_ANOMALY_THRESHOLD for flag in assessment.flags)
     is_valid = has_text and not has_anomaly
