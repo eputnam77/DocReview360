@@ -297,7 +297,7 @@ def submit_draft_for_approval(
     reviewer: str | None,
     doc_id: str,
     text: str,
-    critic: "TinyCritic",
+    critic: "TinyCritic | None",
     *,
     threshold: float = 0.5,
     extra_reviewer: str = "policy",
