@@ -11,13 +11,27 @@
         "structure",
         "readability",
         "metadata_completeness",
-        "evidence_strength"
+        "evidence_strength",
+        "verification_duration",
+        "retry_ratio",
+        "retry_exhaustion",
+        "certificate_depth",
+        "certificate_validity",
+        "certificate_subject_entropy",
+        "metadata_density"
       ],
       "properties": {
         "structure": {"type": "number", "minimum": 0, "maximum": 1},
         "readability": {"type": "number", "minimum": 0, "maximum": 1},
         "metadata_completeness": {"type": "number", "minimum": 0, "maximum": 1},
-        "evidence_strength": {"type": "number", "minimum": 0, "maximum": 1}
+        "evidence_strength": {"type": "number", "minimum": 0, "maximum": 1},
+        "verification_duration": {"type": "number", "minimum": 0, "maximum": 1},
+        "retry_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "retry_exhaustion": {"type": "number", "minimum": 0, "maximum": 1},
+        "certificate_depth": {"type": "number", "minimum": 0, "maximum": 1},
+        "certificate_validity": {"type": "number", "minimum": 0, "maximum": 1},
+        "certificate_subject_entropy": {"type": "number", "minimum": 0, "maximum": 1},
+        "metadata_density": {"type": "number", "minimum": 0, "maximum": 1}
       },
       "additionalProperties": false
     }
