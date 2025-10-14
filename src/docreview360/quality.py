@@ -31,6 +31,8 @@ _FLAG_NAMES: tuple[str, ...] = tuple(
     for name in (_MODEL_METADATA.custom_metadata.get("docreview360:flags") or "").split(",")
     if name.strip()
 )
+if not _FLAG_NAMES:
+    _FLAG_NAMES = ("clarity", "accuracy", "structure")
 
 
 @dataclass(frozen=True)
@@ -109,15 +111,46 @@ def _feature_vector(text: str, doc_type: str | None) -> np.ndarray:
     return features.reshape(1, -1)
 
 
+def _fallback_quality_assessment(text: str, doc_type: str | None) -> QualityAssessment:
+    payload = quality_features(text)
+    legacy = payload.get("legacy", {}).get("fann", {})
+    readability = float(legacy.get("readability", 0.0))
+    style = float(legacy.get("style", 0.0))
+    structure = float(legacy.get("structure", 0.0))
+    repeated = float(legacy.get("repeated", 0.0))
+    score = 1.0
+    score -= 0.25 * repeated
+    score -= 0.12 * max(0.4 - style, 0.0)
+    score -= 0.12 * max(0.4 - structure, 0.0)
+    score -= 0.15 * max(0.6 - readability, 0.0)
+    raw = max(0.0, min(1.0, score))
+    warnings = high_risk_warnings(text)
+    if warnings:
+        raw = max(0.0, raw - 0.1 * len(warnings))
+    flag_map = {
+        "clarity": max(0.0, min(1.0, (0.4 - readability) / 0.4)) if readability < 0.4 else 0.0,
+        "accuracy": max(0.0, min(1.0, repeated)),
+        "structure": 0.5 * max(0.0, min(1.0, (0.5 - structure) / 0.5)) if structure < 0.5 else 0.0,
+    }
+    flags = tuple(flag_map.get(name, 0.0) for name in QUALITY_FLAG_NAMES)
+    return QualityAssessment(score=raw, raw_score=raw, flags=flags)
+
+
 def quality_assessment(text: str, *, doc_type: str | None = None) -> QualityAssessment:
     """Run the ONNX critic returning score, raw score and flag vector."""
 
-    session = get_session(_MODEL_PATH)
-    features = _feature_vector(text, doc_type)
-    score_arr, flags_arr = onnx_infer(session, {"features": features})
-    raw_score = float(np.clip(score_arr.reshape(-1)[0], 0.0, 1.0))
-    flags_tuple = tuple(float(v) for v in flags_arr.reshape(-1))
-    score = raw_score
+    try:
+        session = get_session(_MODEL_PATH)
+        features = _feature_vector(text, doc_type)
+        score_arr, flags_arr = onnx_infer(session, {"features": features})
+        raw_score = float(np.clip(score_arr.reshape(-1)[0], 0.0, 1.0))
+        flags_tuple = tuple(float(v) for v in flags_arr.reshape(-1))
+        score = raw_score
+    except Exception:
+        fallback = _fallback_quality_assessment(text, doc_type)
+        raw_score = fallback.raw_score
+        flags_tuple = fallback.flags
+        score = fallback.raw_score
     if high_risk_warnings(text):
         score *= _HIGH_RISK_PENALTY
     return QualityAssessment(score=score, raw_score=raw_score, flags=flags_tuple)
