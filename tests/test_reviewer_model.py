@@ -1,10 +1,11 @@
+from docreview360.ml.torch_models import build_clarity_critic
 from docreview360.reviewer_model import ReviewerModel
 
 
-def _zero_weights():
-    from docreview360.fann_model import Weights
-
-    return Weights([[0.0] * 6 for _ in range(4)], [0.0] * 4, [0.0] * 4, 0.0)
+def _zero_critic():
+    critic = build_clarity_critic()
+    critic.reset_parameters("zeros")
+    return critic
 
 
 def test_reviewer_model_basic():
@@ -41,9 +42,9 @@ def test_submit_draft_routes_highest_preference():
     text = "repeat repeat"
     model.update_preferences("alice", text)
     model.update_preferences("bob", "unique words here")
-    weights = _zero_weights()
+    critic = _zero_critic()
     approval = submit_draft_for_approval(
-        "wf", None, "doc1", text, weights, reviewer_model=model
+        "wf", None, "doc1", text, critic, reviewer_model=model
     )
     assert approval.reviewer == "alice"
 
@@ -51,7 +52,7 @@ def test_submit_draft_routes_highest_preference():
     model.update_preferences("bob", text)
     model.update_preferences("bob", text)
     approval2 = submit_draft_for_approval(
-        "wf2", None, "doc2", text, weights, reviewer_model=model
+        "wf2", None, "doc2", text, critic, reviewer_model=model
     )
     assert approval2.reviewer == "bob"
 

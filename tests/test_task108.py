@@ -1,11 +1,11 @@
-import docreview360.ai_utils as ai_utils
+from docreview360 import ai_utils
 from docreview360.ai_utils import (
     FANN_FEATURE_NAMES,
     _fann_features,
     structural_pattern_score,
     style_guide_score,
 )
-from docreview360.fann_model import train_model, update_model
+from docreview360.ml.torch_models import build_clarity_critic, train_critic, update_critic
 
 
 def test_style_and_structure_features(monkeypatch) -> None:
@@ -31,6 +31,9 @@ def test_style_and_structure_features(monkeypatch) -> None:
 
 
 def test_update_model_changes_weights() -> None:
-    base = train_model(["ok", "bad bad"], [0, 1], epochs=2)
-    updated = update_model(base, ["bad bad bad"], [1], epochs=2)
-    assert updated != base
+    critic = build_clarity_critic()
+    train_critic(critic, ["ok", "bad bad"], [0, 1], epochs=40, lr=0.05)
+    before = critic.predict("bad bad")
+    update_critic(critic, ["bad bad bad"], [1], epochs=30, lr=0.05)
+    after = critic.predict("bad bad")
+    assert after != before

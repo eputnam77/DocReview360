@@ -47,7 +47,7 @@ __all__ = [
     "editor_switcher",
     "security_hardening",
     "fann_corpus",
-    "fann_model",
+    "ml",
     "wasm_plugin",
     "pyo3_builder",
     "workflow_components",

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .ai_utils import FANN_FEATURE_NAMES, _fann_features
-from .fann_model import Weights, predict_weighted
+from .ml.torch_models import TinyCritic
 
 _HIGH_RISK_TERMS: set[str] = set()
 _HIGH_RISK_PENALTY: float = 0.9  # Multiply score by this if risky terms are present
@@ -72,20 +72,20 @@ def high_risk_warnings(text: str) -> list[str]:
     return found
 
 
-def approval_likelihood(text: str, weights: Weights, *, doc_type: str | None = None) -> float:
+def approval_likelihood(text: str, critic: TinyCritic, *, doc_type: str | None = None) -> float:
     """Return approval likelihood using the trained FANN model.
 
     ``doc_type`` enables adaptive weighting of features so certain checks carry
     more influence for specific document categories.
     High-risk terms automatically reduce the score by a set penalty.
     """
-    score = float(predict_weighted(text, weights, _feature_weights(doc_type)))
+    score = float(critic.predict(text, _feature_weights(doc_type)))
     if high_risk_warnings(text):
         score *= _HIGH_RISK_PENALTY
     return score
 
 
-def explain_score(text: str, weights: Weights, *, doc_type: str | None = None) -> dict[str, object]:
+def explain_score(text: str, critic: TinyCritic, *, doc_type: str | None = None) -> dict[str, object]:
     """Return a breakdown of the approval score with human readable rationale."""
     feats = _fann_features(text)
     reasons: list[str] = []
@@ -101,5 +101,5 @@ def explain_score(text: str, weights: Weights, *, doc_type: str | None = None) -
     if risky_terms:
         reasons.append(f"contains high-risk terms: {', '.join(risky_terms)}")
 
-    score = approval_likelihood(text, weights, doc_type=doc_type)
+    score = approval_likelihood(text, critic, doc_type=doc_type)
     return {"score": score, "rationale": reasons}
