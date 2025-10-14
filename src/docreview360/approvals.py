@@ -90,6 +90,7 @@ class ApprovalModel(BaseModel):
     description: Optional[str] = None
     provider_metadata: Dict[str, Any] = Field(default_factory=dict)
     delegates: List[str] = Field(default_factory=list)
+    scoring_metadata: Dict[str, Any] = Field(default_factory=dict)
 
     @property
     def due_at(self) -> datetime | None:  # pragma: no cover - simple alias
@@ -231,6 +232,7 @@ def create_approval(
     escalate_to: str | None = None,
     escalation_at: datetime | None = None,
     state: str = "pending",
+    scoring_metadata: Dict[str, Any] | None = None,
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     if doc_id is None:
@@ -257,6 +259,7 @@ def create_approval(
         escalate_to=escalate_to,
         escalation_at=escalation_at,
         state=state,
+        scoring_metadata=scoring_metadata or {},
     )
     approvals[approval_id] = approval
     try:
@@ -272,6 +275,7 @@ def create_approval(
         document_hash=doc_hash,
         doc_id=doc_id,
         provider_metadata=approval.provider_metadata,
+        scoring_metadata=approval.scoring_metadata,
     )
     log_audit_event(
         doc_id,
@@ -282,6 +286,7 @@ def create_approval(
         document_hash=doc_hash,
         approval_id=approval_id,
         provider_metadata=approval.provider_metadata,
+        scoring_metadata=approval.scoring_metadata,
     )
     if reminder_at:
         app.tasks["docreview360.approval_reminder"].apply_async((approval_id,), eta=reminder_at)
@@ -304,16 +309,55 @@ def submit_draft_for_approval(
     reviewer_model: ReviewerModel | None = None,
 ) -> ApprovalModel:
     """Score ``text`` and route for additional review if risky."""
-    score = approval_likelihood(text, critic)
-    if score < threshold:
-        create_approval(workflow, extra_reviewer, doc_id, description="Auto risk review")
-    if reviewer is None:
-        if reviewer_model is None:
-            raise ValueError("reviewer_model required when reviewer is None")
-        reviewer = reviewer_model.route_draft(text)
+    recommendation = None
+    score: float | None = None
+    recommendation_payload: List[Dict[str, Any]] = []
+
+    if reviewer_model is not None:
+        recommendation = reviewer_model.recommend(text, k=3)
+        score = recommendation.approval_likelihood
+        recommendation_payload = [
+            {"reviewer": name, "probability": probability}
+            for name, probability in recommendation.ranked_reviewers
+        ]
+        log_event(
+            "reviewer_recommendation",
+            workflow=workflow,
+            doc_id=doc_id,
+            approval_likelihood=score,
+            recommendations=recommendation_payload,
+        )
         if reviewer is None:
-            raise ValueError("no reviewer available for draft")
-    return create_approval(workflow, reviewer, doc_id, description="Primary review")
+            reviewer = recommendation.primary
+            if reviewer is None:
+                raise ValueError("no reviewer available for draft")
+    else:
+        if reviewer is None:
+            raise ValueError("reviewer_model required when reviewer is None")
+        if critic is not None:
+            score = approval_likelihood(text, critic)
+
+    scoring_metadata: Dict[str, Any] = {}
+    if score is not None:
+        scoring_metadata["approval_likelihood"] = score
+    if recommendation_payload:
+        scoring_metadata["recommendations"] = recommendation_payload
+
+    if score is not None and score < threshold:
+        create_approval(
+            workflow,
+            extra_reviewer,
+            doc_id,
+            description="Auto risk review",
+            scoring_metadata=scoring_metadata,
+        )
+    return create_approval(
+        workflow,
+        reviewer,
+        doc_id,
+        description="Primary review",
+        scoring_metadata=scoring_metadata,
+    )
 
 
 def get_approval(approval_id: str) -> ApprovalModel | None:
@@ -505,8 +549,8 @@ async def _upload_approval_artifacts(
         if hashlib.sha256(document).hexdigest() != approval.document_hash:
             raise ValueError("document hash mismatch")
 
-from .integrations.sharepoint_upload import upload_final_pdf
-from .ml.features import signature_features
+    from .integrations.sharepoint_upload import upload_final_pdf
+    from .ml.features import signature_features
 
     assert approval.signed_at is not None
     await upload_final_pdf(
