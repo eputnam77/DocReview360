@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, List, Sequence
 
-from .ai_utils import _fann_features
+from .ml.features import quality_features
 from .document_compare import version_similarity
 from .quality import approval_likelihood
 from .ml.torch_models import TinyCritic
@@ -13,7 +13,13 @@ from .ml.torch_models import TinyCritic
 
 def estimate_review_effort(text: str) -> float:
     """Return a simple effort estimate based on FANN features."""
-    length, unique, repeated, readability, style, structure = _fann_features(text)
+    payload = quality_features(text)
+    legacy = payload["legacy"]["fann"]
+    length = legacy["length"]
+    repeated = legacy["repeated"]
+    readability = legacy["readability"]
+    style = legacy["style"]
+    structure = legacy["structure"]
     return length * 2 + repeated * 0.5 + (1 - readability) + (1 - style) + (1 - structure)
 
 

@@ -7,13 +7,13 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from typing import Dict, List
 
-from .ai_utils import FANN_FEATURE_NAMES, _fann_features
+from .ml.features import FANN_FEATURE_NAMES, quality_features
 from .ml.torch_models import TinyCritic, update_critic
 
 
 def _feature_dict(text: str) -> Dict[str, float]:
-    values = _fann_features(text)
-    return dict(zip(FANN_FEATURE_NAMES, values))
+    payload = quality_features(text)
+    return dict(payload["legacy"]["fann"])
 
 
 @dataclass
