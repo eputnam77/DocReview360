@@ -21,6 +21,14 @@ __all__ = [
 ]
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checkers only
+    from .signature_anomaly import (  # noqa: F401
+        MODEL_NAME,
+        MODEL_PATH,
+        MODEL_VERSION,
+        export_signature_anomaly_model,
+        get_signature_anomaly_metadata,
+        score_signature_anomaly,
+    )
     from .torch_models import (
         CriticConfig,
         TinyCritic,
@@ -70,7 +78,16 @@ _ROUTING_EXPORTS = {
     "train_routing_critic",
 }
 
-__all__ += sorted(_TORCH_EXPORTS | _ROUTING_EXPORTS)
+_ANOMALY_EXPORTS = {
+    "MODEL_NAME",
+    "MODEL_PATH",
+    "MODEL_VERSION",
+    "export_signature_anomaly_model",
+    "get_signature_anomaly_metadata",
+    "score_signature_anomaly",
+}
+
+__all__ += sorted(_TORCH_EXPORTS | _ROUTING_EXPORTS | _ANOMALY_EXPORTS)
 
 
 def __getattr__(name: str) -> Any:
@@ -82,4 +99,8 @@ def __getattr__(name: str) -> Any:
         from . import routing_critic
 
         return getattr(routing_critic, name)
+    if name in _ANOMALY_EXPORTS:
+        from . import signature_anomaly
+
+        return getattr(signature_anomaly, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
