@@ -8,7 +8,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Sequence
 
-from .ai_utils import FANN_FEATURE_NAMES, _fann_features
+from .ml.features import FANN_FEATURE_NAMES, quality_features
 from .ml.torch_models import TinyCritic
 
 _HIGH_RISK_TERMS: set[str] = set()
@@ -87,9 +87,11 @@ def approval_likelihood(text: str, critic: TinyCritic, *, doc_type: str | None =
 
 def explain_score(text: str, critic: TinyCritic, *, doc_type: str | None = None) -> dict[str, object]:
     """Return a breakdown of the approval score with human readable rationale."""
-    feats = _fann_features(text)
+    payload = quality_features(text)
+    legacy = payload["legacy"]["fann"]
     reasons: list[str] = []
-    for name, val in zip(FANN_FEATURE_NAMES, feats):
+    for name in FANN_FEATURE_NAMES:
+        val = legacy[name]
         if name == "repeated" and val > 0:
             reasons.append("contains repeated words")
         elif name == "style" and val < 0.7:

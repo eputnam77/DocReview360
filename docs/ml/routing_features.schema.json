@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Routing feature payload v1",
+  "type": "object",
+  "required": ["version", "features"],
+  "properties": {
+    "version": {"type": "string"},
+    "features": {
+      "type": "object",
+      "required": [
+        "content_size",
+        "novelty",
+        "duplication",
+        "structure",
+        "priority",
+        "metadata_signal"
+      ],
+      "properties": {
+        "content_size": {"type": "number", "minimum": 0, "maximum": 1},
+        "novelty": {"type": "number", "minimum": 0, "maximum": 1},
+        "duplication": {"type": "number", "minimum": 0, "maximum": 1},
+        "structure": {"type": "number", "minimum": 0, "maximum": 1},
+        "priority": {"type": "number", "minimum": 0, "maximum": 1},
+        "metadata_signal": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

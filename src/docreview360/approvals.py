@@ -405,6 +405,14 @@ async def handle_signature_return(  # noqa: C901
             raise ValueError("certificate URL must use HTTPS")
         approval.certificate_url = certificate_url
 
+    feature_snapshot = signature_features(
+        (document.decode("utf-8", errors="ignore") if document is not None else ""),
+        approval.provider_metadata,
+    )["features"]
+    approval.provider_metadata.setdefault(
+        "docreview360:signature_features", feature_snapshot
+    )
+
     provider = get_provider(approval.signature_provider)
     if not provider.validate_signature(
         document, certificate_url or approval.certificate_url, approval.provider_metadata
@@ -432,7 +440,10 @@ async def handle_signature_return(  # noqa: C901
             approval_id=approval.id,
             provider_metadata=approval.provider_metadata,
         )
-        missing_certificate = not (certificate_url or approval.certificate_url)
+        missing_certificate = (
+            feature_snapshot.get("evidence_strength", 0.0) < 0.4
+            and not (certificate_url or approval.certificate_url)
+        )
         explicit_document_supplied = document_param is not None
         fallback_enabled = _allow_signature_validation_fallback()
         if missing_certificate and not fallback_enabled and not explicit_document_supplied:
@@ -494,7 +505,8 @@ async def _upload_approval_artifacts(
         if hashlib.sha256(document).hexdigest() != approval.document_hash:
             raise ValueError("document hash mismatch")
 
-    from .integrations.sharepoint_upload import upload_final_pdf
+from .integrations.sharepoint_upload import upload_final_pdf
+from .ml.features import signature_features
 
     assert approval.signed_at is not None
     await upload_final_pdf(

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Signature feature payload v1",
+  "type": "object",
+  "required": ["version", "features"],
+  "properties": {
+    "version": {"type": "string"},
+    "features": {
+      "type": "object",
+      "required": [
+        "structure",
+        "readability",
+        "metadata_completeness",
+        "evidence_strength"
+      ],
+      "properties": {
+        "structure": {"type": "number", "minimum": 0, "maximum": 1},
+        "readability": {"type": "number", "minimum": 0, "maximum": 1},
+        "metadata_completeness": {"type": "number", "minimum": 0, "maximum": 1},
+        "evidence_strength": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -17,6 +17,7 @@ except Exception:
 import re
 
 from .ai_utils import _count_syllables
+from .ml.features import quality_features
 
 _REQUIRED_SECTIONS = ["introduction", "body", "conclusion"]
 
@@ -137,8 +138,15 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
         if (not label) and text_only == "":
             accessibility.append("button missing label")
 
+    quality = quality_features(text)["features"]
     style_issues = _style_issues(text)
-    style_ok = not _detect_anomalies(text) and not style_issues
+    style_ok = (
+        not _detect_anomalies(text)
+        and not style_issues
+        and quality.get("style", 0.0) >= 0.7
+        and quality.get("structure", 0.0) >= 0.5
+        and quality.get("duplicate_ratio", 0.0) <= 0.5
+    )
 
     readability = _readability_metrics(text)
     structure = _analyze_structure(text)

@@ -1,0 +1,22 @@
+{
+  "features": {
+    "duplicate_ratio": 0.0,
+    "length": 0.1555,
+    "metadata_completeness": 1.0,
+    "readability": 0.114117,
+    "structure": 0.416667,
+    "style": 0.0,
+    "vocabulary_diversity": 0.9
+  },
+  "legacy": {
+    "fann": {
+      "length": 0.311,
+      "readability": 0.114117,
+      "repeated": 0.0,
+      "structure": 0.416667,
+      "style": 0.0,
+      "unique_ratio": 0.9
+    }
+  },
+  "version": "1.0.0"
+}
