@@ -12,16 +12,22 @@ from typing import Deque, Mapping
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, conlist
 
-from .. import auth
+from .. import auth, reporting
 from ..audit import log_audit_event
-from ..logs import log_call
-from ..ml.compliance_classifier import evaluate_compliance
+from ..logs import log_call, log_event
+from ..ml.compliance_classifier import compliance_model_metadata, evaluate_compliance
 from ..ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES
 from ..ml.signature_anomaly import (
     get_signature_anomaly_metadata,
     score_signature_anomaly,
 )
-from ..quality import QUALITY_FLAG_NAMES, high_risk_warnings, quality_assessment
+from ..ml.onnx_infer import ModelMetadata
+from ..quality import (
+    QUALITY_FLAG_NAMES,
+    high_risk_warnings,
+    quality_assessment,
+    quality_model_metadata,
+)
 from ..rbac import require_permission
 from ..reviewer_model import Recommendation, ReviewerModel
 
@@ -110,6 +116,16 @@ async def _recommend(text: str, top_k: int) -> Recommendation:
         return model.recommend(text, k=top_k)
 
 
+def _model_metadata_dict(meta: ModelMetadata | None) -> dict[str, str] | None:
+    if meta is None:
+        return None
+    data: dict[str, str] = {"sha256": meta.sha256, "path": str(meta.path)}
+    if meta.version:
+        data["version"] = meta.version
+    data.update({k: str(v) for k, v in meta.custom_metadata.items()})
+    return data
+
+
 def warm_ml_sessions() -> None:
     """Warm ONNX-backed model sessions once per process."""
 
@@ -175,6 +191,7 @@ class QualityAssessmentResponse(BaseModel):
     raw_score: float
     flags: dict[str, float]
     high_risk_terms: list[str]
+    model: dict[str, str] | None = None
 
 
 class ComplianceEvaluationRequest(BaseModel):
@@ -192,6 +209,7 @@ class ComplianceEvaluationResponse(BaseModel):
     failing_rules: list[str]
     features: dict[str, float]
     source: str
+    model: dict[str, str] | None = None
 
 
 class RoutingRecommendationRequest(BaseModel):
@@ -214,6 +232,8 @@ class RoutingRecommendationResponse(BaseModel):
 
     approval_likelihood: float
     reviewers: list[ReviewerScore]
+    latency_buckets: dict[str, int]
+    model: dict[str, str] | None = None
 
 
 FeatureVector = conlist(
@@ -251,20 +271,39 @@ async def quality_endpoint(
     assessment = quality_assessment(payload.text, doc_type=payload.doc_type)
     warnings = high_risk_warnings(payload.text)
     flags = {name: float(value) for name, value in zip(QUALITY_FLAG_NAMES, assessment.flags)}
+    model_info = _model_metadata_dict(quality_model_metadata())
+    reporting.record_quality_score(payload.document_id, assessment.score, model_info)
+    audit_kwargs: dict[str, object] = {
+        "actor": user.username,
+        "doc_type": payload.doc_type,
+        "score": assessment.score,
+        "raw_score": assessment.raw_score,
+        "high_risk_terms": list(warnings),
+    }
+    if model_info:
+        audit_kwargs["model_version"] = model_info.get("version")
+        audit_kwargs["model_sha256"] = model_info.get("sha256")
     log_audit_event(
         payload.document_id or "ml::quality",
         "ml_quality_assessment",
-        actor=user.username,
-        doc_type=payload.doc_type,
+        **audit_kwargs,
+    )
+    log_event(
+        "critic_output",
+        critic="quality",
+        document_id=payload.document_id or "ml::quality",
         score=assessment.score,
         raw_score=assessment.raw_score,
-        high_risk_terms=list(warnings),
+        flags=flags,
+        model=model_info,
+        warnings=list(warnings),
     )
     return QualityAssessmentResponse(
         score=assessment.score,
         raw_score=assessment.raw_score,
         flags=flags,
         high_risk_terms=warnings,
+        model=model_info,
     )
 
 
@@ -277,19 +316,40 @@ async def compliance_endpoint(
     """Return compliance likelihood and triggered rules for ``text``."""
 
     result = evaluate_compliance(payload.text, payload.metadata)
+    meta = _model_metadata_dict(compliance_model_metadata())
+    metadata: dict[str, str] = {}
+    if meta:
+        metadata.update(meta)
+    metadata["source"] = result.source
+    reporting.record_compliance_score(payload.document_id, result.probability, metadata)
+    audit_kwargs: dict[str, object] = {
+        "actor": user.username,
+        "probability": result.probability,
+        "source": result.source,
+        "failing_rules": list(result.failing_rules),
+    }
+    if meta:
+        audit_kwargs["model_version"] = meta.get("version")
+        audit_kwargs["model_sha256"] = meta.get("sha256")
     log_audit_event(
         payload.document_id or "ml::compliance",
         "ml_compliance_evaluation",
-        actor=user.username,
+        **audit_kwargs,
+    )
+    log_event(
+        "critic_output",
+        critic="compliance",
+        document_id=payload.document_id or "ml::compliance",
         probability=result.probability,
-        source=result.source,
         failing_rules=list(result.failing_rules),
+        model=metadata,
     )
     return ComplianceEvaluationResponse(
         probability=result.probability,
         failing_rules=list(result.failing_rules),
         features=dict(result.features),
         source=result.source,
+        model=metadata or None,
     )
 
 
@@ -306,6 +366,10 @@ async def routing_endpoint(
         ReviewerScore(reviewer=name, probability=float(probability))
         for name, probability in recommendation.ranked_reviewers
     ]
+    model = _get_reviewer_model()
+    latency = model.latency_buckets
+    meta = _model_metadata_dict(model.model_metadata)
+    reporting.record_routing_snapshot(latency, meta)
     log_audit_event(
         payload.document_id or "ml::routing",
         "ml_routing_recommendation",
@@ -313,10 +377,23 @@ async def routing_endpoint(
         top_k=payload.top_k,
         approval_likelihood=recommendation.approval_likelihood,
         reviewers=[entry.reviewer for entry in reviewer_entries],
+        model_version=meta.get("version") if meta else None,
+        model_sha256=meta.get("sha256") if meta else None,
+    )
+    log_event(
+        "critic_output",
+        critic="routing",
+        document_id=payload.document_id or "ml::routing",
+        approval_likelihood=recommendation.approval_likelihood,
+        reviewers=[entry.model_dump() for entry in reviewer_entries],
+        latency=latency,
+        model=meta,
     )
     return RoutingRecommendationResponse(
         approval_likelihood=recommendation.approval_likelihood,
         reviewers=reviewer_entries,
+        latency_buckets=latency,
+        model=meta,
     )
 
 

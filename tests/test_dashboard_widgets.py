@@ -12,3 +12,6 @@ def test_dashboard_widgets_endpoint() -> None:
     data = resp.json()
     assert "assigned" in data
     assert "pending_approvals" in data
+    assert "avg_quality_score" in data
+    assert "routing_latency" in data
+    assert isinstance(data["critic_models"], dict)

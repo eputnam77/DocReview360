@@ -1,229 +1,9 @@
 {
-  "version": 70,
-  "updated_at": "2025-09-30T00:48:19.321024+00:00",
+  "version": 99,
+  "updated_at": "2025-10-14T19:45:43.111917+00:00",
   "document_types": [
     {
-      "name": "Updated Advisory Circular",
-      "template": "<h1>Updated Advisory Circular</h1>",
-      "workflow": [
-        "draft",
-        "review",
-        "final"
-      ],
-      "default_template_id": null,
-      "id": "Updated Advisory Circular",
-      "phases": [
-        "draft",
-        "review",
-        "final"
-      ]
-    },
-    {
-      "name": "Replacement",
-      "template": "<h1>R</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Replacement",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Updated Test Doc Type",
-      "template": "<h1>Updated Test</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Updated Test Doc Type",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Report Test Doc Type",
-      "template": "<h1>Report Test</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Report Test Doc Type",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Updated Search Test Doc Type",
-      "template": "<h1>Updated Search Test</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Updated Search Test Doc Type",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Updated Consistency Test Doc Type",
-      "template": "<h1>Updated Consistency Test</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Updated Consistency Test Doc Type",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Existing Doc Type",
-      "template": "<h1>Existing</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Existing Doc Type",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Another Doc Type",
-      "template": "<h1>Another</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Another Doc Type",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 1",
-      "template": "<h1>Performance Test 1</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 1",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 2",
-      "template": "<h1>Performance Test 2</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 2",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 3",
-      "template": "<h1>Performance Test 3</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 3",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 4",
-      "template": "<h1>Performance Test 4</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 4",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 5",
-      "template": "<h1>Performance Test 5</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 5",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 6",
-      "template": "<h1>Performance Test 6</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 6",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 7",
-      "template": "<h1>Performance Test 7</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 7",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 8",
-      "template": "<h1>Performance Test 8</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 8",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc Type 9",
-      "template": "<h1>Performance Test 9</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc Type 9",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Updated Performance Test Doc Type 0",
-      "template": "<h1>Updated Performance Test</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Updated Performance Test Doc Type 0",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Test Document Type",
+      "name": "Test Doc Type",
       "template": "<h1>Test Template</h1>",
       "workflow": [
         "draft",
@@ -231,47 +11,11 @@
         "approve"
       ],
       "default_template_id": null,
-      "id": "Test Document Type",
+      "id": "Test Doc Type",
       "phases": [
         "draft",
         "review",
         "approve"
-      ]
-    },
-    {
-      "name": "Policy Document",
-      "template": "<h1>Policy</h1>",
-      "workflow": [
-        "Draft"
-      ],
-      "default_template_id": null,
-      "id": "Policy Document",
-      "phases": [
-        "Draft"
-      ]
-    },
-    {
-      "name": "Procedure Manual",
-      "template": "<h1>Procedure</h1>",
-      "workflow": [
-        "Draft"
-      ],
-      "default_template_id": null,
-      "id": "Procedure Manual",
-      "phases": [
-        "Draft"
-      ]
-    },
-    {
-      "name": "Technical Spec",
-      "template": "<h1>Technical</h1>",
-      "workflow": [
-        "Draft"
-      ],
-      "default_template_id": null,
-      "id": "Technical Spec",
-      "phases": [
-        "Draft"
       ]
     },
     {
@@ -299,51 +43,211 @@
       ]
     },
     {
-      "name": "Test Doc Type 1",
-      "template": "<h1>Test 1</h1>",
+      "name": "Consistency Test Doc",
+      "template": "<h1>Consistency</h1>",
+      "workflow": [
+        "Consistency Phase"
+      ],
+      "default_template_id": null,
+      "id": "Consistency Test Doc",
+      "phases": [
+        "Consistency Phase"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 0",
+      "template": "<h1>Performance 0</h1>",
+      "workflow": [
+        "Performance Phase 0"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 0",
+      "phases": [
+        "Performance Phase 0"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 1",
+      "template": "<h1>Performance 1</h1>",
+      "workflow": [
+        "Performance Phase 1"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 1",
+      "phases": [
+        "Performance Phase 1"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 2",
+      "template": "<h1>Performance 2</h1>",
+      "workflow": [
+        "Performance Phase 2"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 2",
+      "phases": [
+        "Performance Phase 2"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 3",
+      "template": "<h1>Performance 3</h1>",
+      "workflow": [
+        "Performance Phase 3"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 3",
+      "phases": [
+        "Performance Phase 3"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 4",
+      "template": "<h1>Performance 4</h1>",
+      "workflow": [
+        "Performance Phase 4"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 4",
+      "phases": [
+        "Performance Phase 4"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 5",
+      "template": "<h1>Performance 5</h1>",
+      "workflow": [
+        "Performance Phase 5"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 5",
+      "phases": [
+        "Performance Phase 5"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 6",
+      "template": "<h1>Performance 6</h1>",
+      "workflow": [
+        "Performance Phase 6"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 6",
+      "phases": [
+        "Performance Phase 6"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 7",
+      "template": "<h1>Performance 7</h1>",
+      "workflow": [
+        "Performance Phase 7"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 7",
+      "phases": [
+        "Performance Phase 7"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 8",
+      "template": "<h1>Performance 8</h1>",
+      "workflow": [
+        "Performance Phase 8"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 8",
+      "phases": [
+        "Performance Phase 8"
+      ]
+    },
+    {
+      "name": "Performance Test Doc 9",
+      "template": "<h1>Performance 9</h1>",
+      "workflow": [
+        "Performance Phase 9"
+      ],
+      "default_template_id": null,
+      "id": "Performance Test Doc 9",
+      "phases": [
+        "Performance Phase 9"
+      ]
+    },
+    {
+      "name": "Duplicate",
+      "template": "<h1>Dup</h1>",
       "workflow": [
         "Phase"
       ],
       "default_template_id": null,
-      "id": "Test Doc Type 1",
+      "id": "Duplicate",
       "phases": [
         "Phase"
       ]
     },
     {
-      "name": "Test Doc Type 2",
-      "template": "<h1>Test 2</h1>",
+      "name": "Conflict",
+      "template": "<h1>One</h1>",
       "workflow": [
         "Phase"
       ],
       "default_template_id": null,
-      "id": "Test Doc Type 2",
+      "id": "Conflict",
       "phases": [
         "Phase"
       ]
     },
     {
-      "name": "Replacement Doc Type",
-      "template": "<h1>Replacement</h1>",
+      "name": "policy",
+      "template": "<h1>Policy</h1>",
       "workflow": [
         "Phase"
       ],
       "default_template_id": null,
-      "id": "Replacement Doc Type",
+      "id": "policy",
       "phases": [
         "Phase"
       ]
     },
     {
-      "name": "Test Doc Type",
-      "template": "<h1>Test</h1>",
+      "name": "E2E Test Document Type",
+      "template": "<h1>E2E Test Template</h1>",
       "workflow": [
-        "Phase"
+        "draft",
+        "review",
+        "approve"
       ],
       "default_template_id": null,
-      "id": "Test Doc Type",
+      "id": "E2E Test Document Type",
       "phases": [
-        "Phase"
+        "draft",
+        "review",
+        "approve"
+      ]
+    },
+    {
+      "name": "Persistence Test Doc",
+      "template": "<h1>Persistence</h1>",
+      "workflow": [
+        "Persistence Phase"
+      ],
+      "default_template_id": null,
+      "id": "Persistence Test Doc",
+      "phases": [
+        "Persistence Phase"
+      ]
+    },
+    {
+      "name": "Recovery Test Doc",
+      "template": "<h1>Recovery</h1>",
+      "workflow": [
+        "Recovery Phase"
+      ],
+      "default_template_id": null,
+      "id": "Recovery Test Doc",
+      "phases": [
+        "Recovery Phase"
       ]
     }
   ]

@@ -14,6 +14,7 @@ def test_widget_counts_expires_temp_assignments():
     )
     projects[proj.id] = proj
     counts = widget_counts()
-    assert counts["assigned"] == 0
-    assert counts["active"] == 0
+    assert counts.assigned == 0
+    assert counts.active == 0
+    assert isinstance(counts.routing_latency, dict)
     projects.clear()
