@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import os
 import re
 import tempfile
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 try:  # pragma: no cover - optional dependency wiring
     from govdocverify.cli import process_document as _gov_run  # type: ignore[import-not-found]
@@ -17,6 +18,7 @@ __all__ = [
     "CUSTOM_STYLE_RULES",
     "FEATURE_SCHEMA_REGISTRY",
     "FANN_FEATURE_NAMES",
+    "SIGNATURE_ANOMALY_FEATURE_NAMES",
     "SchemaVersion",
     "compliance_features",
     "count_syllables",
@@ -50,7 +52,7 @@ FEATURE_SCHEMA_REGISTRY: dict[str, SchemaVersion] = {
     "quality": SchemaVersion("1.0.0", "docs/ml/quality_features.schema.json"),
     "compliance": SchemaVersion("1.0.0", "docs/ml/compliance_features.schema.json"),
     "routing": SchemaVersion("1.0.0", "docs/ml/routing_features.schema.json"),
-    "signature": SchemaVersion("1.0.0", "docs/ml/signature_features.schema.json"),
+    "signature": SchemaVersion("1.1.0", "docs/ml/signature_features.schema.json"),
 }
 
 _CUSTOM_STYLE_RULES: list[Callable[[str], bool]] = []
@@ -301,19 +303,105 @@ def routing_features(text: str, metadata: Mapping[str, Any] | None = None) -> di
     return _payload("routing", features)
 
 
-def signature_features(text: str, metadata: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """Return signature verification features combining structure and metadata heuristics."""
+def _serialise_chain(chain: Sequence[bytes | str] | None) -> list[bytes]:
+    items: list[bytes] = []
+    if not chain:
+        return items
+    for entry in chain:
+        if entry is None:  # pragma: no cover - defensive
+            continue
+        if isinstance(entry, bytes):
+            items.append(entry)
+        else:
+            items.append(entry.encode("utf-8"))
+    return items
+
+
+def _certificate_attributes(chain: Sequence[bytes | str] | None) -> tuple[float, float, float]:
+    chain_bytes = _serialise_chain(chain)
+    if not chain_bytes:
+        return 0.0, 0.0, 0.0
+
+    depth = _clamp(len(chain_bytes) / 5.0)
+    validity = 0.0
+    entropy = 0.0
+    try:
+        from cryptography import x509  # local import to keep module importable without dependency
+
+        raw = chain_bytes[0]
+        try:
+            cert = x509.load_pem_x509_certificate(raw)
+        except ValueError:
+            cert = x509.load_der_x509_certificate(raw)
+
+        not_after = getattr(cert, "not_valid_after_utc", None) or cert.not_valid_after
+        if not_after.tzinfo is None:
+            not_after = not_after.replace(tzinfo=timezone.utc)
+        remaining = (not_after - datetime.now(timezone.utc)).total_seconds()
+        if remaining > 0:
+            validity = _clamp(remaining / (365 * 24 * 3600))
+        subject = cert.subject.rfc4514_string()
+        if subject:
+            entropy = _clamp(len(set(subject)) / 64.0)
+    except Exception:
+        # If the certificate payload cannot be parsed we fall back to depth-only
+        pass
+    return depth, validity, entropy
+
+
+def _retry_stats(retries: Mapping[str, Any] | None) -> tuple[float, float]:
+    if not retries:
+        return 0.0, 0.0
+    retry_attempts = float(retries.get("retry", 0.0) or 0.0)
+    exhausted_attempts = float(retries.get("exhausted", 0.0) or 0.0)
+    total = max(retry_attempts + exhausted_attempts, 0.0)
+    ratio = _clamp(total / (total + 5.0))
+    exhaustion = _clamp(exhausted_attempts / (total + 1.0))
+    return ratio, exhaustion
+
+
+def signature_features(
+    text: str,
+    metadata: Mapping[str, Any] | None = None,
+    *,
+    verification_duration: float | None = None,
+    retries: Mapping[str, Any] | None = None,
+    certificate_chain: Sequence[bytes | str] | None = None,
+) -> dict[str, Any]:
+    """Return signature verification features combining heuristics and runtime signals."""
 
     stats = _base_stats(text)
     metadata_score = _metadata_completeness(metadata)
+    metadata_density = _clamp(len(metadata or {}) / 10.0)
     has_certificate = 1.0 if metadata and metadata.get("certificate_url") else 0.0
     has_hash = 1.0 if metadata and metadata.get("hash") else 0.0
     has_timestamp = 1.0 if metadata and metadata.get("verified_at") else 0.0
     evidence_strength = _clamp(0.4 * has_certificate + 0.3 * has_hash + 0.3 * has_timestamp)
+    duration_norm = _clamp((verification_duration or 0.0) / 10.0)
+    retry_ratio, retry_exhaustion = _retry_stats(retries)
+    cert_depth, cert_validity, cert_entropy = _certificate_attributes(certificate_chain)
+
     features = {
         "structure": stats.structure,
         "readability": stats.readability_norm,
         "metadata_completeness": metadata_score,
         "evidence_strength": evidence_strength,
+        "verification_duration": duration_norm,
+        "retry_ratio": retry_ratio,
+        "retry_exhaustion": retry_exhaustion,
+        "certificate_depth": cert_depth,
+        "certificate_validity": cert_validity,
+        "certificate_subject_entropy": cert_entropy,
+        "metadata_density": metadata_density,
     }
     return _payload("signature", features)
+SIGNATURE_ANOMALY_FEATURE_NAMES: tuple[str, ...] = (
+    "verification_duration",
+    "metadata_completeness",
+    "retry_ratio",
+    "retry_exhaustion",
+    "certificate_depth",
+    "certificate_validity",
+    "certificate_subject_entropy",
+    "metadata_density",
+)
