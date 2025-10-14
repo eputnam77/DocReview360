@@ -17,6 +17,7 @@ except Exception:
 import re
 
 from .ai_utils import _count_syllables
+from .ml.compliance_classifier import evaluate_compliance
 from .ml.features import quality_features
 
 _REQUIRED_SECTIONS = ["introduction", "body", "conclusion"]
@@ -85,11 +86,22 @@ def _analyze_structure(
     return {"missing_sections": missing, "overlong_sections": overlong}
 
 
-def _fallback(file_path: str | Path) -> dict[str, object]:
+def _compliance_summary(text: str) -> dict[str, object]:
+    classification = evaluate_compliance(text)
+    return {
+        "probability": classification.probability,
+        "failingRules": classification.failing_rules,
+        "features": dict(classification.features),
+        "source": classification.source,
+    }
+
+
+def _fallback(file_path: str | Path, *, text: str | None = None) -> dict[str, object]:
     """Minimal checker used when GovDocVerify is unavailable."""
 
     path = Path(file_path)
-    text = path.read_text(encoding="utf-8")
+    if text is None:
+        text = path.read_text(encoding="utf-8")
 
     grammar = []
     # ``re.split`` on whitespace leaves punctuation attached to tokens which
@@ -179,18 +191,26 @@ def _detect_anomalies(text: str, threshold: float = 0.7) -> bool:
 def run_checks(file_path: str | Path) -> dict[str, Any]:
     """Run document checks using GovDocVerify if available."""
 
+    path = Path(file_path)
+    text = path.read_text(encoding="utf-8")
+    compliance = _compliance_summary(text)
     if _gov_run is not None:
         try:
             # GovDocVerify requires a document type argument.  We use "Other"
             # which maps to ``DocumentType.OTHER`` within the library.
             result = _gov_run(str(file_path), "Other")
-            return cast(dict[str, Any], result)
+            payload = cast(dict[str, Any], result)
+            payload = dict(payload)
+            payload["compliance"] = compliance
+            return payload
         except Exception:
             # Fall back to the lightweight checker if GovDocVerify fails at
             # runtime (e.g. missing config files).
             pass
 
-    return _fallback(str(file_path))
+    fallback = _fallback(str(file_path), text=text)
+    fallback["compliance"] = compliance
+    return fallback
 
 
 if __name__ == "__main__":
