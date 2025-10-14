@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Compliance feature payload v1",
+  "type": "object",
+  "required": ["version", "features"],
+  "properties": {
+    "version": {"type": "string"},
+    "features": {
+      "type": "object",
+      "required": [
+        "readability",
+        "structure",
+        "metadata_completeness",
+        "style",
+        "compliance_risk"
+      ],
+      "properties": {
+        "readability": {"type": "number", "minimum": 0, "maximum": 1},
+        "structure": {"type": "number", "minimum": 0, "maximum": 1},
+        "metadata_completeness": {"type": "number", "minimum": 0, "maximum": 1},
+        "style": {"type": "number", "minimum": 0, "maximum": 1},
+        "compliance_risk": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

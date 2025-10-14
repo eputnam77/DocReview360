@@ -10,7 +10,7 @@ from typing import Callable, Dict, Mapping, MutableMapping, Sequence
 import torch
 from torch import Tensor, nn
 
-from ..ai_utils import FANN_FEATURE_NAMES, _fann_features
+from .features import FANN_FEATURE_NAMES, quality_features
 
 __all__ = [
     "CriticConfig",
@@ -27,6 +27,11 @@ __all__ = [
     "train_critic",
     "update_critic",
 ]
+
+
+def _legacy_fann_vector(text: str) -> list[float]:
+    legacy = quality_features(text)["legacy"]["fann"]
+    return [legacy[name] for name in FANN_FEATURE_NAMES]
 
 
 @dataclass(frozen=True)
@@ -91,7 +96,7 @@ class TinyCritic(nn.Module):
     def predict(self, text: str, feature_weights: Sequence[float] | None = None) -> float:
         """Return score for ``text`` optionally applying ``feature_weights``."""
 
-        feats = torch.tensor(_fann_features(text), dtype=torch.float32)
+        feats = torch.tensor(_legacy_fann_vector(text), dtype=torch.float32)
         if feature_weights is not None:
             weights = torch.tensor(feature_weights, dtype=torch.float32)
             if weights.numel() != feats.numel():
@@ -155,7 +160,7 @@ def get_default_critics() -> Dict[str, TinyCritic]:
 
 
 def _features_tensor(texts: Sequence[str]) -> Tensor:
-    feats = [_fann_features(text) for text in texts]
+    feats = [_legacy_fann_vector(text) for text in texts]
     return torch.tensor(feats, dtype=torch.float32)
 
 
