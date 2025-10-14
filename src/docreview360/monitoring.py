@@ -70,6 +70,13 @@ APPROVAL_UPLOAD_RETRIES = Counter(
     ["status"],
 )
 
+# Metrics tracking anomaly detection outcomes during verification.
+SIGNATURE_ANOMALIES = Counter(
+    "docreview360_signature_anomalies_total",
+    "Signature anomaly detection outcomes",
+    ["outcome"],
+)
+
 
 def _reserve_port() -> int:
     """Return an available TCP port on localhost."""
