@@ -9,7 +9,18 @@ import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, NamedTuple, Optional
+from time import perf_counter
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+)
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
@@ -25,11 +36,19 @@ from .integrations.signature import get_default_provider, get_default_providers
 if TYPE_CHECKING:
     from .ml.torch_models import TinyCritic
 from .logs import log_event, log_verification_failure
-from .monitoring import APPROVAL_UPLOAD_RETRIES, VERIFICATION_COUNTER, VERIFICATION_DURATION
+from .monitoring import (
+    APPROVAL_UPLOAD_RETRIES,
+    SIGNATURE_ANOMALIES,
+    VERIFICATION_COUNTER,
+    VERIFICATION_DURATION,
+)
 from .provider_store import set_provider_health
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
+
+from .ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES, signature_features
+from .ml.signature_anomaly import score_signature_anomaly
 
 
 @app.task(name="docreview360.approval_reminder")
@@ -550,7 +569,6 @@ async def _upload_approval_artifacts(
             raise ValueError("document hash mismatch")
 
     from .integrations.sharepoint_upload import upload_final_pdf
-    from .ml.features import signature_features
 
     assert approval.signed_at is not None
     await upload_final_pdf(
@@ -927,6 +945,103 @@ def approval_dashboard() -> List[Dict[str, Any]]:
     return data
 
 
+_SIGNATURE_ANOMALY_THRESHOLD = 0.8
+_DEFAULT_ANOMALY_ESCALATION_TARGET = "risk-ops"
+
+
+def _retry_snapshot() -> dict[str, float]:
+    snapshot: dict[str, float] = {}
+    for label in ("retry", "exhausted"):
+        sample = APPROVAL_UPLOAD_RETRIES.labels(label)
+        value = getattr(sample, "_value", None)
+        if value is None:
+            snapshot[label] = 0.0
+            continue
+        try:
+            snapshot[label] = float(value.get())
+        except Exception:
+            snapshot[label] = 0.0
+    return snapshot
+
+
+def _certificate_chain_for_approval(approval: ApprovalModel) -> list[bytes]:
+    chain = approval.provider_metadata.get("certificate_chain")
+    material: list[bytes] = []
+    if isinstance(chain, (list, tuple)):
+        for entry in chain:
+            if isinstance(entry, bytes):
+                material.append(entry)
+            elif isinstance(entry, str):
+                material.append(entry.encode("utf-8"))
+    if not material and approval.certificate_url:
+        try:
+            data = fetch_certificate(approval.certificate_url)
+        except Exception:
+            data = None
+        if data:
+            material.append(data)
+    return material
+
+
+def _build_anomaly_features(
+    approval: ApprovalModel,
+    document_text: str,
+    duration: float,
+) -> tuple[dict[str, float], list[float]]:
+    payload = signature_features(
+        document_text,
+        approval.provider_metadata,
+        verification_duration=duration,
+        retries=_retry_snapshot(),
+        certificate_chain=_certificate_chain_for_approval(approval),
+    )
+    features = dict(payload["features"])
+    vector = [float(features.get(name, 0.0)) for name in SIGNATURE_ANOMALY_FEATURE_NAMES]
+    return features, vector
+
+
+def _record_signature_anomaly(
+    approval: ApprovalModel,
+    score: float,
+    features: Mapping[str, float],
+    *,
+    outcome: str,
+    model_name: str,
+    model_version: str,
+    model_hash: str,
+    target: str | None,
+) -> dict[str, float]:
+    SIGNATURE_ANOMALIES.labels(outcome).inc()
+    feature_snapshot = {
+        name: float(features.get(name, 0.0)) for name in SIGNATURE_ANOMALY_FEATURE_NAMES
+    }
+    anomaly_info: dict[str, Any] = {
+        "score": float(score),
+        "threshold": _SIGNATURE_ANOMALY_THRESHOLD,
+        "status": outcome,
+        "model_name": model_name,
+        "model_version": model_version,
+        "model_hash": model_hash,
+    }
+    if target:
+        anomaly_info["target"] = target
+        approval.provider_metadata["docreview360:signature_anomaly_target"] = target
+    approval.provider_metadata["docreview360:signature_anomaly"] = anomaly_info
+    approval.provider_metadata["docreview360:signature_anomaly_features"] = feature_snapshot
+    log_audit_event(
+        approval.document_id,
+        "signature_anomaly",
+        approval_id=approval.id,
+        status=outcome,
+        provider=approval.signature_provider,
+        anomaly_score=score,
+        model_version=model_version,
+        model_hash=model_hash,
+        target=target,
+    )
+    return feature_snapshot
+    
+
 def verify_document_signature_stream(  # noqa: C901
     doc_id: str, provider: str | list[str] | None = None
 ) -> Iterator[dict[str, object]]:
@@ -939,7 +1054,9 @@ def verify_document_signature_stream(  # noqa: C901
     if document is None:
         raise KeyError("document not found")
 
-    doc_hash = hashlib.sha256(document.content.encode()).hexdigest()
+    document_text = document.content
+    document_bytes = document_text.encode()
+    doc_hash = hashlib.sha256(document_bytes).hexdigest()
 
     for approval in approvals.values():
         if approval.document_id != doc_id:
@@ -958,6 +1075,7 @@ def verify_document_signature_stream(  # noqa: C901
         certificate_present = approval.certificate_url is not None
         provider_results: dict[str, bool] = {}
         provider_valid = False
+        start_time = perf_counter()
 
         if isinstance(provider, list):
             provider_names = list(provider)
@@ -986,7 +1104,7 @@ def verify_document_signature_stream(  # noqa: C901
                     continue
                 try:
                     result = provider_impl.validate_signature(
-                        document.content.encode(),
+                        document_bytes,
                         approval.certificate_url,
                         approval.provider_metadata,
                     )
@@ -997,7 +1115,74 @@ def verify_document_signature_stream(  # noqa: C901
                     provider_valid = True
                     if not aggregate:
                         break
-
+        
+        duration = perf_counter() - start_time
+        anomaly_features, anomaly_vector = _build_anomaly_features(
+            approval,
+            document_text,
+            duration,
+        )
+        anomaly_score, model_meta = score_signature_anomaly(anomaly_vector)
+        model_name = (
+            model_meta.custom_metadata.get("docreview360:model")
+            or model_meta.version
+            or "signature_anomaly"
+        )
+        model_version = (
+            model_meta.custom_metadata.get("docreview360:version")
+            or model_meta.version
+            or "unknown"
+        )
+        model_hash = model_meta.sha256
+        outcome = "escalated" if anomaly_score >= _SIGNATURE_ANOMALY_THRESHOLD else "clear"
+        escalation_target = None
+        if outcome == "escalated":
+            escalation_target = approval.escalate_to or _DEFAULT_ANOMALY_ESCALATION_TARGET
+        event_name = "signature_anomaly_detected" if outcome == "escalated" else "signature_anomaly_scored"
+        log_event(
+            event_name,
+            approval_id=approval.id,
+            provider=approval.signature_provider,
+            doc_id=approval.document_id,
+            anomaly_score=anomaly_score,
+            anomaly_threshold=_SIGNATURE_ANOMALY_THRESHOLD,
+            model_name=model_name,
+            model_version=model_version,
+            model_hash=model_hash,
+            escalation_target=escalation_target,
+        )
+        anomaly_snapshot = _record_signature_anomaly(
+            approval,
+            anomaly_score,
+            anomaly_features,
+            outcome=outcome,
+            model_name=model_name,
+            model_version=model_version,
+            model_hash=model_hash,
+            target=escalation_target,
+        )
+        if outcome == "escalated":
+            log_event(
+                "approval_escalated",
+                approval_id=approval.id,
+                target=escalation_target,
+                reviewer=approval.reviewer,
+                workflow=approval.workflow,
+                doc_id=approval.document_id,
+                reason="signature_anomaly",
+                anomaly_score=anomaly_score,
+            )
+            log_audit_event(
+                approval.document_id,
+                "approval_escalated",
+                approval_id=approval.id,
+                provider=approval.signature_provider,
+                status="escalated",
+                target=escalation_target,
+                reason="signature_anomaly",
+                anomaly_score=anomaly_score,
+            )
+            
         yield {
             "approval_id": approval.id,
             "signature_id": approval.signature_id,
@@ -1006,6 +1191,17 @@ def verify_document_signature_stream(  # noqa: C901
             "certificate_present": certificate_present,
             "signature_verified": provider_valid,
             "provider_results": provider_results,
+            "verification_duration": duration,
+            "anomaly_score": anomaly_score,
+            "anomaly_threshold": _SIGNATURE_ANOMALY_THRESHOLD,
+            "anomaly_escalated": outcome == "escalated",
+            "escalation_target": escalation_target,
+            "anomaly_model": {
+                "name": model_name,
+                "version": model_version,
+                "hash": model_hash,
+            },
+            "anomaly_features": anomaly_snapshot,
         }
 
 
