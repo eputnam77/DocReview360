@@ -26,7 +26,11 @@ from .ml.features import (
     structural_pattern_score,
     style_guide_score,
 )
-from .ml.compliance_classifier import evaluate_compliance
+from .guardrails import (
+    evaluate_guardrails,
+    guardrail_quality_assessment,
+    load_guardrail_thresholds,
+)
 from .quality import QUALITY_FLAG_NAMES, quality_assessment
 
 # Backwards-compatible alias for tests patching GovDocVerify integration.
@@ -188,11 +192,19 @@ def _fann_score(text: str, weights: Optional[list[float]] = None) -> float:
     return 1.0 / (1.0 + math.exp(-linear))
 
 
-def detect_anomalies(text: str, threshold: float = DEFAULT_ANOMALY_THRESHOLD) -> bool:
-    """Return ``True`` when any quality flag exceeds ``threshold``."""
+def detect_anomalies(text: str, threshold: float | None = None) -> bool:
+    """Return ``True`` when any quality flag exceeds the configured threshold."""
 
-    assessment = quality_assessment(text)
-    return any(flag >= threshold for flag in assessment.flags)
+    policy = None
+    try:
+        policy = load_guardrail_thresholds()
+    except Exception:
+        policy = None
+    limit = threshold
+    if limit is None:
+        limit = policy.quality_flag_threshold if policy else DEFAULT_ANOMALY_THRESHOLD
+    assessment = guardrail_quality_assessment(text)
+    return any(flag >= limit for flag in assessment.flags)
 
 
 # ---------------------------------------------------------------------------
@@ -223,27 +235,15 @@ def validate_content(
     information when explicitly requested via ``return_diagnostics=True``.
     """
 
-    assessment = quality_assessment(text)
-    diagnostics = fann_feature_dict(text)
-    diagnostics["quality"] = {
-        "score": assessment.score,
-        "raw_score": assessment.raw_score,
-        "flags": dict(zip(QUALITY_FLAG_NAMES, assessment.flags)),
-    }
-    compliance = evaluate_compliance(text)
-    diagnostics["compliance"] = {
-        "probability": compliance.probability,
-        "failing_rules": compliance.failing_rules,
-        "features": dict(compliance.features),
-        "source": compliance.source,
-    }  
-    has_text = bool(text.strip())
-    has_anomaly = any(flag >= DEFAULT_ANOMALY_THRESHOLD for flag in assessment.flags)
-    is_valid = has_text and not has_anomaly
-    diagnostics["is_valid"] = is_valid
+    thresholds = load_guardrail_thresholds()
+    diagnostics = evaluate_guardrails(text, thresholds=thresholds)
+    payload = diagnostics.asdict()
+    payload["fann_features"] = fann_feature_dict(text)
+    payload["has_text"] = bool(text.strip())
+    payload["is_valid"] = payload["has_text"] and payload["passed"]
     if return_diagnostics:
-        return is_valid, diagnostics
-    return is_valid
+        return payload["is_valid"], payload
+    return payload["is_valid"]
 
 
 def create_validated_document(

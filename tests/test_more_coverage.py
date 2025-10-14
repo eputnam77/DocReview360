@@ -29,5 +29,5 @@ def test_ai_utils_suggest_and_validate() -> None:
     assert ai.suggest_document_type("Other") == "sample"
 
     assert ai.validate_content("Valid text") is True
-    assert ai.validate_content("bad bad") is False
+    assert ai.validate_content("URGENT bad") is False
     assert ai.validate_content("   ") is False
