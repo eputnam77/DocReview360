@@ -12,6 +12,47 @@ so you can test everything locally and decide how it fits your process.
 
 ---
 
+## 🧠 AI model pipeline at a glance
+
+DocReview360's review suggestions rely on a small PyTorch model that exports to
+**ONNX Runtime** for production. Training runs through
+`docreview360 ml train`, which logs metrics and saves the latest weights to
+`artifacts/models/latest.pt`. The `docreview360 ml export` command then freezes
+the model and converts it to `artifacts/models/latest.onnx` using
+`torch.onnx.export` with opset **18**, dynamic axes, and model metadata that
+captures the feature schema. This keeps inference portable across GPU and CPU
+targets without shipping the full Python stack.
+
+Once the ONNX bundle is generated you can:
+
+1. Run `docreview360 ml package` to stage the ONNX model, tokenizer vocabulary,
+   and feature manifest into `artifacts/packages/<timestamp>/` for deployment.
+2. Copy the folder to the API container and point
+   `DOCREVIEW360_ML_MODEL_DIR=/app/artifacts/packages/<timestamp>`.
+3. Restart the worker pods so they hot‑swap to the new graph on boot.
+
+### CPU-first deployment
+
+Most teams deploy the ONNX model with the `CPUExecutionProvider`. You only need
+libonnxruntime (already bundled in the Docker image) and a JSON feature schema.
+Set `DOCREVIEW360_ML_PROVIDER=cpu` and `DOCREVIEW360_ML_THREADS=<n>` to match
+the number of vCPUs available. GPU execution remains optional—when no GPU is
+detected the runtime automatically falls back to CPU.
+
+### Quantization options
+
+When export time matters, enable dynamic quantization by running
+`docreview360 ml export --quantize dynamic`. The command applies
+`onnxruntime.quantization.quantize_dynamic` to produce
+`artifacts/models/latest.int8.onnx`, typically yielding a **2‑3×** latency
+reduction on commodity CPUs. For maximum compression, pass
+`--quantize static --calibration-set data/calibration/` to generate a calibrated
+INT8 graph—just ensure the calibration set mirrors your production inputs. Both
+variants keep the floating-point model alongside the quantized files so you can
+compare accuracy before rolling out the optimized version.
+
+---
+
 ## ✨ Quick install (recommended)
 
 We use **pipx** for global tool shims, **uv** for ultra‑fast Python/venv work, and **Poetry ≥ 1.8** for lock‑file sync.

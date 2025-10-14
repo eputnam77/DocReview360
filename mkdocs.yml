@@ -11,6 +11,7 @@ nav:
   - Developer Guide: developer.md
   - High Risk Terms: high_risk_terms.md
   - Deployment: deployment.md
+  - ML Operations: ml/operations.md
   - User Guide: user_guide.md
   - Latest Features: latest_features.md
   - Performance: performance/analysis.md

@@ -29,6 +29,30 @@ every environment so the editor can connect to Word:
 
 After the add-in is installed, restart Word and the editor will load normally.
 
+## Deploying the ONNX model
+
+The Docker image bundles ONNX Runtime so you can ship the AI classifier alongside
+the API service without extra infrastructure. A typical CPU deployment mounts a
+model package created by `docreview360 ml package` and wires the following
+variables:
+
+```bash
+DOCREVIEW360_ML_MODEL_DIR=/app/artifacts/packages/2024-05-01_120000
+DOCREVIEW360_ML_PROVIDER=cpu
+DOCREVIEW360_ML_THREADS=$(nproc)
+```
+
+The worker detects additional providers when the right libraries are present:
+
+| Provider | Requirement | Notes |
+| --- | --- | --- |
+| `CUDAExecutionProvider` | NVIDIA drivers + CUDA toolkit | Optional—falls back to CPU when GPU is absent. |
+| `CoreMLExecutionProvider` | macOS 13+ with Apple Silicon | Ideal for Apple Silicon dev machines. |
+| `OpenVINOExecutionProvider` | Intel OpenVINO runtime | Helps squeeze extra throughput on Xeon hosts. |
+
+If no provider can be initialised, DocReview360 refuses to start and surfaces a
+clear error in the worker logs. See **Troubleshooting** below for quick fixes.
+
 ## Secret management
 
 DocReview360 resolves service credentials through a simple vault interface. To
@@ -79,6 +103,29 @@ PY
 The breaker automatically resets after the cooldown period, but manually
 flipping the health flag lets operators restore the remote provider immediately
 after verifying that Documenso is back online.
+
+## Troubleshooting inference deployments
+
+### "No suitable execution provider" errors
+
+1. Confirm the ONNX Runtime build supports your architecture. The Docker image
+   ships with the CPU build, so GPU providers are disabled unless you replace
+   the wheel.
+2. Verify that `DOCREVIEW360_ML_PROVIDER` matches one of the providers listed by
+   `docreview360 ml info`.
+3. Delete stale cached models in `/tmp/docreview360/ml/` if you recently
+   switched providers—this forces the runtime to reload the graph.
+
+### Apple Silicon & CPU-only environments
+
+- Prefer the `CoreMLExecutionProvider` locally (`DOCREVIEW360_ML_PROVIDER=coreml`),
+  but leave production to `cpu` unless you are building a macOS-only stack.
+- Install the [onnxruntime-silicon](https://pypi.org/project/onnxruntime-silicon/)
+  wheel when developing outside Docker; it bundles ARM64 optimisations.
+- Skip GPU-only quantisation modes. Both dynamic and static INT8 pipelines run
+  entirely on CPUs and keep parity with x86 servers.
+- Use `docreview360 ml export --opset 18 --quantize dynamic` to ship a single
+  artifact that behaves consistently across Intel, AMD, and Apple chips.
 
 ## Responding to audit log corruption alerts
 
