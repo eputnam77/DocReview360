@@ -1,11 +1,12 @@
-from docreview360.fann_model import Weights, predict, train_model
+from docreview360.ml.torch_models import build_clarity_critic, train_critic
 
 
 def test_train_model_learns_basic():
     texts = ["ok", "repeat repeat"]
     labels = [0, 1]
-    weights = train_model(texts, labels, epochs=100)
-    assert isinstance(weights, Weights)
-    score_bad = predict("repeat repeat", weights)
-    score_good = predict("ok", weights)
+    critic = build_clarity_critic()
+    train_critic(critic, texts, labels, epochs=200, lr=0.05)
+    score_bad = critic.predict("repeat repeat")
+    score_good = critic.predict("ok")
     assert 0 <= score_bad <= 1 and 0 <= score_good <= 1
+    assert score_bad > score_good

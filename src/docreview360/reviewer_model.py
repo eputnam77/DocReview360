@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Dict, List
 
 from .ai_utils import FANN_FEATURE_NAMES, _fann_features
-from .fann_model import Weights, update_model
+from .ml.torch_models import TinyCritic, update_critic
 
 
 def _feature_dict(text: str) -> Dict[str, float]:
@@ -83,8 +83,8 @@ class ReviewerModel:
         return best
 
     def ingest_feedback(
-        self, reviewer: str, text: str, approved: bool, weights: Weights
-    ) -> Weights:
+        self, reviewer: str, text: str, approved: bool, critic: TinyCritic
+    ) -> TinyCritic:
         """Incorporate reviewer feedback and update the global model.
 
         The reviewer's preferences and decision history are updated and the
@@ -95,7 +95,7 @@ class ReviewerModel:
         self.update_preferences(reviewer, text)
         self.record_decision(reviewer, approved)
         label = 1 if approved else 0
-        return update_model(weights, [text], [label])
+        return update_critic(critic, [text], [label])
 
     def approval_rate(self, reviewer: str) -> float:
         """Return fraction of approvals issued by ``reviewer``."""

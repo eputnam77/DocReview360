@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from docreview360 import ai_utils, quality, search
-from docreview360.fann_model import Weights
+from docreview360.ml.torch_models import build_clarity_critic
 
 
 def test_fann_score_respects_explicit_weights(monkeypatch):
@@ -70,12 +70,13 @@ def test_synth_compress_and_validation(monkeypatch):
 def test_quality_scoring(monkeypatch, tmp_path):
     monkeypatch.setattr(ai_utils, "_gov_run", None)
 
-    weights = Weights(w1=[[0.0]*6 for _ in range(4)], b1=[0.0]*4, w2=[0.0]*4, b2=0.0)
+    critic = build_clarity_critic()
+    critic.reset_parameters("zeros")
     text = "This report avoids URGENT terms."  # contains risky word
-    score = quality.approval_likelihood(text, weights, doc_type="policy_memo")
+    score = quality.approval_likelihood(text, critic, doc_type="policy_memo")
     assert 0 < score < 0.5  # penalised due to high-risk term
 
-    expl = quality.explain_score(text, weights, doc_type="policy_memo")
+    expl = quality.explain_score(text, critic, doc_type="policy_memo")
     assert any("high-risk" in r for r in expl["rationale"])
 
 

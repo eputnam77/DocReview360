@@ -10,7 +10,7 @@ from typing import List, cast
 import requests  # type: ignore[import-untyped]
 
 from .approvals import create_approval, submit_draft_for_approval
-from .fann_model import Weights
+from .ml.torch_models import TinyCritic
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
 from .secrets import get_secret
@@ -76,7 +76,7 @@ class SharePointClient:
         self,
         path: str,
         data: bytes,
-        weights: Weights,
+        critic: TinyCritic,
         *,
         workflow: str | None = None,
         reviewer: str | None = None,
@@ -95,7 +95,7 @@ class SharePointClient:
 
         # Calculate FANN score
         text = data.decode("utf-8", errors="ignore")
-        score = approval_likelihood(text, weights)
+        score = approval_likelihood(text, critic)
 
         approval_ids: list[str] = []
 
@@ -107,7 +107,7 @@ class SharePointClient:
                     reviewer,
                     item_id,
                     text,
-                    weights,
+                    critic,
                     threshold=threshold,
                     extra_reviewer=extra_reviewer,
                     reviewer_model=reviewer_model,
