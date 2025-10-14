@@ -54,6 +54,9 @@ dependencies = [
   "bleach==6.2.0",
   "y-py==0.6.2",
   "ypy-websocket==0.12.4",
+  "torch==2.5.1",
+  "onnx==1.17.0",
+  "onnxruntime==1.19.2 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
 ]
 
 [[project.authors]]
@@ -90,6 +93,14 @@ test = [
   "playwright>=1.44",
   "mutmut>=2.4",
   "uvicorn>=0.35.0",
+]
+
+# machine learning acceleration
+ml-gpu = [
+  "onnxruntime-gpu==1.19.2 ; platform_system != 'Darwin'",
+]
+ml-mps = [
+  "onnxruntime==1.19.2 ; platform_system == 'Darwin' and platform_machine == 'arm64'",
 ]
 
 # security scanning

@@ -2,7 +2,7 @@ import types
 import pytest
 from docreview360.sharepoint import SharePointClient
 from docreview360 import sharepoint
-from docreview360.fann_model import Weights
+from docreview360.ml.torch_models import build_clarity_critic
 from docreview360.approvals import ApprovalModel
 
 class DummyResponse:
@@ -26,7 +26,7 @@ def test_upload_with_scoring_collects_ids(monkeypatch):
     client = SharePointClient("s","d","t")
     monkeypatch.setattr(client, "upload_file", lambda path, data: "item1")
     monkeypatch.setattr(client, "set_properties", lambda item_id, metadata: None)
-    monkeypatch.setattr(sharepoint, "approval_likelihood", lambda text, weights: 0.4)
+    monkeypatch.setattr(sharepoint, "approval_likelihood", lambda text, critic: 0.4)
     approvals_list = [
         ApprovalModel(id="A1", workflow="wf", reviewer="r", document_id="item1"),
         ApprovalModel(id="A2", workflow="wf", reviewer="r", document_id="item1"),
@@ -35,6 +35,6 @@ def test_upload_with_scoring_collects_ids(monkeypatch):
         return approvals_list.pop(0)
     monkeypatch.setattr(sharepoint, "create_approval", fake_create)
     monkeypatch.setattr(sharepoint, "submit_draft_for_approval", lambda *a, **k: approvals_list[0])
-    item_id, score, approvals = client.upload_with_scoring("p", b"hi", Weights([[0]], [0], [0], 0), workflow="wf")
+    item_id, score, approvals = client.upload_with_scoring("p", b"hi", build_clarity_critic(), workflow="wf")
     assert item_id == "item1"
     assert approvals == ["A1", "A2"]

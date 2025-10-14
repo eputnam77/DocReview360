@@ -9,7 +9,7 @@ import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from io import BytesIO
-from typing import Any, Dict, Iterator, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, NamedTuple, Optional
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
@@ -19,9 +19,11 @@ from .audit import AuditLogEntry, get_audit_log, log_audit_event
 from .celery_app import app
 from .certs import fetch_certificate
 from .documents import DocumentModel, documents, get_document, link_approval, unlink_approval
-from .fann_model import Weights
 from .integrations.registry import get_provider
 from .integrations.signature import get_default_provider, get_default_providers
+
+if TYPE_CHECKING:
+    from .ml.torch_models import TinyCritic
 from .logs import log_event, log_verification_failure
 from .monitoring import APPROVAL_UPLOAD_RETRIES, VERIFICATION_COUNTER, VERIFICATION_DURATION
 from .provider_store import set_provider_health
@@ -295,14 +297,14 @@ def submit_draft_for_approval(
     reviewer: str | None,
     doc_id: str,
     text: str,
-    weights: Weights,
+    critic: "TinyCritic",
     *,
     threshold: float = 0.5,
     extra_reviewer: str = "policy",
     reviewer_model: ReviewerModel | None = None,
 ) -> ApprovalModel:
     """Score ``text`` and route for additional review if risky."""
-    score = approval_likelihood(text, weights)
+    score = approval_likelihood(text, critic)
     if score < threshold:
         create_approval(workflow, extra_reviewer, doc_id, description="Auto risk review")
     if reviewer is None:
