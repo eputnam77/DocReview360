@@ -134,9 +134,12 @@ def test_quality_endpoint_returns_assessment(
     data = response.json()
     assert "score" in data
     assert "raw_score" in data
+    expected_sha = ml_module.quality_model_metadata().sha256  # type: ignore[attr-defined]
+    assert data["model"]["sha256"] == expected_sha
     assert len(audit_spy) == 1
     assert audit_spy[0][0][0] == "doc-123"
     assert audit_spy[0][0][1] == "ml_quality_assessment"
+    assert audit_spy[0][1]["model_sha256"] == expected_sha
 
 
 def test_quality_endpoint_requires_text(client: TestClient) -> None:
@@ -177,6 +180,15 @@ def test_compliance_endpoint_returns_result(
     assert "probability" in data
     assert len(audit_spy) == 1
     assert audit_spy[0][0][1] == "ml_compliance_evaluation"
+    expected_compliance_sha = (
+        ml_module._model_metadata_dict(  # type: ignore[attr-defined]
+            ml_module.compliance_model_metadata()
+        )
+        or {}
+    ).get("sha256")
+    if expected_compliance_sha:
+        assert data["model"]["sha256"] == expected_compliance_sha
+        assert audit_spy[0][1]["model_sha256"] == expected_compliance_sha
 
 
 def test_compliance_endpoint_requires_text(client: TestClient) -> None:
@@ -199,8 +211,13 @@ def test_routing_endpoint_returns_recommendations(
     data = response.json()
     assert data["reviewers"]
     assert len(data["reviewers"]) <= payload["top_k"]
+    routing_meta = ml_module._model_metadata_dict(
+        ml_module._get_reviewer_model().model_metadata  # type: ignore[attr-defined]
+    )
+    assert data["model"]["sha256"] == routing_meta["sha256"]
     assert len(audit_spy) == 1
     assert audit_spy[0][0][1] == "ml_routing_recommendation"
+    assert audit_spy[0][1]["model_sha256"] == routing_meta["sha256"]
 
 
 def test_routing_endpoint_validates_top_k(client: TestClient) -> None:

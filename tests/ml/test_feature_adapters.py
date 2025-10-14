@@ -26,6 +26,7 @@ except Exception:  # pragma: no cover - fallback validation
     jsonschema = None
 
 _FIXTURE_DIR = Path(__file__).with_name("fixtures")
+_GOLDEN_DIR = Path(__file__).resolve().parents[1] / "data" / "ml"
 
 
 def _load_text() -> str:
@@ -56,19 +57,32 @@ def _validate_schema(name: str, payload: dict[str, object]) -> None:
         assert 0.0 <= value <= 1.0
 
 
-def test_quality_features_deterministic_and_legacy_alignment() -> None:
+def _load_golden(name: str) -> dict[str, object]:
+    return json.loads((_GOLDEN_DIR / name).read_text())
+
+
+def _assert_approx_mapping(
+    actual: dict[str, float], expected: dict[str, float], *, rel: float = 1e-6, abs_: float = 1e-6
+) -> None:
+    assert set(actual) == set(expected)
+    for key, value in expected.items():
+        assert actual[key] == pytest.approx(value, rel=rel, abs=abs_)
+
+
+def test_quality_features_align_with_golden_fixture() -> None:
     text = _load_text()
     metadata = _load_metadata()
-    first = quality_features(text, metadata)
-    second = quality_features(text, metadata)
-    assert first == second
-    _validate_schema("quality", first)
+    payload = quality_features(text, metadata)
+    assert payload == quality_features(text, metadata)
+    golden = _load_golden("quality.json")
 
-    legacy_expected = json.loads((_FIXTURE_DIR / "quality_legacy.json").read_text())
-    legacy = first["legacy"]["fann"]
-    assert set(legacy) == set(FANN_FEATURE_NAMES)
-    for name, expected in legacy_expected.items():
-        assert legacy[name] == pytest.approx(expected, rel=1e-6, abs=1e-6)
+    _validate_schema("quality", payload)
+
+    expected_features = golden["features"]["features"]  # type: ignore[index]
+    expected_legacy = golden["features"]["legacy"]["fann"]  # type: ignore[index]
+
+    _assert_approx_mapping(payload["features"], expected_features)
+    _assert_approx_mapping(payload["legacy"]["fann"], expected_legacy)
 
 
 def test_compliance_routing_signature_features_schema_and_range() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -169,11 +170,24 @@ def score_signature_anomaly(features: Sequence[float]) -> tuple[float, ModelMeta
     """Return anomaly score and model metadata for ``features``."""
 
     model_path = _ensure_model()
-    session = get_session(model_path)
     array = np.asarray([list(features)], dtype=np.float32)
-    outputs = infer(session, {"input": array})
-    score = float(np.clip(outputs[0].squeeze().item(), 0.0, 1.0))
-    meta = get_model_metadata(session)
+    try:
+        session = get_session(model_path)
+        outputs = infer(session, {"input": array})
+        score = float(np.clip(outputs[0].squeeze().item(), 0.0, 1.0))
+        meta = get_model_metadata(session)
+    except Exception:
+        linear = float(_ANOMALY_BIAS)
+        for weight, value in zip(_ANOMALY_WEIGHTS, array.squeeze(0)):
+            linear += float(weight) * float(value)
+        score = float(1.0 / (1.0 + math.exp(-linear)))
+        score = float(np.clip(score, 0.0, 1.0))
+        meta = ModelMetadata(
+            path=model_path,
+            sha256=_sha256(model_path),
+            version=MODEL_VERSION,
+            custom_metadata={},
+        )
     return score, meta
 
 

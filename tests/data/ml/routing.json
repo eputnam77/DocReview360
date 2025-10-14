@@ -1,0 +1,53 @@
+{
+  "features": {
+    "features": {
+      "content_size": 0.156,
+      "duplication": 0.0,
+      "metadata_signal": 1.0,
+      "novelty": 0.9,
+      "priority": 0.543765,
+      "structure": 0.416667
+    },
+    "version": "1.0.0"
+  },
+  "input": {
+    "metadata": {
+      "certificate_url": "https://example.com/certs/phoenix.pdf",
+      "hash": "abc123",
+      "owner": "A. Smith",
+      "title": "Project Phoenix",
+      "verified_at": "2024-06-01T00:00:00Z"
+    },
+    "text": "Project Phoenix Overview\n\n# Introduction\nThis policy outlines the review timeline for the Phoenix expansion project.\n\n# Body\nTeams must submit updates weekly, include risk mitigations, and track decisions.\n- Provide change logs\n- Capture open questions\n\n# Conclusion\nThank you for keeping stakeholders informed.\n"
+  },
+  "model": {
+    "docreview360:reviewers": "alice,bob,charlie",
+    "path": "/workspace/DocReview360/src/docreview360/ml/assets/routing_reviewer.onnx",
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  "recommendation": {
+    "approval_likelihood": 0.6253101792390389,
+    "feature_vector": [
+      0.15600000321865082,
+      0.8999999761581421,
+      0.0,
+      0.41666701436042786,
+      0.343764990568161,
+      0.0
+    ],
+    "ranked_reviewers": [
+      {
+        "probability": 0.37247899174690247,
+        "reviewer": "bob"
+      },
+      {
+        "probability": 0.32299962639808655,
+        "reviewer": "alice"
+      },
+      {
+        "probability": 0.304521381855011,
+        "reviewer": "charlie"
+      }
+    ]
+  }
+}

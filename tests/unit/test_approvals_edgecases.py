@@ -56,11 +56,14 @@ def test_submit_draft_captures_scoring_metadata(monkeypatch):
     assert "approval_likelihood" in approval.scoring_metadata
     assert approval.scoring_metadata["approval_likelihood"] == pytest.approx(expected)
     assert len(approval.scoring_metadata["recommendations"]) >= 1
+    assert "model" in approval.scoring_metadata
+    assert approval.scoring_metadata["model"]["sha256"]
     assert sum(1 for name in approvals.approvals.values() if name.workflow == "wf") == 2
 
     logged = [payload for event, payload in events if event == "reviewer_recommendation"]
     assert logged
     assert logged[0]["recommendations"][0]["reviewer"] == "bob"
+    assert logged[0]["model_sha256"] == approval.scoring_metadata["model"]["sha256"]
 
 
 def test_create_approval_sets_fields(monkeypatch):

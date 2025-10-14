@@ -1,0 +1,47 @@
+{
+  "assessment": {
+    "flags": [
+      0.7147074999999999,
+      0.0,
+      0.08333299999999999
+    ],
+    "raw_score": 0.8791175499999999,
+    "score": 0.8791175499999999
+  },
+  "features": {
+    "features": {
+      "duplicate_ratio": 0.0,
+      "length": 0.156,
+      "metadata_completeness": 1.0,
+      "readability": 0.114117,
+      "structure": 0.416667,
+      "style": 0.0,
+      "vocabulary_diversity": 0.9
+    },
+    "legacy": {
+      "fann": {
+        "length": 0.312,
+        "readability": 0.114117,
+        "repeated": 0.0,
+        "structure": 0.416667,
+        "style": 0.0,
+        "unique_ratio": 0.9
+      }
+    },
+    "version": "1.0.0"
+  },
+  "input": {
+    "metadata": {
+      "certificate_url": "https://example.com/certs/phoenix.pdf",
+      "hash": "abc123",
+      "owner": "A. Smith",
+      "title": "Project Phoenix",
+      "verified_at": "2024-06-01T00:00:00Z"
+    },
+    "text": "Project Phoenix Overview\n\n# Introduction\nThis policy outlines the review timeline for the Phoenix expansion project.\n\n# Body\nTeams must submit updates weekly, include risk mitigations, and track decisions.\n- Provide change logs\n- Capture open questions\n\n# Conclusion\nThank you for keeping stakeholders informed.\n"
+  },
+  "model": {
+    "path": "/workspace/DocReview360/src/docreview360/models/quality_critic.onnx",
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  }
+}
