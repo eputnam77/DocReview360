@@ -10,6 +10,7 @@ from typing import List, cast
 import requests  # type: ignore[import-untyped]
 
 from .approvals import create_approval, submit_draft_for_approval
+from .ml.features import routing_features
 from .ml.torch_models import TinyCritic
 from .quality import approval_likelihood
 from .reviewer_model import ReviewerModel
@@ -96,6 +97,9 @@ class SharePointClient:
         # Calculate FANN score
         text = data.decode("utf-8", errors="ignore")
         score = approval_likelihood(text, critic)
+        routing = routing_features(text, {"workflow": workflow} if workflow else None)[
+            "features"
+        ]
 
         approval_ids: list[str] = []
 
@@ -138,6 +142,8 @@ class SharePointClient:
             "Workflow": workflow or "",
             "FANNScore": f"{score:.3f}",
             "ApprovalIDs": ", ".join(approval_ids) if approval_ids else "",
+            "RoutePriority": f"{routing['priority']:.3f}",
+            "StructureScore": f"{routing['structure']:.3f}",
         }
         try:
             self.set_properties(item_id, metadata)

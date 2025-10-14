@@ -1,0 +1,9 @@
+{
+  "features": {
+    "evidence_strength": 1.0,
+    "metadata_completeness": 1.0,
+    "readability": 0.114117,
+    "structure": 0.416667
+  },
+  "version": "1.0.0"
+}
