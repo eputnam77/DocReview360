@@ -4,17 +4,17 @@ from datetime import datetime, timedelta
 import pytest
 
 from docreview360 import ai_utils, quality, search
-from docreview360.ml.torch_models import build_clarity_critic
+from docreview360.quality import QUALITY_FLAG_NAMES, quality_assessment
 
 
-def test_fann_score_respects_explicit_weights(monkeypatch):
-    """Providing an explicit empty weight vector should not fall back to defaults."""
-    # Avoid running the external GovDocVerify dependency during tests
-    monkeypatch.setattr(ai_utils, "_gov_run", None)
+def test_detect_anomalies_uses_quality_flags(monkeypatch):
+    """Quality flags above the default threshold should trigger anomalies."""
+    monkeypatch.setattr(ai_utils, "_gov_run", None, raising=False)
+    monkeypatch.setattr("docreview360.ml.features._gov_run", None, raising=False)
 
-    zero_weights = [0.0] * len(ai_utils.FANN_FEATURE_NAMES)
-    score = ai_utils._fann_score("Example text", zero_weights)
-    assert score == pytest.approx(0.5, abs=1e-6)
+    risky = "URGENT notice repeated repeated repeated repeated."
+    assert ai_utils.detect_anomalies(risky) is True
+    assert ai_utils.detect_anomalies("Routine memo with simple style.") is False
 
 
 def test_initialize_high_risk_terms_case_insensitive(tmp_path):
@@ -48,7 +48,8 @@ def test_assign_temporary_accepts_naive_datetime():
 
 def test_template_and_prompt_helpers(monkeypatch):
     """Exercise feedback/prompt template registration and rendering."""
-    monkeypatch.setattr(ai_utils, "_gov_run", None)
+    monkeypatch.setattr(ai_utils, "_gov_run", None, raising=False)
+    monkeypatch.setattr("docreview360.ml.features._gov_run", None, raising=False)
 
     ai_utils.add_feedback_template("greet", "Hello {text}!")
     assert ai_utils.generate_feedback("greet", "Bob") == "Hello Bob!"
@@ -63,25 +64,28 @@ def test_synth_compress_and_validation(monkeypatch):
     assert ai_utils.synth_compress("This is an example") == "Ths xmpl"
 
     # validate_content with diagnostics
-    ok, diag = ai_utils.validate_content("Valid text", return_diagnostics=True)
+    ok, diag = ai_utils.validate_content("Routine memo with simple style.", return_diagnostics=True)
     assert ok is True and diag["is_valid"] is True
+    assert "quality" in diag
+    assert set(diag["quality"]["flags"].keys()) == set(QUALITY_FLAG_NAMES)
 
 
-def test_quality_scoring(monkeypatch, tmp_path):
-    monkeypatch.setattr(ai_utils, "_gov_run", None)
+def test_quality_scoring(monkeypatch):
+    monkeypatch.setattr(ai_utils, "_gov_run", None, raising=False)
+    monkeypatch.setattr("docreview360.ml.features._gov_run", None, raising=False)
 
-    critic = build_clarity_critic()
-    critic.reset_parameters("zeros")
     text = "This report avoids URGENT terms."  # contains risky word
-    score = quality.approval_likelihood(text, critic, doc_type="policy_memo")
-    assert 0 < score < 0.5  # penalised due to high-risk term
+    assessment = quality_assessment(text, doc_type="policy_memo")
+    assert assessment.score == pytest.approx(assessment.raw_score * 0.9, rel=1e-6)
 
-    expl = quality.explain_score(text, critic, doc_type="policy_memo")
+    expl = quality.explain_score(text, doc_type="policy_memo")
+    assert expl["score"] == pytest.approx(assessment.score, rel=1e-6)
     assert any("high-risk" in r for r in expl["rationale"])
 
 
 def test_template_error_paths(monkeypatch):
-    monkeypatch.setattr(ai_utils, "_gov_run", None)
+    monkeypatch.setattr(ai_utils, "_gov_run", None, raising=False)
+    monkeypatch.setattr("docreview360.ml.features._gov_run", None, raising=False)
 
     with pytest.raises(ValueError):
         ai_utils.apply_feedback_template("No placeholder", "x")
@@ -98,7 +102,12 @@ def test_template_error_paths(monkeypatch):
 
 
 def test_structure_and_export(monkeypatch):
-    monkeypatch.setattr(ai_utils, "_gov_run", lambda *a, **k: {"styleIssues": [1]})
+    monkeypatch.setattr(ai_utils, "_gov_run", lambda *a, **k: {"styleIssues": [1]}, raising=False)
+    monkeypatch.setattr(
+        "docreview360.ml.features._gov_run",
+        lambda *a, **k: {"styleIssues": [1]},
+        raising=False,
+    )
 
     # style_guide_score via govdocverify branch
     assert ai_utils.style_guide_score("Good sentence.") < 1
@@ -113,7 +122,8 @@ def test_structure_and_export(monkeypatch):
 
 
 def test_create_validated_document(tmp_path, monkeypatch):
-    monkeypatch.setattr(ai_utils, "_gov_run", None)
+    monkeypatch.setattr(ai_utils, "_gov_run", None, raising=False)
+    monkeypatch.setattr("docreview360.ml.features._gov_run", None, raising=False)
 
     path = tmp_path / "file.txt"
     data = b"content"
