@@ -5,10 +5,27 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from typing import Dict, List
+from pathlib import Path
+from time import perf_counter
+from typing import Any, Dict, List, Sequence
 
-from .ml.features import FANN_FEATURE_NAMES, quality_features
+import numpy as np
+
+from .ml.features import quality_features
+from .ml.onnx_infer import get_model_metadata, get_session, infer
+from .ml.routing_critic import ROUTING_FEATURE_NAMES, routing_feature_vector
 from .ml.torch_models import TinyCritic, update_critic
+
+_DEFAULT_ROUTING_MODEL = (
+    Path(__file__).resolve().parent / "ml" / "assets" / "routing_reviewer.onnx"
+)
+
+_LATENCY_BUCKETS: tuple[tuple[float, str], ...] = (
+    (0.01, "<10ms"),
+    (0.05, "10-50ms"),
+    (0.1, "50-100ms"),
+)
+_LATENCY_DEFAULT = "100ms+"
 
 
 def _feature_dict(text: str) -> Dict[str, float]:
@@ -24,31 +41,137 @@ class ReviewerProfile:
     decisions: List[bool] = field(default_factory=list)
 
 
+@dataclass
+class Recommendation:
+    """Container holding routing recommendations."""
+
+    approval_likelihood: float
+    ranked_reviewers: List[tuple[str, float]]
+    features: np.ndarray
+
+    @property
+    def primary(self) -> str | None:
+        if not self.ranked_reviewers:
+            return None
+        return self.ranked_reviewers[0][0]
+
+
 class ReviewerModel:
-    """Minimal model capturing reviewer behavior."""
+    """Model capturing reviewer behaviour and routing recommendations."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        model_path: str | Path | None = None,
+        *,
+        providers: Sequence[str] | None = None,
+    ) -> None:
+        self._model_path = Path(model_path) if model_path else _DEFAULT_ROUTING_MODEL
+        self._session = get_session(self._model_path, providers=providers)
+        metadata = get_model_metadata(self._session)
+        reviewers_meta = metadata.custom_metadata.get("docreview360:reviewers", "")
+        reviewers = tuple(
+            filter(None, (name.strip() for name in reviewers_meta.split(",")))
+        )
+        if not reviewers:
+            raise ValueError("routing critic metadata missing reviewer list")
+        self._reviewers: tuple[str, ...] = reviewers
+        self._feature_dim = len(ROUTING_FEATURE_NAMES)
         self._profiles: Dict[str, ReviewerProfile] = {}
+        self._embedding_stats: Dict[str, dict[str, Any]] = {}
+        self._feedback_counts: Dict[str, Dict[str, int]] = {}
+        self._latency_buckets: Dict[str, int] = {
+            label: 0 for _, label in _LATENCY_BUCKETS
+        }
+        self._latency_buckets[_LATENCY_DEFAULT] = 0
+        for reviewer in reviewers:
+            self._ensure_stats(reviewer)
 
+    # ------------------------------------------------------------------
+    # Serialisation helpers
+    # ------------------------------------------------------------------
     def save(self, path: str) -> None:
-        """Serialise profiles to ``path`` in JSON format."""
+        """Serialise routing state to ``path``."""
 
-        data = {name: asdict(profile) for name, profile in self._profiles.items()}
+        data = {
+            "profiles": {name: asdict(profile) for name, profile in self._profiles.items()},
+            "embeddings": {
+                name: {
+                    "count": stats["count"],
+                    "vector": stats["vector"].tolist(),
+                }
+                for name, stats in self._embedding_stats.items()
+            },
+            "feedback": self._feedback_counts,
+            "latency": self._latency_buckets,
+        }
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(data, fh)
 
     def load(self, path: str) -> None:
-        """Load profiles from ``path`` created by :meth:`save`."""
+        """Load routing state from ``path`` created by :meth:`save`."""
 
         with open(path, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
+            payload = json.load(fh)
+
+        # Backwards compatibility: legacy payloads stored the profile mapping
+        # at the top level rather than under ``profiles``.
+        profiles_data = payload.get("profiles")
+        if profiles_data is None:
+            profiles_data = payload
+        
         self._profiles = {
             name: ReviewerProfile(
                 preferences=defaultdict(float, prof.get("preferences", {})),
                 decisions=list(prof.get("decisions", [])),
             )
-            for name, prof in data.items()
+            for name, prof in profiles_data.items()
         }
+
+        embeddings = payload.get("embeddings", {})
+        self._embedding_stats = {}
+        for name, stats in embeddings.items():
+            vector = np.array(stats.get("vector", [0.0] * self._feature_dim), dtype=np.float32)
+            self._embedding_stats[name] = {
+                "count": int(stats.get("count", 0)),
+                "vector": vector,
+            }
+
+        feedback = payload.get("feedback", {})
+        self._feedback_counts = {
+            name: {
+                "approved": int(info.get("approved", 0)),
+                "rejected": int(info.get("rejected", 0)),
+            }
+            for name, info in feedback.items()
+        }
+
+        latency = payload.get("latency", {})
+        self._latency_buckets = {
+            label: int(latency.get(label, 0)) for _, label in _LATENCY_BUCKETS
+        }
+        self._latency_buckets[_LATENCY_DEFAULT] = int(latency.get(_LATENCY_DEFAULT, 0))
+
+        for reviewer in self._reviewers:
+            self._ensure_stats(reviewer)
+
+    # ------------------------------------------------------------------
+    # Reviewer preference tracking
+    # ------------------------------------------------------------------
+    def _ensure_stats(self, reviewer: str) -> None:
+        self._embedding_stats.setdefault(
+            reviewer,
+            {
+                "count": 0,
+                "vector": np.zeros(self._feature_dim, dtype=np.float32),
+            },
+        )
+        self._feedback_counts.setdefault(
+            reviewer,
+            {
+                "approved": 0,
+                "rejected": 0,
+            },
+        )
 
     def update_preferences(self, reviewer: str, text: str) -> None:
         feats = _feature_dict(text)
@@ -59,6 +182,14 @@ class ReviewerModel:
     def record_decision(self, reviewer: str, approved: bool) -> None:
         prof = self._profiles.setdefault(reviewer, ReviewerProfile())
         prof.decisions.append(approved)
+        stats = self._feedback_counts.setdefault(
+            reviewer,
+            {"approved": 0, "rejected": 0},
+        )
+        if approved:
+            stats["approved"] += 1
+        else:
+            stats["rejected"] += 1
 
     def consistency_score(self, reviewer: str) -> float:
         prof = self._profiles.get(reviewer)
@@ -71,48 +202,84 @@ class ReviewerModel:
         )
         return same / (len(prof.decisions) - 1)
 
+        # ------------------------------------------------------------------
+    # Routing and inference helpers
+    # ------------------------------------------------------------------
+    def _softmax(self, logits: np.ndarray) -> np.ndarray:
+        shifted = logits - logits.max()
+        exp = np.exp(shifted)
+        denom = exp.sum()
+        if denom == 0:
+            return np.full_like(exp, 1.0 / len(exp))
+        return exp / denom
+
+    def _bucket_latency(self, elapsed: float) -> str:
+        for threshold, label in _LATENCY_BUCKETS:
+            if elapsed <= threshold:
+                return label
+        return _LATENCY_DEFAULT
+
+    def _update_embedding(self, reviewer: str, features: np.ndarray) -> None:
+        stats = self._embedding_stats.setdefault(
+            reviewer,
+            {
+                "count": 0,
+                "vector": np.zeros(self._feature_dim, dtype=np.float32),
+            },
+        )
+        stats["vector"] += features
+        stats["count"] += 1
+
+    def recommend(self, text: str, k: int = 3) -> Recommendation:
+        """Return top-``k`` reviewer recommendations for ``text``."""
+
+        features = routing_feature_vector(text)
+        start = perf_counter()
+        approval_arr, reviewer_logits = infer(
+            self._session, {"input": features.reshape(1, -1)}
+        )
+        elapsed = perf_counter() - start
+        bucket = self._bucket_latency(elapsed)
+        self._latency_buckets[bucket] += 1
+
+        approval_likelihood = float(np.clip(approval_arr.squeeze().item(), 0.0, 1.0))
+        logits = reviewer_logits.squeeze(0)
+        probabilities = self._softmax(logits)
+        order = np.argsort(logits)[::-1]
+        ranked: List[tuple[str, float]] = []
+        for idx in order[: max(1, k)]:
+            reviewer = self._reviewers[idx]
+            prob = float(probabilities[idx])
+            ranked.append((reviewer, prob))
+            self._update_embedding(reviewer, features)
+        return Recommendation(approval_likelihood, ranked, features)
+        
     def route_draft(self, text: str) -> str | None:
-        feats = _feature_dict(text)
-        best_score = float("-inf")
-        best: str | None = None
-        for reviewer, prof in self._profiles.items():
-            score = sum(prof.preferences.get(k, 0.0) * v for k, v in feats.items())
-            if score > best_score:
-                best_score = score
-                best = reviewer
-        return best
+        recommendation = self.recommend(text, k=1)
+        return recommendation.primary
 
     def ingest_feedback(
         self, reviewer: str, text: str, approved: bool, critic: TinyCritic
     ) -> TinyCritic:
-        """Incorporate reviewer feedback and update the global model.
-
-        The reviewer's preferences and decision history are updated and the
-        provided ``weights`` are incrementally trained on the new labelled
-        example, enabling a continual learning loop.
-        """
+        """Incorporate reviewer feedback and update the global model."""
 
         self.update_preferences(reviewer, text)
         self.record_decision(reviewer, approved)
         label = 1 if approved else 0
         return update_critic(critic, [text], [label])
 
+    # ------------------------------------------------------------------
+    # Analytics helpers
+    # ------------------------------------------------------------------
     def approval_rate(self, reviewer: str) -> float:
-        """Return fraction of approvals issued by ``reviewer``."""
-
         prof = self._profiles.get(reviewer)
         if not prof or not prof.decisions:
             return 1.0
         return sum(1 for d in prof.decisions if d) / len(prof.decisions)
 
     def anomalous_reviewers(self, threshold: float = 0.2) -> List[str]:
-        """Return reviewers whose approval rate deviates from the mean."""
-
         if not self._profiles:
             return []
-        # Reviewers without any decisions artificially skew the average when
-        # treated as having a perfect approval rate.  Filter them out so only
-        # those with recorded decisions are considered for anomaly detection.
         rates = {
             r: self.approval_rate(r)
             for r, prof in self._profiles.items()
@@ -122,3 +289,24 @@ class ReviewerModel:
             return []
         avg = sum(rates.values()) / len(rates)
         return [r for r, rate in rates.items() if abs(rate - avg) > threshold]
+
+    @property
+    def reviewer_embeddings(self) -> Dict[str, List[float]]:
+        embeddings: Dict[str, List[float]] = {}
+        for reviewer, stats in self._embedding_stats.items():
+            count = stats.get("count", 0)
+            vector = stats.get("vector")
+            if count:
+                embeddings[reviewer] = (vector / count).tolist()
+            else:
+                embeddings[reviewer] = [0.0] * self._feature_dim
+        return embeddings
+
+    @property
+    def reviewer_feedback(self) -> Dict[str, Dict[str, int]]:
+        return {name: dict(counts) for name, counts in self._feedback_counts.items()}
+
+    @property
+    def latency_buckets(self) -> Dict[str, int]:
+        return dict(self._latency_buckets)
+        
