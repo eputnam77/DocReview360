@@ -26,6 +26,13 @@ from .ml.features import (
     structural_pattern_score,
     style_guide_score,
 )
+from .quality import QUALITY_FLAG_NAMES, quality_assessment
+
+# Backwards-compatible alias for tests patching GovDocVerify integration.
+try:  # pragma: no cover - defensive re-export
+    from .ml.features import _gov_run as _gov_run  # type: ignore[attr-defined]
+except Exception:  # pragma: no cover - fall back when attribute missing
+    _gov_run = None
 
 
 def _count_syllables(word: str) -> int:
@@ -180,8 +187,10 @@ def _fann_score(text: str, weights: Optional[list[float]] = None) -> float:
 
 
 def detect_anomalies(text: str, threshold: float = DEFAULT_ANOMALY_THRESHOLD) -> bool:
-    """Return True when `text` appears anomalous using a tiny FANN model."""
-    return _fann_score(text) >= threshold
+    """Return ``True`` when any quality flag exceeds ``threshold``."""
+
+    assessment = quality_assessment(text)
+    return any(flag >= threshold for flag in assessment.flags)
 
 
 # ---------------------------------------------------------------------------
@@ -212,8 +221,16 @@ def validate_content(
     information when explicitly requested via ``return_diagnostics=True``.
     """
 
+    assessment = quality_assessment(text)
     diagnostics = fann_feature_dict(text)
-    is_valid = bool(text.strip()) and not detect_anomalies(text)
+    diagnostics["quality"] = {
+        "score": assessment.score,
+        "raw_score": assessment.raw_score,
+        "flags": dict(zip(QUALITY_FLAG_NAMES, assessment.flags)),
+    }
+    has_text = bool(text.strip())
+    has_anomaly = any(flag >= DEFAULT_ANOMALY_THRESHOLD for flag in assessment.flags)
+    is_valid = has_text and not has_anomaly
     diagnostics["is_valid"] = is_valid
     if return_diagnostics:
         return is_valid, diagnostics
