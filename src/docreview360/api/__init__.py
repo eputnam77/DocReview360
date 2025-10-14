@@ -158,6 +158,7 @@ from ..workflows import (
     list_roles,
 )
 from .approvals import router as approvals_router
+from .ml import router as ml_router, warm_ml_sessions
 from .webhooks import router as webhooks_router
 
 # Load environment variables from .env file
@@ -339,6 +340,7 @@ async def _lifespan(app: FastAPI):
         if not get_latest_template(tpl["name"]):
             store_template(tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata"))
     schedule_archive_purge()
+    warm_ml_sessions()
     try:
         yield
     finally:
@@ -393,6 +395,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.include_router(approvals_router)
 app.include_router(webhooks_router)
 app.include_router(collab_router)
+app.include_router(ml_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
