@@ -10,6 +10,8 @@ from typing import Sequence
 
 import numpy as np
 
+import hashlib
+
 from .ml.features import FANN_FEATURE_NAMES, quality_features
 from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session, infer as onnx_infer
 
@@ -17,12 +19,25 @@ _HIGH_RISK_TERMS: set[str] = set()
 _HIGH_RISK_PENALTY: float = 0.9  # Multiply score by this if risky terms are present
 
 _MODEL_PATH = Path(__file__).resolve().parent / "models" / "quality_critic.onnx"
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    try:
+        with open(path, "rb") as handle:
+            for chunk in iter(lambda: handle.read(8192), b""):
+                digest.update(chunk)
+    except FileNotFoundError:
+        return ""
+    return digest.hexdigest()
+
+
 try:
     _MODEL_METADATA = get_model_metadata(_MODEL_PATH)
 except Exception:
     _MODEL_METADATA = ModelMetadata(
         path=_MODEL_PATH,
-        sha256="",
+        sha256=_file_sha256(_MODEL_PATH),
         version=None,
         custom_metadata={},
     )
@@ -159,6 +174,18 @@ def quality_assessment(text: str, *, doc_type: str | None = None) -> QualityAsse
 def quality_model_metadata() -> "ModelMetadata":
     """Return cached metadata describing the quality critic model."""
 
+    global _MODEL_METADATA
+    if not _MODEL_METADATA.sha256:
+        try:
+            _MODEL_METADATA = get_model_metadata(_MODEL_PATH)
+        except Exception:
+            if not _MODEL_METADATA.sha256:
+                _MODEL_METADATA = ModelMetadata(
+                    path=_MODEL_PATH,
+                    sha256=_file_sha256(_MODEL_PATH),
+                    version=_MODEL_METADATA.version,
+                    custom_metadata=_MODEL_METADATA.custom_metadata,
+                )
     return _MODEL_METADATA
 
 

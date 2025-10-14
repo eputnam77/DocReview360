@@ -11,7 +11,8 @@ import requests  # type: ignore[import-untyped]
 
 from .approvals import create_approval, submit_draft_for_approval
 from .ml.features import routing_features
-from .quality import QUALITY_FLAG_NAMES, quality_assessment
+from .ml.onnx_infer import metadata_to_context
+from .quality import QUALITY_FLAG_NAMES, quality_assessment, quality_model_metadata
 from .reviewer_model import ReviewerModel
 from .secrets import get_secret
 
@@ -100,9 +101,25 @@ class SharePointClient:
         text = data.decode("utf-8", errors="ignore")
         assessment = quality_assessment(text)
         score = assessment.score
+        model_summary = metadata_to_context(quality_model_metadata())
         routing = routing_features(text, {"workflow": workflow} if workflow else None)[
             "features"
         ]
+        scoring_metadata: dict[str, object] = {
+            "approval_likelihood": score,
+            "raw_score": assessment.raw_score,
+        }
+        if model_summary:
+            model_payload = {
+                key: value
+                for key, value in model_summary.items()
+                if key in {"sha256", "version", "path"} or key.startswith("docreview360:")
+            }
+            scoring_metadata["model"] = model_payload
+            if "sha256" in model_summary:
+                scoring_metadata["model_sha256"] = model_summary["sha256"]
+            if "version" in model_summary:
+                scoring_metadata["model_version"] = model_summary["version"]
 
         approval_ids: list[str] = []
 
@@ -128,6 +145,7 @@ class SharePointClient:
                         extra_reviewer,
                         doc_id=item_id,
                         description=f"Auto risk review (threshold {threshold:.2f})",
+                        scoring_metadata=scoring_metadata.copy(),
                     )
                     if approval:
                         approval_ids.append(approval.id)
@@ -136,6 +154,7 @@ class SharePointClient:
                     reviewer or "manager",
                     doc_id=item_id,
                     description=f"Primary review (threshold {threshold:.2f})",
+                    scoring_metadata=scoring_metadata.copy(),
                 )
                 if approval:
                     approval_ids.append(approval.id)
