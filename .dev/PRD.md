@@ -1,376 +1,265 @@
-**DocReview360 — Product Requirements Document (PRD)**
+# DocReview360 — Product Requirements Document
 
-*(v July 3, 2025 — unified, de-duplicated, and aligned with best-in-class open-source tooling)*
-
----
-
-DocReview360 is an open-source, web-first platform for drafting, reviewing, approving, publishing, and archiving complex documents (e.g., FAA ACs, policies, manuals). It combines:
-
-| Pillar                 | Primary OSS Component(s)                                     | Purpose                          |
-| ---------------------- | ------------------------------------------------------------ | -------------------------------- |
-| **Editing**            | TipTap, Office Online embed for MS Word, ONLYOFFICE Docs viewer (default) | Rich-text / DOCX |
-| **Workflow**           | Built-in JSON workflows | Simple state-machine reviews |
-| **Signatures**         | Documenso | Secure e-sign & audit trail      |
-| **Search & Analytics** | OpenSearch + Metabase | Full-text & business intelligence dashboards        |
-| **AuthN/AuthZ**        | Keycloak                                                     | SSO, MFA, RBAC                   |
-| **UI Framework**       | React 18 + Next.js 14 (admin only)              | Modern, node-based UX            |
-
-Each module is hot-swappable via a plugin contract, ensuring future tooling can be added without core rewrites.
-
-*Business objectives & success metrics* remain unchanged (50 % faster creation, 75 % faster reviews, etc.).
+*Revision: July 8, 2025*
 
 ---
 
-## 2. User Roles (Default)
+## 1. Product Overview
 
-The following table reflects the system’s **baseline role‑based access configuration**. These settings are applied automatically when a new project or workspace is created. An Administrator may adjust, extend, or revoke any role or permission at any time to meet program‑specific or agency‑specific requirements.
+DocReview360 is an end-to-end workspace for drafting, reviewing, approving, and publishing regulated documentation. The platform unifies a FastAPI backend, a React/Next.js frontend, and a Click-based CLI so teams can ingest source files, collaborate in rich editors, run approvals with digital signatures, and surface analytics without leaving a single system.
 
-| Permission / Action                | **Admin** | **Editor** | **SME** | **Reviewer** | **Project Mgr** | **Manager** | **Observer**  |
-| ---------------------------------- | :-------: | :--------: | :-----: | :----------: | :-------------: | :---------: | :-----------: |
-| View dashboards & projects         |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
-| Create projects                    |    ✔    |    ✔    |    ✔    |    —    |    ✔ (metadata only)    |    —    |    —    |
-| Configure auth, templates, plugins |    ✔    |    —    |    —    |    —    |    —    |    —    |    —    |
-| Draft / edit documents in the UI   |    ✔    |    ✔    |    ✔    |    —    |    —    |    —    |    —    |
-| Download / upload Word documents   |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    —    |
-| Delete Word or TipTap documents    |    ✔    |    —    |    —    |    —    |    —    |    —    |    —    |
-| Lock / publish a draft             |    ✔    |    ✔    |    ✔    |    —    |    —    |    —    |    —    |
-| Assign / remove reviewers          |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    —    |    —    |
-| Add project status comments        |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    —    |    —    |
-| Approve / sign documents           |    —    |    ✔ (own docs only)    |  ✔ (own docs only)  |    ✔ (own docs only)    |    —    |    ✔ (own docs only)    |    —    |
-| Add comments to project comments table |    ✔    |    ✔    |    ✔    |    ✔    |    —    |    ✔    |    ✔    |
-| Delete projects                   |    ✔    |     —    |    —    |    —    |    —     |    —    |    —     |
+### 1.1 Core Product Objectives
 
-Clarification
-* Admin — May delete projects or documents, but should do so only in exceptional cases; most Federal records must be retained.
-* SME (Project Lead) — Owns the project, often creates it, and drafts the initial version. Signs only for projects where they are designated SME; otherwise acts as a Reviewer.
-* Reviewer — Non‑manager who can comment on and formally approve documents (e.g., attorneys, policy analysts, SMEs on other projects).
-* Project Manager — Creates placeholder projects; SMEs or Editors fill in the details.
-* Observer — Read‑only access; no active responsibilities within a project.
+1. **Accelerate document cycles** by providing rich editors, template automation, and guardrails that maintain formatting and numbering fidelity.
+2. **Deliver accountable approvals** through structured workflows, auditable signatures, and immutable log trails.
+3. **Expose live operational insight** by aggregating search, dashboards, and workload analytics across projects.
+4. **Support modular adoption** via configurable integrations, pluggable extensions, and environment-aware settings.
+
+### 1.2 Experience Pillars
+
+| Pillar | Implementation Highlights |
+| --- | --- |
+| Editing & Collaboration | TipTap-based editor with autosave and revision history, optional Yjs collaboration, inline comments, and document watchers. |
+| Workflow & Approvals | Workflow templates, parallel/sequential phases, Celery-backed reminders/escalations, Documenso (and sandbox) signature providers. |
+| Search & Analytics | SQLite-backed project catalog with FTS, saved searches, ranker utilities, dashboards with charts, websocket streams, and CSV exports. |
+| Governance & Security | Role-aware FastAPI endpoints, audit log hash chain, RBAC CLI, signature verification, export guardrails, and configurable retention policies. |
 
 ---
 
-## 3. Functional Requirements
+## 2. Personas & Permission Model
 
-### 3.1 Document & Template Management
+Role management is backed by a SQLite store with defaults seeded for rapid demos. Permissions can be extended through `settings.yaml` or the CLI.
 
-* **Custom document types / categories** with import-export.
-* **Template engine**: TipTap JSON, DOCX.
-* **Type conversion wizard** (e.g., AC → Policy) preserving numbering & metadata.
-* **Template & Doc-Type Manager UI** for uploading golden templates and generating derivatives. Accessible via **Configuration → Templates**. All editor templates are persisted in the database for versioning.
-* **Multi-format templates**: administrators may create templates in JSON, HTML, or DOCX and input the raw text or upload a file through the UI. These templates are stored in the DB.
-* **Per-document linter & numbering toggles** with one-click migration to the latest template version.
-* **Project form includes Phase & Workflow fields** with defaults mapped from document type.
-* **Document types can link to a default content template**. When a project is created using that type, the associated template is automatically loaded into the editor the first time the document is opened.
-* **Message templates** drive email and chat notifications. The system ships with six built‑in email templates – **Review Request**, **Reminder: Review Due Soon**, **Overdue Escalation**, **Approval Confirmation**, **Feedback Provided**, and **Re‑Review Request**. Users may create additional templates and disable any they do not need, but the defaults cannot be removed. Templates support `{project_link}`, `{user}` and `{comments}` placeholders and are persisted in the database.
-* **Document Checker** validates uploaded DOCX files for FAA style and accessibility, returning a corrected copy.
-* **Special Conditions Doc Builder** launches an external tool for generating legally formatted notices.
-
-#### 3.1.1 DOCX Revision History
-
-* Immutable DocumentVersions table
-* Draft-0 template rule
-* Revision-history UI panel (+ diff, restore)
-* SharePoint toggle behaviour
-
-#### 3.1.2 Storage Strategy (design note)
-
-The following table identifies two viable ways to track every DOCX revision.
-
-| Option                                                  | How it works                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Pros                                                                                                                                                                                    | Cons                                                                                                                                                                                                        |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A. In-app “Revision History” table**                  | • Every time a user uploads a DOCX, the backend stores the file under `project/{id}/v{n}.docx` and appends a row to **DocumentVersions** (`version`, `uploaded_by`, `uploaded_at`, `sha256`, `notes`).<br>• Draft 0 is the template delivered when the project is created; first user upload becomes Draft 1, and so on.<br>• UI: a **Revision History** panel (grid or timeline) under the Document tab showing version #, uploader, timestamp, download link, and an optional “Diff” button that runs OpenXmlPowerTools to create a redline against the prior version.                      | • No external dependency.<br>• Works offline and in air-gapped enclaves.<br>• Easy to tag “milestone” versions or restore an old draft.                                                 | • You own storage, backups, retention logic.<br>• Duplicate copies if the agency already uses SharePoint.                                                                                                   |
-| **B. SharePoint-native versioning via Microsoft Graph** | • Store the working DOCX in a SharePoint document library.<br>• Enable **major/minor versioning** (Library Settings → Versioning). SharePoint automatically creates `v1.0`, `v2.0`, … every check-in and captures who/when.<br>• Your app surfaces that history by calling `GET /drives/{drive-id}/items/{item-id}/versions` (Graph API) to pull the same metadata and expose it in your UI.<br>• Uploading a new draft is just `PUT /content` to the same driveItem; SharePoint bumps the version and keeps the delta. | • Records stay in the agency’s official repository with built-in retention & legal hold.<br>• No extra blob storage to manage.<br>• Users can co-author in Word for the web if desired. | • Requires SharePoint tenant access + OAuth (Graph) plumbing.<br>• Network latency; impossible in fully disconnected networks.<br>• Major/minor numbering (1.1, 1.2) may not map one-to-one with “Draft 3”. |
-
-##### Recommended path
-
-1. **Default to Option A** inside the tool so every deployment (even air-gapped) has a first-class revision table.
-2. **Add a “Connect to SharePoint” toggle** in Admin settings:
-   *If enabled*, the app writes/reads via Microsoft Graph **and** still records a shadow row in `DocumentVersions` table pointing to the SP version ID.
-   You can migrate later without losing history.
-
-##### Document versions
-
-> ```
-> DocumentVersions( id, project_id, version_int,
->                   file_uri, uploaded_by, uploaded_at, sha256 )
-> ```
->
-> * Draft 0 = generated template
-> * On each upload, increment `version_int`, store the file, and append a row.
-> * Expose a “Revision History” panel that lists version, uploader, timestamp, and provides:
->   • Download link • “View diff” (redline vs previous) • Restore (privileged).
-> *If **SharePoint integration** is enabled, use the library’s native versioning (`driveItem/versions`) as the authoritative source and store its `versionId` in the table.*
-
-#### 3.1.3 File-Naming Policy Control
-
-| Field                   | Requirement   |
-| ----------------------- | ---------- |
-| **Title**               | **Configurable File-Naming Policy** |
-| **Scope**               | Applies to *all* uploads/export actions for DOCX, PDF, JSON, and HTML artifacts.  |
-| **Admin UI**            | (TBD) *Configuration ▸ App Setings / Integrations ▸ File-Naming Policy* <br>Dropdown **Off / Enforce / Enforce + Auto-Rename**. <br>Text box for pattern (default: `{project_code}_{doc_type}_v{version}_{yyyyMMdd}.docx`). |
-| **Pattern syntax**      | Must support placeholders: `{project_code}`, `{doc_type}`, `{version}`, `{user_initials}`, `{yyyy}`, `{MM}`, `{dd}`.<br>Optional `snake`, `kebab`, or `camel` case flag.  | 
-| **Runtime behaviour**   | • On upload/export the backend generates the expected filename.<br>• If *Enforce* and the user’s filename differs, return `HTTP 422` with the expected name.<br>• If *Enforce + Auto-Rename*, the system silently renames and stores the new name in `DocumentVersions.file_uri`.<br>• Duplicate names append `-1`, `-2`… with fixity hash check. |
-| **Validation**          | Regex guard against forbidden chars (`[<>:"/\\\|?*]` Windows-safe); max length 128. |
-| **Audit trail**         | Writes `FileNameEvent(old_name, new_name, actor_id, timestamp)` if auto-rename occurs.  |
-| **Acceptance criteria** | AC-1 Pattern field rejects invalid placeholders.<br>AC-2 Upload with wrong name bounces (or renames) per chosen mode.<br>AC-3 Exported BagIt/METS packages use the enforced name.  | 
-
-##### Trade-off Knob
-
-| Mode                      | UX                                 | Risk                             |
-| ------------------------- | ---------------------------------- | -------------------------------- |
-| **Off**                   | Maximum flexibility                | Inconsistent finds.              |
-| **Enforce**               | User fixes name manually; explicit | Upload friction.                 |
-| **Enforce + Auto-Rename** | Seamless; log keeps trace          | Users may not notice the change. |
-
-### 3.2 Editors
-
-1. **TipTap** — headless ProseMirror framework, extensible via extensions.
-2. **Office Online** embed for MS Word documents.
-3. **ONLYOFFICE Docs** viewer for full DOCX fidelity.
-
-* Real-time autosave, dual-view (rich & source), Pandiff diffing, TipTap change bars.
-* **Every save persists the document to PostgreSQL with a revision entry**, ensuring crashes or restarts do not lose work. A `document_versions` table retains prior content for rollback.
-* Custom TipTap extensions provide a slash-command menu, heading locks, indentation controls, draggable section nodes with structure validation, watermark overlays, optional MarkReview markup and Yjs-based collaboration.
-
-### 3.3 Workflow & Approvals
-
-* Dynamic reviewer add/remove within configured guard-rails.
-* **Workflow Designer UI** lets project managers clone workflow templates and adjust SLAs per project.
-* **Documenso approval button** exposes e-signature steps directly in project pages.
-* **Documenso** signatures bound to workflow state; cryptographically verified. ([documenso.com][4])
-* **Editable approval comments** so reviewers can update their remarks after signing.
-* **Automatic notification** to the document owner when reviewers add or update approval comments.
-* **Confirmation pop-ups** appear before a user resets their approval or removes a reviewer from the approvals list.
-* **Delegated sign-off** is data-driven: a `Delegations` table stores `principal_id`, `delegate_id`, `scope`, `start_date`, `end_date`, and `proof_uri`. Approval lookups include valid delegates; approvals record `actor_type` and a daily job emails upcoming expirations. If acting, the UI displays “Acting for → Mgr Smith (until 08 Aug 2025)”.
-* **Project leads and technical writers can send documents for review and respond to comments.**
-
-#### 3.3.1 Special Conditions Intake (SC-Intake)
-
-**Scope**
-When a user creates a **Special Conditions** project, the system collects SC-specific metadata (e.g., affected product/type, regulatory basis, safety rationale summary, applicability scope, docket/ticket references).
-
-**UX Flow**
-
-* **Trigger**: In **New Project**, if **Doc Type = Special Conditions**, display an SC-Intake block.
-* **Choice**:
-  • **Answer now** → a short stepper with validated fields appears below the standard project fields.
-  • **Answer later** → create the project with SC-Intake status **INCOMPLETE** and show a persistent “Complete SC Intake” banner with a one-click link to the dedicated intake page.
-* **Dedicated Intake Page**: `/projects/{id}/sc-intake` with autosave and field-by-field validation.
-
-**Data Model**
-
-* Store responses as JSON in `projects.special_conditions` (JSONB) with a `sc_intake_status` enum: `INCOMPLETE | COMPLETE`.
-* Validate with a versioned JSON Schema `schemas/sc_intake_v1.json` (server-side).
-
-**Workflow Guards**
-
-* The following actions are **blocked** when `sc_intake_status = INCOMPLETE`:
-  *“Send for review”*, *“Generate Special Conditions Notice”*, *“Publish”*.
-* The guard shows which required fields are missing and links to the intake page.
-
-**Notifications**
-
-* On create with “Answer later,” assign the SME a system task **“Complete SC Intake”** and add it to “My Tasks”.
-* Optional reminder email after 3 business days (uses existing message template system).
-
-**Acceptance Criteria**
-
-* *AC-1* Creating a Special Conditions project offers **Answer now / Answer later**; both paths succeed.
-* *AC-2* If **Answer later**, project shows banner and a task for the SME until intake is complete.
-* *AC-3* Attempting to **Send for review / Generate Notice / Publish** with missing required SC fields blocks with a clear list of missing fields.
-* *AC-4* Completing intake flips status to **COMPLETE** and removes banner/task; guarded actions then proceed.
-* *AC-5* JSON Schema validation errors are shown inline and logged.
-
-### 3.4 Collaboration
-
-* Inline comments, threads, mentions, emoji reactions.
-* Concurrent editing with conflict-resolution.
-* AI helpers (Prompt-Engine, SynthLang, ruv-FANN anomaly alerts).
-* **AI workload balancer (admin-controlled)**
-  * (TBD) Toggle in Configuration ▸ App Settings / General / Integration ▸ AI Workload Balancer: Off / Suggest-Only / Auto-Assign.
-  * When On, a scheduled job analyses project priority vs. each technical writer’s workload.
-  * Rules:
-    * A writer may have ≤ 1 “High-Priority · Urgent” project at any time.
-    * A writer may have ≤ 12 active projects in total.
-    * Excess projects remain in the Backlog queue until writers free up.
-  * Blockers: “Assign” buttons grey out if a rule would be violated; tooltip explains why.
-  * Audit log records every auto-assignment and rule conflict.
-* **Project Watchlist** lets any user star a project to follow its progress.
-
-### 3.5 Search, Dashboards & Logs
-
-* **OpenSearch** cluster for full-text & vector queries.
-* **Metabase** for ad-hoc BI and KPI dashboards.
-* Structured, ISO-8601 logs (INFO-ERROR-CRITICAL) exposed via Grafana Loki or OpenSearch Dashboards.
-* Interactive dashboards with project filters and export options.
-* Sortable project tracker table linking to per-project details.
-* **Document types in progress** widget shows counts of active projects per type.
-* Saved search queries and real-time log viewer.
-
-### 3.6 Export & Archival
-
-* One-click multi-format export: PDF, DOCX, HTML, Markdown, XML.
-* Archive tiers: TipTap JSON (source) → Markdown (portable) → PDF (immutable).
-* GitHub integration to push/pull documents for versioned review and long-term archival.
-* NeMo-Guardrails middleware for PII/style conformance before publish.
-* See DOCX versioning in 3.1.1.
-
-#### 3.6.1 Archival Package Format (Configurable)
-
-| Field                   | Specification                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Purpose**             | Define how the system bundles the *final document*, *revision log*, and *approvals list* for long-term record-keeping.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **Configuration point** | During **workspace initialization** the System Administrator selects **exactly one** package format from the options below. The choice is stored in `workspace.settings.archive_package_type` and is immutable for that workspace.                                                                                                                                                                                                                                                                                                                                                                     |
-| **Supported formats**   | 1. **BagIt ZIP**  <br> • Payload folder + `manifest-sha256.txt` per RFC 8493. <br> • `bag-info.txt` includes project ID, record schedule, checksum.  <br><br>2. **METS / PREMIS Submission Information Package (SIP)**  <br> • Root `mets.xml` conforming to METS 1.6 schema. <br> • PREMIS 3.0 events for each fixity check. <br> • Payload files in parallel directory.  <br><br>3. **Microsoft 365 Purview Export Package**  <br> • Applies only when the authoritative DOCX resides in SharePoint Online. <br> • System triggers Purview eDiscovery *Export*, stores returned ZIP plus `ExportKey.txt`. |
-| **Runtime behaviour**   | When a project transitions to **PUBLISHED**:  <br>1. Generate the chosen package.  <br>2. Validate fixity (BagIt `bagit.py --validate`; METS `metsValidator`; Purview checksum XML).  <br>3. Upload to the configured records repository.  <br>4. Write an entry to `Archives(doc_id, package_type, sha256, location_uri, timestamp)`.                                                                                                                                                                                                                                                                      |
-| **Acceptance criteria** | *AC-1* Administrator can select one of the three formats during workspace setup; UI prevents proceeding without a choice. <br>*AC-2* Publishing a project produces a package of the selected type and logs success. <br>*AC-3* Validation failure blocks archive, flags **ARCHIVE\_FAILED**, and emails Records Manager.                                                                                                                                                                                                                                                                                    |
-| **Rationale**           | Allows each environment to align with its existing records workflow—simple BagIt, rich METS/PREMIS, or native Microsoft 365 export—without code changes.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-
-* **Automated Records Archiving** (BagIt example) — When a final project reaches **PUBLISHED**, the system automatically:
-  1. Flattens the final DOCX and generate PDF/A.
-  2. Exports the complete Documenso approvals list.
-  3. Packages all artifacts in a BagIt-compliant ZIP, including checksums.
-  4. Uploads the package to the agency records repository via REST and log the returned record ID.
-  5. Notifies the SME and Records team on success, or flag `ARCHIVE_FAILED` with a manual retry option.
-
-### 3.7 Security & Compliance
-
-* **Keycloak** OIDC/SAML with MFA.
-* **Login.gov** SAML broker for federal SSO.
-* **Okta** SSO option for commercial orgs.
-* **HID Global PIV/CAC** smartcard login.
-* **Auth0** OIDC provider for SaaS deployments.
-* RBAC down to field-level; CSP, CSRF, JWT rotation.
-* FedRAMP Moderate controls mapped; daily encrypted backups.
-
-### 3.8 Setup & Administration
-
-* **First-run setup wizard** guides initial DB, auth, storage and editor configuration.
-* **Core settings locked after onboarding**: chosen database engine and authentication provider become read-only once the wizard completes. Admins must spin up a new instance and migrate if they need to switch.
-* **Global Settings** panel with tabs for general, auth, storage, email, plugins and backup. Core values show a “Reinitialize to change” tooltip linking to migration docs.
-* **Plugin Marketplace** installs discoverable packages from PyPI in one click.
-* **Backup/Restore panel** triggers Celery tasks and monitors progress.
-* **Environment switcher** toggles dev/stage/prod endpoints with color cues.
-* **RBAC role editor** exposes a permission matrix per role.
-* **Scheduled task cron editor** manages Celery Beat schedules.
-* **Downloadable CLI profile** lets users fetch `docreview360.env` from the UI.
-* **Admin-less project creation wizard** for non-admin authors.
-* **Phases configuration page** allows admins to manage workflow phases.
-* **Document numbering options** let admins choose sequential numbering or manual entry per project. Document IDs remain 32-character hex strings (e.g., "AC 20.11", "PS-20.1191").
-* **Integrations settings page** redesigned for easier configuration via `/config`.
-* **Central AI model configuration** lists supported providers (OpenAI, Anthropic, OpenRouter, AWS Bedrock, Google). The default entry uses a free OpenRouter model. All AI helpers—TipTap editor features, the AI workload balancer, AI search and the chatbot—read from this file. Administrators choose the active model in the Integrations settings page.
-* **In-app docs page** reachable from the Support menu.
-* **Migration CLI (`docreview360 migrate`)** exports data from one instance and imports it into another, enabling safe reinitialisation when switching DB or auth backends.
-
-#### Configuration Change Decision Framework
-
-| Question | If “Yes” → Re-initialize | If “No” → Safe to toggle |
+| Role | Primary Permissions | Typical Responsibilities |
 | --- | --- | --- |
-| Does the change alter the **data store or schema**? | ✔ (DB engine, new auth schemas) | ✖ |
-| Could it **invalidate existing data** or require bulk migration? | ✔ | ✖ |
-| Does it alter the **security posture**? | Often ✔ | Possibly ✖ if minor |
-| Is it a **presentation or feature flag**? | ✖ | ✔ |
-| Is rollback **trivial** and state-free? | ✖ | ✔ |
+| **Admin** | create, read, update, delete, edit_field_x, view_audit_log, verification_override | Configure environments, manage templates, override approvals, run integrity tooling. |
+| **Manager** | create, read, update | Allocate projects, monitor dashboards, adjust priorities. |
+| **SME** | read, edit_field_x | Draft subject-matter content, respond to review feedback. |
+| **Reviewer** | read | Participate in approval steps, leave review comments. |
+| **Editor** | read, update | Maintain document content, convert uploads, trigger exports. |
+| **Observer/User** | read | Monitor project status, download public artefacts. |
+| **Auditor** | view_audit_log | Inspect audit streams, verify retention policies. |
+| **Verifier** | verification_override | Re-run or force signature verification jobs. |
 
-### 3.9 AI Chatbot
-
-* Conversational assistant accessible from the dashboard.
-* Queries the project database (projects, assignments, workflow state) to answer
-  questions like “who is assigned to X project?” or “what’s the status of X?”.
-* Pluggable retrieval pipeline for additional knowledge sources (e.g., docs,
-  support tickets).
+Role assignments persist in `docreview360_roles.db`, can be edited with `docreview360 rbac-admin`, and are cached per request to reduce store lookups.
 
 ---
 
-## 4. Technical Architecture
+## 3. End-to-End Workflow
 
-### 4.1 Backend (Python 3.12)
-
-* FastAPI, SQLAlchemy, Pydantic v2.
-* PostgreSQL + pgvector, Redis, MinIO/S3.
-* Documents stored in PostgreSQL as JSONB or bytea blobs with a `document_versions` table for revision history; large binaries may use MinIO with DB references.
-* Celery workers; WebSockets via FastAPI-WebSocket.
-* GraphQL gateway – A read-only GraphQL endpoint (/graphql) proxies to REST/SQL for front-end flexibility. 2026 roadmap: add mutations, pagination, real-time subscriptions.
-
-### 4.2 Frontend
-
-* Next.js 14, TypeScript 5, TailwindCSS & shadcn/ui.
-* React Query & Zustand for state.
-* Editor bundles loaded on demand.
-
-### 4.3 DevOps
-
-* Docker-compose (dev) → Helm charts (prod, EKS/AKS).
-* GitHub Actions CI, Terraform IaC, Trivy image scanning.
-* In-browser Terraform plan viewer with OPA policy checks.
-* Search back-end is BYO: self-managed OpenSearch today; optional OpenSearch Serverless once the service attains FedRAMP-High (see Future-Proofing).
+1. **Project creation** – Projects capture name, type, workflow request, priority, and optional temporary assignments. Numbers are generated automatically while respecting user-supplied document numbers.
+2. **Template alignment** – Document types link to phase lists and default editor templates. Configurable defaults bootstrap Advisory Circulars, Orders, Manuals, and more.
+3. **Document ingestion** – Users upload DOCX/PDF/HTML/Markdown files. The backend sanitises content, extracts text via pluggable pipelines, and stores revision history with SHA-256 hashes.
+4. **Collaboration & editing** – TipTap sessions autosave, version content, and optionally broadcast Yjs updates over websockets when `y_py` is installed. Inline comments, mentions, emoji codes, and rate limits keep dialogue structured.
+5. **Workflow orchestration** – Workflow templates seed role-specific approval steps. Reviewers are assigned manually or through automation, and each phase transition updates dashboards and assignments.
+6. **Approvals & signatures** – Approvals link directly to document revisions, enforce ordering, and integrate with Documenso/sandbox providers for e-sign. Signature callbacks update audit trails and verification state.
+7. **Publication & archiving** – Exports respect file-size guardrails, naming templates, and optional guardrail callbacks. Public document lists expose read-only copies with provenance metadata. Archiving jobs can be scheduled for purge windows.
+8. **Analytics & follow-up** – Dashboards, saved searches, audit logs, and workload reports keep stakeholders informed. Websocket feeds push updates to live UI panels.
 
 ---
 
-## 5. Plugin & Extension Model
+## 4. Document & Template Management
 
-```text
-plugins/
- ├─ editors/
- │   └─ tiptap_docx_export.py
- ├─ auth/
- │   └─ keycloak_provider.py
- ├─ storage/
- │   └─ minio_backend.py
- └─ ai/
-     └─ ruv_fann_lint.py
-```
+### 4.1 Document Types
+- Persisted in `document_types.json` with optimistic locking and feature-flagged persistence controls.
+- Each type defines an ordered list of workflow phases and optionally binds to a stored editor template for first-open loading.
+- Import/export utilities serialise types to JSON with file locks to avoid concurrent write corruption.
 
-Each plugin registers entry points (`setup.py`) so integrators can ship new editors, exporters, AI linters, or auth back-ends without touching core.
+### 4.2 Templates
+- Templates are stored via the template manager with approval/retirement states, metadata, and retrieval of latest versions.
+- Seed data includes an FAA Advisory Circular TipTap template to ease first-run demos.
+- Template uploads can originate from JSON, HTML, or DOCX files and are versioned in the backing store.
 
----
+### 4.3 Document Lifecycle
+- Allowed MIME types default to Markdown, HTML, JSON, PDF, and DOCX; administrators can extend or tighten the list and upload size limit through `settings.yaml`.
+- Ingestion pipelines are pluggable per MIME type; built-ins cover DOCX (python-docx) and optionally PDF (pdfminer/pypdf) when enabled.
+- Every revision appends to an in-memory history, logs an audit event, re-indexes search and FTS stores, and flags documents needing re-review when diffs exceed similarity thresholds.
+- Revision history exposes download/diff hooks for future UI surfaces and feeds the public document report API.
 
-## 6. UI & UX Principles
-
-* **Admin pages** include a drag-and-drop workflow designer; users interact with step cards and progress bars.
-* Everything is keyboard accessible (WCAG 2.1 AA).
-* Dark-mode & reduced-motion preferences respected.
-
----
-
-## 7. Development Roadmap (key delta vs. original)
-
-| Q       | Major Deliverable                                           |
-| ------- | ----------------------------------------------------------- |
-| Q1 2025 | Core CRUD, TipTap, Keycloak, OpenSearch, basic workflow engine |
-| Q2 2025 | Documenso integration, multi-editor support, AI helpers     |
-| Q3 2025 | Export/Archival pipeline, interactive dashboards, setup wizard and admin panels |
-| Q4 2025 | Plugin marketplace, environment switcher, RBAC editor, multi-tenant SaaS |
+### 4.4 File Naming & Export Policies
+- Config-driven filename templates (`{id}`, `{number}`) support deterministic exports.
+- Size guardrails per format raise warnings and log structured events when exceeded.
+- Custom guardrail callbacks can reject exports containing prohibited content before streams are released.
 
 ---
 
-## 8. Risks & Mitigations (updates)
+## 5. Editing, Collaboration & Feedback
 
-| Risk                       | Mitigation                                                            |
-| -------------------------- | --------------------------------------------------------------------- |
-| OSS project abandonment    | All third-party libs containerised; forks maintained in DocReview360-org. |
-| Workflow engine overhead | Use built-in lightweight JSON state-machine. |
-| Keycloak complexity        | Provide turnkey Helm chart with defaults & scripted realm import.     |
+### 5.1 Editors
+- TipTap is the primary in-browser editor; ONLYOFFICE and Office Online embeds are supported via editor preference toggles.
+- Autosave routes call `autosave_document`, avoiding redundant revisions when content is unchanged.
+- Users can switch editor preference per document, enabling hybrid experiences.
+
+### 5.2 Real-Time Collaboration
+- `/collab/{doc_id}` websocket broadcasts Yjs updates between connected clients when `y_py` is installed; otherwise, clients receive a dependency error.
+- The backend persists raw Yjs updates alongside revisions for reconciliation.
+
+### 5.3 Comments & Mentions
+- Comments store raw text, sanitised HTML-safe versions, mentions, emoji shortcuts, and optional parent IDs for threading.
+- Configurable length and rate limits prevent spam; administrators can tune limits or disable them entirely.
+- API responses always return sanitised comment bodies and describe the allowed formatting contract.
+
+### 5.4 Watchlists & Notifications
+- Users can toggle project watch status; watchlists persist to `watchlist.json` (path configurable via `DOCREV_WATCHLIST_FILE`).
+- Message templates drive email/chat payloads for project lifecycle events (creation, review requests, escalations, AI assistance). Templates accept contextual placeholders (`{project_id}`, `{user}`, `{date}`) and are centralised for reuse.
 
 ---
 
-## 9. Future-Proofing
+## 6. Workflow & Approval Management
 
-* **GraphQL read layer** now provides basic query support; advanced features remain on the 2026 roadmap.
-* **Web-native CRDT** research for offline editing sync.
-* Optional migration path to **OpenSearch Serverless** when FedRAMP-High certified.
+### 6.1 Workflow Templates
+- Library of named templates (branch coordination, pre-coordination, fast-track, etc.) with strictly validated approval order values.
+- Each template enumerates role descriptions, required flags, and order numbers; validation logs misconfigurations before they reach runtime.
+- Workflows are created per project, track phases, store callback URLs, and register automation bots via a pluggable callback registry.
+
+### 6.2 Approval Records
+- Approvals capture reviewer, role, order, due dates, reminders, escalation targets, signature provider metadata, and delegates.
+- Creation automatically links approvals to workflow documents, logging audit entries and enforcing immutability controls.
+- Celery tasks (`docreview360.approval_reminder`, `docreview360.approval_escalation`) log reminder/escalation events for pending approvals.
+- Signature validation supports retries, certificate downloads, and policy fallbacks controlled through settings and environment flags.
+
+### 6.3 Workflow Progression
+- Advancing a workflow updates the active phase and notifies registered bots.
+- Starting a workflow auto-imports a seed document (Markdown by default) if none exists and rebinds approvals to the new document ID.
+- Reviewer assignments avoid duplicates and can be toggled via REST endpoints.
 
 ---
 
-## 10. Quality & Testing Requirements
+## 7. Search, Saved Views & Analytics
 
-Full end-to-end (E2E) tests must verify the entire user journey—from the
-`docreview360` CLI commands that bootstrap a project to the browser-based
-workflows. The Playwright suite spins up the FastAPI server, drives a real
-browser and exercises background services. The CI pipeline installs the
-Playwright browsers and runs `pytest -m e2e` in headless mode so regressions are
-caught before release.
+### 7.1 Project Catalog
+- SQLite-backed repository tracks projects, workflow references, priorities, assignments, and audit timestamps.
+- Helpers compute derived fields such as `phase`, `status`, `progress`, and `created_at` for UI compatibility.
+- Temporary assignments expire automatically based on configured windows.
 
-## License
+### 7.2 Search & Ranking
+- Full-text indexing (fts) maintains document content for keyword search.
+- Ranked search utilities combine query parsing, scoring, and filter pipelines.
+- Saved searches persist query definitions per user with usage counters and review flags.
 
-DocReview360 is distributed under the GNU General Public License v3.0. Refer to the LICENSE file for full terms.
+### 7.3 Dashboards & Reports
+- `dashboard_data`, `widget_counts`, and role-specific dashboards (user, manager, admin) surface counts, pending approvals, and health metrics.
+- CSV endpoints support exporting summary, throughput, and workload datasets.
+- Throughput charts aggregate daily approval counts with automatic parsing of legacy timestamp formats.
+- Websocket endpoints (`/ws/dashboard`, `/ws/logs`) push real-time dashboard and log updates to clients with permission-aware gating.
+
+### 7.4 Log Management
+- Log entries persist through SQLAlchemy with worm-guard enforcement on audit tables.
+- Alerts/listeners can subscribe to log events in-process; websocket streaming uses the same listener infrastructure.
+- Redaction policies scrub sensitive keys (`password`, `token`, `secret`) before persistence.
+- CLI utilities hash and verify audit log chains for tamper evidence.
+
+---
+
+## 8. Automation, AI & Recommendations
+
+### 8.1 AI Assistance
+- `rewrite_text` and `summarize_text` call OpenAI’s Chat Completions API when keys are configured; otherwise they fall back to deterministic prompt reversal for offline testing.
+- Input prompts are compressed to stay within token limits, and validation prevents empty requests.
+
+### 8.2 Workload Balancing
+- In-memory worker registry assigns jobs to the least-loaded worker, exposes Prometheus counters for registrations, assignments, and deregistrations, and persists state to disk.
+- CLI and API endpoints can load/save worker state to `worker_state.json` (override via `DOCREVIEW360_WORKER_STATE`).
+
+### 8.3 Guardrails & Quality
+- Guardrail middleware inspects AI output for PII when enabled, leveraging Nemo Guardrails hooks.
+- Approval likelihood scoring and reviewer models provide hooks for future ML-driven prioritisation.
+
+---
+
+## 9. Integrations & Extensibility
+
+### 9.1 Signature Providers
+- Documenso integration handles request, status, completion, and webhook flows while respecting the active provider registry.
+- Sandbox signature provider enables local development without external callbacks.
+- CLI command `verify-signatures` replays verification jobs across approvals with optional parallel execution.
+
+### 9.2 Plugin System
+- Global `PluginRegistry` enforces unique names, enable/disable states, and dynamic loading from configured modules.
+- `load_plugins` imports modules that expose a `register(registry)` function, letting extensions add editors, automation hooks, or analytics.
+
+### 9.3 External Systems
+- Configurable log connectors (type, endpoint, API key, batch size) push audit data to external observability stacks.
+- CMS utilities allow pushing TipTap HTML to downstream repositories.
+- SharePoint and other integrations (e.g., HR sync, GitHub sync) are scaffolded as optional modules within `integrations/` for future wiring.
+
+### 9.4 Environment Profiles
+- Environments are defined in `environments.yaml`; switching updates `DOCREVIEW360_ENV` and returns host metadata for UI theming.
+- Missing or malformed YAML raises validation errors to avoid silent misconfiguration.
+
+---
+
+## 10. Platform Surfaces
+
+### 10.1 Backend API
+- FastAPI application with CORS/GZip middleware, Markdown rendering, OAuth2 password flow support, and dependency-based RBAC gates.
+- REST endpoints cover documents, projects, workflows, approvals, templates, watchlists, dashboard visibility, analytics, archives, comments, AI helpers, CMS pushes, environment switching, and plugin management.
+- Websocket routes stream dashboard metrics, operational logs, and collaborative editing payloads.
+- API responses leverage Pydantic models with aliasing to match frontend expectations.
+
+### 10.2 Frontend (Next.js)
+- Auth-guarded dashboard renders KPI cards, pie/line charts, activity timelines, and log tables with filtering.
+- Pages exist for project lists, document viewers, workflow designers, integrations, configuration panels, login/signup, and help content.
+- `authenticatedFetch` utility injects auth headers while gracefully handling offline states.
+- Component library uses Tailwind + Radix primitives; charts rely on Recharts with theme-aware palettes.
+
+### 10.3 CLI
+- `docreview360 init` interactive wizard writes `docreview360.yaml`, chooses database/editor/auth/CMS backends, and optionally seeds sample content.
+- `docreview360 migrate export|import` moves persisted data between environments.
+- `docreview360 rbac-admin` manages role-to-permission mappings and syncs them to settings.
+- `docreview360 logs hash-chain|verify-chain` builds and verifies tamper-evident log chains.
+- `docreview360 verify-signatures` revalidates digital signatures across approvals with optional parallel execution.
+
+### 10.4 Background Tasks & Services
+- Celery workers run scheduled reminder/escalation jobs and integrity verification tasks.
+- Monitoring counters (`monitoring.py`, Prometheus metrics) track approval retries, verification durations, and balancer activity.
+- Flower integration script is included for local task inspection.
+
+### 10.5 Persistence & Storage
+- Default SQLite databases power projects, RBAC roles, logs, and search state; URLs can be overridden for Postgres/MySQL.
+- Documents persist in-memory for the prototype but maintain SHA-256 hashes and revision IDs to support future external storage.
+- Object storage helpers abstract uploads for archives and exported artefacts.
+- Backup utilities support exports/imports with bagging hooks.
+
+---
+
+## 11. Security, Compliance & Auditability
+
+1. **RBAC Enforcement** – `require_role`/`require_permission` dependencies secure endpoints, and helper APIs expose role maps for UI configuration.
+2. **Audit Logging** – Every significant action writes append-only JSON lines with optional HMAC signatures, on-disk anchors, and hash-chain verification.
+3. **Log Governance** – WORM guard prevents deletes/updates on audit tables; purge routines respect retention settings and call `should_purge` policies.
+4. **Signature Integrity** – Verification jobs download certificates, update provider health, and escalate anomalies. Fallback flags allow controlled bypasses in offline environments.
+5. **Data Hygiene** – Document and comment pipelines sanitise HTML, strip scripts, and normalise newline handling to avoid injection vectors.
+6. **Secret Management** – Secrets flow through `secrets.py` with optional vault configuration; environment loader reads `.env` for local runs.
+7. **Monitoring & Alerts** – Prometheus counters and log alert hooks enable external monitoring or on-call automation.
+
+---
+
+## 12. Operational Expectations
+
+- **Deployment Targets** – Containerised via Docker (FastAPI + Uvicorn + Celery) with docker-compose wiring for frontend, backend, and worker services.
+- **Configuration** – `docreview360.yaml`, `settings.yaml`, environment variables, and provider registries govern behaviour; updates propagate through REST endpoints and CLI commands.
+- **CORS & Auth** – CORS origins configurable via environment variable. OAuth2 password flow exposes token endpoints; cookies + CSRF header supported for browser clients.
+- **Health & Status** – `/health`, `/status/public`, and `/status/internal` endpoints expose readiness and high-level metrics; admin dashboard combines summary stats with system status checks.
+- **Testing & Tooling** – Ruff, pytest, and mypy form the default quality gates. Optional mkdocs build supports documentation updates.
+- **Extensibility** – Plugins, provider entry points, and stub modules serve as scaffolding for future integrations (e.g., SharePoint, Okta, GitHub).
+
+---
+
+## 13. Success Metrics & KPIs
+
+1. **Document throughput** – Measure drafts completed per week via throughput dashboards and CSV exports.
+2. **Approval latency** – Track time from assignment to signature using approval timestamps and Celery reminder logs.
+3. **User engagement** – Monitor active projects per user, comment volume, and watchlist counts.
+4. **System integrity** – Verify audit hash chains nightly and monitor signature verification counters for anomalies.
+
+---
+
+## 14. Open Questions & Future Considerations
+
+- Align document storage with external object stores to persist binary artefacts beyond in-memory prototype constraints.
+- Finalise CMS connectors (SharePoint, Confluence, GDrive) to move from stubs to production-ready sync jobs.
+- Expand AI workload balancing into automatic writer assignment from the worker state registry.
+- Harden collaborative editing by bundling `y_py` and providing reconnect/recovery UX in the frontend.
+- Integrate configurable notification delivery (email, Teams, Slack) with the existing message template catalogue.
+
