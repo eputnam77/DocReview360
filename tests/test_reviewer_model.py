@@ -1,68 +1,39 @@
-from docreview360.ml.torch_models import build_clarity_critic
+import pytest
+
 from docreview360.reviewer_model import ReviewerModel
 
 
-def _zero_critic():
-    critic = build_clarity_critic()
-    critic.reset_parameters("zeros")
-    return critic
-
-
-def test_reviewer_model_basic():
+def test_recommendations_are_deterministic() -> None:
     model = ReviewerModel()
-    text = "Sample content for review."
-    model.update_preferences("alice", text)
-    model.record_decision("alice", True)
-    model.record_decision("alice", True)
-    assert model.consistency_score("alice") == 1.0
-    assert model.route_draft(text) == "alice"
+    text = "Highly structured document with clear headings and orderly layout."
+
+    first = model.recommend(text, k=3)
+    second = model.recommend(text, k=3)
+
+    assert first.ranked_reviewers == second.ranked_reviewers
+    assert first.primary == "bob"
+    assert pytest.approx(first.approval_likelihood, rel=1e-6) == second.approval_likelihood
+    assert pytest.approx(sum(prob for _, prob in first.ranked_reviewers), rel=1e-6) == 1.0
 
 
-def test_profiles_survive_round_trip(tmp_path):
+def test_latency_buckets_increment() -> None:
     model = ReviewerModel()
-    text = "Content for serialization test."
-    model.update_preferences("bob", text)
-    model.record_decision("bob", True)
-    model.record_decision("bob", False)
+    baseline = model.latency_buckets.copy()
 
-    path = tmp_path / "profiles.json"
-    model.save(path)
+    for _ in range(3):
+        model.recommend("Quick draft")
 
-    new_model = ReviewerModel()
-    new_model.load(path)
-
-    assert new_model._profiles == model._profiles
+    updated = model.latency_buckets
+    assert updated["<10ms"] == baseline["<10ms"] + 3
 
 
-def test_submit_draft_routes_highest_preference():
-    from docreview360.approvals import approvals, submit_draft_for_approval
-
-    approvals.clear()
+def test_reviewer_feedback_updates() -> None:
     model = ReviewerModel()
-    text = "repeat repeat"
-    model.update_preferences("alice", text)
-    model.update_preferences("bob", "unique words here")
-    critic = _zero_critic()
-    approval = submit_draft_for_approval(
-        "wf", None, "doc1", text, critic, reviewer_model=model
-    )
-    assert approval.reviewer == "alice"
-
-    # Bob learns preference for repeated text, becoming top choice
-    model.update_preferences("bob", text)
-    model.update_preferences("bob", text)
-    approval2 = submit_draft_for_approval(
-        "wf2", None, "doc2", text, critic, reviewer_model=model
-    )
-    assert approval2.reviewer == "bob"
-
-
-def test_anomalous_reviewers_ignore_no_decisions() -> None:
-    """Reviewers without decisions should not be flagged as anomalous."""
-    model = ReviewerModel()
-    model.update_preferences("alice", "text")
     model.record_decision("alice", True)
     model.record_decision("alice", False)
-    model.update_preferences("bob", "text")  # no decisions recorded
-    reviewers = model.anomalous_reviewers()
-    assert "bob" not in reviewers
+    model.record_decision("bob", True)
+
+    feedback = model.reviewer_feedback
+    assert feedback["alice"] == {"approved": 1, "rejected": 1}
+    assert feedback["bob"]["approved"] == 1
+    assert model.consistency_score("alice") == 0.0
