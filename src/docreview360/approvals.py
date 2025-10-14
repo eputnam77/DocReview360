@@ -43,7 +43,8 @@ from .monitoring import (
     VERIFICATION_DURATION,
 )
 from .provider_store import set_provider_health
-from .quality import approval_likelihood
+from .ml.onnx_infer import metadata_to_context
+from .quality import approval_likelihood, quality_model_metadata
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
 
@@ -295,6 +296,12 @@ def create_approval(
         doc_id=doc_id,
         provider_metadata=approval.provider_metadata,
         scoring_metadata=approval.scoring_metadata,
+        model_version=(approval.scoring_metadata.get("model") or {}).get("version")
+        if isinstance(approval.scoring_metadata.get("model"), dict)
+        else approval.scoring_metadata.get("model_version"),
+        model_sha256=(approval.scoring_metadata.get("model") or {}).get("sha256")
+        if isinstance(approval.scoring_metadata.get("model"), dict)
+        else approval.scoring_metadata.get("model_sha256"),
     )
     log_audit_event(
         doc_id,
@@ -306,6 +313,12 @@ def create_approval(
         approval_id=approval_id,
         provider_metadata=approval.provider_metadata,
         scoring_metadata=approval.scoring_metadata,
+        model_version=(approval.scoring_metadata.get("model") or {}).get("version")
+        if isinstance(approval.scoring_metadata.get("model"), dict)
+        else approval.scoring_metadata.get("model_version"),
+        model_sha256=(approval.scoring_metadata.get("model") or {}).get("sha256")
+        if isinstance(approval.scoring_metadata.get("model"), dict)
+        else approval.scoring_metadata.get("model_sha256"),
     )
     if reminder_at:
         app.tasks["docreview360.approval_reminder"].apply_async((approval_id,), eta=reminder_at)
@@ -332,6 +345,7 @@ def submit_draft_for_approval(
     score: float | None = None
     recommendation_payload: List[Dict[str, Any]] = []
 
+    model_summary: dict[str, str] | None = None
     if reviewer_model is not None:
         recommendation = reviewer_model.recommend(text, k=3)
         score = recommendation.approval_likelihood
@@ -339,12 +353,16 @@ def submit_draft_for_approval(
             {"reviewer": name, "probability": probability}
             for name, probability in recommendation.ranked_reviewers
         ]
+        model_meta = getattr(reviewer_model, "model_metadata", None)
+        model_summary = metadata_to_context(model_meta)
         log_event(
             "reviewer_recommendation",
             workflow=workflow,
             doc_id=doc_id,
             approval_likelihood=score,
             recommendations=recommendation_payload,
+            model_version=(model_summary or {}).get("version"),
+            model_sha256=(model_summary or {}).get("sha256"),
         )
         if reviewer is None:
             reviewer = recommendation.primary
@@ -355,12 +373,24 @@ def submit_draft_for_approval(
             raise ValueError("reviewer_model required when reviewer is None")
         if critic is not None:
             score = approval_likelihood(text, critic)
+        model_summary = metadata_to_context(quality_model_metadata())
 
     scoring_metadata: Dict[str, Any] = {}
     if score is not None:
         scoring_metadata["approval_likelihood"] = score
     if recommendation_payload:
         scoring_metadata["recommendations"] = recommendation_payload
+    if model_summary:
+        model_payload = {
+            key: value
+            for key, value in model_summary.items()
+            if key in {"sha256", "version", "path"} or key.startswith("docreview360:")
+        }
+        scoring_metadata["model"] = model_payload
+        if "sha256" in model_summary:
+            scoring_metadata["model_sha256"] = model_summary["sha256"]
+        if "version" in model_summary:
+            scoring_metadata["model_version"] = model_summary["version"]
 
     if score is not None and score < threshold:
         create_approval(
@@ -368,14 +398,14 @@ def submit_draft_for_approval(
             extra_reviewer,
             doc_id,
             description="Auto risk review",
-            scoring_metadata=scoring_metadata,
+            scoring_metadata=scoring_metadata.copy(),
         )
     return create_approval(
         workflow,
         reviewer,
         doc_id,
         description="Primary review",
-        scoring_metadata=scoring_metadata,
+        scoring_metadata=scoring_metadata.copy(),
     )
 
 

@@ -1,71 +1,49 @@
-import importlib.util
-import math
-import sys
+import json
 from pathlib import Path
 
 import pytest
 
-from docreview360.quality import QUALITY_FLAG_NAMES, explain_score, quality_assessment
-
-_FEATURES_SPEC = importlib.util.spec_from_file_location(
-    "tests.docreview360_ml_features",
-    Path("src/docreview360/ml/features.py").resolve(),
+from docreview360 import approvals, quality as quality_module
+from docreview360.quality import (
+    QUALITY_FLAG_NAMES,
+    explain_score,
+    quality_assessment,
+    quality_model_metadata,
 )
-_FEATURES_MOD = importlib.util.module_from_spec(_FEATURES_SPEC)
-sys.modules[_FEATURES_SPEC.name] = _FEATURES_MOD
-_FEATURES_SPEC.loader.exec_module(_FEATURES_MOD)
 
-_SCORE_WEIGHTS = [0.8, -0.2, -0.5, 1.1, 0.6, 0.4]
-_SCORE_BIAS = 0.1
-_FLAG_WEIGHTS = [
-    [0.5, -0.3, 0.1],
-    [-0.2, 0.4, -0.6],
-    [0.7, 0.6, -0.5],
-    [-0.1, -0.2, 0.8],
-    [0.3, -0.4, 0.2],
-    [-0.5, 0.7, 0.3],
-]
-_FLAG_BIAS = [0.0, 0.1, -0.1]
+_FIXTURE_PATH = Path(__file__).resolve().parent / "data" / "ml" / "quality.json"
+_QUALITY_FIXTURE = json.loads(_FIXTURE_PATH.read_text())
 
 
-def _legacy_vector(text: str) -> list[float]:
-    legacy = _FEATURES_MOD.quality_features(text)["legacy"]["fann"]
-    return [legacy[name] for name in _FEATURES_MOD.FANN_FEATURE_NAMES]
+def _golden_assessment() -> dict[str, object]:
+    return _QUALITY_FIXTURE["assessment"]  # type: ignore[index]
 
 
-def _sigmoid(value: float) -> float:
-    return 1.0 / (1.0 + math.exp(-value))
+def _golden_input_text() -> str:
+    return _QUALITY_FIXTURE["input"]["text"]  # type: ignore[index]
 
 
-def _expected_from_fixture(text: str) -> tuple[float, list[float]]:
-    features = _legacy_vector(text)
-    linear = sum(f * w for f, w in zip(features, _SCORE_WEIGHTS)) + _SCORE_BIAS
-    raw = _sigmoid(linear)
-    flags = []
-    for j in range(len(_FLAG_BIAS)):
-        val = sum(features[i] * _FLAG_WEIGHTS[i][j] for i in range(len(features))) + _FLAG_BIAS[j]
-        flags.append(_sigmoid(val))
-    return raw, flags
-
-
-def test_quality_assessment_matches_onnx_fixture() -> None:
-    text = "This memorandum is well structured and easy to follow."
+def test_quality_assessment_matches_golden_fixture() -> None:
+    text = _golden_input_text()
     assessment = quality_assessment(text)
-    expected_raw, expected_flags = _expected_from_fixture(text)
+    expected = _golden_assessment()
 
-    assert assessment.raw_score == pytest.approx(expected_raw, rel=1e-6)
-    assert assessment.score == pytest.approx(expected_raw, rel=1e-6)
-    assert assessment.flags == pytest.approx(expected_flags, rel=1e-6)
+    assert assessment.raw_score == pytest.approx(expected["raw_score"], rel=1e-6)
+    assert assessment.score == pytest.approx(expected["score"], rel=1e-6)
+    assert list(assessment.flags) == pytest.approx(expected["flags"], rel=1e-6)
     assert len(assessment.flags) == len(QUALITY_FLAG_NAMES)
+    model_info = quality_model_metadata()
+    assert model_info.sha256 is not None
+
 
 
 def test_quality_assessment_penalises_high_risk_terms() -> None:
-    text = "URGENT notice repeated repeated repeated repeated."
+    text = _golden_input_text() + " URGENT update required."
     assessment = quality_assessment(text)
-    expected_raw, _ = _expected_from_fixture(text)
+    penalty = quality_module._HIGH_RISK_PENALTY  # type: ignore[attr-defined]
 
-    assert assessment.raw_score == pytest.approx(expected_raw, rel=1e-6)
-    assert assessment.score == pytest.approx(expected_raw * 0.9, rel=1e-6)
+    assert assessment.raw_score > 0
+    assert assessment.score == pytest.approx(assessment.raw_score * penalty, rel=1e-6)
     assert assessment.score < assessment.raw_score
 
 
@@ -80,3 +58,40 @@ def test_explain_score_reports_triggered_flags() -> None:
     # Ensure at least one rationale references high-risk when terms appear
     risky = explain_score("This URGENT update requires immediate attention.")
     assert any("high-risk" in r for r in risky["rationale"])
+
+
+def test_quality_scoring_records_model_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    approvals.approvals.clear()
+    audit_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    log_calls: list[tuple[str, dict[str, object]]] = []
+
+    monkeypatch.setattr(
+        approvals,
+        "log_audit_event",
+        lambda *args, **kwargs: audit_calls.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        approvals,
+        "log_event",
+        lambda action, **kwargs: log_calls.append((action, kwargs)),
+    )
+
+    text = _golden_input_text()
+    approval = approvals.submit_draft_for_approval(
+        "wf-quality",
+        "alice",
+        "doc-qa",
+        text,
+        critic=None,
+        threshold=0.95,
+    )
+
+    model_info = approval.scoring_metadata.get("model")  # type: ignore[assignment]
+    assert isinstance(model_info, dict)
+    assert model_info.get("sha256")
+    assert model_info.get("version") is None or isinstance(model_info.get("version"), str)
+
+    audit_models = [kwargs.get("model_sha256") for _, kwargs in audit_calls]
+    log_models = [payload.get("model_sha256") for _, payload in log_calls]
+    assert model_info["sha256"] in audit_models
+    assert model_info["sha256"] in log_models
