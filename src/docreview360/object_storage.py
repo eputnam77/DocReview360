@@ -54,6 +54,39 @@ def _validate_key(key: str) -> None:
         raise ValueError("invalid key")
 
 
+def _sanitize_bucket(bucket: str | Path) -> Path:
+    """Return a normalized, absolute path for ``bucket``.
+
+    The storage helpers accept either :class:`str` or :class:`pathlib.Path`
+    instances for the ``bucket`` parameter.  Historically we simply wrapped the
+    value in :class:`Path` which meant inputs such as ``"../etc"`` or
+    ``"..\\etc"`` would happily traverse outside the intended storage root.
+    Normalising separators and rejecting ``".."`` segments prevents directory
+    traversal via the ``bucket`` argument itself.  The resulting path is always
+    absolute to avoid ambiguity about where files are written on disk.
+    """
+
+    bucket_text = str(bucket)
+    if not bucket_text:
+        raise ValueError("invalid bucket")
+    if bucket_text != bucket_text.strip():
+        raise ValueError("invalid bucket")
+    if any(ch in bucket_text for ch in ("\n", "\r", "\x00")):
+        raise ValueError("invalid bucket")
+
+    normalized = bucket_text.replace("\\", "/")
+    # ``PurePosixPath`` gives us a stable representation regardless of the host
+    # OS so we can reliably detect traversal segments like ``..`` even on
+    # Windows when users pass in backslash-separated paths.
+    if any(part == ".." for part in PurePosixPath(normalized).parts):
+        raise ValueError("invalid bucket")
+
+    bucket_path = Path(bucket_text).expanduser()
+    # ``Path.resolve`` with ``strict=False`` collapses ``.`` segments and
+    # returns an absolute path without requiring the directory to exist yet.
+    return bucket_path.resolve()
+
+
 def download_file(bucket: str | Path, key: str) -> bytes:
     """Return the contents of ``bucket``/``key``.
 
@@ -85,7 +118,8 @@ def download_file(bucket: str | Path, key: str) -> bytes:
         obj = s3.get_object(Bucket=bucket_name, Key=key)
         return cast(bytes, obj["Body"].read())
 
-    path = Path(bucket) / key
+    bucket_path = _sanitize_bucket(bucket)
+    path = bucket_path / key
     return path.read_bytes()
 
 
@@ -142,7 +176,8 @@ def upload_file(
         s3.put_object(Bucket=bucket_name, Key=key, Body=data, **extra)
         return f"s3://{bucket_name}/{key}"
 
-    dest = Path(bucket) / key
+    bucket_path = _sanitize_bucket(bucket)
+    dest = bucket_path / key
     dest.parent.mkdir(parents=True, exist_ok=True)
     if append_only and dest.exists():
         raise FileExistsError("object already exists")
