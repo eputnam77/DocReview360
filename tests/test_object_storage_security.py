@@ -1,10 +1,26 @@
-import io
 import importlib
+import io
 from types import SimpleNamespace
 
 import pytest
 
-from docreview360.object_storage import upload_file, download_file, _validate_key
+from docreview360.object_storage import _validate_key, download_file, upload_file
+
+
+def test_bucket_rejects_traversal_segments(tmp_path) -> None:
+    with pytest.raises(ValueError):
+        upload_file("../evil", "safe.txt", b"data")
+    with pytest.raises(ValueError):
+        upload_file("..\\evil", "safe.txt", b"data")
+    with pytest.raises(ValueError):
+        download_file("../evil", "safe.txt")
+
+
+def test_bucket_rejects_newlines_and_whitespace() -> None:
+    with pytest.raises(ValueError):
+        upload_file(" bucket", "safe.txt", b"data")
+    with pytest.raises(ValueError):
+        upload_file("bucket\n", "safe.txt", b"data")
 
 
 def test_upload_rejects_path_traversal(tmp_path):
