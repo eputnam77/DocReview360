@@ -441,17 +441,37 @@ export default function ProjectDetailsPage() {
   );
 
   useEffect(() => {
-    setProject(projectData ?? DEMO_PROJECT);
-  }, [projectData]);
+    // If this is the demo project ID, always use demo data
+    if (id === DEMO_PROJECT.id) {
+      setProject(DEMO_PROJECT);
+    } else {
+      setProject(projectData ?? null);
+    }
+  }, [projectData, id]);
   useEffect(() => {
-    setWorkflow(workflowData ?? DEMO_WORKFLOW);
-  }, [workflowData]);
+    // If this is the demo project ID, always use demo workflow
+    if (id === DEMO_PROJECT.id) {
+      setWorkflow(DEMO_WORKFLOW);
+    } else {
+      setWorkflow(workflowData ?? null);
+    }
+  }, [workflowData, id]);
   useEffect(() => {
-    setApprovals(approvalsData ?? DEMO_APPROVALS);
-  }, [approvalsData]);
+    // If this is the demo project ID, always use demo approvals
+    if (id === DEMO_PROJECT.id) {
+      setApprovals(DEMO_APPROVALS);
+    } else {
+      setApprovals(approvalsData ?? []);
+    }
+  }, [approvalsData, id]);
   useEffect(() => {
-    setReviewCount(reviewCountData?.count ?? DEMO_DISPO_COMMENTS.length);
-  }, [reviewCountData]);
+    // If this is the demo project ID, always use demo review count
+    if (id === DEMO_PROJECT.id) {
+      setReviewCount(DEMO_DISPO_COMMENTS.length);
+    } else {
+      setReviewCount(reviewCountData?.count ?? 0);
+    }
+  }, [reviewCountData, id]);
 
   useEffect(() => {
     if (!id || !username) {
