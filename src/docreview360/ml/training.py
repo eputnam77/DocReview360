@@ -188,9 +188,7 @@ def train_critic_from_csv(
         validation = ValidationReport(accuracy=accuracy, correct=correct, total=len(v_labels))
 
     metadata_copy = {
-        key: value
-        for key, value in export_info.items()
-        if key not in {"path", "sha256"}
+        key: value for key, value in export_info.items() if key not in {"path", "sha256"}
     }
 
     return TrainingResult(
@@ -273,8 +271,4 @@ def format_model_summary(summary: ModelSummary) -> str:
 def format_validation_report(report: ValidationReport) -> str:
     """Format ``report`` for display in CLI output."""
 
-    return (
-        f"Validation accuracy: {report.accuracy:.2%} "
-        f"({report.correct}/{report.total})"
-    )
-
+    return f"Validation accuracy: {report.accuracy:.2%} " f"({report.correct}/{report.total})"

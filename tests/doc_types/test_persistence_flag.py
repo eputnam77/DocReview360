@@ -41,7 +41,7 @@ def test_import_with_persistence_writes_file(tmp_path, monkeypatch):
     original_cwd = Path.cwd()
     monkeypatch.setenv("DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", "1")
     monkeypatch.chdir(tmp_path)
-    module = importlib.reload(doc_types_module)
+    importlib.reload(doc_types_module)
     try:
         data_file = tmp_path / "document_types.json"
         assert data_file.exists(), "Bootstrap should write defaults when persistence is enabled"

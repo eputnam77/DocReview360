@@ -13,7 +13,7 @@ from .search import project_lock, projects, update_project
 _balancer_lock = Lock()
 
 
-def assign_technical_writer(
+def assign_technical_writer(  # noqa: C901
     project_id: str,
     candidates: Iterable[str],
     cfg: Config | None = None,
@@ -95,6 +95,7 @@ def assign_technical_writer(
                 ai_balancer._workers[cand] = counts[cand]
 
     with _balancer_lock:
+
         def _load_key(worker: str) -> tuple[int, str]:
             return (ai_balancer._workers.get(worker, 0) + priority_adj[worker], worker)
 

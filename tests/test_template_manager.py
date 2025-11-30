@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from docreview360 import template_manager as tm
 
 

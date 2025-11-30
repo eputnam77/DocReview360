@@ -34,4 +34,3 @@ def test_export_document_requires_string_format() -> None:
     with pytest.raises(TypeError) as excinfo:
         export_document(doc, fmt=123)  # type: ignore[arg-type]
     assert "fmt must be a string" in str(excinfo.value)
-

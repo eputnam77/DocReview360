@@ -200,7 +200,7 @@ def configure_role_repository(path: str | os.PathLike[str]) -> None:
     _ROLE_CACHE.invalidate()
 
 
-def _with_repository(
+def _with_repository(  # noqa: C901
     operation: Callable[[RoleRepository], None],
     username: str | None = None,
     *,
@@ -376,7 +376,7 @@ def _normalize_permission(action: str) -> str:
     return action.strip().lower()
 
 
-def _coerce_permissions(raw: Mapping[str, Any]) -> dict[str, Set[str]]:
+def _coerce_permissions(raw: Mapping[str, Any]) -> dict[str, Set[str]]:  # noqa: C901
     mapping: dict[str, Set[str]] = {}
     for role, values in raw.items():
         normalized_role = _normalize_role(str(role))
@@ -418,9 +418,7 @@ def _load_role_permissions_from_settings() -> dict[str, Set[str]]:
         candidate = settings.get("role_permissions")
         if isinstance(candidate, Mapping):
             configured = candidate
-    permissions = {
-        role: set(perms) for role, perms in _DEFAULT_ROLE_PERMISSIONS.items()
-    }
+    permissions = {role: set(perms) for role, perms in _DEFAULT_ROLE_PERMISSIONS.items()}
     if configured:
         overrides = _coerce_permissions(configured)
         for role, perms in overrides.items():
@@ -438,11 +436,7 @@ def reload_role_permissions(force: bool = False) -> None:
     except FileNotFoundError:  # pragma: no cover - defensive
         mtime = None
     with _ROLE_PERMISSIONS_LOCK:
-        if (
-            not force
-            and ROLE_PERMISSIONS
-            and _ROLE_PERMISSIONS_MTIME == mtime
-        ):
+        if not force and ROLE_PERMISSIONS and _ROLE_PERMISSIONS_MTIME == mtime:
             return
         permissions = _load_role_permissions_from_settings()
         ROLE_PERMISSIONS.clear()

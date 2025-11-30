@@ -1,6 +1,6 @@
 import asyncio
-from datetime import timedelta
 import contextlib
+from datetime import timedelta
 
 import pytest
 
@@ -11,7 +11,9 @@ from docreview360.secrets import schedule_rotation
 async def test_schedule_rotation_rejects_non_positive_interval() -> None:
     """Negative intervals should raise immediately rather than spawning a task."""
 
-    loader = lambda: "secret"
+    def loader() -> str:
+        return "secret"
+
     task: asyncio.Task | None = None
     with pytest.raises(ValueError):
         task = schedule_rotation("provider", loader, timedelta(seconds=-1))

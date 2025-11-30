@@ -23,8 +23,10 @@ def test_dispatcher_sends_on_status_change(monkeypatch):
     def fake_post(url: str, **kwargs: object):
         sent["url"] = url
         sent["json"] = kwargs.get("json")
+
         class Resp:
             status_code = 200
+
         return Resp()
 
     monkeypatch.setattr(event_dispatcher, "http_post", fake_post)

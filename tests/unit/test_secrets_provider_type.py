@@ -1,5 +1,6 @@
 import pytest
-from docreview360.secrets import store_secret, get_secret
+
+from docreview360.secrets import get_secret, store_secret
 
 
 def test_store_secret_non_string_provider():

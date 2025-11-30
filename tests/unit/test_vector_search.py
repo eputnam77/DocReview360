@@ -1,5 +1,5 @@
-import types
 import pytest
+
 from docreview360 import vector_search as vs
 
 

@@ -11,6 +11,7 @@ def test_watchlist_file_expands_user(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     # Import and reload module so it picks up env vars
     import docreview360.watchlist as wl
+
     wl = importlib.reload(wl)
 
     expected = tmp_path / "custom_watch.json"
@@ -29,6 +30,7 @@ def test_watchlist_file_expands_env_vars(tmp_path: Path, monkeypatch: pytest.Mon
     monkeypatch.setenv("DOCREV_WATCHLIST_FILE", "$BASE/w.json")
 
     import docreview360.watchlist as wl
+
     wl = importlib.reload(wl)
 
     expected = tmp_path / "w.json"

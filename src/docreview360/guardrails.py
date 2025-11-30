@@ -113,7 +113,9 @@ def guardrail_quality_assessment(text: str) -> QualityAssessment:
     return quality_assessment(text)
 
 
-def load_guardrail_thresholds(settings: Mapping[str, Any] | None = None) -> GuardrailThresholds:
+def load_guardrail_thresholds(  # noqa: C901
+    settings: Mapping[str, Any] | None = None,
+) -> GuardrailThresholds:
     """Return configured guardrail thresholds or sensible defaults."""
 
     if settings is None:
@@ -238,4 +240,3 @@ def evaluate_guardrails(
         blocked=blocked,
         auto_assign_editor=auto_assign,
     )
-

@@ -11,5 +11,6 @@ warnings.warn(
 )
 
 raise RuntimeError(
-    "docreview360.fann_model is no longer available. Import from docreview360.ml.torch_models instead."
+    "docreview360.fann_model is no longer available. "
+    "Import from docreview360.ml.torch_models instead."
 )

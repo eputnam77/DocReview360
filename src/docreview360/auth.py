@@ -20,7 +20,6 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-
 T = TypeVar("T")
 
 
@@ -203,7 +202,7 @@ class PasswordPolicy:
     symbol_characters: str
 
     @classmethod
-    def load(cls) -> "PasswordPolicy":
+    def load(cls) -> "PasswordPolicy":  # noqa: C901
         """Build a policy instance from persisted settings."""
 
         default_classes = ("lowercase", "uppercase", "digits", "symbols")
@@ -413,7 +412,14 @@ class UserRepository:
         with self._connection() as conn:
             conn.execute(
                 """
-                INSERT INTO users (username, password_hash, otp_secret, active, failed_attempts, locked_until)
+                INSERT INTO users (
+                    username,
+                    password_hash,
+                    otp_secret,
+                    active,
+                    failed_attempts,
+                    locked_until
+                )
                 VALUES (?, ?, ?, ?, 0, NULL)
                 ON CONFLICT(username) DO UPDATE SET
                     password_hash=excluded.password_hash,

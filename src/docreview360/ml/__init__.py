@@ -45,6 +45,14 @@ __all__ = [
 ]
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checkers only
+    from .routing_critic import (  # noqa: F401
+        ROUTING_FEATURE_NAMES,
+        RoutingCritic,
+        RoutingExample,
+        export_routing_critic_to_onnx,
+        routing_feature_vector,
+        train_routing_critic,
+    )
     from .signature_anomaly import (  # noqa: F401
         MODEL_NAME,
         MODEL_PATH,
@@ -53,7 +61,7 @@ if TYPE_CHECKING:  # pragma: no cover - used for type checkers only
         get_signature_anomaly_metadata,
         score_signature_anomaly,
     )
-    from .torch_models import (
+    from .torch_models import (  # noqa: F401
         CriticConfig,
         TinyCritic,
         build_clarity_critic,
@@ -67,14 +75,6 @@ if TYPE_CHECKING:  # pragma: no cover - used for type checkers only
         save_critic,
         train_critic,
         update_critic,
-    )
-    from .routing_critic import (
-        ROUTING_FEATURE_NAMES,
-        RoutingCritic,
-        RoutingExample,
-        export_routing_critic_to_onnx,
-        routing_feature_vector,
-        train_routing_critic,
     )
 
 _TORCH_EXPORTS = {

@@ -214,9 +214,7 @@ def ml_train(
         raise click.ClickException(str(exc)) from exc
 
     click.echo(f"Saved torch weights to {result.weights_path}")
-    click.echo(
-        f"Saved ONNX model to {result.onnx_path} (sha256={result.onnx_sha256})"
-    )
+    click.echo(f"Saved ONNX model to {result.onnx_path} (sha256={result.onnx_sha256})")
 
     if result.validation is not None:
         message = ml.format_validation_report(result.validation)
@@ -350,9 +348,7 @@ def rbac_set_role(
     if not normalized_role:
         raise click.BadParameter("Role name must not be empty", param_hint="role")
 
-    normalized_permissions = {
-        perm.strip().lower() for perm in permissions if perm.strip()
-    }
+    normalized_permissions = {perm.strip().lower() for perm in permissions if perm.strip()}
 
     settings = load_settings(config_path)
     rbac_config = settings.setdefault("rbac", {})
@@ -379,9 +375,7 @@ def rbac_set_role(
         raise click.ClickException(f"Failed to update settings: {exc}") from exc
 
     rbac.reload_role_permissions(force=True)
-    click.echo(
-        f"Updated role '{normalized_role}' with {len(normalized_permissions)} permission(s)"
-    )
+    click.echo(f"Updated role '{normalized_role}' with {len(normalized_permissions)} permission(s)")
 
 
 @cli.group()

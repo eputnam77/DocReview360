@@ -1,5 +1,5 @@
-from docreview360.migration import export_instance, import_instance
 from docreview360.doc_types import document_types
+from docreview360.migration import export_instance, import_instance
 
 
 def test_export_import_roundtrip(tmp_path):

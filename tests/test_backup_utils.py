@@ -1,17 +1,12 @@
 import base64
 import gzip
 import json
-from pathlib import Path
-import base64
-import json
-import gzip
+from datetime import datetime, timezone
 
 import pytest
 
 from docreview360 import backup_utils as bu
 from docreview360.documents import DocumentModel, documents
-from datetime import datetime, timezone
-
 from docreview360.logs import LogEntry, logs
 
 

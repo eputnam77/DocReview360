@@ -9,7 +9,7 @@ def test_tooltip_html_escapes_content() -> None:
     html = tooltip_html("danger")
     # Dangerous characters should be escaped inside the attributes
     assert '<b onclick="boom">' not in html
-    assert '&lt;b onclick=&quot;boom&quot;&gt;' in html
+    assert "&lt;b onclick=&quot;boom&quot;&gt;" in html
     assert '"on"' not in html  # quote must be escaped in URL attribute
 
 

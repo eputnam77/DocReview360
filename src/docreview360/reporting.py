@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from html import escape
-import re
 from typing import Any, Iterable, Mapping
 
 from pydantic import BaseModel, Field
 
 from .approvals import approvals
 from .documents import documents
-from .search import _expire_temp_assignment, projects, add_project, ProjectModel
+from .search import ProjectModel, _expire_temp_assignment, add_project, projects
 from .status import internal_status
 from .workflows import workflows
 
@@ -373,8 +373,6 @@ def summary_csv() -> str:
     header_line = ",".join(headers)
     value_line = ",".join(values)
     return f"{header_line}\n{value_line}\n"
-
-    lines = ["","".join(headers)]
 
 
 class ThroughputEntry(BaseModel):

@@ -57,8 +57,8 @@ _fake_ort.get_available_providers = lambda: ["CPUExecutionProvider"]
 _fake_ort.InferenceSession = _FakeSession
 sys.modules["onnxruntime"] = _fake_ort
 
-import docreview360.ml.onnx_infer as onnx_infer  # noqa: E402
 import docreview360.auth as auth  # noqa: E402
+import docreview360.ml.onnx_infer as onnx_infer  # noqa: E402
 
 onnx_infer.get_session = _fake_get_session
 

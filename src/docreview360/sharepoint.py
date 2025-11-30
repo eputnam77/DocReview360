@@ -76,7 +76,7 @@ class SharePointClient:
         response = requests.patch(url, headers=headers, json=properties)
         response.raise_for_status()
 
-    def upload_with_scoring(
+    def upload_with_scoring(  # noqa: C901
         self,
         path: str,
         data: bytes,
@@ -102,9 +102,7 @@ class SharePointClient:
         assessment = quality_assessment(text)
         score = assessment.score
         model_summary = metadata_to_context(quality_model_metadata())
-        routing = routing_features(text, {"workflow": workflow} if workflow else None)[
-            "features"
-        ]
+        routing = routing_features(text, {"workflow": workflow} if workflow else None)["features"]
         scoring_metadata: dict[str, object] = {
             "approval_likelihood": score,
             "raw_score": assessment.raw_score,

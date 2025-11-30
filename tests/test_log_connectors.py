@@ -1,5 +1,5 @@
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 import pytest
@@ -9,8 +9,8 @@ from _pytest.monkeypatch import MonkeyPatch
 from docreview360 import logs
 from docreview360.config import Config
 from docreview360.log_connectors import (
-    ELKConnector,
     CloudWatchConnector,
+    ELKConnector,
     clear_connectors,
     register_connector,
 )

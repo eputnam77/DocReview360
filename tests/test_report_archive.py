@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
-from docreview360.archive import archives, archive_document
+from docreview360.archive import archive_document, archives
 from docreview360.documents import DocumentModel
 
 

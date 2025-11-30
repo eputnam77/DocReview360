@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -10,10 +11,9 @@ from typing import Sequence
 
 import numpy as np
 
-import hashlib
-
 from .ml.features import FANN_FEATURE_NAMES, quality_features
-from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session, infer as onnx_infer
+from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session
+from .ml.onnx_infer import infer as onnx_infer
 
 _HIGH_RISK_TERMS: set[str] = set()
 _HIGH_RISK_PENALTY: float = 0.9  # Multiply score by this if risky terms are present
@@ -227,13 +227,16 @@ def explain_score(
     for flag_name, value in zip(_FLAG_NAMES, assessment.flags):
         if value >= 0.7:
             reasons.append(f"quality flag triggered: {flag_name}")
-    
+
     risky_terms = high_risk_warnings(text)
     if risky_terms:
         reasons.append(f"contains high-risk terms: {', '.join(risky_terms)}")
 
-    score = approval_likelihood(text, critic, doc_type=doc_type)
-    return {"score": assessment.score, "rationale": reasons, "flags": dict(zip(_FLAG_NAMES, assessment.flags))}
+    return {
+        "score": assessment.score,
+        "rationale": reasons,
+        "flags": dict(zip(_FLAG_NAMES, assessment.flags)),
+    }
 
 
 QUALITY_FLAG_NAMES = _FLAG_NAMES

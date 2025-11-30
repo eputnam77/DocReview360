@@ -3,12 +3,9 @@
 from datetime import datetime, timezone
 
 MESSAGES = {
-    "create_project": (
-        "{user} created project {project_id} on {date} at {time}"
-    ),
+    "create_project": ("{user} created project {project_id} on {date} at {time}"),
     "selected_document_type_for_project_on": (
-        "{user} selected document type '{document_type}' for project {project_id} on "
-        "{date}"
+        "{user} selected document type '{document_type}' for project {project_id} on " "{date}"
     ),
     "ai_validation_confirmed_as_appropriate_for_project_on": (
         "AI validation confirmed '{document_type}' as appropriate for project "
@@ -17,9 +14,7 @@ MESSAGES = {
     "project_assigned_to_phase_by_on": (
         "Project {project_id} assigned to phase '{phase_name}' by {user} on {date}"
     ),
-    "upload_file": (
-        "{user} uploaded file '{filename}' to project {project_id} on {date}"
-    ),
+    "upload_file": ("{user} uploaded file '{filename}' to project {project_id} on {date}"),
     "applied_template_to_project_on": (
         "{user} applied template '{template_name}' to project {project_id} on {date}"
     ),
@@ -45,8 +40,7 @@ MESSAGES = {
         "{reviewer} declined review assignment for project {project_id} on {date}"
     ),
     "reassigned_project_from_to_on": (
-        "{user} reassigned project {project_id} from {old_reviewer} to {new_reviewer} on "
-        "{date}"
+        "{user} reassigned project {project_id} from {old_reviewer} to {new_reviewer} on " "{date}"
     ),
     "system_sent_follow_up_reminder_to_for_project_on": (
         "System sent follow-up reminder to {reviewer} for project {project_id} on {date}"
@@ -71,8 +65,7 @@ MESSAGES = {
         "{reviewer} provided non-concurrence for project {project_id} on {date}"
     ),
     "digital_signature_verification_passed_for_on_project_on": (
-        "Digital signature verification passed for {reviewer} on project {project_id} on "
-        "{date}"
+        "Digital signature verification passed for {reviewer} on project {project_id} on " "{date}"
     ),
     "all_required_approvals_completed_for_project_on": (
         "All required approvals completed for project {project_id} on {date}"
@@ -80,12 +73,8 @@ MESSAGES = {
     "phase_completion_achieved_for_project_on": (
         "Phase completion achieved for project {project_id} on {date}"
     ),
-    "made_changes_to_project_on": (
-        "{user} made changes to project {project_id} on {date}"
-    ),
-    "added_comment_to_project_on": (
-        "{user} added comment to project {project_id} on {date}"
-    ),
+    "made_changes_to_project_on": ("{user} made changes to project {project_id} on {date}"),
+    "added_comment_to_project_on": ("{user} added comment to project {project_id} on {date}"),
     "responded_to_comment_on_project_on": (
         "{user} responded to comment on project {project_id} on {date}"
     ),
@@ -104,12 +93,8 @@ MESSAGES = {
     "document_validation_completed_for_project_on": (
         "Document validation completed for project {project_id} on {date}"
     ),
-    "import_docx": (
-        "{user} imported DOCX file '{filename}' to project {project_id} on {date}"
-    ),
-    "convert_tiptap": (
-        "System converted DOCX to TipTap format for project {project_id} on {date}"
-    ),
+    "import_docx": ("{user} imported DOCX file '{filename}' to project {project_id} on {date}"),
+    "convert_tiptap": ("System converted DOCX to TipTap format for project {project_id} on {date}"),
     "system_applied_template_during_conversion_for_project_on": (
         "System applied template '{template_name}' during conversion for project "
         "{project_id} on {date}"
@@ -121,8 +106,7 @@ MESSAGES = {
         "TipTap content saved to CMS for project {project_id} on {date}"
     ),
     "converted_project_from_to_on": (
-        "{user} converted project {project_id} from '{old_type}' to '{new_type}' on "
-        "{date}"
+        "{user} converted project {project_id} from '{old_type}' to '{new_type}' on " "{date}"
     ),
     "system_applied_new_template_for_project_on": (
         "System applied new template for project {project_id} on {date}"
@@ -181,9 +165,7 @@ MESSAGES = {
     "searched_for_projects_with_criteria_on": (
         "{user} searched for projects with criteria '{search_terms}' on {date}"
     ),
-    "saved_search_query_on": (
-        "{user} saved search query '{query_name}' on {date}"
-    ),
+    "saved_search_query_on": ("{user} saved search query '{query_name}' on {date}"),
     "exported_search_results_for_on": (
         "{user} exported search results for '{search_criteria}' on {date}"
     ),
@@ -193,9 +175,7 @@ MESSAGES = {
     "viewed_role_based_assignment_report_for_on": (
         "{user} viewed role-based assignment report for '{role}' on {date}"
     ),
-    "customized_dashboard_widgets_on": (
-        "{user} customized dashboard widgets on {date}"
-    ),
+    "customized_dashboard_widgets_on": ("{user} customized dashboard widgets on {date}"),
     "exported_dashboard_data_in_format_on": (
         "{user} exported dashboard data in {format} format on {date}"
     ),
@@ -209,8 +189,7 @@ MESSAGES = {
         "System generated capacity planning report on {date}"
     ),
     "system_detected_stalled_project_no_status_change_in_2_weeks_on": (
-        "System detected stalled project {project_id} - no status change in 2 weeks on "
-        "{date}"
+        "System detected stalled project {project_id} - no status change in 2 weeks on " "{date}"
     ),
     "system_added_status_update_for_stalled_project_on": (
         "System added status update for stalled project {project_id} on {date}"
@@ -261,9 +240,7 @@ MESSAGES = {
     "system_sent_automated_notification_to_for_project_on": (
         "System sent automated notification to {user} for project {project_id} on {date}"
     ),
-    "system_archived_project_on": (
-        "System archived project {project_id} on {date}"
-    ),
+    "system_archived_project_on": ("System archived project {project_id} on {date}"),
     "system_generated_approval_report_for_project_on": (
         "System generated approval report for project {project_id} on {date}"
     ),
@@ -293,12 +270,10 @@ MESSAGES = {
         "Validation failed for project {project_id} on {date}: {validation_errors}"
     ),
     "digital_signature_verification_failed_for_on_project_on": (
-        "Digital signature verification failed for {reviewer} on project {project_id} on "
-        "{date}"
+        "Digital signature verification failed for {reviewer} on project {project_id} on " "{date}"
     ),
     "system_timeout_occurred_during_document_processing_for_project_on": (
-        "System timeout occurred during document processing for project {project_id} on "
-        "{date}"
+        "System timeout occurred during document processing for project {project_id} on " "{date}"
     ),
     "permission_denied_for_attempting_to_access_project_on": (
         "Permission denied for {user} attempting to access project {project_id} on {date}"
@@ -315,21 +290,13 @@ MESSAGES = {
     "database_query_optimization_applied_for_project_on": (
         "Database query optimization applied for project {project_id} on {date}"
     ),
-    "login": (
-        "{user} logged into system on {date} from {ip_address}"
-    ),
-    "logged_out_of_system_on": (
-        "{user} logged out of system on {date}"
-    ),
-    "accessed_project_on": (
-        "{user} accessed project {project_id} on {date}"
-    ),
+    "login": ("{user} logged into system on {date} from {ip_address}"),
+    "logged_out_of_system_on": ("{user} logged out of system on {date}"),
+    "accessed_project_on": ("{user} accessed project {project_id} on {date}"),
     "failed_login_attempt_for_from_on": (
         "Failed login attempt for {username} from {ip_address} on {date}"
     ),
-    "session_timeout_for_on": (
-        "Session timeout for {user} on {date}"
-    ),
+    "session_timeout_for_on": ("Session timeout for {user} on {date}"),
     "permission_escalation_request_for_on_project_on": (
         "Permission escalation request for {user} on project {project_id} on {date}"
     ),

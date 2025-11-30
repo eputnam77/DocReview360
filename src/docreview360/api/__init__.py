@@ -544,7 +544,7 @@ async def get_user_assignments_endpoint(username: str) -> list[ProjectModel]:
 
 
 @app.post("/projects", status_code=201, response_model=ProjectModel)
-async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
+async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa: C901
     """Create a new project."""
     # Auto-generate ID if not provided
     if body.id is None:

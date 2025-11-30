@@ -1,11 +1,7 @@
-import json
-from pathlib import Path
-
 import pytest
 
-from docreview360 import doc_types
+from docreview360 import doc_types, search
 from docreview360.doc_types import DocumentTypeModel, document_types
-from docreview360 import search
 
 
 def setup_function(_):
