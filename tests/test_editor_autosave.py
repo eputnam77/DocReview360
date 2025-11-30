@@ -2,7 +2,7 @@
 
 import time
 
-from docreview360.documents import autosave_document, import_document, get_document_versions
+from docreview360.documents import autosave_document, get_document_versions, import_document
 
 
 def test_autosave_debounced_patch_updates_within_5s() -> None:

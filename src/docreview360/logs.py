@@ -52,9 +52,7 @@ class _LogList(list[LogEntry]):
         # Primary path: delete via SQLAlchemy with worm-guard bypass.
         try:
             with db.session() as conn:
-                conn.execute(
-                    delete(AuditLog).execution_options(allow_audit_log_mutations=True)
-                )
+                conn.execute(delete(AuditLog).execution_options(allow_audit_log_mutations=True))
         except Exception:
             # Some environments may have DB-level append-only triggers installed
             # that block DELETEs. Fall back to dropping and recreating the table

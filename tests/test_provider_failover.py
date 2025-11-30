@@ -14,6 +14,7 @@ def _no_db_migrations(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(db_mod.Database, "migrate", lambda self, *a, **k: None)
 
+
 import docreview360.logs as logs_mod
 import docreview360.audit as audit_mod
 from docreview360 import provider_store

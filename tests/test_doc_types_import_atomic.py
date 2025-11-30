@@ -15,11 +15,7 @@ def test_import_document_types_json_atomic(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "doc_types.json")
 
     doc_types.document_types.clear()
-    original = {
-        "Existing": DocumentTypeModel(
-            name="Existing", template="", workflow=["Phase"]
-        )
-    }
+    original = {"Existing": DocumentTypeModel(name="Existing", template="", workflow=["Phase"])}
     doc_types.document_types.update(original)
 
     bad_payload = json.dumps(

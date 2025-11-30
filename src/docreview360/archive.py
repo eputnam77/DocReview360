@@ -9,15 +9,14 @@ from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
 
-from .security_compliance import should_purge
-from .settings_manager import load_settings
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from .documents import DocumentModel
 from .exporter import export_document
 from .object_storage import upload_file
 from .reporting import compile_check_report
+from .security_compliance import should_purge
+from .settings_manager import load_settings
 
 
 class ArchiveRecord(BaseModel):

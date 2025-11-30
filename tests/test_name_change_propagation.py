@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import Generator
 
-import json
 import pytest
 from fastapi.testclient import TestClient
 
@@ -296,7 +295,9 @@ class TestNameChangePropagation:
         doc_type_name = "Report Test Doc Type"
 
         add_document_type(
-            DocumentTypeModel(name=doc_type_name, template="<h1>Report Test</h1>", workflow=["Phase"])
+            DocumentTypeModel(
+                name=doc_type_name, template="<h1>Report Test</h1>", workflow=["Phase"]
+            )
         )
 
         # Create multiple projects to generate report data
@@ -333,7 +334,9 @@ class TestNameChangePropagation:
         new_name = "Updated Search Test Doc Type"
 
         add_document_type(
-            DocumentTypeModel(name=original_name, template="<h1>Search Test</h1>", workflow=["Phase"])
+            DocumentTypeModel(
+                name=original_name, template="<h1>Search Test</h1>", workflow=["Phase"]
+            )
         )
 
         # Create project
@@ -375,7 +378,9 @@ class TestNameChangePropagation:
         phase_name = "Consistency Test Phase"
 
         add_document_type(
-            DocumentTypeModel(name=doc_type_name, template="<h1>Consistency Test</h1>", workflow=["Phase"])
+            DocumentTypeModel(
+                name=doc_type_name, template="<h1>Consistency Test</h1>", workflow=["Phase"]
+            )
         )
         add_phase(phase_name)
 
@@ -434,11 +439,15 @@ class TestNameChangePropagation:
 
         # Test renaming to existing name
         add_document_type(
-            DocumentTypeModel(name="Existing Doc Type", template="<h1>Existing</h1>", workflow=["Phase"])
+            DocumentTypeModel(
+                name="Existing Doc Type", template="<h1>Existing</h1>", workflow=["Phase"]
+            )
         )
 
         add_document_type(
-            DocumentTypeModel(name="Another Doc Type", template="<h1>Another</h1>", workflow=["Phase"])
+            DocumentTypeModel(
+                name="Another Doc Type", template="<h1>Another</h1>", workflow=["Phase"]
+            )
         )
 
         # Try to rename to existing name

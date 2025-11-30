@@ -232,9 +232,7 @@ class SearchRepository:
         info = conn.execute("PRAGMA table_info(saved_searches)").fetchall()
         column_names = {row["name"] for row in info}
         if "flagged" not in column_names:
-            conn.execute(
-                "ALTER TABLE saved_searches ADD COLUMN flagged INTEGER NOT NULL DEFAULT 0"
-            )
+            conn.execute("ALTER TABLE saved_searches ADD COLUMN flagged INTEGER NOT NULL DEFAULT 0")
 
     def _backfill_saved_search_users(self, conn: sqlite3.Connection) -> None:
         """Assign a placeholder user for legacy saved searches without one."""
@@ -311,9 +309,7 @@ class SearchRepository:
                         ", ".join(flagged_searches),
                     )
 
-                counter_rows = conn.execute(
-                    "SELECT query, count FROM counters"
-                ).fetchall()
+                counter_rows = conn.execute("SELECT query, count FROM counters").fetchall()
                 counters = Counter({row["query"]: row["count"] for row in counter_rows})
 
                 next_number = self._read_next_project_number(conn)
@@ -395,6 +391,7 @@ class SearchRepository:
         except (TypeError, ValueError):
             return None
 
+
 class SearchIndex:
     """Simple in-memory inverted index for documents."""
 
@@ -407,9 +404,9 @@ class SearchIndex:
         if projects is None:
             projects = {}
         if next_project_number is None:
-            next_project_number = max(
-                (proj.number or 0 for proj in projects.values()), default=0
-            ) + 1
+            next_project_number = (
+                max((proj.number or 0 for proj in projects.values()), default=0) + 1
+            )
         if not projects:
             default = _default_project(1)
             projects = {default.id: default}

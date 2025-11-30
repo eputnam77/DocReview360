@@ -192,7 +192,7 @@ def _template_list_question(lower: str) -> str | None:
     return f"Available templates: {', '.join(template_names)}."
 
 
-def _response_time_question(lower: str) -> str | None:
+def _response_time_question(lower: str) -> str | None:  # noqa: C901
     pattern1 = (
         r"(?:how long does|how long) (?:it take|does it take) (?:for )?(?:user )?([\w-]+) "
         r"(?:to respond|respond|to review|review)"
@@ -263,7 +263,7 @@ STOP_WORDS = {
 _SKIP_DIRS = {"node_modules", ".git", "dist", "build", "frontend"}
 
 
-def _repo_content_question(lower: str, root: Path | None = None) -> str | None:
+def _repo_content_question(lower: str, root: Path | None = None) -> str | None:  # noqa: C901
     if "docreview360" not in lower and "docreview" not in lower:
         return None
     words = re.findall(r"[a-z0-9]+", lower)

@@ -3,7 +3,6 @@ import hashlib
 from docreview360.approvals import ApprovalModel, approvals
 from docreview360.audit import clear_audit_log, get_audit_log
 from docreview360.documents import import_document
-
 from services import signature_verifier
 
 
@@ -35,4 +34,3 @@ def test_verify_document_signatures_handles_provider_errors(monkeypatch) -> None
     assert processed == 1
     events = get_audit_log(doc.id)
     assert events[-1].context["signature_valid"] is False
-

@@ -26,4 +26,3 @@ def test_register_provider_blank_name(monkeypatch) -> None:
 
     with pytest.raises(ValueError):
         registry.register_provider(Dummy, name="")
-

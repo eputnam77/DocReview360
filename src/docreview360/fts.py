@@ -33,9 +33,7 @@ def index_document(doc_id: str, content: str) -> None:
     # that behavior here by deleting any existing row before inserting
     # the new one.
     _conn.execute("DELETE FROM docs WHERE id = ?", (doc_id,))
-    _conn.execute(
-        "INSERT INTO docs (id, content) VALUES (?, ?)", (doc_id, content)
-    )
+    _conn.execute("INSERT INTO docs (id, content) VALUES (?, ?)", (doc_id, content))
 
 
 def search(query: str) -> List[str]:

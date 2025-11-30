@@ -1,4 +1,5 @@
 import ssl
+
 import httpx
 
 from docreview360 import http_client
@@ -66,4 +67,3 @@ def test_empty_string_verify(monkeypatch):
     http_client.get("https://example.com", verify="")
 
     assert captured["verify"] is http_client._tls_context
-

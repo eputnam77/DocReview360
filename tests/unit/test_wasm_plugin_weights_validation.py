@@ -1,4 +1,5 @@
 import pytest
+
 from docreview360.wasm_plugin import lint_text
 
 

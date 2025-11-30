@@ -3,8 +3,9 @@ import hmac
 import json
 import os
 
-from docreview360.api import app
 from fastapi.testclient import TestClient
+
+from docreview360.api import app
 
 
 def test_documenso_webhook_advances_workflow() -> None:

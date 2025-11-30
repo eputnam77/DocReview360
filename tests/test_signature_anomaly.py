@@ -1,3 +1,7 @@
+"""Tests for signature anomaly handling using stubbed providers."""
+
+# ruff: noqa: E402
+
 import hashlib
 import sys
 import types
@@ -6,7 +10,9 @@ from typing import Any, Dict
 import pytest
 
 
-def _approval_likelihood_stub(text: str, critic: object | None = None, *, doc_type: str | None = None) -> float:
+def _approval_likelihood_stub(
+    text: str, critic: object | None = None, *, doc_type: str | None = None
+) -> float:
     return 1.0
 
 
@@ -49,16 +55,22 @@ from docreview360.monitoring import SIGNATURE_ANOMALIES
 class StubSignatureProvider:
     name = "stub-anomaly"
 
-    def request_signature(self, *args: Any, **kwargs: Any) -> tuple[str, str, Dict[str, Any]]:  # pragma: no cover - not used
+    def request_signature(
+        self, *args: Any, **kwargs: Any
+    ) -> tuple[str, str, Dict[str, Any]]:  # pragma: no cover - not used
         raise NotImplementedError
 
     def process_webhook(self, data: Dict[str, Any]) -> None:  # pragma: no cover - not used
         pass
 
-    def verify_signature(self, signature_id: str, document: bytes) -> bool:  # pragma: no cover - not used
+    def verify_signature(
+        self, signature_id: str, document: bytes
+    ) -> bool:  # pragma: no cover - not used
         return False
 
-    def validate_signature(self, document_bytes: bytes, certificate_url: str | None, metadata: Dict[str, Any]) -> bool:
+    def validate_signature(
+        self, document_bytes: bytes, certificate_url: str | None, metadata: Dict[str, Any]
+    ) -> bool:
         return False
 
     def health_check(self) -> bool:  # pragma: no cover - not used

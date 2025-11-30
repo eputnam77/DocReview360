@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from docreview360.ml.compliance_classifier import (
-    evaluate_compliance,
     compliance_model_metadata,
+    evaluate_compliance,
 )
 from docreview360.ml.features import (
     SIGNATURE_ANOMALY_FEATURE_NAMES,
@@ -20,7 +20,6 @@ from docreview360.ml.golden_fixtures import generate_golden_fixtures
 from docreview360.ml.onnx_infer import metadata_to_context
 from docreview360.ml.signature_anomaly import score_signature_anomaly
 from docreview360.reviewer_model import ReviewerModel
-
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[1] / "data" / "ml"
 
@@ -68,7 +67,9 @@ def test_routing_fixture_matches_recommendations() -> None:
         fixture["recommendation"]["approval_likelihood"], rel=1e-6
     )
     actual_probs = [prob for _, prob in recommendation.ranked_reviewers]
-    expected_probs = [entry["probability"] for entry in fixture["recommendation"]["ranked_reviewers"]]  # type: ignore[index]
+    expected_probs = [
+        entry["probability"] for entry in fixture["recommendation"]["ranked_reviewers"]
+    ]  # type: ignore[index]
     np.testing.assert_allclose(actual_probs, expected_probs, rtol=1e-6, atol=1e-6)
 
     meta = metadata_to_context(model.model_metadata)

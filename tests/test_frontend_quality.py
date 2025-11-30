@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 # Resolve paths relative to repository root to avoid hard‑coded prefixes
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"

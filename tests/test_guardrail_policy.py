@@ -68,7 +68,9 @@ def policy_thresholds(monkeypatch: pytest.MonkeyPatch) -> GuardrailThresholds:
     return thresholds
 
 
-def test_guardrail_failure_blocks_export(monkeypatch: pytest.MonkeyPatch, policy_thresholds: GuardrailThresholds) -> None:
+def test_guardrail_failure_blocks_export(
+    monkeypatch: pytest.MonkeyPatch, policy_thresholds: GuardrailThresholds
+) -> None:
     monkeypatch.setattr("docreview360.exporter.guardrails_checker", None)
     monkeypatch.setattr("docreview360.exporter.guardrail_thresholds", None)
     monkeypatch.setattr("docreview360.exporter.guardrails_diagnostics", None)

@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
-ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "src"
-for candidate in (str(SRC), str(ROOT)):
-    if candidate not in sys.path:
-        sys.path.insert(0, candidate)
-
-from docreview360.ml.golden_fixtures import (
-    DEFAULT_FIXTURE_DIR,
-    generate_golden_fixtures,
-)
+from pathlib import Path
 
 
 def main() -> None:
+    ROOT = Path(__file__).resolve().parents[1]
+    SRC = ROOT / "src"
+    for candidate in (str(SRC), str(ROOT)):
+        if candidate not in sys.path:
+            sys.path.insert(0, candidate)
+
+    from docreview360.ml.golden_fixtures import (
+        DEFAULT_FIXTURE_DIR,
+        generate_golden_fixtures,
+    )
+
     destination = DEFAULT_FIXTURE_DIR
     paths = generate_golden_fixtures(destination)
     for name, path in sorted(paths.items()):

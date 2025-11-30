@@ -17,4 +17,3 @@ def test_missing_plugins_error_handling() -> None:
         registry.disable("missing")
     with pytest.raises(KeyError):
         registry.unregister("missing")
-
