@@ -139,9 +139,13 @@ def export_routing_critic_to_onnx(
     dest = Path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)
 
-    input_tensor = helper.make_tensor_value_info("input", TensorProto.FLOAT, [None, critic.input_dim])
+    input_tensor = helper.make_tensor_value_info(
+        "input", TensorProto.FLOAT, [None, critic.input_dim]
+    )
     approval_tensor = helper.make_tensor_value_info("approval", TensorProto.FLOAT, [None, 1])
-    logits_tensor = helper.make_tensor_value_info("reviewer_logits", TensorProto.FLOAT, [None, len(critic.reviewers)])
+    logits_tensor = helper.make_tensor_value_info(
+        "reviewer_logits", TensorProto.FLOAT, [None, len(critic.reviewers)]
+    )
 
     approval_weights = helper.make_tensor(
         "W_app",

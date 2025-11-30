@@ -18,8 +18,9 @@ TEST_PROJECT = {
     "doc_type": "Test Document",
     "phase": "Test Phase",
     "workflow": "Test Workflow",
-    "description": "This is a test project to debug creation issues"
+    "description": "This is a test project to debug creation issues",
 }
+
 
 def test_api_health():
     """Test if the API is running and healthy."""
@@ -31,6 +32,7 @@ def test_api_health():
         print(f"❌ API Health Check Failed: {e}")
         return False
 
+
 def test_project_creation():
     """Test creating a new project."""
     try:
@@ -39,7 +41,7 @@ def test_project_creation():
             f"{API_BASE}/projects",
             json=TEST_PROJECT,
             headers={"Content-Type": "application/json"},
-            timeout=10
+            timeout=10,
         )
 
         print(f"📊 Creation Response Status: {response.status_code}")
@@ -51,7 +53,7 @@ def test_project_creation():
             print(f"   ID: {project_data.get('id')}")
             print(f"   Name: {project_data.get('name')}")
             print(f"   User: {project_data.get('user')}")
-            return project_data.get('id')
+            return project_data.get("id")
         else:
             print("❌ Project Creation Failed:")
             print(f"   Response: {response.text}")
@@ -60,6 +62,7 @@ def test_project_creation():
     except requests.exceptions.RequestException as e:
         print(f"❌ Project Creation Error: {e}")
         return None
+
 
 def test_project_retrieval(project_id: str) -> bool:
     """Test retrieving the created project."""
@@ -83,6 +86,7 @@ def test_project_retrieval(project_id: str) -> bool:
         print(f"❌ Project Retrieval Error: {e}")
         return False
 
+
 def test_project_list():
     """Test listing all projects."""
     try:
@@ -95,10 +99,9 @@ def test_project_list():
             projects = response.json()
             print(f"✅ Found {len(projects)} projects:")
             for i, project in enumerate(projects, 1):
-                proj_user = project.get('user', 'None')
+                proj_user = project.get("user", "None")
                 print(
-                    f"   {i}. {project.get('id')} - {project.get('name')} "
-                    f"(User: {proj_user})"
+                    f"   {i}. {project.get('id')} - {project.get('name')} " f"(User: {proj_user})"
                 )
             return projects
         else:
@@ -108,6 +111,7 @@ def test_project_list():
     except requests.exceptions.RequestException as e:
         print(f"❌ Project List Error: {e}")
         return []
+
 
 def test_cache_clearing():
     """Test clearing the cache to see if it affects project listing."""
@@ -120,6 +124,7 @@ def test_cache_clearing():
     except requests.exceptions.RequestException:
         print("ℹ️  Cache clear endpoint not available (this is normal)")
         return True
+
 
 def main():
     """Run all diagnostic tests."""
@@ -149,7 +154,7 @@ def main():
         final_projects = test_project_list()
 
         # Test 7: Check if new project appears in list
-        project_ids = [p.get('id') for p in final_projects]
+        project_ids = [p.get("id") for p in final_projects]
         if new_project_id in project_ids:
             print(f"\n✅ SUCCESS: New project '{new_project_id}' appears in project list!")
         else:
@@ -159,11 +164,12 @@ def main():
             # Check if it's a caching issue
             print("\n🔄 Waiting 35 seconds for cache to expire...")
             import time
+
             time.sleep(35)
 
             print("🔄 Testing project list again after cache expiration...")
             final_projects_after_cache = test_project_list()
-            project_ids_after_cache = [p.get('id') for p in final_projects_after_cache]
+            project_ids_after_cache = [p.get("id") for p in final_projects_after_cache]
 
             if new_project_id in project_ids_after_cache:
                 print("✅ CACHE ISSUE: Project appears after cache expiration!")
@@ -174,6 +180,7 @@ def main():
 
     print("\n" + "=" * 50)
     print("🔍 Diagnostic Complete")
+
 
 if __name__ == "__main__":
     main()

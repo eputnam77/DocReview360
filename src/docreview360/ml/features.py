@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import os
 import re
 import tempfile
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Sequence
 
 try:  # pragma: no cover - optional dependency wiring
@@ -236,7 +236,9 @@ def _round_features(data: Mapping[str, float]) -> dict[str, float]:
     return {key: round(float(value), 6) for key, value in data.items()}
 
 
-def _payload(name: str, features: Mapping[str, float], legacy: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def _payload(
+    name: str, features: Mapping[str, float], legacy: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
     info = FEATURE_SCHEMA_REGISTRY[name]
     payload: dict[str, Any] = {
         "version": info.version,
@@ -291,7 +293,9 @@ def routing_features(text: str, metadata: Mapping[str, Any] | None = None) -> di
 
     stats = _base_stats(text)
     metadata_score = _metadata_completeness(metadata)
-    priority = _clamp(0.5 * stats.length_norm + 0.3 * (1 - stats.readability_norm) + 0.2 * metadata_score)
+    priority = _clamp(
+        0.5 * stats.length_norm + 0.3 * (1 - stats.readability_norm) + 0.2 * metadata_score
+    )
     features = {
         "content_size": stats.length_norm,
         "novelty": stats.unique_ratio,
@@ -395,6 +399,8 @@ def signature_features(
         "metadata_density": metadata_density,
     }
     return _payload("signature", features)
+
+
 SIGNATURE_ANOMALY_FEATURE_NAMES: tuple[str, ...] = (
     "verification_duration",
     "metadata_completeness",

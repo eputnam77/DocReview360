@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from docreview360.documents import (
+    get_document_versions,
     import_document,
     update_document,
-    get_document_versions,
 )
 from docreview360.pandiff import compute_diff
 from docreview360.records import sync_to_sharepoint

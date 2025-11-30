@@ -1,14 +1,20 @@
 import hashlib
-import pytest
 from datetime import datetime, timedelta, timezone
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography import x509
-from cryptography.x509.oid import NameOID, AuthorityInformationAccessOID
-from cryptography.hazmat.primitives import hashes, serialization
-import httpx
-from cryptography.x509 import ocsp
 
-from docreview360.certs import register_pinned_chain, fetch_certificate, clear_cache, verify_certificate_status
+import httpx
+import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509 import ocsp
+from cryptography.x509.oid import AuthorityInformationAccessOID, NameOID
+
+from docreview360.certs import (
+    clear_cache,
+    fetch_certificate,
+    register_pinned_chain,
+    verify_certificate_status,
+)
 
 
 def test_fetch_certificate_caching():
@@ -102,10 +108,7 @@ def test_verify_certificate_status_ocsp_fetcher():
         .public_bytes(serialization.Encoding.DER)
     )
 
-    assert (
-        verify_certificate_status(cert, issuer=cert, fetcher=lambda u, p: ocsp_resp)
-        is False
-    )
+    assert verify_certificate_status(cert, issuer=cert, fetcher=lambda u, p: ocsp_resp) is False
 
 
 def test_verify_certificate_status_ocsp_network(monkeypatch):

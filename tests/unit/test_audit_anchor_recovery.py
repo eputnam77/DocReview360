@@ -7,7 +7,9 @@ import pytest
 from docreview360 import audit
 
 
-def test_hash_new_log_segments_resets_future_anchor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_hash_new_log_segments_resets_future_anchor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Anchors pointing past the end of the log should be clamped."""
 
     log_path = tmp_path / "audit.log"

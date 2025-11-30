@@ -18,20 +18,16 @@ import math
 import re
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from .ml.features import (
-    CUSTOM_STYLE_RULES,
-    FANN_FEATURE_NAMES,
-    count_syllables,
-    quality_features,
-    structural_pattern_score,
-    style_guide_score,
-)
 from .guardrails import (
     evaluate_guardrails,
     guardrail_quality_assessment,
     load_guardrail_thresholds,
 )
-from .quality import QUALITY_FLAG_NAMES, quality_assessment
+from .ml.features import (
+    FANN_FEATURE_NAMES,
+    count_syllables,
+    quality_features,
+)
 
 # Backwards-compatible alias for tests patching GovDocVerify integration.
 try:  # pragma: no cover - defensive re-export

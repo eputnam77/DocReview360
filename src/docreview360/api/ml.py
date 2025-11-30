@@ -17,11 +17,11 @@ from ..audit import log_audit_event
 from ..logs import log_call, log_event
 from ..ml.compliance_classifier import compliance_model_metadata, evaluate_compliance
 from ..ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES
+from ..ml.onnx_infer import ModelMetadata
 from ..ml.signature_anomaly import (
     get_signature_anomaly_metadata,
     score_signature_anomaly,
 )
-from ..ml.onnx_infer import ModelMetadata
 from ..quality import (
     QUALITY_FLAG_NAMES,
     high_risk_warnings,

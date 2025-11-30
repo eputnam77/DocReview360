@@ -1,7 +1,7 @@
 import pytest
 
-from docreview360.documents import DocumentModel
 from docreview360 import exporter
+from docreview360.documents import DocumentModel
 
 
 @pytest.fixture

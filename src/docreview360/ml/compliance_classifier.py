@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
 import numpy as np
 
@@ -15,6 +15,9 @@ try:  # pragma: no cover - optional dependency
     from . import onnx_infer as _onnx
 except Exception:  # pragma: no cover - runtime fallback when onnxruntime missing
     _onnx = None
+
+if TYPE_CHECKING:
+    from .onnx_infer import ModelMetadata
 
 try:  # pragma: no cover - optional dependency for re-export tooling
     import torch

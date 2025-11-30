@@ -2,8 +2,9 @@ import importlib
 import sys
 from datetime import datetime, timezone
 
-import docreview360
 import pyotp
+
+import docreview360
 
 
 def _reload_auth(monkeypatch, tmp_path, **env):

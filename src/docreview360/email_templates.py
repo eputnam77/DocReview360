@@ -63,7 +63,7 @@ def get_template(name: str) -> EmailTemplate | None:
 _UNSET: Any = object()
 
 
-def update_template(
+def update_template(  # noqa: C901
     name: str,
     subject: str | None | Any = _UNSET,
     body: str | None | Any = _UNSET,

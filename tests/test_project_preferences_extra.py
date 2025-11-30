@@ -16,4 +16,3 @@ def test_update_preferences_coerces_string_bools(tmp_path: pathlib.Path) -> None
     data = pp.get_project_preferences("proj", path=path)
     assert hasattr(data, "lint") and data.lint is False
     assert "unknown" not in data.model_dump()
-

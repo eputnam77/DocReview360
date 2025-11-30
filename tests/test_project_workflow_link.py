@@ -64,10 +64,7 @@ def test_workflow_appears_in_project_details_after_editing() -> None:
     assert initial_project["workflow"] is None
 
     # Edit project to add workflow
-    edit_resp = client.put(
-        f"/projects/{initial_project['id']}",
-        json={"workflow": "review"}
-    )
+    edit_resp = client.put(f"/projects/{initial_project['id']}", json={"workflow": "review"})
     assert edit_resp.status_code == 200
 
     updated_project = edit_resp.json()

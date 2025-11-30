@@ -1,5 +1,6 @@
-import docreview360.secrets as secrets
 import pytest
+
+import docreview360.secrets as secrets
 from docreview360.secrets import get_secret
 
 

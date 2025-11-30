@@ -19,9 +19,8 @@ def _disable_migrations(monkeypatch: pytest.MonkeyPatch) -> None:
     is restored after each test.
     """
 
-    monkeypatch.setattr(
-        Database, "_apply_sql_migrations", lambda self, *args, **kwargs: None
-    )
+    monkeypatch.setattr(Database, "_apply_sql_migrations", lambda self, *args, **kwargs: None)
+
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -103,6 +102,4 @@ def test_update_signed_approval_returns_conflict() -> None:
         json={"state": "pending"},
     )
     assert second.status_code == 409
-    assert second.json() == {
-        "detail": "signed approvals cannot be modified; reset required"
-    }
+    assert second.json() == {"detail": "signed approvals cannot be modified; reset required"}

@@ -1,11 +1,14 @@
-import yaml
-import pytest
 from pathlib import Path
+
+import pytest
+import yaml
 
 import docreview360.provider_store as ps
 
 
-def test_load_providers_rejects_non_mapping(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_providers_rejects_non_mapping(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     cfg = tmp_path / "providers.yaml"
     # Provider defined as a simple string instead of mapping should be rejected
     cfg.write_text("documenso: invalid")
@@ -14,7 +17,9 @@ def test_load_providers_rejects_non_mapping(tmp_path: Path, monkeypatch: pytest.
         ps.load_providers()
 
 
-def test_load_providers_defaults_when_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_providers_defaults_when_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """When the providers file is absent the built-in defaults are returned."""
     cfg = tmp_path / "providers.yaml"
     monkeypatch.setattr(ps, "PROVIDERS_FILE", cfg)

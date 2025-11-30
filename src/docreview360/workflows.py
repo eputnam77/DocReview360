@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
-from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
@@ -46,6 +46,7 @@ class WorkflowModel(BaseModel):
     mode: str = "sequential"
     callback_url: str | None = None
 
+
 # ``workflows`` is a module level registry that many tests mutate.  Some test
 # modules reload ``docreview360.workflows`` which would ordinarily create a new
 # dictionary and leave previously imported references pointing to the stale
@@ -53,7 +54,7 @@ class WorkflowModel(BaseModel):
 # on the old mapping, leading to surprising ``KeyError`` failures.  To keep a
 # single shared registry across reloads we store the dictionary on the package
 # object and reuse it when the module is imported again.
-_pkg = sys.modules.get(__name__.rpartition('.')[0])
+_pkg = sys.modules.get(__name__.rpartition(".")[0])
 if _pkg is not None and hasattr(_pkg, "_workflows_store"):
     workflows = getattr(_pkg, "_workflows_store")  # type: ignore[assignment]
 else:
@@ -91,9 +92,7 @@ def _raise_template_error(template_name: str, reason: str) -> None:
     """Log and raise an error describing template ordering issues."""
 
     _log_template_issue(template_name, reason)
-    raise ValueError(
-        f"Workflow template '{template_name}' has invalid approval order: {reason}"
-    )
+    raise ValueError(f"Workflow template '{template_name}' has invalid approval order: {reason}")
 
 
 def _validate_template_orders(template_name: str, steps: List[ApprovalStep]) -> None:
@@ -515,7 +514,9 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
                 # entry is appended when missing.  This keeps the behavior
                 # consistent regardless of external patches and prevents state
                 # leakage between tests.
-                from .logs import LogEntry, logs as _logs
+                from .logs import LogEntry
+                from .logs import logs as _logs
+
                 if entry is None:
                     entry = LogEntry(
                         id=uuid4().hex,
@@ -545,12 +546,13 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
                 # defensive block above for ``log_event``, we ensure an entry is
                 # persisted even when the function was patched out.
                 if audit_entry is None:
+                    import json
+
                     from .audit import (
-                        AuditLogEntry,
                         _AUDIT_LOG_PATH,
+                        AuditLogEntry,
                         _compute_hash,
                     )
-                    import json
 
                     audit_entry = AuditLogEntry(
                         id=uuid4().hex,

@@ -1,4 +1,5 @@
 """Integrity verification tasks for CMS stored documents."""
+
 from __future__ import annotations
 
 import hashlib

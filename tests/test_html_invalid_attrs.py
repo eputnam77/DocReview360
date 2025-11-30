@@ -1,8 +1,9 @@
-import pytest
 from pathlib import Path
 
-from services.document_checker import run_checks, detect_anomalies
+import pytest
+
 from docreview360.accessibility import audit_html
+from services.document_checker import detect_anomalies, run_checks
 
 
 def test_run_checks_flags_unquoted_attributes(tmp_path: Path) -> None:

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 def estimate_review_effort(text: str) -> float:
     """Return an effort estimate using critic inputs and outputs."""
-    
+
     payload = quality_features(text)
     legacy = payload["legacy"]["fann"]
     length = legacy["length"]

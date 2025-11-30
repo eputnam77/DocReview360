@@ -1,5 +1,6 @@
-import httpx
 from types import SimpleNamespace
+
+import httpx
 
 from docreview360.metabase_sync import run_field_sync
 

@@ -1,7 +1,7 @@
 from datetime import timedelta
 
-from services import log_chain_verifier as lcv
 from docreview360.celery_app import app
+from services import log_chain_verifier as lcv
 
 
 def test_schedule_log_chain_verification(monkeypatch):
@@ -33,4 +33,3 @@ def test_schedule_log_chain_verification_respects_missing_email(monkeypatch):
 
     entry = app.conf.beat_schedule["log_chain_verification"]
     assert entry["kwargs"]["alert_email"] is None
-

@@ -24,9 +24,7 @@ def test_add_document_type_requires_workflow() -> None:
     """Adding a document type without workflow phases should fail validation."""
 
     with pytest.raises(ValidationError):
-        doc_types_module.add_document_type(
-            {"name": "No Workflow", "template": "<h1>Invalid</h1>"}
-        )
+        doc_types_module.add_document_type({"name": "No Workflow", "template": "<h1>Invalid</h1>"})
 
 
 def test_update_document_type_revalidates() -> None:

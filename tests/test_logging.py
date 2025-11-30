@@ -1,6 +1,7 @@
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.logs import clear_logs
-from fastapi.testclient import TestClient
 
 
 def test_logging_records_actions() -> None:
@@ -36,7 +37,5 @@ def test_logging_records_actions() -> None:
     assert len(filtered) == 1
     assert filtered[0]["details"]["filename"] == "doc.md"
 
-    resp = client.get(
-        "/logs", params={"severity": "info", "limit": 1}, headers=headers
-    )
+    resp = client.get("/logs", params={"severity": "info", "limit": 1}, headers=headers)
     assert len(resp.json()) == 1

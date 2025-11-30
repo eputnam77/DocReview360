@@ -7,4 +7,3 @@ def test_repeated_word_detection_case_insensitive(tmp_path):
 
     result = run_checks(path)
     assert "repeated word 'Hello'" in result["grammar"]
-

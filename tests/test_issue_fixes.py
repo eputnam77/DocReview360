@@ -1,12 +1,19 @@
 # New tests for uncovered modules and bug fixes
-import json
 import hashlib
+import json
 from types import SimpleNamespace
-from pathlib import Path
 
 import pytest
 
-from docreview360 import backup_utils, email_templates, provider_store, object_storage, audit, doc_types, chat_bot
+from docreview360 import (
+    audit,
+    backup_utils,
+    chat_bot,
+    doc_types,
+    email_templates,
+    object_storage,
+    provider_store,
+)
 from docreview360.documents import DocumentModel, documents
 from docreview360.logs import logs
 
@@ -40,11 +47,13 @@ def test_object_storage_validation(tmp_path):
 
 
 def test_backup_restore_invalid_base64(tmp_path):
-    documents.clear(); logs.clear()
+    documents.clear()
+    logs.clear()
     doc = DocumentModel(id="1", content="text")
     documents[doc.id] = doc
     path = backup_utils.create_backup(tmp_path / "bkp.gz")
     import gzip
+
     with gzip.open(path, "rt", encoding="utf-8") as fh:
         data = json.load(fh)
     data["documents"][0]["yjs_updates"] = ["!"]  # invalid base64
@@ -122,7 +131,10 @@ def test_chat_bot_helpers(monkeypatch):
     assert cb._assignment_question("who is assigned to project p1") == "alice is assigned to p1."
     assert cb._status_question("status of project p1") == "p1 is currently in the draft phase."
     assert cb._workload_question("what is workload for alice") == "alice has 1 project assigned."
-    assert cb._overdue_question("any overdue high priority projects?") == "There are no overdue high priority projects."
+    assert (
+        cb._overdue_question("any overdue high priority projects?")
+        == "There are no overdue high priority projects."
+    )
     assert cb._template_list_question("list templates")
     assert "No document types" in cb._document_type_question("document types available")
     assert "general document template" in cb._template_question("which template to use for unknown")
@@ -130,6 +142,7 @@ def test_chat_bot_helpers(monkeypatch):
 
 def test_certs_fetch_certificate(tmp_path):
     from docreview360 import certs
+
     certs.clear_cache()
     cert_path = tmp_path / "cert.pem"
     cert_path.write_bytes(b"data")
@@ -137,9 +150,11 @@ def test_certs_fetch_certificate(tmp_path):
     fp = hashlib.sha256(b"data").hexdigest()
     certs.register_pinned_chain(host, fp)
     url = f"https://{host}/cert.pem"
+
     def fetcher(u):
         assert u == url
         return b"data"
+
     first = certs.fetch_certificate(url, fetcher=fetcher)
     second = certs.fetch_certificate(url, fetcher=fetcher)
     assert first == second == b"data"

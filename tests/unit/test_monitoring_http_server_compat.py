@@ -3,7 +3,9 @@ import pytest
 from docreview360 import monitoring
 
 
-def test_init_observability_handles_legacy_start_http_server(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_observability_handles_legacy_start_http_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls: list[int] = []
 
     def fake_start_http_server(port: int):

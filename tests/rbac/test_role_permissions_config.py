@@ -8,9 +8,7 @@ import yaml
 from docreview360 import rbac
 
 
-def test_role_permissions_override_refreshes_cache(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_role_permissions_override_refreshes_cache(tmp_path: Path, monkeypatch) -> None:
     settings_path = tmp_path / "settings.yaml"
     monkeypatch.setattr(rbac.settings_manager, "SETTINGS_FILE", settings_path)
 

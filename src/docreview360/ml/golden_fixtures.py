@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
+from ..quality import quality_assessment, quality_model_metadata
+from ..reviewer_model import ReviewerModel
 from .compliance_classifier import (
     compliance_model_metadata,
     evaluate_compliance,
@@ -20,8 +22,6 @@ from .features import (
 )
 from .onnx_infer import metadata_to_context
 from .signature_anomaly import score_signature_anomaly
-from ..quality import quality_assessment, quality_model_metadata
-from ..reviewer_model import ReviewerModel
 
 DEFAULT_FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "data" / "ml"
 
@@ -113,9 +113,7 @@ def _signature_fixture() -> dict[str, Any]:
         verification_duration=_SIGNATURE_DURATION,
         retries=_SIGNATURE_RETRIES,
     )
-    feature_vector = [
-        float(payload["features"][name]) for name in SIGNATURE_ANOMALY_FEATURE_NAMES
-    ]
+    feature_vector = [float(payload["features"][name]) for name in SIGNATURE_ANOMALY_FEATURE_NAMES]
     score, metadata = score_signature_anomaly(feature_vector)
     meta = metadata_to_context(metadata) or {}
     return {

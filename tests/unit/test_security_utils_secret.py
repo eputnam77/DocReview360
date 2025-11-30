@@ -1,4 +1,5 @@
 import pytest
+
 from docreview360 import security_utils
 
 
@@ -6,7 +7,9 @@ def test_create_signature_allows_zero_secret(monkeypatch):
     monkeypatch.setattr(security_utils, "get_secret", lambda name: "0")
     sig = security_utils.create_signature("data")
     # Compute expected value using same algorithm
-    import hmac, hashlib
+    import hashlib
+    import hmac
+
     expected = hmac.new(b"0", b"data", hashlib.sha256).hexdigest()
     assert sig == expected
 
@@ -36,7 +39,9 @@ def test_create_signature_missing_secret(monkeypatch):
 
 def test_create_signature_custom_secret(monkeypatch):
     sig = security_utils.create_signature("x", secret="y")
-    import hmac, hashlib
+    import hashlib
+    import hmac
+
     expected = hmac.new(b"y", b"x", hashlib.sha256).hexdigest()
     assert sig == expected
 

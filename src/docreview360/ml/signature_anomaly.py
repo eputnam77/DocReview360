@@ -100,9 +100,7 @@ def _export_with_onnx(path_obj: Path, opset: int) -> None:
     import onnx
 
     feature_dim = len(SIGNATURE_ANOMALY_FEATURE_NAMES)
-    input_tensor = helper.make_tensor_value_info(
-        "input", TensorProto.FLOAT, ["batch", feature_dim]
-    )
+    input_tensor = helper.make_tensor_value_info("input", TensorProto.FLOAT, ["batch", feature_dim])
     output_tensor = helper.make_tensor_value_info("score", TensorProto.FLOAT, ["batch", 1])
     weight_tensor = helper.make_tensor(
         "weights",

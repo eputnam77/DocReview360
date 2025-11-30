@@ -25,11 +25,13 @@ class TestWorkflowDisplayIntegration:
         workflows.clear()
 
         # Add test configuration
-        add_document_type(DocumentTypeModel(
-            name="Test Document Type",
-            template="<h1>Test Template</h1>",
-            workflow=["draft", "review", "approve"]
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Test Document Type",
+                template="<h1>Test Template</h1>",
+                workflow=["draft", "review", "approve"],
+            )
+        )
 
         add_phase("Test Phase 1")
         add_phase("Test Phase 2")
@@ -58,7 +60,7 @@ class TestWorkflowDisplayIntegration:
             "phase": "Test Phase 1",
             "workflow": "test-workflow-1",
             "user": "test-user",
-            "description": "Test project description"
+            "description": "Test project description",
         }
 
         # Create project
@@ -95,7 +97,7 @@ class TestWorkflowDisplayIntegration:
             "doc_type": "Test Document Type",
             "phase": "Test Phase 1",
             "user": "test-user",
-            "description": "Initial project description"
+            "description": "Initial project description",
         }
 
         resp = client.post("/projects", json=initial_project_data)
@@ -105,9 +107,7 @@ class TestWorkflowDisplayIntegration:
         assert initial_project["workflow"] is None
 
         # Edit project to add workflow
-        edit_data = {
-            "workflow": "test-workflow-2"
-        }
+        edit_data = {"workflow": "test-workflow-2"}
 
         edit_resp = client.put(f"/projects/{initial_project['id']}", json=edit_data)
         assert edit_resp.status_code == 200
@@ -140,7 +140,7 @@ class TestWorkflowDisplayIntegration:
             "phase": "Test Phase 1",
             "workflow": "test-workflow-1",
             "user": "test-user",
-            "description": "Project with initial workflow"
+            "description": "Project with initial workflow",
         }
 
         resp = client.post("/projects", json=initial_project_data)
@@ -156,9 +156,7 @@ class TestWorkflowDisplayIntegration:
         assert initial_workflow["project"] == "test-project-3"
 
         # Edit project to change workflow
-        edit_data = {
-            "workflow": "test-workflow-2"
-        }
+        edit_data = {"workflow": "test-workflow-2"}
 
         edit_resp = client.put(f"/projects/{initial_project['id']}", json=edit_data)
         assert edit_resp.status_code == 200
@@ -191,7 +189,7 @@ class TestWorkflowDisplayIntegration:
             "phase": "Test Phase 1",
             "workflow": "test-workflow-1",
             "user": "test-user",
-            "description": "Test project with approvals"
+            "description": "Test project with approvals",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -201,10 +199,7 @@ class TestWorkflowDisplayIntegration:
         workflow_id = project["workflow"]
 
         # Create approvals for the workflow
-        approval_data = {
-            "workflow": workflow_id,
-            "reviewer": "reviewer1@example.com"
-        }
+        approval_data = {"workflow": workflow_id, "reviewer": "reviewer1@example.com"}
 
         approval_resp = client.post("/approvals", json=approval_data)
         assert approval_resp.status_code == 201
@@ -228,7 +223,7 @@ class TestWorkflowDisplayIntegration:
             "phase": "Test Phase 1",
             "workflow": "test-workflow-1",
             "user": "test-user",
-            "description": "Test project with phase mapping"
+            "description": "Test project with phase mapping",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -241,9 +236,7 @@ class TestWorkflowDisplayIntegration:
         assert project["workflow"] is not None
 
         # Edit project to change phase
-        edit_data = {
-            "phase": "Test Phase 2"
-        }
+        edit_data = {"phase": "Test Phase 2"}
 
         edit_resp = client.put(f"/projects/{project['id']}", json=edit_data)
         assert edit_resp.status_code == 200
@@ -266,7 +259,7 @@ class TestWorkflowDisplayIntegration:
             "phase": "Test Phase 1",
             "workflow": "test-workflow-1",
             "user": "test-user",
-            "description": "Project for workflow removal test"
+            "description": "Project for workflow removal test",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -276,9 +269,7 @@ class TestWorkflowDisplayIntegration:
         assert project["workflow"] is not None
 
         # Remove workflow from project
-        edit_data = {
-            "workflow": None
-        }
+        edit_data = {"workflow": None}
 
         edit_resp = client.put(f"/projects/{project['id']}", json=edit_data)
         assert edit_resp.status_code == 200
@@ -304,7 +295,7 @@ class TestWorkflowDisplayIntegration:
             "phase": "Test Phase 1",
             "workflow": "test-workflow-1",
             "user": "test-user",
-            "description": "Project for consistency testing"
+            "description": "Project for consistency testing",
         }
 
         resp = client.post("/projects", json=project_data)

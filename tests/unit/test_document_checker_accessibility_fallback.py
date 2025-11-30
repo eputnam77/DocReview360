@@ -41,5 +41,5 @@ def test_blank_alt_attribute_is_treated_as_missing(tmp_path: Path) -> None:
 def test_unquoted_aria_label_is_respected(tmp_path: Path) -> None:
     """Buttons with unquoted ``aria-label`` values must not be flagged."""
 
-    result = _write_and_check(tmp_path, '<button aria-label=Submit></button>')
+    result = _write_and_check(tmp_path, "<button aria-label=Submit></button>")
     assert "button missing label" not in result["accessibility"]

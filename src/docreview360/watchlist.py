@@ -12,9 +12,7 @@ from typing import Dict, List, Set
 # here keeps behavior intuitive and mirrors common shell expectations.
 WATCHLIST_FILE = Path(
     os.path.expandvars(
-        os.environ.get(
-            "DOCREV_WATCHLIST_FILE", str(Path(__file__).with_name("watchlist.json"))
-        )
+        os.environ.get("DOCREV_WATCHLIST_FILE", str(Path(__file__).with_name("watchlist.json")))
     )
 ).expanduser()
 
@@ -27,9 +25,7 @@ def _load() -> Dict[str, Set[str]]:
         result: Dict[str, Set[str]] = {}
         for user, projects in data.items():
             if not isinstance(projects, list):
-                raise ValueError(
-                    f"Watchlist entries must be lists: {WATCHLIST_FILE}"
-                )
+                raise ValueError(f"Watchlist entries must be lists: {WATCHLIST_FILE}")
             result[str(user)] = set(map(str, projects))
         return result
     except FileNotFoundError:
