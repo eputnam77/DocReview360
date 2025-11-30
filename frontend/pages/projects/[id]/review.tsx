@@ -26,6 +26,31 @@ interface Review {
   required?: boolean;
 }
 
+// Demo project ID
+const DEMO_PROJECT_ID = "123e-ac-101";
+
+// Demo reviews for the demo project
+const DEMO_REVIEWS: Review[] = [
+  {
+    id: "rev-1",
+    reviewer: "Jane Doe",
+    status: "pending",
+    comment: "Please check the legal cites in section 2.3.",
+    created: "2025-07-04T10:00:00Z",
+    phaseId: "Review",
+    required: true,
+  },
+  {
+    id: "rev-2",
+    reviewer: "John Smith",
+    status: "approved",
+    comment: "Approved, no changes needed.",
+    created: "2025-07-05T14:30:00Z",
+    phaseId: "Review",
+    required: true,
+  },
+];
+
 export default function ProjectReviewPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -41,16 +66,35 @@ export default function ProjectReviewPage() {
   // Fetch project phase
   useEffect(() => {
     if (!id) return;
+    // For demo project, use demo phase
+    if (id === DEMO_PROJECT_ID) {
+      setCurrentPhaseId("Review");
+      return;
+    }
     fetch(`${API}/projects/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((p) =>
         setCurrentPhaseId(p?.current_phase_id || p?.phase || null),
-      );
+      )
+      .catch(() => setCurrentPhaseId(null));
   }, [id]);
 
   // Fetch review history for this project and phase
   useEffect(() => {
     if (!id) return;
+
+    // For demo project, use demo reviews
+    if (id === DEMO_PROJECT_ID) {
+      setLoading(true);
+      // Filter demo reviews by current phase if needed
+      const filteredReviews = currentPhaseId
+        ? DEMO_REVIEWS.filter((r) => r.phaseId === currentPhaseId)
+        : DEMO_REVIEWS;
+      setReviews(filteredReviews);
+      setLoading(false);
+      return;
+    }
+
     const phaseQuery = currentPhaseId
       ? `?phase=${encodeURIComponent(currentPhaseId)}`
       : "";
