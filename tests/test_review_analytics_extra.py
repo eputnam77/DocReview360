@@ -1,13 +1,14 @@
 import math
+
 import pytest
 
+from docreview360.ml.torch_models import build_risk_critic
 from docreview360.review_analytics import (
     LessonsRepository,
     ReviewTrends,
     benchmark_document,
     detect_anomalous_document,
 )
-from docreview360.ml.torch_models import build_risk_critic
 
 
 def test_lessons_and_trends_basic() -> None:
@@ -43,4 +44,3 @@ def test_moving_average_empty() -> None:
     trends.add("p", 0.5)
     with pytest.raises(ValueError):
         trends.moving_average("p", window=0)
-

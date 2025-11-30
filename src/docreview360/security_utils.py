@@ -17,9 +17,7 @@ def _require_secret() -> str:
     # signatures that are effectively unprotected.  Treat missing or blank
     # secrets as a configuration error and fail fast with a clear message.
     if not value or not value.strip():
-        raise RuntimeError(
-            "DOCREVIEW360_SIGNATURE_SECRET environment variable required"
-        )
+        raise RuntimeError("DOCREVIEW360_SIGNATURE_SECRET environment variable required")
     return value.strip()
 
 

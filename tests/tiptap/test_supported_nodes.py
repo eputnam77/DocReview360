@@ -40,9 +40,7 @@ def test_tiptap_to_markdown_supports_extended_nodes() -> None:
             },
             {
                 "type": "blockquote",
-                "content": [
-                    {"type": "paragraph", "content": [{"type": "text", "text": "Quote"}]}
-                ],
+                "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Quote"}]}],
             },
             {
                 "type": "codeBlock",

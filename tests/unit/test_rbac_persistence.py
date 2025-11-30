@@ -36,9 +36,7 @@ def test_roles_persist_across_processes(tmp_path: Path) -> None:
     project_root = Path(__file__).resolve().parents[2]
     src_path = project_root / "src"
     existing = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = (
-        str(src_path) if not existing else str(src_path) + os.pathsep + existing
-    )
+    env["PYTHONPATH"] = str(src_path) if not existing else str(src_path) + os.pathsep + existing
 
     writer = f"""
 import os

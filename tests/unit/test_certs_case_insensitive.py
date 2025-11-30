@@ -1,7 +1,6 @@
 import hashlib
-import pytest
 
-from docreview360.certs import register_pinned_chain, fetch_certificate, clear_cache
+from docreview360.certs import clear_cache, fetch_certificate, register_pinned_chain
 
 
 def test_fetch_certificate_case_insensitive():

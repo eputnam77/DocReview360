@@ -1,7 +1,5 @@
 from fastapi.testclient import TestClient
 
-from fastapi.testclient import TestClient
-
 from docreview360 import reporting
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval

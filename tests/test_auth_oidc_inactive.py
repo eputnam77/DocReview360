@@ -1,5 +1,6 @@
 import pytest
-from docreview360.auth import HTTPException, USER_REPOSITORY, create_id_token, get_current_user_oidc
+
+from docreview360.auth import USER_REPOSITORY, HTTPException, create_id_token, get_current_user_oidc
 
 
 class DummyRequest:

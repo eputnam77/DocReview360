@@ -4,9 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from services.document_checker import run_checks
+from services.document_checker import detect_anomalies, run_checks
 from src.docreview360.backup_utils import restore_backup
-from services.document_checker import detect_anomalies
 
 
 def test_run_checks_detects_punctuation_repeats(tmp_path: Path) -> None:
@@ -62,9 +61,7 @@ def test_run_checks_empty_nested_button(tmp_path: Path) -> None:
 # backup_utils restore invalid base64
 def test_restore_backup_invalid_base64(tmp_path: Path) -> None:
     data = {
-        "documents": [
-            {"id": "1", "content": "x", "yjs_updates": ["!!!"]}
-        ],
+        "documents": [{"id": "1", "content": "x", "yjs_updates": ["!!!"]}],
         "logs": [],
     }
     target = tmp_path / "backup.json.gz"
@@ -85,4 +82,3 @@ def test_detect_anomalies_token_unique_ratio() -> None:
     # characters. Using a threshold between the old and new scores ensures the
     # function now evaluates based on word-level uniqueness.
     assert not detect_anomalies("aaaaaa", threshold=0.48)
-

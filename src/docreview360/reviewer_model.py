@@ -18,9 +18,7 @@ from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session, infer
 from .ml.routing_critic import ROUTING_FEATURE_NAMES, routing_feature_vector
 from .ml.torch_models import TinyCritic, update_critic
 
-_DEFAULT_ROUTING_MODEL = (
-    Path(__file__).resolve().parent / "ml" / "assets" / "routing_reviewer.onnx"
-)
+_DEFAULT_ROUTING_MODEL = Path(__file__).resolve().parent / "ml" / "assets" / "routing_reviewer.onnx"
 _FALLBACK_REVIEWERS: tuple[str, ...] = ("alice", "bob", "charlie")
 _FALLBACK_APPROVAL_WEIGHTS = np.array([0.6, 0.2, -0.3, 0.4, 0.5, 0.1], dtype=np.float32)
 _FALLBACK_APPROVAL_BIAS = -0.1
@@ -48,9 +46,7 @@ def _feature_dict(text: str) -> Dict[str, float]:
 
 @dataclass
 class ReviewerProfile:
-    preferences: Dict[str, float] = field(
-        default_factory=lambda: defaultdict(float)
-    )
+    preferences: Dict[str, float] = field(default_factory=lambda: defaultdict(float))
     decisions: List[bool] = field(default_factory=list)
 
 
@@ -85,9 +81,7 @@ class ReviewerModel:
             session = get_session(self._model_path, providers=providers)
             metadata = get_model_metadata(session)
             reviewers_meta = metadata.custom_metadata.get("docreview360:reviewers", "")
-            reviewers = tuple(
-                filter(None, (name.strip() for name in reviewers_meta.split(",")))
-            )
+            reviewers = tuple(filter(None, (name.strip() for name in reviewers_meta.split(","))))
         except Exception:
             reviewers = _FALLBACK_REVIEWERS
             metadata = ModelMetadata(
@@ -106,9 +100,7 @@ class ReviewerModel:
         self._profiles: Dict[str, ReviewerProfile] = {}
         self._embedding_stats: Dict[str, dict[str, Any]] = {}
         self._feedback_counts: Dict[str, Dict[str, int]] = {}
-        self._latency_buckets: Dict[str, int] = {
-            label: 0 for _, label in _LATENCY_BUCKETS
-        }
+        self._latency_buckets: Dict[str, int] = {label: 0 for _, label in _LATENCY_BUCKETS}
         self._latency_buckets[_LATENCY_DEFAULT] = 0
         for reviewer in reviewers:
             self._ensure_stats(reviewer)
@@ -145,7 +137,7 @@ class ReviewerModel:
         profiles_data = payload.get("profiles")
         if profiles_data is None:
             profiles_data = payload
-        
+
         self._profiles = {
             name: ReviewerProfile(
                 preferences=defaultdict(float, prof.get("preferences", {})),
@@ -173,9 +165,7 @@ class ReviewerModel:
         }
 
         latency = payload.get("latency", {})
-        self._latency_buckets = {
-            label: int(latency.get(label, 0)) for _, label in _LATENCY_BUCKETS
-        }
+        self._latency_buckets = {label: int(latency.get(label, 0)) for _, label in _LATENCY_BUCKETS}
         self._latency_buckets[_LATENCY_DEFAULT] = int(latency.get(_LATENCY_DEFAULT, 0))
 
         for reviewer in self._reviewers:
@@ -222,14 +212,11 @@ class ReviewerModel:
         prof = self._profiles.get(reviewer)
         if not prof or len(prof.decisions) < 2:
             return 1.0
-        same = sum(
-            1
-            for a, b in zip(prof.decisions, prof.decisions[1:])
-            if a == b
-        )
+        same = sum(1 for a, b in zip(prof.decisions, prof.decisions[1:]) if a == b)
         return same / (len(prof.decisions) - 1)
 
         # ------------------------------------------------------------------
+
     # Routing and inference helpers
     # ------------------------------------------------------------------
     def _softmax(self, logits: np.ndarray) -> np.ndarray:
@@ -263,9 +250,7 @@ class ReviewerModel:
         features = routing_feature_vector(text)
         start = perf_counter()
         if self._session is not None:
-            approval_arr, reviewer_logits = infer(
-                self._session, {"input": features.reshape(1, -1)}
-            )
+            approval_arr, reviewer_logits = infer(self._session, {"input": features.reshape(1, -1)})
             approval_likelihood = float(np.clip(approval_arr.squeeze().item(), 0.0, 1.0))
             logits = reviewer_logits.squeeze(0)
         else:
@@ -287,7 +272,7 @@ class ReviewerModel:
             ranked.append((reviewer, prob))
             self._update_embedding(reviewer, features)
         return Recommendation(approval_likelihood, ranked, features)
-        
+
     def route_draft(self, text: str) -> str | None:
         recommendation = self.recommend(text, k=1)
         return recommendation.primary
@@ -314,11 +299,7 @@ class ReviewerModel:
     def anomalous_reviewers(self, threshold: float = 0.2) -> List[str]:
         if not self._profiles:
             return []
-        rates = {
-            r: self.approval_rate(r)
-            for r, prof in self._profiles.items()
-            if prof.decisions
-        }
+        rates = {r: self.approval_rate(r) for r, prof in self._profiles.items() if prof.decisions}
         if not rates:
             return []
         avg = sum(rates.values()) / len(rates)
@@ -368,4 +349,3 @@ def _sigmoid_scalar(value: float) -> float:
         return 1.0 / (1.0 + z)
     z = math.exp(value)
     return z / (1.0 + z)
-        

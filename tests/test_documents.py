@@ -6,8 +6,8 @@ from docreview360.api import app
 from docreview360.audit import clear_audit_log
 from docreview360.documents import (
     autosave_document,
-    import_document,
     get_document_versions,
+    import_document,
 )
 
 

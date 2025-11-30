@@ -5,7 +5,9 @@ import pytest
 import docreview360.backup_panel as panel
 
 
-def test_restore_backup_async_invokes_dependencies(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_restore_backup_async_invokes_dependencies(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     called: dict[str, object] = {}
 
     def fake_restore(path: Path) -> None:
@@ -21,4 +23,3 @@ def test_restore_backup_async_invokes_dependencies(monkeypatch: pytest.MonkeyPat
 
     assert called["path"] == tmp_path
     assert called["task_id"] == 146
-

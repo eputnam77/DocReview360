@@ -24,4 +24,3 @@ def test_render_prompt_missing_context_message() -> None:
     with pytest.raises(ValueError) as exc:
         ai_utils.render_prompt("greet_missing")
     assert str(exc.value) == "Missing placeholder in prompt context: name"
-

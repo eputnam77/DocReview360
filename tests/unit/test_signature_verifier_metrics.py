@@ -3,11 +3,10 @@ from datetime import datetime, timezone
 
 import pytest
 
+import services.signature_verifier as signature_verifier
 from docreview360.approvals import ApprovalModel, approvals
 from docreview360.documents import DocumentModel, documents
 from docreview360.monitoring import VERIFICATION_COUNTER
-
-import services.signature_verifier as signature_verifier
 
 
 def _counter_value(source: str, status: str) -> float:
@@ -21,7 +20,9 @@ def _counter_value(source: str, status: str) -> float:
 class FailingProvider:
     name = "failing"
 
-    def validate_signature(self, document_bytes: bytes, certificate_url: str | None, metadata: dict) -> bool:
+    def validate_signature(
+        self, document_bytes: bytes, certificate_url: str | None, metadata: dict
+    ) -> bool:
         return False
 
 

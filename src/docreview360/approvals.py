@@ -19,7 +19,6 @@ from typing import (
     Mapping,
     NamedTuple,
     Optional,
-    Sequence,
 )
 from urllib.parse import quote, urlparse
 from uuid import uuid4
@@ -36,6 +35,9 @@ from .integrations.signature import get_default_provider, get_default_providers
 if TYPE_CHECKING:
     from .ml.torch_models import TinyCritic
 from .logs import log_event, log_verification_failure
+from .ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES, signature_features
+from .ml.onnx_infer import metadata_to_context
+from .ml.signature_anomaly import score_signature_anomaly
 from .monitoring import (
     APPROVAL_UPLOAD_RETRIES,
     SIGNATURE_ANOMALIES,
@@ -43,13 +45,9 @@ from .monitoring import (
     VERIFICATION_DURATION,
 )
 from .provider_store import set_provider_health
-from .ml.onnx_infer import metadata_to_context
 from .quality import approval_likelihood, quality_model_metadata
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
-
-from .ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES, signature_features
-from .ml.signature_anomaly import score_signature_anomaly
 
 
 @app.task(name="docreview360.approval_reminder")
@@ -296,12 +294,16 @@ def create_approval(
         doc_id=doc_id,
         provider_metadata=approval.provider_metadata,
         scoring_metadata=approval.scoring_metadata,
-        model_version=(approval.scoring_metadata.get("model") or {}).get("version")
-        if isinstance(approval.scoring_metadata.get("model"), dict)
-        else approval.scoring_metadata.get("model_version"),
-        model_sha256=(approval.scoring_metadata.get("model") or {}).get("sha256")
-        if isinstance(approval.scoring_metadata.get("model"), dict)
-        else approval.scoring_metadata.get("model_sha256"),
+        model_version=(
+            (approval.scoring_metadata.get("model") or {}).get("version")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_version")
+        ),
+        model_sha256=(
+            (approval.scoring_metadata.get("model") or {}).get("sha256")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_sha256")
+        ),
     )
     log_audit_event(
         doc_id,
@@ -313,12 +315,16 @@ def create_approval(
         approval_id=approval_id,
         provider_metadata=approval.provider_metadata,
         scoring_metadata=approval.scoring_metadata,
-        model_version=(approval.scoring_metadata.get("model") or {}).get("version")
-        if isinstance(approval.scoring_metadata.get("model"), dict)
-        else approval.scoring_metadata.get("model_version"),
-        model_sha256=(approval.scoring_metadata.get("model") or {}).get("sha256")
-        if isinstance(approval.scoring_metadata.get("model"), dict)
-        else approval.scoring_metadata.get("model_sha256"),
+        model_version=(
+            (approval.scoring_metadata.get("model") or {}).get("version")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_version")
+        ),
+        model_sha256=(
+            (approval.scoring_metadata.get("model") or {}).get("sha256")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_sha256")
+        ),
     )
     if reminder_at:
         app.tasks["docreview360.approval_reminder"].apply_async((approval_id,), eta=reminder_at)
@@ -329,7 +335,7 @@ def create_approval(
     return approval
 
 
-def submit_draft_for_approval(
+def submit_draft_for_approval(  # noqa: C901
     workflow: str,
     reviewer: str | None,
     doc_id: str,
@@ -502,9 +508,7 @@ async def handle_signature_return(  # noqa: C901
         (document.decode("utf-8", errors="ignore") if document is not None else ""),
         approval.provider_metadata,
     )["features"]
-    approval.provider_metadata.setdefault(
-        "docreview360:signature_features", feature_snapshot
-    )
+    approval.provider_metadata.setdefault("docreview360:signature_features", feature_snapshot)
 
     provider = get_provider(approval.signature_provider)
     if not provider.validate_signature(
@@ -533,9 +537,8 @@ async def handle_signature_return(  # noqa: C901
             approval_id=approval.id,
             provider_metadata=approval.provider_metadata,
         )
-        missing_certificate = (
-            feature_snapshot.get("evidence_strength", 0.0) < 0.4
-            and not (certificate_url or approval.certificate_url)
+        missing_certificate = feature_snapshot.get("evidence_strength", 0.0) < 0.4 and not (
+            certificate_url or approval.certificate_url
         )
         explicit_document_supplied = document_param is not None
         fallback_enabled = _allow_signature_validation_fallback()
@@ -1070,7 +1073,7 @@ def _record_signature_anomaly(
         target=target,
     )
     return feature_snapshot
-    
+
 
 def verify_document_signature_stream(  # noqa: C901
     doc_id: str, provider: str | list[str] | None = None
@@ -1145,7 +1148,7 @@ def verify_document_signature_stream(  # noqa: C901
                     provider_valid = True
                     if not aggregate:
                         break
-        
+
         duration = perf_counter() - start_time
         anomaly_features, anomaly_vector = _build_anomaly_features(
             approval,
@@ -1168,7 +1171,9 @@ def verify_document_signature_stream(  # noqa: C901
         escalation_target = None
         if outcome == "escalated":
             escalation_target = approval.escalate_to or _DEFAULT_ANOMALY_ESCALATION_TARGET
-        event_name = "signature_anomaly_detected" if outcome == "escalated" else "signature_anomaly_scored"
+        event_name = (
+            "signature_anomaly_detected" if outcome == "escalated" else "signature_anomaly_scored"
+        )
         log_event(
             event_name,
             approval_id=approval.id,
@@ -1212,7 +1217,7 @@ def verify_document_signature_stream(  # noqa: C901
                 reason="signature_anomaly",
                 anomaly_score=anomaly_score,
             )
-            
+
         yield {
             "approval_id": approval.id,
             "signature_id": approval.signature_id,

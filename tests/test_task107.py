@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from docreview360 import approvals, quality as quality_module
+from docreview360 import approvals
+from docreview360 import quality as quality_module
 from docreview360.quality import (
     QUALITY_FLAG_NAMES,
     explain_score,
@@ -36,7 +37,6 @@ def test_quality_assessment_matches_golden_fixture() -> None:
     assert model_info.sha256 is not None
 
 
-
 def test_quality_assessment_penalises_high_risk_terms() -> None:
     text = _golden_input_text() + " URGENT update required."
     assessment = quality_assessment(text)
@@ -48,7 +48,10 @@ def test_quality_assessment_penalises_high_risk_terms() -> None:
 
 
 def test_explain_score_reports_triggered_flags() -> None:
-    text = "The policy includes long sentences with repeated repeated repeated words and complex structures."
+    text = (
+        "The policy includes long sentences with repeated repeated repeated words and "
+        "complex structures."
+    )
     details = explain_score(text)
     triggered = {name for name, value in details["flags"].items() if value >= 0.7}
 

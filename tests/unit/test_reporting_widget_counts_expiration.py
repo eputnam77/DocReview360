@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
-from docreview360.search import ProjectModel, projects
 from docreview360.reporting import widget_counts
+from docreview360.search import ProjectModel, projects
 
 
 def test_widget_counts_expires_temp_assignments():

@@ -32,11 +32,13 @@ class TestFrontendBackendIntegration:
         client = TestClient(app)
 
         # Add test configuration
-        add_document_type(DocumentTypeModel(
-            name="Test Doc Type",
-            template="<h1>Test</h1>",
-            workflow=["Test Phase"],
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Test Doc Type",
+                template="<h1>Test</h1>",
+                workflow=["Test Phase"],
+            )
+        )
         add_phase("Test Phase")
 
         # Test frontend FormData format mapping
@@ -46,7 +48,7 @@ class TestFrontendBackendIntegration:
             "sme": "John Doe",
             "docType": "Test Doc Type",
             "phase": "Test Phase",
-            "description": "Frontend project description"
+            "description": "Frontend project description",
         }
 
         # Expected backend format
@@ -56,7 +58,7 @@ class TestFrontendBackendIntegration:
             "user": frontend_form_data["sme"],
             "doc_type": frontend_form_data["docType"],
             "phase": frontend_form_data["phase"],
-            "description": frontend_form_data["description"]
+            "description": frontend_form_data["description"],
         }
 
         # Test both formats work
@@ -95,11 +97,7 @@ class TestFrontendBackendIntegration:
         long_name = "A" * 1000  # Very long name
         long_description = "B" * 5000  # Very long description
 
-        long_data = {
-            "id": "long-test",
-            "name": long_name,
-            "description": long_description
-        }
+        long_data = {"id": "long-test", "name": long_name, "description": long_description}
 
         resp = client.post("/projects", json=long_data)
         # Should handle long fields appropriately
@@ -109,7 +107,7 @@ class TestFrontendBackendIntegration:
         special_chars_data = {
             "id": "special-test",
             "name": "Project with special chars: !@#$%^&*()",
-            "description": "Description with <script>alert('xss')</script>"
+            "description": "Description with <script>alert('xss')</script>",
         }
 
         resp = client.post("/projects", json=special_chars_data)
@@ -121,10 +119,7 @@ class TestFrontendBackendIntegration:
         client = TestClient(app)
 
         # Test duplicate project ID
-        project_data = {
-            "id": "duplicate-test",
-            "name": "First Project"
-        }
+        project_data = {"id": "duplicate-test", "name": "First Project"}
 
         # Create first project
         resp = client.post("/projects", json=project_data)
@@ -136,10 +131,7 @@ class TestFrontendBackendIntegration:
         assert resp.status_code in [201, 400, 409]  # 409 for conflict
 
         # Test invalid project ID format
-        invalid_id_data = {
-            "id": "",  # Empty ID
-            "name": "Invalid ID Project"
-        }
+        invalid_id_data = {"id": "", "name": "Invalid ID Project"}  # Empty ID
 
         resp = client.post("/projects", json=invalid_id_data)
         # Should validate ID format
@@ -149,7 +141,7 @@ class TestFrontendBackendIntegration:
         invalid_doc_type_data = {
             "id": "invalid-doc-type",
             "name": "Invalid Doc Type Project",
-            "doc_type": "Non-existent Document Type"
+            "doc_type": "Non-existent Document Type",
         }
 
         resp = client.post("/projects", json=invalid_doc_type_data)
@@ -164,7 +156,7 @@ class TestFrontendBackendIntegration:
         project_data = {
             "id": "response-test",
             "name": "Response Test Project",
-            "description": "Test project for response consistency"
+            "description": "Test project for response consistency",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -205,11 +197,13 @@ class TestFrontendBackendIntegration:
         client = TestClient(app)
 
         # Add test configuration
-        add_document_type(DocumentTypeModel(
-            name="Consistency Test Doc",
-            template="<h1>Consistency</h1>",
-            workflow=["Consistency Phase"],
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Consistency Test Doc",
+                template="<h1>Consistency</h1>",
+                workflow=["Consistency Phase"],
+            )
+        )
         add_phase("Consistency Phase")
 
         # Test document types endpoint
@@ -301,10 +295,7 @@ class TestFrontendBackendIntegration:
         assert isinstance(error_data, dict)
 
         # Test 422 validation error
-        invalid_data = {
-            "id": "",  # Invalid empty ID
-            "name": ""  # Invalid empty name
-        }
+        invalid_data = {"id": "", "name": ""}  # Invalid empty ID  # Invalid empty name
 
         resp = client.post("/projects", json=invalid_data)
         if resp.status_code == 422:

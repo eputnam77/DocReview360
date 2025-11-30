@@ -23,4 +23,3 @@ def test_list_plugins_with_info_returns_copies() -> None:
     original = PLUGIN_DATA[plugin_id]
     assert original["name"] != "changed"
     assert "extra" not in original["tags"]
-

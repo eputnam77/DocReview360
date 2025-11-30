@@ -30,9 +30,7 @@ def test_public_documents_report_filters_non_public_documents() -> None:
 
         report = public_documents_report()
 
-        assert report == [
-            {"id": "doc-public", "source_document_id": "original-id"}
-        ]
+        assert report == [{"id": "doc-public", "source_document_id": "original-id"}]
     finally:
         documents.clear()
         documents.update(original_docs)

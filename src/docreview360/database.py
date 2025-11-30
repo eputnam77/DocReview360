@@ -101,9 +101,7 @@ class Database:
             if url == "sqlite:///:memory:":
                 url = "sqlite+pysqlite:///:memory:"
             connect_args = {"check_same_thread": False}
-            self._engine = create_engine(
-                url, connect_args=connect_args, poolclass=StaticPool
-            )
+            self._engine = create_engine(url, connect_args=connect_args, poolclass=StaticPool)
             # initialize the pool connection and return it so the database
             # persists but no connection remains checked out
             with self._engine.connect() as _:

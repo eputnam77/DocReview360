@@ -37,11 +37,7 @@ def internal_status() -> Dict[str, int]:
     data.update(
         {
             "workflows": _safe_len(getattr(workflows_module, "workflows", [])),
-            "logs": (
-                logs_module.count_logs()
-                if hasattr(logs_module, "count_logs")
-                else 0
-            ),
+            "logs": (logs_module.count_logs() if hasattr(logs_module, "count_logs") else 0),
         }
     )
     return data

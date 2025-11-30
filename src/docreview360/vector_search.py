@@ -40,7 +40,12 @@ def index_document(doc_id: str, content: str) -> None:
     OpenSearch. Any network failure raises ``RuntimeError`` so callers can
     decide whether to retry or fall back to the local index.
     """
-    if not isinstance(doc_id, str) or not doc_id.strip() or not isinstance(content, str) or not content:
+    if (
+        not isinstance(doc_id, str)
+        or not doc_id.strip()
+        or not isinstance(content, str)
+        or not content
+    ):
         raise ValueError("doc_id and content are required strings")
     global _total_docs
     tf = _embed(content)

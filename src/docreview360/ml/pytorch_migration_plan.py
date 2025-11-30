@@ -75,10 +75,8 @@ def _workstreams() -> Iterable[Workstream]:
             "in `docs/ml/compliance_features.schema.json`.",
             "Develop training dataset with labeled compliance outcomes and train "
             "MLP baseline in PyTorch.",
-            "Export classifier to ONNX and publish calibration thresholds for "
-            "workflow guards.",
-            "Integrate ONNX inference into guardrails pipeline replacing FANN "
-            "logic.",
+            "Export classifier to ONNX and publish calibration thresholds for " "workflow guards.",
+            "Integrate ONNX inference into guardrails pipeline replacing FANN " "logic.",
         ],
         tests=[
             "Schema contract test verifying inference payloads conform to "
@@ -108,18 +106,15 @@ def _workstreams() -> Iterable[Workstream]:
             "data, workload indicators) into shared schema.",
             "Prototype gradient-boosted baseline, then implement PyTorch MLP for "
             "production parity.",
-            "Export ONNX model supporting top-k reviewer recommendations and "
-            "latency buckets.",
+            "Export ONNX model supporting top-k reviewer recommendations and " "latency buckets.",
             "Connect routing predictions to reviewer assignment automation and "
             "dashboard visualizations.",
         ],
         tests=[
             "Compare PyTorch predictions against scikit-learn baseline to ensure "
             "performance parity or better.",
-            "Unit test verifying deterministic top-k reviewer ordering for known "
-            "fixtures.",
-            "Integration test covering `/ml/route-reviewer` endpoint with "
-            "simulated workloads.",
+            "Unit test verifying deterministic top-k reviewer ordering for known " "fixtures.",
+            "Integration test covering `/ml/route-reviewer` endpoint with " "simulated workloads.",
         ],
         documentation=[
             "Extend reviewer operations guide with routing score interpretation "
@@ -146,14 +141,12 @@ def _workstreams() -> Iterable[Workstream]:
         ],
         tests=[
             "Replay historical signature anomalies to ensure high recall.",
-            "Unit test confirming deterministic feature encoding for provider "
-            "metadata.",
+            "Unit test confirming deterministic feature encoding for provider " "metadata.",
             "Integration test covering `/ml/score-signature` endpoint and policy "
             "escalation trigger.",
         ],
         documentation=[
-            "Update signature verification runbook with anomaly score response "
-            "procedures.",
+            "Update signature verification runbook with anomaly score response " "procedures.",
             "Add dashboard annotation examples illustrating anomaly distribution "
             "and alerting thresholds.",
         ],
@@ -177,8 +170,7 @@ def _workstreams() -> Iterable[Workstream]:
         tests=[
             "Unit tests covering ONNX loader error handling and caching logic.",
             "Snapshot tests verifying exported model metadata payloads.",
-            "Quantization regression ensuring INT8 exports stay within accuracy "
-            "tolerance.",
+            "Quantization regression ensuring INT8 exports stay within accuracy " "tolerance.",
         ],
         documentation=[
             "Add developer guide outlining training → export workflow and "
@@ -195,10 +187,8 @@ def _workstreams() -> Iterable[Workstream]:
             "signals into model-ready tensors."
         ),
         tasks=[
-            "Version feature schemas and align adapters with JSON schema "
-            "definitions.",
-            "Implement deterministic ordering and normalization for all feature "
-            "vectors.",
+            "Version feature schemas and align adapters with JSON schema " "definitions.",
+            "Implement deterministic ordering and normalization for all feature " "vectors.",
             "Add spaCy and RapidFuzz optional accelerators with graceful fallback.",
             "Expose adapters through CLI for offline inspection and validation.",
         ],
@@ -250,8 +240,7 @@ def _workstreams() -> Iterable[Workstream]:
             "streams for monitoring."
         ),
         tasks=[
-            "Extend metrics pipeline to include critic outputs and model version "
-            "tags.",
+            "Extend metrics pipeline to include critic outputs and model version " "tags.",
             "Backfill historical dashboards with new metrics when available.",
             "Update CSV export and websocket payloads to carry ML scores.",
             "Add anomaly alerts based on score thresholds.",
@@ -277,8 +266,7 @@ def _workstreams() -> Iterable[Workstream]:
         tasks=[
             "Define policy thresholds for each critic (quality, compliance, "
             "routing, signature).",
-            "Integrate thresholds with existing guardrail middleware and event "
-            "notifications.",
+            "Integrate thresholds with existing guardrail middleware and event " "notifications.",
             "Implement override/audit logging when policies are bypassed.",
             "Ensure escalation paths align with security and compliance mandates.",
         ],
@@ -290,8 +278,7 @@ def _workstreams() -> Iterable[Workstream]:
         ],
         documentation=[
             "Document policy mapping matrix linking scores to actions.",
-            "Update compliance and security runbooks with escalation workflow "
-            "steps.",
+            "Update compliance and security runbooks with escalation workflow " "steps.",
         ],
     )
 
@@ -303,8 +290,7 @@ def _workstreams() -> Iterable[Workstream]:
             "commands for the new ML stack."
         ),
         tasks=[
-            "Implement `docreview360 ml-train` to orchestrate PyTorch training "
-            "and ONNX export.",
+            "Implement `docreview360 ml-train` to orchestrate PyTorch training " "and ONNX export.",
             "Add `docreview360 ml-benchmark` for baseline comparisons.",
             "Update `docreview360 validate --ml` to display critic outputs next to "
             "rule-based checks.",

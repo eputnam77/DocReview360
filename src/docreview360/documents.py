@@ -21,7 +21,6 @@ from .audit import log_audit_event
 from .logs import log_event
 from .settings_manager import load_settings
 
-
 DEFAULT_ALLOWED_MIME_TYPES: frozenset[str] = frozenset(
     {
         "text/plain",
@@ -38,8 +37,7 @@ DEFAULT_MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MiB
 # whitelist so Markdown-style HTML headings survive sanitisation while still
 # removing unsafe elements such as ``<script>``.
 _SANITIZE_TAGS: frozenset[str] = frozenset(
-    set(bleach.sanitizer.ALLOWED_TAGS)
-    | {"h1", "h2", "h3", "h4", "h5", "h6", "pre", "code"}
+    set(bleach.sanitizer.ALLOWED_TAGS) | {"h1", "h2", "h3", "h4", "h5", "h6", "pre", "code"}
 )
 
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
@@ -93,9 +91,7 @@ def get_ingestion_pipeline(mime_type: str) -> IngestionPipeline | None:
     return ingestion_registry.get(mime_type)
 
 
-_DOCX_MIME_TYPE = (
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-)
+_DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _PDF_MIME_TYPE = "application/pdf"
 
 
@@ -233,8 +229,6 @@ def next_document_number(project: Optional[str] = None) -> int:
         return num
 
 
-
-
 def _extract_docx_text(data: bytes) -> str:
     """Extract text from a DOCX file using ``python-docx``.
 
@@ -361,9 +355,12 @@ def import_document(
     if mime_type == _PDF_MIME_TYPE:
         if pipeline is None:
             raise ValueError(
-                "no PDF ingestion pipeline available; enable documents.enable_pdf_ingestion or register a custom pipeline"
+                "no PDF ingestion pipeline available; enable documents.enable_pdf_ingestion "
+                "or register a custom pipeline"
             )
-        if pipeline is _default_pdf_ingestion and not doc_settings.get("enable_pdf_ingestion", False):
+        if pipeline is _default_pdf_ingestion and not doc_settings.get(
+            "enable_pdf_ingestion", False
+        ):
             raise ValueError(
                 "PDF ingestion is disabled; set documents.enable_pdf_ingestion to true"
             )

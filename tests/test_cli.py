@@ -224,9 +224,7 @@ def test_migrate_roundtrip(tmp_path: Path) -> None:
     import_document(test_filename, test_content.encode())
     log_event(test_event)
     add_document_type(
-        DocumentTypeModel(
-            name=test_doc_type_name, template=test_template, workflow=["Phase"]
-        )
+        DocumentTypeModel(name=test_doc_type_name, template=test_template, workflow=["Phase"])
     )
 
     # Verify initial state.  The logging subsystem may record additional

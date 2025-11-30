@@ -1,7 +1,8 @@
 import pytest
+from fastapi.testclient import TestClient
+
 from docreview360.api import app
 from docreview360.documents import DocumentModel, documents
-from fastapi.testclient import TestClient
 
 pytest.importorskip("y_py")
 from y_py import YDoc, apply_update, encode_state_as_update
@@ -14,9 +15,10 @@ def test_yjs_collaboration_real_time() -> None:
 
     client = TestClient(app)
 
-    with client.websocket_connect(f"/collab/{doc_id}") as ws1, client.websocket_connect(
-        f"/collab/{doc_id}"
-    ) as ws2:
+    with (
+        client.websocket_connect(f"/collab/{doc_id}") as ws1,
+        client.websocket_connect(f"/collab/{doc_id}") as ws2,
+    ):
         # Initialize local YDocs with server state
         doc1, doc2 = YDoc(), YDoc()
         apply_update(doc1, ws1.receive_bytes())

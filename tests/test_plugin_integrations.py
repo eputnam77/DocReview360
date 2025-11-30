@@ -1,6 +1,6 @@
+import importlib
 from pathlib import Path
 from types import SimpleNamespace
-import importlib
 
 from docreview360.plugin_integrations import (
     PluginManager,
@@ -22,6 +22,7 @@ def test_plugin_manager_without_plugins(tmp_path):
 
 def test_plugin_manager_with_plugins(tmp_path):
     pm = PluginManager()
+
     # stub language tool
     class Match:
         ruleId = "RULE"
@@ -96,6 +97,7 @@ def test_plugin_manager_with_plugins(tmp_path):
 
 def test_extract_pdf_text_handles_none(tmp_path):
     pm = PluginManager()
+
     # Create a reader whose page returns ``None`` from ``extract_text``
     class DummyReader:
         def __init__(self, fh) -> None:

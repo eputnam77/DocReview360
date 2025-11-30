@@ -85,9 +85,7 @@ def _validate_workflow(doc_type: DocumentTypeModel) -> None:
     try:
         _WorkflowPayload.model_validate({"workflow": doc_type.workflow})
     except ValidationError as exc:  # pragma: no cover - defensive
-        raise ValidationError.from_exception_data(
-            DocumentTypeModel.__name__, exc.errors()
-        ) from exc
+        raise ValidationError.from_exception_data(DocumentTypeModel.__name__, exc.errors()) from exc
 
 
 # In-memory store
@@ -104,6 +102,7 @@ _ACTIVE_DATA_FILE: Path = DATA_FILE
 
 class StaleStateError(RuntimeError):
     """Raised when attempting to persist stale in-memory document type data."""
+
 
 # Default phases per document type
 DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {

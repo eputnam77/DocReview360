@@ -22,7 +22,7 @@ PLUGIN_DATA = {
         "version": "2.7.1",
         "author": "LanguageTool",
         "tags": ["grammar", "spelling", "style", "multilingual", "corrections"],
-        "pypi_name": "language-tool-python"
+        "pypi_name": "language-tool-python",
     },
     "pylanguagetool": {
         "name": "PyLanguageTool",
@@ -35,7 +35,7 @@ PLUGIN_DATA = {
         "version": "1.0.0",
         "author": "Adrien Vergé",
         "tags": ["grammar", "language", "text-analysis", "writing"],
-        "pypi_name": "pylanguagetool"
+        "pypi_name": "pylanguagetool",
     },
     "textstat": {
         "name": "TextStat",
@@ -48,7 +48,7 @@ PLUGIN_DATA = {
         "version": "0.7.3",
         "author": "Shivam Bansal",
         "tags": ["readability", "statistics", "analysis", "metrics"],
-        "pypi_name": "textstat"
+        "pypi_name": "textstat",
     },
     "pypdf2": {
         "name": "PyPDF2",
@@ -61,7 +61,7 @@ PLUGIN_DATA = {
         "version": "3.0.1",
         "author": "PyPDF2 Contributors",
         "tags": ["pdf", "extraction", "manipulation", "metadata"],
-        "pypi_name": "PyPDF2"
+        "pypi_name": "PyPDF2",
     },
     "python-docx": {
         "name": "Python-docx",
@@ -74,7 +74,7 @@ PLUGIN_DATA = {
         "version": "1.1.0",
         "author": "Steve Canny",
         "tags": ["word", "docx", "templates", "extraction"],
-        "pypi_name": "python-docx"
+        "pypi_name": "python-docx",
     },
     "markdown": {
         "name": "Markdown",
@@ -86,7 +86,7 @@ PLUGIN_DATA = {
         "version": "3.5.2",
         "author": "Python Markdown",
         "tags": ["markdown", "html", "conversion", "formatting"],
-        "pypi_name": "markdown"
+        "pypi_name": "markdown",
     },
     "beautifulsoup4": {
         "name": "Beautiful Soup 4",
@@ -98,7 +98,7 @@ PLUGIN_DATA = {
         "version": "4.12.2",
         "author": "Leonard Richardson",
         "tags": ["html", "xml", "parsing", "extraction", "cleaning"],
-        "pypi_name": "beautifulsoup4"
+        "pypi_name": "beautifulsoup4",
     },
     "nltk": {
         "name": "Natural Language Toolkit",
@@ -111,7 +111,7 @@ PLUGIN_DATA = {
         "version": "3.8.1",
         "author": "NLTK Team",
         "tags": ["nlp", "tokenization", "analysis", "language-processing"],
-        "pypi_name": "nltk"
+        "pypi_name": "nltk",
     },
     "spacy": {
         "name": "spaCy",
@@ -124,7 +124,7 @@ PLUGIN_DATA = {
         "version": "3.7.2",
         "author": "Explosion AI",
         "tags": ["nlp", "entity-recognition", "parsing", "classification"],
-        "pypi_name": "spacy"
+        "pypi_name": "spacy",
     },
     "reportlab": {
         "name": "ReportLab",
@@ -137,7 +137,7 @@ PLUGIN_DATA = {
         "version": "4.0.7",
         "author": "ReportLab",
         "tags": ["pdf", "generation", "reports", "charts"],
-        "pypi_name": "reportlab"
+        "pypi_name": "reportlab",
     },
     "weasyprint": {
         "name": "WeasyPrint",
@@ -150,7 +150,7 @@ PLUGIN_DATA = {
         "version": "60.2",
         "author": "WeasyPrint",
         "tags": ["pdf", "html", "css", "conversion"],
-        "pypi_name": "weasyprint"
+        "pypi_name": "weasyprint",
     },
     "python-docx-replace": {
         "name": "Python-docx-replace",
@@ -163,8 +163,8 @@ PLUGIN_DATA = {
         "version": "1.0.0",
         "author": "Ivan Burlutskiy",
         "tags": ["templates", "word", "generation", "placeholders"],
-        "pypi_name": "python-docx-replace"
-    }
+        "pypi_name": "python-docx-replace",
+    },
 }
 
 
