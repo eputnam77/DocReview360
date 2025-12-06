@@ -1,0 +1,262 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    # Run every night at 2:00 AM EST (7:00 AM UTC)
+    # Note: EST is UTC-5, but during daylight saving (EDT) it's UTC-4
+    # Using 7 AM UTC to cover both standard and daylight saving time
+    - cron: "0 7 * * *"
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: write # Required to push branches/commits
+  pull-requests: write # Required to create PRs (if allowed by repo/org policy)
+
+jobs:
+  nightly-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60 # Prevent hanging jobs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache Poetry and virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Install dependencies
+        run: |
+          poetry install --with dev --no-interaction
+          # Install PyGithub for failure handling script (not in poetry.lock)
+          pip install PyGithub
+
+      - name: Run backend tests and capture output
+        id: backend_test
+        shell: bash
+        continue-on-error: true
+        run: |
+          # Disable "exit on error" so we can always record pytest's exit code
+          set +e
+          poetry run pytest -q --tb=short -v tests > backend_test_output.log 2>&1
+          TEST_EXIT=$?
+          echo "exit_code=${TEST_EXIT}" >> "$GITHUB_OUTPUT"
+          # Re-enable -e for subsequent steps
+          set -e
+
+      - name: Run security scans
+        id: security_scan
+        shell: bash
+        continue-on-error: true
+        run: |
+          set +e
+          echo "Running security scans..."
+          poetry run bandit -r src -lll --skip B101 > security_scan_output.log 2>&1
+          poetry run python scripts/run-pip-audit.py >> security_scan_output.log 2>&1
+          SCAN_EXIT=$?
+          echo "exit_code=${SCAN_EXIT}" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Set up Node for frontend tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests and capture output
+        id: frontend_test
+        working-directory: frontend
+        shell: bash
+        continue-on-error: true
+        run: |
+          set +e
+          npm test -- --run > ../frontend_test_output.log 2>&1
+          TEST_EXIT=$?
+          echo "exit_code=${TEST_EXIT}" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Combine test outputs
+        if: always()
+        run: |
+          echo "==================== Backend Test Output ====================" > test_output.log
+          if [ -f backend_test_output.log ]; then
+            cat backend_test_output.log >> test_output.log
+          else
+            echo "No backend_test_output.log found" >> test_output.log
+          fi
+          echo "" >> test_output.log
+          echo "==================== Frontend Test Output ====================" >> test_output.log
+          if [ -f frontend_test_output.log ]; then
+            cat frontend_test_output.log >> test_output.log
+          else
+            echo "No frontend_test_output.log found" >> test_output.log
+          fi
+          echo "" >> test_output.log
+          echo "==================== Security Scan Output ====================" >> test_output.log
+          if [ -f security_scan_output.log ]; then
+            cat security_scan_output.log >> test_output.log
+          else
+            echo "No security_scan_output.log found" >> test_output.log
+          fi
+          echo "=========================================================" >> test_output.log
+
+      - name: Show combined test log
+        if: always()
+        run: |
+          echo "==================== Combined Test Output ===================="
+          if [ -f test_output.log ]; then
+            cat test_output.log
+          else
+            echo "No test_output.log found"
+          fi
+          echo "========================================================="
+
+      - name: Upload test log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-test-logs
+          path: |
+            test_output.log
+            backend_test_output.log
+            frontend_test_output.log
+            security_scan_output.log
+
+      - name: Check test results
+        id: check_results
+        run: |
+          BACKEND_FAILED=false
+          FRONTEND_FAILED=false
+          SECURITY_FAILED=false
+
+          if [ "${{ steps.backend_test.outputs.exit_code }}" != "0" ]; then
+            BACKEND_FAILED=true
+          fi
+
+          if [ "${{ steps.frontend_test.outputs.exit_code }}" != "0" ]; then
+            FRONTEND_FAILED=true
+          fi
+
+          if [ "${{ steps.security_scan.outputs.exit_code }}" != "0" ]; then
+            SECURITY_FAILED=true
+          fi
+
+          if [ "$BACKEND_FAILED" = "true" ] || [ "$FRONTEND_FAILED" = "true" ] || [ "$SECURITY_FAILED" = "true" ]; then
+            echo "tests_failed=true" >> "$GITHUB_OUTPUT"
+            echo "backend_failed=$BACKEND_FAILED" >> "$GITHUB_OUTPUT"
+            echo "frontend_failed=$FRONTEND_FAILED" >> "$GITHUB_OUTPUT"
+            echo "security_failed=$SECURITY_FAILED" >> "$GITHUB_OUTPUT"
+          else
+            echo "tests_failed=false" >> "$GITHUB_OUTPUT"
+            echo "backend_failed=false" >> "$GITHUB_OUTPUT"
+            echo "frontend_failed=false" >> "$GITHUB_OUTPUT"
+            echo "security_failed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate machine-readable failure summary
+        if: steps.check_results.outputs.tests_failed == 'true'
+        run: |
+          poetry run python - << 'EOF'
+          import json
+          from pathlib import Path
+
+          failures = {
+              "backend": {"failures": [], "log_file": "backend_test_output.log"},
+              "frontend": {"failures": [], "log_file": "frontend_test_output.log"},
+              "security": {"failures": [], "log_file": "security_scan_output.log"},
+          }
+
+          for category in ["backend", "frontend", "security"]:
+              log_path = Path(failures[category]["log_file"])
+              if not log_path.exists():
+                  continue
+
+              text = log_path.read_text(errors="ignore")
+
+              if category == "backend":
+                  # Parse pytest output
+                  for line in text.splitlines():
+                      if line.startswith("FAILED "):
+                          parts = line.split("FAILED ", 1)[1].split(" - ", 1)
+                          nodeid = parts[0].strip()
+                          error_summary = parts[1].strip() if len(parts) > 1 else ""
+                          failures[category]["failures"].append({
+                              "nodeid": nodeid,
+                              "error_summary": error_summary,
+                              "raw_line": line.strip(),
+                          })
+              elif category == "frontend":
+                  # Parse test output (Vitest format)
+                  for line in text.splitlines():
+                      if "FAIL" in line or "Error:" in line:
+                          failures[category]["failures"].append({
+                              "raw_line": line.strip(),
+                          })
+              elif category == "security":
+                  # Parse security scan output
+                  for line in text.splitlines():
+                      if "VULNERABILITY" in line.upper() or "HIGH" in line.upper() or "CRITICAL" in line.upper():
+                          failures[category]["failures"].append({
+                              "raw_line": line.strip(),
+                          })
+
+          summary = {
+              "backend_failed": "${{ steps.check_results.outputs.backend_failed }}" == "true",
+              "frontend_failed": "${{ steps.check_results.outputs.frontend_failed }}" == "true",
+              "security_failed": "${{ steps.check_results.outputs.security_failed }}" == "true",
+              "failures": failures,
+              "total_backend_failures": len(failures["backend"]["failures"]),
+              "total_frontend_failures": len(failures["frontend"]["failures"]),
+              "total_security_issues": len(failures["security"]["failures"]),
+          }
+
+          Path("nightly_failures.json").write_text(
+              json.dumps(summary, indent=2),
+              encoding="utf-8",
+          )
+          EOF
+
+      - name: Upload failure summary artifact
+        if: steps.check_results.outputs.tests_failed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-failures
+          path: nightly_failures.json
+
+      - name: Process failures and create PR
+        if: steps.check_results.outputs.tests_failed == 'true'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          poetry run python .github/scripts/handle_test_failures.py
+
+      - name: Fail workflow if tests failed
+        if: steps.check_results.outputs.tests_failed == 'true'
+        run: |
+          echo "Tests failed; failing workflow."
+          exit 1
