@@ -178,7 +178,8 @@ jobs:
           fi
 
       - name: Generate machine-readable failure summary
-        if: steps.check_results.outputs.tests_failed == 'true'
+        if: ${{ always() && steps.check_results.outputs.tests_failed == 'true' }}
+        continue-on-error: true
         run: |
           poetry run python - << 'EOF'
           import json
@@ -241,14 +242,14 @@ jobs:
           EOF
 
       - name: Upload failure summary artifact
-        if: steps.check_results.outputs.tests_failed == 'true'
+        if: ${{ always() && steps.check_results.outputs.tests_failed == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: nightly-failures
           path: nightly_failures.json
 
       - name: Process failures and create PR
-        if: steps.check_results.outputs.tests_failed == 'true'
+        if: ${{ always() && steps.check_results.outputs.tests_failed == 'true' }}
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -256,7 +257,7 @@ jobs:
           poetry run python .github/scripts/handle_test_failures.py
 
       - name: Fail workflow if tests failed
-        if: steps.check_results.outputs.tests_failed == 'true'
+        if: ${{ always() && steps.check_results.outputs.tests_failed == 'true' }}
         run: |
           echo "Tests failed; failing workflow."
           exit 1
