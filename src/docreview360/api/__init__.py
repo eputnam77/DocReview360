@@ -612,7 +612,6 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
 
     # Clear all project-related caches to ensure fresh data
     clear_cache()
-    print(f"DEBUG: Project '{project.id}' created successfully, cache cleared")
     log_event(
         "create_project",
         user_id=project.user,
