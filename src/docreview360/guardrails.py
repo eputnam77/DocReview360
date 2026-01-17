@@ -24,7 +24,7 @@ class GuardrailThresholds:
 
     min_quality_score: float = 0.8
     quality_flag_threshold: float = 0.85
-    min_compliance_probability: float = 0.5
+    min_compliance_probability: float = 0.25
     auto_assign_editor: str | None = None
     auto_assign_quality_below: float | None = None
     auto_assign_compliance_below: float | None = None
