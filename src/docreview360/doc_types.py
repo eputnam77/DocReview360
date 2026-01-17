@@ -71,6 +71,8 @@ class _WorkflowPayload(BaseModel):
     @field_validator("workflow")
     @classmethod
     def ensure_non_empty(cls, value: List[str]) -> List[str]:
+        if not value:
+            raise ValueError("Workflow must include at least one phase")
         for phase in value:
             if not isinstance(phase, str) or not phase.strip():
                 raise ValueError("Workflow phases must be non-empty strings")
