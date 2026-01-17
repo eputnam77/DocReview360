@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import sys
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
@@ -18,6 +19,8 @@ import docreview360.auth as auth
 def fresh_auth() -> auth:
     """Reload the auth module so environment overrides take effect."""
 
+    if sys.modules.get(auth.__name__) is not auth:
+        sys.modules[auth.__name__] = auth
     module = importlib.reload(auth)
     password = module.DEMO_USER_DEFAULTS["alice"]["password"]
     otp_secret = module.DEMO_USER_DEFAULTS["alice"].get("otp_secret")
