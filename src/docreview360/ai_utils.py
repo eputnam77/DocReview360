@@ -23,11 +23,8 @@ from .guardrails import (
     guardrail_quality_assessment,
     load_guardrail_thresholds,
 )
-from .ml.features import (
-    FANN_FEATURE_NAMES,
-    count_syllables,
-    quality_features,
-)
+from .ml import features as ml_features
+from .ml.features import FANN_FEATURE_NAMES, count_syllables, quality_features
 
 # Backwards-compatible alias for tests patching GovDocVerify integration.
 try:  # pragma: no cover - defensive re-export
@@ -40,6 +37,23 @@ def _count_syllables(word: str) -> int:
     """Backward compatible alias for :func:`docreview360.ml.features.count_syllables`."""
 
     return count_syllables(word)
+
+
+def style_guide_score(text: str) -> float:
+    """Return a style score using the configured GovDocVerify hook when available."""
+
+    original_gov_run = ml_features._gov_run
+    ml_features._gov_run = _gov_run
+    try:
+        return ml_features.style_guide_score(text)
+    finally:
+        ml_features._gov_run = original_gov_run
+
+
+def structural_pattern_score(text: str) -> float:
+    """Return a structure score based on headings and list markers."""
+
+    return ml_features.structural_pattern_score(text)
 
 
 if TYPE_CHECKING:
