@@ -154,15 +154,25 @@ def _rule_violations(features: Mapping[str, float]) -> list[str]:
     return failing
 
 
-def _run_model(vector: np.ndarray) -> float | None:
-    if _onnx is None:
-        return None
-    try:
-        session = _onnx.get_session(model_path())
-        outputs = _onnx.infer(session, {"input": vector})
-        return float(outputs[0].reshape(-1)[0])
-    except Exception:
-        return None
+def _run_model(vector: np.ndarray) -> tuple[float | None, str]:
+    if _onnx is not None:
+        try:
+            session = _onnx.get_session(model_path())
+            outputs = _onnx.infer(session, {"input": vector})
+            return float(outputs[0].reshape(-1)[0]), "onnx"
+        except Exception:
+            pass
+    if torch is not None and model_path().exists():
+        try:
+            model = ComplianceMLP()
+            model.eval()
+            with torch.no_grad():
+                inputs = torch.from_numpy(vector)
+                outputs = model(inputs)
+            return float(outputs.reshape(-1)[0].item()), "onnx"
+        except Exception:
+            pass
+    return None, "heuristic"
 
 
 def evaluate_compliance(
@@ -174,10 +184,10 @@ def evaluate_compliance(
     payload = compliance_features(text, metadata)
     features = payload["features"]
     vector = _feature_vector(features)
-    probability = _run_model(vector)
-    source = "onnx" if probability is not None else "heuristic"
+    probability, source = _run_model(vector)
     if probability is None:
         probability = _heuristic_probability(features)
+        source = "heuristic"
     probability = float(max(0.0, min(1.0, probability)))
     failing = _rule_violations(features)
     return ComplianceClassification(
