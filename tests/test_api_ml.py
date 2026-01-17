@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import types
+from importlib.machinery import ModuleSpec
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,7 @@ def _fake_get_session(path: str | Path, *, providers: Any | None = None) -> _Fak
 
 
 _fake_ort = types.ModuleType("onnxruntime")
+_fake_ort.__spec__ = ModuleSpec("onnxruntime", loader=None)
 _fake_ort.get_available_providers = lambda: ["CPUExecutionProvider"]
 _fake_ort.InferenceSession = _FakeSession
 sys.modules["onnxruntime"] = _fake_ort
