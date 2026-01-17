@@ -64,15 +64,13 @@ class DocumentTypeModel(BaseModel):
 
 
 class _WorkflowPayload(BaseModel):
-    """Validation shim to enforce non-empty workflow definitions."""
+    """Validation shim to enforce valid workflow phase values."""
 
     workflow: List[str]
 
     @field_validator("workflow")
     @classmethod
     def ensure_non_empty(cls, value: List[str]) -> List[str]:
-        if not value:
-            raise ValueError("Document types must include at least one workflow phase")
         for phase in value:
             if not isinstance(phase, str) or not phase.strip():
                 raise ValueError("Workflow phases must be non-empty strings")
@@ -80,7 +78,7 @@ class _WorkflowPayload(BaseModel):
 
 
 def _validate_workflow(doc_type: DocumentTypeModel) -> None:
-    """Raise :class:`ValidationError` if ``doc_type`` lacks workflow phases."""
+    """Raise :class:`ValidationError` if ``doc_type`` has invalid workflow phases."""
 
     try:
         _WorkflowPayload.model_validate({"workflow": doc_type.workflow})
