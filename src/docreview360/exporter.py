@@ -251,14 +251,6 @@ def export_document(  # noqa: C901
     canonical_fmt = _canonical_format(fmt)
     limit = _get_export_size_limit(canonical_fmt)
     sanitized_content = sanitize_content(document.content)
-    diagnostics = _record_guardrails_diagnostics(sanitized_content)
-    if diagnostics.blocked:
-        raise ValueError("Content failed critic guardrails validation")
-    if guardrails_checker is not None:
-        if guardrails_checker(sanitized_content):
-            raise ValueError("Content failed guardrails validation")
-    elif sanitized_content != document.content:
-        raise ValueError("Content failed built-in guardrails validation")
     template = name_template or "{id}"
     base = _render_template(template, document)
     if fmt in ("markdown", "md"):
@@ -350,11 +342,19 @@ def export_document(  # noqa: C901
             ):
                 _raise_export_size_error(document, canonical_fmt, buffer_limit, buffer.tell())
             data = buffer.getvalue()
-            _ensure_size_within_limit(document, canonical_fmt, buffer_limit, len(data))
+        _ensure_size_within_limit(document, canonical_fmt, buffer_limit, len(data))
         media = "application/pdf"
         name = f"{base}.pdf"
     else:
         raise ValueError(f"Unsupported format: {fmt}")
+    diagnostics = _record_guardrails_diagnostics(sanitized_content)
+    if diagnostics.blocked:
+        raise ValueError("Content failed critic guardrails validation")
+    if guardrails_checker is not None:
+        if guardrails_checker(sanitized_content):
+            raise ValueError("Content failed guardrails validation")
+    elif sanitized_content != document.content:
+        raise ValueError("Content failed built-in guardrails validation")
     return data, media, name
 
 
