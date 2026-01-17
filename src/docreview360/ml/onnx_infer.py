@@ -47,6 +47,16 @@ def _hash_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _read_custom_metadata(path: Path) -> dict[str, str]:
+    try:
+        import onnx
+    except ModuleNotFoundError:
+        return {}
+
+    model = onnx.load_model(path)
+    return {item.key: item.value for item in model.metadata_props}
+
+
 def _prepare_providers(providers: Sequence[str] | None) -> list[str]:
     requested = list(providers) if providers else list(_DEFAULT_PROVIDERS)
     available = set(ort.get_available_providers())
@@ -112,11 +122,15 @@ def get_model_metadata(
             return cached
 
     meta = session.get_modelmeta()
+    custom_metadata = _read_custom_metadata(path)
+    if not custom_metadata:
+        custom_metadata = dict(meta.custom_metadata_map or {})
+
     info = ModelMetadata(
         path=path,
         sha256=_hash_file(path),
         version=meta.graph_name or meta.version,  # prefer descriptive names
-        custom_metadata=dict(meta.custom_metadata_map or {}),
+        custom_metadata=custom_metadata,
     )
 
     with _LOCK:

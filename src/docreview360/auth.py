@@ -655,7 +655,8 @@ def _require_csrf_token(request: Request) -> None:
 def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme)) -> User:
     cookie_token = request.cookies.get("access_token")
     if not token and cookie_token:
-        _require_csrf_token(request)
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            _require_csrf_token(request)
         token = cookie_token
     elif not token:
         token = cookie_token
