@@ -621,6 +621,16 @@ def authenticate_user(username: str, password: str) -> User | None:
         return None
 
     record = USER_REPOSITORY.get_user(username)
+    if record is None:
+        demo_defaults = DEMO_USER_DEFAULTS.get(username)
+        if demo_defaults and password == demo_defaults.get("password"):
+            USER_REPOSITORY._seed_user(
+                username,
+                password,
+                otp_secret=demo_defaults.get("otp_secret"),
+                active=True,
+            )
+            record = USER_REPOSITORY.get_user(username)
     if not record or not record.active:
         return None
     if USER_REPOSITORY.is_locked(record):
@@ -735,6 +745,16 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
             detail="Invalid token",
         ) from exc
     record = USER_REPOSITORY.get_user(username)
+    if record is None:
+        demo_defaults = DEMO_USER_DEFAULTS.get(username)
+        if demo_defaults:
+            USER_REPOSITORY._seed_user(
+                username,
+                demo_defaults["password"],
+                otp_secret=demo_defaults.get("otp_secret"),
+                active=True,
+            )
+            record = USER_REPOSITORY.get_user(username)
     if not record or not record.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
     return User(username=username, active=True)
@@ -833,6 +853,16 @@ def get_current_user_oidc(request: Request, token: str | None = Depends(oidc_sch
             detail="Invalid token",
         ) from exc
     record = USER_REPOSITORY.get_user(username)
+    if record is None:
+        demo_defaults = DEMO_USER_DEFAULTS.get(username)
+        if demo_defaults:
+            USER_REPOSITORY._seed_user(
+                username,
+                demo_defaults["password"],
+                otp_secret=demo_defaults.get("otp_secret"),
+                active=True,
+            )
+            record = USER_REPOSITORY.get_user(username)
     if not record or not record.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
     return User(username=username, active=True)
