@@ -196,6 +196,11 @@ def test_users_me_endpoint() -> None:
     assert resp.status_code == 404  # This endpoint doesn't exist, should return 404
 
     # Test the correct endpoint that does exist
+    auth.USER_REPOSITORY.create_user(
+        "alice",
+        auth.DEMO_USER_DEFAULTS["alice"]["password"],
+        otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+    )
     token = auth.create_access_token({"sub": "alice"})
     resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
