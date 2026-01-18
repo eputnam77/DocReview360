@@ -11,14 +11,14 @@ def test_document_type_crud_via_api(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "doc_types.json")
     doc_types.document_types.clear()
 
-    payload = {"name": "APIType", "template": "", "workflow": ["Draft"]}
+    payload = {"name": "APIType", "template": "", "workflow": []}
     r = client.post("/document-types", json=payload)
     assert r.status_code == 201
 
     assert any(d["name"] == "APIType" for d in client.get("/document-types").json())
     assert client.get("/document-types/APIType").json()["name"] == "APIType"
 
-    update = {"name": "APITypeRenamed", "template": "", "workflow": ["Draft"]}
+    update = {"name": "APITypeRenamed", "template": "", "workflow": []}
     r = client.put("/document-types/APIType", json=update)
     assert r.json()["name"] == "APITypeRenamed"
 
