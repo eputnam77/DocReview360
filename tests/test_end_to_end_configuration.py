@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
 from docreview360.phases import _phases, add_phase
 from docreview360.workflows import create_workflow, workflows
 
@@ -20,12 +20,12 @@ class TestEndToEndConfigurationFlow:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
         yield
         # Cleanup
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 
@@ -117,7 +117,7 @@ class TestEndToEndConfigurationFlow:
         assert resp.status_code == 201
 
         # Update configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
 
         add_document_type(
@@ -248,7 +248,7 @@ class TestEndToEndConfigurationFlow:
         client = TestClient(app)
 
         # Test with corrupted configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 

@@ -91,6 +91,26 @@ def _validate_workflow(doc_type: DocumentTypeModel) -> None:
 # In-memory store
 document_types: Dict[str, DocumentTypeModel] = {}
 
+
+def reset_document_types() -> None:
+    """Clear document types and reset persistence metadata."""
+
+    global _STATE_VERSION, _STATE_UPDATED_AT, _ACTIVE_DATA_FILE
+
+    document_types.clear()
+    _STATE_VERSION = 0
+    _STATE_UPDATED_AT = None
+    _ACTIVE_DATA_FILE = DATA_FILE
+
+    if not DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        return
+    try:
+        DATA_FILE.unlink(missing_ok=True)
+    except OSError:
+        # If the file cannot be removed (e.g., permissions), keep going with the
+        # in-memory reset so tests and in-process updates are not blocked.
+        pass
+
 # Track persisted version metadata for optimistic locking
 _STATE_VERSION: int = 0
 _STATE_UPDATED_AT: str | None = None
@@ -628,15 +648,30 @@ def export_document_types_json() -> str:
 
 def import_document_types_json(data: str) -> None:
     """Load document types from a JSON string and persist."""
+    previous_state = dict(document_types)
+    previous_version = _STATE_VERSION
+    previous_updated_at = _STATE_UPDATED_AT
+    previous_active_file = _ACTIVE_DATA_FILE
+
     _ensure_current_store_loaded()
     expected_version = _STATE_VERSION
-    previous_state = dict(document_types)
+
+    def _restore_previous() -> None:
+        document_types.clear()
+        document_types.update(previous_state)
+        global _STATE_VERSION, _STATE_UPDATED_AT, _ACTIVE_DATA_FILE
+        _STATE_VERSION = previous_version
+        _STATE_UPDATED_AT = previous_updated_at
+        _ACTIVE_DATA_FILE = previous_active_file
+
     try:
         payload = json.loads(data)
     except json.JSONDecodeError as exc:
+        _restore_previous()
         raise ValueError("Invalid JSON payload") from exc
 
     if not isinstance(payload, list):
+        _restore_previous()
         raise ValueError("JSON must contain a list of document types")
 
     temp: dict[str, DocumentTypeModel] = {}
@@ -645,8 +680,10 @@ def import_document_types_json(data: str) -> None:
             doc = DocumentTypeModel(**item)
             _validate_workflow(doc)
         except ValidationError as exc:
+            _restore_previous()
             raise ValueError(f"Invalid document type entry: {item}") from exc
         if doc.name in temp and temp[doc.name].model_dump() != doc.model_dump():
+            _restore_previous()
             raise ValueError(f"Duplicate document type '{doc.name}' in import payload")
         temp[doc.name] = doc
     document_types.clear()
@@ -655,8 +692,7 @@ def import_document_types_json(data: str) -> None:
         try:
             save_state(expected_version=expected_version)
         except Exception:
-            document_types.clear()
-            document_types.update(previous_state)
+            _restore_previous()
             raise
 
 
