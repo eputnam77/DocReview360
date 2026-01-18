@@ -12,7 +12,7 @@ from docreview360.doc_types import (
 
 
 def test_document_type_import_export(tmp_path) -> None:
-    doc = DocumentTypeModel(name="policy", template="<h1>Policy</h1>")
+    doc = DocumentTypeModel(name="policy", template="<h1>Policy</h1>", workflow=["Phase"])
     add_document_type(doc)
     export_file = tmp_path / "types.json"
     export_document_types(export_file)

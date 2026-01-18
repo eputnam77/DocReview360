@@ -20,6 +20,46 @@ from docreview360.monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
 from docreview360.settings_manager import load_settings
 
 
+def _process_approval(
+    approval: ApprovalModel,
+    document_ids_set: set[str],
+    scope: str,
+    batch_id: str,
+) -> tuple[int, str | None]:
+    """Validate the signature for ``approval`` and record the outcome."""
+    if approval.certificate_url is None:
+        return 0, None
+    if not document_ids_set and scope != "all" and approval.state != scope:
+        return 0, None
+    if document_ids_set and approval.document_id not in document_ids_set:
+        return 0, None
+    document = documents.get(approval.document_id)
+    if document is None:
+        return 0, None
+    document_bytes = document.content.encode("utf-8")
+    current_hash = hashlib.sha256(document_bytes).hexdigest()
+    hash_valid = approval.document_hash is None or current_hash == approval.document_hash
+    provider = get_provider(approval.signature_provider)
+    try:
+        valid = provider.validate_signature(
+            document_bytes, approval.certificate_url, approval.provider_metadata
+        )
+    except Exception:
+        valid = False
+    log_audit_event(
+        approval.document_id,
+        "signature_validation",
+        approval_id=approval.id,
+        provider=approval.signature_provider,
+        document_hash=current_hash,
+        signature_valid=valid,
+        hash_valid=hash_valid,
+        batch_id=batch_id,
+    )
+    status = "success" if valid and hash_valid else "failure"
+    return 1, status
+
+
 def verify_document_signatures(
     scope: str = "approved",
     document_ids: list[str] | None = None,
@@ -53,9 +93,9 @@ def verify_document_signatures(
 
     # The background verification task typically runs as the ``system`` user
     # which should always possess the required permission.  Some tests mutate
-    # ``rbac.USER_ROLES`` and forget to restore the default mapping leaving the
-    # system account without any roles.  Ensure the account retains its admin
-    # role before performing the permission check.
+    # the role assignments and forget to restore the default mapping leaving
+    # the system account without any roles.  Ensure the account retains its
+    # admin role before performing the permission check.
     if username == "system" and not rbac.has_role("system", "admin"):
         rbac.add_role("system", "admin")
 
@@ -73,45 +113,24 @@ def verify_document_signatures(
     if document_ids is not None and not document_ids_set:
         return 0
 
-    def _process(approval: ApprovalModel) -> int:
-        if approval.certificate_url is None:
-            return 0
-        if not document_ids_set and scope != "all" and approval.state != scope:
-            return 0
-        if document_ids_set and approval.document_id not in document_ids_set:
-            return 0
-        document = documents.get(approval.document_id)
-        if document is None:
-            return 0
-        document_bytes = document.content.encode("utf-8")
-        current_hash = hashlib.sha256(document_bytes).hexdigest()
-        hash_valid = approval.document_hash is None or current_hash == approval.document_hash
-        provider = get_provider(approval.signature_provider)
-        valid = provider.validate_signature(
-            document_bytes, approval.certificate_url, approval.provider_metadata
-        )
-        log_audit_event(
-            approval.document_id,
-            "signature_validation",
-            approval_id=approval.id,
-            provider=approval.signature_provider,
-            document_hash=current_hash,
-            signature_valid=valid,
-            hash_valid=hash_valid,
-            batch_id=batch_id,
-        )
-        return 1
+    def _process(approval: ApprovalModel) -> tuple[int, str | None]:
+        return _process_approval(approval, document_ids_set, scope, batch_id)
 
     with VERIFICATION_DURATION.labels("background").time():
         approvals_iter = list(approvals.values())
+        results: list[tuple[int, str | None]]
         if parallel:
             with ThreadPoolExecutor() as pool:
-                count = sum(pool.map(_process, approvals_iter))
+                results = list(pool.map(_process, approvals_iter))
         else:
-            count = 0
-            for approval in approvals_iter:
-                count += _process(approval)
-    VERIFICATION_COUNTER.labels("background", "success").inc(count)
+            results = [_process(approval) for approval in approvals_iter]
+    count = sum(processed for processed, _ in results)
+    success = sum(1 for processed, status in results if processed and status == "success")
+    failure = sum(1 for processed, status in results if processed and status == "failure")
+    if success:
+        VERIFICATION_COUNTER.labels("background", "success").inc(success)
+    if failure:
+        VERIFICATION_COUNTER.labels("background", "failure").inc(failure)
     return count
 
 

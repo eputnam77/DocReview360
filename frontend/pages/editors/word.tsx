@@ -9,9 +9,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+export function createWordTemplateApi(fetcher: typeof authenticatedFetch = authenticatedFetch) {
+  return {
+    listTemplates: () => fetcher(`${API}/templates`),
+  } as const;
+}
 
 interface WordTemplate {
   id: string;
@@ -67,8 +73,11 @@ export default function WordEditorPage() {
     });
   }, []);
 
+  const api = useMemo(() => createWordTemplateApi(), []);
+
   useEffect(() => {
-    fetch(`${API}/templates`)
+    api
+      .listTemplates()
       .then(r => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         const wordTemps = data.filter(
@@ -84,7 +93,7 @@ export default function WordEditorPage() {
         setAllTemplates([]);
         setTemplates([]);
       });
-  }, []);
+  }, [api]);
 
   // Handle template selection
   const handleTemplateSelect = (templateId: string) => {

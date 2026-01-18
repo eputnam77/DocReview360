@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
@@ -12,11 +13,26 @@ TEMPLATES_DIR = Path("templates/golden")
 
 
 def save_template(name: str, content: str, root: Path = TEMPLATES_DIR) -> Path:
-    """Save ``content`` under ``name`` in ``root`` and return the path."""
-    if not name:
+    """Save ``content`` under ``name`` in ``root`` and return the path.
+
+    ``name`` previously accepted arbitrary strings which allowed directory
+    traversal like ``"../evil"`` or subdirectory components such as
+    ``"foo/bar"``.  This could write files outside the intended template
+    directory.  Restrict names to simple file stems by validating with
+    :class:`pathlib.Path` and rejecting any values that resolve to multiple
+    parts or special references.  Names consisting solely of whitespace were
+    also inadvertently accepted, creating files that were awkward to manage.
+    """
+
+    if not isinstance(name, str) or not name.strip():
         raise ValueError("name is required")
+
+    stem = Path(name.strip())
+    if stem.is_absolute() or len(stem.parts) != 1 or stem.parts[0] in {"..", "."}:
+        raise ValueError("name must be a simple file name")
+
     root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{name}.md"
+    path = root / f"{stem.name}.md"
     path.write_text(content)
     record_task_completion(143)
     return path
@@ -50,12 +66,14 @@ def upload_template(
 
     if not name:
         raise ValueError("name is required")
+    if metadata is not None and not isinstance(metadata, dict):
+        raise ValueError("metadata must be a mapping")
     versions = _template_store.setdefault(name, [])
     version = len(versions) + 1
     record = TemplateVersion(
         version=version,
         content=data,
-        metadata=(metadata.copy() if metadata else {}),
+        metadata=(deepcopy(metadata) if metadata else {}),
     )
     versions.append(record)
     return record

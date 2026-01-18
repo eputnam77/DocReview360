@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Table,
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/state/user";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 // The Project type: extend as needed
 interface Project {
@@ -79,41 +79,128 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
+// Demo project data - matches the demo project in project detail page
+const DEMO_PROJECT: Project = {
+  id: "123e-ac-101",
+  number: "AC 20-197",
+  document_number: "AC 20-197",
+  type: "Advisory Circular",
+  title: "Turbine Engine and Airframe Sensor Icing Compliance",
+  status: "In Progress",
+  progress: 40,
+  updated: "2025-07-04",
+  user: "Jane Doe",
+  currentPhaseId: "Review",
+};
+
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
+  const [viewMode, setViewMode] = useState<"assigned" | "all">("assigned");
   const username = useUserStore((s) => s.username);
+  const isAdmin = useUserStore((s) => s.isAdmin);
 
   useEffect(() => {
-    // Pass the current user to the API call to filter projects
-    authenticatedFetch(`${API}/projects?user=${encodeURIComponent(username)}`)
+    setViewMode(isAdmin ? "all" : "assigned");
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!username) {
+      setProjects([]);
+      return;
+    }
+
+    const endpoint = isAdmin
+      ? "/projects"
+      : `/projects?user=${encodeURIComponent(username)}`;
+
+    authenticatedFetch(endpoint)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: any) =>
-        setProjects(
-          Array.isArray(data)
-            ? data.map((p: any) => ({
-                ...p,
-                currentPhaseId: p.current_phase_id ?? p.phase ?? null,
-              }))
-            : [],
-        ),
-      )
-      .catch(() => setProjects([]));
-  }, [username]);
+      .then((data: any) => {
+        const fetchedProjects = Array.isArray(data)
+          ? data.map((p: any) => ({
+              ...p,
+              currentPhaseId: p.current_phase_id ?? p.phase ?? null,
+            }))
+          : [];
 
-  // Calculate simple stats for this user
-  const statAssigned = projects.length;
-  const statInProgress = projects.filter(
-    (p) => p.status?.toLowerCase() === "in progress"
+        // Add demo project to the list (always include it)
+        const allProjects = [...fetchedProjects];
+        // Check if demo project already exists to avoid duplicates
+        const demoExists = allProjects.some((p) => p.id === DEMO_PROJECT.id);
+        if (!demoExists) {
+          allProjects.unshift(DEMO_PROJECT);
+        }
+
+        setProjects(allProjects);
+      })
+      .catch(() => {
+        // Even on error, show the demo project
+        setProjects([DEMO_PROJECT]);
+      });
+  }, [isAdmin, username]);
+
+  const isAssignedToUser = useMemo(
+    () =>
+      function isAssigned(project: Project) {
+        if (!username) {
+          return false;
+        }
+
+        const normalized = username.toLowerCase();
+        const directMatches = [
+          project.user,
+          (project as any).owner,
+          (project as any).assigned_to,
+          (project as any).assignee,
+        ];
+
+        if (
+          directMatches.some(
+            (value) =>
+              typeof value === "string" && value.toLowerCase() === normalized,
+          )
+        ) {
+          return true;
+        }
+
+        const listMatches = (project as any).assignees;
+        if (Array.isArray(listMatches)) {
+          return listMatches.some(
+            (value) =>
+              typeof value === "string" && value.toLowerCase() === normalized,
+          );
+        }
+
+        return false;
+      },
+    [username],
+  );
+
+  const assignedProjects = useMemo(
+    () => projects.filter((project) => isAssignedToUser(project)),
+    [isAssignedToUser, projects],
+  );
+
+  const visibleProjects = useMemo(() => {
+    if (isAdmin && viewMode === "assigned") {
+      return assignedProjects;
+    }
+    return projects;
+  }, [assignedProjects, isAdmin, projects, viewMode]);
+
+  const statAssigned = visibleProjects.length;
+  const statInProgress = visibleProjects.filter(
+    (p) => p.status?.toLowerCase() === "in progress",
   ).length;
-  const statCompleted = projects.filter(
-    (p) => p.status?.toLowerCase() === "complete"
+  const statCompleted = visibleProjects.filter(
+    (p) => p.status?.toLowerCase() === "complete",
   ).length;
-  const statOverdue = projects.filter(
-    (p) => p.status?.toLowerCase() === "overdue"
+  const statOverdue = visibleProjects.filter(
+    (p) => p.status?.toLowerCase() === "overdue",
   ).length;
 
-  const sorted = [...projects].sort((a, b) => {
+  const sorted = [...visibleProjects].sort((a, b) => {
     const av = (a as any)[sortKey] ?? "";
     const bv = (b as any)[sortKey] ?? "";
     if (typeof av === "number" && typeof bv === "number") return av - bv;
@@ -123,13 +210,33 @@ export default function ProjectList() {
   return (
     <div className="p-8 space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          Projects Assigned to Me
+          {isAdmin && viewMode === "all"
+            ? "All Projects"
+            : "Projects Assigned to Me"}
         </h1>
-        <Button asChild>
-          <Link href="/projects/new">Create New Project</Link>
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === "all" ? "default" : "outline"}
+                onClick={() => setViewMode("all")}
+              >
+                All Projects
+              </Button>
+              <Button
+                variant={viewMode === "assigned" ? "default" : "outline"}
+                onClick={() => setViewMode("assigned")}
+              >
+                Assigned to Me
+              </Button>
+            </div>
+          )}
+          <Button asChild>
+            <Link href="/projects/new">Create New Project</Link>
+          </Button>
+        </div>
       </div>
 
       {/* KPI Stat Row */}
@@ -204,48 +311,56 @@ export default function ProjectList() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.map((p) => (
-            <TableRow
-              key={p.id}
-              className="border-t last:border-none hover:bg-gray-50"
-            >
-              <TableCell className="font-mono text-xs">
-                <Link
-                  className="underline text-indigo-700"
-                  href={`/projects/${p.id}`}
-                >
-                  {p.id.slice(0, 8)}...
-                </Link>
-              </TableCell>
-              <TableCell className="font-mono text-sm">
-                {p.document_number || p.number}
-              </TableCell>
-              <TableCell>{p.type}</TableCell>
-              <TableCell>{p.title}</TableCell>
-              <TableCell>
-                <span
-                  className={cn(
-                    "px-2 py-1 rounded text-xs font-medium",
-                    p.status === "Complete"
-                      ? "bg-green-100 text-green-800"
-                      : p.status === "In Progress"
-                      ? "bg-blue-100 text-blue-800"
-                      : p.status === "Draft"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : p.status === "Overdue"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-700"
-                  )}
-                >
-                  {p.status || "Unknown"}
-                </span>
-              </TableCell>
-              <TableCell className="min-w-[100px] w-32">
-                <ProgressBar value={p.progress} />
-              </TableCell>
-              <TableCell>{p.updated?.slice(0, 10) ?? ""}</TableCell>
-            </TableRow>
-          ))}
+          {sorted.map((p) => {
+            const isMine = isAssignedToUser(p);
+            return (
+              <TableRow
+                key={p.id}
+                className={cn(
+                  "border-t last:border-none transition-colors",
+                  isMine
+                    ? "bg-indigo-50/60 hover:bg-indigo-100"
+                    : "hover:bg-gray-50",
+                )}
+              >
+                <TableCell className="font-mono text-xs">
+                  <Link
+                    className="underline text-indigo-700"
+                    href={`/projects/${p.id}`}
+                  >
+                    {p.id.slice(0, 8)}...
+                  </Link>
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {p.document_number || p.number}
+                </TableCell>
+                <TableCell>{p.type}</TableCell>
+                <TableCell>{p.title}</TableCell>
+                <TableCell>
+                  <span
+                    className={cn(
+                      "px-2 py-1 rounded text-xs font-medium",
+                      p.status === "Complete"
+                        ? "bg-green-100 text-green-800"
+                        : p.status === "In Progress"
+                          ? "bg-blue-100 text-blue-800"
+                          : p.status === "Draft"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : p.status === "Overdue"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-700",
+                    )}
+                  >
+                    {p.status || "Unknown"}
+                  </span>
+                </TableCell>
+                <TableCell className="min-w-[100px] w-32">
+                  <ProgressBar value={p.progress} />
+                </TableCell>
+                <TableCell>{p.updated?.slice(0, 10) ?? ""}</TableCell>
+              </TableRow>
+            );
+          })}
           {sorted.length === 0 && (
             <TableRow>
               <TableCell colSpan={7} className="text-center text-gray-400 py-6">

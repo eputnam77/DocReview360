@@ -23,11 +23,35 @@ every environment so the editor can connect to Word:
 1. **Local development** – open Word, choose *Insert → Add-ins → Upload My
    Add-in* and select the DocReview360 manifest.
 2. **Staging / production** – deploy the same manifest through your Microsoft 365
-   admin centre or a SharePoint catalog so that all users receive the add-in.
+   admin center or a SharePoint catalog so that all users receive the add-in.
 3. **Office Online** – sideload the manifest from the browser's *Add-ins* menu or
    use centralised deployment.
 
 After the add-in is installed, restart Word and the editor will load normally.
+
+## Deploying the ONNX model
+
+The Docker image bundles ONNX Runtime so you can ship the AI classifier alongside
+the API service without extra infrastructure. A typical CPU deployment mounts a
+model package created by `docreview360 ml package` and wires the following
+variables:
+
+```bash
+DOCREVIEW360_ML_MODEL_DIR=/app/artifacts/packages/2024-05-01_120000
+DOCREVIEW360_ML_PROVIDER=cpu
+DOCREVIEW360_ML_THREADS=$(nproc)
+```
+
+The worker detects additional providers when the right libraries are present:
+
+| Provider | Requirement | Notes |
+| --- | --- | --- |
+| `CUDAExecutionProvider` | NVIDIA drivers + CUDA toolkit | Optional—falls back to CPU when GPU is absent. |
+| `CoreMLExecutionProvider` | macOS 13+ with Apple Silicon | Ideal for Apple Silicon dev machines. |
+| `OpenVINOExecutionProvider` | Intel OpenVINO runtime | Helps squeeze extra throughput on Xeon hosts. |
+
+If no provider can be initialised, DocReview360 refuses to start and surfaces a
+clear error in the worker logs. See **Troubleshooting** below for quick fixes.
 
 ## Secret management
 
@@ -43,3 +67,78 @@ vault:
 When configured, provider modules such as the OpenAI and SharePoint clients pull
 their tokens from the vault. If no vault is configured, the application falls
 back to environment variables like `OPENAI_KEY` or `SHAREPOINT_TOKEN`.
+
+## Role permissions
+
+Role-to-permission mappings are sourced from `settings.yaml`.  See
+[`docs/rbac_configuration.md`](./rbac_configuration.md) for guidance on updating
+the matrix and using the CLI helpers to inspect or modify roles.
+
+## Documenso circuit breaker
+
+The Documenso connector automatically pauses remote requests after repeated
+HTTP failures and falls back to the in-memory stub. Tune the circuit breaker via
+environment variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCUMENSO_FAILURE_THRESHOLD` | `3` | Number of consecutive HTTP errors allowed within the window. |
+| `DOCUMENSO_FAILURE_WINDOW_SECONDS` | `60` | Rolling time window used to evaluate failures. |
+| `DOCUMENSO_FAILURE_COOLDOWN_SECONDS` | `300` | Duration to wait before attempting to recover the remote integration. |
+
+While the breaker is open the `SIGNATURE_FAILURES` counter exposes the HTTP
+failure reason in its `reason` label and `providers.yaml` is updated with
+`documenso.healthy: false`. Once the upstream service is stable you can
+re-enable Documenso by either editing `providers.yaml` to mark the provider as
+healthy or by running the helper below from the project root:
+
+```bash
+poetry run python - <<'PY'
+from docreview360.provider_store import set_provider_health
+
+set_provider_health("documenso", True)
+PY
+```
+
+The breaker automatically resets after the cooldown period, but manually
+flipping the health flag lets operators restore the remote provider immediately
+after verifying that Documenso is back online.
+
+## Troubleshooting inference deployments
+
+### "No suitable execution provider" errors
+
+1. Confirm the ONNX Runtime build supports your architecture. The Docker image
+   ships with the CPU build, so GPU providers are disabled unless you replace
+   the wheel.
+2. Verify that `DOCREVIEW360_ML_PROVIDER` matches one of the providers listed by
+   `docreview360 ml info`.
+3. Delete stale cached models in `/tmp/docreview360/ml/` if you recently
+   switched providers—this forces the runtime to reload the graph.
+
+### Apple Silicon & CPU-only environments
+
+- Prefer the `CoreMLExecutionProvider` locally (`DOCREVIEW360_ML_PROVIDER=coreml`),
+  but leave production to `cpu` unless you are building a macOS-only stack.
+- Install the [onnxruntime-silicon](https://pypi.org/project/onnxruntime-silicon/)
+  wheel when developing outside Docker; it bundles ARM64 optimisations.
+- Skip GPU-only quantisation modes. Both dynamic and static INT8 pipelines run
+  entirely on CPUs and keep parity with x86 servers.
+- Use `docreview360 ml export --opset 18 --quantize dynamic` to ship a single
+  artifact that behaves consistently across Intel, AMD, and Apple chips.
+
+## Responding to audit log corruption alerts
+
+The audit subsystem raises an ``audit_log_corruption_detected`` event whenever a
+malformed or tampered entry is encountered. When the event fires DocReview360
+automatically replays the SharePoint integrity task and re-hashes the audit log
+segments so the append-only anchor store stays in sync. Operators should:
+
+1. Inspect the audit log tail (`tail -n50 src/docreview360/audit.log`) to confirm
+   the offending entry.
+2. Review the SharePoint verification task result in the worker logs to ensure
+   document hashes match expectations.
+3. Export the refreshed anchors from ``tamper_proof_store/`` for offline
+   comparison if a regulatory review is underway.
+4. Open an incident if the corruption originated from an unexpected source or if
+   anchors diverge after the automated recovery.

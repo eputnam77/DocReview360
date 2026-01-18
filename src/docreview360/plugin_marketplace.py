@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import subprocess
 import sys
 from typing import Any
@@ -21,7 +22,7 @@ PLUGIN_DATA = {
         "version": "2.7.1",
         "author": "LanguageTool",
         "tags": ["grammar", "spelling", "style", "multilingual", "corrections"],
-        "pypi_name": "language-tool-python"
+        "pypi_name": "language-tool-python",
     },
     "pylanguagetool": {
         "name": "PyLanguageTool",
@@ -34,7 +35,7 @@ PLUGIN_DATA = {
         "version": "1.0.0",
         "author": "Adrien Vergé",
         "tags": ["grammar", "language", "text-analysis", "writing"],
-        "pypi_name": "pylanguagetool"
+        "pypi_name": "pylanguagetool",
     },
     "textstat": {
         "name": "TextStat",
@@ -47,7 +48,7 @@ PLUGIN_DATA = {
         "version": "0.7.3",
         "author": "Shivam Bansal",
         "tags": ["readability", "statistics", "analysis", "metrics"],
-        "pypi_name": "textstat"
+        "pypi_name": "textstat",
     },
     "pypdf2": {
         "name": "PyPDF2",
@@ -60,7 +61,7 @@ PLUGIN_DATA = {
         "version": "3.0.1",
         "author": "PyPDF2 Contributors",
         "tags": ["pdf", "extraction", "manipulation", "metadata"],
-        "pypi_name": "PyPDF2"
+        "pypi_name": "PyPDF2",
     },
     "python-docx": {
         "name": "Python-docx",
@@ -73,7 +74,7 @@ PLUGIN_DATA = {
         "version": "1.1.0",
         "author": "Steve Canny",
         "tags": ["word", "docx", "templates", "extraction"],
-        "pypi_name": "python-docx"
+        "pypi_name": "python-docx",
     },
     "markdown": {
         "name": "Markdown",
@@ -85,7 +86,7 @@ PLUGIN_DATA = {
         "version": "3.5.2",
         "author": "Python Markdown",
         "tags": ["markdown", "html", "conversion", "formatting"],
-        "pypi_name": "markdown"
+        "pypi_name": "markdown",
     },
     "beautifulsoup4": {
         "name": "Beautiful Soup 4",
@@ -97,7 +98,7 @@ PLUGIN_DATA = {
         "version": "4.12.2",
         "author": "Leonard Richardson",
         "tags": ["html", "xml", "parsing", "extraction", "cleaning"],
-        "pypi_name": "beautifulsoup4"
+        "pypi_name": "beautifulsoup4",
     },
     "nltk": {
         "name": "Natural Language Toolkit",
@@ -110,7 +111,7 @@ PLUGIN_DATA = {
         "version": "3.8.1",
         "author": "NLTK Team",
         "tags": ["nlp", "tokenization", "analysis", "language-processing"],
-        "pypi_name": "nltk"
+        "pypi_name": "nltk",
     },
     "spacy": {
         "name": "spaCy",
@@ -123,7 +124,7 @@ PLUGIN_DATA = {
         "version": "3.7.2",
         "author": "Explosion AI",
         "tags": ["nlp", "entity-recognition", "parsing", "classification"],
-        "pypi_name": "spacy"
+        "pypi_name": "spacy",
     },
     "reportlab": {
         "name": "ReportLab",
@@ -136,7 +137,7 @@ PLUGIN_DATA = {
         "version": "4.0.7",
         "author": "ReportLab",
         "tags": ["pdf", "generation", "reports", "charts"],
-        "pypi_name": "reportlab"
+        "pypi_name": "reportlab",
     },
     "weasyprint": {
         "name": "WeasyPrint",
@@ -149,7 +150,7 @@ PLUGIN_DATA = {
         "version": "60.2",
         "author": "WeasyPrint",
         "tags": ["pdf", "html", "css", "conversion"],
-        "pypi_name": "weasyprint"
+        "pypi_name": "weasyprint",
     },
     "python-docx-replace": {
         "name": "Python-docx-replace",
@@ -162,31 +163,57 @@ PLUGIN_DATA = {
         "version": "1.0.0",
         "author": "Ivan Burlutskiy",
         "tags": ["templates", "word", "generation", "placeholders"],
-        "pypi_name": "python-docx-replace"
-    }
+        "pypi_name": "python-docx-replace",
+    },
 }
 
 
 def list_available() -> list[str]:
     """Return the list of installable packages."""
-    return list(PLUGIN_DATA.keys())
+    return sorted(PLUGIN_DATA.keys())
 
 
 def get_plugin_info(name: str) -> dict[str, Any] | None:
-    """Get detailed information about a specific plugin."""
-    return PLUGIN_DATA.get(name)
+    """Get detailed information about a specific plugin.
+
+    Returning the raw metadata dictionary exposes the internal ``PLUGIN_DATA``
+    mapping to accidental mutation by callers.  In tests this manifested when a
+    consumer modified the returned structure and permanently altered the
+    catalogue.  To keep the registry immutable from the outside we return a deep
+    copy so callers can freely manipulate the result without affecting the
+    stored definition.
+    """
+
+    info = PLUGIN_DATA.get(name)
+    if info is None:
+        return None
+    return copy.deepcopy(info)
 
 
 def list_plugins_with_info() -> list[dict[str, Any]]:
     """Return detailed information about all available plugins."""
+    # ``PLUGIN_DATA`` stores the canonical metadata for each plugin. Returning
+    # the raw dictionaries leaks internal state to callers who might
+    # accidentally mutate the module level constants.  Tests simulate such
+    # modification and previously observed that updating a returned plugin dict
+    # changed ``PLUGIN_DATA`` itself.  To avoid these side effects we return
+    # deep copies so callers can safely manipulate the result without affecting
+    # the catalog.
     return [
-        {"id": plugin_id, **plugin_info}
+        {"id": plugin_id, **copy.deepcopy(plugin_info)}
         for plugin_id, plugin_info in PLUGIN_DATA.items()
     ]
 
 
 def install_plugin(name: str) -> None:
     """Install a plugin via ``pip``."""
+    # Reject names consisting solely of whitespace which previously slipped
+    # through the ``not name`` check and produced a confusing "Unknown plugin"
+    # error instead of indicating that the caller failed to provide a real
+    # identifier.
+    if not isinstance(name, str):
+        raise TypeError("name must be a string")
+    name = name.strip()
     if not name:
         raise ValueError("name is required")
 

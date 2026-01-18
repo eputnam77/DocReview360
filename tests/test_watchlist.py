@@ -1,9 +1,9 @@
+import importlib
 import json
 from importlib import reload
 from pathlib import Path
 from typing import Any
 
-import importlib
 import pytest
 from fastapi.testclient import TestClient
 

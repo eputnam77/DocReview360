@@ -26,7 +26,9 @@ def check_provider_health() -> Dict[str, bool]:
     return results
 
 
-check_provider_health_task = app.task(name="docreview360.check_provider_health")(check_provider_health)
+check_provider_health_task = app.task(name="docreview360.check_provider_health")(
+    check_provider_health
+)
 
 
 def schedule_provider_health_checks(interval_minutes: int = 5) -> None:

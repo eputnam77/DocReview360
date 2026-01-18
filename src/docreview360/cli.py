@@ -5,10 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
+import yaml
 
+from . import ml, rbac
 from .config import CONFIG_FILE, Config
 from .database import default_url
 from .migration import export_instance, import_instance
+from .settings_manager import load_settings
 
 
 @click.group()
@@ -138,6 +141,140 @@ def migrate() -> None:
     return None
 
 
+@cli.group(name="ml")
+def ml_group() -> None:
+    """Machine learning utilities for critic models."""
+
+    return None
+
+
+@ml_group.command(name="train")
+@click.argument("corpus", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("output", type=click.Path(dir_okay=False, path_type=Path))
+@click.option(
+    "--critic",
+    type=click.Choice(sorted(ml.critic_builders.keys())),
+    default="clarity",
+    show_default=True,
+    help="Critic architecture to train.",
+)
+@click.option(
+    "--update",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Existing torch weights to fine-tune instead of fresh training.",
+)
+@click.option(
+    "--validation",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Optional CSV corpus used to report validation accuracy.",
+)
+@click.option(
+    "--min-accuracy",
+    type=float,
+    default=0.0,
+    show_default=True,
+    help="Minimum acceptable validation accuracy (0-1).",
+)
+@click.option("--quantize/--no-quantize", default=False, show_default=True)
+@click.option(
+    "--metadata",
+    type=(str, str),
+    multiple=True,
+    help="Extra metadata key/value pairs to embed in the ONNX artefact.",
+)
+def ml_train(
+    corpus: Path,
+    output: Path,
+    critic: str,
+    update: Path | None,
+    validation: Path | None,
+    min_accuracy: float,
+    quantize: bool,
+    metadata: tuple[tuple[str, str], ...],
+) -> None:
+    """Train or update a critic model from labelled CSV data."""
+
+    if not 0.0 <= min_accuracy <= 1.0:
+        raise click.BadParameter(
+            "--min-accuracy must be between 0 and 1", param_hint="--min-accuracy"
+        )
+
+    extra_metadata = {key: value for key, value in metadata}
+    try:
+        result = ml.train_critic_from_csv(
+            corpus,
+            output,
+            critic_name=critic,
+            update_path=update,
+            quantize=quantize,
+            metadata=extra_metadata,
+            validation_path=validation,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"Saved torch weights to {result.weights_path}")
+    click.echo(f"Saved ONNX model to {result.onnx_path} (sha256={result.onnx_sha256})")
+
+    if result.validation is not None:
+        message = ml.format_validation_report(result.validation)
+        click.echo(message)
+        if result.validation.accuracy < min_accuracy:
+            raise click.ClickException(
+                (
+                    f"Validation accuracy {result.validation.accuracy:.2%} "
+                    f"is below --min-accuracy {min_accuracy:.2%}"
+                )
+            )
+
+
+@ml_group.command(name="benchmark")
+@click.argument("model", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--runs", type=int, default=10, show_default=True)
+@click.option("--batch-size", type=int, default=32, show_default=True)
+def ml_benchmark(model: Path, runs: int, batch_size: int) -> None:
+    """Run a quick CPU benchmark against an exported ONNX critic."""
+
+    try:
+        result = ml.benchmark_onnx_cpu(model, runs=runs, batch_size=batch_size)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - defensive
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(
+        (
+            "Average latency: "
+            f"{result.average_ms:.3f} ms (min={result.min_ms:.3f} ms, "
+            f"max={result.max_ms:.3f} ms) over {result.runs} run(s) "
+            f"@ batch_size={result.batch_size}"
+        )
+    )
+
+
+@cli.command()
+@click.option(
+    "--ml",
+    "ml_models",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    multiple=True,
+    help="Path(s) to ONNX artefacts to inspect.",
+)
+def validate(ml_models: tuple[Path, ...]) -> None:
+    """Run validation checks across configuration and ML artefacts."""
+
+    if not ml_models:
+        click.echo("No validation checks requested.")
+        return
+
+    for model_path in ml_models:
+        try:
+            summary = ml.summarize_model(model_path)
+        except Exception as exc:  # pragma: no cover - defensive
+            raise click.ClickException(str(exc)) from exc
+        click.echo(ml.format_model_summary(summary))
+
+
 @migrate.command()
 @click.argument("path")
 def export(path: str) -> None:
@@ -155,6 +292,90 @@ def import_cmd(path: str) -> None:  # "import" is a keyword
         click.echo("Import completed")
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+@cli.group()
+def rbac_admin() -> None:
+    """Manage role definitions stored in ``settings.yaml``."""
+
+    return None
+
+
+@rbac_admin.command("show")
+def rbac_show() -> None:
+    """Display the current role to permission mapping."""
+
+    rbac.reload_role_permissions(force=True)
+    mapping = rbac.get_role_permissions()
+    if not mapping:
+        click.echo("No roles defined")
+        return
+    for role in sorted(mapping):
+        permissions = ", ".join(sorted(mapping[role])) or "(no permissions)"
+        click.echo(f"{role}: {permissions}")
+
+
+@rbac_admin.command("set-role")
+@click.argument("role")
+@click.option(
+    "--permission",
+    "permissions",
+    multiple=True,
+    help="Permission to assign to the role (repeat for multiple).",
+)
+@click.option(
+    "--config-path",
+    default=lambda: str(rbac.settings_manager.SETTINGS_FILE),
+    show_default=True,
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Path to the settings file storing role definitions.",
+)
+@click.option(
+    "--merge/--replace",
+    default=False,
+    show_default=True,
+    help="Merge with existing permissions instead of replacing them.",
+)
+def rbac_set_role(
+    role: str,
+    permissions: tuple[str, ...],
+    config_path: Path,
+    merge: bool,
+) -> None:
+    """Update or create ``role`` with the supplied permissions."""
+
+    normalized_role = role.strip().lower()
+    if not normalized_role:
+        raise click.BadParameter("Role name must not be empty", param_hint="role")
+
+    normalized_permissions = {perm.strip().lower() for perm in permissions if perm.strip()}
+
+    settings = load_settings(config_path)
+    rbac_config = settings.setdefault("rbac", {})
+    roles_config = rbac_config.setdefault("roles", {})
+    existing: list[str] = []
+    if merge and normalized_role in roles_config:
+        current = roles_config[normalized_role]
+        if isinstance(current, dict):
+            candidate = current.get("permissions", [])
+        else:
+            candidate = current
+        if isinstance(candidate, str):
+            existing = [candidate]
+        elif isinstance(candidate, list):
+            existing = [str(item) for item in candidate]
+        elif isinstance(candidate, tuple):
+            existing = [str(item) for item in candidate]
+    normalized_permissions.update(perm.strip().lower() for perm in existing if perm)
+    roles_config[normalized_role] = sorted(normalized_permissions)
+
+    try:
+        config_path.write_text(yaml.safe_dump(settings, sort_keys=True))
+    except OSError as exc:  # pragma: no cover - defensive
+        raise click.ClickException(f"Failed to update settings: {exc}") from exc
+
+    rbac.reload_role_permissions(force=True)
+    click.echo(f"Updated role '{normalized_role}' with {len(normalized_permissions)} permission(s)")
 
 
 @cli.group()

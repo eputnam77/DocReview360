@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def _ensure_repo(repo: Path, branch: str, remote: Path | None) -> None:
-    """Initialise ``repo`` as a git repository if needed.
+    """Initialize ``repo`` as a git repository if needed.
 
     Optionally sets the ``remote`` URL and creates ``branch`` if the
     repository didn't exist. This avoids re-running ``git init`` for
@@ -52,7 +52,11 @@ def pull_document(name: str, repo: Path, remote: Path | None = None, branch: str
     """
     if remote:
         if not (repo / ".git").exists():
-            _run(["git", "clone", str(remote), str(repo)], repo.parent)
+            # ``git clone`` fails when the destination directory's parent does
+            # not exist.  Ensure the path is created so callers may request
+            # nested repository locations without manual setup.
+            repo.parent.mkdir(parents=True, exist_ok=True)
+            _run(["git", "clone", "-b", branch, str(remote), str(repo)], repo.parent)
         else:
             _run(["git", "pull", "origin", branch], repo)
     dest = repo / name

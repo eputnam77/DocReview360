@@ -19,6 +19,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -42,6 +43,7 @@ from ..ai_balancer import load_state as load_worker_state
 from ..ai_balancer import save_state as save_worker_state
 from ..approvals import (
     ApprovalModel,
+    SignedApprovalImmutableError,
     build_approvals_summary_pdf,
     create_approval,
     get_approval,
@@ -60,7 +62,7 @@ from ..archive import (
 from ..audit import AuditLogEntry, get_audit_log, log_audit_event
 from ..cache import cache_get, cache_set, clear_cache
 from ..cms import save_to_cms
-from ..comments import CommentModel, add_comment, list_comments
+from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..doc_types import (
@@ -75,6 +77,7 @@ from ..doc_types import (
 )
 from ..documenso import (
     complete_signature,
+    register_stub_signature,
     signature_status,
 )
 from ..documents import (
@@ -108,6 +111,7 @@ from ..reporting import (
     generate_summary,
     manager_dashboard,
     user_dashboard,
+    WidgetMetrics,
     widget_counts,
 )
 from ..search import (
@@ -150,10 +154,12 @@ from ..workflows import (
     get_workflow,
     list_workflows,
     start_workflow,
+    workflow_templates,
     workflows,
     list_roles,
 )
 from .approvals import router as approvals_router
+from .ml import router as ml_router, warm_ml_sessions
 from .webhooks import router as webhooks_router
 
 # Load environment variables from .env file
@@ -296,7 +302,7 @@ class SavedSearchCreate(BaseModel):
     """Input model for creating saved searches."""
 
     query: str
-    user: str | None = None
+    user: str
 
 
 class TextBody(BaseModel):
@@ -335,6 +341,7 @@ async def _lifespan(app: FastAPI):
         if not get_latest_template(tpl["name"]):
             store_template(tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata"))
     schedule_archive_purge()
+    warm_ml_sessions()
     try:
         yield
     finally:
@@ -350,6 +357,7 @@ async def ping() -> dict[str, str]:
     """Lightweight health check endpoint used by the frontend."""
 
     return {"status": "ok"}
+
 
 # Add CORS middleware to allow frontend requests
 #
@@ -388,6 +396,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.include_router(approvals_router)
 app.include_router(webhooks_router)
 app.include_router(collab_router)
+app.include_router(ml_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
@@ -483,9 +492,9 @@ async def set_user_status(
 ) -> dict[str, Any]:
     """Set the active status for ``username`` (admin only)."""
 
-    if username not in auth.FAKE_USERS_DB:
+    if not auth.USER_REPOSITORY.get_user(username):
         raise HTTPException(status_code=404, detail="User not found")
-    auth.FAKE_USERS_DB[username]["active"] = body.active
+    auth.USER_REPOSITORY.set_active(username, body.active)
     return {"username": username, "active": body.active}
 
 
@@ -535,7 +544,7 @@ async def get_user_assignments_endpoint(username: str) -> list[ProjectModel]:
 
 
 @app.post("/projects", status_code=201, response_model=ProjectModel)
-async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
+async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa: C901
     """Create a new project."""
     # Auto-generate ID if not provided
     if body.id is None:
@@ -550,30 +559,63 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
     project = ProjectModel(**body.model_dump())
     add_project(project)
 
-    # Handle workflow assignment.  ``body.workflow`` may either reference an
-    # existing workflow or specify the identifier for a new workflow.  Earlier
-    # revisions always created a new workflow even when one already existed,
-    # while the subsequent fix assumed the identifier was pre-existing and never
-    # created a workflow.  Both behaviours caused inconsistencies: callers could
-    # end up with a dangling reference or with a mismatched identifier.  The
-    # logic below strikes a balance by creating a minimal workflow only when the
-    # supplied identifier does not already exist.
+    # Handle workflow assignment when a template has been provided.  Rather than
+    # manually constructing a minimal ``WorkflowModel`` we now delegate to
+    # :func:`create_workflow`, ensuring approval steps and workflow metadata are
+    # initialized consistently with the template definition.
     if body.workflow:
-        if body.workflow not in workflows:
-            workflows[body.workflow] = WorkflowModel(
-                id=body.workflow,
+        existing_workflow = workflows.get(body.workflow)
+        if existing_workflow is not None:
+            project.workflow = existing_workflow.id
+            project.initial_phase = existing_workflow.phase
+            clear_cache()
+            log_event(
+                "create_project",
+                user_id=project.user,
                 project=project.id,
-                phase=body.phase or body.workflow,
-                phases=[body.phase or body.workflow],
-                template=body.workflow,
-                approval_steps=[],
-                approval_roles=[],
-                approval_sequence=[],
-                mode="sequential",
+                message=render(
+                    "create_project", user=project.user or "", project_id=project.id
+                ),
             )
-        project.workflow = body.workflow
+            return project
+
+        doc_type_obj = get_document_type(body.doc_type) if body.doc_type else None
+        phases: list[str] = []
+        if doc_type_obj:
+            phases = list(doc_type_obj.phases)
+
+        if body.phase:
+            if phases:
+                if body.phase in phases:
+                    idx = phases.index(body.phase)
+                    phases = phases[idx:] + phases[:idx]
+                else:
+                    phases = [body.phase] + [p for p in phases if p != body.phase]
+            else:
+                phases = [body.phase]
+
+        if not phases:
+            fallback_phase = body.phase or "start"
+            phases = [fallback_phase]
+
+        doc_default_template = (
+            doc_type_obj.default_template_id
+            if doc_type_obj and doc_type_obj.default_template_id
+            else None
+        )
+        requested_template = body.workflow
+        if requested_template in workflow_templates:
+            template_name = requested_template
+        elif doc_default_template is not None and doc_default_template in workflow_templates:
+            template_name = doc_default_template
+        else:
+            template_name = "branch-coordination"
+
+        workflow = create_workflow(project.id, phases, template=template_name)
+        project.workflow = workflow.id
+        project.initial_phase = workflow.phase
     # Previously a workflow was automatically created whenever a phase was
-    # supplied, even if the caller did not request one.  This behaviour made it
+    # supplied, even if the caller did not request one.  This behavior made it
     # impossible to create a project without a workflow.  Now we only create a
     # workflow when an explicit ``workflow`` identifier is provided.  Projects can
     # still record their starting phase without being tied to a workflow.
@@ -585,7 +627,6 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:
 
     # Clear all project-related caches to ensure fresh data
     clear_cache()
-    print(f"DEBUG: Project '{project.id}' created successfully, cache cleared")
     log_event(
         "create_project",
         user_id=project.user,
@@ -878,12 +919,14 @@ async def import_document_endpoint(
 
 
 @app.post("/documents/tiptap", status_code=201, response_model=DocumentModel)
-async def import_tiptap_endpoint(body: dict[str, Any]) -> DocumentModel:
+async def import_tiptap_endpoint(
+    body: dict[str, Any], link_duplicates: bool = Query(False)
+) -> DocumentModel:
     """Import a TipTap JSON document."""
     from ..tiptap import import_tiptap_document
 
     try:
-        document = import_tiptap_document(body)
+        document = import_tiptap_document(body, link_duplicates=link_duplicates)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     log_event(
@@ -1023,7 +1066,10 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         # Clear cached search results so subsequent queries reflect the update
         clear_cache()
         cfg = Config.load(CONFIG_FILE)
-        if cfg and cfg.cms.lower() == "sharepoint":
+        # ``cms`` may contain stray whitespace from configuration files. Strip
+        # it to avoid silently skipping uploads when the value is
+        # ``"sharepoint "``.
+        if cfg and cfg.cms.strip().lower() == "sharepoint":
             try:
                 save_to_cms(updated, config=cfg)
             except Exception as exc:  # pragma: no cover - best effort
@@ -1073,7 +1119,8 @@ async def get_revision_endpoint(doc_id: str, rev_id: str) -> DocumentRevision:
 @app.post("/documents/{doc_id}/comments", response_model=CommentModel, status_code=201)
 async def add_comment_endpoint(doc_id: str, body: CommentCreate) -> CommentModel:
     """Create a comment on the given document."""
-    return add_comment(doc_id, body.user, body.text, parent=body.parent)
+    comment = add_comment(doc_id, body.user, body.text, parent=body.parent)
+    return render_comment_for_response(comment)
 
 
 @app.get("/documents/{doc_id}/comments", response_model=list[CommentModel])
@@ -1082,7 +1129,7 @@ async def list_comments_endpoint(doc_id: str) -> list[CommentModel]:
     comments = list_comments(doc_id)
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id, target="comments", count=len(comments))
-    return comments
+    return [render_comment_for_response(comment) for comment in comments]
 
 
 @app.get("/documents/{doc_id}/export")
@@ -1284,7 +1331,7 @@ async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel
     try:
         add_document_type(doc_type)
     except ValueError as exc:
-        # Normalise validation errors into a 400 response so API clients
+        # Normalize validation errors into a 400 response so API clients
         # receive a predictable status code instead of an internal server
         # error when providing invalid data.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1562,6 +1609,7 @@ async def rename_phase_endpoint(name: str, body: PhaseModel) -> list[str]:
 
     # Update any projects that stored the phase before a workflow was created.
     from ..search import projects
+
     for proj in projects.values():
         if getattr(proj, "initial_phase", None) == name:
             proj.initial_phase = body.name
@@ -1788,6 +1836,8 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
             signature_id=body.signature_id,
             due_at=body.due_at,
         )
+    except SignedApprovalImmutableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -1820,12 +1870,15 @@ async def sign_document(
     approval: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a signature request for ``doc_id`` using the active provider."""
-    sig_id, url, _meta = get_provider().request_signature(
+    provider = get_provider()
+    sig_id, url, _meta = provider.request_signature(
         doc_id,
         user,
         workflow_id=workflow,
         approval_id=approval,
     )
+    if getattr(provider, "name", None) != "documenso":
+        register_stub_signature(sig_id, workflow)
     return {"id": sig_id, "url": url}
 
 
@@ -1846,9 +1899,11 @@ async def get_sign_status(sig_id: str) -> dict[str, str]:
 
 
 @app.post("/token", response_model=auth.Token)
-async def token(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+async def token(
+    request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends()
+) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
-    token_resp = await auth.login_for_access_token(form_data)
+    token_resp = await auth.login_for_access_token(form_data, request)
     response.set_cookie(
         "access_token",
         token_resp.access_token,
@@ -1866,9 +1921,11 @@ async def token(response: Response, form_data: OAuth2PasswordRequestForm = Depen
 
 
 @app.post("/oidc/token", response_model=auth.Token)
-async def oidc_token(form_data: OAuth2PasswordRequestForm = Depends()) -> auth.Token:
+async def oidc_token(
+    request: Request, form_data: OAuth2PasswordRequestForm = Depends()
+) -> auth.Token:
     """Return an ID token using the OIDC flow."""
-    return await auth.login_for_oidc_token(form_data)
+    return await auth.login_for_oidc_token(form_data, request)
 
 
 @app.get("/me")
@@ -2217,8 +2274,8 @@ async def user_dashboard_endpoint(x_user: str | None = Header(None)) -> list[Das
     return user_dashboard(x_user)
 
 
-@app.get("/dashboard/widgets")
-async def get_widget_counts(x_user: str | None = Header(None)) -> dict[str, int]:
+@app.get("/dashboard/widgets", response_model=WidgetMetrics)
+async def get_widget_counts(x_user: str | None = Header(None)) -> WidgetMetrics:
     """Return assignment and approval counts for dashboard widgets."""
 
     return widget_counts(x_user)

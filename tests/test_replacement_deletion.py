@@ -12,8 +12,9 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import doc_types
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase
 from docreview360.search import ProjectModel, add_project, projects
 from docreview360.workflows import workflows
@@ -26,12 +27,12 @@ class TestReplacementDeletion:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        doc_types.document_types.clear()
         workflows.clear()
         projects.clear()
         yield
         # Cleanup
-        document_types.clear()
+        doc_types.document_types.clear()
         workflows.clear()
         projects.clear()
 
@@ -41,10 +42,14 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type 1", template="<h1>Test 1</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Test Doc Type 1", template="<h1>Test 1</h1>", workflow=["Phase"]
+            )
         )
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type 2", template="<h1>Test 2</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Test Doc Type 2", template="<h1>Test 2</h1>", workflow=["Phase"]
+            )
         )
 
         # Create project using the document type
@@ -79,11 +84,13 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Original Doc Type", template="<h1>Original</h1>", workflow=["Phase"]
+            )
         )
         add_document_type(
             DocumentTypeModel(
-                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=["Phase"]
             )
         )
 
@@ -122,7 +129,9 @@ class TestReplacementDeletion:
 
         # Create document type
         add_document_type(
-            DocumentTypeModel(name="Unused Doc Type", template="<h1>Unused</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Unused Doc Type", template="<h1>Unused</h1>", workflow=["Phase"]
+            )
         )
 
         # Delete without replacement (should succeed)
@@ -142,7 +151,7 @@ class TestReplacementDeletion:
 
         # Create document type
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=[])
+            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=["Phase"])
         )
 
         # Create project using the document type
@@ -274,11 +283,13 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Original Doc Type", template="<h1>Original</h1>", workflow=["Phase"]
+            )
         )
         add_document_type(
             DocumentTypeModel(
-                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=["Phase"]
             )
         )
 
@@ -318,7 +329,7 @@ class TestReplacementDeletion:
 
         # Create document type
         add_document_type(
-            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=[])
+            DocumentTypeModel(name="Test Doc Type", template="<h1>Test</h1>", workflow=["Phase"])
         )
 
         # Create project using the document type
@@ -337,11 +348,13 @@ class TestReplacementDeletion:
 
         # Create document types
         add_document_type(
-            DocumentTypeModel(name="Original Doc Type", template="<h1>Original</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Original Doc Type", template="<h1>Original</h1>", workflow=["Phase"]
+            )
         )
         add_document_type(
             DocumentTypeModel(
-                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=[]
+                name="Replacement Doc Type", template="<h1>Replacement</h1>", workflow=["Phase"]
             )
         )
 

@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
 from docreview360.phases import _phases, add_phase
 from docreview360.workflows import workflows
 
@@ -20,12 +20,12 @@ class TestConfigurationPropagation:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
         yield
         # Cleanup
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 
@@ -34,11 +34,13 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Add configuration
-        add_document_type(DocumentTypeModel(
-            name="Test Doc Type",
-            template="<h1>Test Template</h1>",
-            workflow=["draft", "review", "approve"]
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Test Doc Type",
+                template="<h1>Test Template</h1>",
+                workflow=["draft", "review", "approve"],
+            )
+        )
         add_phase("Test Phase")
 
         # Create project using configuration
@@ -46,7 +48,7 @@ class TestConfigurationPropagation:
             "id": "config-test",
             "name": "Configuration Test Project",
             "doc_type": "Test Doc Type",
-            "phase": "Test Phase"
+            "phase": "Test Phase",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -69,7 +71,7 @@ class TestConfigurationPropagation:
             "id": "invalid-config-test",
             "name": "Invalid Config Project",
             "doc_type": "Non-existent Doc Type",
-            "phase": "Non-existent Phase"
+            "phase": "Non-existent Phase",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -77,7 +79,7 @@ class TestConfigurationPropagation:
         assert resp.status_code in [201, 400, 422]
 
         # Test with empty configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
 
         resp = client.get("/document-types")
@@ -95,7 +97,7 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Clear all configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 
@@ -110,10 +112,7 @@ class TestConfigurationPropagation:
         assert resp.status_code == 200
 
         # Test project creation with minimal data
-        project_data = {
-            "id": "defaults-test",
-            "name": "Defaults Test Project"
-        }
+        project_data = {"id": "defaults-test", "name": "Defaults Test Project"}
 
         resp = client.post("/projects", json=project_data)
         # Should succeed with defaults or fail gracefully
@@ -124,10 +123,13 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Initial configuration
-        add_document_type(DocumentTypeModel(
-            name="Initial Doc Type",
-            template="<h1>Initial</h1>"
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Initial Doc Type",
+                template="<h1>Initial</h1>",
+                workflow=["Initial Phase"],
+            )
+        )
         add_phase("Initial Phase")
 
         # Verify initial state
@@ -143,13 +145,16 @@ class TestConfigurationPropagation:
         assert "Initial Phase" in phases_data
 
         # Update configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
 
-        add_document_type(DocumentTypeModel(
-            name="Updated Doc Type",
-            template="<h1>Updated</h1>"
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Updated Doc Type",
+                template="<h1>Updated</h1>",
+                workflow=["Updated Phase"],
+            )
+        )
         add_phase("Updated Phase")
 
         # Verify updated state
@@ -171,10 +176,13 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Add configuration
-        add_document_type(DocumentTypeModel(
-            name="Consistency Test Doc",
-            template="<h1>Consistency</h1>"
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Consistency Test Doc",
+                template="<h1>Consistency</h1>",
+                workflow=["Consistency Phase"],
+            )
+        )
         add_phase("Consistency Phase")
 
         # Multiple API calls should return consistent data
@@ -191,7 +199,7 @@ class TestConfigurationPropagation:
             "id": "consistency-test",
             "name": "Consistency Test Project",
             "doc_type": "Consistency Test Doc",
-            "phase": "Consistency Phase"
+            "phase": "Consistency Phase",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -210,10 +218,13 @@ class TestConfigurationPropagation:
 
         # Test with malformed document type data
         try:
-            add_document_type(DocumentTypeModel(
-                name="",  # Empty name
-                template="<h1>Test</h1>"
-            ))
+            add_document_type(
+                DocumentTypeModel(
+                    name="",  # Empty name
+                    template="<h1>Test</h1>",
+                    workflow=["Phase"],
+                )
+            )
         except Exception:
             # Should handle validation errors gracefully
             pass
@@ -226,10 +237,7 @@ class TestConfigurationPropagation:
             pass
 
         # Test API endpoints with invalid data
-        resp = client.post("/document-types", json={
-            "name": "",  # Invalid data
-            "template": ""
-        })
+        resp = client.post("/document-types", json={"name": "", "template": ""})  # Invalid data
         # Should handle validation appropriately
         assert resp.status_code in [201, 400, 422]
 
@@ -239,14 +247,18 @@ class TestConfigurationPropagation:
 
         # Add multiple configuration items
         for i in range(10):
-            add_document_type(DocumentTypeModel(
-                name=f"Performance Test Doc {i}",
-                template=f"<h1>Performance {i}</h1>"
-            ))
+            add_document_type(
+                DocumentTypeModel(
+                    name=f"Performance Test Doc {i}",
+                    template=f"<h1>Performance {i}</h1>",
+                    workflow=[f"Performance Phase {i}"],
+                )
+            )
             add_phase(f"Performance Phase {i}")
 
         # API calls should be fast
         import time
+
         start_time = time.time()
 
         resp = client.get("/document-types")

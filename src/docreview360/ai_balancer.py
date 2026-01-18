@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Dict
-import json
 
 from prometheus_client import Counter
 
@@ -44,7 +44,11 @@ def assign_job() -> str:
     """Return worker with the fewest active jobs."""
     if not _workers:
         raise RuntimeError("no workers registered")
-    worker = min(_workers, key=lambda k: _workers[k])
+    # ``dict`` preserves insertion order which previously meant the first
+    # registered worker was favoured when loads were equal.  Break ties
+    # alphabetically so assignments are deterministic regardless of
+    # registration order.
+    worker = min(_workers, key=lambda k: (_workers[k], k))
     _workers[worker] += 1
     JOB_ASSIGNMENTS.labels(worker=worker).inc()
     return worker
@@ -111,4 +115,10 @@ def load_state(path: str | Path) -> None:
         raise ValueError("invalid registry format")
     _workers.clear()
     for key, value in data.items():
-        _workers[str(key)] = int(value)
+        try:
+            count = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("invalid registry format") from exc
+        if count < 0:
+            raise ValueError("invalid registry format")
+        _workers[str(key)] = count

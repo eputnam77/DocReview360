@@ -1,0 +1,31 @@
+{
+  "failing_rules": [
+    "low_readability",
+    "weak_structure",
+    "style_inconsistency",
+    "high_compliance_risk"
+  ],
+  "features": {
+    "features": {
+      "compliance_risk": 0.885883,
+      "metadata_completeness": 1.0,
+      "readability": 0.114117,
+      "structure": 0.416667,
+      "style": 0.0
+    },
+    "version": "1.0.0"
+  },
+  "input": {
+    "metadata": {
+      "certificate_url": "https://example.com/certs/phoenix.pdf",
+      "hash": "abc123",
+      "owner": "A. Smith",
+      "title": "Project Phoenix",
+      "verified_at": "2024-06-01T00:00:00Z"
+    },
+    "text": "Project Phoenix Overview\n\n# Introduction\nThis policy outlines the review timeline for the Phoenix expansion project.\n\n# Body\nTeams must submit updates weekly, include risk mitigations, and track decisions.\n- Provide change logs\n- Capture open questions\n\n# Conclusion\nThank you for keeping stakeholders informed.\n"
+  },
+  "model": {},
+  "probability": 0.5254678130149841,
+  "source": "onnx"
+}

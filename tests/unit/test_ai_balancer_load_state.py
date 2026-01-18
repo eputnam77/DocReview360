@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+
 import pytest
 
 from docreview360 import ai_balancer
@@ -8,6 +9,24 @@ from docreview360 import ai_balancer
 def test_load_state_invalid_format(tmp_path: Path) -> None:
     file = tmp_path / "state.json"
     file.write_text("[]")
+    ai_balancer.reset()
+    with pytest.raises(ValueError):
+        ai_balancer.load_state(file)
+
+
+def test_load_state_negative_values(tmp_path: Path) -> None:
+    """Negative job counts should be rejected."""
+    file = tmp_path / "state.json"
+    file.write_text(json.dumps({"w1": -1}))
+    ai_balancer.reset()
+    with pytest.raises(ValueError):
+        ai_balancer.load_state(file)
+
+
+def test_load_state_non_integer_values(tmp_path: Path) -> None:
+    """Non-integer job counts should raise ``ValueError``."""
+    file = tmp_path / "state.json"
+    file.write_text(json.dumps({"w1": "oops"}))
     ai_balancer.reset()
     with pytest.raises(ValueError):
         ai_balancer.load_state(file)

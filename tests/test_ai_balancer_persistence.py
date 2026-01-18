@@ -6,12 +6,12 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from docreview360.ai_balancer import (
+    _workers,
     assign_job,
     load_state,
     register_worker,
     reset,
     save_state,
-    _workers,
 )
 
 
@@ -32,6 +32,7 @@ def test_api_hooks_load_and_save(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_WORKER_STATE", str(state_file))
 
     import docreview360.api as api
+
     importlib.reload(api)
 
     called: list[tuple[str, Path]] = []

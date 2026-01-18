@@ -1,0 +1,12 @@
+Project Phoenix Overview
+
+# Introduction
+This policy outlines the review timeline for the Phoenix expansion project.
+
+# Body
+Teams must submit updates weekly, include risk mitigations, and track decisions.
+- Provide change logs
+- Capture open questions
+
+# Conclusion
+Thank you for keeping stakeholders informed.

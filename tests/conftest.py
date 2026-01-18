@@ -1,15 +1,24 @@
 import asyncio
+import importlib
 import os
 import sys
 from pathlib import Path
 
 import pytest
 
-from docreview360.doc_types import DEFAULT_DOC_TYPE_PHASES, DocumentTypeModel, document_types
-
+# Ensure the source package is importable before referencing it.  Previously the
+# ``sys.path`` manipulation occurred *after* importing from ``docreview360``,
+# causing ``ModuleNotFoundError`` during test collection on systems where the
+# package wasn't installed.  By inserting the repository paths up front we make
+# the package available for import in a clean, deterministic way.
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR / "src"))
 sys.path.insert(0, str(BASE_DIR))
+
+doc_types = importlib.import_module("docreview360.doc_types")
+DEFAULT_DOC_TYPE_PHASES = doc_types.DEFAULT_DOC_TYPE_PHASES
+DocumentTypeModel = doc_types.DocumentTypeModel
+document_types = doc_types.document_types
 
 os.environ.setdefault("DOCREVIEW360_SECRET_KEY", "test-secret")
 os.environ.setdefault("DOCREVIEW360_ALGORITHM", "HS256")
@@ -17,6 +26,15 @@ os.environ.setdefault("DOCREVIEW360_ACCESS_EXPIRE_MINUTES", "30")
 os.environ.setdefault("DOCREVIEW360_OIDC_SECRET_KEY", "test-oidc")
 os.environ.setdefault("DOCREVIEW360_OIDC_ALGORITHM", "HS256")
 os.environ.setdefault("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
+os.environ.setdefault("DOCREVIEW360_REQUIRE_MFA", "0")
+os.environ.setdefault("DOCREVIEW360_MAX_FAILED_ATTEMPTS", "5")
+os.environ.setdefault("DOCREVIEW360_LOCKOUT_SECONDS", "300")
+os.environ.setdefault("DOCREVIEW360_USER_DB", str(Path("tests") / "docreview360_users.db"))
+os.environ.setdefault("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
+os.environ.setdefault("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
+os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
+os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
+os.environ.setdefault("DOCREVIEW360_SEED_DEMO_USERS", "0")
 
 
 @pytest.fixture(autouse=True)
@@ -29,6 +47,15 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_OIDC_SECRET_KEY", "test-oidc")
     monkeypatch.setenv("DOCREVIEW360_OIDC_ALGORITHM", "HS256")
     monkeypatch.setenv("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
+    monkeypatch.setenv("DOCREVIEW360_REQUIRE_MFA", "0")
+    monkeypatch.setenv("DOCREVIEW360_MAX_FAILED_ATTEMPTS", "5")
+    monkeypatch.setenv("DOCREVIEW360_LOCKOUT_SECONDS", "300")
+    monkeypatch.setenv("DOCREVIEW360_USER_DB", str(Path("tests") / "docreview360_users.db"))
+    monkeypatch.setenv("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
+    monkeypatch.setenv("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
+    monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
+    monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
+    monkeypatch.setenv("DOCREVIEW360_SEED_DEMO_USERS", "0")
 
 
 @pytest.hookimpl
@@ -37,7 +64,7 @@ def pytest_pyfunc_call(pyfuncitem: pytest.Function) -> bool | None:
 
     The kata environment may not include ``pytest-asyncio``. This hook
     provides a very small event loop runner so tests marked as async can
-    still execute.  It mirrors the minimal behaviour of the real plugin
+    still execute.  It mirrors the minimal behavior of the real plugin
     by detecting coroutine functions and running them to completion.
     """
 
@@ -73,3 +100,18 @@ def _reset_document_types() -> None:
         document_types[name] = DocumentTypeModel(
             name=name, template=f"<h1>{name}</h1>", workflow=phases
         )
+
+
+@pytest.fixture(autouse=True)
+def _reset_search(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Provide an isolated persistent store for the search module per test."""
+
+    db_dir = tmp_path_factory.mktemp("search-db")
+    db_path = db_dir / "state.db"
+    monkeypatch.setenv("DOCREVIEW360_SEARCH_DB", str(db_path))
+
+    import docreview360.search as search_module
+
+    search_module._reset_state_for_testing(db_path=db_path)

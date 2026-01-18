@@ -1,9 +1,9 @@
 import pytest
 
 from docreview360 import cache as cache_module
-from docreview360.cache import cache_set, cache_get, cache_delete, clear_cache
+from docreview360.cache import cache_delete, cache_get, cache_set, clear_cache
 from docreview360.documents import DocumentModel
-from docreview360.workflows import WorkflowModel, ApprovalStep
+from docreview360.workflows import ApprovalStep, WorkflowModel
 
 
 def test_cache_nonfinite_and_zero_ttl():

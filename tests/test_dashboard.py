@@ -12,3 +12,6 @@ def test_dashboard_websocket() -> None:
         data = ws.receive_json()
         ids = {entry["id"] for entry in data}
         assert "ws1" in ids
+        first = data[0]
+        assert "routing_latency" in first
+        assert "critic_models" in first

@@ -4,7 +4,6 @@ from pathlib import Path
 from docreview360.log_hash_chain import batch_hash_logs
 from docreview360.logs import clear_logs, export_logs, log_event
 from docreview360.notifications import sent_emails
-
 from services.log_chain_verifier import verify_log_chain
 
 

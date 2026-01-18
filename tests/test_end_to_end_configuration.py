@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
 from docreview360.phases import _phases, add_phase
 from docreview360.workflows import create_workflow, workflows
 
@@ -20,12 +20,12 @@ class TestEndToEndConfigurationFlow:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
         yield
         # Cleanup
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 
@@ -34,11 +34,13 @@ class TestEndToEndConfigurationFlow:
         client = TestClient(app)
 
         # Step 1: Setup configuration
-        add_document_type(DocumentTypeModel(
-            name="E2E Test Document Type",
-            template="<h1>E2E Test Template</h1>",
-            workflow=["draft", "review", "approve"]
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="E2E Test Document Type",
+                template="<h1>E2E Test Template</h1>",
+                workflow=["draft", "review", "approve"],
+            )
+        )
         add_phase("E2E Test Phase 1")
         add_phase("E2E Test Phase 2")
         create_workflow("e2e-test-project", ["E2E Test Phase 1", "E2E Test Phase 2"])
@@ -69,7 +71,7 @@ class TestEndToEndConfigurationFlow:
             "doc_type": "E2E Test Document Type",
             "phase": "E2E Test Phase 1",
             "user": "e2e-test-user",
-            "description": "E2E test project description"
+            "description": "E2E test project description",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -94,10 +96,13 @@ class TestEndToEndConfigurationFlow:
         client = TestClient(app)
 
         # Initial configuration
-        add_document_type(DocumentTypeModel(
-            name="Initial Doc Type",
-            template="<h1>Initial</h1>"
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Initial Doc Type",
+                template="<h1>Initial</h1>",
+                workflow=["Initial Phase"],
+            )
+        )
         add_phase("Initial Phase")
 
         # Create project with initial configuration
@@ -105,20 +110,23 @@ class TestEndToEndConfigurationFlow:
             "id": "update-test-project",
             "name": "Update Test Project",
             "doc_type": "Initial Doc Type",
-            "phase": "Initial Phase"
+            "phase": "Initial Phase",
         }
 
         resp = client.post("/projects", json=project_data)
         assert resp.status_code == 201
 
         # Update configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
 
-        add_document_type(DocumentTypeModel(
-            name="Updated Doc Type",
-            template="<h1>Updated</h1>"
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Updated Doc Type",
+                template="<h1>Updated</h1>",
+                workflow=["Updated Phase"],
+            )
+        )
         add_phase("Updated Phase")
 
         # Verify configuration is updated
@@ -140,7 +148,7 @@ class TestEndToEndConfigurationFlow:
             "id": "updated-test-project",
             "name": "Updated Test Project",
             "doc_type": "Updated Doc Type",
-            "phase": "Updated Phase"
+            "phase": "Updated Phase",
         }
 
         resp = client.post("/projects", json=updated_project_data)
@@ -160,10 +168,13 @@ class TestEndToEndConfigurationFlow:
 
         # Test with invalid configuration
         try:
-            add_document_type(DocumentTypeModel(
-                name="",  # Invalid empty name
-                template="<h1>Invalid</h1>"
-            ))
+            add_document_type(
+                DocumentTypeModel(
+                    name="",  # Invalid empty name
+                    template="<h1>Invalid</h1>",
+                    workflow=["Phase"],
+                )
+            )
         except Exception:
             # Should handle validation errors gracefully
             pass
@@ -179,7 +190,7 @@ class TestEndToEndConfigurationFlow:
             "id": "invalid-config-test",
             "name": "Invalid Config Test Project",
             "doc_type": "Non-existent Document Type",
-            "phase": "Non-existent Phase"
+            "phase": "Non-existent Phase",
         }
 
         resp = client.post("/projects", json=project_data)
@@ -191,10 +202,13 @@ class TestEndToEndConfigurationFlow:
         client = TestClient(app)
 
         # Setup configuration
-        add_document_type(DocumentTypeModel(
-            name="Persistence Test Doc",
-            template="<h1>Persistence</h1>"
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Persistence Test Doc",
+                template="<h1>Persistence</h1>",
+                workflow=["Persistence Phase"],
+            )
+        )
         add_phase("Persistence Phase")
 
         # Create multiple projects
@@ -203,7 +217,7 @@ class TestEndToEndConfigurationFlow:
                 "id": f"persistence-test-{i}",
                 "name": f"Persistence Test Project {i}",
                 "doc_type": "Persistence Test Doc",
-                "phase": "Persistence Phase"
+                "phase": "Persistence Phase",
             }
 
             resp = client.post("/projects", json=project_data)
@@ -234,15 +248,12 @@ class TestEndToEndConfigurationFlow:
         client = TestClient(app)
 
         # Test with corrupted configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 
         # Try to create project with no configuration
-        project_data = {
-            "id": "error-recovery-test",
-            "name": "Error Recovery Test Project"
-        }
+        project_data = {"id": "error-recovery-test", "name": "Error Recovery Test Project"}
 
         resp = client.post("/projects", json=project_data)
         # Should handle missing configuration gracefully
@@ -262,10 +273,13 @@ class TestEndToEndConfigurationFlow:
         assert isinstance(resp.json(), list)
 
         # Recover by adding configuration
-        add_document_type(DocumentTypeModel(
-            name="Recovery Test Doc",
-            template="<h1>Recovery</h1>"
-        ))
+        add_document_type(
+            DocumentTypeModel(
+                name="Recovery Test Doc",
+                template="<h1>Recovery</h1>",
+                workflow=["Recovery Phase"],
+            )
+        )
         add_phase("Recovery Phase")
 
         # Verify recovery worked
@@ -288,10 +302,13 @@ class TestEndToEndConfigurationFlow:
 
         # Setup configuration with many items
         for i in range(10):
-            add_document_type(DocumentTypeModel(
-                name=f"Performance Test Doc {i}",
-                template=f"<h1>Performance {i}</h1>"
-            ))
+            add_document_type(
+                DocumentTypeModel(
+                    name=f"Performance Test Doc {i}",
+                    template=f"<h1>Performance {i}</h1>",
+                    workflow=[f"Performance Phase {i}"],
+                )
+            )
             add_phase(f"Performance Phase {i}")
 
         # Test configuration retrieval performance
@@ -318,7 +335,7 @@ class TestEndToEndConfigurationFlow:
                 "id": f"perf-test-{i}",
                 "name": f"Performance Test Project {i}",
                 "doc_type": f"Performance Test Doc {i % 10}",
-                "phase": f"Performance Phase {i % 10}"
+                "phase": f"Performance Phase {i % 10}",
             }
 
             resp = client.post("/projects", json=project_data)

@@ -18,3 +18,19 @@ def test_push_and_pull_document(tmp_path: Path) -> None:
     assert len(commit) == 40
     data = pull_document(doc.name, repo, remote=remote)
     assert data == b"hi"
+
+
+def test_pull_document_creates_parent(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    remote = tmp_path / "remote.git"
+
+    def _run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.run(cmd, cwd=cwd, check=True)
+
+    _run(["git", "init", "--bare", remote.as_posix()])
+    doc = tmp_path / "a.txt"
+    doc.write_text("hi")
+    push_document(doc, repo, remote=remote)
+    nested = tmp_path / "nested" / "path" / "repo2"
+    data = pull_document(doc.name, nested, remote=remote)
+    assert data == b"hi"

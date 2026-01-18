@@ -25,8 +25,21 @@ sent_emails: List[dict[str, str]] = []
 
 def add_template(name: str, subject: str, body: str) -> None:
     """Register a new template."""
-    if not name:
+    # ``name`` may come from user input.  ``if not name`` would allow values
+    # consisting solely of whitespace which produce awkward template keys such
+    # as ``" "`` that are hard to reference later.  Normalize by requiring a
+    # non-empty string after trimming.
+    if not isinstance(name, str) or not name.strip():
         raise ValueError("name required")
+    if not isinstance(subject, str):
+        raise TypeError("subject must be a string")
+    if not subject.strip():
+        raise ValueError("subject required")
+    if not isinstance(body, str):
+        raise TypeError("body must be a string")
+    if not body.strip():
+        raise ValueError("body required")
+    name = name.strip()
     # Accidentally overwriting an existing template can lead to subtle bugs
     # in calling code that relies on a particular subject/body format.  The
     # previous implementation silently replaced any existing entry which meant
@@ -40,11 +53,17 @@ def add_template(name: str, subject: str, body: str) -> None:
 
 def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
     """Render ``template`` using ``context`` and store it in :data:`sent_emails`."""
+    if not isinstance(template, str):
+        raise TypeError("template must be a string")
+    if not isinstance(recipient, str):
+        raise TypeError("recipient must be a string")
+    recipient = recipient.strip()
     if not recipient:
         raise ValueError("recipient required")
-    tmpl = TEMPLATES.get(template)
+    tmpl_name = template.strip()
+    tmpl = TEMPLATES.get(tmpl_name)
     if tmpl is None:
-        raise KeyError(f"template '{template}' not found")
+        raise KeyError(f"template '{tmpl_name}' not found")
     try:
         subject = tmpl.subject.format(**context)
         body = tmpl.body.format(**context)
@@ -67,9 +86,7 @@ def send_due_date_reminder(recipient: str, item: str, due_date: str) -> dict[str
 def send_completion_notification(recipient: str, item: str) -> dict[str, str]:
     """Notify that ``item`` has been completed."""
     if "completion_notice" not in TEMPLATES:
-        TEMPLATES["completion_notice"] = Template(
-            "{item} completed", "{item} has been completed."
-        )
+        TEMPLATES["completion_notice"] = Template("{item} completed", "{item} has been completed.")
     return send_email("completion_notice", recipient, item=item)
 
 

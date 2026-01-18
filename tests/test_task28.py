@@ -18,4 +18,4 @@ def test_saved_search_and_stats() -> None:
 def test_save_search_rejects_empty_query() -> None:
     search.saved_searches.clear()
     with pytest.raises(ValueError):
-        search.save_search("  ")
+        search.save_search("  ", user="bob")

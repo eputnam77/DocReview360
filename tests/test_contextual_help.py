@@ -9,7 +9,7 @@ def test_tooltip_html_escapes_content() -> None:
     html = tooltip_html("danger")
     # Dangerous characters should be escaped inside the attributes
     assert '<b onclick="boom">' not in html
-    assert '&lt;b onclick=&quot;boom&quot;&gt;' in html
+    assert "&lt;b onclick=&quot;boom&quot;&gt;" in html
     assert '"on"' not in html  # quote must be escaped in URL attribute
 
 
@@ -25,3 +25,11 @@ def test_invalid_help_inputs_and_missing_tooltip() -> None:
     with pytest.raises(ValueError):
         register_help("", "")
     assert tooltip_html("nope") == ""
+
+
+def test_topic_lookup_strips_whitespace() -> None:
+    register_help(" spaced ", "text")
+    assert get_help("spaced") is not None
+    assert get_help(" spaced ") is not None
+    html = tooltip_html(" spaced ")
+    assert html != ""

@@ -70,7 +70,11 @@ def schedule_log_chain_verification() -> None:
     bucket = str(cfg.get("bucket", "tamper_proof_store"))
     key = str(cfg.get("key", "log_chain.json"))
     batch_size = int(cfg.get("batch_size", 100))
-    alert_email = str(cfg.get("alert_email", "admin@example.com"))
+    raw_alert_email = cfg.get("alert_email", "admin@example.com")
+    if raw_alert_email is None:
+        alert_email = None
+    else:
+        alert_email = str(raw_alert_email).strip() or None
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["log_chain_verification"] = {
         "task": "docreview360.verify_log_chain",

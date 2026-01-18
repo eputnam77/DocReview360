@@ -2,13 +2,54 @@
 
 Lightweight document workflows—CLI, API, and React UI in one repo.
 
-**DocReview360** lets teams organise files, route them through quick approval steps, and track status at a glance. The prototype ships with:
+**DocReview360** lets teams organize files, route them through quick approval steps, and track status at a glance. The prototype ships with:
 
 * a FastAPI backend
 * a minimal React/Next.js frontend
 * a single‑command CLI wizard (`docreview360 init`)
 
 so you can test everything locally and decide how it fits your process.
+
+---
+
+## 🧠 AI model pipeline at a glance
+
+DocReview360's review suggestions rely on a small PyTorch model that exports to
+**ONNX Runtime** for production. Training runs through
+`docreview360 ml train`, which logs metrics and saves the latest weights to
+`artifacts/models/latest.pt`. The `docreview360 ml export` command then freezes
+the model and converts it to `artifacts/models/latest.onnx` using
+`torch.onnx.export` with opset **18**, dynamic axes, and model metadata that
+captures the feature schema. This keeps inference portable across GPU and CPU
+targets without shipping the full Python stack.
+
+Once the ONNX bundle is generated you can:
+
+1. Run `docreview360 ml package` to stage the ONNX model, tokenizer vocabulary,
+   and feature manifest into `artifacts/packages/<timestamp>/` for deployment.
+2. Copy the folder to the API container and point
+   `DOCREVIEW360_ML_MODEL_DIR=/app/artifacts/packages/<timestamp>`.
+3. Restart the worker pods so they hot‑swap to the new graph on boot.
+
+### CPU-first deployment
+
+Most teams deploy the ONNX model with the `CPUExecutionProvider`. You only need
+libonnxruntime (already bundled in the Docker image) and a JSON feature schema.
+Set `DOCREVIEW360_ML_PROVIDER=cpu` and `DOCREVIEW360_ML_THREADS=<n>` to match
+the number of vCPUs available. GPU execution remains optional—when no GPU is
+detected the runtime automatically falls back to CPU.
+
+### Quantization options
+
+When export time matters, enable dynamic quantization by running
+`docreview360 ml export --quantize dynamic`. The command applies
+`onnxruntime.quantization.quantize_dynamic` to produce
+`artifacts/models/latest.int8.onnx`, typically yielding a **2‑3×** latency
+reduction on commodity CPUs. For maximum compression, pass
+`--quantize static --calibration-set data/calibration/` to generate a calibrated
+INT8 graph—just ensure the calibration set mirrors your production inputs. Both
+variants keep the floating-point model alongside the quantized files so you can
+compare accuracy before rolling out the optimized version.
 
 ---
 
@@ -59,6 +100,11 @@ uv pip install --upgrade pip pre-commit
 pre-commit install
 ```
 
+DocReview360 ships with the built-in ``sandbox`` signature provider enabled for
+local development. Set ``SIGNATURE_PROVIDER=documenso`` (or provide a fallback
+list) when you want to use Documenso's hosted service—remember that Documenso
+will deliver callbacks to ``POST /hooks/documenso``.
+
 *(Need a plain‑Python fallback? See “🐍 Virtual‑env fallback” below.)*
 
 ---
@@ -73,22 +119,38 @@ cp .env.example .env           # template included
 export DOCREVIEW360_SECRET_KEY=your-secret
 export DOCREVIEW360_ALGORITHM=HS256
 export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+export DOCREVIEW360_TOKEN_ISSUER=docreview360.local
+export DOCREVIEW360_TOKEN_AUDIENCE=docreview360-users
 export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
 export DOCREVIEW360_OIDC_ALGORITHM=HS256
 export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+export DOCREVIEW360_OIDC_TOKEN_ISSUER=docreview360-oidc.local
+export DOCREVIEW360_OIDC_TOKEN_AUDIENCE=docreview360-oidc
+# Treat any non-dev/test value (for example ``production``) as production.
+# When set, missing secrets trigger a startup failure instead of a warning.
+export DOCREVIEW360_ENV=dev
 
 # Windows PowerShell:
 $env:DOCREVIEW360_SECRET_KEY="your-secret"
 $env:DOCREVIEW360_ALGORITHM="HS256"
 $env:DOCREVIEW360_ACCESS_EXPIRE_MINUTES="30"
+$env:DOCREVIEW360_TOKEN_ISSUER="docreview360.local"
+$env:DOCREVIEW360_TOKEN_AUDIENCE="docreview360-users"
 $env:DOCREVIEW360_OIDC_SECRET_KEY="your-oidc-secret"
 $env:DOCREVIEW360_OIDC_ALGORITHM="HS256"
 $env:DOCREVIEW360_OIDC_EXPIRE_MINUTES="30"
+$env:DOCREVIEW360_OIDC_TOKEN_ISSUER="docreview360-oidc.local"
+$env:DOCREVIEW360_OIDC_TOKEN_AUDIENCE="docreview360-oidc"
+# Treat any non-dev/test value (for example ``production``) as production.
+# When set, missing secrets trigger a startup failure instead of a warning.
+$env:DOCREVIEW360_ENV="dev"
 
 # Optional:
 # DOCREVIEW360_SIGNATURE_SECRET  (digital signatures)
+# SIGNATURE_PROVIDER=sandbox  (default order: sandbox → Documenso → local; Documenso will send webhooks to /hooks/documenso)
 # NEXT_PUBLIC_API_BASE=http://localhost:8000  (frontend → backend, leave blank to use dashboard host)
 # DOCREVIEW360_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000  (frontend host(s) allowed by CORS)
+# When authenticating with HTTP-only cookies also send an X-CSRF-Token header that matches the csrf_token cookie value.
 ```
 
 Run the CLI wizard to generate `docreview360.yml`:
@@ -114,8 +176,14 @@ cd DocReview360
 # source .venv/bin/activate  # On Mac/Linux
 # .venv\Scripts\activate     # On Windows
 
-# Start the backend server
-uvicorn docreview360.api:app --reload --port 8000
+# Start the backend server on macOS/Linux
+uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+# Binding to 0.0.0.0 lets Playwright and other remote browsers reach the dev server.
+```
+
+```powershell
+# Start the backend server on Windows PowerShell (auto-loads .env when present)
+pwsh -File scripts/windows/start-backend.ps1
 ```
 
 **Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with GovDocVerify.
@@ -126,7 +194,17 @@ uvicorn docreview360.api:app --reload --port 8000
 - **Health Check:** Test the server at http://localhost:8000/health
 - **GovDocVerify Integration:** The document checker requires this backend to process files
 
-The `--reload` flag auto‑reloads on code changes—handy in development.
+Pass secrets on the command line when you do not want to persist them:
+
+```powershell
+pwsh -File scripts/windows/start-backend.ps1 `
+  -SecretKey "your-secret" `
+  -AccessExpireMinutes 60
+```
+
+The script falls back to the development defaults from `src/docreview360/auth.py` when
+variables are absent and automatically reads overrides from a `.env` file in the project
+root. The `--reload` flag auto‑reloads on code changes—handy in development.
 
 ---
 
@@ -392,7 +470,7 @@ the workflow can be.
 
 ## Deploy with Docker
 
-Running the app inside containers is a handy way to share it on a server or your favourite cloud provider. The repository already contains a `Dockerfile` and a `docker-compose.yml` so you can start quickly.
+Running the app inside containers is a handy way to share it on a server or your favorite cloud provider. The repository already contains a `Dockerfile` and a `docker-compose.yml` so you can start quickly.
 
 See `docs/deployment.md` for platform-specific notes about environment variables and database setup on Render, Heroku, Fly.io and Railway.
 

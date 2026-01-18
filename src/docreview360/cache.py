@@ -58,14 +58,16 @@ def _get_client() -> "Redis | None":
     return cast("Redis | None", _client)
 
 
-def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
+def cache_set(key: str, value: Any, ttl: int | float | None = None) -> None:
     if ttl is not None:
+        if isinstance(ttl, bool) or not isinstance(ttl, (int, float)):
+            raise TypeError("ttl must be int or float")
         if isinstance(ttl, float) and not math.isfinite(ttl):
             raise ValueError("ttl must be finite")
         if ttl < 0:
             raise ValueError("ttl must be non-negative")
     # A TTL of ``0`` should behave like ``None`` (no expiration) to mirror
-    # common cache semantics such as Redis. Without this normalisation the
+    # common cache semantics such as Redis. Without this normalization the
     # local fallback cache would treat ``0`` as an immediate expiry, causing
     # values to vanish right after insertion.
     ttl_arg = ttl if ttl not in (None, 0) else None

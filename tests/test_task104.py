@@ -12,3 +12,9 @@ def test_can_toggle_numbering_handles_none() -> None:
     """Gracefully handle roles with ``None`` permission mapping."""
     rbac = {"admin": None}
     assert not can_toggle_numbering("admin", rbac)
+
+
+def test_can_toggle_numbering_requires_boolean() -> None:
+    """Non-boolean permission values should not grant access."""
+    rbac = {"editor": {"toggle_numbering": "yes"}}
+    assert can_toggle_numbering("editor", rbac) is False

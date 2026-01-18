@@ -1,6 +1,6 @@
-from pathlib import Path
-from datetime import timedelta
 import types
+from pathlib import Path
+
 import pytest
 
 from docreview360 import settings_manager
@@ -47,7 +47,9 @@ def test_load_providers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
         lambda provider, name=None: regs.append((provider, name)),
     )
 
-    monkeypatch.setattr(settings_manager, "load_settings", lambda: {"provider_modules": ["m1", "m2"]})
+    monkeypatch.setattr(
+        settings_manager, "load_settings", lambda: {"provider_modules": ["m1", "m2"]}
+    )
 
     imported = []
 

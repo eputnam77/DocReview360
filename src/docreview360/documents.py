@@ -3,19 +3,164 @@
 from __future__ import annotations
 
 import hashlib
+import mimetypes
+import re
 import threading
+from base64 import b64encode
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 from uuid import uuid4
 
-from base64 import b64encode
+import bleach
 from pydantic import BaseModel, Field, field_serializer
 
 from . import fts
 from .audit import log_audit_event
 from .logs import log_event
+from .settings_manager import load_settings
+
+DEFAULT_ALLOWED_MIME_TYPES: frozenset[str] = frozenset(
+    {
+        "text/plain",
+        "text/markdown",
+        "text/html",
+        "application/json",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+)
+DEFAULT_MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MiB
+
+# Bleach's defaults omit headings which are common in Markdown content.  Extend the
+# whitelist so Markdown-style HTML headings survive sanitisation while still
+# removing unsafe elements such as ``<script>``.
+_SANITIZE_TAGS: frozenset[str] = frozenset(
+    set(bleach.sanitizer.ALLOWED_TAGS) | {"h1", "h2", "h3", "h4", "h5", "h6", "pre", "code"}
+)
+
+_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
+
+
+IngestionPipeline = Callable[[bytes, str], str]
+
+
+class IngestionRegistry:
+    """Thread-safe registry mapping MIME types to ingestion pipelines."""
+
+    def __init__(self) -> None:
+        self._pipelines: dict[str, IngestionPipeline] = {}
+        self._lock = threading.Lock()
+
+    def register(self, mime_type: str, pipeline: IngestionPipeline) -> None:
+        with self._lock:
+            self._pipelines[mime_type.lower()] = pipeline
+
+    def unregister(self, mime_type: str) -> None:
+        with self._lock:
+            self._pipelines.pop(mime_type.lower(), None)
+
+    def get(self, mime_type: str) -> IngestionPipeline | None:
+        with self._lock:
+            return self._pipelines.get(mime_type.lower())
+
+    def items(self) -> dict[str, IngestionPipeline]:
+        with self._lock:
+            return dict(self._pipelines)
+
+
+ingestion_registry = IngestionRegistry()
+
+
+def register_ingestion_pipeline(mime_type: str, pipeline: IngestionPipeline) -> None:
+    """Register ``pipeline`` for ``mime_type``."""
+
+    ingestion_registry.register(mime_type, pipeline)
+
+
+def unregister_ingestion_pipeline(mime_type: str) -> None:
+    """Remove any registered pipeline for ``mime_type``."""
+
+    ingestion_registry.unregister(mime_type)
+
+
+def get_ingestion_pipeline(mime_type: str) -> IngestionPipeline | None:
+    """Return the pipeline registered for ``mime_type`` if any."""
+
+    return ingestion_registry.get(mime_type)
+
+
+_DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+_PDF_MIME_TYPE = "application/pdf"
+
+
+def _load_document_policy() -> tuple[int, frozenset[str], Mapping[str, Any]]:
+    """Return upload policy from settings or sensible defaults."""
+
+    settings = load_settings()
+    doc_settings = settings.get("documents", {}) if isinstance(settings, dict) else {}
+    max_size = doc_settings.get("max_upload_size", DEFAULT_MAX_UPLOAD_SIZE)
+    try:
+        size_limit = int(max_size)
+    except (TypeError, ValueError):
+        size_limit = DEFAULT_MAX_UPLOAD_SIZE
+
+    allowed = doc_settings.get("allowed_mime_types", DEFAULT_ALLOWED_MIME_TYPES)
+    if isinstance(allowed, Iterable) and not isinstance(allowed, (str, bytes)):
+        allowed_set = frozenset(str(item) for item in allowed)
+    else:
+        allowed_set = DEFAULT_ALLOWED_MIME_TYPES
+
+    if not allowed_set:
+        allowed_set = DEFAULT_ALLOWED_MIME_TYPES
+
+    return size_limit, allowed_set, doc_settings
+
+
+def sanitize_content(content: str) -> str:
+    """Scrub HTML/Markdown content using Bleach."""
+
+    stripped = _SCRIPT_RE.sub("", content)
+    return bleach.clean(
+        stripped,
+        tags=_SANITIZE_TAGS,
+        attributes=bleach.sanitizer.ALLOWED_ATTRIBUTES,
+        protocols=bleach.sanitizer.ALLOWED_PROTOCOLS,
+        strip=True,
+    )
+
+
+def _detect_mime_type(data: bytes, filename: str) -> str:
+    """Best-effort MIME detection using ``python-magic`` with fallbacks."""
+
+    mime: str | None = None
+    try:  # pragma: no cover - dependency errors fall back to mimetypes
+        import magic  # type: ignore[import-not-found]
+
+    except Exception:  # pragma: no cover - optional dependency
+        magic = None  # type: ignore[assignment]
+
+    if magic is not None:
+        try:
+            detector = magic.Magic(mime=True)
+            mime = detector.from_buffer(data)
+        except Exception:  # pragma: no cover - libmagic failure
+            mime = None
+
+    if not mime:
+        mime, _ = mimetypes.guess_type(filename)
+
+    mime = mime or "application/octet-stream"
+    if mime == "application/octet-stream":
+        try:
+            decoded = data.decode("utf-8")
+        except UnicodeDecodeError:
+            return mime
+        if all(char.isprintable() or char.isspace() for char in decoded):
+            return "text/plain"
+
+    return mime
 
 
 class DocumentRevision(BaseModel):
@@ -93,8 +238,6 @@ def next_document_number(project: Optional[str] = None) -> int:
         return num
 
 
-
-
 def _extract_docx_text(data: bytes) -> str:
     """Extract text from a DOCX file using ``python-docx``.
 
@@ -129,7 +272,70 @@ def _extract_docx_text(data: bytes) -> str:
                 text_piece += f"[DEL:{del_text}]"
         parts.append(prefix + text_piece)
 
-    return "\\n".join(parts)
+    # Join paragraphs using real newline characters.  The previous
+    # implementation mistakenly used the string ``"\\n"`` which produced a
+    # literal backslash followed by ``n`` in the output instead of an actual
+    # line break, yielding unreadable text when importing DOCX files.
+    return "\n".join(parts)
+
+
+def _default_docx_ingestion(data: bytes, filename: str) -> str:
+    return _extract_docx_text(data)
+
+
+register_ingestion_pipeline(_DOCX_MIME_TYPE, _default_docx_ingestion)
+
+
+def _extract_pdf_text(data: bytes) -> str:
+    """Extract textual content from a PDF using optional dependencies."""
+
+    try:
+        from pdfminer.high_level import extract_text  # type: ignore[import-not-found]
+    except Exception:  # pragma: no cover - optional dependency
+        extract_text = None  # type: ignore[assignment]
+
+    if extract_text is not None:
+        try:
+            return extract_text(BytesIO(data)) or ""
+        except Exception:  # pragma: no cover - pdfminer failure
+            pass
+
+    try:
+        from pypdf import PdfReader  # type: ignore[import-not-found]
+    except Exception:  # pragma: no cover - optional dependency
+        PdfReader = None  # type: ignore[assignment]
+
+    if PdfReader is not None:
+        try:
+            reader = PdfReader(BytesIO(data))
+            return "\n".join(filter(None, (page.extract_text() or "" for page in reader.pages)))
+        except Exception:  # pragma: no cover - pypdf failure
+            pass
+
+    raise ValueError("PDF ingestion requires pdfminer.six or pypdf")
+
+
+def _default_pdf_ingestion(data: bytes, filename: str) -> str:
+    return _extract_pdf_text(data)
+
+
+def _ensure_default_pipelines(doc_settings: Mapping[str, Any]) -> None:
+    """Register or remove built-in pipelines based on configuration."""
+
+    if doc_settings.get("enable_pdf_ingestion"):
+        if get_ingestion_pipeline(_PDF_MIME_TYPE) is None:
+            register_ingestion_pipeline(_PDF_MIME_TYPE, _default_pdf_ingestion)
+    else:
+        pipeline = get_ingestion_pipeline(_PDF_MIME_TYPE)
+        if pipeline is _default_pdf_ingestion:
+            unregister_ingestion_pipeline(_PDF_MIME_TYPE)
+
+
+def _decode_text_payload(data: bytes) -> str:
+    try:
+        return data.decode()
+    except UnicodeDecodeError as exc:
+        raise ValueError("document bytes must be valid UTF-8") from exc
 
 
 def import_document(
@@ -141,10 +347,40 @@ def import_document(
     priority: Optional[int] = None,
 ) -> DocumentModel:
     """Create a document from uploaded bytes."""
-    if filename.lower().endswith(".docx"):
-        content = _extract_docx_text(data)
+    size_limit, allowed_types, doc_settings = _load_document_policy()
+    if len(data) > size_limit:
+        raise ValueError("document exceeds configured size limit")
+
+    mime_type = _detect_mime_type(data, filename)
+    if mime_type not in allowed_types:
+        raise ValueError(f"unsupported MIME type: {mime_type}")
+
+    _ensure_default_pipelines(doc_settings)
+
+    pipeline = get_ingestion_pipeline(mime_type)
+    if pipeline is None and filename.lower().endswith(".docx"):
+        pipeline = _default_docx_ingestion
+
+    if mime_type == _PDF_MIME_TYPE:
+        if pipeline is None:
+            raise ValueError(
+                "no PDF ingestion pipeline available; enable documents.enable_pdf_ingestion "
+                "or register a custom pipeline"
+            )
+        if pipeline is _default_pdf_ingestion and not doc_settings.get(
+            "enable_pdf_ingestion", False
+        ):
+            raise ValueError(
+                "PDF ingestion is disabled; set documents.enable_pdf_ingestion to true"
+            )
+
+    if pipeline is not None:
+        content = pipeline(data, filename)
     else:
-        content = data.decode()
+        content = _decode_text_payload(data)
+
+    content = sanitize_content(content)
+
     doc_id = uuid4().hex
     ingestion_hash = hashlib.sha256(data).hexdigest()
     revision = DocumentRevision(
@@ -171,7 +407,8 @@ def import_document(
     from . import search as search_module
 
     search_module.add_document(document)
-    fts.index_document(doc_id, content)
+    if content.strip():
+        fts.index_document(doc_id, content)
     log_audit_event(
         doc_id,
         "created",
@@ -331,12 +568,15 @@ def get_document_version(doc_id: str, index: int) -> str:
 
 def set_document_editor(doc_id: str, editor: str) -> DocumentModel:
     """Set the preferred editor for ``doc_id`` and return the document."""
-    if not editor:
+    if not isinstance(editor, str):
+        raise TypeError("editor must be a string")
+    editor_name = editor.strip()
+    if not editor_name:
         raise ValueError("editor required")
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"document '{doc_id}' not found")
-    document.editor = editor
+    document.editor = editor_name
     return document
 
 

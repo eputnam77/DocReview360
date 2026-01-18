@@ -24,17 +24,26 @@ class VaultClient:
 
     def store(self, provider: str, secret: str, *, ttl: timedelta | None = None) -> None:
         """Store ``secret`` for ``provider`` with optional ``ttl``."""
+        if not isinstance(provider, str):
+            raise TypeError("provider must be a string")
         provider = provider.strip()
         if not provider:
             raise ValueError("provider must be non-empty")
-        if ttl is not None and ttl.total_seconds() <= 0:
-            raise ValueError("ttl must be positive")
+        if not isinstance(secret, str):
+            raise TypeError("secret must be a string")
+        if ttl is not None:
+            if not isinstance(ttl, timedelta):
+                raise TypeError("ttl must be a datetime.timedelta")
+            if ttl.total_seconds() <= 0:
+                raise ValueError("ttl must be positive")
         expiry = datetime.utcnow() + (ttl or timedelta(days=90))
         with self._lock:
             self._secrets[provider] = (secret, expiry)
 
     def get(self, provider: str) -> Optional[str]:
         """Return the secret for ``provider`` if present or via env vars."""
+        if not isinstance(provider, str):
+            raise TypeError("provider must be a string")
         provider = provider.strip()
         if not provider:
             raise ValueError("provider must be non-empty")
@@ -56,7 +65,7 @@ class VaultClient:
                     return secret
         # Fallback to environment variables using common suffixes.  Provider
         # identifiers may include characters not valid in environment variable
-        # names such as hyphens.  Normalise to uppercase underscores so a
+        # names such as hyphens.  Normalize to uppercase underscores so a
         # provider like ``"my-service"`` correctly maps to ``MY_SERVICE``
         # based variables.
         base = re.sub(r"[^A-Z0-9]", "_", provider.upper())
@@ -86,12 +95,23 @@ def store_secret(provider: str, secret: str, *, ttl: timedelta | None = None) ->
     _vault.store(provider, secret, ttl=ttl)
 
 
-def schedule_rotation(provider: str, loader: Callable[[], str], interval: timedelta) -> None:
-    """Schedule automatic rotation of ``provider`` secret."""
-    asyncio.create_task(_vault.rotate(provider, loader, interval))
+def schedule_rotation(
+    provider: str, loader: Callable[[], str], interval: timedelta
+) -> asyncio.Task[None]:
+    """Schedule automatic rotation of ``provider`` secret and return the task.
+
+    Returning the created :class:`asyncio.Task` allows callers (and tests) to
+    manage the background coroutine if needed, such as cancelling it during
+    shutdown. Previously the task handle was lost, which also made it difficult
+    to prevent 'coroutine was never awaited' warnings when `asyncio.create_task`
+    was monkeypatched.
+    """
+
+    if interval.total_seconds() <= 0:
+        raise ValueError("interval must be positive")
+    return asyncio.create_task(_vault.rotate(provider, loader, interval))
 
 
 def configure_vault(config: Dict[str, str]) -> None:
     """Configure the global vault client from settings."""
     _vault.configure(url=config.get("url"), token=config.get("token"))
-

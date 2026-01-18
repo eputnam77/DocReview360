@@ -4,9 +4,9 @@ from docreview360.ai_balancer import (
     assign_job,
     complete_job,
     current_load,
+    deregister_worker,
     register_worker,
     reset,
-    deregister_worker,
 )
 from docreview360.ai_writer_assign import assign_technical_writer
 from docreview360.config import Config

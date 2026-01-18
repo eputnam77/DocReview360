@@ -15,12 +15,12 @@ from __future__ import annotations
 
 from typing import Generator
 
-import json
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import doc_types
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase
 from docreview360.workflows import workflows
 
@@ -32,11 +32,11 @@ class TestNameChangePropagation:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        doc_types.document_types.clear()
         workflows.clear()
         yield
         # Cleanup
-        document_types.clear()
+        doc_types.document_types.clear()
         workflows.clear()
 
     def test_document_type_rename_propagation(self) -> None:
@@ -213,7 +213,7 @@ class TestNameChangePropagation:
         # Create document type
         doc_type_name = "Test Document Type"
         add_document_type(
-            DocumentTypeModel(name=doc_type_name, template="<h1>Test</h1>", workflow=[])
+            DocumentTypeModel(name=doc_type_name, template="<h1>Test</h1>", workflow=["Phase"])
         )
 
         # Create project using the document type
@@ -231,7 +231,7 @@ class TestNameChangePropagation:
         # projects can transition cleanly.  The API now requires a replacement
         # when the type is in use.
         add_document_type(
-            DocumentTypeModel(name="Replacement", template="<h1>R</h1>", workflow=[])
+            DocumentTypeModel(name="Replacement", template="<h1>R</h1>", workflow=["Phase"])
         )
         resp = client.delete(
             f"/document-types/{doc_type_name}", params={"replacement": "Replacement"}
@@ -254,7 +254,7 @@ class TestNameChangePropagation:
         new_name = "Updated Test Doc Type"
 
         add_document_type(
-            DocumentTypeModel(name=original_name, template="<h1>Test</h1>", workflow=[])
+            DocumentTypeModel(name=original_name, template="<h1>Test</h1>", workflow=["Phase"])
         )
 
         # Create project to generate logs
@@ -270,7 +270,7 @@ class TestNameChangePropagation:
 
         # Rename document type
         updated_doc_type = DocumentTypeModel(
-            name=new_name, template="<h1>Updated Test</h1>", workflow=[]
+            name=new_name, template="<h1>Updated Test</h1>", workflow=["Phase"]
         )
 
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
@@ -296,7 +296,9 @@ class TestNameChangePropagation:
         doc_type_name = "Report Test Doc Type"
 
         add_document_type(
-            DocumentTypeModel(name=doc_type_name, template="<h1>Report Test</h1>", workflow=[])
+            DocumentTypeModel(
+                name=doc_type_name, template="<h1>Report Test</h1>", workflow=["Phase"]
+            )
         )
 
         # Create multiple projects to generate report data
@@ -333,7 +335,9 @@ class TestNameChangePropagation:
         new_name = "Updated Search Test Doc Type"
 
         add_document_type(
-            DocumentTypeModel(name=original_name, template="<h1>Search Test</h1>", workflow=[])
+            DocumentTypeModel(
+                name=original_name, template="<h1>Search Test</h1>", workflow=["Phase"]
+            )
         )
 
         # Create project
@@ -353,7 +357,7 @@ class TestNameChangePropagation:
 
         # Rename document type
         updated_doc_type = DocumentTypeModel(
-            name=new_name, template="<h1>Updated Search Test</h1>", workflow=[]
+            name=new_name, template="<h1>Updated Search Test</h1>", workflow=["Phase"]
         )
 
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
@@ -375,7 +379,9 @@ class TestNameChangePropagation:
         phase_name = "Consistency Test Phase"
 
         add_document_type(
-            DocumentTypeModel(name=doc_type_name, template="<h1>Consistency Test</h1>", workflow=[])
+            DocumentTypeModel(
+                name=doc_type_name, template="<h1>Consistency Test</h1>", workflow=["Phase"]
+            )
         )
         add_phase(phase_name)
 
@@ -404,7 +410,7 @@ class TestNameChangePropagation:
 
         # Update document type
         updated_doc_type = DocumentTypeModel(
-            name=new_doc_type_name, template="<h1>Updated Consistency Test</h1>", workflow=[]
+            name=new_doc_type_name, template="<h1>Updated Consistency Test</h1>", workflow=["Phase"]
         )
 
         resp = client.put(f"/document-types/{doc_type_name}", json=updated_doc_type.model_dump())
@@ -434,18 +440,22 @@ class TestNameChangePropagation:
 
         # Test renaming to existing name
         add_document_type(
-            DocumentTypeModel(name="Existing Doc Type", template="<h1>Existing</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Existing Doc Type", template="<h1>Existing</h1>", workflow=["Phase"]
+            )
         )
 
         add_document_type(
-            DocumentTypeModel(name="Another Doc Type", template="<h1>Another</h1>", workflow=[])
+            DocumentTypeModel(
+                name="Another Doc Type", template="<h1>Another</h1>", workflow=["Phase"]
+            )
         )
 
         # Try to rename to existing name
         updated_doc_type = DocumentTypeModel(
             name="Existing Doc Type",  # This name already exists
             template="<h1>Updated</h1>",
-            workflow=[],
+            workflow=["Phase"],
         )
 
         resp = client.put("/document-types/Another Doc Type", json=updated_doc_type.model_dump())
@@ -466,7 +476,7 @@ class TestNameChangePropagation:
                 DocumentTypeModel(
                     name=f"Performance Test Doc Type {i}",
                     template=f"<h1>Performance Test {i}</h1>",
-                    workflow=[],
+                    workflow=["Phase"],
                 )
             )
 
@@ -487,7 +497,7 @@ class TestNameChangePropagation:
         new_name = "Updated Performance Test Doc Type 0"
 
         updated_doc_type = DocumentTypeModel(
-            name=new_name, template="<h1>Updated Performance Test</h1>", workflow=[]
+            name=new_name, template="<h1>Updated Performance Test</h1>", workflow=["Phase"]
         )
 
         resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())

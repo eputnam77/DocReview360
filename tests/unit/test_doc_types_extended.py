@@ -1,6 +1,5 @@
-import json
-from pathlib import Path
 import pytest
+
 from docreview360 import doc_types
 from docreview360.doc_types import DocumentTypeModel
 

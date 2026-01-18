@@ -32,4 +32,3 @@ def test_linter_reports_missing_heading_when_enabled() -> None:
     issues = lint_template(data, rules, enabled=True)
     assert "missing heading '1.1 Purpose'" in issues
     assert lint_template(data, rules, enabled=False) == []
-

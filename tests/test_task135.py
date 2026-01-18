@@ -10,9 +10,7 @@ async def test_task135_completed(monkeypatch):
         req = httpx.Request("POST", url)
         return httpx.Response(
             200,
-            json={
-                "suggest": {"simple": [{"options": [{"text": "foo", "_score": 1.0}]}]}
-            },
+            json={"suggest": {"simple": [{"options": [{"text": "foo", "_score": 1.0}]}]}},
             request=req,
         )
 

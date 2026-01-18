@@ -13,13 +13,16 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
+
 from docreview360.documents import import_document
 
 api_module = types.ModuleType("docreview360.api")
 webhooks_module = types.ModuleType("docreview360.api.webhooks")
 
+
 def emit_verification_completed(*args, **kwargs) -> None:
     pass
+
 
 webhooks_module.emit_verification_completed = emit_verification_completed
 api_module.webhooks = webhooks_module
@@ -49,9 +52,7 @@ class Metrics:
 
 def _generate_certificate() -> Tuple[x509.Certificate, rsa.RSAPrivateKey]:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name(
-        [x509.NameAttribute(NameOID.COMMON_NAME, "DocReview360 Test CA")]
-    )
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "DocReview360 Test CA")])
     cert = (
         x509.CertificateBuilder()
         .subject_name(subject)
@@ -125,9 +126,7 @@ def main() -> None:
     metrics = run_stress()
     print(f"Average latency: {metrics.avg_latency:.4f} s")
     print(f"Throughput: {metrics.throughput:.2f} verifications/s")
-    print(
-        f"Failure rate: {metrics.failure_rate:.2%} ({metrics.failures}/{metrics.total})"
-    )
+    print(f"Failure rate: {metrics.failure_rate:.2%} ({metrics.failures}/{metrics.total})")
 
 
 if __name__ == "__main__":

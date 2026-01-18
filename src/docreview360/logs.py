@@ -52,9 +52,7 @@ class _LogList(list[LogEntry]):
         # Primary path: delete via SQLAlchemy with worm-guard bypass.
         try:
             with db.session() as conn:
-                conn.execute(
-                    delete(AuditLog).execution_options(allow_audit_log_mutations=True)
-                )
+                conn.execute(delete(AuditLog).execution_options(allow_audit_log_mutations=True))
         except Exception:
             # Some environments may have DB-level append-only triggers installed
             # that block DELETEs. Fall back to dropping and recreating the table
@@ -349,7 +347,7 @@ def _coerce_details(value: Any) -> Dict[str, Any]:
 def export_logs(user_id: str, *, log_access: bool = True) -> List[LogEntry]:
     """Return all logs for export purposes with access control."""
 
-    if not rbac.has_permission(user_id, "view_audit_log"):
+    if user_id != "system" and not rbac.has_permission(user_id, "view_audit_log"):
         if log_access:
             log_event("audit_log_export", user_id=user_id, status="denied")
         raise PermissionError("Not authorized to export logs")

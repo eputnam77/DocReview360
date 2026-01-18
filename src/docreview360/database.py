@@ -21,7 +21,13 @@ def default_url(database: str) -> str:
     synonyms (e.g. ``"postgresql"``).
     """
 
-    db = database.lower()
+    # ``database`` values coming from environment variables or user input may
+    # include incidental whitespace (e.g. ``" postgres "``).  The previous
+    # implementation lowercased the value but didn't strip spaces which caused
+    # otherwise valid backend names to be rejected.  Normalise by trimming
+    # surrounding whitespace before the comparison so common variants resolve
+    # correctly.
+    db = database.strip().lower()
     if db in {"sqlite", "sqlite3"}:
         return "sqlite:///docreview360.db"
     if db in {"postgres", "postgresql"}:
@@ -36,7 +42,7 @@ def _parse_sql_statements(file: Path) -> list[str]:
 
     The parser is aware of ``CREATE TRIGGER`` blocks whose terminating
     ``END;`` may appear on a separate line. To keep the implementation
-    lightweight we normalise ``END`` blocks followed by optional
+    lightweight we normalize ``END`` blocks followed by optional
     whitespace and a semicolon into a single ``END;`` token using a
     regular expression before processing line-by-line.
     """
@@ -95,10 +101,8 @@ class Database:
             if url == "sqlite:///:memory:":
                 url = "sqlite+pysqlite:///:memory:"
             connect_args = {"check_same_thread": False}
-            self._engine = create_engine(
-                url, connect_args=connect_args, poolclass=StaticPool
-            )
-            # initialise the pool connection and return it so the database
+            self._engine = create_engine(url, connect_args=connect_args, poolclass=StaticPool)
+            # initialize the pool connection and return it so the database
             # persists but no connection remains checked out
             with self._engine.connect() as _:
                 pass

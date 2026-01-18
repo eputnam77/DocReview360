@@ -48,7 +48,7 @@ def delete_phase(name: str) -> None:
     ``add_phase`` trims surrounding whitespace when inserting new phases, but
     ``delete_phase`` previously compared the provided name verbatim.  Passing a
     name with incidental spaces would therefore fail to match an existing
-    entry.  Normalising the input keeps the behaviour consistent across the
+    entry.  Normalizing the input keeps the behavior consistent across the
     API.
     """
     name = name.strip()

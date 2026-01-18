@@ -1,56 +1,39 @@
+import pytest
+
 from docreview360.reviewer_model import ReviewerModel
 
 
-def _zero_weights():
-    from docreview360.fann_model import Weights
-
-    return Weights([[0.0] * 6 for _ in range(4)], [0.0] * 4, [0.0] * 4, 0.0)
-
-
-def test_reviewer_model_basic():
+def test_recommendations_are_deterministic() -> None:
     model = ReviewerModel()
-    text = "Sample content for review."
-    model.update_preferences("alice", text)
-    model.record_decision("alice", True)
-    model.record_decision("alice", True)
-    assert model.consistency_score("alice") == 1.0
-    assert model.route_draft(text) == "alice"
+    text = "Highly structured document with clear headings and orderly layout."
+
+    first = model.recommend(text, k=3)
+    second = model.recommend(text, k=3)
+
+    assert first.ranked_reviewers == second.ranked_reviewers
+    assert first.primary == "bob"
+    assert pytest.approx(first.approval_likelihood, rel=1e-6) == second.approval_likelihood
+    assert pytest.approx(sum(prob for _, prob in first.ranked_reviewers), rel=1e-6) == 1.0
 
 
-def test_profiles_survive_round_trip(tmp_path):
+def test_latency_buckets_increment() -> None:
     model = ReviewerModel()
-    text = "Content for serialization test."
-    model.update_preferences("bob", text)
+    baseline = model.latency_buckets.copy()
+
+    for _ in range(3):
+        model.recommend("Quick draft")
+
+    updated = model.latency_buckets
+    assert updated["<10ms"] == baseline["<10ms"] + 3
+
+
+def test_reviewer_feedback_updates() -> None:
+    model = ReviewerModel()
+    model.record_decision("alice", True)
+    model.record_decision("alice", False)
     model.record_decision("bob", True)
-    model.record_decision("bob", False)
 
-    path = tmp_path / "profiles.json"
-    model.save(path)
-
-    new_model = ReviewerModel()
-    new_model.load(path)
-
-    assert new_model._profiles == model._profiles
-
-
-def test_submit_draft_routes_highest_preference():
-    from docreview360.approvals import approvals, submit_draft_for_approval
-
-    approvals.clear()
-    model = ReviewerModel()
-    text = "repeat repeat"
-    model.update_preferences("alice", text)
-    model.update_preferences("bob", "unique words here")
-    weights = _zero_weights()
-    approval = submit_draft_for_approval(
-        "wf", None, "doc1", text, weights, reviewer_model=model
-    )
-    assert approval.reviewer == "alice"
-
-    # Bob learns preference for repeated text, becoming top choice
-    model.update_preferences("bob", text)
-    model.update_preferences("bob", text)
-    approval2 = submit_draft_for_approval(
-        "wf2", None, "doc2", text, weights, reviewer_model=model
-    )
-    assert approval2.reviewer == "bob"
+    feedback = model.reviewer_feedback
+    assert feedback["alice"] == {"approved": 1, "rejected": 1}
+    assert feedback["bob"]["approved"] == 1
+    assert model.consistency_score("alice") == 0.0

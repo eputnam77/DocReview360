@@ -12,7 +12,13 @@ from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.testclient import TestClient
 from jose import jwt
 
-from docreview360.auth import ALGORITHM, SECRET_KEY, create_access_token, keycloak_mfa_login
+from docreview360.auth import (
+    ALGORITHM,
+    SECRET_KEY,
+    TOKEN_AUDIENCE,
+    create_access_token,
+    keycloak_mfa_login,
+)
 from docreview360.piv_cac import validate_piv_certificate
 
 # Helpers for certificate
@@ -51,7 +57,7 @@ def test_keycloak_saml_login_flow() -> None:
     assert resp.headers["location"] == "https://keycloak/saml"
     token = keycloak_mfa_login("admin", "secret", "123456")
     jwt_token = create_access_token({"sub": "admin"})
-    decoded = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+    decoded = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM], audience=TOKEN_AUDIENCE)
     assert decoded["sub"] == "admin"
     assert token
 

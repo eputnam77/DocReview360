@@ -12,6 +12,7 @@ from .backup_utils import create_backup
 from .config import CONFIG_FILE, Config
 from .documents import documents
 from .exporter import export_batch
+from .guardrails import evaluate_guardrails, load_guardrail_thresholds
 from .logs import TRACE_ID, log_event
 from .search import search_index
 
@@ -34,8 +35,9 @@ class TracedTask(Task):
     def __call__(self, *args: Any, **kwargs: Any):
         headers = getattr(getattr(self, "request", None), "headers", None) or {}
         trace_id = headers.get("trace_id")
+        token = None
         if trace_id:
-            TRACE_ID.set(trace_id)
+            token = TRACE_ID.set(trace_id)
         log_event("task_started", task=self.name)
         try:
             result = self.run(*args, **kwargs)
@@ -44,6 +46,9 @@ class TracedTask(Task):
         except Exception as exc:  # pragma: no cover - defensive
             log_event("task_failed", task=self.name, error=str(exc), severity="error")
             raise
+        finally:
+            if token is not None:
+                TRACE_ID.reset(token)
 
 
 app.Task = TracedTask
@@ -81,14 +86,18 @@ def fetch_length(url: str) -> int:
 fetch_length = cast(Task, app.task(name="docreview360.fetch_length")(fetch_length))
 
 
-def quality_gate(text: str, weights: list[float] | None = None) -> float:
-    """Return anomaly score for ``text`` using the provided model weights."""
-    if weights is None:
-        weights = [0.0, -0.1, 1.2, 0.0]
-    from .wasm_plugin import lint_text
+def quality_gate(text: str, weights: list[float] | None = None) -> dict[str, object]:
+    """Return guardrail diagnostics for ``text`` using ONNX critics."""
 
-    passed = lint_text(text, weights)
-    return 0.0 if passed else 1.0
+    # ``weights`` is retained for backwards compatibility with earlier worker
+    # interfaces.  The FANN-derived scoring has been replaced by the ONNX
+    # critics so the parameter is now informational only.
+    thresholds = load_guardrail_thresholds()
+    diagnostics = evaluate_guardrails(text, thresholds=thresholds)
+    payload = diagnostics.asdict()
+    if weights is not None:
+        payload["weights_supplied"] = len(weights)
+    return payload
 
 
 quality_gate = cast(Task, app.task(name="docreview360.quality_gate")(quality_gate))

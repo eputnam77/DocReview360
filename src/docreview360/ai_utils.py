@@ -15,10 +15,46 @@ Dependencies:
 from __future__ import annotations
 
 import math
-import os
 import re
-import tempfile
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from .guardrails import (
+    evaluate_guardrails,
+    guardrail_quality_assessment,
+    load_guardrail_thresholds,
+)
+from .ml import features as ml_features
+from .ml.features import FANN_FEATURE_NAMES, count_syllables, quality_features
+
+# Backwards-compatible alias for tests patching GovDocVerify integration.
+try:  # pragma: no cover - defensive re-export
+    from .ml.features import _gov_run as _gov_run  # type: ignore[attr-defined]
+except Exception:  # pragma: no cover - fall back when attribute missing
+    _gov_run = None
+
+
+def _count_syllables(word: str) -> int:
+    """Backward compatible alias for :func:`docreview360.ml.features.count_syllables`."""
+
+    return count_syllables(word)
+
+
+def style_guide_score(text: str) -> float:
+    """Return a style score using the configured GovDocVerify hook when available."""
+
+    original_gov_run = ml_features._gov_run
+    ml_features._gov_run = _gov_run
+    try:
+        return ml_features.style_guide_score(text)
+    finally:
+        ml_features._gov_run = original_gov_run
+
+
+def structural_pattern_score(text: str) -> float:
+    """Return a structure score based on headings and list markers."""
+
+    return ml_features.structural_pattern_score(text)
+
 
 if TYPE_CHECKING:
     from .documents import DocumentModel
@@ -26,16 +62,6 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Configurable constants & defaults
 # ---------------------------------------------------------------------------
-
-# Feature names for FANN-like scoring
-FANN_FEATURE_NAMES = [
-    "length",
-    "unique_ratio",
-    "repeated",
-    "readability",
-    "style",
-    "structure",
-]
 
 # Default stop words for SynthLang compression
 SYNTH_STOP_WORDS = {
@@ -52,9 +78,6 @@ SYNTH_STOP_WORDS = {
 # FANN weights (configurable)
 _FANN_WEIGHTS = [0.0, -0.1, 1.2, -0.1, -0.2, -0.2]
 
-# Style-scoring max sentence length
-_MAX_SENT_LEN = 120
-
 # Default anomaly detection threshold
 DEFAULT_ANOMALY_THRESHOLD = 0.7
 
@@ -64,9 +87,6 @@ PROMPT_TEMPLATES: Dict[str, str] = {"default": "{text}"}
 
 # SynthLang enable flag
 synth_enabled = False
-
-# Hook for custom heuristic rules (callables that take str -> bool)
-CUSTOM_STYLE_RULES: list[Callable[[str], bool]] = []
 
 # ---------------------------------------------------------------------------
 # Template management
@@ -144,150 +164,28 @@ def synth_compress(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Style and structure scoring
-# ---------------------------------------------------------------------------
-
-try:  # pragma: no cover
-    from govdocverify.cli import process_document as _gov_run  # type: ignore[import-not-found]
-except Exception:
-    _gov_run = None
-
-
-def _count_syllables(word: str) -> int:
-    """Rough syllable estimator used for readability features."""
-    groups = re.findall(r"[aeiouy]+", word.lower())
-    return max(1, len(groups))
-
-
-def _heuristic_style_score(text: str) -> float:
-    """Return the fraction of sentences meeting simple style rules."""
-    sentences_raw = re.findall(r".*?[.!?](?:\s|$)", text, re.S) or [text]
-
-    good = 0
-    for raw in sentences_raw:
-        if not raw.strip():
-            continue
-        lines = raw.splitlines()
-        trailing_ws = any(re.search(r"[ \t]+$", line) for line in lines)
-        s = raw.strip()
-        words = s.split()
-        has_repeat = any(w1.lower() == w2.lower() for w1, w2 in zip(words, words[1:]))
-        missing_space = re.search(r"[;,](?!\s)", s)
-        repeated_caps = re.search(r"[A-Z]{2,}[a-z]", s)
-
-        # Base rules
-        passes_base = (
-            s[0].isupper()
-            and s[-1] in ".!?"
-            and not re.search(r"\s{2,}", s)
-            and not re.search(r"[.!?]{2,}", s)
-            and not has_repeat
-            and not missing_space
-            and not trailing_ws
-            and not repeated_caps
-            and len(s) <= _MAX_SENT_LEN
-        )
-
-        # Custom rules
-        passes_custom = all(rule(s) for rule in CUSTOM_STYLE_RULES)
-
-        if passes_base and passes_custom:
-            good += 1
-
-    return good / len(sentences_raw)
-
-
-def style_guide_score(text: str) -> float:
-    """Return a style score using GovDocVerify when available; fall back otherwise."""
-    if _gov_run is not None:
-        try:
-            with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as tmp:
-                tmp.write(text)
-                tmp.flush()
-                path = tmp.name
-            try:
-                result = _gov_run(path, "Other")
-            finally:
-                os.unlink(path)
-            issues = result.get("styleIssues", [])  # type: ignore[assignment]
-            sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
-            total = len(sentences) or 1
-            return max(0.0, 1 - len(issues) / total)
-        except Exception:
-            # Log in real workflow; fallback to heuristic
-            pass
-    return _heuristic_style_score(text)
-
-
-def structural_pattern_score(text: str) -> float:
-    """Return a ratio of structural lines to total lines with a heading-order penalty."""
-    lines = text.splitlines()
-    if not lines:
-        return 0.0
-
-    headings: list[int] = []
-    bullets = 0
-    numbered = 0
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("#"):
-            m = re.match(r"(#+)\s", stripped)
-            if m:
-                headings.append(len(m.group(1)))
-        elif stripped.startswith(("-", "*", "+")):
-            bullets += 1
-        elif re.match(r"\d+[.)]\s", stripped):
-            numbered += 1
-
-    structured = len(headings) + bullets + numbered
-    base = structured / len(lines)
-    if not headings:
-        return base
-
-    jumps = sum(1 for a, b in zip(headings, headings[1:]) if b > a + 1)
-    penalty = jumps / len(headings)
-    return base * (1 - penalty)
-
-
-# ---------------------------------------------------------------------------
 # FANN-like feature scoring & anomaly detection
 # ---------------------------------------------------------------------------
 
 
 def _fann_features(text: str) -> list[float]:
-    """Return simple numeric features for the faux FANN network."""
-    # Mirroring ``services.document_checker`` we need to extract word tokens
-    # without punctuation so repeated sequences like ``"bad, bad"`` are counted.
-    # ``str.split`` left trailing commas attached to tokens which meant the
-    # repetition detector missed such cases and skewed scores.
-    words = re.findall(r"[A-Za-z0-9']+", text.lower())
-    repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
-    unique_ratio = len(set(text)) / (len(text) or 1)
+    """Return faux-FANN features sourced from the ML feature adapter."""
 
-    sentence_count = sum(text.count(ch) for ch in ".!?") or 1
-    word_count = len(words) or 1
-    syllables = sum(_count_syllables(w) for w in words) or 1
-    words_per_sentence = word_count / sentence_count
-    syllables_per_word = syllables / word_count
-    flesch = 206.835 - 1.015 * words_per_sentence - 84.6 * syllables_per_word
-    readability = flesch / 100
-
-    style = style_guide_score(text)
-    structure = structural_pattern_score(text)
-
-    return [
-        len(text) / 1000,
-        unique_ratio,
-        repeated,
-        readability,
-        style,
-        structure,
-    ]
+    payload = quality_features(text)
+    legacy = payload.get("legacy", {}).get("fann")
+    if not legacy:
+        raise ValueError("quality feature payload missing legacy FANN mapping")
+    return [legacy[name] for name in FANN_FEATURE_NAMES]
 
 
 def fann_feature_dict(text: str) -> dict[str, float]:
     """Return features as a dict for workflow integration."""
-    return dict(zip(FANN_FEATURE_NAMES, _fann_features(text)))
+
+    payload = quality_features(text)
+    legacy = payload.get("legacy", {}).get("fann")
+    if not legacy:
+        raise ValueError("quality feature payload missing legacy FANN mapping")
+    return dict(legacy)
 
 
 def _fann_score(text: str, weights: Optional[list[float]] = None) -> float:
@@ -304,9 +202,19 @@ def _fann_score(text: str, weights: Optional[list[float]] = None) -> float:
     return 1.0 / (1.0 + math.exp(-linear))
 
 
-def detect_anomalies(text: str, threshold: float = DEFAULT_ANOMALY_THRESHOLD) -> bool:
-    """Return True when `text` appears anomalous using a tiny FANN model."""
-    return _fann_score(text) >= threshold
+def detect_anomalies(text: str, threshold: float | None = None) -> bool:
+    """Return ``True`` when any quality flag exceeds the configured threshold."""
+
+    policy = None
+    try:
+        policy = load_guardrail_thresholds()
+    except Exception:
+        policy = None
+    limit = threshold
+    if limit is None:
+        limit = policy.quality_flag_threshold if policy else DEFAULT_ANOMALY_THRESHOLD
+    assessment = guardrail_quality_assessment(text)
+    return any(flag >= limit for flag in assessment.flags)
 
 
 # ---------------------------------------------------------------------------
@@ -337,12 +245,15 @@ def validate_content(
     information when explicitly requested via ``return_diagnostics=True``.
     """
 
-    diagnostics = fann_feature_dict(text)
-    is_valid = bool(text.strip()) and not detect_anomalies(text)
-    diagnostics["is_valid"] = is_valid
+    thresholds = load_guardrail_thresholds()
+    diagnostics = evaluate_guardrails(text, thresholds=thresholds)
+    payload = diagnostics.asdict()
+    payload["fann_features"] = fann_feature_dict(text)
+    payload["has_text"] = bool(text.strip())
+    payload["is_valid"] = payload["has_text"] and payload["passed"]
     if return_diagnostics:
-        return is_valid, diagnostics
-    return is_valid
+        return payload["is_valid"], payload
+    return payload["is_valid"]
 
 
 def create_validated_document(
