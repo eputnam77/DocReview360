@@ -1329,6 +1329,11 @@ async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel
     from fastapi import HTTPException
 
     try:
+        if not doc_type.workflow:
+            from ..doc_types import DEFAULT_DOC_TYPE_PHASES
+
+            workflow = DEFAULT_DOC_TYPE_PHASES.get(doc_type.name, ["Draft Development"])
+            doc_type = doc_type.model_copy(update={"workflow": workflow})
         add_document_type(doc_type)
     except ValueError as exc:
         # Normalize validation errors into a 400 response so API clients
@@ -1378,6 +1383,11 @@ async def update_document_type_endpoint(
 ) -> DocumentTypeModel:
     """Replace an existing document type."""
     try:
+        if not doc_type.workflow:
+            existing = get_document_type(name)
+            if existing is None:
+                raise KeyError(f"Document type '{name}' not found")
+            doc_type = doc_type.model_copy(update={"workflow": list(existing.workflow)})
         return update_document_type(name, doc_type)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -1886,8 +1896,18 @@ async def sign_document(
 @log_call
 async def complete_sign(sig_id: str) -> None:
     """Mark a signature request as completed."""
-    complete_signature(sig_id)
-    get_provider().process_webhook({"id": sig_id, "status": "signed"})
+    provider = get_provider()
+    if getattr(provider, "name", None) == "documenso":
+        complete_signature(sig_id)
+        provider.process_webhook({"id": sig_id, "status": "signed"})
+        return
+    provider.process_webhook({"id": sig_id, "status": "signed"})
+    try:
+        from ..approvals import handle_signature_return
+
+        await handle_signature_return(sig_id)
+    except (KeyError, ValueError):
+        pass
 
 
 @app.get("/sign/{sig_id}")
