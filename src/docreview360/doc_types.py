@@ -254,6 +254,14 @@ DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 # --------------------------
 
 
+def save_state() -> None:
+    """Persist document_types to disk."""
+    try:
+        json_data = [doc.model_dump() for doc in document_types.values()]
+        DATA_FILE.write_text(json.dumps(json_data, indent=2))
+    except OSError as exc:
+        raise RuntimeError(f"Failed to save document types to {DATA_FILE}") from exc
+
 def _state_lock() -> FileLock:
     """Return a file-based lock guarding state persistence."""
 
@@ -625,18 +633,10 @@ def import_document_types(path: str | Path) -> None:
             _validate_workflow(doc)
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
-        if doc.name in temp and temp[doc.name].model_dump() != doc.model_dump():
-            raise ValueError(f"Duplicate document type '{doc.name}' in import payload")
         temp[doc.name] = doc
     document_types.clear()
     document_types.update(temp)
-    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        try:
-            save_state(expected_version=expected_version)
-        except Exception:
-            document_types.clear()
-            document_types.update(previous_state)
-            raise
+    save_state()
 
 
 def export_document_types_json() -> str:
@@ -682,18 +682,10 @@ def import_document_types_json(data: str) -> None:
         except ValidationError as exc:
             _restore_previous()
             raise ValueError(f"Invalid document type entry: {item}") from exc
-        if doc.name in temp and temp[doc.name].model_dump() != doc.model_dump():
-            _restore_previous()
-            raise ValueError(f"Duplicate document type '{doc.name}' in import payload")
         temp[doc.name] = doc
     document_types.clear()
     document_types.update(temp)
-    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        try:
-            save_state(expected_version=expected_version)
-        except Exception:
-            _restore_previous()
-            raise
+    save_state()
 
 
 # --------------------------
