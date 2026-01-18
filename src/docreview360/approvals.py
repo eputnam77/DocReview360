@@ -258,7 +258,13 @@ def create_approval(
     if signature_provider is None:
         signature_provider = get_default_provider()
     approval_id = uuid4().hex
-    doc_hash = hashlib.sha256(document).hexdigest() if document is not None else None
+    doc_hash = None
+    if document is not None:
+        existing_document = get_document(doc_id)
+        if existing_document is not None:
+            doc_hash = hashlib.sha256(existing_document.content.encode()).hexdigest()
+        else:
+            doc_hash = hashlib.sha256(document).hexdigest()
     approval = ApprovalModel(
         id=approval_id,
         workflow=workflow,
@@ -1123,7 +1129,13 @@ def verify_document_signature_stream(  # noqa: C901
         explicit_names = set(provider_names)
 
         if not isinstance(provider, list):
-            for p in get_default_providers():
+            default_providers = get_default_providers()
+            if approval.signature_provider in default_providers:
+                default_providers = [
+                    approval.signature_provider,
+                    *[p for p in default_providers if p != approval.signature_provider],
+                ]
+            for p in default_providers:
                 if p not in provider_names:
                     provider_names.append(p)
 
