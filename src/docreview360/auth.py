@@ -146,11 +146,11 @@ USER_DB_PATH = _env_or_default(
 
 DEMO_USER_DEFAULTS: dict[str, dict[str, str]] = {
     "alice": {
-        "password": "password",
+        "password": "Password123!",
         "otp_secret": "123456",
     },
     "bob": {
-        "password": "password",
+        "password": "Password123!",
         "otp_secret": "123456",
     },
 }
