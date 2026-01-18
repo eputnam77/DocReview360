@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
 from docreview360.phases import _phases, add_phase
 from docreview360.workflows import workflows
 
@@ -20,12 +20,12 @@ class TestConfigurationPropagation:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
         yield
         # Cleanup
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 
@@ -79,7 +79,7 @@ class TestConfigurationPropagation:
         assert resp.status_code in [201, 400, 422]
 
         # Test with empty configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
 
         resp = client.get("/document-types")
@@ -97,7 +97,7 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Clear all configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
         workflows.clear()
 
@@ -145,7 +145,7 @@ class TestConfigurationPropagation:
         assert "Initial Phase" in phases_data
 
         # Update configuration
-        document_types.clear()
+        reset_document_types()
         _phases.clear()
 
         add_document_type(

@@ -91,16 +91,22 @@ def test_due_date_updates() -> None:
 def test_reset_approval() -> None:
     """reset_approval should revert approval state when confirmed."""
 
+    from docreview360 import auth
     from docreview360.approvals import create_approval, reset_approval
+
+    username = f"reset-user-{uuid4().hex[:8]}"
+    password = f"Reset!Pass{uuid4().hex[:6]}A1"
+    otp = "123456"
+    auth.USER_REPOSITORY.create_user(username, password, otp_secret=otp)
 
     appr = create_approval("wf1", "bob", "doc-reset")
     appr.state = "approved"
     assert reset_approval(
         appr.id,
         True,
-        username="alice",
-        password="password",
-        otp="123456",
+        username=username,
+        password=password,
+        otp=otp,
         reason="test",
     )
     assert appr.state == "pending"
@@ -109,9 +115,9 @@ def test_reset_approval() -> None:
     assert not reset_approval(
         appr.id,
         False,
-        username="alice",
-        password="password",
-        otp="123456",
+        username=username,
+        password=password,
+        otp=otp,
         reason="test",
     )
     assert appr.state == "approved"

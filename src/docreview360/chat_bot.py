@@ -138,6 +138,17 @@ def _overdue_question(lower: str) -> str | None:
     return f"There are {count} overdue high priority projects."
 
 
+def _current_document_types() -> dict[str, Any]:
+    """Return the active document type registry."""
+
+    try:
+        from .doc_types import document_types as doc_types_map
+
+        return doc_types_map
+    except Exception:
+        return document_types
+
+
 def _template_question(lower: str) -> str | None:
     template = re.search(
         r"(?:which|what) template (?:should i use|to use) (?:for|with) (.+)",
@@ -163,7 +174,7 @@ def _template_question(lower: str) -> str | None:
             return (
                 f"For {doc_type}, you should use the '{tmpl['label']}' template (ID: {tmpl['id']})."
             )
-    for doc_type_name, doc_type_obj in document_types.items():
+    for doc_type_name, doc_type_obj in _current_document_types().items():
         name_lower = doc_type_name.lower()
         if doc_type in name_lower or name_lower in doc_type:
             template_id = doc_type_obj.default_template_id or doc_type_obj.template
@@ -177,7 +188,7 @@ def _template_question(lower: str) -> str | None:
 def _document_type_question(lower: str) -> str | None:
     if "document types" not in lower and "doc types" not in lower:
         return None
-    types = list(document_types.keys())
+    types = list(_current_document_types().keys())
     if not types:
         return "No document types are currently defined."
     return f"Available document types: {', '.join(types)}."
