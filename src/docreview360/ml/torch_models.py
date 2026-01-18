@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Mapping, MutableMapping, Sequence
@@ -299,7 +300,14 @@ def export_critic_to_onnx(
     if quantize:
         from tempfile import NamedTemporaryFile
 
-        from onnxruntime.quantization import QuantType, quantize_dynamic
+        try:
+            from onnxruntime.quantization import QuantType, quantize_dynamic
+        except ModuleNotFoundError:
+            warnings.warn(
+                "onnxruntime.quantization is unavailable; skipping INT8 quantization.",
+                RuntimeWarning,
+            )
+            return {"path": str(path_obj), "sha256": _sha256(path_obj), **meta}
 
         with NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
             tmp_path = Path(tmp.name)

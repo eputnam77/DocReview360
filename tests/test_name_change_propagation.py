@@ -18,8 +18,9 @@ from typing import Generator
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import doc_types
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase
 from docreview360.workflows import workflows
 
@@ -31,11 +32,11 @@ class TestNameChangePropagation:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        doc_types.document_types.clear()
         workflows.clear()
         yield
         # Cleanup
-        document_types.clear()
+        doc_types.document_types.clear()
         workflows.clear()
 
     def test_document_type_rename_propagation(self) -> None:

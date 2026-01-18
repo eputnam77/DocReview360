@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from docreview360 import auth
+from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.rbac import add_role
 from docreview360.search import ProjectModel, add_project
@@ -24,6 +24,9 @@ def test_user_dashboard_endpoint() -> None:
 def test_manager_dashboard_endpoint() -> None:
     _setup()
     client = TestClient(app)
+    if not auth.USER_REPOSITORY.get_user("alice"):
+        auth.USER_REPOSITORY.create_user("alice", "Password!1234", otp_secret="123456")
+    rbac.reset_role_assignments(include_defaults=False)
     add_role("alice", "manager")
     token = auth.create_access_token({"sub": "alice"})
     resp = client.get(
@@ -37,6 +40,9 @@ def test_manager_dashboard_endpoint() -> None:
 
 def test_admin_dashboard_endpoint() -> None:
     client = TestClient(app)
+    if not auth.USER_REPOSITORY.get_user("alice"):
+        auth.USER_REPOSITORY.create_user("alice", "Password!1234", otp_secret="123456")
+    rbac.reset_role_assignments(include_defaults=False)
     add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"})
     resp = client.get(
