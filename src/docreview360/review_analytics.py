@@ -88,6 +88,13 @@ def detect_anomalous_document(
 ) -> tuple[bool, float]:
     """Return ``(is_anomalous, score)`` for ``text`` given ``history`` scores."""
 
+    if critic is not None:
+        score = critic.predict(text)
+        if not history:
+            return False, score
+        avg = sum(history) / len(history)
+        return abs(score - avg) > threshold, score
+
     assessment = quality_assessment(text)
     score = assessment.score
     if any(flag >= threshold for flag in assessment.flags):
