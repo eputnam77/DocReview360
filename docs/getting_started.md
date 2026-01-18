@@ -37,11 +37,41 @@ pipx install uv poetry
    export DOCREVIEW360_SECRET_KEY=your-secret
    export DOCREVIEW360_ALGORITHM=HS256
    export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+   export DOCREVIEW360_TOKEN_ISSUER=docreview360.local
+   export DOCREVIEW360_TOKEN_AUDIENCE=docreview360-users
    export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
    export DOCREVIEW360_OIDC_ALGORITHM=HS256
    export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+   export DOCREVIEW360_OIDC_TOKEN_ISSUER=docreview360-oidc.local
+   export DOCREVIEW360_OIDC_TOKEN_AUDIENCE=docreview360-oidc
+   # Treat any non-dev/test value (for example "production") as production.
+   # When set, missing secrets trigger a startup failure instead of a warning.
+   export DOCREVIEW360_ENV=dev
    # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
+   # Cookie-based auth requires an X-CSRF-Token header that matches the csrf_token cookie.
+   # Optional: SIGNATURE_PROVIDER=sandbox (default sandbox avoids Documenso webhooks; switch to "documenso" to receive callbacks at /hooks/documenso)
    ```
+
+   The application prioritises the built-in ``sandbox`` signature provider in
+   development. Set ``SIGNATURE_PROVIDER=documenso`` (or a comma-separated
+   fallback list) to use Documenso instead, and ensure the ``/hooks/documenso``
+   endpoint is reachable so webhook callbacks succeed.
+
+   Optional authentication flags control multi-factor requirements and rate
+   limiting. You can pre-set them to the development defaults used by
+   `docreview360.auth` to silence startup warnings:
+
+   ```bash
+   export DOCREVIEW360_REQUIRE_MFA=false
+   export DOCREVIEW360_SEED_DEMO_USERS=false
+   export DOCREVIEW360_MAX_FAILED_ATTEMPTS=5
+   export DOCREVIEW360_LOCKOUT_SECONDS=300
+   export DOCREVIEW360_USER_DB="$(pwd)/docreview360_users.db"
+   ```
+
+   Leaving these environment variables unset is also acceptable during local
+   development. The server logs a `RuntimeWarning` for each missing value to
+   highlight that `_env_or_default` fell back to development-safe defaults.
 
    When testing, refer to secrets in `tests/conftest.py`.
    Run the CLI wizard to set up your config:
@@ -57,10 +87,10 @@ pipx install uv poetry
 5. **Start the backend API server**
 
    ```bash
-   uvicorn docreview360.api:app --reload
+   uvicorn docreview360.api:app --reload --host 0.0.0.0
    ```
 
-   This launches the FastAPI backend on port 8000.
+   This launches the FastAPI backend on port 8000 and binds to all interfaces so Playwright or remote browsers can reach it.
 
 6. **Set up and run the React frontend (Node.js 18+ required)**
 

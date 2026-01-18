@@ -1,22 +1,30 @@
-"""Naïve in-memory search index."""
+"""Search index module backed by a lightweight persistent store."""
 
 from __future__ import annotations
 
 import json
+import logging
+import os
 import re
+import sqlite3
 import threading
 import uuid
 from collections import Counter
-from dataclasses import dataclass
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from . import fts
-from .cache import cache_get, cache_set, cache_delete
+from .cache import cache_delete, cache_get, cache_set
 from .documents import DocumentModel, documents
+from .logs import log_event
 from .workflows import get_workflow
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectModel(BaseModel):
@@ -29,8 +37,9 @@ class ProjectModel(BaseModel):
     user: Optional[str] = None
     doc_type: str | None = None
     workflow: str | None = None
+    requested_workflow: str | None = None
     priority: int = 0
-    created: datetime = datetime.now(UTC)
+    created: datetime = Field(default_factory=lambda: datetime.now(UTC))
     temp_user: Optional[str] = None
     temp_until: datetime | None = None
     updated: datetime | None = None  # Add updated field for frontend compatibility
@@ -119,6 +128,12 @@ class ProjectModel(BaseModel):
                     return 25
         return 0  # Default progress for projects without workflows
 
+    @model_validator(mode="after")
+    def _ensure_requested_workflow(self) -> "ProjectModel":
+        if self.requested_workflow is None and self.workflow:
+            self.requested_workflow = self.workflow
+        return self
+
 
 @dataclass
 class SavedSearch:
@@ -126,31 +141,278 @@ class SavedSearch:
 
     id: str
     query: str
-    user: str | None = None
-    created: datetime = datetime.now(UTC)
+    user: str
+    created: datetime = field(default_factory=lambda: datetime.now(UTC))
     count: int = 0
+    flagged_for_review: bool = False
+
+
+DEFAULT_PROJECT_ID = "demo-project"
+
+
+def _default_project(project_number: int) -> ProjectModel:
+    """Return a default demo project for bootstrapping the system."""
+
+    current_time = datetime.now(UTC)
+    return ProjectModel(
+        id=DEFAULT_PROJECT_ID,
+        name="Demo Project",
+        number=project_number,
+        document_number="DOC-001",
+        user="alice",
+        doc_type="General",
+        updated=current_time,
+    )
+
+
+class SearchRepository:
+    """SQLite-backed persistence for the search module."""
+
+    _NEXT_PROJECT_NUMBER_KEY = "next_project_number"
+
+    def __init__(self, path: str | None = None) -> None:
+        env_path = path or os.getenv("DOCREVIEW360_SEARCH_DB")
+        if env_path:
+            self._path = Path(env_path).expanduser()
+        else:
+            base_dir = os.getenv("DOCREVIEW360_DATA_DIR")
+            base_path = Path(base_dir).expanduser() if base_dir else Path.cwd()
+            self._path = base_path / "search_state.db"
+        if not self._path.parent.exists():
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
+        with self._connection() as conn:
+            self._initialize(conn)
+
+    @contextmanager
+    def _connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._path)
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+        except sqlite3.DatabaseError:
+            pass
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _initialize(self, conn: sqlite3.Connection) -> None:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS projects (
+                id TEXT PRIMARY KEY,
+                payload TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS saved_searches (
+                id TEXT PRIMARY KEY,
+                query TEXT NOT NULL,
+                user TEXT,
+                created TEXT NOT NULL,
+                count INTEGER NOT NULL,
+                flagged INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS counters (
+                query TEXT PRIMARY KEY,
+                count INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+            """
+        )
+        self._ensure_saved_search_schema(conn)
+        self._backfill_saved_search_users(conn)
+
+    def _ensure_saved_search_schema(self, conn: sqlite3.Connection) -> None:
+        """Ensure optional columns for saved searches are present."""
+
+        info = conn.execute("PRAGMA table_info(saved_searches)").fetchall()
+        column_names = {row["name"] for row in info}
+        if "flagged" not in column_names:
+            conn.execute("ALTER TABLE saved_searches ADD COLUMN flagged INTEGER NOT NULL DEFAULT 0")
+
+    def _backfill_saved_search_users(self, conn: sqlite3.Connection) -> None:
+        """Assign a placeholder user for legacy saved searches without one."""
+
+        conn.execute(
+            """
+            UPDATE saved_searches
+            SET user = 'unknown',
+                flagged = 1
+            WHERE user IS NULL OR TRIM(user) = ''
+            """
+        )
+
+    def load_state(
+        self,
+    ) -> tuple[dict[str, ProjectModel], dict[str, SavedSearch], Counter[str], int]:
+        """Return persisted projects, saved searches, counters, and next number."""
+
+        with self._lock:
+            with self._connection() as conn:
+                project_rows = conn.execute("SELECT id, payload FROM projects").fetchall()
+                projects: dict[str, ProjectModel] = {}
+                missing_workflows: list[tuple[str, str]] = []
+                for row in project_rows:
+                    project = ProjectModel.model_validate_json(row["payload"])
+                    if project.requested_workflow is None and project.workflow:
+                        project.requested_workflow = project.workflow
+                    if project.workflow and not get_workflow(project.workflow):
+                        missing_workflows.append((project.id, project.workflow))
+                    projects[project.id] = project
+
+                for project_id, workflow_id in missing_workflows:
+                    logger.warning(
+                        "Project %s referenced missing workflow %s; clearing workflow pointer",
+                        project_id,
+                        workflow_id,
+                    )
+                    project = projects[project_id]
+                    project.requested_workflow = workflow_id
+                    project.workflow = None
+                    conn.execute(
+                        "UPDATE projects SET payload = ? WHERE id = ?",
+                        (json.dumps(project.model_dump(mode="json")), project_id),
+                    )
+
+                saved_rows = conn.execute(
+                    "SELECT id, query, user, created, count, flagged FROM saved_searches"
+                ).fetchall()
+                saved: dict[str, SavedSearch] = {}
+                flagged_searches: list[str] = []
+                for row in saved_rows:
+                    user = row["user"]
+                    flagged = bool(row["flagged"])
+                    if not user or not str(user).strip():
+                        user = "unknown"
+                        flagged = True
+                        flagged_searches.append(row["id"])
+                        conn.execute(
+                            "UPDATE saved_searches SET user = ?, flagged = 1 WHERE id = ?",
+                            (user, row["id"]),
+                        )
+                    saved[row["id"]] = SavedSearch(
+                        id=row["id"],
+                        query=row["query"],
+                        user=user,
+                        created=datetime.fromisoformat(row["created"]),
+                        count=row["count"],
+                        flagged_for_review=flagged,
+                    )
+
+                if flagged_searches:
+                    logger.warning(
+                        "Backfilled creator for saved searches missing attribution: %s",
+                        ", ".join(flagged_searches),
+                    )
+
+                counter_rows = conn.execute("SELECT query, count FROM counters").fetchall()
+                counters = Counter({row["query"]: row["count"] for row in counter_rows})
+
+                next_number = self._read_next_project_number(conn)
+
+        if not projects:
+            default = _default_project(1)
+            with self._lock:
+                self.save_project(default, next_project_number=2)
+            projects = {default.id: default}
+            next_number = 2
+        elif next_number is None:
+            next_number = max((p.number or 0 for p in projects.values()), default=0) + 1
+            self.set_next_project_number(next_number)
+
+        return projects, saved, counters, next_number
+
+    def save_project(
+        self, project: ProjectModel, *, next_project_number: int | None = None
+    ) -> None:
+        payload = json.dumps(project.model_dump(mode="json"))
+        with self._lock:
+            with self._connection() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO projects (id, payload) VALUES (?, ?)",
+                    (project.id, payload),
+                )
+                if next_project_number is not None:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                        (self._NEXT_PROJECT_NUMBER_KEY, str(next_project_number)),
+                    )
+
+    def save_saved_search(self, saved_search: SavedSearch) -> None:
+        with self._lock:
+            with self._connection() as conn:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO saved_searches (id, query, user, created, count, flagged)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        saved_search.id,
+                        saved_search.query,
+                        saved_search.user,
+                        saved_search.created.isoformat(),
+                        saved_search.count,
+                        int(saved_search.flagged_for_review),
+                    ),
+                )
+
+    def increment_counter(self, query: str, delta: int = 1) -> None:
+        with self._lock:
+            with self._connection() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO counters(query, count) VALUES(?, ?)
+                    ON CONFLICT(query) DO UPDATE SET count = count + excluded.count
+                    """,
+                    (query, delta),
+                )
+
+    def set_next_project_number(self, value: int) -> None:
+        with self._lock:
+            with self._connection() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                    (self._NEXT_PROJECT_NUMBER_KEY, str(value)),
+                )
+
+    def _read_next_project_number(self, conn: sqlite3.Connection) -> int | None:
+        row = conn.execute(
+            "SELECT value FROM metadata WHERE key = ?",
+            (self._NEXT_PROJECT_NUMBER_KEY,),
+        ).fetchone()
+        if not row:
+            return None
+        try:
+            return int(row["value"])
+        except (TypeError, ValueError):
+            return None
 
 
 class SearchIndex:
     """Simple in-memory inverted index for documents."""
 
-    def __init__(self) -> None:
-        self._next_project_number = 1
-        # Provide a stable demo project for frontend development
-        default_id = "demo-project"
-        current_time = datetime.now(UTC)
-        default = ProjectModel(
-            id=default_id,
-            name="Demo Project",
-            number=self._next_project_number,
-            document_number="DOC-001",
-            user="alice",  # Changed from "demo_user" to "alice" to match test accounts
-            doc_type="General",
-            updated=current_time,
-        )
-        self._next_project_number += 1
-        self.projects: Dict[str, ProjectModel] = {default_id: default}
+    def __init__(
+        self,
+        projects: dict[str, ProjectModel] | None = None,
+        next_project_number: int | None = None,
+    ) -> None:
         self.index: Dict[str, Set[str]] = {}
+        if projects is None:
+            projects = {}
+        if next_project_number is None:
+            next_project_number = (
+                max((proj.number or 0 for proj in projects.values()), default=0) + 1
+            )
+        if not projects:
+            default = _default_project(1)
+            projects = {default.id: default}
+            next_project_number = 2
+        self.projects: Dict[str, ProjectModel] = dict(projects)
+        self._next_project_number = next_project_number
 
     def add_project(self, project: ProjectModel) -> None:
         """Store a project and update indexes."""
@@ -182,12 +444,66 @@ class SearchIndex:
                 ids.discard(doc_id)
 
 
-search_index = SearchIndex()
+_repository = SearchRepository()
+_loaded_projects, _loaded_saved_searches, _loaded_counters, _next_number = _repository.load_state()
+for _project in _loaded_projects.values():
+    if _project.workflow is None and _project.requested_workflow:
+        _project.workflow = _project.requested_workflow
+search_index = SearchIndex(_loaded_projects, _next_number)
 projects = search_index.projects
-saved_searches: Dict[str, SavedSearch] = {}
-search_counter: Counter[str] = Counter()
+saved_searches: Dict[str, SavedSearch] = dict(_loaded_saved_searches)
+search_counter: Counter[str] = Counter(_loaded_counters)
 project_lock = threading.Lock()
+saved_search_lock = threading.Lock()
+counter_lock = threading.Lock()
 index_lock = threading.Lock()
+
+
+def _persist_project(project: ProjectModel, *, next_project_number: int | None = None) -> None:
+    """Write ``project`` to persistent storage."""
+
+    _repository.save_project(project, next_project_number=next_project_number)
+
+
+def _reload_state_from_repository() -> None:
+    """Hydrate in-memory state from the persistent repository."""
+
+    loaded_projects, loaded_saved, loaded_counters, next_number = _repository.load_state()
+    for project in loaded_projects.values():
+        if project.workflow is None and project.requested_workflow:
+            project.workflow = project.requested_workflow
+    with project_lock:
+        search_index.projects.clear()
+        search_index.projects.update(loaded_projects)
+        search_index._next_project_number = next_number
+    with saved_search_lock:
+        saved_searches.clear()
+        saved_searches.update(loaded_saved)
+    with counter_lock:
+        search_counter.clear()
+        search_counter.update(loaded_counters)
+
+
+def _reset_state_for_testing(*, db_path: str | Path | None = None) -> None:
+    """Clear persistent storage and reload defaults (testing helper)."""
+
+    global _repository
+
+    if db_path is not None:
+        _repository = SearchRepository(str(db_path))
+
+    with _repository._lock:
+        with _repository._connection() as conn:
+            conn.execute("DELETE FROM projects")
+            conn.execute("DELETE FROM saved_searches")
+            conn.execute("DELETE FROM counters")
+            conn.execute(
+                "DELETE FROM metadata WHERE key = ?",
+                (SearchRepository._NEXT_PROJECT_NUMBER_KEY,),
+            )
+    with index_lock:
+        search_index.index.clear()
+    _reload_state_from_repository()
 
 
 def next_project_number() -> int:
@@ -195,6 +511,7 @@ def next_project_number() -> int:
     with project_lock:
         num = search_index._next_project_number
         search_index._next_project_number += 1
+        _repository.set_next_project_number(search_index._next_project_number)
         return num
 
 
@@ -204,7 +521,10 @@ def add_project(project: ProjectModel) -> None:
         # Set updated field to current time if not already set
         if project.updated is None:
             project.updated = datetime.now(UTC)
+        if project.workflow and not project.requested_workflow:
+            project.requested_workflow = project.workflow
         search_index.add_project(project)
+        _persist_project(project, next_project_number=search_index._next_project_number)
 
 
 def update_project(
@@ -232,10 +552,13 @@ def update_project(
         # update it accordingly. Otherwise leave it unchanged.
         if workflow_set:
             project.workflow = workflow
+            project.requested_workflow = workflow
         elif workflow is not None:
             project.workflow = workflow
+            project.requested_workflow = workflow
         # Update the updated timestamp
         project.updated = datetime.now(UTC)
+        _persist_project(project)
         return project
 
 
@@ -244,7 +567,7 @@ def add_document(document: DocumentModel) -> None:
     search_index.add_document(document)
 
 
-def save_search(query: str, user: str | None = None) -> SavedSearch:
+def save_search(query: str, user: str) -> SavedSearch:
     """Store a search query for later reuse.
 
     Parameters
@@ -252,7 +575,7 @@ def save_search(query: str, user: str | None = None) -> SavedSearch:
     query:
         Raw search string which must not be empty.
     user:
-        Optional username used for scoping saved searches.
+        Username used for scoping saved searches.
 
     Returns
     -------
@@ -262,23 +585,36 @@ def save_search(query: str, user: str | None = None) -> SavedSearch:
 
     if not query.strip():
         raise ValueError("query must not be empty")
+    if not user or not user.strip():
+        raise ValueError("user must not be empty")
 
-    search_id = str(len(saved_searches) + 1)
-    record = SavedSearch(id=search_id, query=query, user=user)
-    saved_searches[search_id] = record
-    return record
+    with saved_search_lock:
+        search_id = str(len(saved_searches) + 1)
+        record = SavedSearch(id=search_id, query=query, user=user, flagged_for_review=False)
+        saved_searches[search_id] = record
+        _repository.save_saved_search(record)
+        log_event(
+            "saved_search_created",
+            user_id=user,
+            entity_id=search_id,
+            entity_type="saved_search",
+            query=query,
+        )
+        return record
 
 
 def list_saved_searches(user: str | None = None) -> list[SavedSearch]:
     """Return all saved searches optionally filtered by user."""
-    if user is None:
-        return list(saved_searches.values())
-    return [s for s in saved_searches.values() if s.user == user]
+    with saved_search_lock:
+        if user is None:
+            return list(saved_searches.values())
+        return [s for s in saved_searches.values() if s.user == user]
 
 
 def search_stats() -> Dict[str, int]:
     """Return recorded search counts per query."""
-    return dict(search_counter)
+    with counter_lock:
+        return dict(search_counter)
 
 
 def get_project(project_id: str) -> ProjectModel | None:
@@ -295,6 +631,7 @@ def set_project_priority(project_id: str, priority: int) -> ProjectModel:
     with project_lock:
         project = projects[project_id]
         project.priority = priority
+        _persist_project(project)
         return project
 
 
@@ -318,25 +655,42 @@ def assign_temporary(
         until = until.replace(tzinfo=UTC)
     with project_lock:
         project = projects[project_id]
-        if (until - datetime.now(UTC)).days > TEMP_ASSIGN_MAX_DAYS and not approved:
+        remaining = until - datetime.now(UTC)
+        if remaining > timedelta(days=TEMP_ASSIGN_MAX_DAYS) and not approved:
             raise ValueError("Manager approval required for long assignment")
         project.temp_user = user
         project.temp_until = until
+        _persist_project(project)
         return project
 
 
 def _expire_temp_assignment(project: ProjectModel, *, lock_held: bool = False) -> None:
     """Clear ``project.temp_user`` when the temporary period has ended."""
-    if project.temp_user and project.temp_until and datetime.now(UTC) >= project.temp_until:
-        if lock_held:
-            # Lock is already held by caller, modify directly
+
+    if not project.temp_user or not project.temp_until:
+        return
+
+    until = project.temp_until
+    if until.tzinfo is None:
+        until = until.replace(tzinfo=UTC)
+
+    if datetime.now(UTC) < until:
+        return
+
+    changed = False
+    if lock_held:
+        # Lock is already held by caller, modify directly
+        project.temp_user = None
+        project.temp_until = None
+        changed = True
+    else:
+        # Acquire lock before modifying
+        with project_lock:
             project.temp_user = None
             project.temp_until = None
-        else:
-            # Acquire lock before modifying
-            with project_lock:
-                project.temp_user = None
-                project.temp_until = None
+            changed = True
+    if changed:
+        _persist_project(project)
 
 
 def list_projects(user: str | None = None) -> list[ProjectModel]:
@@ -384,7 +738,7 @@ def overdue_high_priority() -> list[str]:
 
 
 def _normalize(text: str) -> str:
-    """Return a whitespace-normalised lowercase string."""
+    """Return a whitespace-normalized lowercase string."""
 
     cleaned = re.sub(r"[^\w]+", " ", text)
     return cleaned.lower().strip()
@@ -395,7 +749,7 @@ def _match_all_terms(text: str, terms: list[str]) -> bool:
 
     The previous implementation simply performed substring checks which meant a
     search term like ``"cat"`` would match a document containing the word
-    ``"scatter"``.  By tokenising the normalised text we ensure matches respect
+    ``"scatter"``.  By tokenizing the normalized text we ensure matches respect
     word boundaries and avoid surprising false positives.
     """
     normalized = _normalize(text)
@@ -460,7 +814,9 @@ def search(
     receive up‑to‑date results when any input changes. Cached entries expire
     after 30 seconds.
     """
-    search_counter[query] += 1
+    with counter_lock:
+        search_counter[query] += 1
+        _repository.increment_counter(query)
     cache_key = (
         f"search-core-{query}-{project or ''}-{user or ''}-"
         f"{priority if priority is not None else ''}-"

@@ -1,12 +1,12 @@
 import pytest
 
+from docreview360 import auth
 from docreview360.ai_writer_assign import (
     assign_technical_writer,
     reassign_projects_from_writer,
 )
 from docreview360.config import Config
 from docreview360.search import ProjectModel, add_project, projects
-from docreview360 import auth
 
 
 def _cfg(enabled: bool = True) -> Config:

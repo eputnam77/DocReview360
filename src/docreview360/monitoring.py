@@ -7,6 +7,8 @@ that tests do not require any external services.
 
 from __future__ import annotations
 
+import socket
+from contextlib import closing
 from types import ModuleType
 from typing import Dict, Optional, cast
 
@@ -48,7 +50,7 @@ PROVIDER_HEALTH = Gauge(
 SIGNATURE_FAILURES = Counter(
     "docreview360_signature_failures_total",
     "Number of failed signature requests",
-    ["provider"],
+    ["provider", "reason"],
 )
 WEBHOOK_DELAY = Histogram(
     "docreview360_webhook_delay_seconds",
@@ -61,17 +63,76 @@ HASH_MISMATCHES = Counter(
     ["provider"],
 )
 
+# Metrics tracking approval artifact upload reliability.
+APPROVAL_UPLOAD_RETRIES = Counter(
+    "docreview360_approval_upload_retries_total",
+    "Retry attempts and exhausted retries when uploading approval artifacts",
+    ["status"],
+)
+
+# Metrics tracking anomaly detection outcomes during verification.
+SIGNATURE_ANOMALIES = Counter(
+    "docreview360_signature_anomalies_total",
+    "Signature anomaly detection outcomes",
+    ["outcome"],
+)
+
+# Critic evaluation telemetry for latency distribution and anomaly tracking.
+CRITIC_LATENCY = Histogram(
+    "docreview360_critic_latency_seconds",
+    "Latency observed when evaluating critic models",
+    ["critic"],
+)
+CRITIC_ANOMALY_EVENTS = Counter(
+    "docreview360_critic_anomalies_total",
+    "Anomalous critic outcomes grouped by critic and outcome type",
+    ["critic", "outcome"],
+)
+
+
+def _reserve_port() -> int:
+    """Return an available TCP port on localhost."""
+
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _start_prometheus_server(port: int) -> int:
+    """Start the Prometheus HTTP server and return the bound port."""
+
+    result = start_http_server(port)
+    if isinstance(result, tuple):
+        httpd, _thread = result
+        return int(httpd.server_port)
+    return port
+
 
 def init_observability(port: int | None = None, *, dsn: str | None = None) -> Dict[str, str]:
-    """Initialise Prometheus metrics and optional Sentry reporting."""
+    """Initialize Prometheus metrics and optional Sentry reporting.
+
+    ``prometheus_client.start_http_server`` raises ``OSError`` when the
+    requested port is already bound.  Previously this bubbled up to callers
+    which made the helper unreliable in test environments where arbitrary
+    ports may be in use.  The function now falls back to an ephemeral port on
+    such errors and returns the actual URL used by the metrics server.  The
+    ``port`` argument accepts ``0`` to explicitly request an ephemeral port.
+    """
 
     services: Dict[str, str] = {}
 
     if port is not None:
-        if port <= 0 or port >= 65536:
-            raise ValueError("port must be between 1 and 65535")
-        start_http_server(port)
-        services["prometheus"] = f"http://localhost:{port}/"
+        if port < 0 or port >= 65536:
+            raise ValueError("port must be between 0 and 65535")
+        attempt = port
+        if attempt == 0:
+            attempt = _reserve_port()
+        try:
+            actual_port = _start_prometheus_server(attempt)
+        except OSError:
+            fallback = _reserve_port()
+            actual_port = _start_prometheus_server(fallback)
+        services["prometheus"] = f"http://localhost:{actual_port}/"
 
     dsn = dsn or get_secret("sentry_dsn")
     if dsn:

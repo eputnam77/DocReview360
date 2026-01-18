@@ -2,9 +2,9 @@
 
 from fastapi.testclient import TestClient
 
+from .. import auth
 from ..api import app
 from ..stubs import record_task_completion
-from .. import auth
 
 
 def task188() -> bool:

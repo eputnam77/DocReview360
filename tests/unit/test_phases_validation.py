@@ -22,4 +22,3 @@ def test_rename_phase_rejects_empty_new() -> None:
             phases.rename_phase("Alpha", "")
     finally:
         phases._phases = original
-

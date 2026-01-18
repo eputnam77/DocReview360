@@ -3,17 +3,38 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List, Sequence
+from typing import TYPE_CHECKING, Dict, List, Sequence
 
-from .ai_utils import _fann_features
 from .document_compare import version_similarity
-from .quality import approval_likelihood
+from .ml.features import quality_features
+from .quality import quality_assessment
+
+if TYPE_CHECKING:
+    from .ml.torch_models import TinyCritic
 
 
 def estimate_review_effort(text: str) -> float:
-    """Return a simple effort estimate based on FANN features."""
-    length, unique, repeated, readability, style, structure = _fann_features(text)
-    return length * 2 + repeated * 0.5 + (1 - readability) + (1 - style) + (1 - structure)
+    """Return an effort estimate using critic inputs and outputs."""
+
+    payload = quality_features(text)
+    legacy = payload["legacy"]["fann"]
+    length = legacy["length"]
+    assessment = quality_assessment(text)
+    flag_penalty = sum(assessment.flags)
+    readability = legacy["readability"]
+    style = legacy["style"]
+    structure = legacy["structure"]
+    repeated = legacy["repeated"]
+    # Combine structural heuristics with critic feedback so spikes in the
+    # ONNX flags amplify the overall effort budget.
+    return (
+        length * 1.5
+        + repeated * 0.7
+        + (1 - readability)
+        + (1 - style)
+        + (1 - structure)
+        + flag_penalty
+    )
 
 
 class LessonsRepository:
@@ -63,11 +84,21 @@ class ReviewTrends:
 
 
 def detect_anomalous_document(
-    text: str, weights, history: Sequence[float], threshold: float = 0.3
+    text: str, critic: "TinyCritic | None", history: Sequence[float], threshold: float = 0.3
 ) -> tuple[bool, float]:
     """Return ``(is_anomalous, score)`` for ``text`` given ``history`` scores."""
 
-    score = approval_likelihood(text, weights)
+    if critic is not None:
+        score = critic.predict(text)
+        if not history:
+            return False, score
+        avg = sum(history) / len(history)
+        return abs(score - avg) > threshold, score
+
+    assessment = quality_assessment(text)
+    score = assessment.score
+    if any(flag >= threshold for flag in assessment.flags):
+        return True, score
     if not history:
         return False, score
     avg = sum(history) / len(history)

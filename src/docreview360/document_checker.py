@@ -17,6 +17,8 @@ except Exception:
 import re
 
 from .ai_utils import _count_syllables
+from .ml.compliance_classifier import evaluate_compliance
+from .ml.features import quality_features
 
 _REQUIRED_SECTIONS = ["introduction", "body", "conclusion"]
 
@@ -84,36 +86,79 @@ def _analyze_structure(
     return {"missing_sections": missing, "overlong_sections": overlong}
 
 
-def _fallback(file_path: str | Path) -> dict[str, object]:
+def _compliance_summary(text: str) -> dict[str, object]:
+    classification = evaluate_compliance(text)
+    return {
+        "probability": classification.probability,
+        "failingRules": classification.failing_rules,
+        "features": dict(classification.features),
+        "source": classification.source,
+    }
+
+
+def _fallback(file_path: str | Path, *, text: str | None = None) -> dict[str, object]:
     """Minimal checker used when GovDocVerify is unavailable."""
 
     path = Path(file_path)
-    text = path.read_text(encoding="utf-8")
+    if text is None:
+        text = path.read_text(encoding="utf-8")
 
     grammar = []
-    words = re.split(r"\s+", text)
+    # ``re.split`` on whitespace leaves punctuation attached to tokens which
+    # meant sequences like "word, word" were missed by the repeated word
+    # detector. Extract plain word tokens instead so adjacent words separated
+    # only by punctuation are also compared.
+    words = re.findall(r"[A-Za-z0-9']+", text)
     for i in range(len(words) - 1):
-        if words[i] == words[i + 1]:
+        if words[i].lower() == words[i + 1].lower():
             grammar.append(f"repeated word '{words[i]}'")
 
     accessibility = []
-    img_tag = re.compile(r"<img [^>]*>", re.I)
-    alt_attr = re.compile(r"alt=\"[^\"]*\"", re.I)
+    img_tag = re.compile(r"<img\b[^>]*>", re.I)
+    # Accept attributes with optional whitespace around the equals sign and
+    # support single, double quoted or unquoted ``alt`` values. Capture the
+    # value so we can ensure it isn't empty or pure whitespace which would not
+    # help assistive technology.  This mirrors the stricter validation performed
+    # by the service implementation.
+    alt_attr = re.compile(
+        r"alt\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))(?=[\s>/])",
+        re.I,
+    )
     button_tag = re.compile(r"<button([^>]*)>(.*?)</button>", re.I | re.S)
-    aria_label = re.compile(r"aria-label=\"[^\"]*\"", re.I)
+    # ``aria-label`` attributes may also include surrounding whitespace. Allow
+    # both quoting styles while normalizing incidental spaces.
+    aria_label = re.compile(
+        r"aria-label\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>/\'\"]+))",
+        re.I,
+    )
 
     for match in img_tag.finditer(text):
-        if not alt_attr.search(match.group(0)):
+        m = alt_attr.search(match.group(0))
+        value = (m.group(1) or m.group(2) or m.group(3) or "").strip() if m else ""
+        if not value:
             accessibility.append("image missing alt text")
 
     for match in button_tag.finditer(text):
         attrs = match.group(1)
         body = match.group(2)
-        if not aria_label.search(attrs) and body.strip() == "":
+        # Remove nested tags when checking for visible text. Without this,
+        # buttons containing only empty markup like ``<span></span>`` were not
+        # flagged as missing labels.
+        text_only = re.sub(r"<[^>]+>", "", body).strip()
+        m = aria_label.search(attrs)
+        label = (m.group(1) or m.group(2) or m.group(3) or "").strip() if m else ""
+        if (not label) and text_only == "":
             accessibility.append("button missing label")
 
+    quality = quality_features(text)["features"]
     style_issues = _style_issues(text)
-    style_ok = not _detect_anomalies(text) and not style_issues
+    style_ok = (
+        not _detect_anomalies(text)
+        and not style_issues
+        and quality.get("style", 0.0) >= 0.7
+        and quality.get("structure", 0.0) >= 0.5
+        and quality.get("duplicate_ratio", 0.0) <= 0.5
+    )
 
     readability = _readability_metrics(text)
     structure = _analyze_structure(text)
@@ -129,7 +174,11 @@ def _fallback(file_path: str | Path) -> dict[str, object]:
 
 
 def _detect_anomalies(text: str, threshold: float = 0.7) -> bool:
-    words = re.split(r"\s+", text.lower())
+    # ``re.split`` left punctuation attached to tokens so sequences like
+    # ``"bad, bad"`` were treated as different words and missed by the
+    # repetition counter.  Extract plain word tokens instead so punctuation
+    # does not shield repeated words from detection.
+    words = re.findall(r"[A-Za-z0-9']+", text.lower())
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])
     unique_ratio = len(set(text)) / max(len(text), 1)
     features = [len(text) / 1000, unique_ratio, repeated]
@@ -142,18 +191,26 @@ def _detect_anomalies(text: str, threshold: float = 0.7) -> bool:
 def run_checks(file_path: str | Path) -> dict[str, Any]:
     """Run document checks using GovDocVerify if available."""
 
+    path = Path(file_path)
+    text = path.read_text(encoding="utf-8")
+    compliance = _compliance_summary(text)
     if _gov_run is not None:
         try:
             # GovDocVerify requires a document type argument.  We use "Other"
             # which maps to ``DocumentType.OTHER`` within the library.
             result = _gov_run(str(file_path), "Other")
-            return cast(dict[str, Any], result)
+            payload = cast(dict[str, Any], result)
+            payload = dict(payload)
+            payload["compliance"] = compliance
+            return payload
         except Exception:
             # Fall back to the lightweight checker if GovDocVerify fails at
             # runtime (e.g. missing config files).
             pass
 
-    return _fallback(str(file_path))
+    fallback = _fallback(str(file_path), text=text)
+    fallback["compliance"] = compliance
+    return fallback
 
 
 if __name__ == "__main__":

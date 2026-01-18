@@ -7,9 +7,14 @@ import os
 from pathlib import Path
 from typing import Dict, List, Set
 
+# Resolve the watchlist location.  ``DOCREV_WATCHLIST_FILE`` may contain a path
+# with a ``~`` prefix which ``Path`` does not automatically expand.  Expanding
+# here keeps behavior intuitive and mirrors common shell expectations.
 WATCHLIST_FILE = Path(
-    os.environ.get("DOCREV_WATCHLIST_FILE", str(Path(__file__).with_name("watchlist.json")))
-)
+    os.path.expandvars(
+        os.environ.get("DOCREV_WATCHLIST_FILE", str(Path(__file__).with_name("watchlist.json")))
+    )
+).expanduser()
 
 
 def _load() -> Dict[str, Set[str]]:
@@ -17,7 +22,12 @@ def _load() -> Dict[str, Set[str]]:
         data = json.loads(WATCHLIST_FILE.read_text())
         if not isinstance(data, dict):
             raise ValueError(f"Watchlist file must contain a JSON object: {WATCHLIST_FILE}")
-        return {u: set(v) for u, v in data.items()}
+        result: Dict[str, Set[str]] = {}
+        for user, projects in data.items():
+            if not isinstance(projects, list):
+                raise ValueError(f"Watchlist entries must be lists: {WATCHLIST_FILE}")
+            result[str(user)] = set(map(str, projects))
+        return result
     except FileNotFoundError:
         return {}
     except json.JSONDecodeError as exc:

@@ -25,6 +25,6 @@ def feature_exercised(context: Dict[str, Any]) -> None:
     context["result"] = resp
 
 
-@then("the expected behaviour occurs")
-def expected_behaviour(context: Dict[str, Any]) -> None:
+@then("the expected behavior occurs")
+def expected_behavior(context: Dict[str, Any]) -> None:
     assert context["result"].status_code == 200

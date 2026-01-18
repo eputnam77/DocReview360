@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 import docreview360.event_dispatcher as ed_module
 from docreview360.event_dispatcher import EventDispatcher, dead_letter_queue
 
@@ -53,3 +55,9 @@ def test_dead_letter_queue_preserves_payload(monkeypatch):
 
     stored = dead_letter_queue[-1]["payload"]
     assert stored == {"count": 1, "nested": {"a": 2}}
+
+
+def test_event_dispatcher_rejects_negative_backoff():
+    """Constructor should validate that backoff is positive."""
+    with pytest.raises(ValueError):
+        EventDispatcher(backoff=-1)

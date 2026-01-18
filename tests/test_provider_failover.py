@@ -14,6 +14,7 @@ def _no_db_migrations(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(db_mod.Database, "migrate", lambda self, *a, **k: None)
 
+
 import docreview360.logs as logs_mod
 import docreview360.audit as audit_mod
 from docreview360 import provider_store
@@ -89,3 +90,20 @@ def test_send_for_signature_failover(tmp_path: Path, monkeypatch) -> None:
     assert approvals[appr.id].signature_provider == "ok"
     data = provider_store.load_providers(path)
     assert data["fail"]["healthy"] is False
+
+
+def test_default_provider_prefers_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reload signature module with a clean env and prefer sandbox provider."""
+
+    for env_var in (
+        "SIGNATURE_PROVIDER",
+        "SIGNATURE_PROVIDER_PRIMARY",
+        "SIGNATURE_PROVIDER_FALLBACK",
+    ):
+        monkeypatch.delenv(env_var, raising=False)
+
+    import importlib
+
+    importlib.reload(base)
+
+    assert base.get_default_provider() == "sandbox"

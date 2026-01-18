@@ -61,19 +61,21 @@ class PluginManager:
             return []
 
         try:
-            tool = self.available_plugins["language-tool-python"].LanguageTool('en-US')
+            tool = self.available_plugins["language-tool-python"].LanguageTool("en-US")
             matches = tool.check(text)
 
             issues: List[Dict[str, Any]] = []
             for match in matches:
-                issues.append({
-                    "message": match.ruleId,
-                    "description": match.message,
-                    "suggestions": match.replacements[:3],  # Top 3 suggestions
-                    "offset": match.offset,
-                    "length": match.errorLength,
-                    "severity": "error" if match.ruleId.startswith("MORFOLOGIK") else "warning"
-                })
+                issues.append(
+                    {
+                        "message": match.ruleId,
+                        "description": match.message,
+                        "suggestions": match.replacements[:3],  # Top 3 suggestions
+                        "offset": match.offset,
+                        "length": match.errorLength,
+                        "severity": "error" if match.ruleId.startswith("MORFOLOGIK") else "warning",
+                    }
+                )
 
             tool.close()
             return issues
@@ -104,7 +106,7 @@ class PluginManager:
                 "lexicon_count": textstat.lexicon_count(text),
                 "sentence_count": textstat.sentence_count(text),
                 "char_count": textstat.char_count(text),
-                "letter_count": textstat.letter_count(text)
+                "letter_count": textstat.letter_count(text),
             }
         except Exception as e:
             logger.error(f"Error in readability analysis: {e}")
@@ -119,11 +121,18 @@ class PluginManager:
         try:
             PyPDF2 = self.available_plugins["pypdf2"]
 
-            with open(pdf_path, 'rb') as file:
+            with open(pdf_path, "rb") as file:
                 reader = PyPDF2.PdfReader(file)
                 text = ""
                 for page in reader.pages:
-                    text += page.extract_text() + "\n"
+                    # ``extract_text`` may return ``None`` for pages without
+                    # extractable content.  The previous implementation
+                    # attempted to concatenate ``None`` which raised a
+                    # ``TypeError`` and aborted extraction.  Treat missing text
+                    # as an empty string so callers always receive a string
+                    # result and other pages can still contribute their
+                    # content.
+                    text += (page.extract_text() or "") + "\n"
                 return text
         except Exception as e:
             logger.error(f"Error extracting PDF text: {e}")
@@ -147,10 +156,7 @@ class PluginManager:
 
     def get_plugin_status(self) -> Dict[str, bool]:
         """Get status of all available plugins."""
-        return {
-            plugin_name: True
-            for plugin_name in self.available_plugins.keys()
-        }
+        return {plugin_name: True for plugin_name in self.available_plugins.keys()}
 
 
 # Global plugin manager instance
@@ -163,7 +169,7 @@ def enhanced_document_check(document_content: str) -> Dict[str, Any]:
         "basic_grammar": [],  # From existing grammar_plugin.py
         "advanced_grammar": [],
         "readability": {},
-        "plugin_status": plugin_manager.get_plugin_status()
+        "plugin_status": plugin_manager.get_plugin_status(),
     }
 
     # Advanced grammar checking

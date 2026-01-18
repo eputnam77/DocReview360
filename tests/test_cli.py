@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -93,6 +94,105 @@ def test_init_with_seed() -> None:
         assert sample.exists()
 
 
+def _write_corpus(path: Path, rows: list[tuple[str, int]]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["text", "label"])
+        writer.writeheader()
+        for text, label in rows:
+            writer.writerow({"text": text, "label": label})
+
+
+def test_ml_train_creates_artifacts() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        corpus = Path("train.csv")
+        validation = Path("validation.csv")
+        _write_corpus(
+            corpus,
+            [
+                ("clear skies improve readability", 1),
+                ("ambiguous terms reduce clarity", 0),
+                ("well defined requirements aid audits", 1),
+            ],
+        )
+        _write_corpus(validation, [("clear skies improve readability", 1)])
+
+        result = runner.invoke(
+            cli,
+            [
+                "ml",
+                "train",
+                str(corpus),
+                "critic",
+                "--validation",
+                str(validation),
+                "--min-accuracy",
+                "0.0",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert Path("critic.pt").exists()
+        assert Path("critic.onnx").exists()
+        assert "Saved torch weights to" in result.output
+        assert "sha256=" in result.output
+        assert "Validation accuracy:" in result.output
+
+
+def test_ml_benchmark_and_validate_commands() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        corpus = Path("train.csv")
+        _write_corpus(
+            corpus,
+            [
+                ("document clarity is high", 1),
+                ("unclear definitions reduce compliance", 0),
+                ("procedures must be followed", 1),
+            ],
+        )
+
+        train_result = runner.invoke(
+            cli,
+            [
+                "ml",
+                "train",
+                str(corpus),
+                "critic",
+                "--min-accuracy",
+                "0.0",
+            ],
+        )
+        assert train_result.exit_code == 0, train_result.output
+
+        benchmark_result = runner.invoke(
+            cli,
+            [
+                "ml",
+                "benchmark",
+                "critic.onnx",
+                "--runs",
+                "1",
+                "--batch-size",
+                "1",
+            ],
+        )
+        assert benchmark_result.exit_code == 0, benchmark_result.output
+        assert "Average latency:" in benchmark_result.output
+
+        validate_result = runner.invoke(
+            cli,
+            [
+                "validate",
+                "--ml",
+                "critic.onnx",
+            ],
+        )
+        assert validate_result.exit_code == 0, validate_result.output
+        assert str(Path("critic.onnx").resolve()) in validate_result.output
+        assert "sha256:" in validate_result.output
+
+
 def test_migrate_roundtrip(tmp_path: Path) -> None:
     """Test that migration export and import preserves all data correctly."""
     import gzip
@@ -123,10 +223,12 @@ def test_migrate_roundtrip(tmp_path: Path) -> None:
     # Create document and verify it was created
     import_document(test_filename, test_content.encode())
     log_event(test_event)
-    add_document_type(DocumentTypeModel(name=test_doc_type_name, template=test_template))
+    add_document_type(
+        DocumentTypeModel(name=test_doc_type_name, template=test_template, workflow=["Phase"])
+    )
 
     # Verify initial state.  The logging subsystem may record additional
-    # entries (e.g. database initialisation), so capture the count rather than
+    # entries (e.g. database initialization), so capture the count rather than
     # assuming a fixed value.
     assert len(documents) == 1, f"Expected 1 document, got {len(documents)}"
     initial_log_count = len(logs)

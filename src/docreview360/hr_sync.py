@@ -28,7 +28,7 @@ def sync_temp_reassignments(records: Iterable[Mapping[str, str]]) -> int:
             # ``datetime.fromisoformat`` returns naive datetimes when the input
             # string lacks timezone information.  Comparing a naive datetime
             # against the timezone-aware ``datetime.now(timezone.utc)`` raises a
-            # ``TypeError``.  Normalise naive values to UTC so they can be
+            # ``TypeError``.  Normalize naive values to UTC so they can be
             # compared safely and treated as UTC timestamps.
             if until.tzinfo is None:
                 until = until.replace(tzinfo=timezone.utc)

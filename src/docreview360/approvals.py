@@ -3,11 +3,23 @@ and FANN-based routing support."""
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 from datetime import datetime, timezone
+from functools import lru_cache
 from io import BytesIO
-from typing import Any, Dict, Iterator, List, Optional
+from time import perf_counter
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+)
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
@@ -17,13 +29,23 @@ from .audit import AuditLogEntry, get_audit_log, log_audit_event
 from .celery_app import app
 from .certs import fetch_certificate
 from .documents import DocumentModel, documents, get_document, link_approval, unlink_approval
-from .fann_model import Weights
 from .integrations.registry import get_provider
 from .integrations.signature import get_default_provider, get_default_providers
+
+if TYPE_CHECKING:
+    from .ml.torch_models import TinyCritic
 from .logs import log_event, log_verification_failure
-from .monitoring import VERIFICATION_COUNTER, VERIFICATION_DURATION
+from .ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES, signature_features
+from .ml.onnx_infer import metadata_to_context
+from .ml.signature_anomaly import score_signature_anomaly
+from .monitoring import (
+    APPROVAL_UPLOAD_RETRIES,
+    SIGNATURE_ANOMALIES,
+    VERIFICATION_COUNTER,
+    VERIFICATION_DURATION,
+)
 from .provider_store import set_provider_health
-from .quality import approval_likelihood
+from .quality import approval_likelihood, quality_model_metadata
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
 
@@ -31,13 +53,32 @@ from .workflows import workflows
 @app.task(name="docreview360.approval_reminder")
 def _reminder_task(approval_id: str) -> None:
     """Log a reminder event for ``approval_id``."""
-    log_event("approval_reminder", approval_id=approval_id)
+    approval = _resolve_pending_approval("approval_reminder", approval_id)
+    if approval is None:
+        return
+    log_event(
+        "approval_reminder",
+        approval_id=approval_id,
+        reviewer=approval.reviewer,
+        workflow=approval.workflow,
+        doc_id=approval.document_id,
+    )
 
 
 @app.task(name="docreview360.approval_escalation")
 def _escalation_task(approval_id: str, target: str) -> None:
     """Log an escalation event for ``approval_id``."""
-    log_event("approval_escalated", approval_id=approval_id, target=target)
+    approval = _resolve_pending_approval("approval_escalated", approval_id)
+    if approval is None:
+        return
+    log_event(
+        "approval_escalated",
+        approval_id=approval_id,
+        target=target,
+        reviewer=approval.reviewer,
+        workflow=approval.workflow,
+        doc_id=approval.document_id,
+    )
 
 
 class ApprovalModel(BaseModel):
@@ -67,6 +108,7 @@ class ApprovalModel(BaseModel):
     description: Optional[str] = None
     provider_metadata: Dict[str, Any] = Field(default_factory=dict)
     delegates: List[str] = Field(default_factory=list)
+    scoring_metadata: Dict[str, Any] = Field(default_factory=dict)
 
     @property
     def due_at(self) -> datetime | None:  # pragma: no cover - simple alias
@@ -78,6 +120,116 @@ class ApprovalModel(BaseModel):
 
 
 approvals: Dict[str, ApprovalModel] = {}
+
+
+class SignatureValidationError(ValueError):
+    """Raised when a signature callback fails validation."""
+
+    def __init__(self, detail: Dict[str, Any]):
+        self.detail = detail
+        message = str(detail.get("message", "signature validation failed"))
+        super().__init__(message)
+
+
+_SIGNATURE_FALLBACK_ENV = "DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK"
+
+
+class _RetryPolicy(NamedTuple):
+    max_attempts: int
+    base_delay: float
+    max_delay: float
+
+
+_DEFAULT_RETRY_POLICY = _RetryPolicy(max_attempts=3, base_delay=0.5, max_delay=5.0)
+
+
+def _coerce_positive_float(value: Any, default: float) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return default
+    if result < 0:
+        return default
+    return result
+
+
+def _upload_retry_policy() -> _RetryPolicy:
+    settings = _approvals_settings_cached()
+    cfg = settings.get("upload_retry", {})
+    if not isinstance(cfg, dict):
+        return _DEFAULT_RETRY_POLICY
+    max_attempts = cfg.get("max_attempts", _DEFAULT_RETRY_POLICY.max_attempts)
+    try:
+        attempts = int(max_attempts)
+    except (TypeError, ValueError):
+        attempts = _DEFAULT_RETRY_POLICY.max_attempts
+    if attempts < 1:
+        attempts = 1
+    base_delay = _coerce_positive_float(cfg.get("base_delay"), _DEFAULT_RETRY_POLICY.base_delay)
+    max_delay = _coerce_positive_float(cfg.get("max_delay"), _DEFAULT_RETRY_POLICY.max_delay)
+    if max_delay < base_delay:
+        max_delay = base_delay
+    return _RetryPolicy(max_attempts=attempts, base_delay=base_delay, max_delay=max_delay)
+
+
+def _resolve_pending_approval(event: str, approval_id: str) -> ApprovalModel | None:
+    approval = approvals.get(approval_id)
+    if approval is None:
+        log_event(
+            f"{event}_skipped",
+            severity="warning",
+            approval_id=approval_id,
+            reason="missing_approval",
+        )
+        return None
+    if approval.state != "pending":
+        log_event(
+            f"{event}_skipped",
+            severity="info",
+            approval_id=approval_id,
+            reason="approval_not_pending",
+            state=approval.state,
+            reviewer=approval.reviewer,
+            workflow=approval.workflow,
+        )
+        return None
+    return approval
+
+
+def _load_approvals_settings() -> Dict[str, Any]:
+    try:
+        from .settings_manager import load_settings
+    except Exception:  # pragma: no cover - settings manager unavailable
+        return {}
+
+    settings = load_settings()
+    cfg = settings.get("approvals", {})
+    if isinstance(cfg, dict):
+        return cfg
+    return {}
+
+
+@lru_cache(maxsize=1)
+def _approvals_settings_cached() -> Dict[str, Any]:
+    return _load_approvals_settings()
+
+
+def _allow_signature_validation_fallback() -> bool:
+    env = os.getenv(_SIGNATURE_FALLBACK_ENV)
+    if env is not None:
+        return env.strip().lower() in {"1", "true", "yes", "on"}
+    settings = _approvals_settings_cached()
+    return bool(settings.get("allow_signature_validation_fallback", False))
+
+
+def refresh_signature_validation_policy() -> None:
+    """Clear cached approval settings (primarily for tests)."""
+
+    _approvals_settings_cached.cache_clear()
+
+
+class SignedApprovalImmutableError(ValueError):
+    """Raised when attempting to mutate a signed approval."""
 
 
 def create_approval(
@@ -98,6 +250,7 @@ def create_approval(
     escalate_to: str | None = None,
     escalation_at: datetime | None = None,
     state: str = "pending",
+    scoring_metadata: Dict[str, Any] | None = None,
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     if doc_id is None:
@@ -105,7 +258,7 @@ def create_approval(
     if signature_provider is None:
         signature_provider = get_default_provider()
     approval_id = uuid4().hex
-    doc_hash = hashlib.sha256(document).hexdigest() if document else None
+    doc_hash = hashlib.sha256(document).hexdigest() if document is not None else None
     approval = ApprovalModel(
         id=approval_id,
         workflow=workflow,
@@ -124,6 +277,7 @@ def create_approval(
         escalate_to=escalate_to,
         escalation_at=escalation_at,
         state=state,
+        scoring_metadata=scoring_metadata or {},
     )
     approvals[approval_id] = approval
     try:
@@ -139,6 +293,17 @@ def create_approval(
         document_hash=doc_hash,
         doc_id=doc_id,
         provider_metadata=approval.provider_metadata,
+        scoring_metadata=approval.scoring_metadata,
+        model_version=(
+            (approval.scoring_metadata.get("model") or {}).get("version")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_version")
+        ),
+        model_sha256=(
+            (approval.scoring_metadata.get("model") or {}).get("sha256")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_sha256")
+        ),
     )
     log_audit_event(
         doc_id,
@@ -149,11 +314,20 @@ def create_approval(
         document_hash=doc_hash,
         approval_id=approval_id,
         provider_metadata=approval.provider_metadata,
+        scoring_metadata=approval.scoring_metadata,
+        model_version=(
+            (approval.scoring_metadata.get("model") or {}).get("version")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_version")
+        ),
+        model_sha256=(
+            (approval.scoring_metadata.get("model") or {}).get("sha256")
+            if isinstance(approval.scoring_metadata.get("model"), dict)
+            else approval.scoring_metadata.get("model_sha256")
+        ),
     )
     if reminder_at:
-        app.tasks["docreview360.approval_reminder"].apply_async(
-            (approval_id,), eta=reminder_at
-        )
+        app.tasks["docreview360.approval_reminder"].apply_async((approval_id,), eta=reminder_at)
     if escalate_to and escalation_at:
         app.tasks["docreview360.approval_escalation"].apply_async(
             (approval_id, escalate_to), eta=escalation_at
@@ -161,28 +335,84 @@ def create_approval(
     return approval
 
 
-def submit_draft_for_approval(
+def submit_draft_for_approval(  # noqa: C901
     workflow: str,
     reviewer: str | None,
     doc_id: str,
     text: str,
-    weights: Weights,
+    critic: "TinyCritic | None",
     *,
     threshold: float = 0.5,
     extra_reviewer: str = "policy",
     reviewer_model: ReviewerModel | None = None,
 ) -> ApprovalModel:
     """Score ``text`` and route for additional review if risky."""
-    score = approval_likelihood(text, weights)
-    if score < threshold:
-        create_approval(workflow, extra_reviewer, doc_id, description="Auto risk review")
-    if reviewer is None:
-        if reviewer_model is None:
-            raise ValueError("reviewer_model required when reviewer is None")
-        reviewer = reviewer_model.route_draft(text)
+    recommendation = None
+    score: float | None = None
+    recommendation_payload: List[Dict[str, Any]] = []
+
+    model_summary: dict[str, str] | None = None
+    if reviewer_model is not None:
+        recommendation = reviewer_model.recommend(text, k=3)
+        score = recommendation.approval_likelihood
+        recommendation_payload = [
+            {"reviewer": name, "probability": probability}
+            for name, probability in recommendation.ranked_reviewers
+        ]
+        model_meta = getattr(reviewer_model, "model_metadata", None)
+        model_summary = metadata_to_context(model_meta)
+        log_event(
+            "reviewer_recommendation",
+            workflow=workflow,
+            doc_id=doc_id,
+            approval_likelihood=score,
+            recommendations=recommendation_payload,
+            model_version=(model_summary or {}).get("version"),
+            model_sha256=(model_summary or {}).get("sha256"),
+        )
         if reviewer is None:
-            raise ValueError("no reviewer available for draft")
-    return create_approval(workflow, reviewer, doc_id, description="Primary review")
+            reviewer = recommendation.primary
+            if reviewer is None:
+                raise ValueError("no reviewer available for draft")
+    else:
+        if reviewer is None:
+            raise ValueError("reviewer_model required when reviewer is None")
+        if critic is not None:
+            score = approval_likelihood(text, critic)
+        model_summary = metadata_to_context(quality_model_metadata())
+
+    scoring_metadata: Dict[str, Any] = {}
+    if score is not None:
+        scoring_metadata["approval_likelihood"] = score
+    if recommendation_payload:
+        scoring_metadata["recommendations"] = recommendation_payload
+    if model_summary:
+        model_payload = {
+            key: value
+            for key, value in model_summary.items()
+            if key in {"sha256", "version", "path"} or key.startswith("docreview360:")
+        }
+        scoring_metadata["model"] = model_payload
+        if "sha256" in model_summary:
+            scoring_metadata["model_sha256"] = model_summary["sha256"]
+        if "version" in model_summary:
+            scoring_metadata["model_version"] = model_summary["version"]
+
+    if score is not None and score < threshold:
+        create_approval(
+            workflow,
+            extra_reviewer,
+            doc_id,
+            description="Auto risk review",
+            scoring_metadata=scoring_metadata.copy(),
+        )
+    return create_approval(
+        workflow,
+        reviewer,
+        doc_id,
+        description="Primary review",
+        scoring_metadata=scoring_metadata.copy(),
+    )
 
 
 def get_approval(approval_id: str) -> ApprovalModel | None:
@@ -205,7 +435,7 @@ def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:
     return None
 
 
-async def handle_signature_return(
+async def handle_signature_return(  # noqa: C901
     signature_id: str,
     *,
     doc_id: str | None = None,
@@ -274,6 +504,12 @@ async def handle_signature_return(
             raise ValueError("certificate URL must use HTTPS")
         approval.certificate_url = certificate_url
 
+    feature_snapshot = signature_features(
+        (document.decode("utf-8", errors="ignore") if document is not None else ""),
+        approval.provider_metadata,
+    )["features"]
+    approval.provider_metadata.setdefault("docreview360:signature_features", feature_snapshot)
+
     provider = get_provider(approval.signature_provider)
     if not provider.validate_signature(
         document, certificate_url or approval.certificate_url, approval.provider_metadata
@@ -283,7 +519,7 @@ async def handle_signature_return(
         # where signatures are accepted based solely on the callback.  Treat
         # the signature as valid in this case but still log the failed
         # verification for observability.  If a certificate URL *is* supplied
-        # we keep the strict behaviour and surface an error.
+        # we keep the strict behavior and surface an error.
         log_verification_failure(
             approval.reviewer,
             client_ip or "",
@@ -301,7 +537,45 @@ async def handle_signature_return(
             approval_id=approval.id,
             provider_metadata=approval.provider_metadata,
         )
-        if certificate_url or approval.certificate_url or document_param is not None:
+        missing_certificate = feature_snapshot.get("evidence_strength", 0.0) < 0.4 and not (
+            certificate_url or approval.certificate_url
+        )
+        explicit_document_supplied = document_param is not None
+        fallback_enabled = _allow_signature_validation_fallback()
+        if missing_certificate and not fallback_enabled and not explicit_document_supplied:
+            detail = {
+                "error": "missing_certificate",
+                "message": "Signature validation failed: certificate is required.",
+                "approval_id": approval.id,
+                "signature_id": signature_id,
+                "provider": approval.signature_provider,
+                "doc_id": doc_id,
+            }
+            raise SignatureValidationError(detail)
+        if missing_certificate and fallback_enabled and not explicit_document_supplied:
+            log_event(
+                "signature_validation_bypassed",
+                severity="warning",
+                approval_id=approval.id,
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+                doc_id=doc_id,
+                fallback_enabled=True,
+                reason="missing_certificate",
+                provider_metadata=approval.provider_metadata,
+            )
+            log_audit_event(
+                doc_id,
+                "signature_validation_bypassed",
+                provider=approval.signature_provider,
+                signature_id=signature_id,
+                approval_id=approval.id,
+                status="fallback",
+                fallback_enabled=True,
+                reason="missing_certificate",
+                provider_metadata=approval.provider_metadata,
+            )
+        else:
             # A document or certificate was supplied explicitly yet verification
             # failed – treat this as a hard error.  When neither is provided the
             # caller expects a best-effort check and we accept the signature.
@@ -354,7 +628,7 @@ async def update_approval_state(  # noqa: C901
 ) -> ApprovalModel:
     approval = approvals[approval_id]
     if approval.state == "approved":
-        raise ValueError("signed approvals cannot be modified; reset required")
+        raise SignedApprovalImmutableError("signed approvals cannot be modified; reset required")
     wf = workflows.get(approval.workflow)
     if state == "approved" and wf and wf.mode == "sequential":
         for a in approvals.values():
@@ -376,10 +650,38 @@ async def update_approval_state(  # noqa: C901
         approval.due_at = due_at
     if state == "approved":
         approval.signed_at = signed_at or datetime.now(timezone.utc)
-        try:
-            await _upload_approval_artifacts(approval, document, certificate_url)
-        except Exception:
-            pass
+        policy = _upload_retry_policy()
+        attempt = 1
+        delay = policy.base_delay
+        while True:
+            try:
+                await _upload_approval_artifacts(approval, document, certificate_url)
+                break
+            except Exception as exc:
+                if attempt >= policy.max_attempts:
+                    APPROVAL_UPLOAD_RETRIES.labels("exhausted").inc()
+                    log_event(
+                        "approval_upload_failed",
+                        severity="error",
+                        approval_id=approval.id,
+                        workflow=approval.workflow,
+                        provider=approval.signature_provider,
+                        attempts=attempt,
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                    )
+                    break
+                APPROVAL_UPLOAD_RETRIES.labels("retry").inc()
+                wait = delay if delay > 0 else 0
+                if wait:
+                    await asyncio.sleep(wait)
+                attempt += 1
+                if policy.base_delay <= 0:
+                    delay = 0
+                elif delay <= 0:
+                    delay = policy.base_delay
+                else:
+                    delay = min(delay * 2, policy.max_delay)
     else:
         approval.signed_at = None
         approval.certificate_url = None
@@ -442,7 +744,7 @@ def send_for_signature(  # noqa: C901
     if approval.state == "approved":
         raise ValueError("approval already signed")
     if user != approval.reviewer and user not in approval.delegates:
-        raise PermissionError("not authorised to send for signature")
+        raise PermissionError("not authorized to send for signature")
     if approval.document_id != doc_id:
         unlink_approval(approval.document_id, approval.id)
         approval.document_id = doc_id
@@ -457,9 +759,7 @@ def send_for_signature(  # noqa: C901
             document = DocumentModel(id=doc_id, content="", history=[])
             documents[doc_id] = document
             link_approval(doc_id, approval.id)
-        approval.document_hash = hashlib.sha256(
-            document.content.encode("utf-8")
-        ).hexdigest()
+        approval.document_hash = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
 
     if return_url is None:
         return_url = os.getenv("SIGNATURE_RETURN_URL")
@@ -678,6 +978,103 @@ def approval_dashboard() -> List[Dict[str, Any]]:
     return data
 
 
+_SIGNATURE_ANOMALY_THRESHOLD = 0.8
+_DEFAULT_ANOMALY_ESCALATION_TARGET = "risk-ops"
+
+
+def _retry_snapshot() -> dict[str, float]:
+    snapshot: dict[str, float] = {}
+    for label in ("retry", "exhausted"):
+        sample = APPROVAL_UPLOAD_RETRIES.labels(label)
+        value = getattr(sample, "_value", None)
+        if value is None:
+            snapshot[label] = 0.0
+            continue
+        try:
+            snapshot[label] = float(value.get())
+        except Exception:
+            snapshot[label] = 0.0
+    return snapshot
+
+
+def _certificate_chain_for_approval(approval: ApprovalModel) -> list[bytes]:
+    chain = approval.provider_metadata.get("certificate_chain")
+    material: list[bytes] = []
+    if isinstance(chain, (list, tuple)):
+        for entry in chain:
+            if isinstance(entry, bytes):
+                material.append(entry)
+            elif isinstance(entry, str):
+                material.append(entry.encode("utf-8"))
+    if not material and approval.certificate_url:
+        try:
+            data = fetch_certificate(approval.certificate_url)
+        except Exception:
+            data = None
+        if data:
+            material.append(data)
+    return material
+
+
+def _build_anomaly_features(
+    approval: ApprovalModel,
+    document_text: str,
+    duration: float,
+) -> tuple[dict[str, float], list[float]]:
+    payload = signature_features(
+        document_text,
+        approval.provider_metadata,
+        verification_duration=duration,
+        retries=_retry_snapshot(),
+        certificate_chain=_certificate_chain_for_approval(approval),
+    )
+    features = dict(payload["features"])
+    vector = [float(features.get(name, 0.0)) for name in SIGNATURE_ANOMALY_FEATURE_NAMES]
+    return features, vector
+
+
+def _record_signature_anomaly(
+    approval: ApprovalModel,
+    score: float,
+    features: Mapping[str, float],
+    *,
+    outcome: str,
+    model_name: str,
+    model_version: str,
+    model_hash: str,
+    target: str | None,
+) -> dict[str, float]:
+    SIGNATURE_ANOMALIES.labels(outcome).inc()
+    feature_snapshot = {
+        name: float(features.get(name, 0.0)) for name in SIGNATURE_ANOMALY_FEATURE_NAMES
+    }
+    anomaly_info: dict[str, Any] = {
+        "score": float(score),
+        "threshold": _SIGNATURE_ANOMALY_THRESHOLD,
+        "status": outcome,
+        "model_name": model_name,
+        "model_version": model_version,
+        "model_hash": model_hash,
+    }
+    if target:
+        anomaly_info["target"] = target
+        approval.provider_metadata["docreview360:signature_anomaly_target"] = target
+    approval.provider_metadata["docreview360:signature_anomaly"] = anomaly_info
+    approval.provider_metadata["docreview360:signature_anomaly_features"] = feature_snapshot
+    log_audit_event(
+        approval.document_id,
+        "signature_anomaly",
+        approval_id=approval.id,
+        status=outcome,
+        provider=approval.signature_provider,
+        anomaly_score=score,
+        model_version=model_version,
+        model_hash=model_hash,
+        target=target,
+    )
+    return feature_snapshot
+
+
 def verify_document_signature_stream(  # noqa: C901
     doc_id: str, provider: str | list[str] | None = None
 ) -> Iterator[dict[str, object]]:
@@ -690,7 +1087,9 @@ def verify_document_signature_stream(  # noqa: C901
     if document is None:
         raise KeyError("document not found")
 
-    doc_hash = hashlib.sha256(document.content.encode()).hexdigest()
+    document_text = document.content
+    document_bytes = document_text.encode()
+    doc_hash = hashlib.sha256(document_bytes).hexdigest()
 
     for approval in approvals.values():
         if approval.document_id != doc_id:
@@ -709,6 +1108,7 @@ def verify_document_signature_stream(  # noqa: C901
         certificate_present = approval.certificate_url is not None
         provider_results: dict[str, bool] = {}
         provider_valid = False
+        start_time = perf_counter()
 
         if isinstance(provider, list):
             provider_names = list(provider)
@@ -737,7 +1137,7 @@ def verify_document_signature_stream(  # noqa: C901
                     continue
                 try:
                     result = provider_impl.validate_signature(
-                        document.content.encode(),
+                        document_bytes,
                         approval.certificate_url,
                         approval.provider_metadata,
                     )
@@ -749,6 +1149,75 @@ def verify_document_signature_stream(  # noqa: C901
                     if not aggregate:
                         break
 
+        duration = perf_counter() - start_time
+        anomaly_features, anomaly_vector = _build_anomaly_features(
+            approval,
+            document_text,
+            duration,
+        )
+        anomaly_score, model_meta = score_signature_anomaly(anomaly_vector)
+        model_name = (
+            model_meta.custom_metadata.get("docreview360:model")
+            or model_meta.version
+            or "signature_anomaly"
+        )
+        model_version = (
+            model_meta.custom_metadata.get("docreview360:version")
+            or model_meta.version
+            or "unknown"
+        )
+        model_hash = model_meta.sha256
+        outcome = "escalated" if anomaly_score >= _SIGNATURE_ANOMALY_THRESHOLD else "clear"
+        escalation_target = None
+        if outcome == "escalated":
+            escalation_target = approval.escalate_to or _DEFAULT_ANOMALY_ESCALATION_TARGET
+        event_name = (
+            "signature_anomaly_detected" if outcome == "escalated" else "signature_anomaly_scored"
+        )
+        log_event(
+            event_name,
+            approval_id=approval.id,
+            provider=approval.signature_provider,
+            doc_id=approval.document_id,
+            anomaly_score=anomaly_score,
+            anomaly_threshold=_SIGNATURE_ANOMALY_THRESHOLD,
+            model_name=model_name,
+            model_version=model_version,
+            model_hash=model_hash,
+            escalation_target=escalation_target,
+        )
+        anomaly_snapshot = _record_signature_anomaly(
+            approval,
+            anomaly_score,
+            anomaly_features,
+            outcome=outcome,
+            model_name=model_name,
+            model_version=model_version,
+            model_hash=model_hash,
+            target=escalation_target,
+        )
+        if outcome == "escalated":
+            log_event(
+                "approval_escalated",
+                approval_id=approval.id,
+                target=escalation_target,
+                reviewer=approval.reviewer,
+                workflow=approval.workflow,
+                doc_id=approval.document_id,
+                reason="signature_anomaly",
+                anomaly_score=anomaly_score,
+            )
+            log_audit_event(
+                approval.document_id,
+                "approval_escalated",
+                approval_id=approval.id,
+                provider=approval.signature_provider,
+                status="escalated",
+                target=escalation_target,
+                reason="signature_anomaly",
+                anomaly_score=anomaly_score,
+            )
+
         yield {
             "approval_id": approval.id,
             "signature_id": approval.signature_id,
@@ -757,6 +1226,17 @@ def verify_document_signature_stream(  # noqa: C901
             "certificate_present": certificate_present,
             "signature_verified": provider_valid,
             "provider_results": provider_results,
+            "verification_duration": duration,
+            "anomaly_score": anomaly_score,
+            "anomaly_threshold": _SIGNATURE_ANOMALY_THRESHOLD,
+            "anomaly_escalated": outcome == "escalated",
+            "escalation_target": escalation_target,
+            "anomaly_model": {
+                "name": model_name,
+                "version": model_version,
+                "hash": model_hash,
+            },
+            "anomaly_features": anomaly_snapshot,
         }
 
 

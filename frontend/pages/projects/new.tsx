@@ -27,6 +27,9 @@ export default function NewProjectPage() {
   const [docTypeMap, setDocTypeMap] = useState<Record<string, string[]>>({});
   const [phases, setPhases] = useState<string[]>([]);
   const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
+  const [docTypeDefaultTemplates, setDocTypeDefaultTemplates] = useState<
+    Record<string, string | undefined>
+  >({});
   const [docNumber, setDocNumber] = useState("");
   const [title, setTitle] = useState("");
   const [sme, setSme] = useState("");
@@ -43,11 +46,21 @@ export default function NewProjectPage() {
   useEffect(() => {
     if (phase) {
       const mapped = phaseMap[phase];
-      setWorkflow(mapped || phase);
+      const docTypeTemplate = docType
+        ? docTypeDefaultTemplates[docType]
+        : undefined;
+      if (mapped && mapped.trim()) {
+        setWorkflow(mapped);
+        return;
+      }
+      setWorkflow(docTypeTemplate || "branch-coordination");
     } else {
-      setWorkflow(undefined);
+      const fallback = docType
+        ? docTypeDefaultTemplates[docType] || "branch-coordination"
+        : undefined;
+      setWorkflow(fallback);
     }
-  }, [phase, phaseMap]);
+  }, [phase, phaseMap, docType, docTypeDefaultTemplates]);
 
   useEffect(() => {
     // Load workflow mapping defined in configuration/phases page
@@ -70,6 +83,7 @@ export default function NewProjectPage() {
         }
         const names: string[] = [];
         const map: Record<string, string[]> = {};
+        const defaults: Record<string, string | undefined> = {};
         data.forEach((d: any) => {
           const name = typeof d === "string" ? d : d?.name;
           if (name) {
@@ -80,14 +94,22 @@ export default function NewProjectPage() {
               ? (d.workflow as string[])
               : [];
             map[name] = phases;
+            const defaultTemplate =
+              typeof d?.default_template_id === "string" &&
+              d.default_template_id.trim()
+                ? d.default_template_id
+                : undefined;
+            defaults[name] = defaultTemplate;
           }
         });
         setDocTypes(names);
         setDocTypeMap(map);
+        setDocTypeDefaultTemplates(defaults);
       })
       .catch(() => {
         setDocTypes([]);
         setDocTypeMap({});
+        setDocTypeDefaultTemplates({});
       });
   }, []);
 
@@ -99,8 +121,11 @@ export default function NewProjectPage() {
       setPhases([]);
     }
     setPhase(undefined);
-    setWorkflow(undefined);
-  }, [docType, docTypeMap]);
+    const fallback = docType
+      ? docTypeDefaultTemplates[docType] || "branch-coordination"
+      : undefined;
+    setWorkflow(fallback);
+  }, [docType, docTypeMap, docTypeDefaultTemplates]);
 
   const validate = () => {
     const errs: Record<string, string> = {};

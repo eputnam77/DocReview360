@@ -5,15 +5,19 @@ from __future__ import annotations
 import asyncio
 import os
 from dataclasses import dataclass
-from typing import List, cast
+from typing import TYPE_CHECKING, List, cast
 
 import requests  # type: ignore[import-untyped]
 
 from .approvals import create_approval, submit_draft_for_approval
-from .fann_model import Weights
-from .quality import approval_likelihood
+from .ml.features import routing_features
+from .ml.onnx_infer import metadata_to_context
+from .quality import QUALITY_FLAG_NAMES, quality_assessment, quality_model_metadata
 from .reviewer_model import ReviewerModel
 from .secrets import get_secret
+
+if TYPE_CHECKING:
+    from .ml.torch_models import TinyCritic
 
 _GRAPH_URL = "https://graph.microsoft.com/v1.0"
 
@@ -72,14 +76,14 @@ class SharePointClient:
         response = requests.patch(url, headers=headers, json=properties)
         response.raise_for_status()
 
-    def upload_with_scoring(
+    def upload_with_scoring(  # noqa: C901
         self,
         path: str,
         data: bytes,
-        weights: Weights,
+        critic: "TinyCritic | None" = None,
         *,
         workflow: str | None = None,
-        reviewer: str | None = "manager",
+        reviewer: str | None = None,
         extra_reviewer: str = "policy",
         threshold: float = 0.5,
         reviewer_model: ReviewerModel | None = None,
@@ -93,9 +97,27 @@ class SharePointClient:
         # Upload the document
         item_id = self.upload_file(path, data)
 
-        # Calculate FANN score
+        # Calculate quality score via ONNX critic
         text = data.decode("utf-8", errors="ignore")
-        score = approval_likelihood(text, weights)
+        assessment = quality_assessment(text)
+        score = assessment.score
+        model_summary = metadata_to_context(quality_model_metadata())
+        routing = routing_features(text, {"workflow": workflow} if workflow else None)["features"]
+        scoring_metadata: dict[str, object] = {
+            "approval_likelihood": score,
+            "raw_score": assessment.raw_score,
+        }
+        if model_summary:
+            model_payload = {
+                key: value
+                for key, value in model_summary.items()
+                if key in {"sha256", "version", "path"} or key.startswith("docreview360:")
+            }
+            scoring_metadata["model"] = model_payload
+            if "sha256" in model_summary:
+                scoring_metadata["model_sha256"] = model_summary["sha256"]
+            if "version" in model_summary:
+                scoring_metadata["model_version"] = model_summary["version"]
 
         approval_ids: list[str] = []
 
@@ -104,10 +126,10 @@ class SharePointClient:
             if reviewer_model:
                 approval = submit_draft_for_approval(
                     workflow,
-                    reviewer or "manager",
+                    reviewer,
                     item_id,
                     text,
-                    weights,
+                    critic,
                     threshold=threshold,
                     extra_reviewer=extra_reviewer,
                     reviewer_model=reviewer_model,
@@ -120,7 +142,8 @@ class SharePointClient:
                         workflow,
                         extra_reviewer,
                         doc_id=item_id,
-                        description="Auto risk review",
+                        description=f"Auto risk review (threshold {threshold:.2f})",
+                        scoring_metadata=scoring_metadata.copy(),
                     )
                     if approval:
                         approval_ids.append(approval.id)
@@ -128,16 +151,24 @@ class SharePointClient:
                     workflow,
                     reviewer or "manager",
                     doc_id=item_id,
-                    description="Primary review",
+                    description=f"Primary review (threshold {threshold:.2f})",
+                    scoring_metadata=scoring_metadata.copy(),
                 )
                 if approval:
                     approval_ids.append(approval.id)
 
         # Auto-tag SharePoint with workflow + scoring info
+        flag_pairs = [
+            f"{name}:{value:.3f}" for name, value in zip(QUALITY_FLAG_NAMES, assessment.flags)
+        ]
         metadata = {
             "Workflow": workflow or "",
-            "FANNScore": f"{score:.3f}",
+            "QualityScore": f"{score:.3f}",
+            "QualityFlags": ", ".join(flag_pairs) if flag_pairs else "",
+            "QualityThreshold": f"{threshold:.3f}",
             "ApprovalIDs": ", ".join(approval_ids) if approval_ids else "",
+            "RoutePriority": f"{routing['priority']:.3f}",
+            "StructureScore": f"{routing['structure']:.3f}",
         }
         try:
             self.set_properties(item_id, metadata)

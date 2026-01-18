@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from docreview360.cache import clear_cache
 from docreview360.documents import DocumentModel, documents
@@ -12,12 +12,12 @@ from docreview360.search import (
     overdue_high_priority,
     projects,
     save_search,
+    saved_searches,
     search,
+    search_counter,
     search_index,
     search_stats,
     set_project_priority,
-    saved_searches,
-    search_counter,
 )
 
 
@@ -47,7 +47,7 @@ def test_search_workflow_and_saved_queries() -> None:
     assert "p1" in alerts
 
     # Saved searches and stats
-    save_search("hello")
+    save_search("hello", user="system")
     save_search("hello", user="alice")
     assert len(list_saved_searches()) == 2
     assert len(list_saved_searches(user="alice")) == 1

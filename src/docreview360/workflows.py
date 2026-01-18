@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
-from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
@@ -46,6 +46,7 @@ class WorkflowModel(BaseModel):
     mode: str = "sequential"
     callback_url: str | None = None
 
+
 # ``workflows`` is a module level registry that many tests mutate.  Some test
 # modules reload ``docreview360.workflows`` which would ordinarily create a new
 # dictionary and leave previously imported references pointing to the stale
@@ -53,7 +54,7 @@ class WorkflowModel(BaseModel):
 # on the old mapping, leading to surprising ``KeyError`` failures.  To keep a
 # single shared registry across reloads we store the dictionary on the package
 # object and reuse it when the module is imported again.
-_pkg = sys.modules.get(__name__.rpartition('.')[0])
+_pkg = sys.modules.get(__name__.rpartition(".")[0])
 if _pkg is not None and hasattr(_pkg, "_workflows_store"):
     workflows = getattr(_pkg, "_workflows_store")  # type: ignore[assignment]
 else:
@@ -65,6 +66,59 @@ else:
 bot_callbacks: list[Callable[[WorkflowModel], None]] = []
 
 bot_callbacks.append(dispatch_workflow_event)
+
+
+def _log_template_issue(template_name: str, reason: str) -> None:
+    """Log workflow template validation issues for operators."""
+
+    try:
+        from .logs import log_event
+    except Exception:
+        return
+
+    try:
+        log_event(
+            "workflow_template_invalid",
+            severity="error",
+            template=template_name,
+            reason=reason,
+        )
+    except Exception:
+        # Logging failures should not mask the underlying validation error.
+        pass
+
+
+def _raise_template_error(template_name: str, reason: str) -> None:
+    """Log and raise an error describing template ordering issues."""
+
+    _log_template_issue(template_name, reason)
+    raise ValueError(f"Workflow template '{template_name}' has invalid approval order: {reason}")
+
+
+def _validate_template_orders(template_name: str, steps: List[ApprovalStep]) -> None:
+    """Ensure approval steps have strictly increasing integer order values."""
+
+    last_order: int | None = None
+    for step in steps:
+        order = step.order
+        if not isinstance(order, int) or isinstance(order, bool):
+            _raise_template_error(
+                template_name,
+                f"step '{step.role}' uses non-integer order value {order!r}",
+            )
+        if order < 0:
+            _raise_template_error(
+                template_name,
+                f"step '{step.role}' uses negative order value {order}",
+            )
+        if last_order is not None and order <= last_order:
+            comparison = "duplicate" if order == last_order else "regression"
+            _raise_template_error(
+                template_name,
+                f"step '{step.role}' introduces {comparison}: order {order} after {last_order}",
+            )
+        last_order = order
+
 
 # Workflow templates keyed by name
 workflow_templates: Dict[str, List[ApprovalStep]] = {
@@ -241,6 +295,9 @@ workflow_templates: Dict[str, List[ApprovalStep]] = {
     ],
 }
 
+for _template_name, _steps in workflow_templates.items():
+    _validate_template_orders(_template_name, _steps)
+
 
 @log_call
 def list_roles() -> list[str]:
@@ -258,6 +315,7 @@ def get_approval_steps_for_phase(
         steps = workflow_templates[workflow]
     except KeyError as exc:
         raise KeyError(f"Unknown workflow '{workflow}'") from exc
+    _validate_template_orders(workflow, steps)
     return [step.model_copy() for step in steps]
 
 
@@ -285,14 +343,14 @@ def _bootstrap_sample() -> None:
         )
 
 
-"""Workflows bootstrap behaviour
+"""Workflows bootstrap behavior
 ---------------------------------
 
 Historically the module executed :func:`_bootstrap_sample` on import unless an
 environment variable named ``DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP`` was set to
-``"1"``.  The default behaviour (running the bootstrap) is convenient for the
+``"1"``.  The default behavior (running the bootstrap) is convenient for the
 real application which wants some seed data at startup.  For tests and for
-light‑weight usage this proved problematic as the bootstrap initialises the
+light‑weight usage this proved problematic as the bootstrap initializes the
 database and touches a number of other modules which may not be configured.  In
 the minimal test environment used in this kata the eager bootstrap attempted to
 run database migrations during import which raised
@@ -301,8 +359,8 @@ imported.
 
 To make the module safe to import in isolation we now *skip* bootstrapping by
 default.  Setting ``DOCREVIEW360_ENABLE_SAMPLE_BOOTSTRAP=1`` re‑enables the
-previous behaviour.  This mirrors the intent – seeding data should be an
-explicit choice – and keeps application behaviour intact when the new variable
+previous behavior.  This mirrors the intent – seeding data should be an
+explicit choice – and keeps application behavior intact when the new variable
 is used.
 """
 
@@ -453,10 +511,12 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
                 # ``None`` and does not record the event in the in-memory log
                 # list.  The workflow logic, and the accompanying audit log,
                 # rely on this event being present so we defensively ensure the
-                # entry is appended when missing.  This keeps the behaviour
+                # entry is appended when missing.  This keeps the behavior
                 # consistent regardless of external patches and prevents state
                 # leakage between tests.
-                from .logs import LogEntry, logs as _logs
+                from .logs import LogEntry
+                from .logs import logs as _logs
+
                 if entry is None:
                     entry = LogEntry(
                         id=uuid4().hex,
@@ -486,12 +546,13 @@ def start_workflow(wf_id: str, title: str, data: bytes | None = None) -> Workflo
                 # defensive block above for ``log_event``, we ensure an entry is
                 # persisted even when the function was patched out.
                 if audit_entry is None:
+                    import json
+
                     from .audit import (
-                        AuditLogEntry,
                         _AUDIT_LOG_PATH,
+                        AuditLogEntry,
                         _compute_hash,
                     )
-                    import json
 
                     audit_entry = AuditLogEntry(
                         id=uuid4().hex,

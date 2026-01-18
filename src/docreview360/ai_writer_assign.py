@@ -13,7 +13,7 @@ from .search import project_lock, projects, update_project
 _balancer_lock = Lock()
 
 
-def assign_technical_writer(
+def assign_technical_writer(  # noqa: C901
     project_id: str,
     candidates: Iterable[str],
     cfg: Config | None = None,
@@ -48,7 +48,24 @@ def assign_technical_writer(
     if not cfg or not cfg.ai_auto_assign_writers:
         raise RuntimeError("AI auto-assignment disabled")
 
-    cand_list = [c for c in candidates if auth.is_active(c)]
+    # ``auth.is_active`` returns ``False`` for explicitly disabled users but also
+    # for usernames that do not yet exist in the credential store.  The AI
+    # balancer receives candidate lists sourced from other services (for
+    # example, HR sync) where new writers may appear before their accounts are
+    # provisioned.  Filtering those names out meant we never registered them
+    # with the balancer which in turn caused ``KeyError`` when their load was
+    # inspected.  Treat missing users as available so that new writers can be
+    # considered immediately while still honouring the "inactive" flag when it
+    # is present.
+    cand_list: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        record = auth.USER_REPOSITORY.get_user(candidate)
+        if record is None or record.active:
+            cand_list.append(candidate)
     if not cand_list:
         raise ValueError("candidates is required")
 
@@ -77,13 +94,14 @@ def assign_technical_writer(
             if ai_balancer.current_load(cand) < counts[cand]:
                 ai_balancer._workers[cand] = counts[cand]
 
-    selected = min(
-        cand_list,
-        key=lambda w: (ai_balancer.current_load(w) + priority_adj[w], w),
-    )
-    update_project(project_id, user=selected)
     with _balancer_lock:
-        ai_balancer._workers[selected] = ai_balancer.current_load(selected) + 1
+
+        def _load_key(worker: str) -> tuple[int, str]:
+            return (ai_balancer._workers.get(worker, 0) + priority_adj[worker], worker)
+
+        selected = min(cand_list, key=_load_key)
+        ai_balancer._workers[selected] = ai_balancer._workers.get(selected, 0) + 1
+    update_project(project_id, user=selected)
     return selected
 
 
@@ -118,7 +136,15 @@ def reassign_projects_from_writer(
     if not cfg or not cfg.ai_auto_assign_writers:
         raise RuntimeError("AI auto-assignment disabled")
 
-    cand_list = [c for c in candidates if c != writer and auth.is_active(c)]
+    cand_list = []
+    seen = {writer}
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        record = auth.USER_REPOSITORY.get_user(candidate)
+        if record is None or record.active:
+            cand_list.append(candidate)
     if not cand_list:
         raise ValueError("candidates is required")
 

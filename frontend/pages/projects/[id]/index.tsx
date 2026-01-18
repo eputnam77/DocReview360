@@ -4,6 +4,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { API, authenticatedFetch } from "@/lib/api";
 import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
@@ -433,17 +441,37 @@ export default function ProjectDetailsPage() {
   );
 
   useEffect(() => {
-    setProject(projectData ?? DEMO_PROJECT);
-  }, [projectData]);
+    // If this is the demo project ID, always use demo data
+    if (id === DEMO_PROJECT.id) {
+      setProject(DEMO_PROJECT);
+    } else {
+      setProject(projectData ?? null);
+    }
+  }, [projectData, id]);
   useEffect(() => {
-    setWorkflow(workflowData ?? DEMO_WORKFLOW);
-  }, [workflowData]);
+    // If this is the demo project ID, always use demo workflow
+    if (id === DEMO_PROJECT.id) {
+      setWorkflow(DEMO_WORKFLOW);
+    } else {
+      setWorkflow(workflowData ?? null);
+    }
+  }, [workflowData, id]);
   useEffect(() => {
-    setApprovals(approvalsData ?? DEMO_APPROVALS);
-  }, [approvalsData]);
+    // If this is the demo project ID, always use demo approvals
+    if (id === DEMO_PROJECT.id) {
+      setApprovals(DEMO_APPROVALS);
+    } else {
+      setApprovals(approvalsData ?? []);
+    }
+  }, [approvalsData, id]);
   useEffect(() => {
-    setReviewCount(reviewCountData?.count ?? DEMO_DISPO_COMMENTS.length);
-  }, [reviewCountData]);
+    // If this is the demo project ID, always use demo review count
+    if (id === DEMO_PROJECT.id) {
+      setReviewCount(DEMO_DISPO_COMMENTS.length);
+    } else {
+      setReviewCount(reviewCountData?.count ?? 0);
+    }
+  }, [reviewCountData, id]);
 
   useEffect(() => {
     if (!id || !username) {
@@ -578,25 +606,22 @@ export default function ProjectDetailsPage() {
     remind(targets.map((a) => a.id));
   };
 
-  const viewHistory = useCallback(
-    (aid: string) => {
-      authenticatedFetch(`${API}/approvals/${aid}/history`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data: any[]) =>
-          setHistoryEvents(
-            data.map((d) => ({
-              id: d.id ?? d.timestamp,
-              timestamp: d.timestamp,
-              message: d.event || d.action || d.message,
-              type: "approval" as const,
-            })),
-          )
-        )
-        .catch(() => setHistoryEvents(DEMO_APPROVAL_HISTORY))
-        .finally(() => setShowHistory(true));
-    },
-    [username],
-  );
+  const viewHistory = useCallback((aid: string) => {
+    authenticatedFetch(`${API}/approvals/${aid}/history`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) =>
+        setHistoryEvents(
+          data.map((d) => ({
+            id: d.id ?? d.timestamp,
+            timestamp: d.timestamp,
+            message: d.event || d.action || d.message,
+            type: "approval" as const,
+          })),
+        ),
+      )
+      .catch(() => setHistoryEvents(DEMO_APPROVAL_HISTORY))
+      .finally(() => setShowHistory(true));
+  }, []);
 
   const signApproval = async (aid: string) => {
     const existing = approvals.find((a) => a.id === aid);
@@ -604,7 +629,7 @@ export default function ProjectDetailsPage() {
       toast.error("Approval already completed.");
       return;
     }
-    if (existing?.reviewer !== user?.name) {
+    if (existing?.reviewer !== username) {
       toast.error("You are not assigned to this approval.");
       return;
     }
@@ -891,7 +916,7 @@ export default function ProjectDetailsPage() {
             <CardContent className="overflow-x-auto">
               <ApprovalTable
                 approvals={approvalsForPhase}
-                currentUser={user?.name}
+                currentUser={username}
                 canEdit={canEdit}
                 onSign={signApproval}
                 onReset={resetApprovalLocal}

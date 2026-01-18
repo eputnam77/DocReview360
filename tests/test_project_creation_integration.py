@@ -7,8 +7,9 @@ from typing import Generator
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import doc_types
 from docreview360.api import app
-from docreview360.doc_types import DocumentTypeModel, add_document_type, document_types
+from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import _phases, add_phase
 from docreview360.workflows import create_workflow, workflows
 
@@ -20,7 +21,7 @@ class TestProjectCreationIntegration:
     def setup_teardown(self) -> Generator[None, None, None]:
         """Setup and teardown for each test."""
         # Clear existing data
-        document_types.clear()
+        doc_types.document_types.clear()
         _phases.clear()
         workflows.clear()
 
@@ -42,7 +43,7 @@ class TestProjectCreationIntegration:
         yield
 
         # Cleanup
-        document_types.clear()
+        doc_types.document_types.clear()
         _phases.clear()
         workflows.clear()
 
@@ -216,13 +217,25 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Clear existing document types
-        document_types.clear()
+        doc_types.document_types.clear()
 
         # Add test document types
         test_types = [
-            DocumentTypeModel(name="Policy Document", template="<h1>Policy</h1>"),
-            DocumentTypeModel(name="Procedure Manual", template="<h1>Procedure</h1>"),
-            DocumentTypeModel(name="Technical Spec", template="<h1>Technical</h1>"),
+            DocumentTypeModel(
+                name="Policy Document",
+                template="<h1>Policy</h1>",
+                workflow=["Draft"],
+            ),
+            DocumentTypeModel(
+                name="Procedure Manual",
+                template="<h1>Procedure</h1>",
+                workflow=["Draft"],
+            ),
+            DocumentTypeModel(
+                name="Technical Spec",
+                template="<h1>Technical</h1>",
+                workflow=["Draft"],
+            ),
         ]
 
         for doc_type in test_types:
@@ -232,8 +245,8 @@ class TestConfigurationPropagation:
         resp = client.get("/document-types")
         assert resp.status_code == 200
 
-        doc_types = resp.json()
-        doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
+        types_payload = resp.json()
+        doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in types_payload]
 
         assert "Policy Document" in doc_type_names
         assert "Procedure Manual" in doc_type_names
@@ -305,12 +318,18 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Clear existing configuration
-        document_types.clear()
+        doc_types.document_types.clear()
         _phases.clear()
         workflows.clear()
 
         # Add initial configuration
-        add_document_type({"name": "Initial Doc Type", "template": "<h1>Initial</h1>"})
+        add_document_type(
+            {
+                "name": "Initial Doc Type",
+                "template": "<h1>Initial</h1>",
+                "workflow": ["Initial Phase"],
+            }
+        )
         add_phase("Initial Phase")
         create_workflow(project="init-proj", phases=["Initial Phase"])
 
@@ -327,7 +346,13 @@ class TestConfigurationPropagation:
         assert resp.status_code == 201
 
         # Update configuration
-        add_document_type({"name": "Updated Doc Type", "template": "<h1>Updated</h1>"})
+        add_document_type(
+            {
+                "name": "Updated Doc Type",
+                "template": "<h1>Updated</h1>",
+                "workflow": ["Updated Phase"],
+            }
+        )
         add_phase("Updated Phase")
         create_workflow(project="updated-proj", phases=["Updated Phase"])
 

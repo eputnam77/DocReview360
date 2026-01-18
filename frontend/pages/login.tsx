@@ -17,12 +17,14 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { API } from "@/lib/api";
+import { useUserStore } from "@/state/user";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const refreshUser = useUserStore((state) => state.refresh);
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,6 +44,11 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
+        try {
+          await refreshUser();
+        } catch (error) {
+          console.error("Failed to refresh user after login", error);
+        }
         // Cookie is set by the server; simply redirect
         router.push("/projects");
         toast.success("Login successful");

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections import Counter, defaultdict
-from math import log, sqrt, isfinite
+from math import isfinite, log, sqrt
 from typing import Dict, Iterable, List, Tuple
 
 import httpx
@@ -22,7 +22,7 @@ def _embed(text: str) -> Counter[str]:
 
     The previous implementation simply split on whitespace which meant tokens
     retained surrounding punctuation.  A document containing ``"world!"`` would
-    therefore never match a search for ``"world"``.  Normalise tokens by
+    therefore never match a search for ``"world"``.  Normalize tokens by
     extracting only alphanumeric word segments so punctuation is ignored and
     search queries behave more intuitively.
     """
@@ -40,8 +40,13 @@ def index_document(doc_id: str, content: str) -> None:
     OpenSearch. Any network failure raises ``RuntimeError`` so callers can
     decide whether to retry or fall back to the local index.
     """
-    if not doc_id or not content:
-        raise ValueError("doc_id and content are required")
+    if (
+        not isinstance(doc_id, str)
+        or not doc_id.strip()
+        or not isinstance(content, str)
+        or not content
+    ):
+        raise ValueError("doc_id and content are required strings")
     global _total_docs
     tf = _embed(content)
 
@@ -58,7 +63,11 @@ def index_document(doc_id: str, content: str) -> None:
 
     for term in tf:
         _doc_freq[term] += 1
-    _vectors[doc_id] = (tf, len(content.split()))
+    # ``len(content.split())`` counted tokens separated solely by whitespace and
+    # misreported lengths for inputs like ``"foo-bar"`` which our tokenizer splits
+    # into two words.  Store the length based on the tokenised representation so
+    # the metadata remains consistent with the embedding.
+    _vectors[doc_id] = (tf, sum(tf.values()))
 
     if OPENSEARCH_URL:
         try:
@@ -87,7 +96,7 @@ def _cosine(a: Iterable[float], b: Iterable[float]) -> float:
     The previous implementation silently truncated the longer iterable when
     the vectors had different lengths because :func:`zip` stops at the
     shortest input. This produced incorrect scores and hid programming
-    mistakes.  We now eagerly realise both iterables and validate that their
+    mistakes.  We now eagerly realize both iterables and validate that their
     lengths match, raising ``ValueError`` otherwise.
     """
 

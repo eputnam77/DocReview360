@@ -34,10 +34,18 @@ pipx install uv poetry
    export DOCREVIEW360_SECRET_KEY=your-secret
    export DOCREVIEW360_ALGORITHM=HS256
    export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+   export DOCREVIEW360_TOKEN_ISSUER=docreview360.local
+   export DOCREVIEW360_TOKEN_AUDIENCE=docreview360-users
    export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
    export DOCREVIEW360_OIDC_ALGORITHM=HS256
    export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+   export DOCREVIEW360_OIDC_TOKEN_ISSUER=docreview360-oidc.local
+   export DOCREVIEW360_OIDC_TOKEN_AUDIENCE=docreview360-oidc
+   # Treat any non-dev/test value (for example "production") as production.
+   # When set, missing secrets trigger a startup failure instead of a warning.
+   export DOCREVIEW360_ENV=dev
    # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
+   # Cookie-based auth requires an X-CSRF-Token header that matches the csrf_token cookie.
    ```
 
 4. **Testing**

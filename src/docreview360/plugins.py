@@ -25,6 +25,14 @@ class PluginRegistry:
         enabled:
             Whether the plugin should start enabled.
         """
+        # Normalize and validate the name to avoid accidentally creating entries
+        # keyed by empty strings or incidental whitespace.  Previously a name of
+        # ``""`` or ``"  "`` would be accepted and stored, making the plugin
+        # impossible to manage via ``enable``/``disable`` calls which expect a
+        # meaningful identifier.
+        name = name.strip()
+        if not name:
+            raise ValueError("Plugin name cannot be empty")
         if name in self._plugins:
             raise ValueError(f"Plugin '{name}' already registered")
         self._plugins[name] = plugin

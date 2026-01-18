@@ -18,12 +18,30 @@ export const useEnvStore = create<EnvState>((set) => ({
   current: undefined,
   envs: {},
   load: async () => {
-    const r = await authenticatedFetch("/environments");
-    const data = await r.json();
-    set({ current: data.current ?? undefined, envs: data.envs });
+    try {
+      const response = await authenticatedFetch("/environments");
+      if (!response.ok) {
+        console.warn("Failed to load environments", response.status, response.statusText);
+        return;
+      }
+
+      const data = await response.json();
+      set({ current: data.current ?? undefined, envs: data.envs });
+    } catch (error) {
+      console.error("Unable to load environments", error);
+    }
   },
   switchEnv: async (name: string) => {
-    await authenticatedFetch(`/environments/${name}`, { method: "POST" });
-    set((s) => ({ current: s.envs[name] }));
+    try {
+      const response = await authenticatedFetch(`/environments/${name}`, { method: "POST" });
+      if (!response.ok) {
+        console.warn("Failed to switch environment", response.status, response.statusText);
+        return;
+      }
+
+      set((state) => ({ current: state.envs[name] }));
+    } catch (error) {
+      console.error("Unable to switch environment", error);
+    }
   },
 }));

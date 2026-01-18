@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Quality feature payload v1",
+  "type": "object",
+  "required": ["version", "features", "legacy"],
+  "properties": {
+    "version": {"type": "string"},
+    "features": {
+      "type": "object",
+      "required": [
+        "length",
+        "vocabulary_diversity",
+        "duplicate_ratio",
+        "readability",
+        "style",
+        "structure"
+      ],
+      "properties": {
+        "length": {"type": "number", "minimum": 0, "maximum": 1},
+        "vocabulary_diversity": {"type": "number", "minimum": 0, "maximum": 1},
+        "duplicate_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "readability": {"type": "number", "minimum": 0, "maximum": 1},
+        "style": {"type": "number", "minimum": 0, "maximum": 1},
+        "structure": {"type": "number", "minimum": 0, "maximum": 1},
+        "metadata_completeness": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    },
+    "legacy": {
+      "type": "object",
+      "required": ["fann"],
+      "properties": {
+        "fann": {
+          "type": "object",
+          "required": [
+            "length",
+            "unique_ratio",
+            "repeated",
+            "readability",
+            "style",
+            "structure"
+          ],
+          "properties": {
+            "length": {"type": "number"},
+            "unique_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+            "repeated": {"type": "number", "minimum": 0},
+            "readability": {"type": "number"},
+            "style": {"type": "number", "minimum": 0, "maximum": 1},
+            "structure": {"type": "number", "minimum": 0, "maximum": 1}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

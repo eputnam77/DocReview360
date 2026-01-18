@@ -2,14 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ChatBot } from "@/components";
-import {
-  LayoutDashboard,
-  FolderOpen,
-  Users2,
-  CheckCircle2,
-  Clock,
-  BarChart2,
-} from "lucide-react";
+import { LayoutDashboard, Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -22,6 +15,8 @@ import {
   Tooltip,
 } from "recharts";
 import { useDashboardVisibility } from "@/state/visibility";
+import { authenticatedFetch } from "@/lib/api";
+import { useUserStore } from "@/state/user";
 
 // Color palette for charts
 const COLORS = [
@@ -46,72 +41,245 @@ type Log = {
   metadata?: { project?: string };
 };
 
+const LOG_LIMIT = 20;
+
+type ProjectRecord = Record<string, unknown>;
+
+function normalizeStatus(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.toLowerCase().replace(/[_-]/g, " ");
+}
+
+function isAssignedToUser(project: ProjectRecord, normalizedUser: string): boolean {
+  const directKeys = ["user", "owner", "assigned_to", "assignee", "assignedTo"] as const;
+  for (const key of directKeys) {
+    const value = project[key];
+    if (typeof value === "string" && value.toLowerCase() === normalizedUser) {
+      return true;
+    }
+  }
+
+  const listKeys = ["assignees", "assigned_users", "assignedTo"] as const;
+  for (const key of listKeys) {
+    const value = project[key];
+    if (
+      Array.isArray(value) &&
+      value.some((item) => typeof item === "string" && item.toLowerCase() === normalizedUser)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function extractDateString(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  const direct = trimmed.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) {
+    return direct;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed.toISOString().slice(0, 10);
+}
+
+function buildActivityData(projects: ProjectRecord[]): Activity[] {
+  const counts = new Map<string, number>();
+  const dateKeys = [
+    "updated",
+    "updated_at",
+    "updatedAt",
+    "modified",
+    "modified_at",
+    "last_updated",
+    "lastUpdated",
+  ];
+
+  projects.forEach((project) => {
+    for (const key of dateKeys) {
+      const dateString = extractDateString(project[key]);
+      if (dateString) {
+        counts.set(dateString, (counts.get(dateString) ?? 0) + 1);
+        break;
+      }
+    }
+  });
+
+  return Array.from(counts.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, actions]) => ({ date, actions }));
+}
+
+function computeDashboardData(
+  projects: ProjectRecord[],
+  username?: string | null,
+): { stats: Stats; statusData: StatusData[]; activityData: Activity[] } {
+  const normalizedUser = typeof username === "string" ? username.toLowerCase() : "";
+
+  const assignedCount = normalizedUser
+    ? projects.filter((project) => isAssignedToUser(project, normalizedUser)).length
+    : 0;
+
+  let inProgress = 0;
+  let completed = 0;
+  let overdue = 0;
+
+  projects.forEach((project) => {
+    const normalizedStatus = normalizeStatus(
+      project["status"] ??
+        project["state"] ??
+        project["phase_status"] ??
+        project["workflow_status"] ??
+        project["current_status"],
+    );
+
+    if (normalizedStatus.includes("progress")) {
+      inProgress += 1;
+    }
+    if (normalizedStatus.includes("complete") || normalizedStatus.includes("done")) {
+      completed += 1;
+    }
+    if (normalizedStatus.includes("overdue") || normalizedStatus.includes("late")) {
+      overdue += 1;
+    }
+  });
+
+  const stats: Stats = {
+    assigned: assignedCount,
+    inProgress,
+    completed,
+    overdue,
+  };
+
+  const statusData: StatusData[] = [
+    { name: "Assigned to Me", value: stats.assigned },
+    { name: "In Progress", value: stats.inProgress },
+    { name: "Completed", value: stats.completed },
+    { name: "Overdue", value: stats.overdue },
+  ];
+
+  const activityData = buildActivityData(projects);
+
+  return { stats, statusData, activityData };
+}
+
 export default function MainDashboardPage() {
   const [stats, setStats] = useState<Stats>({
-    assigned: 4,
-    inProgress: 3,
-    completed: 7,
-    overdue: 1,
+    assigned: 0,
+    inProgress: 0,
+    completed: 0,
+    overdue: 0,
   });
   const [statusData, setStatusData] = useState<StatusData[]>([]);
   const [activityData, setActivityData] = useState<Activity[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const { vis } = useDashboardVisibility();
+  const username = useUserStore((s) => s.username);
 
   // Simulated API calls — replace with your own endpoints!
   useEffect(() => {
-    // Summary stats
-    setStats({
-      assigned: 4,
-      inProgress: 3,
-      completed: 7,
-      overdue: 1,
-    });
-    // Project status breakdown
-    setStatusData([
-      { name: "Assigned to Me", value: 4 },
-      { name: "In Progress", value: 3 },
-      { name: "Completed", value: 7 },
-      { name: "Overdue", value: 1 },
-    ]);
-    // Recent activity line chart
-    setActivityData([
-      { date: "2025-07-01", actions: 2 },
-      { date: "2025-07-02", actions: 4 },
-      { date: "2025-07-03", actions: 3 },
-      { date: "2025-07-04", actions: 6 },
-      { date: "2025-07-05", actions: 5 },
-    ]);
-    // Project/Audit logs
-    setLogs([
-      {
-        timestamp: "2025-07-05T09:05",
-        action: "Review approved",
-        metadata: { project: "AC-101" },
-      },
-      {
-        timestamp: "2025-07-04T18:22",
-        action: "Draft uploaded",
-        metadata: { project: "AC-102" },
-      },
-      {
-        timestamp: "2025-07-03T15:10",
-        action: "Project started",
-        metadata: { project: "AC-103" },
-      },
-      {
-        timestamp: "2025-07-02T11:32",
-        action: "Review comment added",
-        metadata: { project: "AC-104" },
-      },
-      {
-        timestamp: "2025-07-01T08:00",
-        action: "Project created",
-        metadata: { project: "AC-105" },
-      },
-    ]);
-  }, []);
+    let isActive = true;
+
+    async function loadProjects() {
+      try {
+        const response = await authenticatedFetch("/projects");
+        let payload: unknown = [];
+
+        if (response.ok) {
+          try {
+            payload = await response.json();
+          } catch {
+            payload = [];
+          }
+        }
+
+        const projects = Array.isArray(payload)
+          ? payload.filter((item): item is ProjectRecord =>
+              item !== null && typeof item === "object",
+            )
+          : [];
+
+        if (!isActive) {
+          return;
+        }
+
+        const { stats: computedStats, statusData, activityData } = computeDashboardData(
+          projects,
+          username,
+        );
+        setStats(computedStats);
+        setStatusData(statusData);
+        setActivityData(activityData);
+      } catch {
+        if (!isActive) {
+          return;
+        }
+        setStats({ assigned: 0, inProgress: 0, completed: 0, overdue: 0 });
+        setStatusData([]);
+        setActivityData([]);
+      }
+    }
+
+    async function loadLogs() {
+      try {
+        const response = await authenticatedFetch(`/logs?limit=${LOG_LIMIT}`);
+        let payload: unknown = [];
+
+        if (response.ok) {
+          try {
+            payload = await response.json();
+          } catch {
+            payload = [];
+          }
+        }
+
+        const parsedLogs: Log[] = Array.isArray(payload)
+          ? payload
+              .filter((entry): entry is Record<string, unknown> =>
+                entry !== null && typeof entry === "object",
+              )
+              .map((entry) => {
+                const timestamp = typeof entry.timestamp === "string" ? entry.timestamp : "";
+                const action = typeof entry.action === "string" ? entry.action : "";
+                const metadata =
+                  entry.metadata && typeof entry.metadata === "object"
+                    ? (entry.metadata as { project?: string })
+                    : undefined;
+                return { timestamp, action, metadata };
+              })
+              .filter((entry) => entry.timestamp && entry.action)
+          : [];
+
+        if (!isActive) {
+          return;
+        }
+        setLogs(parsedLogs);
+      } catch {
+        if (!isActive) {
+          return;
+        }
+        setLogs([]);
+      }
+    }
+
+    loadProjects();
+    loadLogs();
+
+    return () => {
+      isActive = false;
+    };
+  }, [username]);
 
   // Unique projects for filter dropdown
   const projectOptions = Array.from(

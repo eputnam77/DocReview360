@@ -5,7 +5,6 @@ from docreview360.logs import clear_logs
 from docreview360.workflows import create_workflow, start_workflow, workflows
 
 
-
 def test_start_workflow_still_logs_audit_when_patched(monkeypatch):
     approvals.clear()
     workflows.clear()

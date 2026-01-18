@@ -30,7 +30,7 @@ class GuardrailsMiddleware(BaseHTTPMiddleware):
             return self.checker(data)
         if isinstance(data, dict):
             return any(self._contains_pii(v) for v in data.values())
-        if isinstance(data, list):
+        if isinstance(data, (list, tuple, set)):
             return any(self._contains_pii(v) for v in data)
         return False
 

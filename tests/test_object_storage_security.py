@@ -1,10 +1,26 @@
-import io
 import importlib
+import io
 from types import SimpleNamespace
 
 import pytest
 
-from docreview360.object_storage import upload_file, download_file, _validate_key
+from docreview360.object_storage import _validate_key, download_file, upload_file
+
+
+def test_bucket_rejects_traversal_segments(tmp_path) -> None:
+    with pytest.raises(ValueError):
+        upload_file("../evil", "safe.txt", b"data")
+    with pytest.raises(ValueError):
+        upload_file("..\\evil", "safe.txt", b"data")
+    with pytest.raises(ValueError):
+        download_file("../evil", "safe.txt")
+
+
+def test_bucket_rejects_newlines_and_whitespace() -> None:
+    with pytest.raises(ValueError):
+        upload_file(" bucket", "safe.txt", b"data")
+    with pytest.raises(ValueError):
+        upload_file("bucket\n", "safe.txt", b"data")
 
 
 def test_upload_rejects_path_traversal(tmp_path):
@@ -115,3 +131,17 @@ def test_upload_retention_and_append(tmp_path):
     (bucket / "f").write_text("x")
     with pytest.raises(FileExistsError):
         upload_file(bucket, "f", b"y", append_only=True)
+
+
+def test_rejects_backslash_edges(tmp_path) -> None:
+    bucket = tmp_path / "b"
+    bucket.mkdir()
+    # Leading or trailing backslashes should be treated as invalid
+    with pytest.raises(ValueError):
+        upload_file(bucket, "\\evil.txt", b"x")
+    with pytest.raises(ValueError):
+        upload_file(bucket, "dir\\", b"x")
+    with pytest.raises(ValueError):
+        _validate_key("\\evil.txt")
+    with pytest.raises(ValueError):
+        _validate_key("dir\\")

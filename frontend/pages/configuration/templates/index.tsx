@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Table,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash, Eye, Download } from "lucide-react";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 
 interface Template {
   id: string;
@@ -28,13 +28,28 @@ interface EmailTemplate {
   task?: string;
 }
 
+export function createTemplateConfigApi(
+  fetcher: typeof authenticatedFetch = authenticatedFetch,
+) {
+  return {
+    listTemplates: () => fetcher(`${API}/templates`),
+    listEmailTemplates: () => fetcher(`${API}/email-templates`),
+    deleteTemplate: (id: string) =>
+      fetcher(`${API}/templates/${id}`, { method: "DELETE" }),
+    deleteEmailTemplate: (name: string) =>
+      fetcher(`${API}/email-templates/${name}`, { method: "DELETE" }),
+  } as const;
+}
 
 export default function TemplatesIndex() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
 
+  const api = useMemo(() => createTemplateConfigApi(), []);
+
   useEffect(() => {
-    fetch(`${API}/templates`)
+    api
+      .listTemplates()
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setTemplates(
@@ -54,10 +69,11 @@ export default function TemplatesIndex() {
         )
       )
         .catch(() => setTemplates([]));
-  }, []);
+  }, [api]);
 
   useEffect(() => {
-    fetch(`${API}/email-templates`)
+    api
+      .listEmailTemplates()
       .then((r) => (r.ok ? r.json() : []))
         .then((data: any[]) =>
           setEmailTemplates(
@@ -71,24 +87,24 @@ export default function TemplatesIndex() {
           ),
         )
         .catch(() => setEmailTemplates([]));
-  }, []);
+  }, [api]);
 
   const removeTemplate = async (id: string) => {
     setTemplates(templates.filter((t) => t.id !== id));
     try {
-      await fetch(`${API}/templates/${id}`, { method: "DELETE" });
-      } catch {
-        // ignore network errors in development mode
-      }
+      await api.deleteTemplate(id);
+    } catch {
+      // ignore network errors in development mode
+    }
   };
 
   const removeEmail = async (name: string) => {
     setEmailTemplates(emailTemplates.filter((t) => t.name !== name));
     try {
-      await fetch(`${API}/email-templates/${name}`, { method: "DELETE" });
-      } catch {
-        // ignore network errors in development mode
-      }
+      await api.deleteEmailTemplate(name);
+    } catch {
+      // ignore network errors in development mode
+    }
   };
 
     const handleDownload = (tpl: Template) => {

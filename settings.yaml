@@ -12,3 +12,6 @@ signature_provider_primary: missing
 signature_verification:
   interval_minutes: 60
   scope: approved
+audit_log:
+  retention_days: 2555
+  purge_interval_minutes: 1440

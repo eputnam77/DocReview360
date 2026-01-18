@@ -1,6 +1,5 @@
 """Dual-view diff panel tests."""
 
-
 from docreview360.pandiff import change_bars
 
 

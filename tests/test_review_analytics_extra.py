@@ -1,13 +1,14 @@
 import math
+
 import pytest
 
+from docreview360.ml.torch_models import build_risk_critic
 from docreview360.review_analytics import (
     LessonsRepository,
     ReviewTrends,
     benchmark_document,
     detect_anomalous_document,
 )
-from docreview360.fann_model import Weights
 
 
 def test_lessons_and_trends_basic() -> None:
@@ -28,11 +29,12 @@ def test_review_analytics_helpers() -> None:
     assert benchmark_document("text", []) == 0.0
     assert benchmark_document("a", ["a", "b"]) > 0
 
-    weights = Weights(w1=[[0.0] * 6 for _ in range(4)], b1=[0.0] * 4, w2=[0.0] * 4, b2=0.0)
-    anomalous, score = detect_anomalous_document("sample", weights, [])
+    critic = build_risk_critic()
+    critic.reset_parameters("zeros")
+    anomalous, score = detect_anomalous_document("sample", critic, [])
     assert anomalous is False and math.isfinite(score)
     history = [score + 0.5, score + 0.5]
-    anomalous2, _ = detect_anomalous_document("sample", weights, history)
+    anomalous2, _ = detect_anomalous_document("sample", critic, history)
     assert anomalous2 is True
 
 
@@ -42,4 +44,3 @@ def test_moving_average_empty() -> None:
     trends.add("p", 0.5)
     with pytest.raises(ValueError):
         trends.moving_average("p", window=0)
-

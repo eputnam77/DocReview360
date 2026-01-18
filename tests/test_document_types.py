@@ -1,11 +1,11 @@
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
+from docreview360 import doc_types
 from docreview360.api import app
 from docreview360.doc_types import (
     DocumentTypeModel,
     add_document_type,
-    document_types,
     export_document_types,
     import_document_types_json,
     list_all_phases,
@@ -13,7 +13,7 @@ from docreview360.doc_types import (
 
 
 @pytest.fixture(autouse=True)
-def _reset_doc_types() -> None:
+def _reset_doc_types(monkeypatch: pytest.MonkeyPatch) -> None:
     """Start each test with a single seeded document type.
 
     Many tests mutate the global ``document_types`` registry without
@@ -23,9 +23,11 @@ def _reset_doc_types() -> None:
     back a single "Test Document Type" before each test.
     """
 
-    document_types.clear()
-    document_types["Test Document Type"] = DocumentTypeModel(
-        name="Test Document Type", template=""
+    monkeypatch.setattr(doc_types, "DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", False)
+    doc_types._ACTIVE_DATA_FILE = doc_types.DATA_FILE
+    doc_types.document_types.clear()
+    doc_types.document_types["Test Document Type"] = DocumentTypeModel(
+        name="Test Document Type", template="", workflow=["Seed"]
     )
 
 
@@ -63,18 +65,22 @@ def test_document_type_crud() -> None:
 
 def test_idempotent_add() -> None:
     """Adding the same document type twice should be a no-op."""
-    doc = DocumentTypeModel(name="Duplicate", template="<h1>Dup</h1>")
+    doc = DocumentTypeModel(name="Duplicate", template="<h1>Dup</h1>", workflow=["Phase"])
     first = add_document_type(doc)
     second = add_document_type(doc)
     assert first is second
-    assert document_types["Duplicate"].template == "<h1>Dup</h1>"
+    assert doc_types.document_types["Duplicate"].template == "<h1>Dup</h1>"
 
 
 def test_conflicting_add() -> None:
     """Adding a type with the same name but different data should error."""
-    add_document_type(DocumentTypeModel(name="Conflict", template="<h1>One</h1>"))
+    add_document_type(
+        DocumentTypeModel(name="Conflict", template="<h1>One</h1>", workflow=["Phase"])
+    )
     with pytest.raises(ValueError):
-        add_document_type(DocumentTypeModel(name="Conflict", template="<h1>Two</h1>"))
+        add_document_type(
+            DocumentTypeModel(name="Conflict", template="<h1>Two</h1>", workflow=["Phase"])
+        )
 
 
 def test_export_error(tmp_path):
@@ -97,7 +103,7 @@ def test_list_all_phases() -> None:
 def test_document_type_import_export_endpoints() -> None:
     client = TestClient(app)
 
-    data = {"name": "policy", "template": "<h1>Policy</h1>"}
+    data = {"name": "policy", "template": "<h1>Policy</h1>", "workflow": ["Phase"]}
     resp = client.post("/document-types", json=data)
     assert resp.status_code == 201
 

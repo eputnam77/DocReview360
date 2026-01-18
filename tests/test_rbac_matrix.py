@@ -1,10 +1,13 @@
 """RBAC permission tests."""
 
 import importlib.util
+import os
 import sys
+import tempfile
 import types
 from pathlib import Path
 
+import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
@@ -13,6 +16,9 @@ PACKAGE_DIR = Path(__file__).resolve().parents[1] / "src" / "docreview360"
 pkg = types.ModuleType("docreview360")
 pkg.__path__ = [str(PACKAGE_DIR)]
 sys.modules.setdefault("docreview360", pkg)
+
+RBAC_DB_PATH = Path(tempfile.mkdtemp()) / "roles.db"
+os.environ["DOCREVIEW360_RBAC_DB"] = str(RBAC_DB_PATH)
 
 spec_auth = importlib.util.spec_from_file_location("docreview360.auth", PACKAGE_DIR / "auth.py")
 auth = importlib.util.module_from_spec(spec_auth)
@@ -26,9 +32,14 @@ spec_rbac.loader.exec_module(rbac)
 
 # Bind local aliases to avoid late imports (ruff E402)
 ROLE_PERMISSIONS = rbac.ROLE_PERMISSIONS
-USER_ROLES = rbac.USER_ROLES
 require_permission = rbac.require_permission
 set_user_roles = rbac.set_user_roles
+
+
+@pytest.fixture(autouse=True)
+def reset_roles() -> None:
+    rbac.configure_role_repository(RBAC_DB_PATH)
+    rbac.reset_role_assignments()
 
 
 def test_default_role_permissions_seed() -> None:
@@ -70,7 +81,7 @@ def test_field_level_rbac() -> None:
     client = TestClient(app)
     token = auth.create_access_token({"sub": "alice"})
 
-    USER_ROLES.clear()
+    rbac.reset_role_assignments(include_defaults=False)
     set_user_roles("alice", ["sme"])
     r = client.patch("/resource", json={"field_x": 1}, headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
@@ -103,7 +114,7 @@ def test_permission_escalation() -> None:
     client = TestClient(app)
     token = auth.create_access_token({"sub": "alice"})
 
-    USER_ROLES.clear()
+    rbac.reset_role_assignments(include_defaults=False)
     set_user_roles("alice", ["observer"])
     r = client.post("/items", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 403

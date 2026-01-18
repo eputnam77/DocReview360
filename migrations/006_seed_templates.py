@@ -3,7 +3,7 @@
 from docreview360.template_manager import upload_template
 
 FAA_AC_TEMPLATE = (
-    "<h1 style=\"text-align:center; margin-bottom:0\">Advisory Circular</h1>"
+    '<h1 style="text-align:center; margin-bottom:0">Advisory Circular</h1>'
     "<p>This is a seed template.</p>"
 )
 

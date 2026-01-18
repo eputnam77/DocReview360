@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from docreview360 import reporting
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval
 from docreview360.search import ProjectModel, add_project, projects
@@ -24,6 +25,7 @@ def _setup() -> None:
 
 
 def test_dashboard_filtering_by_user() -> None:
+    reporting.reset_metrics_for_testing()
     _setup()
     client = TestClient(app)
 
@@ -37,6 +39,7 @@ def test_dashboard_filtering_by_user() -> None:
     data = resp.json()
     assert data["assigned"] == 1
     assert data["pending_approvals"] == 1
+    assert "avg_quality_score" in data
 
     resp = client.get("/dashboard/widgets", headers={"X-User": "bob"})
     assert resp.json()["assigned"] == 1
