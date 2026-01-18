@@ -198,7 +198,8 @@ def test_users_me_endpoint() -> None:
     # Test the correct endpoint that does exist
     token = auth.create_access_token({"sub": "alice"})
     client.cookies.set("access_token", token)
-    resp = client.get("/users/me")
+    client.cookies.set("csrf_token", "test-csrf")
+    resp = client.get("/users/me", headers={"X-CSRF-Token": "test-csrf"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["username"] == "alice"
