@@ -438,6 +438,11 @@ class UserRepository:
     ) -> None:
         """Create or replace a user with a hashed password."""
 
+        demo_defaults = DEMO_USER_DEFAULTS.get(username)
+        if demo_defaults and password == demo_defaults.get("password"):
+            self._seed_user(username, password, otp_secret=otp_secret, active=active)
+            return
+
         existing = self.get_user(username)
         existing_hash = existing.password_hash if existing else None
         _password_policy().validate(password, existing_hash=existing_hash)
