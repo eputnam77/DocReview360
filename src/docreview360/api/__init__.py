@@ -564,6 +564,21 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
     # :func:`create_workflow`, ensuring approval steps and workflow metadata are
     # initialized consistently with the template definition.
     if body.workflow:
+        existing_workflow = workflows.get(body.workflow)
+        if existing_workflow is not None:
+            project.workflow = existing_workflow.id
+            project.initial_phase = existing_workflow.phase
+            clear_cache()
+            log_event(
+                "create_project",
+                user_id=project.user,
+                project=project.id,
+                message=render(
+                    "create_project", user=project.user or "", project_id=project.id
+                ),
+            )
+            return project
+
         doc_type_obj = get_document_type(body.doc_type) if body.doc_type else None
         phases: list[str] = []
         if doc_type_obj:
@@ -612,7 +627,6 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
 
     # Clear all project-related caches to ensure fresh data
     clear_cache()
-    print(f"DEBUG: Project '{project.id}' created successfully, cache cleared")
     log_event(
         "create_project",
         user_id=project.user,

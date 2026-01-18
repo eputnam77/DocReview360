@@ -1,21 +1,23 @@
 import pytest
 
 from docreview360 import doc_types, search
-from docreview360.doc_types import DocumentTypeModel, document_types
+from docreview360.doc_types import DocumentTypeModel, reset_document_types
 
 
 def setup_function(_):
-    document_types.clear()
+    doc_types.document_types.clear()
     search.search_index.projects.clear()
 
 
 def test_save_and_load_state(tmp_path, monkeypatch):
     monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
+    monkeypatch.setattr(doc_types, "DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", True)
+    reset_document_types()
     doc = DocumentTypeModel(name="T", template="tpl", workflow=["Phase"])
     doc_types.add_document_type(doc)
-    document_types.clear()
+    doc_types.document_types.clear()
     assert doc_types.load_state() is True
-    assert document_types["T"].template == "tpl"
+    assert doc_types.document_types["T"].template == "tpl"
 
 
 def test_update_propagates_and_conflicts(tmp_path, monkeypatch):
