@@ -460,10 +460,7 @@ def require_role(role: str) -> Callable[[auth.User], auth.User]:
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
         try:
-            import importlib
-
-            current = importlib.import_module("docreview360.rbac")
-            if not current.has_role(user.username, role):
+            if not has_role(user.username, role):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",
@@ -483,10 +480,7 @@ def require_permission(action: str) -> Callable[[auth.User], auth.User]:
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
         try:
-            import importlib
-
-            current = importlib.import_module("docreview360.rbac")
-            if not current.has_permission(user.username, action):
+            if not has_permission(user.username, action):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",
