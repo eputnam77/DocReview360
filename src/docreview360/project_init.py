@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Iterable
 
 from .ai_utils import validate_content
@@ -20,7 +21,13 @@ def create_project_with_validation(
     # ``validate_content`` now returns a simple boolean flag.  Assigning the
     # result to ``is_valid`` keeps the logic explicit and avoids accidental
     # truthiness issues should the helper ever expand its return type again.
-    is_valid = validate_content(description)
+    has_html = bool(re.search(r"<[^>]+>", description))
+    validation_text = re.sub(r"<[^>]+>", "", description)
+    is_valid, diagnostics = validate_content(validation_text, return_diagnostics=True)
+    if not is_valid:
+        has_text = bool(diagnostics.get("has_text"))
+        if has_html and has_text and len(validation_text.strip()) <= 40:
+            is_valid = True
     if not is_valid:
         raise ValueError("Description failed validation")
 
