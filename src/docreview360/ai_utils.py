@@ -214,7 +214,7 @@ def detect_anomalies(text: str, threshold: float | None = None) -> bool:
     if limit is None:
         limit = policy.quality_flag_threshold if policy else DEFAULT_ANOMALY_THRESHOLD
     assessment = guardrail_quality_assessment(text)
-    return any(flag >= limit for flag in assessment.flags)
+    return any(flag > limit for flag in assessment.flags)
 
 
 # ---------------------------------------------------------------------------
