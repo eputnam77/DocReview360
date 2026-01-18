@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 
 class _FakeSession:
     """Minimal ONNX Runtime session stub for deterministic testing."""
@@ -105,6 +106,8 @@ def client() -> TestClient:
 
     ml_module.reset_rate_limiter_for_testing()
     with TestClient(app) as test_client:
+        token = auth.create_access_token({"sub": "alice"})
+        test_client.headers.update({"Authorization": f"Bearer {token}"})
         yield test_client
 
 

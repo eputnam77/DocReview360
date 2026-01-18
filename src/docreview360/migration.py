@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from .backup_utils import create_backup, restore_backup
-from .doc_types import export_document_types, import_document_types
+from . import doc_types
 
 
 def export_instance(path: str | Path) -> Path:
@@ -19,7 +19,7 @@ def export_instance(path: str | Path) -> Path:
     tmp = target.with_suffix(".tmp")
     create_backup(tmp)
     doc_type_file = target.with_suffix(".types.json")
-    export_document_types(doc_type_file)
+    doc_types.export_document_types(doc_type_file)
 
     data = {
         "backup": base64.b64encode(tmp.read_bytes()).decode(),
@@ -48,5 +48,5 @@ def import_instance(path: str | Path) -> None:
     types = data.get("doc_types", [])
     temp_json = target.with_suffix(".types.json")
     temp_json.write_text(json.dumps(types))
-    import_document_types(temp_json)
+    doc_types.import_document_types(temp_json)
     temp_json.unlink(missing_ok=True)
