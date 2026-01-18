@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import types
+from importlib.machinery import ModuleSpec
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 
 class _FakeSession:
     """Minimal ONNX Runtime session stub for deterministic testing."""
@@ -53,6 +55,7 @@ def _fake_get_session(path: str | Path, *, providers: Any | None = None) -> _Fak
 
 
 _fake_ort = types.ModuleType("onnxruntime")
+_fake_ort.__spec__ = ModuleSpec("onnxruntime", loader=None)
 _fake_ort.get_available_providers = lambda: ["CPUExecutionProvider"]
 _fake_ort.InferenceSession = _FakeSession
 sys.modules["onnxruntime"] = _fake_ort
@@ -103,6 +106,8 @@ def client() -> TestClient:
 
     ml_module.reset_rate_limiter_for_testing()
     with TestClient(app) as test_client:
+        token = auth.create_access_token({"sub": "alice"})
+        test_client.headers.update({"Authorization": f"Bearer {token}"})
         yield test_client
 
 

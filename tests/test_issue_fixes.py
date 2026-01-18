@@ -125,6 +125,7 @@ def test_chat_bot_helpers(monkeypatch):
     cb.projects.clear()
     cb.workflows.clear()
     cb.document_types.clear()
+    doc_types.document_types.clear()
     monkeypatch.setattr(cb, "overdue_high_priority", lambda: [])
     proj = SimpleNamespace(temp_user=None, user="alice", status="Draft", workflow=None)
     cb.projects["p1"] = proj

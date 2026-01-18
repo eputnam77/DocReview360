@@ -29,9 +29,19 @@ def signature_status(sig_id: str) -> str:
     """
 
     provider = get_provider()
+    if getattr(provider, "name", None) != "documenso" and hasattr(provider, "signature_status"):
+        try:
+            provider_status = provider.signature_status(sig_id)  # type: ignore[return-value]
+        except KeyError:
+            provider_status = None
+        else:
+            if provider_status != "pending":
+                return provider_status
     try:
         return _doc_signature_status(sig_id)
     except KeyError:
+        if provider_status is not None:
+            return provider_status
         if hasattr(provider, "signature_status"):
             return provider.signature_status(sig_id)  # type: ignore[return-value]
         raise

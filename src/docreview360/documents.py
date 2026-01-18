@@ -151,7 +151,16 @@ def _detect_mime_type(data: bytes, filename: str) -> str:
     if not mime:
         mime, _ = mimetypes.guess_type(filename)
 
-    return mime or "application/octet-stream"
+    mime = mime or "application/octet-stream"
+    if mime == "application/octet-stream":
+        try:
+            decoded = data.decode("utf-8")
+        except UnicodeDecodeError:
+            return mime
+        if all(char.isprintable() or char.isspace() for char in decoded):
+            return "text/plain"
+
+    return mime
 
 
 class DocumentRevision(BaseModel):
