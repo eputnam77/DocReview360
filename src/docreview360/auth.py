@@ -623,7 +623,7 @@ def authenticate_user(username: str, password: str) -> User | None:
     record = USER_REPOSITORY.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if demo_defaults and password == demo_defaults.get("password"):
+        if SEED_DEMO_USERS and demo_defaults and password == demo_defaults.get("password"):
             USER_REPOSITORY._seed_user(
                 username,
                 password,
@@ -637,7 +637,7 @@ def authenticate_user(username: str, password: str) -> User | None:
         return None
     if not UserRepository.verify_password(password, record.password_hash):
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if demo_defaults and password == demo_defaults.get("password"):
+        if SEED_DEMO_USERS and demo_defaults and password == demo_defaults.get("password"):
             USER_REPOSITORY._seed_user(
                 username,
                 password,
@@ -664,7 +664,7 @@ def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
         return None
     if not UserRepository.verify_password(password, record.password_hash):
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if demo_defaults and password == demo_defaults.get("password"):
+        if SEED_DEMO_USERS and demo_defaults and password == demo_defaults.get("password"):
             USER_REPOSITORY._seed_user(
                 username,
                 password,
@@ -747,7 +747,7 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
     record = USER_REPOSITORY.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if demo_defaults:
+        if SEED_DEMO_USERS and demo_defaults:
             USER_REPOSITORY._seed_user(
                 username,
                 demo_defaults["password"],
@@ -855,7 +855,7 @@ def get_current_user_oidc(request: Request, token: str | None = Depends(oidc_sch
     record = USER_REPOSITORY.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if demo_defaults:
+        if SEED_DEMO_USERS and demo_defaults:
             USER_REPOSITORY._seed_user(
                 username,
                 demo_defaults["password"],
