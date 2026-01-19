@@ -64,7 +64,10 @@ def assign_technical_writer(  # noqa: C901
             continue
         seen.add(candidate)
         record = auth.USER_REPOSITORY.get_user(candidate)
-        if record is None or record.active:
+        if record is None:
+            cand_list.append(candidate)
+            continue
+        if auth.is_active(candidate):
             cand_list.append(candidate)
     if not cand_list:
         raise ValueError("candidates is required")
@@ -143,7 +146,10 @@ def reassign_projects_from_writer(
             continue
         seen.add(candidate)
         record = auth.USER_REPOSITORY.get_user(candidate)
-        if record is None or record.active:
+        if record is None:
+            cand_list.append(candidate)
+            continue
+        if auth.is_active(candidate):
             cand_list.append(candidate)
     if not cand_list:
         raise ValueError("candidates is required")

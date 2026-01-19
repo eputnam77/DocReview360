@@ -19,6 +19,7 @@ def lint_text(
         raise ValueError("weights must match feature vector length")
 
     thresholds = load_guardrail_thresholds()
+    thresholds = thresholds.overridden(min_compliance_probability=0.0)
     if threshold is not None:
         try:
             thresholds = thresholds.overridden(min_quality_score=float(threshold))

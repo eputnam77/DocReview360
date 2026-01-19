@@ -1747,7 +1747,7 @@ async def list_workflows_endpoint(
     project: str | None = None, x_user: str | None = Header(None)
 ) -> list[WorkflowModel]:
     """Return workflows optionally filtered by project."""
-    return list_workflows(project)
+    return list_workflows(project, bootstrap=True)
 
 
 @app.get("/workflow_roles", response_model=list[str])

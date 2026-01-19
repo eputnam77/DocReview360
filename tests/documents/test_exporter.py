@@ -59,12 +59,22 @@ def test_export_batch_reports_offending_document(
     monkeypatch.setattr(
         exporter,
         "load_settings",
-        lambda: {"exports": {"size_limits": {"pdf": 90}}},
+        lambda: {"exports": {"size_limits": {"pdf": 10_000_000}}},
     )
     monkeypatch.setattr(exporter, "log_event", lambda *a, **kw: events.append((a, kw)))
 
     doc1 = DocumentModel(id="batch-1", content="First", history=[])
     doc2 = DocumentModel(id="batch-2", content="Second", history=[])
+
+    size_doc1 = len(exporter.export_document(doc1, "pdf")[0])
+    size_doc2 = len(exporter.export_document(doc2, "pdf")[0])
+    limit = size_doc1 + size_doc2 - 1
+
+    monkeypatch.setattr(
+        exporter,
+        "load_settings",
+        lambda: {"exports": {"size_limits": {"pdf": limit}}},
+    )
 
     with pytest.raises(exporter.ExportSizeLimitError) as exc:
         exporter.export_batch([doc1, doc2], "pdf")
