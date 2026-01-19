@@ -515,7 +515,19 @@ class UserRepository:
                 (int(active), username),
             )
             conn.commit()
-            return updated.rowcount > 0
+            if updated.rowcount > 0:
+                return True
+
+        demo_defaults = DEMO_USER_DEFAULTS.get(username)
+        if demo_defaults and _allow_demo_seed():
+            self._seed_user(
+                username,
+                demo_defaults["password"],
+                otp_secret=demo_defaults.get("otp_secret"),
+                active=active,
+            )
+            return True
+        return False
 
     def update_otp_secret(self, username: str, otp_secret: str) -> None:
         """Persist a new MFA secret for ``username``."""
@@ -596,6 +608,16 @@ class UserRepository:
 
 USER_REPOSITORY = UserRepository(USER_DB_PATH)
 
+
+def _get_user_repository() -> UserRepository:
+    """Return the active user repository, reloading if the DB path changed."""
+
+    global USER_REPOSITORY
+    current_path = Path(os.getenv("DOCREVIEW360_USER_DB", USER_DB_PATH)).resolve()
+    if USER_REPOSITORY._path.resolve() != current_path:
+        USER_REPOSITORY = UserRepository(str(current_path))
+    return USER_REPOSITORY
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token", auto_error=False)
 
@@ -617,7 +639,7 @@ class User(BaseModel):
 def is_active(username: str) -> bool:
     """Return ``True`` if ``username`` is marked active."""
 
-    record = USER_REPOSITORY.get_user(username)
+    record = _get_user_repository().get_user(username)
     return bool(record and record.active)
 
 
@@ -627,7 +649,8 @@ def authenticate_user(username: str, password: str) -> User | None:
     if not username or not password:
         return None
 
-    record = USER_REPOSITORY.get_user(username)
+    repo = _get_user_repository()
+    record = repo.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
         if (
@@ -635,16 +658,16 @@ def authenticate_user(username: str, password: str) -> User | None:
             and password == demo_defaults.get("password")
             and _allow_demo_seed()
         ):
-            USER_REPOSITORY._seed_user(
+            repo._seed_user(
                 username,
                 password,
                 otp_secret=demo_defaults.get("otp_secret"),
                 active=True,
             )
-            record = USER_REPOSITORY.get_user(username)
+            record = repo.get_user(username)
     if not record or not record.active:
         return None
-    if USER_REPOSITORY.is_locked(record):
+    if repo.is_locked(record):
         return None
     if not UserRepository.verify_password(password, record.password_hash):
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
@@ -653,17 +676,17 @@ def authenticate_user(username: str, password: str) -> User | None:
             and password == demo_defaults.get("password")
             and _allow_demo_seed()
         ):
-            USER_REPOSITORY._seed_user(
+            repo._seed_user(
                 username,
                 password,
                 otp_secret=record.otp_secret,
                 active=bool(record.active),
             )
-            USER_REPOSITORY.reset_failures(username)
+            repo.reset_failures(username)
             return User(username=username, active=True)
-        USER_REPOSITORY.record_failure(username)
+        repo.record_failure(username)
         return None
-    USER_REPOSITORY.reset_failures(username)
+    repo.reset_failures(username)
     return User(username=username, active=True)
 
 
@@ -672,26 +695,27 @@ def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
 
     if not username or not password or not otp:
         return None
-    record = USER_REPOSITORY.get_user(username)
+    repo = _get_user_repository()
+    record = repo.get_user(username)
     if not record or not record.active:
         return None
-    if USER_REPOSITORY.is_locked(record):
+    if repo.is_locked(record):
         return None
     if not UserRepository.verify_password(password, record.password_hash):
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
         if SEED_DEMO_USERS and demo_defaults and password == demo_defaults.get("password"):
-            USER_REPOSITORY._seed_user(
+            repo._seed_user(
                 username,
                 password,
                 otp_secret=record.otp_secret,
                 active=bool(record.active),
             )
         else:
-            USER_REPOSITORY.record_failure(username)
+            repo.record_failure(username)
             return None
     if not UserRepository.verify_otp(record.otp_secret, otp):
         return None
-    USER_REPOSITORY.reset_failures(username)
+    repo.reset_failures(username)
     return User(username=username, active=True)
 
 
@@ -759,17 +783,18 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         ) from exc
-    record = USER_REPOSITORY.get_user(username)
+    repo = _get_user_repository()
+    record = repo.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
         if demo_defaults and _allow_demo_seed():
-            USER_REPOSITORY._seed_user(
+            repo._seed_user(
                 username,
                 demo_defaults["password"],
                 otp_secret=demo_defaults.get("otp_secret"),
                 active=True,
             )
-            record = USER_REPOSITORY.get_user(username)
+            record = repo.get_user(username)
     if not record or not record.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
     return User(username=username, active=True)
@@ -867,17 +892,18 @@ def get_current_user_oidc(request: Request, token: str | None = Depends(oidc_sch
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         ) from exc
-    record = USER_REPOSITORY.get_user(username)
+    repo = _get_user_repository()
+    record = repo.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
         if demo_defaults and _allow_demo_seed():
-            USER_REPOSITORY._seed_user(
+            repo._seed_user(
                 username,
                 demo_defaults["password"],
                 otp_secret=demo_defaults.get("otp_secret"),
                 active=True,
             )
-            record = USER_REPOSITORY.get_user(username)
+            record = repo.get_user(username)
     if not record or not record.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
     return User(username=username, active=True)
