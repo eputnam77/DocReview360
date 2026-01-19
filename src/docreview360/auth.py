@@ -24,12 +24,19 @@ T = TypeVar("T")
 
 
 SAFE_DEFAULT_ENVS = {"", "dev", "development", "test", "testing"}
+SAFE_SEED_ENVS = SAFE_DEFAULT_ENVS | {"stage", "staging"}
 
 
 def _current_environment() -> str:
     """Return the current deployment environment in lowercase."""
 
     return os.getenv("DOCREVIEW360_ENV", "").strip().lower()
+
+
+def _allow_demo_seed() -> bool:
+    """Return ``True`` when demo users may be seeded automatically."""
+
+    return SEED_DEMO_USERS or _current_environment() in SAFE_SEED_ENVS
 
 
 def _env_or_default(
@@ -626,7 +633,7 @@ def authenticate_user(username: str, password: str) -> User | None:
         if (
             demo_defaults
             and password == demo_defaults.get("password")
-            and (_current_environment() in SAFE_DEFAULT_ENVS or SEED_DEMO_USERS)
+            and _allow_demo_seed()
         ):
             USER_REPOSITORY._seed_user(
                 username,
@@ -644,7 +651,7 @@ def authenticate_user(username: str, password: str) -> User | None:
         if (
             demo_defaults
             and password == demo_defaults.get("password")
-            and (_current_environment() in SAFE_DEFAULT_ENVS or SEED_DEMO_USERS)
+            and _allow_demo_seed()
         ):
             USER_REPOSITORY._seed_user(
                 username,
@@ -755,7 +762,7 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
     record = USER_REPOSITORY.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if SEED_DEMO_USERS and demo_defaults:
+        if demo_defaults and _allow_demo_seed():
             USER_REPOSITORY._seed_user(
                 username,
                 demo_defaults["password"],
@@ -863,7 +870,7 @@ def get_current_user_oidc(request: Request, token: str | None = Depends(oidc_sch
     record = USER_REPOSITORY.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if SEED_DEMO_USERS and demo_defaults:
+        if demo_defaults and _allow_demo_seed():
             USER_REPOSITORY._seed_user(
                 username,
                 demo_defaults["password"],
