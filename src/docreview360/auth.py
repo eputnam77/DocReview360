@@ -623,7 +623,11 @@ def authenticate_user(username: str, password: str) -> User | None:
     record = USER_REPOSITORY.get_user(username)
     if record is None:
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if SEED_DEMO_USERS and demo_defaults and password == demo_defaults.get("password"):
+        if (
+            demo_defaults
+            and password == demo_defaults.get("password")
+            and (_current_environment() in SAFE_DEFAULT_ENVS or SEED_DEMO_USERS)
+        ):
             USER_REPOSITORY._seed_user(
                 username,
                 password,
@@ -637,7 +641,11 @@ def authenticate_user(username: str, password: str) -> User | None:
         return None
     if not UserRepository.verify_password(password, record.password_hash):
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if SEED_DEMO_USERS and demo_defaults and password == demo_defaults.get("password"):
+        if (
+            demo_defaults
+            and password == demo_defaults.get("password")
+            and (_current_environment() in SAFE_DEFAULT_ENVS or SEED_DEMO_USERS)
+        ):
             USER_REPOSITORY._seed_user(
                 username,
                 password,
