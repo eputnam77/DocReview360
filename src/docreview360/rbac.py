@@ -9,6 +9,8 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, Callable, Iterable, Iterator, Mapping, Set
 
+import sys
+
 from fastapi import Depends, HTTPException, status
 
 from . import auth, settings_manager
@@ -459,8 +461,11 @@ def require_role(role: str) -> Callable[[auth.User], auth.User]:
     """Return a dependency ensuring the current user has ``role``."""
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
+        rbac_module = sys.modules.get(__name__)
+        if rbac_module is None:  # pragma: no cover - defensive
+            rbac_module = sys.modules[__name__]
         try:
-            if not has_role(user.username, role):
+            if not rbac_module.has_role(user.username, role):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",
@@ -479,8 +484,11 @@ def require_permission(action: str) -> Callable[[auth.User], auth.User]:
     """Return a dependency ensuring the user has permission ``action``."""
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
+        rbac_module = sys.modules.get(__name__)
+        if rbac_module is None:  # pragma: no cover - defensive
+            rbac_module = sys.modules[__name__]
         try:
-            if not has_permission(user.username, action):
+            if not rbac_module.has_permission(user.username, action):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",
