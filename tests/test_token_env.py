@@ -20,7 +20,13 @@ def test_env_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     auth = importlib.import_module("docreview360.auth")
     sys.path.remove(str(src_root))
     token = auth.create_access_token({"sub": "bob"})
-    payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+    payload = jwt.decode(
+        token,
+        auth.SECRET_KEY,
+        algorithms=[auth.ALGORITHM],
+        audience=auth.TOKEN_AUDIENCE,
+        issuer=auth.TOKEN_ISSUER,
+    )
     assert payload["sub"] == "bob"
 
 
@@ -53,5 +59,11 @@ def test_defaults_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert auth.OIDC_TOKEN_EXPIRE_MINUTES == 30
 
     token = auth.create_access_token({"sub": "alice"})
-    payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+    payload = jwt.decode(
+        token,
+        auth.SECRET_KEY,
+        algorithms=[auth.ALGORITHM],
+        audience=auth.TOKEN_AUDIENCE,
+        issuer=auth.TOKEN_ISSUER,
+    )
     assert payload["sub"] == "alice"
