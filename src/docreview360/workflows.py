@@ -120,183 +120,188 @@ def _validate_template_orders(template_name: str, steps: List[ApprovalStep]) -> 
         last_order = order
 
 
-# Workflow templates keyed by name
-workflow_templates: Dict[str, List[ApprovalStep]] = {
-    "branch-coordination": [
-        ApprovalStep(
-            role="SME",
-            description="Subject Matter Expert review and validation",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Front Line Manager",
-            description="Front Line Manager approval",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Product Policy Manager",
-            description="Product Policy Manager review and approval",
-            order=3,
-        ),
-        ApprovalStep(
-            role="Technical Writer",
-            description="Technical Writer review and editing",
-            order=4,
-        ),
-        ApprovalStep(
-            role="Senior Technical Writer",
-            description="Senior Technical Writer review and approval",
-            order=5,
-        ),
-        ApprovalStep(
-            role="Technical Writing Manager",
-            description="Technical Writing Manager final approval",
-            order=6,
-        ),
-    ],
-    "pre-coordination": [
-        ApprovalStep(
-            role="Writer",
-            description="Initial drafting and self-check",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Peer Reviewer",
-            description="Peer review for technical soundness",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Branch Liaison",
-            description="Confirms alignment with branch priorities",
-            order=3,
-        ),
-    ],
-    "requirements-data-gathering": [
-        ApprovalStep(
-            role="Research Analyst",
-            description="Collects background data and stakeholder requirements",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Legal/Regulatory Reviewer",
-            description="Identifies statutory constraints",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Writer",
-            description="Creates annotated outline for downstream reviewers",
-            order=3,
-        ),
-    ],
-    "fast-track-coordination": [
-        ApprovalStep(
-            role="Writer",
-            description="Drafts minor or urgent changes",
-            order=1,
-        ),
-        ApprovalStep(
-            role="SME",
-            description="Subject Matter Expert review",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Senior Technical Writer",
-            description="Final review and approval",
-            order=3,
-        ),
-    ],
-    "multi-branch-coordination": [
-        ApprovalStep(
-            role="SME (Branch A)",
-            description="Branch A SME review",
-            order=1,
-        ),
-        ApprovalStep(
-            role="SME (Branch B)",
-            description="Branch B SME review",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Branch Managers (A and B)",
-            description="Management approval from both branches",
-            order=3,
-        ),
-        ApprovalStep(
-            role="Senior Technical Writer",
-            description="Senior Technical Writer review",
-            order=4,
-        ),
-        ApprovalStep(
-            role="Technical Writing Manager",
-            description="Technical Writing Manager final approval",
-            order=5,
-        ),
-    ],
-    "external-partner-coordination": [
-        ApprovalStep(
-            role="Internal SME",
-            description="Internal subject matter expert review",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Public Affairs",
-            description="Communications and public affairs review",
-            order=2,
-        ),
-        ApprovalStep(
-            role="External Stakeholder",
-            description="External stakeholder review",
-            order=3,
-        ),
-        ApprovalStep(
-            role="Technical Writer",
-            description="Incorporates external feedback",
-            order=4,
-        ),
-        ApprovalStep(
-            role="Technical Writing Manager",
-            description="Final internal approval",
-            order=5,
-        ),
-    ],
-    "publication-distribution": [
-        ApprovalStep(
-            role="Technical Writer",
-            description="Prepares publication version",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Communications/Outreach",
-            description="Distributes to official channels",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Records Management",
-            description="Archives final version in CMS",
-            order=3,
-        ),
-    ],
-    "implementation-tracking": [
-        ApprovalStep(
-            role="Program Manager",
-            description="Notifies affected teams",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Compliance Officer",
-            description="Confirms procedures updated",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Records Management",
-            description="Archive and close workflow",
-            order=3,
-        ),
-    ],
-}
-
-for _template_name, _steps in workflow_templates.items():
-    _validate_template_orders(_template_name, _steps)
+# Workflow templates keyed by name. Persist them across module reloads so
+# updates in long-lived tests remain visible.
+if _pkg is not None and hasattr(_pkg, "_workflow_templates_store"):
+    workflow_templates = getattr(_pkg, "_workflow_templates_store")  # type: ignore[assignment]
+else:
+    workflow_templates: Dict[str, List[ApprovalStep]] = {
+        "branch-coordination": [
+            ApprovalStep(
+                role="SME",
+                description="Subject Matter Expert review and validation",
+                order=1,
+            ),
+            ApprovalStep(
+                role="Front Line Manager",
+                description="Front Line Manager approval",
+                order=2,
+            ),
+            ApprovalStep(
+                role="Product Policy Manager",
+                description="Product Policy Manager review and approval",
+                order=3,
+            ),
+            ApprovalStep(
+                role="Technical Writer",
+                description="Technical Writer review and editing",
+                order=4,
+            ),
+            ApprovalStep(
+                role="Senior Technical Writer",
+                description="Senior Technical Writer review and approval",
+                order=5,
+            ),
+            ApprovalStep(
+                role="Technical Writing Manager",
+                description="Technical Writing Manager final approval",
+                order=6,
+            ),
+        ],
+        "pre-coordination": [
+            ApprovalStep(
+                role="Writer",
+                description="Initial drafting and self-check",
+                order=1,
+            ),
+            ApprovalStep(
+                role="Peer Reviewer",
+                description="Peer review for technical soundness",
+                order=2,
+            ),
+            ApprovalStep(
+                role="Branch Liaison",
+                description="Confirms alignment with branch priorities",
+                order=3,
+            ),
+        ],
+        "requirements-data-gathering": [
+            ApprovalStep(
+                role="Research Analyst",
+                description="Collects background data and stakeholder requirements",
+                order=1,
+            ),
+            ApprovalStep(
+                role="Legal/Regulatory Reviewer",
+                description="Identifies statutory constraints",
+                order=2,
+            ),
+            ApprovalStep(
+                role="Writer",
+                description="Creates annotated outline for downstream reviewers",
+                order=3,
+            ),
+        ],
+        "fast-track-coordination": [
+            ApprovalStep(
+                role="Writer",
+                description="Drafts minor or urgent changes",
+                order=1,
+            ),
+            ApprovalStep(
+                role="SME",
+                description="Subject Matter Expert review",
+                order=2,
+            ),
+            ApprovalStep(
+                role="Senior Technical Writer",
+                description="Final review and approval",
+                order=3,
+            ),
+        ],
+        "multi-branch-coordination": [
+            ApprovalStep(
+                role="SME (Branch A)",
+                description="Branch A SME review",
+                order=1,
+            ),
+            ApprovalStep(
+                role="SME (Branch B)",
+                description="Branch B SME review",
+                order=2,
+            ),
+            ApprovalStep(
+                role="Branch Managers (A and B)",
+                description="Management approval from both branches",
+                order=3,
+            ),
+            ApprovalStep(
+                role="Senior Technical Writer",
+                description="Senior Technical Writer review",
+                order=4,
+            ),
+            ApprovalStep(
+                role="Technical Writing Manager",
+                description="Technical Writing Manager final approval",
+                order=5,
+            ),
+        ],
+        "external-partner-coordination": [
+            ApprovalStep(
+                role="Internal SME",
+                description="Internal subject matter expert review",
+                order=1,
+            ),
+            ApprovalStep(
+                role="Public Affairs",
+                description="Communications and public affairs review",
+                order=2,
+            ),
+            ApprovalStep(
+                role="External Stakeholder",
+                description="External stakeholder review",
+                order=3,
+            ),
+            ApprovalStep(
+                role="Technical Writer",
+                description="Incorporates external feedback",
+                order=4,
+            ),
+            ApprovalStep(
+                role="Technical Writing Manager",
+                description="Final internal approval",
+                order=5,
+            ),
+        ],
+        "publication-distribution": [
+            ApprovalStep(
+                role="Technical Writer",
+                description="Prepares publication version",
+                order=1,
+            ),
+            ApprovalStep(
+                role="Communications/Outreach",
+                description="Distributes to official channels",
+                order=2,
+            ),
+            ApprovalStep(
+                role="Records Management",
+                description="Archives final version in CMS",
+                order=3,
+            ),
+        ],
+        "implementation-tracking": [
+            ApprovalStep(
+                role="Program Manager",
+                description="Notifies affected teams",
+                order=1,
+            ),
+            ApprovalStep(
+                role="Compliance Officer",
+                description="Confirms procedures updated",
+                order=2,
+            ),
+            ApprovalStep(
+                role="Records Management",
+                description="Archive and close workflow",
+                order=3,
+            ),
+        ],
+    }
+    if _pkg is not None:
+        setattr(_pkg, "_workflow_templates_store", workflow_templates)
+    for _template_name, _steps in workflow_templates.items():
+        _validate_template_orders(_template_name, _steps)
 
 
 @log_call
@@ -316,7 +321,7 @@ def get_approval_steps_for_phase(
     except KeyError as exc:
         raise KeyError(f"Unknown workflow '{workflow}'") from exc
     _validate_template_orders(workflow, steps)
-    return [step.model_copy() for step in steps]
+    return [ApprovalStep.model_validate(step.model_dump()) for step in steps]
 
 
 def _bootstrap_sample() -> None:
@@ -436,8 +441,10 @@ def get_workflow(wf_id: str) -> WorkflowModel | None:
 
 
 @log_call
-def list_workflows(project: str | None = None) -> list[WorkflowModel]:
+def list_workflows(project: str | None = None, *, bootstrap: bool = False) -> list[WorkflowModel]:
     """Return workflows optionally filtered by project."""
+    if bootstrap and not workflows:
+        _bootstrap_sample()
     if project is None:
         return list(workflows.values())
     return [wf for wf in workflows.values() if wf.project == project]

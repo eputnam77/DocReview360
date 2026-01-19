@@ -1130,6 +1130,8 @@ def verify_document_signature_stream(  # noqa: C901
 
         if not isinstance(provider, list):
             default_providers = get_default_providers()
+            if approval.signature_provider != "sandbox":
+                default_providers = [p for p in default_providers if p != "sandbox"]
             if approval.signature_provider in default_providers:
                 default_providers = [
                     approval.signature_provider,

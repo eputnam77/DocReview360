@@ -52,7 +52,10 @@ class RoleRepository:
                 """
             )
             conn.commit()
-        self.seed_defaults()
+        with self._connection() as conn:
+            existing = conn.execute("SELECT 1 FROM user_roles LIMIT 1").fetchone()
+        if existing is None:
+            self.seed_defaults()
 
     def seed_defaults(self) -> None:
         defaults = {
@@ -192,14 +195,37 @@ _ROLE_PERMISSIONS_LOCK = RLock()
 
 _ROLE_CACHE = _RoleCache()
 _ROLE_REPOSITORY = RoleRepository(_role_store_path_from_env())
+_ROLE_CACHE_MTIME: float | None = None
+
+
+def _get_role_repository() -> RoleRepository:
+    """Return the active role repository, reloading if the DB path changed."""
+
+    global _ROLE_REPOSITORY
+    current_path = Path(_role_store_path_from_env()).resolve()
+    if _ROLE_REPOSITORY._path.resolve() != current_path:
+        _ROLE_REPOSITORY = RoleRepository(current_path)
+        _ROLE_CACHE.invalidate()
+    return _ROLE_REPOSITORY
+
+
+def _refresh_cache_mtime(repo: RoleRepository) -> None:
+    global _ROLE_CACHE_MTIME
+    try:
+        mtime = repo._path.stat().st_mtime
+    except FileNotFoundError:
+        mtime = None
+    if _ROLE_CACHE_MTIME != mtime:
+        _ROLE_CACHE.invalidate()
+        _ROLE_CACHE_MTIME = mtime
 
 
 def configure_role_repository(path: str | os.PathLike[str]) -> None:
     """Replace the active role repository with one backed by ``path``."""
 
-    global _ROLE_REPOSITORY
-    _ROLE_REPOSITORY = RoleRepository(path)
-    _ROLE_CACHE.invalidate()
+    os.environ["DOCREVIEW360_RBAC_DB"] = str(path)
+    _get_role_repository()
+    _refresh_cache_mtime(_ROLE_REPOSITORY)
 
 
 def _with_repository(  # noqa: C901
@@ -212,12 +238,14 @@ def _with_repository(  # noqa: C901
     reset_include_defaults: bool | None = None,
 ) -> None:
     base_context = dict(context or {})
+    repo = _get_role_repository()
+    _refresh_cache_mtime(repo)
     try:
-        before_roles = _ROLE_REPOSITORY.get_roles(username) if username else set()
+        before_roles = repo.get_roles(username) if username else set()
     except RoleRepositoryError as exc:  # pragma: no cover - defensive
         raise RoleBackendError("role store operation failed") from exc
     try:
-        operation(_ROLE_REPOSITORY)
+        operation(repo)
     except RoleRepositoryError as exc:  # pragma: no cover - defensive
         raise RoleBackendError("role store operation failed") from exc
     else:
@@ -225,10 +253,11 @@ def _with_repository(  # noqa: C901
             _ROLE_CACHE.invalidate()
         else:
             _ROLE_CACHE.invalidate(username)
+        _refresh_cache_mtime(repo)
         audit_actor = actor or "system"
         if username is not None:
             try:
-                after_roles = _ROLE_REPOSITORY.get_roles(username)
+                after_roles = repo.get_roles(username)
             except RoleRepositoryError as exc:  # pragma: no cover - defensive
                 raise RoleBackendError("role store operation failed") from exc
             added = sorted(after_roles - before_roles)
@@ -323,7 +352,9 @@ def get_roles(username: str) -> set[str]:
     """Return all roles assigned to ``username``."""
 
     try:
-        return _ROLE_CACHE.get(username, lambda: _ROLE_REPOSITORY.get_roles(username))
+        repo = _get_role_repository()
+        _refresh_cache_mtime(repo)
+        return _ROLE_CACHE.get(username, lambda: repo.get_roles(username))
     except RoleRepositoryError as exc:
         raise RoleBackendError("role store operation failed") from exc
 
@@ -347,7 +378,7 @@ def list_role_assignments() -> Mapping[str, Set[str]]:
     """Return a snapshot of all role assignments."""
 
     try:
-        return _ROLE_REPOSITORY.list_assignments()
+        return _get_role_repository().list_assignments()
     except RoleRepositoryError as exc:  # pragma: no cover - defensive
         raise RoleBackendError("role store operation failed") from exc
 
@@ -462,8 +493,10 @@ def require_role(role: str) -> Callable[[auth.User], auth.User]:
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
         rbac_module = sys.modules.get(__name__)
-        if rbac_module is None:  # pragma: no cover - defensive
-            rbac_module = sys.modules[__name__]
+        if rbac_module is None:
+            import importlib
+
+            rbac_module = importlib.import_module(__name__)
         try:
             if not rbac_module.has_role(user.username, role):
                 raise HTTPException(
@@ -485,8 +518,10 @@ def require_permission(action: str) -> Callable[[auth.User], auth.User]:
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
         rbac_module = sys.modules.get(__name__)
-        if rbac_module is None:  # pragma: no cover - defensive
-            rbac_module = sys.modules[__name__]
+        if rbac_module is None:
+            import importlib
+
+            rbac_module = importlib.import_module(__name__)
         try:
             if not rbac_module.has_permission(user.username, action):
                 raise HTTPException(
