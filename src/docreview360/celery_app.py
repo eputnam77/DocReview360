@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from typing import Any, cast
 
-import httpx
 from celery import Celery, Task
 
 from .backup_utils import create_backup
@@ -78,6 +77,8 @@ def fetch_length(url: str) -> int:
     """Return the length of the response body from ``url``."""
     if not url.startswith(("http://", "https://")):
         raise ValueError("url must be http or https")
+    import httpx
+
     resp = httpx.get(url, timeout=5)
     resp.raise_for_status()
     return len(resp.text)
