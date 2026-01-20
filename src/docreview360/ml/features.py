@@ -192,6 +192,8 @@ def _metadata_completeness(metadata: Mapping[str, Any] | None) -> float:
             continue
         if isinstance(value, (list, tuple, set)) and not value:
             continue
+        if isinstance(value, Mapping) and not value:
+            continue
         filled += 1
     return _clamp(filled / total)
 
