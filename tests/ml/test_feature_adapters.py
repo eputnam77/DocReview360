@@ -100,3 +100,12 @@ def test_compliance_routing_signature_features_schema_and_range() -> None:
         _validate_schema(name, first)
         for value in first["features"].values():
             assert 0.0 <= value <= 1.0
+
+
+def test_metadata_completeness_ignores_empty_dict() -> None:
+    text = _load_text()
+    metadata = {"title": "Draft", "extra": {}}
+    payload = compliance_features(text, metadata)
+    assert payload["features"]["metadata_completeness"] == pytest.approx(
+        0.5, rel=1e-6, abs=1e-6
+    )

@@ -26,3 +26,7 @@ def test_run_checks_empty_nested_button(tmp_path: Path) -> None:
 
 def test_detect_anomalies_counts_punctuated_repeats() -> None:
     assert _detect_anomalies("bad, bad", threshold=0.5)
+
+
+def test_detect_anomalies_token_unique_ratio() -> None:
+    assert not _detect_anomalies("aaaaaa", threshold=0.48)
