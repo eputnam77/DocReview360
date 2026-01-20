@@ -15,6 +15,7 @@ Dependencies:
 from __future__ import annotations
 
 import math
+import numbers
 import re
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -213,6 +214,10 @@ def detect_anomalies(text: str, threshold: float | None = None) -> bool:
     limit = threshold
     if limit is None:
         limit = policy.quality_flag_threshold if policy else DEFAULT_ANOMALY_THRESHOLD
+    if not isinstance(limit, numbers.Real) or isinstance(limit, bool):
+        raise TypeError("threshold must be a real number")
+    if not 0 <= limit <= 1:
+        raise ValueError("threshold must be between 0 and 1")
     assessment = guardrail_quality_assessment(text)
     return any(flag > limit for flag in assessment.flags)
 
