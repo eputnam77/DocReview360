@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, replace
 from typing import Any, Mapping
 
@@ -89,10 +90,19 @@ def _coerce_float(mapping: Mapping[str, Any], *candidates: str) -> float | None:
         if key not in mapping:
             continue
         try:
-            return float(mapping[key])
+            value = float(mapping[key])
         except (TypeError, ValueError):
             continue
+        if not math.isfinite(value):
+            continue
+        return value
     return None
+
+
+def _normalize_probability(value: float | None, default: float) -> float:
+    if value is None or not 0 <= value <= 1:
+        return default
+    return value
 
 
 def _coerce_str(mapping: Mapping[str, Any], *candidates: str) -> str | None:
@@ -138,8 +148,7 @@ def load_guardrail_thresholds(  # noqa: C901
     )
     if min_quality_score is None:
         min_quality_score = _coerce_float(guardrail_cfg, "quality_min_score")
-    if min_quality_score is None:
-        min_quality_score = defaults.min_quality_score
+    min_quality_score = _normalize_probability(min_quality_score, defaults.min_quality_score)
 
     quality_flag_threshold = _coerce_float(
         quality_cfg,
@@ -148,8 +157,9 @@ def load_guardrail_thresholds(  # noqa: C901
     )
     if quality_flag_threshold is None:
         quality_flag_threshold = _coerce_float(guardrail_cfg, "quality_flag_threshold")
-    if quality_flag_threshold is None:
-        quality_flag_threshold = defaults.quality_flag_threshold
+    quality_flag_threshold = _normalize_probability(
+        quality_flag_threshold, defaults.quality_flag_threshold
+    )
 
     min_compliance_probability = _coerce_float(
         compliance_cfg,
@@ -161,8 +171,9 @@ def load_guardrail_thresholds(  # noqa: C901
             guardrail_cfg,
             "compliance_min_probability",
         )
-    if min_compliance_probability is None:
-        min_compliance_probability = defaults.min_compliance_probability
+    min_compliance_probability = _normalize_probability(
+        min_compliance_probability, defaults.min_compliance_probability
+    )
 
     auto_assign_editor = _coerce_str(auto_cfg, "editor", "assignee")
     if auto_assign_editor is None:
@@ -171,10 +182,14 @@ def load_guardrail_thresholds(  # noqa: C901
     auto_quality = _coerce_float(auto_cfg, "quality_below", "quality_under")
     if auto_quality is None:
         auto_quality = _coerce_float(guardrail_cfg, "auto_assign_quality_below")
+    if auto_quality is not None and not 0 <= auto_quality <= 1:
+        auto_quality = None
 
     auto_compliance = _coerce_float(auto_cfg, "compliance_below", "compliance_under")
     if auto_compliance is None:
         auto_compliance = _coerce_float(guardrail_cfg, "auto_assign_compliance_below")
+    if auto_compliance is not None and not 0 <= auto_compliance <= 1:
+        auto_compliance = None
 
     return GuardrailThresholds(
         min_quality_score=min_quality_score,
