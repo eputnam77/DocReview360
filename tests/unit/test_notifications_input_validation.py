@@ -37,6 +37,8 @@ def test_send_email_errors_and_defaults(monkeypatch):
     try:
         with pytest.raises(ValueError):
             n.send_email("default", "", subject="s", body="b")
+        with pytest.raises(ValueError):
+            n.send_email("   ", "u@example.com", subject="s", body="b")
         with pytest.raises(KeyError):
             n.send_email("missing", "u@example.com")
         with pytest.raises(ValueError):
