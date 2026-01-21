@@ -131,7 +131,7 @@ def _extract_mentions(text: str) -> list[str]:
 
     seen: set[str] = set()
     result: list[str] = []
-    for name in re.findall(r"@([\w+-]+)", text):
+    for name in re.findall(r"(?<!\w)@([\w+-]+)", text):
         if name not in seen:
             seen.add(name)
             result.append(name)
