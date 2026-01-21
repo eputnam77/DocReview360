@@ -14,3 +14,9 @@ def test_add_comment_deduplicates_mentions() -> None:
     comments.reset_comment_state()
     c = comments.add_comment("doc", "alice", "Hello @bob @bob @bob")
     assert c.mentions == ["bob"]
+
+
+def test_mentions_ignore_emails() -> None:
+    comments.reset_comment_state()
+    c = comments.add_comment("doc", "alice", "Contact bob@example.com or @alice")
+    assert c.mentions == ["alice"]

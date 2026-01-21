@@ -110,7 +110,10 @@ def load_state(path: str | Path) -> None:
         _workers.clear()
         return
     with file.open("r", encoding="utf-8") as fh:
-        data = json.load(fh)
+        try:
+            data = json.load(fh)
+        except json.JSONDecodeError as exc:
+            raise ValueError("invalid registry format") from exc
     if not isinstance(data, dict):
         raise ValueError("invalid registry format")
     _workers.clear()

@@ -32,6 +32,14 @@ def test_load_state_non_integer_values(tmp_path: Path) -> None:
         ai_balancer.load_state(file)
 
 
+def test_load_state_invalid_json(tmp_path: Path) -> None:
+    file = tmp_path / "state.json"
+    file.write_text("{not-json")
+    ai_balancer.reset()
+    with pytest.raises(ValueError):
+        ai_balancer.load_state(file)
+
+
 def test_duplicate_registration_and_cleanup() -> None:
     ai_balancer.reset()
     ai_balancer.register_worker("w1")

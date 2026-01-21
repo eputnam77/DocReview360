@@ -29,6 +29,7 @@ def signature_status(sig_id: str) -> str:
     """
 
     provider = get_provider()
+    provider_status: str | None = None
     if getattr(provider, "name", None) != "documenso" and hasattr(provider, "signature_status"):
         try:
             provider_status = provider.signature_status(sig_id)  # type: ignore[return-value]
