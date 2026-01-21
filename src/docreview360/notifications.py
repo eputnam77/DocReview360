@@ -61,6 +61,8 @@ def send_email(template: str, recipient: str, **context: str) -> dict[str, str]:
     if not recipient:
         raise ValueError("recipient required")
     tmpl_name = template.strip()
+    if not tmpl_name:
+        raise ValueError("template required")
     tmpl = TEMPLATES.get(tmpl_name)
     if tmpl is None:
         raise KeyError(f"template '{tmpl_name}' not found")
