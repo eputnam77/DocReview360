@@ -31,6 +31,9 @@ def load_dashboards(path: str | Path) -> Dict[str, Any]:
         raise ValueError("Invalid JSON dashboard file") from exc
     if not isinstance(data, dict) or "charts" not in data:
         raise ValueError("Dashboard file missing 'charts'")
+    charts = data.get("charts")
+    if not isinstance(charts, list) or not all(isinstance(item, dict) for item in charts):
+        raise ValueError("Dashboard file 'charts' must be a list of objects")
     return data
 
 
@@ -55,8 +58,23 @@ class MetabaseClient:
         return [[i + j for j in range(3)] for i in range(3)]
 
 
+def _validate_metabase_inputs(base_url: str, token: str) -> tuple[str, str]:
+    if not isinstance(base_url, str):
+        raise TypeError("base_url must be a string")
+    if not isinstance(token, str):
+        raise TypeError("token must be a string")
+    cleaned_base = base_url.strip()
+    cleaned_token = token.strip()
+    if not cleaned_base:
+        raise ValueError("base_url required")
+    if not cleaned_token:
+        raise ValueError("token required")
+    return cleaned_base, cleaned_token
+
+
 def fetch_dashboards(base_url: str, token: str) -> List[Dict[str, Any]]:
     """Return dashboards from a running Metabase instance."""
+    base_url, token = _validate_metabase_inputs(base_url, token)
     url = f"{base_url.rstrip('/')}/api/dashboard"
     resp = httpx.get(url, headers={"X-Metabase-Session": token}, timeout=10)
     resp.raise_for_status()
@@ -69,6 +87,11 @@ def fetch_dashboards(base_url: str, token: str) -> List[Dict[str, Any]]:
 
 def fetch_card_csv(base_url: str, card_id: int, token: str) -> str:
     """Return CSV string for the given card."""
+    base_url, token = _validate_metabase_inputs(base_url, token)
+    if not isinstance(card_id, int):
+        raise TypeError("card_id must be an int")
+    if card_id <= 0:
+        raise ValueError("card_id must be positive")
     url = f"{base_url.rstrip('/')}/api/card/{card_id}/query/csv"
     resp = httpx.post(url, headers={"X-Metabase-Session": token}, timeout=10)
     resp.raise_for_status()
