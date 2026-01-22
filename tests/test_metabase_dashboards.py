@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 
 import httpx
+import pytest
 
 from docreview360.metabase import fetch_card_csv, fetch_dashboards
 
@@ -27,3 +28,13 @@ def test_fetch_card_csv(monkeypatch: Any) -> None:
     monkeypatch.setattr("httpx.post", fake_post)
     csv = fetch_card_csv("http://mb", 3, "tok")
     assert "1,2" in csv
+
+
+def test_fetch_dashboards_requires_base_url() -> None:
+    with pytest.raises(ValueError, match="base_url required"):
+        fetch_dashboards("   ", "tok")
+
+
+def test_fetch_card_csv_requires_positive_id() -> None:
+    with pytest.raises(ValueError, match="card_id must be positive"):
+        fetch_card_csv("http://mb", 0, "tok")
