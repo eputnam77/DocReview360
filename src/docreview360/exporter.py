@@ -383,6 +383,8 @@ def export_batch(
     name_template: str | None = None,
 ) -> bytes:
     """Export multiple documents of the same format as a ZIP archive."""
+    if not isinstance(fmt, str):
+        raise TypeError("fmt must be a string")
     buffer = BytesIO()
     fmt_lower = fmt.lower()
     canonical_fmt = _canonical_format(fmt_lower)
