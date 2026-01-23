@@ -534,6 +534,7 @@ def update_project(
     user: str | None = None,
     doc_type: str | None = None,
     description: str | None = None,
+    initial_phase: str | None = None,
     workflow: str | None = None,
     workflow_set: bool = False,
 ) -> ProjectModel:
@@ -548,6 +549,8 @@ def update_project(
             project.doc_type = doc_type
         if description is not None:
             project.description = description
+        if initial_phase is not None:
+            project.initial_phase = initial_phase
         # When the caller explicitly provided the workflow field (even if None),
         # update it accordingly. Otherwise leave it unchanged.
         if workflow_set:

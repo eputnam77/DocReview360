@@ -586,13 +586,19 @@ async def get_user_assignments_endpoint(username: str) -> list[ProjectModel]:
 async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa: C901
     """Create a new project."""
     # Auto-generate ID if not provided
-    if body.id is None:
+    if body.id is None or (isinstance(body.id, str) and not body.id.strip()):
         from ..search import search_index
 
         body.id = search_index.generate_project_id()
+    else:
+        existing = get_project(body.id)
+        if existing is not None:
+            raise HTTPException(status_code=409, detail="Project already exists")
 
     # If document_number is not provided, use the id as document_number
-    if body.document_number is None:
+    if body.document_number is None or (
+        isinstance(body.document_number, str) and not body.document_number.strip()
+    ):
         body.document_number = body.id
 
     project = ProjectModel(**body.model_dump())
@@ -814,6 +820,10 @@ async def update_project_endpoint(
             request, workflow_provided, workflow, body, project_id, project_doc_type
         )
 
+        initial_phase = None
+        if body and body.phase is not None and workflow_id is None:
+            initial_phase = body.phase
+
         updated_project = update_project(
             project_id,
             name=name or title,
@@ -822,6 +832,7 @@ async def update_project_endpoint(
             workflow=workflow_id,
             workflow_set=workflow_set,
             description=project_description,
+            initial_phase=initial_phase,
         )
 
         _update_workflow_phase(request, body, updated_project)
