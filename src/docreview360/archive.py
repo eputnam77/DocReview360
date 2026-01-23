@@ -202,8 +202,21 @@ def schedule_archive_purge() -> None:
 
     settings = load_settings()
     cfg = settings.get("archive", {})
-    retention = int(cfg.get("retention_days", ARCHIVE_RETENTION_DAYS))
-    interval = int(cfg.get("purge_interval_minutes", 60 * 24))
+    retention = ARCHIVE_RETENTION_DAYS
+    interval = 60 * 24
+    if isinstance(cfg, dict):
+        try:
+            retention = int(cfg.get("retention_days", retention))
+        except (TypeError, ValueError):
+            retention = ARCHIVE_RETENTION_DAYS
+        try:
+            interval = int(cfg.get("purge_interval_minutes", interval))
+        except (TypeError, ValueError):
+            interval = 60 * 24
+    if retention <= 0:
+        retention = ARCHIVE_RETENTION_DAYS
+    if interval <= 0:
+        interval = 60 * 24
     app.task(name="docreview360.purge_archives")(purge_archives)
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["purge_archives"] = {
