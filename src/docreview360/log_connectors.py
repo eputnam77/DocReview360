@@ -20,6 +20,10 @@ class LogConnector:
     """Base connector supporting simple batching."""
 
     def __init__(self, endpoint: str, api_key: str | None = None, *, batch_size: int = 1) -> None:
+        if not isinstance(batch_size, int) or isinstance(batch_size, bool):
+            raise TypeError("batch_size must be an integer")
+        if batch_size < 1:
+            raise ValueError("batch_size must be at least 1")
         self.endpoint = endpoint
         self.api_key = api_key
         self.batch_size = batch_size
