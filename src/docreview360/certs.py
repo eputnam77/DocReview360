@@ -129,7 +129,10 @@ def verify_certificate_status(  # noqa: C901
                 ocsp_resp = ocsp.load_der_ocsp_response(data)
                 if ocsp_resp.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
                     return False
-                single = next(iter(ocsp_resp.responses))
+                responses = list(getattr(ocsp_resp, "responses", []))
+                if not responses:
+                    return False
+                single = responses[0]
                 next_update = getattr(single, "next_update_utc", None) or single.next_update
                 if next_update is not None and next_update.tzinfo is None:
                     next_update = next_update.replace(tzinfo=timezone.utc)

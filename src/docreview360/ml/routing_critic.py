@@ -109,6 +109,10 @@ def train_routing_critic(
     critic = RoutingCritic(reviewers)
     reviewer_to_index = {name: idx for idx, name in enumerate(reviewers)}
 
+    for example in examples:
+        if example.reviewer not in reviewer_to_index:
+            raise ValueError(f"unknown reviewer '{example.reviewer}'")
+
     for _ in range(epochs):
         for example in examples:
             features = routing_feature_vector(example.text, example.metadata)

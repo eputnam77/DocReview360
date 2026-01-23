@@ -167,6 +167,9 @@ def _ensure_model(path: str | Path | None = None) -> Path:
 def score_signature_anomaly(features: Sequence[float]) -> tuple[float, ModelMetadata]:
     """Return anomaly score and model metadata for ``features``."""
 
+    expected_len = len(SIGNATURE_ANOMALY_FEATURE_NAMES)
+    if len(features) != expected_len:
+        raise ValueError(f"features must contain {expected_len} values")
     model_path = _ensure_model()
     array = np.asarray([list(features)], dtype=np.float32)
     try:
