@@ -419,6 +419,8 @@ class SearchIndex:
         if project.number is None:
             project.number = self._next_project_number
             self._next_project_number += 1
+        elif project.number >= self._next_project_number:
+            self._next_project_number = project.number + 1
         # Set updated field to current time if not already set
         if project.updated is None:
             project.updated = datetime.now(UTC)

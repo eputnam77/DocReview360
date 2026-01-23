@@ -812,6 +812,9 @@ async def update_project_endpoint(
             if body.description is not None:
                 description = body.description
 
+        if isinstance(workflow, str) and not workflow.strip():
+            workflow = None
+
         project_user = user or sme
         project_doc_type = doc_type or docType or existing_project.doc_type
         project_description = description
