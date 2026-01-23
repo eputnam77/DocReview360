@@ -143,8 +143,16 @@ def schedule_signature_verification() -> None:
     """Configure periodic Celery task based on persisted settings."""
     settings = load_settings()
     cfg = settings.get("signature_verification", {})
-    interval = int(cfg.get("interval_minutes", 60))
-    scope = str(cfg.get("scope", "approved"))
+    try:
+        interval = int(cfg.get("interval_minutes", 60))
+    except (TypeError, ValueError):
+        interval = 60
+    if interval <= 0:
+        interval = 60
+    scope_raw = cfg.get("scope", "approved")
+    scope = str(scope_raw).strip() if scope_raw is not None else ""
+    if not scope:
+        scope = "approved"
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["signature_verification"] = {
         "task": "docreview360.verify_document_signatures",

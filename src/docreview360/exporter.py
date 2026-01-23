@@ -108,7 +108,7 @@ def _load_export_limits() -> dict[str, int | None]:
     limits: dict[str, int | None] = {}
     if isinstance(limits_cfg, dict):
         for key, raw in limits_cfg.items():
-            fmt = str(key).lower()
+            fmt = _canonical_format(str(key).lower())
             try:
                 value = int(raw)
             except (TypeError, ValueError):
@@ -126,7 +126,7 @@ def _get_export_size_limit(fmt: str) -> int | None:
     """Return the configured export size ceiling for ``fmt`` (or ``None``)."""
 
     limits = _load_export_limits()
-    return limits.get(fmt)
+    return limits.get(_canonical_format(fmt))
 
 
 def _canonical_format(fmt: str) -> str:
