@@ -7,9 +7,15 @@ from datetime import datetime, timedelta, timezone
 
 def xor_encrypt(data: bytes, key: bytes) -> bytes:
     """Return ``data`` encrypted with a repeating-key XOR."""
-    if not key:
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        raise TypeError("data must be bytes")
+    if not isinstance(key, (bytes, bytearray, memoryview)):
+        raise TypeError("key must be bytes")
+    data_bytes = bytes(data)
+    key_bytes = bytes(key)
+    if not key_bytes:
         raise ValueError("key required")
-    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+    return bytes(b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(data_bytes))
 
 
 def xor_decrypt(data: bytes, key: bytes) -> bytes:
