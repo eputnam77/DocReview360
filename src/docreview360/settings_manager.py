@@ -60,7 +60,10 @@ def load_providers() -> None:
         register_provider(provider, name=name)
 
     settings = load_settings()
-    for mod in settings.get("provider_modules", []):
+    modules = settings.get("provider_modules", [])
+    if not isinstance(modules, list):
+        raise ValueError("provider_modules must be a list")
+    for mod in modules:
         try:
             import_module(str(mod))
         except Exception:
