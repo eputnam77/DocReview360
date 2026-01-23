@@ -36,6 +36,13 @@ def test_config_connectors(tmp_path: Path) -> None:
     assert saved["log_connectors"][0]["api_key"] == "k"
 
 
+def test_connector_rejects_invalid_batch_size() -> None:
+    with pytest.raises(TypeError, match="batch_size"):
+        ELKConnector("http://elk", batch_size=1.5)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="batch_size"):
+        ELKConnector("http://elk", batch_size=0)
+
+
 @pytest.mark.asyncio
 async def test_elk_connector_batches(monkeypatch: MonkeyPatch) -> None:
     sent: list[list[dict[str, object]]] = []

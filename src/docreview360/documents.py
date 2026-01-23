@@ -105,6 +105,8 @@ def _load_document_policy() -> tuple[int, frozenset[str], Mapping[str, Any]]:
         size_limit = int(max_size)
     except (TypeError, ValueError):
         size_limit = DEFAULT_MAX_UPLOAD_SIZE
+    if size_limit <= 0:
+        size_limit = DEFAULT_MAX_UPLOAD_SIZE
 
     allowed = doc_settings.get("allowed_mime_types", DEFAULT_ALLOWED_MIME_TYPES)
     if isinstance(allowed, Iterable) and not isinstance(allowed, (str, bytes)):
