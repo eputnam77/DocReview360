@@ -450,7 +450,8 @@ _repository = SearchRepository()
 _loaded_projects, _loaded_saved_searches, _loaded_counters, _next_number = _repository.load_state()
 for _project in _loaded_projects.values():
     if _project.workflow is None and _project.requested_workflow:
-        _project.workflow = _project.requested_workflow
+        if get_workflow(_project.requested_workflow):
+            _project.workflow = _project.requested_workflow
 search_index = SearchIndex(_loaded_projects, _next_number)
 projects = search_index.projects
 saved_searches: Dict[str, SavedSearch] = dict(_loaded_saved_searches)
@@ -473,7 +474,8 @@ def _reload_state_from_repository() -> None:
     loaded_projects, loaded_saved, loaded_counters, next_number = _repository.load_state()
     for project in loaded_projects.values():
         if project.workflow is None and project.requested_workflow:
-            project.workflow = project.requested_workflow
+            if get_workflow(project.requested_workflow):
+                project.workflow = project.requested_workflow
     with project_lock:
         search_index.projects.clear()
         search_index.projects.update(loaded_projects)

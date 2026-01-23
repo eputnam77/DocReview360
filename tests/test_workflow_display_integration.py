@@ -172,11 +172,22 @@ class TestWorkflowDisplayIntegration:
         new_workflow = wf_resp.json()
         assert new_workflow["project"] == "test-project-3"
 
+        # Verify the previous workflow is no longer linked to the project
+        old_wf_resp = client.get(f"/workflows/{initial_workflow_id}")
+        assert old_wf_resp.status_code == 200
+        old_workflow = old_wf_resp.json()
+        assert old_workflow["project"] == ""
+
         # Verify project details page shows the new workflow
         project_resp = client.get(f"/projects/{initial_project['id']}")
         assert project_resp.status_code == 200
         project_details = project_resp.json()
         assert project_details["workflow"] == new_workflow_id
+
+        project_workflow_resp = client.get(f"/projects/{initial_project['id']}/workflow")
+        assert project_workflow_resp.status_code == 200
+        project_workflow = project_workflow_resp.json()
+        assert project_workflow["id"] == new_workflow_id
 
     def test_workflow_approvals_appear_in_project_details(self) -> None:
         """Test that workflow approvals appear in project details page."""
@@ -283,6 +294,14 @@ class TestWorkflowDisplayIntegration:
         assert project_resp.status_code == 200
         project_details = project_resp.json()
         assert project_details["workflow"] is None
+
+        workflow_resp = client.get(f"/workflows/{project['workflow']}")
+        assert workflow_resp.status_code == 200
+        workflow_details = workflow_resp.json()
+        assert workflow_details["project"] == ""
+
+        project_workflow_resp = client.get(f"/projects/{project['id']}/workflow")
+        assert project_workflow_resp.status_code == 404
 
     def test_workflow_display_consistency_across_endpoints(self) -> None:
         """Test that workflow information is consistent across all project endpoints."""

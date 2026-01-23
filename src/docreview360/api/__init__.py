@@ -798,6 +798,7 @@ async def update_project_endpoint(
         existing_project = get_project(project_id)
         if existing_project is None:
             raise HTTPException(status_code=404, detail="Project not found")
+        previous_workflow_id = existing_project.workflow
         body, workflow_provided = await _parse_update_body(request)
 
         if body:
@@ -837,6 +838,11 @@ async def update_project_endpoint(
             description=project_description,
             initial_phase=initial_phase,
         )
+
+        if workflow_set and previous_workflow_id and previous_workflow_id != updated_project.workflow:
+            previous_workflow = workflows.get(previous_workflow_id)
+            if previous_workflow and previous_workflow.project == project_id:
+                previous_workflow.project = ""
 
         _update_workflow_phase(request, body, updated_project)
 
