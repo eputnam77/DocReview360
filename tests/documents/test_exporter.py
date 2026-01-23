@@ -81,3 +81,8 @@ def test_export_batch_reports_offending_document(
 
     assert exc.value.document_id == doc2.id
     assert events and events[-1][1]["fmt"] == "pdf"
+
+
+def test_export_batch_rejects_non_string_format(sample_document: DocumentModel) -> None:
+    with pytest.raises(TypeError, match="fmt must be a string"):
+        exporter.export_batch([sample_document], None)  # type: ignore[arg-type]

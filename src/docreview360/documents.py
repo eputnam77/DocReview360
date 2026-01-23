@@ -108,7 +108,15 @@ def _load_document_policy() -> tuple[int, frozenset[str], Mapping[str, Any]]:
 
     allowed = doc_settings.get("allowed_mime_types", DEFAULT_ALLOWED_MIME_TYPES)
     if isinstance(allowed, Iterable) and not isinstance(allowed, (str, bytes)):
-        allowed_set = frozenset(str(item) for item in allowed)
+        normalised: list[str] = []
+        for item in allowed:
+            if item is None:
+                continue
+            text = str(item).strip()
+            if not text:
+                continue
+            normalised.append(text.lower())
+        allowed_set = frozenset(normalised)
     else:
         allowed_set = DEFAULT_ALLOWED_MIME_TYPES
 
@@ -148,8 +156,12 @@ def _detect_mime_type(data: bytes, filename: str) -> str:
         except Exception:  # pragma: no cover - libmagic failure
             mime = None
 
-    if not mime:
+    if mime:
+        mime = mime.split(";", 1)[0].strip().lower()
+    else:
         mime, _ = mimetypes.guess_type(filename)
+        if mime:
+            mime = mime.lower()
 
     mime = mime or "application/octet-stream"
     if mime == "application/octet-stream":
