@@ -12,6 +12,13 @@ def test_encrypt_decrypt_roundtrip() -> None:
     assert xor_decrypt(enc, key) == data
 
 
+def test_xor_encrypt_type_validation() -> None:
+    with pytest.raises(TypeError):
+        xor_encrypt("secret", b"k")
+    with pytest.raises(TypeError):
+        xor_encrypt(b"secret", "k")
+
+
 def test_should_purge() -> None:
     old = datetime.now(timezone.utc) - timedelta(days=10)
     assert should_purge(old, 5)

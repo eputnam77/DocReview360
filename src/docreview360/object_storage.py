@@ -115,6 +115,8 @@ def download_file(bucket: str | Path, key: str) -> bytes:
         boto3 = cast(Any, import_module("boto3"))
         s3 = boto3.client("s3")
         bucket_name = str(bucket)[5:]
+        if not bucket_name or "/" in bucket_name:
+            raise ValueError("invalid s3 bucket")
         obj = s3.get_object(Bucket=bucket_name, Key=key)
         return cast(bytes, obj["Body"].read())
 
@@ -166,6 +168,8 @@ def upload_file(
         boto3 = cast(Any, import_module("boto3"))
         s3 = boto3.client("s3")
         bucket_name = str(bucket)[5:]
+        if not bucket_name or "/" in bucket_name:
+            raise ValueError("invalid s3 bucket")
         extra: dict[str, object] = {}
         if append_only:
             retain_until = datetime.now(timezone.utc) + timedelta(days=retention_days)
