@@ -277,6 +277,45 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
 
 
+def _resolve_project_phases(doc_type_name: str | None, phase: str | None) -> list[str]:
+    """Return workflow phases based on document type and optional phase."""
+    doc_type_obj = get_document_type(doc_type_name) if doc_type_name else None
+    phases: list[str] = list(doc_type_obj.phases) if doc_type_obj else []
+
+    if phase:
+        if phases:
+            if phase in phases:
+                idx = phases.index(phase)
+                phases = phases[idx:] + phases[:idx]
+            else:
+                phases = [phase] + [p for p in phases if p != phase]
+        else:
+            phases = [phase]
+
+    if not phases:
+        phases = [phase or "start"]
+
+    return phases
+
+
+def _resolve_workflow_template(
+    requested_template: str | None, doc_type_name: str | None
+) -> str:
+    """Resolve a workflow template name from request and document type defaults."""
+    if requested_template in workflow_templates:
+        return requested_template
+
+    doc_type_obj = get_document_type(doc_type_name) if doc_type_name else None
+    doc_default_template = (
+        doc_type_obj.default_template_id
+        if doc_type_obj and doc_type_obj.default_template_id
+        else None
+    )
+    if doc_default_template in workflow_templates:
+        return doc_default_template
+    return "branch-coordination"
+
+
 class CommentCreate(BaseModel):
     """Input for creating comments."""
 
@@ -557,7 +596,6 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
         body.document_number = body.id
 
     project = ProjectModel(**body.model_dump())
-    add_project(project)
 
     # Handle workflow assignment when a template has been provided.  Rather than
     # manually constructing a minimal ``WorkflowModel`` we now delegate to
@@ -566,8 +604,15 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
     if body.workflow:
         existing_workflow = workflows.get(body.workflow)
         if existing_workflow is not None:
+            if existing_workflow.project and existing_workflow.project != project.id:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Workflow already assigned to another project",
+                )
+            existing_workflow.project = project.id
             project.workflow = existing_workflow.id
             project.initial_phase = existing_workflow.phase
+            add_project(project)
             clear_cache()
             log_event(
                 "create_project",
@@ -579,38 +624,8 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
             )
             return project
 
-        doc_type_obj = get_document_type(body.doc_type) if body.doc_type else None
-        phases: list[str] = []
-        if doc_type_obj:
-            phases = list(doc_type_obj.phases)
-
-        if body.phase:
-            if phases:
-                if body.phase in phases:
-                    idx = phases.index(body.phase)
-                    phases = phases[idx:] + phases[:idx]
-                else:
-                    phases = [body.phase] + [p for p in phases if p != body.phase]
-            else:
-                phases = [body.phase]
-
-        if not phases:
-            fallback_phase = body.phase or "start"
-            phases = [fallback_phase]
-
-        doc_default_template = (
-            doc_type_obj.default_template_id
-            if doc_type_obj and doc_type_obj.default_template_id
-            else None
-        )
-        requested_template = body.workflow
-        if requested_template in workflow_templates:
-            template_name = requested_template
-        elif doc_default_template is not None and doc_default_template in workflow_templates:
-            template_name = doc_default_template
-        else:
-            template_name = "branch-coordination"
-
+        phases = _resolve_project_phases(body.doc_type, body.phase)
+        template_name = _resolve_workflow_template(body.workflow, body.doc_type)
         workflow = create_workflow(project.id, phases, template=template_name)
         project.workflow = workflow.id
         project.initial_phase = workflow.phase
@@ -624,6 +639,8 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
         # Preserve the starting phase so the project reflects configuration even
         # before a workflow is assigned.
         project.initial_phase = body.phase
+
+    add_project(project)
 
     # Clear all project-related caches to ensure fresh data
     clear_cache()
@@ -687,19 +704,37 @@ def _resolve_workflow(
     workflow: str | None,
     body: ProjectUpdate | None,
     project_id: str,
+    doc_type_name: str | None,
 ) -> tuple[str | None, bool]:
     """Determine new workflow information from the request."""
     is_json = request.headers.get("content-type", "").startswith("application/json")
     if is_json:
         if workflow_provided:
             if workflow is not None:
-                start_phase = body.phase if (body and body.phase) else "start"
-                wf = create_workflow(project_id, [start_phase])
+                existing_workflow = workflows.get(workflow)
+                if existing_workflow is not None:
+                    if existing_workflow.project and existing_workflow.project != project_id:
+                        raise ValueError("Workflow already assigned to another project")
+                    existing_workflow.project = project_id
+                    return existing_workflow.id, True
+                phases = _resolve_project_phases(
+                    doc_type_name, body.phase if body and body.phase else None
+                )
+                template_name = _resolve_workflow_template(workflow, doc_type_name)
+                wf = create_workflow(project_id, phases, template=template_name)
                 return wf.id, True
             return None, True
         return None, False
     if workflow is not None:
-        wf = create_workflow(project_id, ["start"])
+        existing_workflow = workflows.get(workflow)
+        if existing_workflow is not None:
+            if existing_workflow.project and existing_workflow.project != project_id:
+                raise ValueError("Workflow already assigned to another project")
+            existing_workflow.project = project_id
+            return existing_workflow.id, True
+        phases = _resolve_project_phases(doc_type_name, None)
+        template_name = _resolve_workflow_template(workflow, doc_type_name)
+        wf = create_workflow(project_id, phases, template=template_name)
         return wf.id, True
     return None, False
 
@@ -754,6 +789,9 @@ async def update_project_endpoint(
 ) -> ProjectModel:
     """Update project fields like name, user, doc_type, or workflow."""
     try:
+        existing_project = get_project(project_id)
+        if existing_project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
         body, workflow_provided = await _parse_update_body(request)
 
         if body:
@@ -769,11 +807,11 @@ async def update_project_endpoint(
                 description = body.description
 
         project_user = user or sme
-        project_doc_type = doc_type or docType
+        project_doc_type = doc_type or docType or existing_project.doc_type
         project_description = description
 
         workflow_id, workflow_set = _resolve_workflow(
-            request, workflow_provided, workflow, body, project_id
+            request, workflow_provided, workflow, body, project_id, project_doc_type
         )
 
         updated_project = update_project(
@@ -791,9 +829,12 @@ async def update_project_endpoint(
         if file:
             await _import_uploaded_file(file, project_id, project_user)
 
+        clear_cache()
         return updated_project
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get("/projects/{project_id}/workflow", response_model=WorkflowModel)
