@@ -49,9 +49,14 @@ def test_projects_and_searches_survive_reload(
 ) -> None:
     _prepare_db(tmp_path, monkeypatch)
 
+    import docreview360.workflows as workflows_module
+
+    workflows_module.workflows.clear()
+
     project = search.ProjectModel(id="persist", name="Persisted", doc_type="Report")
     search.add_project(project)
-    search.update_project("persist", name="Persisted v2", workflow="wf-1", workflow_set=True)
+    wf = workflows_module.create_workflow("persist", ["draft"])
+    search.update_project("persist", name="Persisted v2", workflow=wf.id, workflow_set=True)
     future = datetime.now(UTC) + timedelta(days=1)
     search.assign_temporary("persist", "temp-user", future)
     search.save_search("persist query", user="bob")
@@ -60,7 +65,7 @@ def test_projects_and_searches_survive_reload(
     with _reloaded_search() as reloaded:
         loaded = reloaded.projects["persist"]
         assert loaded.name == "Persisted v2"
-        assert loaded.workflow == "wf-1"
+        assert loaded.workflow == wf.id
         assert loaded.temp_user == "temp-user"
         assert reloaded.list_saved_searches(user="bob")[0].query == "persist query"
         assert reloaded.search_stats()["persist query"] >= 1
@@ -99,3 +104,21 @@ def test_concurrent_project_creation_persists(
 
         expected_next = max(numbers_after_reload) + 1
         assert reloaded.next_project_number() == expected_next
+
+
+def test_missing_workflow_reference_clears_on_reload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _prepare_db(tmp_path, monkeypatch)
+
+    import docreview360.workflows as workflows_module
+
+    workflows_module.workflows.clear()
+
+    project = search.ProjectModel(id="ghost-project", name="Ghost", workflow="ghost-wf")
+    search.add_project(project)
+
+    with _reloaded_search() as reloaded:
+        loaded = reloaded.projects["ghost-project"]
+        assert loaded.workflow is None
+        assert loaded.requested_workflow == "ghost-wf"
