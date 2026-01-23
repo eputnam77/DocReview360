@@ -123,6 +123,18 @@ def test_s3_upload_download(monkeypatch) -> None:
     assert "ObjectLockRetainUntilDate" in calls
 
 
+def test_s3_bucket_validation(monkeypatch) -> None:
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda name: SimpleNamespace(client=lambda _: object()),
+    )
+    with pytest.raises(ValueError):
+        download_file("s3://", "key")
+    with pytest.raises(ValueError):
+        upload_file("s3://bucket/path", "key", b"x")
+
+
 def test_upload_retention_and_append(tmp_path):
     with pytest.raises(ValueError):
         upload_file(tmp_path, "k", b"d", retention_days=-1)
