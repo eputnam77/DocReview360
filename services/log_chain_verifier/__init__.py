@@ -66,10 +66,26 @@ def schedule_log_chain_verification() -> None:
     """Configure periodic log chain verification based on settings."""
     settings = load_settings()
     cfg = settings.get("log_chain_verification", {})
-    interval = int(cfg.get("interval_minutes", 60))
-    bucket = str(cfg.get("bucket", "tamper_proof_store"))
-    key = str(cfg.get("key", "log_chain.json"))
-    batch_size = int(cfg.get("batch_size", 100))
+    try:
+        interval = int(cfg.get("interval_minutes", 60))
+    except (TypeError, ValueError):
+        interval = 60
+    if interval <= 0:
+        interval = 60
+    raw_bucket = cfg.get("bucket", "tamper_proof_store")
+    bucket = str(raw_bucket).strip() if raw_bucket is not None else ""
+    if not bucket:
+        bucket = "tamper_proof_store"
+    raw_key = cfg.get("key", "log_chain.json")
+    key = str(raw_key).strip() if raw_key is not None else ""
+    if not key:
+        key = "log_chain.json"
+    try:
+        batch_size = int(cfg.get("batch_size", 100))
+    except (TypeError, ValueError):
+        batch_size = 100
+    if batch_size <= 0:
+        batch_size = 100
     raw_alert_email = cfg.get("alert_email", "admin@example.com")
     if raw_alert_email is None:
         alert_email = None

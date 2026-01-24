@@ -431,8 +431,18 @@ def schedule_log_purge() -> None:
 
     settings = load_settings()
     cfg = settings.get("logs", {})
-    retention = int(cfg.get("retention_days", LOG_RETENTION_DAYS))
-    interval = int(cfg.get("purge_interval_minutes", 60 * 24))
+    try:
+        retention = int(cfg.get("retention_days", LOG_RETENTION_DAYS))
+    except (TypeError, ValueError):
+        retention = LOG_RETENTION_DAYS
+    if retention <= 0:
+        retention = LOG_RETENTION_DAYS
+    try:
+        interval = int(cfg.get("purge_interval_minutes", 60 * 24))
+    except (TypeError, ValueError):
+        interval = 60 * 24
+    if interval <= 0:
+        interval = 60 * 24
     app.task(name="docreview360.purge_expired_logs")(purge_expired_logs)
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["purge_expired_logs"] = {
