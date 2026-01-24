@@ -127,6 +127,8 @@ def export_documents(doc_ids: list[str], fmt: str) -> bytes:
 
     cfg = Config.load(CONFIG_FILE)
     template = cfg.filename_template if cfg else "{id}"
+    if not template or not template.strip():
+        template = "{id}"
     return export_batch(docs, fmt, name_template=template)
 
 
