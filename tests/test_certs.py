@@ -33,6 +33,21 @@ def test_fetch_certificate_caching():
     clear_cache()
 
 
+def test_fetch_certificate_cache_respects_pinned_chain():
+    clear_cache()
+    data = b"first"
+    register_pinned_chain("example.com", hashlib.sha256(data).hexdigest())
+
+    def fake_fetch(url):
+        return data
+
+    assert fetch_certificate("https://example.com/cert", fetcher=fake_fetch) == data
+    register_pinned_chain("example.com", hashlib.sha256(b"second").hexdigest())
+    with pytest.raises(ValueError):
+        fetch_certificate("https://example.com/cert", fetcher=lambda u: b"second")
+    clear_cache()
+
+
 def test_fetch_certificate_errors():
     register_pinned_chain("example.com", hashlib.sha256(b"x").hexdigest())
     with pytest.raises(ValueError):
@@ -143,5 +158,63 @@ def test_verify_certificate_status_crl(monkeypatch):
 
     def fetch(url, payload):
         return crl
+
+    assert verify_certificate_status(cert, fetcher=fetch) is True
+
+
+def test_verify_certificate_status_crl_fallback_on_expired():
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test")])
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(datetime.now(timezone.utc))
+        .not_valid_after(datetime.now(timezone.utc) + timedelta(days=1))
+        .add_extension(
+            x509.CRLDistributionPoints(
+                [
+                    x509.DistributionPoint(
+                        full_name=[x509.UniformResourceIdentifier("http://crl.test")],
+                        relative_name=None,
+                        reasons=None,
+                        crl_issuer=None,
+                    ),
+                    x509.DistributionPoint(
+                        full_name=[x509.UniformResourceIdentifier("http://backup.crl.test")],
+                        relative_name=None,
+                        reasons=None,
+                        crl_issuer=None,
+                    ),
+                ]
+            ),
+            False,
+        )
+    )
+    cert = builder.sign(key, hashes.SHA256())
+    now = datetime.now(timezone.utc)
+    stale_crl = (
+        x509.CertificateRevocationListBuilder()
+        .issuer_name(cert.issuer)
+        .last_update(now - timedelta(days=2))
+        .next_update(now - timedelta(days=1))
+        .sign(key, hashes.SHA256())
+        .public_bytes(serialization.Encoding.DER)
+    )
+    fresh_crl = (
+        x509.CertificateRevocationListBuilder()
+        .issuer_name(cert.issuer)
+        .last_update(now)
+        .next_update(now + timedelta(days=1))
+        .sign(key, hashes.SHA256())
+        .public_bytes(serialization.Encoding.DER)
+    )
+
+    def fetch(url, payload):
+        if url == "http://crl.test":
+            return stale_crl
+        return fresh_crl
 
     assert verify_certificate_status(cert, fetcher=fetch) is True

@@ -56,21 +56,23 @@ def fetch_certificate(url: str, *, fetcher: Callable[[str], bytes] | None = None
     parsed = urlparse(url)
     if parsed.scheme != "https":
         raise ValueError("certificate URL must use HTTPS")
-    if url in _chain_cache:
-        return _chain_cache[url]
-    if fetcher is None:
-        resp = httpx.get(url, timeout=5)
-        resp.raise_for_status()
-        data = resp.content
-    else:
-        data = fetcher(url)
-
     host = (parsed.hostname or "").lower()
     pinned = _pinned_chains.get(host)
     if pinned is None:
         raise ValueError("untrusted certificate host")
+    if url in _chain_cache:
+        data = _chain_cache[url]
+    else:
+        if fetcher is None:
+            resp = httpx.get(url, timeout=5)
+            resp.raise_for_status()
+            data = resp.content
+        else:
+            data = fetcher(url)
+
     fingerprint = hashlib.sha256(data).hexdigest().lower()
     if fingerprint != pinned:
+        _chain_cache.pop(url, None)
         raise ValueError("certificate chain mismatch")
 
     _chain_cache[url] = data
@@ -182,12 +184,13 @@ def verify_certificate_status(  # noqa: C901
                 if next_update is not None and next_update.tzinfo is None:
                     next_update = next_update.replace(tzinfo=timezone.utc)
                 if next_update is None or next_update < now:
-                    return False
+                    continue
                 _crl_cache[url] = (crl, next_update)
             for revoked in crl:
                 if revoked.serial_number == cert.serial_number:
                     return False
             return True
+        return False
 
     # No revocation information available
     return False
