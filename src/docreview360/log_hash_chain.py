@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from numbers import Integral
 from pathlib import Path
 from typing import Iterable, List
 
@@ -54,6 +55,10 @@ def batch_hash_logs(
     key:
         File name for the stored chain within ``bucket``.
     """
+    if not isinstance(batch_size, Integral) or isinstance(batch_size, bool):
+        raise TypeError("batch_size must be an integer")
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
 
     entries = export_logs(user_id, log_access=False)
     batches = [entries[i : i + batch_size] for i in range(0, len(entries), batch_size)]
@@ -74,6 +79,10 @@ def verify_hash_chain(
     Returns ``True`` when the recomputed chain equals the persisted one and
     ``False`` otherwise. Missing chain files also yield ``False``.
     """
+    if not isinstance(batch_size, Integral) or isinstance(batch_size, bool):
+        raise TypeError("batch_size must be an integer")
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
 
     try:
         stored = json.loads(download_file(bucket, key).decode())

@@ -49,3 +49,19 @@ def test_schedule_log_purge() -> None:
     schedule_log_purge()
     entry = app.conf.beat_schedule["purge_expired_logs"]
     assert entry["args"][0] == 365
+
+
+def test_schedule_log_purge_invalid_settings(monkeypatch) -> None:
+    from docreview360 import settings_manager
+
+    monkeypatch.setattr(
+        settings_manager,
+        "load_settings",
+        lambda: {"logs": {"retention_days": "bad", "purge_interval_minutes": 0}},
+    )
+    app.conf.beat_schedule = {}
+
+    schedule_log_purge()
+
+    entry = app.conf.beat_schedule["purge_expired_logs"]
+    assert entry["args"][0] == 365
