@@ -55,6 +55,19 @@ def load_providers(path: Path | None = None) -> Dict[str, Dict[str, Any]]:
     for name, cfg in list(data.items()):
         if not isinstance(cfg, dict):
             raise ValueError(f"configuration for provider '{name}' must be a mapping")
+        default_cfg = DEFAULT_PROVIDERS.get(name, {})
+        raw_priority = cfg.get("priority", default_cfg.get("priority", 100))
+        try:
+            if isinstance(raw_priority, bool):
+                raise TypeError
+            priority = int(raw_priority)
+        except (TypeError, ValueError):
+            priority = int(default_cfg.get("priority", 100))
+        if priority <= 0:
+            priority = int(default_cfg.get("priority", 100))
+        cfg["priority"] = priority
+        raw_healthy = cfg.get("healthy", default_cfg.get("healthy", True))
+        cfg["healthy"] = raw_healthy if isinstance(raw_healthy, bool) else True
     # ensure expected structure and defaults
     for name, cfg in DEFAULT_PROVIDERS.items():
         data.setdefault(name, cfg.copy())

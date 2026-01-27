@@ -49,3 +49,12 @@ def test_create_signature_custom_secret(monkeypatch):
 def test_create_signature_rejects_whitespace():
     with pytest.raises(ValueError):
         security_utils.create_signature("d", secret="   ")
+
+
+def test_create_signature_strips_custom_secret():
+    sig = security_utils.create_signature("x", secret="  y  ")
+    import hashlib
+    import hmac
+
+    expected = hmac.new(b"y", b"x", hashlib.sha256).hexdigest()
+    assert sig == expected

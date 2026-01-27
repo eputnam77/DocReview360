@@ -64,7 +64,21 @@ class Config:
         for c in connectors_raw:
             if not isinstance(c, dict):
                 raise ValueError("log_connectors entries must be objects")
-            connectors.append(ConnectorSettings(**c))
+            normalized = dict(c)
+            if "batch_size" in normalized:
+                raw_batch = normalized.get("batch_size", 1)
+                try:
+                    if isinstance(raw_batch, bool):
+                        raise TypeError
+                    batch = int(raw_batch)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        "log_connectors batch_size must be a positive integer"
+                    ) from exc
+                if batch <= 0:
+                    raise ValueError("log_connectors batch_size must be a positive integer")
+                normalized["batch_size"] = batch
+            connectors.append(ConnectorSettings(**normalized))
         data["log_connectors"] = connectors
         return cls(**data)
 

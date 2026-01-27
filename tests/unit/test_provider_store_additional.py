@@ -43,3 +43,34 @@ def test_load_providers_root_not_mapping(tmp_path: Path, monkeypatch: pytest.Mon
     monkeypatch.setattr(ps, "PROVIDERS_FILE", cfg)
     with pytest.raises(ValueError):
         ps.load_providers()
+
+
+def test_get_active_providers_normalizes_priority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg = tmp_path / "providers.yaml"
+    cfg.write_text(
+        "\n".join(
+            [
+                "documenso:",
+                "  api_key: ''",
+                "  priority: 1",
+                "  healthy: true",
+                "custom:",
+                "  api_key: ''",
+                "  priority: '2'",
+                "  healthy: true",
+                "legacy:",
+                "  api_key: ''",
+                "  priority: high",
+                "  healthy: true",
+                "",
+            ]
+        )
+    )
+    monkeypatch.setattr(ps, "PROVIDERS_FILE", cfg)
+
+    active = ps.get_active_providers()
+
+    assert active[:4] == ["documenso", "custom", "sandbox", "local"]
+    assert active[-1] == "legacy"
