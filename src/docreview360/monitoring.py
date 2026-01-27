@@ -151,9 +151,9 @@ def open_dashboard() -> str:
 
 def start_observability_stack(prom_port: int = 8000, grafana_port: int = 3000) -> Dict[str, str]:
     """Start the lightweight observability stack and return service URLs."""
-    services = init_observability(prom_port)
     if grafana_port <= 0 or grafana_port >= 65536:
         raise ValueError("invalid grafana_port")
+    services = init_observability(prom_port)
     services["grafana"] = f"http://localhost:{grafana_port}/"
     services.setdefault("loki", "http://localhost:3100/")
     return services

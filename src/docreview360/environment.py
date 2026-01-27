@@ -46,11 +46,16 @@ def switch_environment(name: str, path: Path | None = None) -> str:
     """Switch current environment and return its URL."""
     path = path or ENV_FILE
     data = load_envs(path)
-    if name not in data:
+    if not isinstance(name, str):
+        raise TypeError("name must be a string")
+    normalized = name.strip()
+    if not normalized:
+        raise ValueError("name required")
+    if normalized not in data:
         raise KeyError(name)
-    os.environ["DOCREVIEW360_ENV"] = name
+    os.environ["DOCREVIEW360_ENV"] = normalized
     record_task_completion(147)
-    return data[name]["url"]
+    return data[normalized]["url"]
 
 
 def current_environment(path: Path | None = None) -> Optional[Dict[str, str]]:
@@ -59,4 +64,7 @@ def current_environment(path: Path | None = None) -> Optional[Dict[str, str]]:
     env = os.environ.get("DOCREVIEW360_ENV")
     if not env:
         return None
-    return load_envs(path).get(env)
+    normalized = env.strip()
+    if not normalized:
+        return None
+    return load_envs(path).get(normalized)
