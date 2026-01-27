@@ -11,6 +11,7 @@ def validate_piv_certificate(cert_pem: str) -> bool:
     if not cert_pem:
         raise ValueError("certificate required")
     cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
-    # Use the timezone-aware property directly
-    cert_time = cert.not_valid_after_utc
-    return cert_time > datetime.now(timezone.utc)
+    # Use the timezone-aware properties directly to verify both validity
+    # windows: the certificate must not be expired and must already be valid.
+    now = datetime.now(timezone.utc)
+    return cert.not_valid_before_utc <= now < cert.not_valid_after_utc

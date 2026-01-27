@@ -23,3 +23,21 @@ def test_init_observability_handles_legacy_start_http_server(
     fallback_port = calls[1]
     assert fallback_port != 8001
     assert services["prometheus"] == f"http://localhost:{fallback_port}/"
+
+
+def test_start_observability_stack_validates_grafana_port_first(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called = False
+
+    def fake_init_observability(port: int):
+        nonlocal called
+        called = True
+        return {"prometheus": f"http://localhost:{port}/"}
+
+    monkeypatch.setattr(monitoring, "init_observability", fake_init_observability)
+
+    with pytest.raises(ValueError):
+        monitoring.start_observability_stack(prom_port=8000, grafana_port=0)
+
+    assert called is False
