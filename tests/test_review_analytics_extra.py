@@ -44,3 +44,11 @@ def test_moving_average_empty() -> None:
     trends.add("p", 0.5)
     with pytest.raises(ValueError):
         trends.moving_average("p", window=0)
+
+
+def test_trend_returns_copy() -> None:
+    trends = ReviewTrends()
+    trends.add("p1", 0.4)
+    snapshot = trends.trend("p1")
+    snapshot.append(1.0)
+    assert trends.trend("p1") == [0.4]
