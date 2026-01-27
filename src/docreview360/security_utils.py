@@ -36,7 +36,7 @@ def create_signature(data: str, secret: str | None = None) -> str:
     else:
         if not secret or not secret.strip():
             raise ValueError("secret must be non-empty")
-        secret_value = secret
+        secret_value = secret.strip()
     return hmac.new(secret_value.encode(), data.encode(), hashlib.sha256).hexdigest()
 
 
