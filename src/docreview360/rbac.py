@@ -155,7 +155,10 @@ class RoleBackendError(RuntimeError):
 
 
 def _normalize_role(role: str) -> str:
-    return role.strip().lower()
+    normalized = role.strip().lower()
+    if not normalized:
+        raise ValueError("role must be non-empty")
+    return normalized
 
 
 def _default_role_store_path() -> str:
@@ -362,7 +365,11 @@ def get_roles(username: str) -> set[str]:
 def has_role(username: str, role: str) -> bool:
     """Return ``True`` if ``username`` is assigned ``role``."""
 
-    return _normalize_role(role) in get_roles(username)
+    try:
+        normalized = _normalize_role(role)
+    except ValueError:
+        return False
+    return normalized in get_roles(username)
 
 
 def has_permission(username: str, action: str) -> bool:
@@ -412,8 +419,9 @@ def _normalize_permission(action: str) -> str:
 def _coerce_permissions(raw: Mapping[str, Any]) -> dict[str, Set[str]]:  # noqa: C901
     mapping: dict[str, Set[str]] = {}
     for role, values in raw.items():
-        normalized_role = _normalize_role(str(role))
-        if not normalized_role:
+        try:
+            normalized_role = _normalize_role(str(role))
+        except ValueError:
             continue
         permissions: set[str] = set()
         candidate: Any
