@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -17,3 +18,13 @@ def test_load_envs_non_mapping(tmp_path: Path) -> None:
     file.write_text("- just\n- a\n- list\n")
     with pytest.raises(ValueError):
         environment.load_envs(file)
+
+
+def test_switch_environment_strips_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env_file = tmp_path / "envs.yaml"
+    environment.add_environment("staging", "https://staging", "blue", env_file)
+
+    url = environment.switch_environment("  staging  ", env_file)
+
+    assert url == "https://staging"
+    assert os.getenv("DOCREVIEW360_ENV") == "staging"
