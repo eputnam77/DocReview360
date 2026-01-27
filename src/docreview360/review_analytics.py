@@ -69,7 +69,7 @@ class ReviewTrends:
         self._scores[project].append(score)
 
     def trend(self, project: str) -> List[float]:
-        return self._scores.get(project, [])
+        return list(self._scores.get(project, []))
 
     def moving_average(self, project: str, window: int = 3) -> List[float]:
         scores = self.trend(project)
