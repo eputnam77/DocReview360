@@ -33,6 +33,8 @@ check_provider_health_task = app.task(name="docreview360.check_provider_health")
 
 def schedule_provider_health_checks(interval_minutes: int = 5) -> None:
     """Schedule periodic provider health checks."""
+    if not isinstance(interval_minutes, int) or isinstance(interval_minutes, bool):
+        raise TypeError("interval_minutes must be an integer")
     if interval_minutes <= 0:
         raise ValueError("interval_minutes must be positive")
 
