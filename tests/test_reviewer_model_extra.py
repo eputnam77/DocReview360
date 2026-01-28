@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from docreview360.reviewer_model import ReviewerModel
 
 
@@ -17,3 +19,13 @@ def test_reviewer_model_anomaly_detection() -> None:
     assert model.approval_rate("B") == 0.0
     anomalies = model.anomalous_reviewers(threshold=0.2)
     assert set(anomalies) == {"A", "B"}
+
+
+def test_reviewer_model_recommend_validates_k() -> None:
+    model = ReviewerModel()
+
+    with pytest.raises(TypeError):
+        model.recommend("Quick draft", k=True)
+
+    with pytest.raises(ValueError):
+        model.recommend("Quick draft", k=0)
