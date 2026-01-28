@@ -1,5 +1,7 @@
 import socket
 
+import pytest
+
 from _pytest.monkeypatch import MonkeyPatch
 
 from docreview360.monitoring import init_observability
@@ -28,3 +30,8 @@ def test_init_observability_with_env_sentry(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("SENTRY_DSN", "http://public@localhost/1")
     cfg = init_observability(port=None)
     assert cfg["sentry"] == "enabled"
+
+
+def test_init_observability_rejects_bool_port() -> None:
+    with pytest.raises(TypeError):
+        init_observability(port=True, dsn=None)

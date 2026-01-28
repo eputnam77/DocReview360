@@ -246,6 +246,10 @@ class ReviewerModel:
 
     def recommend(self, text: str, k: int = 3) -> Recommendation:
         """Return top-``k`` reviewer recommendations for ``text``."""
+        if not isinstance(k, int) or isinstance(k, bool):
+            raise TypeError("k must be an integer")
+        if k < 1:
+            raise ValueError("k must be at least 1")
 
         features = routing_feature_vector(text)
         start = perf_counter()

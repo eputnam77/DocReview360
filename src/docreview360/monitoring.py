@@ -122,6 +122,8 @@ def init_observability(port: int | None = None, *, dsn: str | None = None) -> Di
     services: Dict[str, str] = {}
 
     if port is not None:
+        if not isinstance(port, int) or isinstance(port, bool):
+            raise TypeError("port must be an integer")
         if port < 0 or port >= 65536:
             raise ValueError("port must be between 0 and 65535")
         attempt = port
@@ -151,6 +153,8 @@ def open_dashboard() -> str:
 
 def start_observability_stack(prom_port: int = 8000, grafana_port: int = 3000) -> Dict[str, str]:
     """Start the lightweight observability stack and return service URLs."""
+    if not isinstance(grafana_port, int) or isinstance(grafana_port, bool):
+        raise TypeError("invalid grafana_port")
     if grafana_port <= 0 or grafana_port >= 65536:
         raise ValueError("invalid grafana_port")
     services = init_observability(prom_port)

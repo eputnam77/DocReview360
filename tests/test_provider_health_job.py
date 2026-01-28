@@ -89,6 +89,8 @@ def test_health_job_updates_status(tmp_path: Path, monkeypatch) -> None:
 def test_schedule_health_checks_invalid_interval() -> None:
     from docreview360.celery_app import app
 
+    with pytest.raises(TypeError):
+        schedule_provider_health_checks(True)
     with pytest.raises(ValueError):
         schedule_provider_health_checks(0)
     schedule_provider_health_checks(1)
