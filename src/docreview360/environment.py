@@ -24,7 +24,20 @@ def load_envs(path: Path | None = None) -> Dict[str, Dict[str, str]]:
         raise ValueError(f"Invalid YAML in {path}") from exc
     if not isinstance(data, dict):
         raise ValueError("Environment configuration must be a mapping")
-    return data
+    validated: Dict[str, Dict[str, str]] = {}
+    for name, payload in data.items():
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Environment names must be non-empty strings")
+        if not isinstance(payload, dict):
+            raise ValueError("Environment entries must be mappings")
+        url = payload.get("url")
+        color = payload.get("color")
+        if not isinstance(url, str) or not url.strip():
+            raise ValueError("Environment url must be a non-empty string")
+        if not isinstance(color, str) or not color.strip():
+            raise ValueError("Environment color must be a non-empty string")
+        validated[name.strip()] = {"url": url.strip(), "color": color.strip()}
+    return validated
 
 
 def add_environment(name: str, url: str, color: str, path: Path | None = None) -> None:

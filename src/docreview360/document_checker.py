@@ -75,7 +75,7 @@ def _analyze_structure(
         m = header.match(line)
         if m:
             current = cast(str, m.group(1).strip().lower())
-            sections[current] = []
+            sections.setdefault(current, [])
         elif current is not None:
             sections[current].append(line)
 
