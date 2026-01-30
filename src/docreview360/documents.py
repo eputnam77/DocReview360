@@ -505,6 +505,7 @@ def update_document(
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
+    content = sanitize_content(content)
     # Remove the old version from the search index before updating
     from . import search as search_module
 
@@ -536,7 +537,7 @@ def update_document(
 
     # Re-index the updated document
     search_module.add_document(document)
-    if document.content:
+    if document.content.strip():
         fts.index_document(doc_id, document.content)
     log_audit_event(doc_id, "updated", actor=author or document.user, priority=priority)
 
