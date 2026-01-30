@@ -31,6 +31,11 @@ def test_verify_signature_valid(monkeypatch):
     assert security_utils.verify_signature("data", sig)
 
 
+def test_verify_signature_missing_secret_returns_false(monkeypatch):
+    monkeypatch.setattr(security_utils, "get_secret", lambda name: "")
+    assert security_utils.verify_signature("data", "sig") is False
+
+
 def test_create_signature_missing_secret(monkeypatch):
     monkeypatch.setattr(security_utils, "get_secret", lambda name: "")
     with pytest.raises(RuntimeError):
