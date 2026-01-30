@@ -64,6 +64,8 @@ def load_providers() -> None:
     if not isinstance(modules, list):
         raise ValueError("provider_modules must be a list")
     for mod in modules:
+        if not isinstance(mod, str) or not mod.strip():
+            raise ValueError("provider_modules entries must be non-empty strings")
         try:
             import_module(str(mod))
         except Exception:

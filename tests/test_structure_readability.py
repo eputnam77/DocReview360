@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docreview360.document_checker import run_checks
+from docreview360.document_checker import _analyze_structure, run_checks
 
 
 def test_structure_and_readability(tmp_path: Path) -> None:
@@ -34,3 +34,15 @@ Wrap up.
     result = run_checks(f)
     structure = result["structure"]
     assert "body" in structure["missing_sections"]
+
+
+def test_repeated_headings_accumulate_section_content() -> None:
+    content = (
+        "# Introduction\nIntro\n\n# Body\n"
+        + "word " * 120
+        + "\n# Body\n"
+        + "word " * 120
+        + "\n# Conclusion\nDone."
+    )
+    structure = _analyze_structure(content)
+    assert "body" in structure["overlong_sections"]
