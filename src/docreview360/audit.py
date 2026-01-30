@@ -166,6 +166,10 @@ def _load_audit_log_settings() -> Dict[str, int]:
                 data[key] = int(value)
             except (TypeError, ValueError):
                 logger.warning("Ignoring non-integer audit log setting '%s'", key)
+                continue
+            if data[key] <= 0:
+                logger.warning("Ignoring non-positive audit log setting '%s'", key)
+                data[key] = DEFAULT_AUDIT_LOG_SETTINGS[key]
     return data
 
 
@@ -339,6 +343,8 @@ def purge_audit_logs(retention_days: int | None = None) -> int:
 
     if retention_days is None:
         retention_days = _load_audit_log_settings()["retention_days"]
+    if retention_days <= 0:
+        retention_days = DEFAULT_AUDIT_LOG_SETTINGS["retention_days"]
 
     if not _AUDIT_LOG_PATH.exists():
         return 0
@@ -461,11 +467,34 @@ def schedule_audit_log_hashing() -> None:
 
     settings = load_settings()
     cfg = settings.get("audit_log", {})
-    interval = int(cfg.get("hash_interval_minutes", 60))
-    bucket = str(cfg.get("hash_bucket", "tamper_proof_store"))
-    prefix = str(cfg.get("hash_prefix", "audit_anchors"))
-    segment_size = int(cfg.get("hash_segment_size", 100))
-    retention = int(cfg.get("hash_retention_days", 365))
+    try:
+        interval = int(cfg.get("hash_interval_minutes", 60))
+    except (TypeError, ValueError):
+        interval = 60
+    if interval <= 0:
+        interval = 60
+    raw_bucket = cfg.get("hash_bucket", "tamper_proof_store")
+    if raw_bucket is None:
+        bucket = "tamper_proof_store"
+    else:
+        bucket = str(raw_bucket).strip() or "tamper_proof_store"
+    raw_prefix = cfg.get("hash_prefix", "audit_anchors")
+    if raw_prefix is None:
+        prefix = "audit_anchors"
+    else:
+        prefix = str(raw_prefix).strip() or "audit_anchors"
+    try:
+        segment_size = int(cfg.get("hash_segment_size", 100))
+    except (TypeError, ValueError):
+        segment_size = 100
+    if segment_size <= 0:
+        segment_size = 100
+    try:
+        retention = int(cfg.get("hash_retention_days", 365))
+    except (TypeError, ValueError):
+        retention = 365
+    if retention < 0:
+        retention = 365
     app.task(name="docreview360.hash_new_log_segments")(hash_new_log_segments)
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["hash_audit_log"] = {
