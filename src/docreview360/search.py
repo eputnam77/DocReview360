@@ -739,7 +739,10 @@ def overdue_high_priority() -> list[str]:
         alerts: list[str] = []
         for proj in projects.values():
             _expire_temp_assignment(proj, lock_held=True)
-            if proj.priority >= 5 and proj.created < datetime.now(UTC) - timedelta(days=14):
+            created = proj.created
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=UTC)
+            if proj.priority >= 5 and created < datetime.now(UTC) - timedelta(days=14):
                 alerts.append(proj.id)
         return alerts
 
