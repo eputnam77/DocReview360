@@ -64,3 +64,11 @@ def test_load_providers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
 
     assert regs[0][1] == "prov"  # default name fallback
     assert imported == ["m1", "m2"]
+
+
+def test_load_providers_rejects_non_string_modules(monkeypatch: pytest.MonkeyPatch) -> None:
+    entry_pts = types.SimpleNamespace(select=lambda group: [])
+    monkeypatch.setattr(settings_manager.metadata, "entry_points", lambda: entry_pts)
+    monkeypatch.setattr(settings_manager, "load_settings", lambda: {"provider_modules": ["ok", 123]})
+    with pytest.raises(ValueError, match="provider_modules entries must be non-empty strings"):
+        settings_manager.load_providers()
