@@ -13,7 +13,10 @@ from io import BytesIO
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 from uuid import uuid4
 
-import bleach
+try:  # Optional dependency for HTML sanitization.
+    import bleach
+except ModuleNotFoundError:  # pragma: no cover - minimal installs
+    bleach = None  # type: ignore[assignment]
 from pydantic import BaseModel, Field, field_serializer
 
 from . import fts
@@ -36,9 +39,13 @@ DEFAULT_MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MiB
 # Bleach's defaults omit headings which are common in Markdown content.  Extend the
 # whitelist so Markdown-style HTML headings survive sanitisation while still
 # removing unsafe elements such as ``<script>``.
-_SANITIZE_TAGS: frozenset[str] = frozenset(
-    set(bleach.sanitizer.ALLOWED_TAGS) | {"h1", "h2", "h3", "h4", "h5", "h6", "pre", "code"}
-)
+if bleach is not None:
+    _SANITIZE_TAGS: frozenset[str] = frozenset(
+        set(bleach.sanitizer.ALLOWED_TAGS)
+        | {"h1", "h2", "h3", "h4", "h5", "h6", "pre", "code"}
+    )
+else:  # pragma: no cover - fallback when bleach is missing
+    _SANITIZE_TAGS = frozenset()
 
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
 
@@ -132,6 +139,8 @@ def sanitize_content(content: str) -> str:
     """Scrub HTML/Markdown content using Bleach."""
 
     stripped = _SCRIPT_RE.sub("", content)
+    if bleach is None:
+        return stripped
     return bleach.clean(
         stripped,
         tags=_SANITIZE_TAGS,

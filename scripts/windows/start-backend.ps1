@@ -54,7 +54,7 @@ function Parse-DotEnvLine {
 }
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectRoot = Resolve-Path (Join-Path $scriptRoot '..' '..')
+$projectRoot = Resolve-Path (Join-Path (Join-Path $scriptRoot '..') '..')
 Set-Location $projectRoot
 
 $envFilePath = Join-Path $projectRoot $EnvFile

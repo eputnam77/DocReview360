@@ -2,7 +2,9 @@ import asyncio
 import importlib
 import os
 import sys
+import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -14,6 +16,27 @@ import pytest
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR / "src"))
 sys.path.insert(0, str(BASE_DIR))
+
+
+def _configure_test_tempdir() -> None:
+    """Ensure pytest temp directories are writable for this workspace."""
+
+    candidate = Path(tempfile.gettempdir())
+    probe_dir = candidate / f"docreview360-probe-{uuid4().hex}"
+    try:
+        probe_dir.mkdir(parents=True, exist_ok=True)
+        probe_dir.rmdir()
+        return
+    except Exception:
+        fallback = BASE_DIR / ".tmp"
+        fallback.mkdir(parents=True, exist_ok=True)
+        os.environ["TMPDIR"] = str(fallback)
+        os.environ["TEMP"] = str(fallback)
+        os.environ["TMP"] = str(fallback)
+        tempfile.tempdir = str(fallback)
+
+
+_configure_test_tempdir()
 
 doc_types = importlib.import_module("docreview360.doc_types")
 DEFAULT_DOC_TYPE_PHASES = doc_types.DEFAULT_DOC_TYPE_PHASES
@@ -108,7 +131,13 @@ def _reset_search(
 ) -> None:
     """Provide an isolated persistent store for the search module per test."""
 
-    db_dir = tmp_path_factory.mktemp("search-db")
+    try:
+        db_dir = tmp_path_factory.mktemp("search-db")
+    except PermissionError:
+        fallback_root = BASE_DIR / ".tmp" / "pytest"
+        fallback_root.mkdir(parents=True, exist_ok=True)
+        db_dir = fallback_root / f"search-db-{uuid4().hex}"
+        db_dir.mkdir(parents=True, exist_ok=True)
     db_path = db_dir / "state.db"
     monkeypatch.setenv("DOCREVIEW360_SEARCH_DB", str(db_path))
 

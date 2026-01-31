@@ -40,4 +40,5 @@ onnx==1.17.0
 onnxruntime==1.19.2
 torch==2.8.0
 
-# Note: docreview360 and govdocverify are local packages and cannot be audited
+# Note: docreview360 and Federal Style Validator (GovDocVerify) are local packages and
+# cannot be audited.

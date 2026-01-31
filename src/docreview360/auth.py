@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import secrets
 import sqlite3
@@ -13,8 +14,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, TypeVar
 
-import bcrypt
-import pyotp
+try:  # Optional dependencies for production-grade auth.
+    import bcrypt
+except ModuleNotFoundError:  # pragma: no cover - minimal dev installs
+    bcrypt = None  # type: ignore[assignment]
+
+try:
+    import pyotp
+except ModuleNotFoundError:  # pragma: no cover - minimal dev installs
+    pyotp = None  # type: ignore[assignment]
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -259,29 +267,11 @@ class PasswordPolicy:
             if isinstance(disallow_reuse, bool):
                 config["disallow_reuse"] = disallow_reuse
 
-            symbol_chars = policy_settings.get("symbol_characters")
-            if isinstance(symbol_chars, str) and symbol_chars:
-                config["symbol_characters"] = symbol_chars
+            symbol_characters = policy_settings.get("symbol_characters")
+            if isinstance(symbol_characters, str) and symbol_characters.strip():
+                config["symbol_characters"] = symbol_characters.strip()
 
-        valid_classes = tuple(
-            cls_name
-            for cls_name in config["character_classes"]
-            if cls_name in CHARACTER_CLASS_CHECKS
-        )
-        if not valid_classes:
-            valid_classes = default_classes
-
-        min_classes_required = min(config["min_character_classes"], len(valid_classes))
-        if min_classes_required <= 0:
-            min_classes_required = len(valid_classes)
-
-        return cls(
-            min_length=config["min_length"],
-            character_classes=valid_classes,
-            min_character_classes=min_classes_required,
-            disallow_reuse=config["disallow_reuse"],
-            symbol_characters=config["symbol_characters"],
-        )
+        return cls(**config)
 
     def validate(self, password: str, *, existing_hash: str | None = None) -> None:
         """Raise :class:`PasswordPolicyError` when ``password`` violates the policy."""
@@ -323,6 +313,41 @@ class PasswordPolicy:
 
         if errors:
             raise PasswordPolicyError(" ".join(errors))
+
+
+_PBKDF2_ITERATIONS = 120_000
+
+
+def _hash_password_fallback(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        _PBKDF2_ITERATIONS,
+    )
+    return f"pbkdf2${_PBKDF2_ITERATIONS}${salt.hex()}${digest.hex()}"
+
+
+def _verify_password_fallback(password: str, password_hash: str) -> bool:
+    if not password_hash.startswith("pbkdf2$"):
+        return False
+    parts = password_hash.split("$")
+    if len(parts) != 4:
+        return False
+    _, iterations_text, salt_hex, digest_hex = parts
+    try:
+        iterations = int(iterations_text)
+        salt = bytes.fromhex(salt_hex)
+    except (ValueError, TypeError):
+        return False
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+    return secrets.compare_digest(digest.hex(), digest_hex)
 
 
 @lru_cache(maxsize=1)
@@ -579,6 +604,8 @@ class UserRepository:
     def hash_password(password: str) -> str:
         """Return a salted password hash."""
 
+        if bcrypt is None:
+            return _hash_password_fallback(password)
         password_bytes = password.encode("utf-8")
         return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
 
@@ -586,6 +613,8 @@ class UserRepository:
     def verify_password(password: str, password_hash: str) -> bool:
         """Return ``True`` when ``password`` matches ``password_hash``."""
 
+        if bcrypt is None:
+            return _verify_password_fallback(password, password_hash)
         try:
             return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
         except ValueError:
@@ -598,6 +627,8 @@ class UserRepository:
         if not otp_secret:
             return False
         if otp_secret.isdigit() and len(otp_secret) == len(otp):
+            return secrets.compare_digest(otp_secret, otp)
+        if pyotp is None:
             return secrets.compare_digest(otp_secret, otp)
         try:
             totp = pyotp.TOTP(otp_secret)
