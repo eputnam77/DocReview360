@@ -7,8 +7,14 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import numpy as np
-import onnx
-from onnx import TensorProto, helper
+
+try:  # pragma: no cover - optional dependency
+    import onnx
+    from onnx import TensorProto, helper
+except ModuleNotFoundError:  # pragma: no cover - minimal installs
+    onnx = None  # type: ignore[assignment]
+    TensorProto = None  # type: ignore[assignment]
+    helper = None  # type: ignore[assignment]
 
 from .features import routing_features
 
@@ -139,6 +145,9 @@ def export_routing_critic_to_onnx(
     metadata: Mapping[str, str] | None = None,
 ) -> Path:
     """Export ``critic`` weights to ONNX format."""
+
+    if helper is None or onnx is None:
+        raise RuntimeError("onnx is not installed")
 
     dest = Path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)

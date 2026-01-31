@@ -186,13 +186,13 @@ uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
 pwsh -File scripts/windows/start-backend.ps1
 ```
 
-**Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with GovDocVerify.
+**Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with Federal Style Validator (FedStyleValidator, formerly GovDocVerify).
 
 **Prerequisites:** Ensure you've configured the environment variables (see "🔑 Configure secrets" section above) or have a `.env` file in the project root.
 
 - **API Documentation:** FastAPI auto‑generates interactive docs at http://localhost:8000/docs
 - **Health Check:** Test the server at http://localhost:8000/health
-- **GovDocVerify Integration:** The document checker requires this backend to process files
+- **Federal Style Validator Integration:** The document checker requires this backend to process files
 
 Pass secrets on the command line when you do not want to persist them:
 
@@ -226,7 +226,7 @@ Set-Content -Path .env.local -Value "NEXT_PUBLIC_API_BASE=http://localhost:8000"
 
 # Unix/Linux/macOS (bash/zsh):
 # cat > .env.local << 'EOF'
-# # Backend API base URL (required for GovDocVerify integration)
+# # Backend API base URL (required for Federal Style Validator integration)
 # NEXT_PUBLIC_API_BASE=http://localhost:8000
 # EOF
 

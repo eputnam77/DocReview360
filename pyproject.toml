@@ -68,9 +68,9 @@ docreview360 = "docreview360.cli:cli"
 
 # ───────────────────────────── optional deps buckets ───────────────────────────
 [project.optional-dependencies]
-# GovDocVerify is optional; the core app falls back to internal heuristics
-# when the integration is unavailable.
-govdocverify = ["GovDocVerify @ git+https://github.com/eputnam77/GovDocVerify.git"]
+# Federal Style Validator (formerly GovDocVerify) is optional; the core app
+# falls back to internal heuristics when the integration is unavailable.
+govdocverify = ["GovDocVerify @ git+https://github.com/eputnam77/FedStyleValidator.git"]
 # tokenizer support for OpenAI / tiktoken
 tokenizer = ["tiktoken>=0.5.1"]
 
@@ -230,7 +230,7 @@ module = ["tests.*"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["GovDocVerify"]
+module = ["GovDocVerify", "govdocverify", "fedstylevalidator"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

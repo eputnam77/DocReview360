@@ -16,7 +16,11 @@ except Exception:  # pragma: no cover - torch not available in minimal environme
     torch = None  # type: ignore[assignment]
     nn = None  # type: ignore[assignment]
 
-from onnx import TensorProto, helper
+try:  # pragma: no cover - optional dependency
+    from onnx import TensorProto, helper
+except ModuleNotFoundError:  # pragma: no cover - minimal installs
+    TensorProto = None  # type: ignore[assignment]
+    helper = None  # type: ignore[assignment]
 
 from .features import SIGNATURE_ANOMALY_FEATURE_NAMES
 from .onnx_infer import ModelMetadata, get_model_metadata, get_session, infer
@@ -66,6 +70,8 @@ def _sha256(path: Path) -> str:
 
 
 def _attach_metadata(path: Path, metadata: Mapping[str, str]) -> None:
+    if helper is None:
+        raise RuntimeError("onnx is not installed")
     import onnx
 
     model = onnx.load_model(path)
@@ -97,6 +103,8 @@ def _export_with_torch(path_obj: Path, opset: int) -> None:
 
 
 def _export_with_onnx(path_obj: Path, opset: int) -> None:
+    if helper is None:
+        raise RuntimeError("onnx is not installed")
     import onnx
 
     feature_dim = len(SIGNATURE_ANOMALY_FEATURE_NAMES)
@@ -160,6 +168,8 @@ def export_signature_anomaly_model(
 def _ensure_model(path: str | Path | None = None) -> Path:
     model_path = Path(path) if path else MODEL_PATH
     if not model_path.exists():
+        if helper is None:
+            return model_path
         export_signature_anomaly_model(model_path)
     return model_path
 
@@ -183,9 +193,10 @@ def score_signature_anomaly(features: Sequence[float]) -> tuple[float, ModelMeta
             linear += float(weight) * float(value)
         score = float(1.0 / (1.0 + math.exp(-linear)))
         score = float(np.clip(score, 0.0, 1.0))
+        sha = _sha256(model_path) if model_path.exists() else ""
         meta = ModelMetadata(
             path=model_path,
-            sha256=_sha256(model_path),
+            sha256=sha,
             version=MODEL_VERSION,
             custom_metadata={},
         )
@@ -196,6 +207,14 @@ def get_signature_anomaly_metadata() -> ModelMetadata:
     """Return cached metadata for the signature anomaly detector."""
 
     model_path = _ensure_model()
+    if helper is None:
+        sha = _sha256(model_path) if model_path.exists() else ""
+        return ModelMetadata(
+            path=model_path,
+            sha256=sha,
+            version=MODEL_VERSION,
+            custom_metadata={},
+        )
     return get_model_metadata(model_path)
 
 

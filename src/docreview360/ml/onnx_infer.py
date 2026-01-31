@@ -6,10 +6,17 @@ import hashlib
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, MutableMapping, Sequence
+from typing import Any, Mapping, MutableMapping, Sequence, TYPE_CHECKING
 
 import numpy as np
-import onnxruntime as ort
+
+try:  # Optional dependency for ML features.
+    import onnxruntime as ort
+except ModuleNotFoundError:  # pragma: no cover - exercised in minimal installs
+    ort = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    import onnxruntime as ort
 
 __all__ = [
     "ModelMetadata",
@@ -34,9 +41,20 @@ class ModelMetadata:
     custom_metadata: Mapping[str, str]
 
 
-_SESSION_CACHE: MutableMapping[tuple[Path, tuple[str, ...]], ort.InferenceSession] = {}
+_SESSION_CACHE: MutableMapping[tuple[Path, tuple[str, ...]], Any] = {}
 _METADATA_CACHE: MutableMapping[Path, ModelMetadata] = {}
 _LOCK = threading.Lock()
+
+
+class OnnxRuntimeUnavailable(RuntimeError):
+    """Raised when ONNX Runtime is required but not installed."""
+
+
+def _require_ort() -> None:
+    if ort is None:
+        raise OnnxRuntimeUnavailable(
+            "onnxruntime is not installed; install it to enable ML inference features."
+        )
 
 
 def _hash_file(path: Path) -> str:
@@ -58,6 +76,7 @@ def _read_custom_metadata(path: Path) -> dict[str, str]:
 
 
 def _prepare_providers(providers: Sequence[str] | None) -> list[str]:
+    _require_ort()
     requested = list(providers) if providers else list(_DEFAULT_PROVIDERS)
     available = set(ort.get_available_providers())
     missing = [p for p in requested if p not in available]
@@ -71,6 +90,7 @@ def get_session(
 ) -> ort.InferenceSession:
     """Return a cached :class:`onnxruntime.InferenceSession` for ``path``."""
 
+    _require_ort()
     model_path = Path(path).resolve()
     resolved_providers = _prepare_providers(providers)
     key = (model_path, tuple(resolved_providers))
@@ -97,6 +117,7 @@ def infer(
 ) -> list[np.ndarray]:
     """Run inference using ``inputs`` returning the raw outputs."""
 
+    _require_ort()
     if isinstance(session_or_path, ort.InferenceSession):
         session = session_or_path
     else:
@@ -109,6 +130,7 @@ def get_model_metadata(
 ) -> ModelMetadata:
     """Return :class:`ModelMetadata` extracted from the ONNX artefact."""
 
+    _require_ort()
     if isinstance(session_or_path, ort.InferenceSession):
         session = session_or_path
         path = Path(session._model_path).resolve()  # type: ignore[attr-defined]
