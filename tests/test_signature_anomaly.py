@@ -1,9 +1,6 @@
 """Tests for signature anomaly handling using stubbed providers."""
 
-# ruff: noqa: E402
-
 import hashlib
-import sys
 import types
 from typing import Any, Dict
 
@@ -16,40 +13,24 @@ def _approval_likelihood_stub(
     return 1.0
 
 
-quality_stub = types.ModuleType("docreview360.quality")
-quality_stub.approval_likelihood = _approval_likelihood_stub
-sys.modules.setdefault("docreview360.quality", quality_stub)
+@pytest.fixture
+def approvals_context(monkeypatch: pytest.MonkeyPatch):
+    from docreview360 import approvals as approvals_module
+    from docreview360.api import webhooks as webhooks_module
 
-torch_models_stub = types.ModuleType("docreview360.ml.torch_models")
-
-
-class _TinyCritic:  # pragma: no cover - stub for imports
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        pass
-
-
-def _update_critic_stub(*args: Any, **kwargs: Any) -> None:
-    return None
-
-
-torch_models_stub.TinyCritic = _TinyCritic
-torch_models_stub.update_critic = _update_critic_stub
-sys.modules.setdefault("docreview360.ml.torch_models", torch_models_stub)
-
-api_stub = types.ModuleType("docreview360.api")
-api_stub.__path__ = []  # type: ignore[attr-defined]
-webhooks_stub = types.ModuleType("docreview360.api.webhooks")
-webhooks_stub.emit_verification_completed = lambda *args: None
-sys.modules.setdefault("docreview360.api", api_stub)
-sys.modules.setdefault("docreview360.api.webhooks", webhooks_stub)
-
-
-from docreview360.approvals import ApprovalModel, approvals, verify_document_signature
-from docreview360.audit import get_audit_log
-from docreview360.documents import DocumentModel, documents
-from docreview360.integrations import registry
-from docreview360.integrations.signature import base as signature_base
-from docreview360.monitoring import SIGNATURE_ANOMALIES
+    monkeypatch.setattr(approvals_module, "approval_likelihood", _approval_likelihood_stub)
+    monkeypatch.setattr(
+        approvals_module,
+        "quality_model_metadata",
+        lambda: types.SimpleNamespace(
+            sha256="stub",
+            path="stub",
+            version="test",
+            custom_metadata={},
+        ),
+    )
+    monkeypatch.setattr(webhooks_module, "emit_verification_completed", lambda *args: None)
+    return approvals_module
 
 
 class StubSignatureProvider:
@@ -78,6 +59,8 @@ class StubSignatureProvider:
 
 
 def _metric_value(label: str) -> float:
+    from docreview360.monitoring import SIGNATURE_ANOMALIES
+
     sample = SIGNATURE_ANOMALIES.labels(label)
     value = getattr(sample, "_value", None)
     if value is None:
@@ -85,7 +68,18 @@ def _metric_value(label: str) -> float:
     return float(value.get())
 
 
-def test_signature_anomaly_triggers_escalation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_signature_anomaly_triggers_escalation(
+    approvals_context, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from docreview360.audit import get_audit_log
+    from docreview360.documents import DocumentModel, documents
+    from docreview360.integrations import registry
+    from docreview360.integrations.signature import base as signature_base
+
+    ApprovalModel = approvals_context.ApprovalModel
+    approvals = approvals_context.approvals
+    verify_document_signature = approvals_context.verify_document_signature
+
     approvals.clear()
     documents.clear()
 
