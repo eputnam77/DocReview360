@@ -61,9 +61,9 @@ def sync_to_sharepoint(
         env_dest = os.getenv("SHAREPOINT_ROOT")
         if not env_dest:
             raise ValueError("Destination must be provided or SHAREPOINT_ROOT set")
-        dest_path = Path(env_dest)
+        dest_path = Path(env_dest).expanduser()
     else:
-        dest_path = Path(dest)
+        dest_path = Path(dest).expanduser()
 
     dest_path.mkdir(parents=True, exist_ok=True)
 
