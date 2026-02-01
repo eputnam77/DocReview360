@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import sys
 import types
-from importlib.machinery import ModuleSpec
 from pathlib import Path
 from typing import Any
 
@@ -53,17 +51,7 @@ class _FakeSession:
 def _fake_get_session(path: str | Path, *, providers: Any | None = None) -> _FakeSession:
     return _FakeSession(path, providers)
 
-
-_fake_ort = types.ModuleType("onnxruntime")
-_fake_ort.__spec__ = ModuleSpec("onnxruntime", loader=None)
-_fake_ort.get_available_providers = lambda: ["CPUExecutionProvider"]
-_fake_ort.InferenceSession = _FakeSession
-sys.modules["onnxruntime"] = _fake_ort
-
-import docreview360.auth as auth  # noqa: E402
-import docreview360.ml.onnx_infer as onnx_infer  # noqa: E402
-
-onnx_infer.get_session = _fake_get_session
+import docreview360.ml.onnx_infer as onnx_infer
 
 
 def _fake_get_model_metadata(session_or_path: Any) -> onnx_infer.ModelMetadata:
@@ -86,18 +74,27 @@ def _fake_get_model_metadata(session_or_path: Any) -> onnx_infer.ModelMetadata:
     )
 
 
-onnx_infer.get_model_metadata = _fake_get_model_metadata
-
-
 def _prefilled_current_user(request: Any = None, token: str | None = None) -> auth.User:
     return auth.User(username="alice", active=True)
 
 
-auth.get_current_user = _prefilled_current_user
+@pytest.fixture(autouse=True)
+def _stub_ml_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_ort = types.SimpleNamespace(
+        get_available_providers=lambda: ["CPUExecutionProvider"],
+        InferenceSession=_FakeSession,
+    )
+    monkeypatch.setattr(onnx_infer, "ort", fake_ort)
+    monkeypatch.setattr(onnx_infer, "get_session", _fake_get_session)
+    monkeypatch.setattr(onnx_infer, "get_model_metadata", _fake_get_model_metadata)
+    monkeypatch.setattr(auth, "get_current_user", _prefilled_current_user)
+    yield
+    onnx_infer.clear_session_cache()
 
-from docreview360.api import app  # noqa: E402
-from docreview360.api import ml as ml_module  # noqa: E402
-from docreview360.ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES  # noqa: E402
+
+from docreview360.api import app
+from docreview360.api import ml as ml_module
+from docreview360.ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES
 
 
 @pytest.fixture
