@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProjectDetailsPage from "../pages/projects/[id]";
 import AuditTimeline from "@/components/AuditTimeline";
 import { Disclosure, Transition } from "@headlessui/react";
@@ -254,7 +255,14 @@ describe("ProjectDetailsPage", () => {
   });
 
   it("renders without crashing and forwards currentUser to ApprovalTable", () => {
-    const html = renderToString(<ProjectDetailsPage />);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const html = renderToString(
+      <QueryClientProvider client={queryClient}>
+        <ProjectDetailsPage />
+      </QueryClientProvider>,
+    );
 
     expect(html).toContain("<table");
     expect(approvalTableSpy).toHaveBeenCalled();
