@@ -558,6 +558,24 @@ def autosave_document(doc_id: str, content: str) -> tuple[DocumentModel, str]:
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
+    if not document.history:
+        revision_id = uuid4().hex
+        with document_lock:
+            document.history.append(
+                DocumentRevision(
+                    id=revision_id,
+                    timestamp=datetime.now(timezone.utc),
+                    content=document.content,
+                    steps=None,
+                    author=document.user or "",
+                )
+            )
+        if document.content.strip():
+            from . import search as search_module
+
+            search_module.add_document(document)
+            fts.index_document(doc_id, document.content)
+        return document, revision_id
     if document.content == content:
         return document, document.history[-1].id
     return update_document(doc_id, content)
