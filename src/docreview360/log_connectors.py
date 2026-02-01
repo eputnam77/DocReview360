@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any, List
 
 import httpx
 
 from .models import LogEntry
+
+logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency
     import boto3  # type: ignore[import-not-found]
@@ -119,7 +122,13 @@ emit_lock = asyncio.Lock()
 async def emit(entry: LogEntry) -> None:
     """Dispatch ``entry`` to all registered connectors respecting order."""
     async with emit_lock:
-        await asyncio.gather(*(c.emit(entry) for c in list(connectors)))
+        results = await asyncio.gather(
+            *(c.emit(entry) for c in list(connectors)),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, Exception):
+                logger.warning("Log connector emit failed: %s", result)
 
 
 __all__ = [
