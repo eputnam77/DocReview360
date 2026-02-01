@@ -79,20 +79,6 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-// Demo project data - matches the demo project in project detail page
-const DEMO_PROJECT: Project = {
-  id: "123e-ac-101",
-  number: "AC 20-197",
-  document_number: "AC 20-197",
-  type: "Advisory Circular",
-  title: "Turbine Engine and Airframe Sensor Icing Compliance",
-  status: "In Progress",
-  progress: 40,
-  updated: "2025-07-04",
-  user: "Jane Doe",
-  currentPhaseId: "Review",
-};
-
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
@@ -123,20 +109,10 @@ export default function ProjectList() {
               currentPhaseId: p.current_phase_id ?? p.phase ?? null,
             }))
           : [];
-
-        // Add demo project to the list (always include it)
-        const allProjects = [...fetchedProjects];
-        // Check if demo project already exists to avoid duplicates
-        const demoExists = allProjects.some((p) => p.id === DEMO_PROJECT.id);
-        if (!demoExists) {
-          allProjects.unshift(DEMO_PROJECT);
-        }
-
-        setProjects(allProjects);
+        setProjects(fetchedProjects);
       })
       .catch(() => {
-        // Even on error, show the demo project
-        setProjects([DEMO_PROJECT]);
+        setProjects([]);
       });
   }, [isAdmin, username]);
 
