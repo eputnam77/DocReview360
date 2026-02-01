@@ -13,7 +13,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 
 
 interface Review {
@@ -25,31 +25,6 @@ interface Review {
   phaseId: string;
   required?: boolean;
 }
-
-// Demo project ID
-const DEMO_PROJECT_ID = "123e-ac-101";
-
-// Demo reviews for the demo project
-const DEMO_REVIEWS: Review[] = [
-  {
-    id: "rev-1",
-    reviewer: "Jane Doe",
-    status: "pending",
-    comment: "Please check the legal cites in section 2.3.",
-    created: "2025-07-04T10:00:00Z",
-    phaseId: "Review",
-    required: true,
-  },
-  {
-    id: "rev-2",
-    reviewer: "John Smith",
-    status: "approved",
-    comment: "Approved, no changes needed.",
-    created: "2025-07-05T14:30:00Z",
-    phaseId: "Review",
-    required: true,
-  },
-];
 
 export default function ProjectReviewPage() {
   const router = useRouter();
@@ -66,16 +41,9 @@ export default function ProjectReviewPage() {
   // Fetch project phase
   useEffect(() => {
     if (!id) return;
-    // For demo project, use demo phase
-    if (id === DEMO_PROJECT_ID) {
-      setCurrentPhaseId("Review");
-      return;
-    }
-    fetch(`${API}/projects/${id}`)
+    authenticatedFetch(`${API}/projects/${id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((p) =>
-        setCurrentPhaseId(p?.current_phase_id || p?.phase || null),
-      )
+      .then((p) => setCurrentPhaseId(p?.current_phase_id || p?.phase || null))
       .catch(() => setCurrentPhaseId(null));
   }, [id]);
 
@@ -83,23 +51,11 @@ export default function ProjectReviewPage() {
   useEffect(() => {
     if (!id) return;
 
-    // For demo project, use demo reviews
-    if (id === DEMO_PROJECT_ID) {
-      setLoading(true);
-      // Filter demo reviews by current phase if needed
-      const filteredReviews = currentPhaseId
-        ? DEMO_REVIEWS.filter((r) => r.phaseId === currentPhaseId)
-        : DEMO_REVIEWS;
-      setReviews(filteredReviews);
-      setLoading(false);
-      return;
-    }
-
     const phaseQuery = currentPhaseId
       ? `?phase=${encodeURIComponent(currentPhaseId)}`
       : "";
     setLoading(true);
-    fetch(`${API}/projects/${id}/reviews${phaseQuery}`)
+    authenticatedFetch(`${API}/projects/${id}/reviews${phaseQuery}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) =>
         setReviews(
@@ -126,7 +82,7 @@ export default function ProjectReviewPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API}/projects/${id}/reviews`, {
+      const res = await authenticatedFetch(`${API}/projects/${id}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -22,6 +22,7 @@ import { useApprovals } from "@/lib/useApprovals";
 import { useReviewSummary } from "@/lib/useReviewSummary";
 import { useUserStore } from "@/state/user";
 import { Disclosure, Transition } from "@headlessui/react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     FileEdit,
     History,
@@ -85,30 +86,6 @@ interface Approval {
   phaseId?: string;
   required?: boolean;
 }
-interface Reply {
-  id: string;
-  author: string;
-  text: string;
-  date: string;
-}
-interface DispoComment {
-  id: string;
-  reviewer: string;
-  routing: string;
-  email: string;
-  pagePara: string;
-  comment: string;
-  change: string;
-  disposition: string;
-  decision?: "Accepted" | "Rejected" | "Deferred" | "";
-  replies?: Reply[];
-}
-interface RefDoc {
-  name: string;
-  url: string;
-  type: string;
-  file?: File;
-}
 interface VersionEntry {
   id: string;
   timestamp: string;
@@ -116,128 +93,6 @@ interface VersionEntry {
   action: string;
 }
 
-// ---------------------------------------------------------------------------
-// Demo Data
-// ---------------------------------------------------------------------------
-const DEMO_PROJECT: Project = {
-  id: "123e-ac-101",
-  number: "AC 20-197",
-  type: "Advisory Circular",
-  title: "Turbine Engine and Airframe Sensor Icing Compliance",
-  status: "In Progress",
-  progress: 40,
-  updated: "2025-07-04",
-  owner: "Jane Doe",
-  editor: "tiptap",
-  currentPhaseId: "Review",
-};
-
-const DEMO_WORKFLOW: Workflow = {
-  id: "wf-101",
-  phase: "Review",
-  steps: [
-    { name: "Draft", status: "complete" },
-    { name: "Review", status: "active" },
-    { name: "Approval", status: "pending" },
-    { name: "Published", status: "pending" },
-  ],
-};
-
-const DEMO_APPROVALS: Approval[] = [
-  {
-    id: "appr-1",
-    reviewer: "Jane Doe",
-    email: "jane@example.com",
-    state: "pending",
-    dueAt: "2025-07-04",
-    comments: "Please check the legal cites.",
-    phaseId: "Review",
-  },
-  {
-    id: "appr-2",
-    reviewer: "John Smith",
-    email: "john@example.com",
-    state: "approved",
-    dueAt: "2025-07-05",
-    signedAt: "2025-07-05T14:30:00Z",
-    comments: "Approved, no changes needed.",
-    phaseId: "Review",
-  },
-];
-
-const DEMO_DISPO_COMMENTS: DispoComment[] = [
-  {
-    id: "c1",
-    reviewer: "Jane Doe",
-    routing: "Legal",
-    email: "jane@example.com",
-    pagePara: "2/3.1",
-    comment: "Clarify regulatory reference.",
-    change: "Rewrite as: 'per 14 CFR 21.8…'",
-    disposition: "Accepted",
-    decision: "Accepted",
-    replies: [
-      {
-        id: "r1",
-        author: "Project Owner",
-        text: "Addressed in rev-3.",
-        date: "2025-07-05",
-      },
-    ],
-  },
-];
-
-const DEMO_LOGS: LogEntry[] = [
-  { timestamp: "2025-07-04", action: "Draft created", id: "l1", type: "edit" },
-  { timestamp: "2025-07-04", action: "Initial review started", id: "l2", type: "review" },
-  { timestamp: "2025-07-05", action: "Draft updated", id: "l3", type: "edit" },
-];
-
-const DEMO_APPROVAL_HISTORY: AuditEntry[] = [
-  {
-    id: "h1",
-    timestamp: "2025-07-05T14:31:00Z",
-    message: "signature_verified",
-    type: "approval",
-  },
-  {
-    id: "h2",
-    timestamp: "2025-07-05T14:32:00Z",
-    message: "signature_hash_mismatch",
-    type: "approval",
-  },
-];
-
-const DEMO_REFERENCE_DOCS: RefDoc[] = [
-  {
-    name: "Requirements.pdf",
-    url: "https://file-examples.com/wp-content/uploads/2017/10/file-sample_150kB.pdf",
-    type: "pdf",
-  },
-];
-
-const DEMO_VERSIONS: VersionEntry[] = [
-  {
-    id: "v1",
-    timestamp: "2025-07-04T10:00",
-    author: "Jane Doe",
-    action: "Draft uploaded",
-  },
-  {
-    id: "v2",
-    timestamp: "2025-07-04T18:30",
-    author: "John Smith",
-    action: "Minor edits",
-  },
-  {
-    id: "v3",
-    timestamp: "2025-07-05T09:15",
-    author: "Jane Doe",
-    action: "Address Legal comments",
-  },
-];
-
-// ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, "");
@@ -382,16 +237,13 @@ export default function ProjectDetailsPage() {
   const { id } = router.query;
 
   // ▼ state
-  const [project, setProject] = useState<Project | null>(DEMO_PROJECT);
-  const [workflow, setWorkflow] = useState<Workflow | null>(DEMO_WORKFLOW);
-  const [approvals, setApprovals] = useState<Approval[]>(DEMO_APPROVALS);
-  const [refDocs, setRefDocs] = useState<RefDoc[]>(DEMO_REFERENCE_DOCS);
-  const [logs, setLogs] = useState<LogEntry[]>(DEMO_LOGS);
+  const [project, setProject] = useState<Project | null>(null);
+  const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [historyEvents, setHistoryEvents] = useState<AuditEntry[]>([]);
-  const [versions] = useState<VersionEntry[]>(DEMO_VERSIONS);
-  const [reviewCount, setReviewCount] = useState(
-    DEMO_DISPO_COMMENTS.length,
-  );
+  const [versions] = useState<VersionEntry[]>([]);
+  const [reviewCount, setReviewCount] = useState(0);
   const [showPhaseDialog, setShowPhaseDialog] = useState(false);
   const [pendingPhase, setPendingPhase] = useState<string | null>(null);
 
@@ -434,48 +286,29 @@ export default function ProjectDetailsPage() {
     reset,
     remind,
     isLoading: approvalsLoading,
-  } = useApprovals({ workflow: projectData?.workflow, phase: projectData?.currentPhaseId });
+  } = useApprovals({ workflow: projectData?.workflow });
   const { data: reviewCountData, isLoading: reviewLoading } = useReviewSummary(
     projectData?.id,
     projectData?.currentPhaseId,
   );
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    // If this is the demo project ID, always use demo data
-    if (id === DEMO_PROJECT.id) {
-      setProject(DEMO_PROJECT);
-    } else {
-      setProject(projectData ?? null);
-    }
+    setProject(projectData ?? null);
   }, [projectData, id]);
   useEffect(() => {
-    // If this is the demo project ID, always use demo workflow
-    if (id === DEMO_PROJECT.id) {
-      setWorkflow(DEMO_WORKFLOW);
-    } else {
-      setWorkflow(workflowData ?? null);
-    }
+    setWorkflow(workflowData ?? null);
   }, [workflowData, id]);
   useEffect(() => {
-    // If this is the demo project ID, always use demo approvals
-    if (id === DEMO_PROJECT.id) {
-      setApprovals(DEMO_APPROVALS);
-    } else {
-      setApprovals(approvalsData ?? []);
-    }
+    setApprovals(approvalsData ?? []);
   }, [approvalsData, id]);
   useEffect(() => {
-    // If this is the demo project ID, always use demo review count
-    if (id === DEMO_PROJECT.id) {
-      setReviewCount(DEMO_DISPO_COMMENTS.length);
-    } else {
-      setReviewCount(reviewCountData?.count ?? 0);
-    }
+    setReviewCount(reviewCountData?.count ?? 0);
   }, [reviewCountData, id]);
 
   useEffect(() => {
     if (!id || !username) {
-      setLogs(DEMO_LOGS);
+      setLogs([]);
       return;
     }
     authenticatedFetch(`${API}/audit?entity_id=${id}`)
@@ -494,7 +327,7 @@ export default function ProjectDetailsPage() {
           })),
         ),
       )
-      .catch(() => setLogs(DEMO_LOGS));
+      .catch(() => setLogs([]));
   }, [id, username]);
 
   const loading = projectLoading || phasesLoading || approvalsLoading || reviewLoading;
@@ -589,13 +422,30 @@ export default function ProjectDetailsPage() {
     [project?.currentPhaseId],
   );
 
-  const confirmPhaseChange = useCallback(() => {
-    if (pendingPhase) {
-      handlePhaseChange(pendingPhase);
+  const confirmPhaseChange = useCallback(async () => {
+    if (pendingPhase && project?.id) {
+      try {
+        const res = await authenticatedFetch(`${API}/projects/${project.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phase: pendingPhase }),
+        });
+        if (!res.ok) {
+          throw new Error("Failed to update project phase");
+        }
+        handlePhaseChange(pendingPhase);
+        queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+        if (project.workflow) {
+          queryClient.invalidateQueries({ queryKey: ["workflow", project.workflow] });
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to update phase");
+      }
     }
     setShowPhaseDialog(false);
     setPendingPhase(null);
-  }, [pendingPhase, handlePhaseChange]);
+  }, [pendingPhase, project, handlePhaseChange, queryClient]);
 
   const sendReminder = (ids?: string[]) => {
     const targets = approvalsForPhase.filter(
@@ -619,7 +469,7 @@ export default function ProjectDetailsPage() {
           })),
         ),
       )
-      .catch(() => setHistoryEvents(DEMO_APPROVAL_HISTORY))
+      .catch(() => setHistoryEvents([]))
       .finally(() => setShowHistory(true));
   }, []);
 
@@ -720,15 +570,6 @@ export default function ProjectDetailsPage() {
       toast.error("Download failed");
     }
   };
-
-  // ▼ save optimistic / autosave placeholder (debounce)
-  const autosave = useCallback(() => {
-    console.info("autosave stub");
-  }, []);
-  useEffect(() => {
-    const id = setTimeout(autosave, 1500);
-    return () => clearTimeout(id);
-  }, [approvals, autosave]);
 
   useEffect(() => {
     if (!isOwner) return;
@@ -998,7 +839,7 @@ export default function ProjectDetailsPage() {
           <DialogHeader>
             <DialogTitle>Approval History</DialogTitle>
           </DialogHeader>
-          <AuditTimeline events={historyEvents.length ? historyEvents : DEMO_APPROVAL_HISTORY} />
+          <AuditTimeline events={historyEvents} />
         </DialogContent>
       </Dialog>
     </>
