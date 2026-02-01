@@ -1,17 +1,42 @@
-dash_bob:
-  activity: true
-  logs: true
-  stats: false
-  status: true
-prefs_bob:
-  theme: dark
-prefs_u1:
-  theme: dark
-signature_provider_fallback: documenso
-signature_provider_primary: missing
-signature_verification:
-  interval_minutes: 60
-  scope: approved
-audit_log:
-  retention_days: 2555
-  purge_interval_minutes: 1440
+{
+  "audit_log": {
+    "purge_interval_minutes": 1440,
+    "retention_days": 2555
+  },
+  "dash_bob": {
+    "activity": true,
+    "logs": true,
+    "stats": false,
+    "status": true
+  },
+  "prefs_bob": {
+    "theme": "dark"
+  },
+  "prefs_u1": {
+    "theme": "dark"
+  },
+  "projectprefs_qa-proj-20260201-062447": {
+    "ai_suggest": true,
+    "collab": false,
+    "heading_lock": false,
+    "indentation": false,
+    "lint": true,
+    "mark_review": false,
+    "section_node": false,
+    "watermark": true,
+    "watermark_text": "QA watermark"
+  },
+  "rbac": {
+    "roles": {
+      "qa_role": [
+        "read"
+      ]
+    }
+  },
+  "signature_provider_fallback": "documenso",
+  "signature_provider_primary": "sandbox",
+  "signature_verification": {
+    "interval_minutes": 60,
+    "scope": "approved"
+  }
+}

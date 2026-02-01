@@ -87,7 +87,7 @@ export default function CheckerPage() {
               )}
               <span className={`text-sm font-medium ${apiStatus === 'connected' ? 'text-green-800' : 'text-red-800'}`}>
                 {apiStatus === 'connected'
-                  ? 'Connected to GovDocVerify backend'
+                  ? 'Connected to FedStyleValidator backend'
                   : 'Backend connection failed - check configuration'
                 }
               </span>
@@ -102,7 +102,7 @@ export default function CheckerPage() {
           <UploadCloud className="h-8 w-8 text-indigo-600" />
           <CardTitle className="text-lg">Upload a document</CardTitle>
           <CardDescription>
-            DOC / DOCX only. The checker validates headings, accessibility, and FAA style using GovDocVerify.
+            DOC / DOCX only. The checker validates headings, accessibility, and FAA style using FedStyleValidator.
           </CardDescription>
         </CardHeader>
 
@@ -118,7 +118,7 @@ export default function CheckerPage() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? "Running GovDocVerify checks…" : "Run checks"}
+              {isLoading ? "Running FedStyleValidator checks..." : "Run checks"}
             </Button>
           </form>
         </CardContent>
@@ -137,7 +137,7 @@ export default function CheckerPage() {
               <p><strong>Troubleshooting:</strong></p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Ensure the backend server is running on port 8000</li>
-                <li>Check that GovDocVerify is properly installed</li>
+                <li>Check that FedStyleValidator is properly installed</li>
                 <li>Verify NEXT_PUBLIC_API_BASE environment variable is set</li>
                 <li>Check browser console for detailed error information</li>
               </ul>
@@ -151,7 +151,7 @@ export default function CheckerPage() {
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-2">
             <FileWarning className="h-6 w-6 text-orange-600" />
-            <CardTitle className="text-lg font-semibold">GovDocVerify Results</CardTitle>
+            <CardTitle className="text-lg font-semibold">FedStyleValidator Results</CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-72 rounded-md border p-2">

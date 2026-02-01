@@ -21,6 +21,15 @@ def test_log_hash_chain(tmp_path) -> None:
     assert not verify_hash_chain(batch_size=1, bucket=tmp_path, key=key)
 
 
+def test_log_hash_chain_idempotent(tmp_path) -> None:
+    clear_logs()
+    log_event("alpha", user_id="u1")
+    key = "chain.json"
+    first = batch_hash_logs(batch_size=1, bucket=tmp_path, key=key)
+    second = batch_hash_logs(batch_size=1, bucket=tmp_path, key=key)
+    assert first == second
+
+
 @pytest.mark.parametrize("batch_size", [0, -1])
 def test_log_hash_chain_rejects_non_positive_batch_size(batch_size) -> None:
     with pytest.raises(ValueError, match="batch_size must be positive"):

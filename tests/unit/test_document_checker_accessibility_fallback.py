@@ -15,7 +15,7 @@ def _write_and_check(tmp_path: Path, content: str) -> dict[str, object]:
     path = tmp_path / "doc.html"
     path.write_text(content, encoding="utf-8")
     # Ensure the fallback implementation is exercised regardless of whether
-    # GovDocVerify is installed in the environment running the tests.
+    # FedStyleValidator is installed in the environment running the tests.
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(document_checker, "_gov_run", None)
     try:

@@ -63,7 +63,26 @@ def batch_hash_logs(
     entries = export_logs(user_id, log_access=False)
     batches = [entries[i : i + batch_size] for i in range(0, len(entries), batch_size)]
     chain = _compute_chain(batches)
-    upload_file(bucket, key, json.dumps(chain).encode(), append_only=True)
+    data = json.dumps(chain).encode()
+    try:
+        existing_raw = download_file(bucket, key)
+    except FileNotFoundError:
+        existing_raw = None
+    except Exception as exc:  # pragma: no cover - defensive
+        raise RuntimeError("existing log chain could not be read") from exc
+
+    if existing_raw is not None:
+        try:
+            existing = json.loads(existing_raw.decode())
+        except Exception as exc:  # pragma: no cover - defensive
+            raise RuntimeError("existing log chain is unreadable") from exc
+        if existing == chain:
+            return chain
+        raise FileExistsError(
+            "log hash chain already exists and differs; use a new key"
+        )
+
+    upload_file(bucket, key, data, append_only=True)
     return chain
 
 

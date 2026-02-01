@@ -23,11 +23,11 @@ const ALL_TOOLS_ITEMS = [
     isBuiltIn: false,
   },
   {
-    id: "govdocverify",
+    id: "fedstylevalidator",
     label: "Document Checker",
     href: "/tools/checker",
     icon: <SpellCheck className="w-6 h-6 text-green-600" />,
-    desc: "Validate documents against FAA style and accessibility rules.",
+    desc: "Validate documents with FedStyleValidator for FAA style and accessibility rules.",
     isBuiltIn: true,
   },
   {
@@ -55,7 +55,7 @@ const ALL_TOOLS_ITEMS = [
     desc: "Check grammar, spelling, style, and accessibility compliance.",
     isBuiltIn: false,
     requiresPlugins: ["language-tool-python", "pyspellchecker", "gingerit"],
-    includesBuiltIn: ["govdocverify"]
+    includesBuiltIn: ["fedstylevalidator"]
   },
   {
     id: "document-processor",
@@ -82,14 +82,14 @@ export default function ToolsPage() {
         } else {
           // Default to enabled if API fails
           setEnabledPlugins({
-            govdocverify: true,
+            fedstylevalidator: true,
             scdocbuilder: true
           });
         }
       } catch (error) {
         // Default to enabled if API fails
         setEnabledPlugins({
-          govdocverify: true,
+          fedstylevalidator: true,
           scdocbuilder: true
         });
       } finally {
