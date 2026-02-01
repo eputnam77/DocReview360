@@ -1,18 +1,39 @@
-"use client";
-// frontend/app/instances/[id]/page.tsx
 import {
-    CompletedBanner,
-    ProgressSidebar,
-    StepStatusBadge,
+  CompletedBanner,
+  ProgressSidebar,
+  StepStatusBadge,
 } from "@/components/workflow";
-import { MOCK_INSTANCE } from "@/data/mock";
+import { useWorkflowInstance } from "@/lib/useWorkflowInstance";
+import { useRouter } from "next/router";
 
-// Type for Next.js dynamic route params
-type Props = { params: { id: string } };
+export default function InstancePage() {
+  const router = useRouter();
+  const id = typeof router.query.id === "string" ? router.query.id : undefined;
+  const { data: wf, isLoading, error } = useWorkflowInstance(id);
 
-export default function InstancePage({ params }: Props) {
-  // Using mock workflow data until API integration lands
-  const wf = { ...MOCK_INSTANCE, id: params.id };
+  if (!id) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <p className="text-sm text-muted-foreground">Loading workflow...</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <p className="text-sm text-muted-foreground">Loading workflow...</p>
+      </div>
+    );
+  }
+
+  if (error || !wf) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <p className="text-sm text-red-600">Unable to load workflow.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -23,7 +44,7 @@ export default function InstancePage({ params }: Props) {
         {/* Completed Banner or summary */}
         <CompletedBanner
           workflowName={wf.workflowName}
-          completedAt={wf.steps.find(s => s.status === "Completed")?.completedAt}
+          completedAt={wf.steps.find((s) => s.status === "Completed")?.completedAt}
         />
 
         {/* Steps Progress */}
