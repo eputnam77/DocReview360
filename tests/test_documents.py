@@ -6,6 +6,8 @@ from docreview360.api import app
 from docreview360.audit import clear_audit_log
 from docreview360.documents import (
     autosave_document,
+    DocumentModel,
+    documents,
     get_document_versions,
     import_document,
 )
@@ -67,3 +69,18 @@ def test_autosave_document() -> None:
     # Safely remove document if it exists
     if doc.id in doc_module.documents:
         del doc_module.documents[doc.id]
+
+
+def test_autosave_document_with_empty_history() -> None:
+    doc = DocumentModel(id="doc-empty-history", content="draft")
+    documents[doc.id] = doc
+    saved_doc, revision_id = autosave_document(doc.id, "draft")
+    assert saved_doc.history
+    assert saved_doc.history[-1].id == revision_id
+    assert get_document_versions(doc.id) == ["draft"]
+    from docreview360 import fts as fts_module
+    from docreview360 import search as search_module
+
+    search_module.search_index.remove_document(doc.id)
+    fts_module.remove_document(doc.id)
+    documents.pop(doc.id, None)
