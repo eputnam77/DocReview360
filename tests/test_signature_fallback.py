@@ -79,6 +79,15 @@ def client() -> TestClient:
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _reset_documenso_state() -> None:
+    documenso._signatures.clear()
+    documenso._sig_workflows.clear()
+    documenso._sig_certificates.clear()
+    documenso._certificates.clear()
+    documenso._reset_circuit_breaker_for_tests()
+
+
 def test_fallback_and_dual_provider(client: TestClient, sample_doc: bytes) -> None:
     approvals.clear()
     base.providers.clear()
