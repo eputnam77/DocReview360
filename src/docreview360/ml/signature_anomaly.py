@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 from pathlib import Path
+from threading import Lock
 from typing import Mapping, Sequence
 
 import numpy as np
@@ -23,11 +24,21 @@ except ModuleNotFoundError:  # pragma: no cover - minimal installs
     helper = None  # type: ignore[assignment]
 
 from .features import SIGNATURE_ANOMALY_FEATURE_NAMES
-from .onnx_infer import ModelMetadata, get_model_metadata, get_session, infer
+from .onnx_infer import (
+    ModelMetadata,
+    OnnxRuntimeUnavailable,
+    get_model_metadata,
+    get_session,
+    infer,
+)
 
 MODEL_VERSION = "1.0.0"
 MODEL_NAME = "signature_anomaly.onnx"
 MODEL_PATH = Path(__file__).with_name("assets") / MODEL_NAME
+_MAX_ONNX_IR_VERSION = 11
+
+_VALIDATION_LOCK = Lock()
+_VALIDATED_MODELS: set[Path] = set()
 
 _ANOMALY_WEIGHTS = (-1.0, -2.0, 1.5, 2.0, -1.5, -2.5, -0.8, -1.0)
 _ANOMALY_BIAS = 1.8
@@ -69,15 +80,55 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _mark_validated(path: Path) -> None:
+    with _VALIDATION_LOCK:
+        _VALIDATED_MODELS.add(path)
+
+
+def _is_validated(path: Path) -> bool:
+    with _VALIDATION_LOCK:
+        return path in _VALIDATED_MODELS
+
+
+def _invalidate_validation(path: Path) -> None:
+    with _VALIDATION_LOCK:
+        _VALIDATED_MODELS.discard(path)
+
+
+def _is_model_valid(path: Path) -> bool:
+    if helper is None:
+        return True
+    try:
+        import onnx
+    except ModuleNotFoundError:
+        return True
+    try:
+        onnx.load_model(path)
+    except Exception:
+        return False
+    try:
+        get_session(path)
+    except OnnxRuntimeUnavailable:
+        return True
+    except Exception:
+        return False
+    return True
+
+
 def _attach_metadata(path: Path, metadata: Mapping[str, str]) -> None:
     if helper is None:
         raise RuntimeError("onnx is not installed")
     import onnx
 
     model = onnx.load_model(path)
+    if model.ir_version > _MAX_ONNX_IR_VERSION:
+        model.ir_version = _MAX_ONNX_IR_VERSION
     props = {item.key: item.value for item in model.metadata_props}
     props.update(metadata)
-    model.metadata_props.clear()
+    try:
+        model.metadata_props.clear()
+    except AttributeError:
+        del model.metadata_props[:]
     for key, value in props.items():
         entry = model.metadata_props.add()
         entry.key = key
@@ -171,6 +222,24 @@ def _ensure_model(path: str | Path | None = None) -> Path:
         if helper is None:
             return model_path
         export_signature_anomaly_model(model_path)
+        _mark_validated(model_path)
+        return model_path
+
+    if helper is None:
+        return model_path
+
+    if _is_validated(model_path):
+        return model_path
+
+    if _is_model_valid(model_path):
+        _mark_validated(model_path)
+        return model_path
+
+    try:
+        export_signature_anomaly_model(model_path)
+        _mark_validated(model_path)
+    except Exception:
+        return model_path
     return model_path
 
 
@@ -215,7 +284,14 @@ def get_signature_anomaly_metadata() -> ModelMetadata:
             version=MODEL_VERSION,
             custom_metadata={},
         )
-    return get_model_metadata(model_path)
+    try:
+        return get_model_metadata(model_path)
+    except OnnxRuntimeUnavailable:
+        raise
+    except Exception:
+        _invalidate_validation(model_path)
+        model_path = _ensure_model()
+        return get_model_metadata(model_path)
 
 
 __all__ = [

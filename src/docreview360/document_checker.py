@@ -7,10 +7,8 @@ from pathlib import Path
 from typing import Any, Dict, List, cast
 
 try:
-    # GovDocVerify installs as the lowercase ``govdocverify`` package
-    # regardless of repository casing. Importing with the original
-    # mixed‑case name fails on Linux filesystems.
-    from govdocverify.cli import process_document as _gov_run  # type: ignore[import-not-found]
+    # FedStyleValidator (Federal Style Validator) optional integration.
+    from .ml.features import _gov_run as _gov_run  # type: ignore[attr-defined]
 except Exception:
     _gov_run = None
 
@@ -97,7 +95,7 @@ def _compliance_summary(text: str) -> dict[str, object]:
 
 
 def _fallback(file_path: str | Path, *, text: str | None = None) -> dict[str, object]:
-    """Minimal checker used when GovDocVerify is unavailable."""
+    """Minimal checker used when FedStyleValidator is unavailable."""
 
     path = Path(file_path)
     if text is None:
@@ -193,14 +191,14 @@ def _detect_anomalies(text: str, threshold: float = 0.7) -> bool:
 
 
 def run_checks(file_path: str | Path) -> dict[str, Any]:
-    """Run document checks using GovDocVerify if available."""
+    """Run document checks using FedStyleValidator if available."""
 
     path = Path(file_path)
     text = path.read_text(encoding="utf-8")
     compliance = _compliance_summary(text)
     if _gov_run is not None:
         try:
-            # GovDocVerify requires a document type argument.  We use "Other"
+            # FedStyleValidator requires a document type argument.  We use "Other"
             # which maps to ``DocumentType.OTHER`` within the library.
             result = _gov_run(str(file_path), "Other")
             payload = cast(dict[str, Any], result)
@@ -208,7 +206,7 @@ def run_checks(file_path: str | Path) -> dict[str, Any]:
             payload["compliance"] = compliance
             return payload
         except Exception:
-            # Fall back to the lightweight checker if GovDocVerify fails at
+            # Fall back to the lightweight checker if FedStyleValidator fails at
             # runtime (e.g. missing config files).
             pass
 

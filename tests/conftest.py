@@ -21,14 +21,13 @@ sys.path.insert(0, str(BASE_DIR))
 def _configure_test_tempdir() -> None:
     """Ensure pytest temp directories are writable for this workspace."""
 
-    candidate = Path(tempfile.gettempdir())
-    probe_dir = candidate / f"docreview360-probe-{uuid4().hex}"
     try:
-        probe_dir.mkdir(parents=True, exist_ok=True)
-        probe_dir.rmdir()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            probe_file = Path(temp_dir) / "probe.txt"
+            probe_file.write_text("ok", encoding="utf-8")
         return
     except Exception:
-        fallback = BASE_DIR / ".tmp"
+        fallback = BASE_DIR / ".tmp" / f"pytest-{uuid4().hex}"
         fallback.mkdir(parents=True, exist_ok=True)
         os.environ["TMPDIR"] = str(fallback)
         os.environ["TEMP"] = str(fallback)

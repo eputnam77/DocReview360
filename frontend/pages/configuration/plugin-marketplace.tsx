@@ -38,15 +38,15 @@ export default function PluginMarketplace() {
         // Built-in plugins that are always available
         const builtInPlugins: Plugin[] = [
           {
-            id: "govdocverify",
-            name: "GovDocVerify",
-            description: "Government document verification tool that validates documents against FAA style guidelines, accessibility standards, and regulatory compliance requirements. Provides detailed feedback on heading structure, formatting, and content validation.",
+            id: "fedstylevalidator",
+            name: "FedStyleValidator",
+            description: "Federal Style Validator for government documents. Validates FAA style guidelines, accessibility standards, and regulatory compliance requirements. Provides detailed feedback on heading structure, formatting, and content validation.",
             category: "Document Quality",
             version: "2.1.0",
             author: "DocReview360 Team",
             tags: ["government", "verification", "faa", "accessibility", "compliance"],
             isBuiltIn: true,
-            isEnabled: builtInData.govdocverify !== false // Default to enabled
+            isEnabled: builtInData.fedstylevalidator !== false // Default to enabled
           },
           {
             id: "scdocbuilder",
@@ -220,9 +220,9 @@ export default function PluginMarketplace() {
         // Fallback to sample data if API fails
         setPlugins([
           {
-            id: "govdocverify",
-            name: "GovDocVerify",
-            description: "Government document verification tool that validates documents against FAA style guidelines, accessibility standards, and regulatory compliance requirements. Provides detailed feedback on heading structure, formatting, and content validation.",
+            id: "fedstylevalidator",
+            name: "FedStyleValidator",
+            description: "Federal Style Validator for government documents. Validates FAA style guidelines, accessibility standards, and regulatory compliance requirements. Provides detailed feedback on heading structure, formatting, and content validation.",
             category: "Document Quality",
             version: "2.1.0",
             author: "DocReview360 Team",
@@ -459,7 +459,7 @@ export default function PluginMarketplace() {
                 and enhanced export capabilities. These are actual Python packages that integrate seamlessly with the core system.
               </p>
               <p className="text-blue-700 text-sm">
-                <strong>Built-in Tools:</strong> GovDocVerify and SCDocBuilder are pre-installed tools that can be toggled on/off
+                <strong>Built-in Tools:</strong> FedStyleValidator and SCDocBuilder are pre-installed tools that can be toggled on/off
                 in the Tool menus. These tools are always available but can be hidden from navigation if not needed.
               </p>
               <p className="text-blue-700 text-sm">

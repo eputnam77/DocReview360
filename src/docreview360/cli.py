@@ -386,25 +386,30 @@ def logs() -> None:
 
 @logs.command("hash-chain")
 @click.option("--bucket", default="tamper_proof_store", show_default=True)
+@click.option("--key", default="log_chain.json", show_default=True)
 @click.option("--batch-size", default=100, show_default=True)
-def hash_chain(bucket: str, batch_size: int) -> None:
+def hash_chain(bucket: str, key: str, batch_size: int) -> None:
     """Compute and store a hash chain of audit logs."""
 
     from .log_hash_chain import batch_hash_logs
 
-    batch_hash_logs(bucket=bucket, batch_size=batch_size)
+    try:
+        batch_hash_logs(bucket=bucket, key=key, batch_size=batch_size)
+    except (FileExistsError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
     click.echo("Stored log hash chain")
 
 
 @logs.command("verify-chain")
 @click.option("--bucket", default="tamper_proof_store", show_default=True)
+@click.option("--key", default="log_chain.json", show_default=True)
 @click.option("--batch-size", default=100, show_default=True)
-def verify_chain(bucket: str, batch_size: int) -> None:
+def verify_chain(bucket: str, key: str, batch_size: int) -> None:
     """Verify the stored audit log hash chain."""
 
     from .log_hash_chain import verify_hash_chain
 
-    if verify_hash_chain(bucket=bucket, batch_size=batch_size):
+    if verify_hash_chain(bucket=bucket, key=key, batch_size=batch_size):
         click.echo("Log integrity verified")
     else:
         raise click.ClickException("Log integrity check failed")
@@ -428,6 +433,9 @@ def verify_signatures(scope: str, document_ids: tuple[str, ...], parallel: bool)
     )
     click.echo(f"Processed {processed} approvals")
 
+
+# Provide a short alias for the RBAC admin group to match documentation.
+cli.add_command(rbac_admin, "rbac")
 
 if __name__ == "__main__":
     cli()

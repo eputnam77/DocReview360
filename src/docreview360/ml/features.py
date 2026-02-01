@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 import re
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Mapping, Sequence
-
-try:  # pragma: no cover - optional dependency wiring
-    from govdocverify.cli import process_document as _gov_run  # type: ignore[import-not-found]
-except Exception:  # pragma: no cover - runtime fallback
-    _gov_run = None
+from pathlib import Path
+from typing import Any, Callable, Mapping, Sequence, cast
 
 __all__ = [
     "CUSTOM_STYLE_RULES",
@@ -28,6 +25,59 @@ __all__ = [
     "structural_pattern_score",
     "style_guide_score",
 ]
+
+StyleValidatorRunner = Callable[[str, str], Mapping[str, object]]
+
+
+def _package_root(package_name: str) -> Path | None:
+    try:
+        package = importlib.import_module(package_name)
+    except Exception:
+        return None
+    package_file = getattr(package, "__file__", None)
+    if not package_file:
+        return None
+    return Path(package_file).resolve().parent
+
+
+def _find_terminology_asset(package_root: Path) -> Path | None:
+    candidates = (
+        package_root / "config" / "terminology.json",
+        package_root / "data" / "terminology.json",
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    try:
+        for candidate in package_root.rglob("terminology.json"):
+            return candidate
+    except OSError:
+        return None
+    return None
+
+
+def _load_style_validator(module_path: str) -> StyleValidatorRunner | None:
+    try:
+        module = importlib.import_module(module_path)
+    except Exception:
+        return None
+    runner = getattr(module, "process_document", None)
+    if not callable(runner):
+        return None
+    package_root = _package_root(module_path.split(".")[0])
+    if package_root is not None and _find_terminology_asset(package_root) is None:
+        return None
+    return cast(StyleValidatorRunner, runner)
+
+
+def _resolve_style_validator() -> StyleValidatorRunner | None:
+    runner = _load_style_validator("fedstylevalidator.cli")
+    if runner is not None:
+        return runner
+    return None
+
+
+_gov_run: StyleValidatorRunner | None = _resolve_style_validator()
 
 
 @dataclass(frozen=True)
@@ -113,7 +163,7 @@ def _heuristic_style_score(text: str) -> float:
 
 
 def style_guide_score(text: str) -> float:
-    """Return a style score using GovDocVerify when available; fall back otherwise."""
+    """Return a style score using FedStyleValidator when available; fall back otherwise."""
 
     if _gov_run is not None:
         try:

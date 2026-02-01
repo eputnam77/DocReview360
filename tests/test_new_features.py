@@ -109,7 +109,7 @@ def test_structure_and_export(monkeypatch):
         raising=False,
     )
 
-    # style_guide_score via govdocverify branch
+    # style_guide_score via FedStyleValidator branch
     assert ai_utils.style_guide_score("Good sentence.") < 1
 
     assert ai_utils.structural_pattern_score("") == 0.0

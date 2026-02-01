@@ -1103,6 +1103,53 @@ standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.8)", "htt
 standard-no-fastapi-cloud-cli = ["email-validator (>=2.0.0)", "fastapi-cli[standard-no-fastapi-cloud-cli] (>=0.0.8)", "httpx (>=0.23.0,<1.0.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
+name = "fedstylevalidator"
+version = "0.1.0"
+description = "Tool for checking documents against Federal writing standards."
+optional = true
+python-versions = ">=3.11,<4.0"
+groups = ["main"]
+markers = "extra == \"fedstylevalidator\""
+files = []
+develop = false
+
+[package.dependencies]
+anyio = ">=4.4.0"
+beautifulsoup4 = ">=4.12.0"
+colorama = ">=0.4.6"
+fastapi = ">=0.109.1"
+filetype = ">=1.2.0"
+httpx = ">=0.28.1"
+nltk = ">=3.9.1"
+numpy = ">=1.24.3"
+pandas = ">=2.2.1"
+pdfkit = ">=1.0.0"
+pydantic = ">=2.11.4"
+python-docx = ">=0.8.11"
+python-multipart = ">=0.0.20"
+pyyaml = ">=6.0"
+starlette = ">=0.49.1"
+tenacity = ">=8.2,<9.0"
+typing-extensions = ">=4.9.0"
+zipp = "3.19.1"
+
+[package.extras]
+dev = ["bandit[toml] (>=1.8.5)", "hypothesis (>=6)", "mypy (>=1.10)", "pip-audit (>=2.7)", "pre-commit (>=3.7)", "pytest (>=8)", "pytest-cov (>=5)", "ruff (>=0.5)", "semgrep (>=1.123.0)", "uvicorn (>=0.30)"]
+format = ["ruff (>=0.5)"]
+lint = ["ruff (>=0.5)"]
+packs-faa = ["fedstylevalidator-packs-faa (>=0.1.0)"]
+qa = ["pre-commit (>=3.7)"]
+security = ["bandit[toml] (>=1.8.5)", "pip-audit (>=2.7)", "semgrep (>=1.123.0)"]
+test = ["hypothesis (>=6)", "pytest (>=8)", "pytest-cov (>=5)"]
+typing = ["mypy (>=1.10)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/eputnam77/FedStyleValidator.git"
+reference = "HEAD"
+resolved_reference = "b2fff2c9cef71706b17aabe1efbd37a771dd3b8e"
+
+[[package]]
 name = "filelock"
 version = "3.20.3"
 description = "A platform independent file lock."
@@ -1121,7 +1168,7 @@ description = "Infer file type and MIME type of any file/buffer. No external dep
 optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"govdocverify\""
+markers = "extra == \"fedstylevalidator\""
 files = [
     {file = "filetype-1.2.0-py2.py3-none-any.whl", hash = "sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25"},
     {file = "filetype-1.2.0.tar.gz", hash = "sha256:66b56cd6474bf41d8c54660347d37afcc3f7d1970648de365c102ef77548aadb"},
@@ -1292,50 +1339,6 @@ protobuf = ">=3.20.2,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4
 grpc = ["grpcio (>=1.44.0,<2.0.0)"]
 
 [[package]]
-name = "govdocverify"
-version = "0.1.0"
-description = "Tool for checking documents against Federal writing standards."
-optional = true
-python-versions = ">=3.11,<4.0"
-groups = ["main"]
-markers = "extra == \"govdocverify\""
-files = []
-develop = false
-
-[package.dependencies]
-anyio = ">=4.4.0"
-beautifulsoup4 = ">=4.12.0"
-colorama = ">=0.4.6"
-fastapi = ">=0.109.1"
-filetype = ">=1.2.0"
-httpx = ">=0.27,<0.28"
-nltk = ">=3.9.1"
-numpy = ">=1.24.3"
-pandas = ">=2.2.1"
-pdfkit = ">=1.0.0"
-pydantic = ">=2.11.4"
-python-docx = ">=0.8.11"
-python-multipart = ">=0.0.20"
-starlette = ">=0.40.0"
-typing-extensions = ">=4.9.0"
-zipp = "3.19.1"
-
-[package.extras]
-dev = ["bandit[toml] (>=1.8.5)", "hypothesis (>=6)", "mypy (>=1.10)", "pip-audit (>=2.7)", "pre-commit (>=3.7)", "pytest (>=8)", "pytest-cov (>=5)", "ruff (>=0.5)", "semgrep (>=1.123.0)"]
-format = ["ruff (>=0.5)"]
-lint = ["ruff (>=0.5)"]
-qa = ["pre-commit (>=3.7)"]
-security = ["bandit[toml] (>=1.8.5)", "pip-audit (>=2.7)", "semgrep (>=1.123.0)"]
-test = ["hypothesis (>=6)", "pytest (>=8)", "pytest-cov (>=5)"]
-typing = ["mypy (>=1.10)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/eputnam77/GovDocVerify.git"
-reference = "HEAD"
-resolved_reference = "00e182156153de11158f7ff36ad4accf9d8318ab"
-
-[[package]]
 name = "graphene"
 version = "3.4.3"
 description = "GraphQL Framework for Python"
@@ -1488,14 +1491,14 @@ trio = ["trio (>=0.22.0,<1.0)"]
 
 [[package]]
 name = "httpx"
-version = "0.27.2"
+version = "0.28.1"
 description = "The next generation HTTP client."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "httpx-0.27.2-py3-none-any.whl", hash = "sha256:7bb2708e112d8fdd7829cd4243970f0c223274051cb35ee80c03301ee29a3df0"},
-    {file = "httpx-0.27.2.tar.gz", hash = "sha256:f7c2be1d2f3c3c3160d441802406b206c2b76f5947b11115e6df10c6c65e66c2"},
+    {file = "httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"},
+    {file = "httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc"},
 ]
 
 [package.dependencies]
@@ -1503,7 +1506,6 @@ anyio = "*"
 certifi = "*"
 httpcore = "==1.*"
 idna = "*"
-sniffio = "*"
 
 [package.extras]
 brotli = ["brotli ; platform_python_implementation == \"CPython\"", "brotlicffi ; platform_python_implementation != \"CPython\""]
@@ -3000,7 +3002,7 @@ description = "Powerful data structures for data analysis, time series, and stat
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"govdocverify\""
+markers = "extra == \"fedstylevalidator\""
 files = [
     {file = "pandas-2.3.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:22c2e866f7209ebc3a8f08d75766566aae02bcc91d196935a1d9e59c7b990ac9"},
     {file = "pandas-2.3.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:3583d348546201aff730c8c47e49bc159833f971c2899d6097bce68b9112a4f1"},
@@ -3111,7 +3113,7 @@ description = "Wkhtmltopdf python wrapper to convert html to pdf using the webki
 optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"govdocverify\""
+markers = "extra == \"fedstylevalidator\""
 files = [
     {file = "pdfkit-1.0.0-py2-none-any.whl", hash = "sha256:cc122e5aed594198ff7aaa566f2950d2163763576ab891c161bb1f6c630f5a8e"},
     {file = "pdfkit-1.0.0-py3-none-any.whl", hash = "sha256:a7a4ca0d978e44fa8310c4909f087052430a6e8e0b1dd7ceef657f139789f96f"},
@@ -4073,7 +4075,7 @@ description = "World timezone definitions, modern and historical"
 optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"govdocverify\""
+markers = "extra == \"fedstylevalidator\""
 files = [
     {file = "pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00"},
     {file = "pytz-2025.2.tar.gz", hash = "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3"},
@@ -4985,6 +4987,23 @@ mpmath = ">=1.1.0,<1.4"
 dev = ["hypothesis (>=6.70.0)", "pytest (>=7.1.0)"]
 
 [[package]]
+name = "tenacity"
+version = "8.5.0"
+description = "Retry code until it succeeds"
+optional = true
+python-versions = ">=3.8"
+groups = ["main"]
+markers = "extra == \"fedstylevalidator\""
+files = [
+    {file = "tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687"},
+    {file = "tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78"},
+]
+
+[package.extras]
+doc = ["reno", "sphinx"]
+test = ["pytest", "tornado (>=4.5)", "typeguard"]
+
+[[package]]
 name = "text-unidecode"
 version = "1.3"
 description = "The most basic Text::Unidecode port"
@@ -5617,8 +5636,8 @@ test = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-it
 
 [extras]
 dev = ["bandit", "hypothesis", "mutmut", "mypy", "pip-audit", "playwright", "pre-commit", "pytest", "pytest-asyncio", "pytest-cov", "pytest-playwright", "ruff", "semgrep", "uvicorn"]
+fedstylevalidator = ["FedStyleValidator"]
 format = ["black", "ruff"]
-govdocverify = ["GovDocVerify"]
 lint = ["black", "ruff"]
 ml-gpu = ["onnxruntime-gpu"]
 ml-mps = ["onnxruntime"]
@@ -5631,4 +5650,4 @@ typing = ["mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4"
-content-hash = "bd9450d78eae50e028355377ecfb792f62c1fcccb4cbafcdfa92e62974bbaf55"
+content-hash = "865aea235fab0f53ed5aef57145d7efe4a6b42f22537e981b67b993ba282f4e4"

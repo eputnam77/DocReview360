@@ -186,7 +186,7 @@ uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
 pwsh -File scripts/windows/start-backend.ps1
 ```
 
-**Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with Federal Style Validator (FedStyleValidator, formerly GovDocVerify).
+**Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with FedStyleValidator (Federal Style Validator).
 
 **Prerequisites:** Ensure you've configured the environment variables (see "🔑 Configure secrets" section above) or have a `.env` file in the project root.
 

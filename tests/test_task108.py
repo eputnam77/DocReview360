@@ -9,7 +9,7 @@ from docreview360.ml.torch_models import build_clarity_critic, train_critic, upd
 
 
 def test_style_and_structure_features(monkeypatch) -> None:
-    # Ensure heuristics are used even if GovDocVerify is installed
+    # Ensure heuristics are used even if FedStyleValidator is installed
     monkeypatch.setattr(ai_utils, "_gov_run", None)
     good_style = "This is a sentence. Another one."
     bad_style = "bad sentence. another."

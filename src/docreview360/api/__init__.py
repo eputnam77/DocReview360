@@ -1822,7 +1822,7 @@ async def list_workflow_roles_endpoint(x_user: str | None = Header(None)) -> lis
 @log_call
 async def start_workflow_endpoint(
     wf_id: str,
-    title: str = Form(...),
+    title: str | None = Form(None),
     file: UploadFile | None = File(None),
     x_user: str | None = Header(None),
 ) -> WorkflowModel:
@@ -1831,6 +1831,8 @@ async def start_workflow_endpoint(
     wf = get_workflow(wf_id)
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
+    if title is None or not title.strip():
+        title = wf.project or f"workflow-{wf_id}"
     data = await file.read() if file else None
     return start_workflow(wf_id, title, data)
 
@@ -1925,7 +1927,12 @@ async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return_to = f"/projects/{wf.project}"
     doc_id = approval.document_id or wf.project
-    url = send_for_signature(approval_id, doc_id, approval.reviewer, return_to)
+    try:
+        url = send_for_signature(approval_id, doc_id, approval.reviewer, return_to)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     sig_id = approval.signature_id
     if sig_id is None:
         raise RuntimeError("signature id not set")

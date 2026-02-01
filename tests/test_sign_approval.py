@@ -17,3 +17,18 @@ def test_sign_approval_flow() -> None:
     appr2 = client.get(f"/approvals/{appr['id']}").json()
     assert appr2["state"] == "approved"
     assert appr2["signature"] == sig_id
+
+
+def test_sign_approval_duplicate_returns_conflict() -> None:
+    client = TestClient(app)
+    wf = client.post("/workflows", json={"project": "p43", "phases": ["draft", "signed"]}).json()
+    appr = client.post("/approvals", json={"workflow": wf["id"], "reviewer": "jane"}).json()
+
+    resp1 = client.post(f"/approvals/{appr['id']}/sign")
+    assert resp1.status_code == 200
+    sig_id = resp1.json()["id"]
+
+    client.post(f"/sign/{sig_id}/complete")
+
+    resp2 = client.post(f"/approvals/{appr['id']}/sign")
+    assert resp2.status_code == 409

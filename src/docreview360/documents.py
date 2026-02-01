@@ -176,6 +176,10 @@ def _detect_mime_type(data: bytes, filename: str) -> str:
 
     mime = mime or "application/octet-stream"
     if mime == "application/octet-stream":
+        # Windows mimetypes can miss modern Office extensions; fall back to
+        # filename-based detection for docx to avoid rejecting valid uploads.
+        if filename.lower().endswith(".docx"):
+            return _DOCX_MIME_TYPE
         try:
             decoded = data.decode("utf-8")
         except UnicodeDecodeError:

@@ -4,12 +4,12 @@ This module contains:
 - Prompt and feedback template management.
 - Lightweight SynthLang text compression simulation.
 - Faux FANN-style scoring for style, structure, and readability.
-- Heuristic and GovDocVerify-based style checks.
+- Heuristic and FedStyleValidator-based style checks.
 - Workflow-friendly helpers for anomaly detection,
   document type suggestions, and export format hints.
 
 Dependencies:
-- GovDocVerify (optional). Falls back to internal heuristics when unavailable.
+- FedStyleValidator (Federal Style Validator). Falls back to internal heuristics.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from .guardrails import (
 from .ml import features as ml_features
 from .ml.features import FANN_FEATURE_NAMES, count_syllables, quality_features
 
-# Backwards-compatible alias for tests patching GovDocVerify integration.
+# Backwards-compatible alias for tests patching FedStyleValidator integration.
 try:  # pragma: no cover - defensive re-export
     from .ml.features import _gov_run as _gov_run  # type: ignore[attr-defined]
 except Exception:  # pragma: no cover - fall back when attribute missing
@@ -41,7 +41,7 @@ def _count_syllables(word: str) -> int:
 
 
 def style_guide_score(text: str) -> float:
-    """Return a style score using the configured GovDocVerify hook when available."""
+    """Return a style score using the configured FedStyleValidator hook when available."""
 
     original_gov_run = ml_features._gov_run
     ml_features._gov_run = _gov_run

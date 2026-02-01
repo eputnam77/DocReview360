@@ -84,6 +84,16 @@ def test_start_workflow_endpoint() -> None:
     assert resp.json()["document"]
 
 
+def test_start_workflow_defaults_title() -> None:
+    client = TestClient(app)
+    wf = create_workflow("p195", ["draft", "review"])
+    resp = client.post(f"/workflows/{wf.id}/start", data={})
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["id"] == wf.id
+    assert payload["document"]
+
+
 def test_update_project_endpoint() -> None:
     client = TestClient(app)
     client.post("/projects", json={"id": "pedit", "name": "Old"})

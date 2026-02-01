@@ -61,9 +61,9 @@ const QUALITY_TOOLS = [
     color: "bg-purple-100 text-purple-800"
   },
   {
-    id: "govdocverify",
-    name: "Accessibility Checker",
-    description: "Document accessibility and compliance validation",
+    id: "fedstylevalidator",
+    name: "FedStyleValidator",
+    description: "Federal style, accessibility, and compliance validation",
     icon: <Shield className="w-5 h-5" />,
     color: "bg-orange-100 text-orange-800",
     isBuiltIn: true

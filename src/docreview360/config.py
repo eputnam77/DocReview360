@@ -55,6 +55,10 @@ class Config:
         if not isinstance(raw, dict):
             raise ValueError(f"Invalid config structure in {path}")
         data: dict[str, Any] = raw
+        # YAML 1.1 can coerce "none" to null; normalize to string to satisfy
+        # required config fields downstream.
+        if data.get("cms") is None:
+            data["cms"] = "none"
         if "database_url" not in data:
             data["database_url"] = None
         connectors_raw = data.pop("log_connectors", []) or []

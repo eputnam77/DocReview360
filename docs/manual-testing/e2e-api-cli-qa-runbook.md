@@ -106,9 +106,13 @@ d) Warnings/issues: <none or details>
    - `GET /documents/{doc_id}/comments`
 6. Import a document (DOCX/PDF/MD)
    - `POST /documents/import`
-7. Validate audit log per document
+7. Style validation (FedStyleValidator)
+   - Import a short DOCX file
+   - Confirm style issues appear when the validator is available
+   - If the validator is missing, confirm heuristic scoring still returns a value
+8. Validate audit log per document
    - `GET /documents/{doc_id}/audit`
-8. Export document
+9. Export document
    - `GET /documents/{doc_id}/export`
 
 ## Workflow and Approvals
@@ -119,6 +123,7 @@ d) Warnings/issues: <none or details>
    - `POST /workflows`
 3. Start workflow
    - `POST /workflows/{id}/start`
+   - Omit `title` and confirm the server assigns a default
 4. Assign reviewer
    - `POST /workflows/{id}/assign`
 5. Advance workflow phase
@@ -140,6 +145,9 @@ d) Warnings/issues: <none or details>
    - `GET /sign/{sig_id}`
 4. Document signature verification
    - `GET /documents/{doc_id}/verify-signature`
+5. Duplicate sign attempt
+   - Call `POST /approvals/{approval_id}/sign` twice
+   - Expect `409` on the second call
 
 ## Reviews
 
@@ -147,6 +155,20 @@ d) Warnings/issues: <none or details>
    - `POST /projects/{project_id}/reviews`
 2. List reviews
    - `GET /projects/{project_id}/reviews`
+
+## ML Endpoints and Rate Limits
+
+1. Quality assessment
+   - `POST /ml/quality`
+2. Compliance evaluation
+   - `POST /ml/compliance`
+3. Routing recommendation
+   - `POST /ml/routing`
+4. Signature anomaly scoring
+   - `POST /ml/signature`
+5. Rate limit check
+   - Call the same ML endpoint 6+ times in under 60 seconds
+   - Expect `429` after the limit is reached
 
 ## Search and Saved Searches
 
@@ -249,8 +271,10 @@ d) Warnings/issues: <none or details>
    - `GET /logs/export`
 3. CLI hash chain
    - `docreview360 logs hash-chain`
+   - (Optional) `docreview360 logs hash-chain --key log_chain-<timestamp>.json`
 4. CLI verify chain
    - `docreview360 logs verify-chain`
+   - (Optional) `docreview360 logs verify-chain --key log_chain-<timestamp>.json`
 
 ## Configuration and Status
 
@@ -270,8 +294,10 @@ d) Warnings/issues: <none or details>
 1. Disable a user (admin)
    - `POST /admin/users/{username}/status`
 2. RBAC CLI
-   - `docreview360 rbac set-role`
+   - `docreview360 rbac set-role` (alias of `rbac-admin`)
    - `docreview360 rbac show`
+   - `docreview360 rbac-admin set-role` (explicit command)
+   - `docreview360 rbac-admin show`
 3. Permission checks
    - Repeat key endpoints as regular user and expect 403 or limited data.
 
@@ -284,6 +310,8 @@ d) Warnings/issues: <none or details>
 5. Large payloads (document size limits)
 6. Unsupported MIME types
 7. Restart server and recheck data persistence
+8. ML model integrity
+   - If `/ml/signature` fails on startup, regenerate the model and retry
 
 ## CLI Coverage
 

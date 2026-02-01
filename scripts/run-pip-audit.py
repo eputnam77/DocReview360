@@ -39,7 +39,7 @@ def run_pip_audit():
                 continue
             if "docreview360" in line and "not found on PyPI" in line:
                 continue
-            if "govdocverify" in line and "not found on PyPI" in line:
+            if "fedstylevalidator" in line and "not found on PyPI" in line:
                 continue
             output_lines.append(line)
 
