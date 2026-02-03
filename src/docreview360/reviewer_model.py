@@ -149,7 +149,13 @@ class ReviewerModel:
         embeddings = payload.get("embeddings", {})
         self._embedding_stats = {}
         for name, stats in embeddings.items():
-            vector = np.array(stats.get("vector", [0.0] * self._feature_dim), dtype=np.float32)
+            vector = np.array(stats.get("vector", [0.0] * self._feature_dim), dtype=np.float32).ravel()
+            if vector.size != self._feature_dim:
+                if vector.size < self._feature_dim:
+                    padding = self._feature_dim - vector.size
+                    vector = np.pad(vector, (0, padding), mode="constant")
+                else:
+                    vector = vector[: self._feature_dim]
             self._embedding_stats[name] = {
                 "count": int(stats.get("count", 0)),
                 "vector": vector,
