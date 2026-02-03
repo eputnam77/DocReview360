@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import atexit
 import os
+import re
 from collections import Counter, defaultdict
 from math import isfinite, log, sqrt
 from typing import Dict, Iterable, List, Tuple
@@ -24,6 +25,7 @@ _total_docs = 0
 _dirty_tfidf = False
 _tfidf_terms: List[str] = []
 _tfidf_idf: List[float] = []
+_TOKEN_PATTERN = re.compile(r"\b\w+\b")
 
 
 def _embed(text: str) -> Counter[str]:
@@ -36,9 +38,7 @@ def _embed(text: str) -> Counter[str]:
     search queries behave more intuitively.
     """
 
-    import re
-
-    tokens = re.findall(r"\b\w+\b", text.lower())
+    tokens = _TOKEN_PATTERN.findall(text.lower())
     return Counter(tokens)
 
 
