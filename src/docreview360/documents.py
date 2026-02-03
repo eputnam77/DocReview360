@@ -544,7 +544,12 @@ def update_document(
         if author is not None:
             document.user = author
 
-    if SequenceMatcher(None, old_content, content).ratio() < 0.7:
+    matcher = SequenceMatcher(None, old_content, content)
+    quick_bound = matcher.real_quick_ratio()
+    if quick_bound >= 0.7 and matcher.ratio() < 0.7:
+        with document_lock:
+            _re_review.add(doc_id)
+    elif quick_bound < 0.7:
         with document_lock:
             _re_review.add(doc_id)
 
