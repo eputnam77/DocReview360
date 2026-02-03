@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import os
 from collections import Counter, defaultdict
 from math import isfinite, log, sqrt
@@ -9,8 +10,13 @@ from typing import Dict, Iterable, List, Tuple
 
 import httpx
 
+from docreview360 import http_client
+
 OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")
 PGVECTOR_URL = os.getenv("PGVECTOR_URL")
+
+_http_client = http_client.client(timeout=5)
+atexit.register(_http_client.close)
 
 _vectors: Dict[str, Tuple[Counter[str], int, List[float], float]] = {}
 _doc_freq: Dict[str, int] = defaultdict(int)
@@ -75,20 +81,18 @@ def index_document(doc_id: str, content: str) -> None:
 
     if OPENSEARCH_URL:
         try:
-            httpx.put(
+            _http_client.put(
                 f"{OPENSEARCH_URL.rstrip('/')}/documents/_doc/{doc_id}",
                 json={"content": content},
-                timeout=5,
             ).raise_for_status()
         except httpx.HTTPError as exc:
             raise RuntimeError("OpenSearch index failed") from exc
 
     if PGVECTOR_URL:
         try:
-            httpx.post(
+            _http_client.post(
                 f"{PGVECTOR_URL.rstrip('/')}/index",
                 json={"id": doc_id, "content": content},
-                timeout=5,
             ).raise_for_status()
         except httpx.HTTPError as exc:
             raise RuntimeError("pgvector index failed") from exc
@@ -185,10 +189,9 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
 
     if OPENSEARCH_URL:
         try:
-            resp = httpx.post(
+            resp = _http_client.post(
                 f"{OPENSEARCH_URL.rstrip('/')}/_search",
                 json={"query": query, "size": top_k},
-                timeout=5,
             )
             resp.raise_for_status()
             hits = resp.json().get("hits", {}).get("hits", [])
@@ -198,10 +201,9 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
 
     elif PGVECTOR_URL:
         try:
-            resp = httpx.post(
+            resp = _http_client.post(
                 f"{PGVECTOR_URL.rstrip('/')}/search",
                 json={"query": query, "k": top_k},
-                timeout=5,
             )
             resp.raise_for_status()
             hits = resp.json().get("results", [])
