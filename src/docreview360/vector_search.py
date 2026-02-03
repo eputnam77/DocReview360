@@ -12,9 +12,12 @@ import httpx
 OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")
 PGVECTOR_URL = os.getenv("PGVECTOR_URL")
 
-_vectors: Dict[str, Tuple[Counter[str], int]] = {}
+_vectors: Dict[str, Tuple[Counter[str], int, List[float], float]] = {}
 _doc_freq: Dict[str, int] = defaultdict(int)
 _total_docs = 0
+_dirty_tfidf = False
+_tfidf_terms: List[str] = []
+_tfidf_idf: List[float] = []
 
 
 def _embed(text: str) -> Counter[str]:
@@ -47,13 +50,13 @@ def index_document(doc_id: str, content: str) -> None:
         or not content
     ):
         raise ValueError("doc_id and content are required strings")
-    global _total_docs
+    global _total_docs, _dirty_tfidf
     tf = _embed(content)
 
     # If the document already exists, remove its previous contribution to
     # document frequencies so re-indexing keeps statistics accurate.
     if doc_id in _vectors:
-        old_tf, _ = _vectors[doc_id]
+        old_tf, _, _, _ = _vectors[doc_id]
         for term in old_tf:
             _doc_freq[term] -= 1
             if _doc_freq[term] <= 0:
@@ -67,7 +70,8 @@ def index_document(doc_id: str, content: str) -> None:
     # misreported lengths for inputs like ``"foo-bar"`` which our tokenizer splits
     # into two words.  Store the length based on the tokenised representation so
     # the metadata remains consistent with the embedding.
-    _vectors[doc_id] = (tf, sum(tf.values()))
+    _vectors[doc_id] = (tf, sum(tf.values()), [], 0.0)
+    _dirty_tfidf = True
 
     if OPENSEARCH_URL:
         try:
@@ -128,6 +132,50 @@ def _tfidf_vector(tf: Counter[str]) -> List[float]:
     return vector
 
 
+def _build_tfidf_vector(
+    tf: Counter[str], terms: List[str], idf_values: List[float]
+) -> List[float]:
+    """Return a TF-IDF weighted vector aligned to ``terms``."""
+    return [tf.get(term, 0) * idf_values[idx] for idx, term in enumerate(terms)]
+
+
+def _refresh_tfidf_cache() -> None:
+    """Recompute all TF-IDF vectors when document frequencies change."""
+    global _dirty_tfidf, _tfidf_terms, _tfidf_idf
+    _tfidf_terms = sorted(_doc_freq)
+    _tfidf_idf = [
+        log((_total_docs + 1) / (_doc_freq[term] + 1)) + 1
+        for term in _tfidf_terms
+    ]
+    for doc_id, (tf, length, _, _) in _vectors.items():
+        vector = _build_tfidf_vector(tf, _tfidf_terms, _tfidf_idf)
+        norm = sqrt(sum(val * val for val in vector))
+        _vectors[doc_id] = (tf, length, vector, norm)
+    _dirty_tfidf = False
+
+
+def _cosine_with_norms(
+    a_vec: Iterable[float],
+    a_norm: float,
+    b_vec: Iterable[float],
+    b_norm: float,
+) -> float:
+    """Return cosine similarity using precomputed norms."""
+    a_list = list(a_vec)
+    b_list = list(b_vec)
+    if len(a_list) != len(b_list):
+        raise ValueError("vectors must be of equal length")
+    for val in a_list + b_list:
+        if not isfinite(val):
+            raise ValueError("vectors must contain only finite numbers")
+    if not isfinite(a_norm) or not isfinite(b_norm):
+        raise ValueError("vectors must contain only finite numbers")
+    if a_norm == 0 or b_norm == 0:
+        return 0.0
+    dot = sum(x * y for x, y in zip(a_list, b_list))
+    return dot / (a_norm * b_norm)
+
+
 def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
     """Return ``top_k`` document ids ranked by cosine similarity."""
     if not query.strip():
@@ -161,11 +209,14 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
         except httpx.HTTPError as exc:
             raise RuntimeError("pgvector search failed") from exc
 
-    q_vec = _tfidf_vector(_embed(query))
+    if _dirty_tfidf:
+        _refresh_tfidf_cache()
+
+    q_vec = _build_tfidf_vector(_embed(query), _tfidf_terms, _tfidf_idf)
+    q_norm = sqrt(sum(val * val for val in q_vec))
     scored = []
-    for doc_id, (tf, _) in _vectors.items():
-        doc_vec = _tfidf_vector(tf)
-        scored.append((doc_id, _cosine(q_vec, doc_vec)))
+    for doc_id, (_, _, doc_vec, doc_norm) in _vectors.items():
+        scored.append((doc_id, _cosine_with_norms(q_vec, q_norm, doc_vec, doc_norm)))
     scored.sort(key=lambda t: t[1], reverse=True)
     return scored[:top_k]
 
@@ -176,3 +227,7 @@ def clear() -> None:
     _doc_freq.clear()
     global _total_docs
     _total_docs = 0
+    global _dirty_tfidf, _tfidf_terms, _tfidf_idf
+    _dirty_tfidf = False
+    _tfidf_terms = []
+    _tfidf_idf = []
