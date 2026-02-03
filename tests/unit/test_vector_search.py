@@ -35,10 +35,10 @@ def test_index_document_remote(monkeypatch):
     monkeypatch.setattr(vs, "OPENSEARCH_URL", "http://os")
     monkeypatch.setattr(vs, "PGVECTOR_URL", "http://pg")
     monkeypatch.setattr(
-        vs.httpx, "put", lambda *a, **k: calls.append(("put", a, k)) or dummy_response()
+        vs._http_client, "put", lambda *a, **k: calls.append(("put", a, k)) or dummy_response()
     )
     monkeypatch.setattr(
-        vs.httpx, "post", lambda *a, **k: calls.append(("post", a, k)) or dummy_response()
+        vs._http_client, "post", lambda *a, **k: calls.append(("post", a, k)) or dummy_response()
     )
     vs.index_document("1", "foo")
     assert any(c[0] == "put" for c in calls)
@@ -56,8 +56,8 @@ def test_index_document_errors(monkeypatch):
     def bad_post(*a, **k):
         raise vs.httpx.HTTPError("boom")
 
-    monkeypatch.setattr(vs.httpx, "put", bad_put)
-    monkeypatch.setattr(vs.httpx, "post", bad_post)
+    monkeypatch.setattr(vs._http_client, "put", bad_put)
+    monkeypatch.setattr(vs._http_client, "post", bad_post)
 
     with pytest.raises(RuntimeError):
         vs.index_document("id", "content")
@@ -68,7 +68,7 @@ def test_search_remote_opensearch(monkeypatch):
     monkeypatch.setenv("OPENSEARCH_URL", "http://os")
     monkeypatch.setattr(vs, "OPENSEARCH_URL", "http://os")
     monkeypatch.setattr(
-        vs.httpx,
+        vs._http_client,
         "post",
         lambda *a, **k: dummy_response({"hits": {"hits": [{"_id": "1", "_score": 1.2}]}}),
     )
@@ -79,7 +79,9 @@ def test_search_remote_opensearch_error(monkeypatch):
     vs.clear()
     monkeypatch.setattr(vs, "OPENSEARCH_URL", "http://os")
     monkeypatch.setattr(
-        vs.httpx, "post", lambda *a, **k: (_ for _ in ()).throw(vs.httpx.HTTPError("bad"))
+        vs._http_client,
+        "post",
+        lambda *a, **k: (_ for _ in ()).throw(vs.httpx.HTTPError("bad")),
     )
     with pytest.raises(RuntimeError):
         vs.search("q")
@@ -92,7 +94,9 @@ def test_search_remote_pgvector(monkeypatch):
     monkeypatch.setattr(vs, "OPENSEARCH_URL", "")
     monkeypatch.setattr(vs, "PGVECTOR_URL", "http://pg")
     monkeypatch.setattr(
-        vs.httpx, "post", lambda *a, **k: dummy_response({"results": [{"id": "1", "score": 0.5}]})
+        vs._http_client,
+        "post",
+        lambda *a, **k: dummy_response({"results": [{"id": "1", "score": 0.5}]}),
     )
     assert vs.search("query", top_k=1) == [("1", 0.5)]
 
@@ -102,7 +106,9 @@ def test_search_remote_pgvector_error(monkeypatch):
     monkeypatch.setattr(vs, "OPENSEARCH_URL", "")
     monkeypatch.setattr(vs, "PGVECTOR_URL", "http://pg")
     monkeypatch.setattr(
-        vs.httpx, "post", lambda *a, **k: (_ for _ in ()).throw(vs.httpx.HTTPError("bad"))
+        vs._http_client,
+        "post",
+        lambda *a, **k: (_ for _ in ()).throw(vs.httpx.HTTPError("bad")),
     )
     with pytest.raises(RuntimeError):
         vs.search("q")
@@ -143,7 +149,9 @@ def test_index_document_pgvector_error(monkeypatch):
     monkeypatch.setattr(vs, "OPENSEARCH_URL", "")
     monkeypatch.setattr(vs, "PGVECTOR_URL", "http://pg")
     monkeypatch.setattr(
-        vs.httpx, "post", lambda *a, **k: (_ for _ in ()).throw(vs.httpx.HTTPError("bad"))
+        vs._http_client,
+        "post",
+        lambda *a, **k: (_ for _ in ()).throw(vs.httpx.HTTPError("bad")),
     )
     with pytest.raises(RuntimeError):
         vs.index_document("1", "content")
@@ -173,6 +181,6 @@ def test_index_document_token_length(monkeypatch):
     monkeypatch.setattr(vs, "OPENSEARCH_URL", "")
     monkeypatch.setattr(vs, "PGVECTOR_URL", "")
     vs.index_document("1", "foo-bar")
-    tf, length = vs._vectors["1"]
+    tf, length, _, _ = vs._vectors["1"]
     # Tokeniser splits "foo-bar" into two words, so length should be 2
     assert length == sum(tf.values()) == 2
