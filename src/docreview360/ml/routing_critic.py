@@ -109,6 +109,8 @@ def train_routing_critic(
 
     if not reviewers:
         raise ValueError("reviewers must be non-empty")
+    if len(set(reviewers)) != len(reviewers):
+        raise ValueError("reviewers must be unique")
     if not examples:
         raise ValueError("at least one example required")
 

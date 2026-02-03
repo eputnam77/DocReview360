@@ -1,6 +1,9 @@
+import json
+
 import pytest
 
 from docreview360.reviewer_model import ReviewerModel
+from docreview360.ml.routing_critic import ROUTING_FEATURE_NAMES
 
 
 def test_recommendations_are_deterministic() -> None:
@@ -37,3 +40,22 @@ def test_reviewer_feedback_updates() -> None:
     assert feedback["alice"] == {"approved": 1, "rejected": 1}
     assert feedback["bob"]["approved"] == 1
     assert model.consistency_score("alice") == 0.0
+
+
+def test_load_normalizes_embedding_vector_lengths(tmp_path) -> None:
+    model = ReviewerModel()
+    payload = {
+        "profiles": {},
+        "embeddings": {"alice": {"count": 2, "vector": [1.0, 2.0]}},
+        "feedback": {},
+        "latency": {},
+    }
+    path = tmp_path / "state.json"
+    path.write_text(json.dumps(payload))
+
+    model.load(str(path))
+
+    embeddings = model.reviewer_embeddings
+    assert len(embeddings["alice"]) == len(ROUTING_FEATURE_NAMES)
+    assert embeddings["alice"][:2] == pytest.approx([0.5, 1.0])
+    assert all(value == 0.0 for value in embeddings["alice"][2:])
