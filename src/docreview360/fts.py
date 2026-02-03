@@ -28,12 +28,15 @@ def index_document(doc_id: str, content: str) -> None:
         raise ValueError("doc_id and content are required")
     # ``fts5`` tables happily accept multiple rows with the same ``id``
     # which would cause searches to return duplicate document identifiers
-    # when re-indexing existing documents.  The real system performs an
-    # upsert so repeated indexing replaces the previous content.  Mirror
-    # that behavior here by deleting any existing row before inserting
-    # the new one.
-    _conn.execute("DELETE FROM docs WHERE id = ?", (doc_id,))
-    _conn.execute("INSERT INTO docs (id, content) VALUES (?, ?)", (doc_id, content))
+    # when re-indexing existing documents. The real system performs an
+    # upsert so repeated indexing replaces the previous content. Mirror
+    # that behavior here with the FTS5-supported upsert form by targeting
+    # the existing rowid for the document id.
+    _conn.execute(
+        "INSERT OR REPLACE INTO docs (rowid, id, content) "
+        "VALUES ((SELECT rowid FROM docs WHERE id = ?), ?, ?)",
+        (doc_id, doc_id, content),
+    )
 
 
 def search(query: str) -> List[str]:
