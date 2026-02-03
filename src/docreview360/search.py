@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import logging
 import os
@@ -181,22 +182,43 @@ class SearchRepository:
         if not self._path.parent.exists():
             self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        self._local = threading.local()
+        self._connections: set[sqlite3.Connection] = set()
+        atexit.register(self.close)
         with self._connection() as conn:
             self._initialize(conn)
 
     @contextmanager
     def _connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self._path)
-        conn.row_factory = sqlite3.Row
-        try:
-            conn.execute("PRAGMA journal_mode=WAL")
-        except sqlite3.DatabaseError:
-            pass
+        with self._lock:
+            conn = getattr(self._local, "connection", None)
+            if conn is None:
+                conn = sqlite3.connect(self._path, check_same_thread=False)
+                conn.row_factory = sqlite3.Row
+                try:
+                    conn.execute("PRAGMA journal_mode=WAL")
+                except sqlite3.DatabaseError:
+                    pass
+                self._local.connection = conn
+                self._connections.add(conn)
         try:
             yield conn
             conn.commit()
         finally:
-            conn.close()
+            pass
+
+    def close(self) -> None:
+        """Close any cached sqlite connections."""
+        with self._lock:
+            connections = list(self._connections)
+            self._connections.clear()
+            if hasattr(self._local, "connection"):
+                delattr(self._local, "connection")
+        for conn in connections:
+            try:
+                conn.close()
+            except sqlite3.DatabaseError:
+                pass
 
     def _initialize(self, conn: sqlite3.Connection) -> None:
         conn.executescript(
