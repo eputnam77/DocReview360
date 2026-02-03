@@ -24,7 +24,9 @@ def test_document_creation_triggers_opensearch_refresh() -> None:
 def test_vector_query_returns_topk_and_embedding(monkeypatch: pytest.MonkeyPatch) -> None:
     embed_len: dict[str, int] = {}
 
-    def fake_post(url: str, json: dict[str, object], timeout: int) -> httpx.Response:
+    def fake_post(
+        url: str, json: dict[str, object], timeout: int | None = None
+    ) -> httpx.Response:
         embed_len["len"] = 1536
         data = {"results": [{"id": "a", "score": 0.9}]}
         req = httpx.Request("POST", url)
@@ -33,7 +35,7 @@ def test_vector_query_returns_topk_and_embedding(monkeypatch: pytest.MonkeyPatch
     monkeypatch.delenv("OPENSEARCH_URL", raising=False)
     monkeypatch.setenv("PGVECTOR_URL", "http://pgv")
     monkeypatch.setattr(vector_search, "PGVECTOR_URL", "http://pgv")
-    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr(vector_search._http_client, "post", fake_post)
     vector_search.clear()
     res = vector_search.search("alpha", top_k=1)
     assert res == [("a", 0.9)]

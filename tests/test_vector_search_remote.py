@@ -32,7 +32,7 @@ def test_vector_search_opensearch_fallback(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setenv("OPENSEARCH_URL", "http://os")
     monkeypatch.setattr(vector_search, "OPENSEARCH_URL", "http://os")
-    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr(vector_search._http_client, "post", fake_post)
 
     class Dummy:
         def raise_for_status(self) -> None:
@@ -41,7 +41,7 @@ def test_vector_search_opensearch_fallback(monkeypatch: pytest.MonkeyPatch) -> N
     def fake_put(*args: object, **kwargs: object) -> Dummy:
         return Dummy()
 
-    monkeypatch.setattr(httpx, "put", fake_put)
+    monkeypatch.setattr(vector_search._http_client, "put", fake_put)
 
     vector_search.clear()
     vector_search.index_document("a", "alpha beta")
@@ -59,7 +59,7 @@ def test_vector_search_index_opensearch(monkeypatch: pytest.MonkeyPatch) -> None
 
     monkeypatch.setenv("OPENSEARCH_URL", "http://os")
     monkeypatch.setattr(vector_search, "OPENSEARCH_URL", "http://os")
-    monkeypatch.setattr(httpx, "put", fake_put)
+    monkeypatch.setattr(vector_search._http_client, "put", fake_put)
 
     vector_search.clear()
     with pytest.raises(RuntimeError):
@@ -68,20 +68,24 @@ def test_vector_search_index_opensearch(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_vector_search_opensearch_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_post(url: str, json: dict[str, object], timeout: int) -> httpx.Response:
+    def fake_post(
+        url: str, json: dict[str, object], timeout: int | None = None
+    ) -> httpx.Response:
         assert url.endswith("/_search")
         data = {"hits": {"hits": [{"_id": "a", "_score": 1.0}]}}
         req = httpx.Request("POST", url)
         return httpx.Response(200, json=data, request=req)
 
-    def fake_put(url: str, json: dict[str, object], timeout: int) -> httpx.Response:
+    def fake_put(
+        url: str, json: dict[str, object], timeout: int | None = None
+    ) -> httpx.Response:
         req = httpx.Request("PUT", url)
         return httpx.Response(201, request=req)
 
     monkeypatch.setenv("OPENSEARCH_URL", "http://os")
     monkeypatch.setattr(vector_search, "OPENSEARCH_URL", "http://os")
-    monkeypatch.setattr(httpx, "post", fake_post)
-    monkeypatch.setattr(httpx, "put", fake_put)
+    monkeypatch.setattr(vector_search._http_client, "post", fake_post)
+    monkeypatch.setattr(vector_search._http_client, "put", fake_put)
 
     vector_search.clear()
     vector_search.index_document("a", "alpha beta")
@@ -93,12 +97,16 @@ def test_vector_search_pgvector(monkeypatch: pytest.MonkeyPatch) -> None:
     idx_calls: list[tuple[object, ...]] = []
     search_calls: list[tuple[object, ...]] = []
 
-    def fake_post_index(url: str, json: dict[str, object], timeout: int) -> httpx.Response:
+    def fake_post_index(
+        url: str, json: dict[str, object], timeout: int | None = None
+    ) -> httpx.Response:
         idx_calls.append((url, json))
         req = httpx.Request("POST", url)
         return httpx.Response(201, request=req)
 
-    def fake_post_search(url: str, json: dict[str, object], timeout: int) -> httpx.Response:
+    def fake_post_search(
+        url: str, json: dict[str, object], timeout: int | None = None
+    ) -> httpx.Response:
         search_calls.append((url, json))
         data = {"results": [{"id": "a", "score": 0.9}]}
         req = httpx.Request("POST", url)
@@ -109,12 +117,14 @@ def test_vector_search_pgvector(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PGVECTOR_URL", "http://pgv")
     monkeypatch.setattr(vector_search, "PGVECTOR_URL", "http://pgv")
 
-    def route_post(url: str, json: dict[str, object], timeout: int) -> httpx.Response:
+    def route_post(
+        url: str, json: dict[str, object], timeout: int | None = None
+    ) -> httpx.Response:
         if url.endswith("/index"):
             return fake_post_index(url, json, timeout)
         return fake_post_search(url, json, timeout)
 
-    monkeypatch.setattr(httpx, "post", route_post)
+    monkeypatch.setattr(vector_search._http_client, "post", route_post)
 
     vector_search.clear()
     vector_search.index_document("a", "alpha beta")
