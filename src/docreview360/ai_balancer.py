@@ -118,6 +118,10 @@ def load_state(path: str | Path) -> None:
         raise ValueError("invalid registry format")
     _workers.clear()
     for key, value in data.items():
+        if isinstance(value, bool):
+            raise ValueError("invalid registry format")
+        if isinstance(value, float) and not value.is_integer():
+            raise ValueError("invalid registry format")
         try:
             count = int(value)
         except (TypeError, ValueError) as exc:

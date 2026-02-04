@@ -49,3 +49,20 @@ def test_guardrail_thresholds_reject_out_of_range_values() -> None:
     assert thresholds.auto_assign_quality_below is None
     assert thresholds.auto_assign_compliance_below is None
     assert thresholds.auto_assign_editor == "qa"
+
+
+def test_guardrail_thresholds_ignore_boolean_values() -> None:
+    settings = {
+        "documents": {
+            "guardrails": {
+                "quality": {"min_score": True, "flag_threshold": False},
+                "compliance": {"min_probability": True},
+            }
+        }
+    }
+    thresholds = load_guardrail_thresholds(settings)
+    defaults = GuardrailThresholds()
+
+    assert thresholds.min_quality_score == defaults.min_quality_score
+    assert thresholds.quality_flag_threshold == defaults.quality_flag_threshold
+    assert thresholds.min_compliance_probability == defaults.min_compliance_probability
