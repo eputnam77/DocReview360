@@ -90,7 +90,10 @@ def _coerce_float(mapping: Mapping[str, Any], *candidates: str) -> float | None:
         if key not in mapping:
             continue
         try:
-            value = float(mapping[key])
+            raw = mapping[key]
+            if isinstance(raw, bool):
+                continue
+            value = float(raw)
         except (TypeError, ValueError):
             continue
         if not math.isfinite(value):
