@@ -72,7 +72,12 @@ def _analyze_structure(
     for line in text.splitlines():
         m = header.match(line)
         if m:
-            current = cast(str, m.group(1).strip().lower())
+            heading = cast(str, m.group(1).strip())
+            # Markdown allows trailing ``#`` characters to close a header
+            # (e.g. ``## Introduction ##``). Strip them so required section
+            # matching works regardless of that syntax.
+            heading = re.sub(r"\s*#+\s*$", "", heading).strip()
+            current = heading.lower()
             sections.setdefault(current, [])
         elif current is not None:
             sections[current].append(line)
