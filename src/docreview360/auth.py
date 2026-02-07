@@ -531,6 +531,49 @@ class UserRepository:
                 locked_until=locked_until,
             )
 
+    def list_users(self) -> list[UserRecord]:
+        """Return all users stored in the repository."""
+
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT username, password_hash, otp_secret, active, failed_attempts, locked_until"
+                " FROM users ORDER BY username"
+            ).fetchall()
+        records: list[UserRecord] = []
+        for row in rows:
+            locked_until_str = row["locked_until"]
+            locked_until = datetime.fromisoformat(locked_until_str) if locked_until_str else None
+            records.append(
+                UserRecord(
+                    username=row["username"],
+                    password_hash=row["password_hash"],
+                    otp_secret=row["otp_secret"],
+                    active=bool(row["active"]),
+                    failed_attempts=int(row["failed_attempts"]),
+                    locked_until=locked_until,
+                )
+            )
+        return records
+
+    def delete_user(self, username: str) -> bool:
+        """Delete ``username`` from the repository; return ``True`` if removed."""
+
+        with self._connection() as conn:
+            deleted = conn.execute("DELETE FROM users WHERE username = ?", (username,))
+            conn.commit()
+            return deleted.rowcount > 0
+
+    def rename_user(self, username: str, new_username: str) -> bool:
+        """Rename ``username`` to ``new_username``; return ``True`` if updated."""
+
+        with self._connection() as conn:
+            updated = conn.execute(
+                "UPDATE users SET username = ? WHERE username = ?",
+                (new_username, username),
+            )
+            conn.commit()
+            return updated.rowcount > 0
+
     def set_active(self, username: str, active: bool) -> bool:
         """Toggle the active flag for ``username``; return ``True`` if updated."""
 
@@ -648,6 +691,13 @@ def _get_user_repository() -> UserRepository:
     if USER_REPOSITORY._path.resolve() != current_path:
         USER_REPOSITORY = UserRepository(str(current_path))
     return USER_REPOSITORY
+
+
+def configure_user_repository(path: str | os.PathLike[str]) -> None:
+    """Replace the active user repository with one backed by ``path``."""
+
+    os.environ["DOCREVIEW360_USER_DB"] = str(path)
+    _get_user_repository()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token", auto_error=False)
