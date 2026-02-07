@@ -18,8 +18,8 @@ export default function WorkflowDetailPage() {
   useEffect(() => {
     if (!id) return;
     const wfId = String(id);
-    // Retrieve workflow details via local API route
-    fetch(`/api/workflows/${wfId}`)
+    // Retrieve workflow template details via local API route
+    fetch(`/api/workflow-templates/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
@@ -62,12 +62,28 @@ export default function WorkflowDetailPage() {
             </CardTitle>
             <p className="text-gray-500 text-sm mt-1">{workflow.description}</p>
           </div>
-          <Button asChild>
-            <Link href={`/configuration/workflows/edit?id=${workflow.id}`}>
-              <Edit3 className="w-5 h-5 mr-2" />
-              Edit Workflow
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild>
+              <Link href={`/configuration/workflows/edit?id=${workflow.id}`}>
+                <Edit3 className="w-5 h-5 mr-2" />
+                Edit Workflow
+              </Link>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!confirm("Delete this workflow template? This cannot be undone.")) return;
+                const res = await fetch(`/api/workflow-templates/${workflow.id}`, {
+                  method: "DELETE",
+                });
+                if (res.ok) {
+                  router.push("/configuration/workflows");
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-6 mb-4">
