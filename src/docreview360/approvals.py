@@ -425,6 +425,42 @@ def get_approval(approval_id: str) -> ApprovalModel | None:
     return approvals.get(approval_id)
 
 
+def delete_approval(approval_id: str) -> ApprovalModel:
+    """Remove an approval and unlink it from its document."""
+    approval = approvals.pop(approval_id)
+    unlink_approval(approval.document_id, approval.id)
+    log_event(
+        "approval_deleted",
+        approval_id=approval_id,
+        workflow=approval.workflow,
+        reviewer=approval.reviewer,
+        doc_id=approval.document_id,
+        provider=approval.signature_provider,
+    )
+    log_audit_event(
+        approval.document_id,
+        "deleted",
+        actor=approval.reviewer,
+        approval_id=approval_id,
+        workflow=approval.workflow,
+    )
+    return approval
+
+
+def remind_approvals(approval_ids: List[str]) -> dict[str, list[str]]:
+    """Trigger reminder events for pending approvals."""
+    sent: list[str] = []
+    skipped: list[str] = []
+    for approval_id in approval_ids:
+        approval = approvals.get(approval_id)
+        if approval is None or approval.state != "pending":
+            skipped.append(approval_id)
+            continue
+        _reminder_task(approval_id)
+        sent.append(approval_id)
+    return {"sent": sent, "skipped": skipped}
+
+
 def list_approvals(workflow: str | None = None, phase_id: str | None = None) -> List[ApprovalModel]:
     items: List[ApprovalModel] = list(approvals.values())
     if workflow is not None:

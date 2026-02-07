@@ -11,6 +11,8 @@ import {
 import {
   PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar,
 } from "recharts";
+import { authenticatedFetch } from "@/lib/api";
+import { useUserStore } from "@/state/user";
 
 // Chart color palette
 const COLORS = [
@@ -46,6 +48,7 @@ export default function UserDashboardPage() {
   const [errorStats, setErrorStats] = useState<ErrorStat[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const username = useUserStore((s) => s.username);
 
   // Dashboard Widget visibility state
   const DASHBOARD_KEYS = [
@@ -76,7 +79,6 @@ export default function UserDashboardPage() {
     });
   };
 
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
   const fallback = {
     stats: { assigned: 4, inProgress: 2, completed: 7, overdue: 1, documents: 12, approvals: 3 },
     status: [
@@ -138,7 +140,9 @@ export default function UserDashboardPage() {
   const { data, isError } = useQuery<any>({
     queryKey: ["user-dashboard"],
     queryFn: async () => {
-      const r = await fetch(`${API}/dashboard/user`);
+      const r = await authenticatedFetch("/dashboard/user", {
+        headers: username ? { "X-User": username } : undefined,
+      });
       return r.ok ? r.json() : null;
     },
   });
