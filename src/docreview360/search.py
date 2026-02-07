@@ -45,6 +45,7 @@ class ProjectModel(BaseModel):
     temp_until: datetime | None = None
     updated: datetime | None = None  # Add updated field for frontend compatibility
     description: str | None = None
+    reviewers: List[str] = Field(default_factory=list)
     # Store the initially requested phase even when no workflow is associated.
     # This allows the API to surface a project's phase before a workflow has
     # been created.
@@ -597,6 +598,87 @@ def update_project(
         return project
 
 
+def add_project_reviewer(project_id: str, reviewer: str) -> ProjectModel:
+    """Add a reviewer to a project and sync workflow approvals."""
+    from .approvals import create_approval, list_approvals
+    from .workflows import assign_reviewer
+
+    with project_lock:
+        project = projects[project_id]
+        if reviewer not in project.reviewers:
+            project.reviewers.append(reviewer)
+            project.updated = datetime.now(UTC)
+            _persist_project(project)
+
+    if project.workflow:
+        assign_reviewer(project.workflow, reviewer)
+        workflow = get_workflow(project.workflow)
+        approvals = list_approvals(project.workflow)
+        if not any(a.reviewer == reviewer for a in approvals):
+            doc_id = workflow.document if workflow and workflow.document else project.workflow
+            phase_id = workflow.phase if workflow else None
+            create_approval(
+                project.workflow,
+                reviewer,
+                doc_id,
+                description="Reviewer",
+                phase_id=phase_id,
+                role="Reviewer",
+            )
+    return project
+
+
+def update_project_reviewer(project_id: str, reviewer: str, new_reviewer: str) -> ProjectModel:
+    """Update a reviewer assignment for a project."""
+    from .approvals import list_approvals
+    from .workflows import assign_reviewer
+
+    with project_lock:
+        project = projects[project_id]
+        if reviewer not in project.reviewers:
+            raise KeyError(reviewer)
+        next_reviewers = [
+            new_reviewer if value == reviewer else value for value in project.reviewers
+        ]
+        project.reviewers = list(dict.fromkeys(next_reviewers))
+        project.updated = datetime.now(UTC)
+        _persist_project(project)
+
+    if project.workflow:
+        assign_reviewer(project.workflow, new_reviewer)
+        workflow = get_workflow(project.workflow)
+        for approval in list_approvals(project.workflow):
+            if approval.reviewer == reviewer:
+                approval.reviewer = new_reviewer
+                if approval.role == reviewer:
+                    approval.role = new_reviewer
+                if workflow and approval.document_id != workflow.document and workflow.document:
+                    approval.document_id = workflow.document
+    return project
+
+
+def remove_project_reviewer(project_id: str, reviewer: str) -> ProjectModel:
+    """Remove a reviewer from a project and cleanup approvals."""
+    from .approvals import delete_approval, list_approvals
+
+    with project_lock:
+        project = projects[project_id]
+        if reviewer not in project.reviewers:
+            raise KeyError(reviewer)
+        project.reviewers = [value for value in project.reviewers if value != reviewer]
+        project.updated = datetime.now(UTC)
+        _persist_project(project)
+
+    if project.workflow:
+        workflow = get_workflow(project.workflow)
+        if workflow and reviewer in workflow.reviewers:
+            workflow.reviewers = [value for value in workflow.reviewers if value != reviewer]
+        for approval in list_approvals(project.workflow):
+            if approval.reviewer == reviewer:
+                delete_approval(approval.id)
+    return project
+
+
 def remove_project(project_id: str) -> ProjectModel:
     """Remove a project from memory and persistent storage."""
     with project_lock:
@@ -744,7 +826,8 @@ def list_projects(user: str | None = None) -> list[ProjectModel]:
     Includes projects where the user is:
     1. Directly assigned as project.user
     2. Temporarily assigned as project.temp_user
-    3. Assigned as a reviewer in any approval step
+    3. Listed as a project reviewer
+    4. Assigned as a reviewer in any approval step
     """
     from .approvals import list_approvals
 
@@ -755,6 +838,11 @@ def list_projects(user: str | None = None) -> list[ProjectModel]:
 
             # Check direct assignments
             if user is None or proj.user == user or proj.temp_user == user:
+                result.append(proj)
+                continue
+
+            # Check explicit reviewer assignments
+            if user and user in proj.reviewers:
                 result.append(proj)
                 continue
 
