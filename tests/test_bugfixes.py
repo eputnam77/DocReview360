@@ -14,16 +14,13 @@ def test_restore_backup_invalid_json(tmp_path: Path):
         backup_utils.restore_backup(bad)
 
 
-def test_create_template_strips_and_rejects_duplicates():
-    orig = email_templates.TEMPLATES.copy()
-    email_templates.TEMPLATES.clear()
+def test_create_template_strips_and_rejects_duplicates(tmp_path: Path):
+    email_templates.reset_email_templates(root=tmp_path / "email_templates.json")
     tmpl = email_templates.create_template(" name ", "subject", "body")
     assert tmpl.name == "name"
     assert "name" in email_templates.TEMPLATES
     with pytest.raises(ValueError):
         email_templates.create_template("name", "s", "b")
-    email_templates.TEMPLATES.clear()
-    email_templates.TEMPLATES.update(orig)
 
 
 def test_event_dispatcher_validates_types():

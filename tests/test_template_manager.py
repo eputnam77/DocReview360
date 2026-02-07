@@ -1,11 +1,8 @@
 from docreview360 import template_manager as tm
 
 
-def setup_function(_):
-    tm._template_store.clear()
-
-
 def test_upload_template_copies_metadata(tmp_path):
+    tm.reset_template_store(root=tmp_path / "template_store.json")
     meta = {"a": 1}
     ver = tm.upload_template("name", b"data", meta)
     meta["a"] = 2
