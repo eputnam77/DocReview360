@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from docreview360 import doc_types
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
-from docreview360.phases import _phases, add_phase
+from docreview360.phases import add_phase, reset_phases
 from docreview360.workflows import create_workflow, workflows
 
 
@@ -22,7 +22,7 @@ class TestProjectCreationIntegration:
         """Setup and teardown for each test."""
         # Clear existing data
         doc_types.document_types.clear()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
 
         # Add test configuration
@@ -44,7 +44,7 @@ class TestProjectCreationIntegration:
 
         # Cleanup
         doc_types.document_types.clear()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
 
     def test_project_creation_with_configuration_fields(self) -> None:
@@ -257,7 +257,7 @@ class TestConfigurationPropagation:
         client = TestClient(app)
 
         # Clear existing phases
-        _phases.clear()
+        reset_phases()
 
         # Add test phases
         test_phases = ["Draft", "Review", "Approval", "Published"]
@@ -319,7 +319,7 @@ class TestConfigurationPropagation:
 
         # Clear existing configuration
         doc_types.document_types.clear()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
 
         # Add initial configuration
