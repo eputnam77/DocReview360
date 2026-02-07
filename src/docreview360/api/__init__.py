@@ -48,6 +48,7 @@ from ..approvals import (
     SignedApprovalImmutableError,
     build_approvals_summary_pdf,
     create_approval,
+    delete_approval,
     get_approval,
     list_approvals,
     send_for_signature,
@@ -2409,6 +2410,16 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
         )
     except SignedApprovalImmutableError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/approvals/{approval_id}", response_model=ApprovalModel)
+@log_call
+async def delete_approval_endpoint(approval_id: str) -> ApprovalModel:
+    """Delete an approval by id."""
+    try:
+        return delete_approval(approval_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
