@@ -1,8 +1,38 @@
-"""In-memory project phases management."""
+"""Project phases management with optional persistence."""
 
 from __future__ import annotations
 
+import json
+import os
+import warnings
+from pathlib import Path
 from typing import List
+
+from filelock import FileLock
+
+
+def _env_flag_enabled(value: str | None) -> bool:
+    """Interpret truthy string values for the persistence feature flag."""
+
+    if value is None:
+        return True
+    normalized = value.strip().lower()
+    return normalized not in {"0", "false", "no", "off"}
+
+
+DOCREVIEW360_ENABLE_PHASE_PERSISTENCE = _env_flag_enabled(
+    os.getenv("DOCREVIEW360_ENABLE_PHASE_PERSISTENCE")
+)
+
+if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE:
+    warnings.warn(
+        "Phase persistence is disabled; customizations will not be saved.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
+# Path to store persistent phase data
+DATA_FILE = Path(os.getenv("DOCREVIEW360_PHASES_FILE", "phases.json"))
 
 _phases: List[str] = []
 
@@ -25,7 +55,55 @@ def _bootstrap_sample() -> None:
         )
 
 
-_bootstrap_sample()
+def _load_phases_from_disk() -> bool:
+    """Load phases from disk if persistence is enabled and data exists."""
+
+    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE or not DATA_FILE.exists():
+        return False
+    try:
+        with FileLock(f"{DATA_FILE}.lock"):
+            raw = DATA_FILE.read_text()
+        payload = json.loads(raw)
+        if not isinstance(payload, list):
+            return False
+        phases = [
+            item.strip() for item in payload if isinstance(item, str) and item.strip()
+        ]
+        _phases.clear()
+        _phases.extend(phases)
+        return True
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
+def _persist_phases() -> None:
+    """Persist phases to disk if persistence is enabled."""
+
+    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE:
+        return
+    try:
+        DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(f"{DATA_FILE}.lock"):
+            DATA_FILE.write_text(json.dumps(_phases, indent=2))
+    except OSError:
+        # Best-effort persistence; avoid blocking API operations on IO errors.
+        pass
+
+
+def reset_phases() -> None:
+    """Clear phases and remove persisted data if present."""
+
+    _phases.clear()
+    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE:
+        return
+    try:
+        DATA_FILE.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+if not _load_phases_from_disk():
+    _bootstrap_sample()
 
 
 def list_phases() -> List[str]:
@@ -40,6 +118,7 @@ def add_phase(name: str) -> None:
         raise ValueError("phase name cannot be empty")
     if name not in _phases:
         _phases.append(name)
+        _persist_phases()
 
 
 def delete_phase(name: str) -> None:
@@ -56,6 +135,8 @@ def delete_phase(name: str) -> None:
         _phases.remove(name)
     except ValueError as exc:
         raise KeyError(f"Phase '{name}' not found") from exc
+    else:
+        _persist_phases()
 
 
 def rename_phase(old: str, new: str) -> None:
@@ -72,3 +153,4 @@ def rename_phase(old: str, new: str) -> None:
     except ValueError as exc:
         raise KeyError(f"Phase '{old}' not found") from exc
     _phases[idx] = new
+    _persist_phases()
