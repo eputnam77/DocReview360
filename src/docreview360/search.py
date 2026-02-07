@@ -364,6 +364,12 @@ class SearchRepository:
                         (self._NEXT_PROJECT_NUMBER_KEY, str(next_project_number)),
                     )
 
+    def delete_project(self, project_id: str) -> None:
+        """Remove a project from persistent storage."""
+        with self._lock:
+            with self._connection() as conn:
+                conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+
     def save_saved_search(self, saved_search: SavedSearch) -> None:
         with self._lock:
             with self._connection() as conn:
@@ -588,6 +594,16 @@ def update_project(
         # Update the updated timestamp
         project.updated = datetime.now(UTC)
         _persist_project(project)
+        return project
+
+
+def remove_project(project_id: str) -> ProjectModel:
+    """Remove a project from memory and persistent storage."""
+    with project_lock:
+        project = projects.pop(project_id, None)
+        if project is None:
+            raise KeyError(project_id)
+        _repository.delete_project(project_id)
         return project
 
 

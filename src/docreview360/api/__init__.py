@@ -123,6 +123,7 @@ from ..search import (
     get_project,
     list_projects,
     list_saved_searches,
+    remove_project,
     ranked_search,
     save_search,
     search,
@@ -1010,6 +1011,26 @@ async def update_project_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.delete("/projects/{project_id}", response_model=ProjectModel)
+async def delete_project_endpoint(project_id: str) -> ProjectModel:
+    """Delete a project and its persisted record."""
+    existing_project = get_project(project_id)
+    if existing_project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    try:
+        removed = remove_project(project_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Project not found") from None
+    clear_cache()
+    log_event(
+        "delete_project",
+        user_id=removed.user,
+        project=removed.id,
+        message=render("delete_project", user=removed.user or "", project_id=removed.id),
+    )
+    return removed
 
 
 @app.get("/projects/{project_id}/workflow", response_model=WorkflowModel)
