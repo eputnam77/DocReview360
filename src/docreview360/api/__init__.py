@@ -140,11 +140,19 @@ from ..settings_manager import update_setting
 from ..status import internal_status, public_status
 from ..stubs.task223 import convert_document
 from ..template_manager import (
-    upload_template as store_template,
+    delete_template as delete_stored_template,
     get_latest_template,
     list_stored_templates,
     approve_template,
     retire_template,
+    upload_template as store_template,
+)
+from ..email_templates import (
+    create_template as create_email_template,
+    delete_template as delete_email_template,
+    get_template as get_email_template,
+    list_templates as list_email_templates,
+    update_template as update_email_template,
 )
 from ..watchlist import get_watchlist, toggle_watch
 from ..collab import router as collab_router
@@ -1679,8 +1687,106 @@ async def delete_document_type_endpoint(name: str, replacement: str | None = Non
 # ---------------------------------------------------------------------------
 
 
+def _normalize_template_metadata(
+    metadata: dict[str, Any],
+    *,
+    doc_type: str | None,
+    format_value: str | None,
+) -> dict[str, Any]:
+    normalized = dict(metadata)
+    if doc_type:
+        normalized["docType"] = doc_type
+        normalized["doc_type"] = doc_type
+    if format_value:
+        normalized["format"] = format_value.upper()
+        normalized["type"] = format_value.lower()
+    normalized.setdefault("updated", datetime.now(timezone.utc).isoformat())
+    return normalized
+
+
+def _resolve_format_from_filename(filename: str | None) -> str | None:
+    if not filename:
+        return None
+    parts = filename.rsplit(".", maxsplit=1)
+    if len(parts) != 2:
+        return None
+    return parts[-1].strip().lower()
+
+
+async def _parse_template_request(
+    request: Request,
+    *,
+    fallback_name: str | None = None,
+) -> tuple[str, dict[str, Any], bytes]:
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("multipart/form-data"):
+        form = await request.form()
+        name = str(form.get("name") or form.get("id") or fallback_name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="name is required")
+        doc_type = form.get("docType") or form.get("doc_type")
+        format_value = form.get("format") or form.get("type")
+        meta_value = form.get("meta") or "{}"
+        content_text = form.get("content")
+        try:
+            metadata = json.loads(str(meta_value))
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="invalid metadata") from exc
+        file = form.get("file")
+        content: bytes
+        if isinstance(file, UploadFile):
+            content = await file.read()
+            format_value = format_value or _resolve_format_from_filename(file.filename)
+            metadata.setdefault("filename", file.filename)
+        elif file is not None:
+            if hasattr(file, "read"):
+                maybe_content = file.read()
+                if asyncio.iscoroutine(maybe_content):
+                    maybe_content = await maybe_content
+                content = (
+                    maybe_content.encode("utf-8")
+                    if isinstance(maybe_content, str)
+                    else bytes(maybe_content)
+                )
+            else:
+                content = bytes(file)
+        elif content_text is not None:
+            content = str(content_text).encode("utf-8")
+        else:
+            raise HTTPException(status_code=400, detail="template content is required")
+        metadata = _normalize_template_metadata(
+            metadata,
+            doc_type=str(doc_type).strip() if doc_type else None,
+            format_value=str(format_value).strip() if format_value else None,
+        )
+        return name, metadata, content
+
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="invalid template payload")
+    name = str(payload.get("name") or payload.get("id") or fallback_name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    content_text = payload.get("content")
+    if content_text is None:
+        raise HTTPException(status_code=400, detail="template content is required")
+    content = str(content_text).encode("utf-8")
+    metadata = payload.get("meta") or {}
+    if metadata and not isinstance(metadata, dict):
+        raise HTTPException(status_code=400, detail="meta must be a mapping")
+    doc_type = payload.get("docType") or payload.get("doc_type")
+    format_value = payload.get("format") or payload.get("type")
+    metadata = _normalize_template_metadata(
+        metadata,
+        doc_type=str(doc_type).strip() if doc_type else None,
+        format_value=str(format_value).strip() if format_value else None,
+    )
+    return name, metadata, content
+
+
 @app.get("/templates")
 async def list_templates_endpoint(
+    request: Request,
     user: auth.User = Depends(auth.get_current_user),
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
@@ -1688,14 +1794,29 @@ async def list_templates_endpoint(
     for name, ver in list_stored_templates().items():
         if not is_admin and (not ver.approved or ver.retired):
             continue
+        meta = ver.metadata
+        format_value = meta.get("format")
+        type_value = meta.get("type")
+        label = meta.get("label") or name
+        description = meta.get("description")
+        if not description and meta.get("docType"):
+            description = f"Document type: {meta.get('docType')}"
+        url = None
+        if request is not None:
+            url = str(request.url_for("download_template_endpoint", name=name))
         data = {
             "id": name,
             "name": name,
             "version": ver.version,
             "approved": ver.approved,
             "retired": ver.retired,
+            "format": format_value,
+            "type": type_value or (format_value.lower() if isinstance(format_value, str) else None),
+            "label": label,
+            "description": description,
+            "url": url,
         }
-        data.update(ver.metadata)
+        data.update(meta)
         items.append(data)
     return items
 
@@ -1718,18 +1839,10 @@ async def get_template_endpoint(name: str) -> dict[str, Any]:
 
 
 @app.post("/templates", status_code=201)
-async def upload_template_endpoint(
-    name: str = Form(...),
-    meta: str = Form("{}"),
-    file: UploadFile = File(...),
-) -> dict[str, Any]:
-    """Store uploaded template ``file`` with ``meta`` information."""
+async def upload_template_endpoint(request: Request) -> dict[str, Any]:
+    """Store uploaded template content with metadata."""
 
-    try:
-        metadata = json.loads(meta)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=400, detail="invalid metadata") from exc
-    content = await file.read()
+    name, metadata, content = await _parse_template_request(request)
     version = store_template(name, content, metadata)
     return {
         "name": name,
@@ -1738,6 +1851,70 @@ async def upload_template_endpoint(
         "approved": version.approved,
         "retired": version.retired,
     }
+
+
+@app.put("/templates/{name}")
+async def update_template_endpoint(name: str, request: Request) -> dict[str, Any]:
+    """Update stored template content by creating a new version."""
+
+    updated_name, metadata, content = await _parse_template_request(request, fallback_name=name)
+    if updated_name != name:
+        try:
+            delete_stored_template(name)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    version = store_template(updated_name, content, metadata)
+    return {
+        "name": updated_name,
+        "version": version.version,
+        "metadata": version.metadata,
+        "approved": version.approved,
+        "retired": version.retired,
+    }
+
+
+@app.delete("/templates/{name}", status_code=204, response_class=Response)
+async def delete_template_endpoint(name: str) -> Response:
+    """Remove a stored template."""
+
+    try:
+        delete_stored_template(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(status_code=204)
+
+
+@app.get("/templates/{name}/download", response_class=Response, name="download_template_endpoint")
+async def download_template_endpoint(name: str) -> Response:
+    """Download the latest template file."""
+
+    ver = get_latest_template(name)
+    if not ver:
+        raise HTTPException(status_code=404, detail="template not found")
+    metadata = ver.metadata or {}
+    format_value = metadata.get("format") or metadata.get("type") or "txt"
+    format_lower = str(format_value).lower()
+    extension = {
+        "docx": "docx",
+        "word": "docx",
+        "html": "html",
+        "json": "json",
+        "xml": "xml",
+        "txt": "txt",
+        "md": "md",
+        "markdown": "md",
+    }.get(format_lower, format_lower)
+    content_type = {
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "html": "text/html",
+        "json": "application/json",
+        "xml": "application/xml",
+        "txt": "text/plain",
+        "md": "text/markdown",
+    }.get(extension, "application/octet-stream")
+    filename = metadata.get("filename") or f"{name}.{extension}"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(content=ver.content, media_type=content_type, headers=headers)
 
 
 @app.post("/templates/{name}/approve")
@@ -1754,6 +1931,82 @@ async def retire_template_endpoint(
 ) -> dict[str, Any]:
     ver = retire_template(name)
     return {"name": name, "version": ver.version, "retired": ver.retired}
+
+
+class EmailTemplatePayload(BaseModel):
+    """Payload for email templates."""
+
+    name: str
+    subject: str
+    body: str
+    task: str | None = None
+
+
+@app.get("/email-templates")
+async def list_email_templates_endpoint() -> list[dict[str, Any]]:
+    return [
+        {
+            "name": tmpl.name,
+            "subject": tmpl.subject,
+            "body": tmpl.body,
+            "task": tmpl.task,
+        }
+        for tmpl in list_email_templates()
+    ]
+
+
+@app.get("/email-templates/{name}")
+async def get_email_template_endpoint(name: str) -> dict[str, Any]:
+    tmpl = get_email_template(name)
+    if tmpl is None:
+        raise HTTPException(status_code=404, detail="email template not found")
+    return {
+        "name": tmpl.name,
+        "subject": tmpl.subject,
+        "body": tmpl.body,
+        "task": tmpl.task,
+    }
+
+
+@app.post("/email-templates", status_code=201)
+async def create_email_template_endpoint(body: EmailTemplatePayload) -> dict[str, Any]:
+    try:
+        tmpl = create_email_template(body.name, body.subject, body.body, task=body.task)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "name": tmpl.name,
+        "subject": tmpl.subject,
+        "body": tmpl.body,
+        "task": tmpl.task,
+    }
+
+
+@app.put("/email-templates/{name}")
+async def update_email_template_endpoint(
+    name: str, body: EmailTemplatePayload
+) -> dict[str, Any]:
+    if name != body.name:
+        raise HTTPException(status_code=400, detail="template name mismatch")
+    try:
+        tmpl = update_email_template(name, subject=body.subject, body=body.body, task=body.task)
+    except (KeyError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "name": tmpl.name,
+        "subject": tmpl.subject,
+        "body": tmpl.body,
+        "task": tmpl.task,
+    }
+
+
+@app.delete("/email-templates/{name}", status_code=204, response_class=Response)
+async def delete_email_template_endpoint(name: str) -> Response:
+    try:
+        delete_email_template(name)
+    except (KeyError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @app.get("/plugin-marketplace")
