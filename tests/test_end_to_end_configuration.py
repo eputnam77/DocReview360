@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
-from docreview360.phases import _phases, add_phase
+from docreview360.phases import add_phase, reset_phases
 from docreview360.workflows import create_workflow, workflows
 
 
@@ -21,12 +21,12 @@ class TestEndToEndConfigurationFlow:
         """Setup and teardown for each test."""
         # Clear existing data
         reset_document_types()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
         yield
         # Cleanup
         reset_document_types()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
 
     def test_complete_configuration_to_project_flow(self) -> None:
@@ -118,7 +118,7 @@ class TestEndToEndConfigurationFlow:
 
         # Update configuration
         reset_document_types()
-        _phases.clear()
+        reset_phases()
 
         add_document_type(
             DocumentTypeModel(
@@ -249,7 +249,7 @@ class TestEndToEndConfigurationFlow:
 
         # Test with corrupted configuration
         reset_document_types()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
 
         # Try to create project with no configuration

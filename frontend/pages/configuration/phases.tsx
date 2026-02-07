@@ -15,7 +15,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { API } from "@/lib/api";
 import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "react-hot-toast";
@@ -132,7 +131,9 @@ export default function PhasesPage() {
 
   const checkUsage = async (phaseName: string): Promise<UsageInfo | null> => {
     try {
-      const response = await fetch(`${API}/phases/${encodeURIComponent(phaseName)}/usage`);
+      const response = await fetch(
+        `/api/phases/${encodeURIComponent(phaseName)}/usage`,
+      );
       if (response.ok) {
         const usage = (await response.json()) as UsageInfo;
         setUsageInfo(usage);
@@ -148,7 +149,7 @@ export default function PhasesPage() {
     if (!newName.trim()) return;
     const body = { name: newName.trim() };
     try {
-      const r = await fetch(`${API}/phases`, {
+      const r = await fetch("/api/phases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -200,7 +201,7 @@ export default function PhasesPage() {
     // If not in use, delete directly
     setPhases(phases.filter((p) => p.id !== id));
     try {
-      await fetch(`${API}/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await fetch(`/api/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
     } catch {
       // ignore network errors in development mode
     }
@@ -210,9 +211,14 @@ export default function PhasesPage() {
     if (!showDeleteDialog || !replacementPhase) return;
     
     try {
-      const response = await fetch(`${API}/phases/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementPhase)}`, { 
-        method: "DELETE" 
-      });
+      const response = await fetch(
+        `/api/phases/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(
+          replacementPhase,
+        )}`,
+        {
+          method: "DELETE",
+        },
+      );
       
       if (response.ok) {
         setPhases(phases.filter((p) => p.id !== showDeleteDialog));
@@ -246,7 +252,7 @@ export default function PhasesPage() {
     const body = { name: editName.trim() };
     setPhases(phases.map((p) => (p.id === id ? { ...p, name: body.name } : p)));
     try {
-      await fetch(`${API}/phases/${encodeURIComponent(id)}`, {
+      await fetch(`/api/phases/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

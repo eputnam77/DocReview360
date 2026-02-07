@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
-from docreview360.phases import _phases, add_phase
+from docreview360.phases import add_phase, reset_phases
 from docreview360.workflows import workflows
 
 
@@ -21,12 +21,12 @@ class TestConfigurationPropagation:
         """Setup and teardown for each test."""
         # Clear existing data
         reset_document_types()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
         yield
         # Cleanup
         reset_document_types()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
 
     def test_project_settings_from_configuration(self) -> None:
@@ -80,7 +80,7 @@ class TestConfigurationPropagation:
 
         # Test with empty configuration
         reset_document_types()
-        _phases.clear()
+        reset_phases()
 
         resp = client.get("/document-types")
         assert resp.status_code == 200
@@ -98,7 +98,7 @@ class TestConfigurationPropagation:
 
         # Clear all configuration
         reset_document_types()
-        _phases.clear()
+        reset_phases()
         workflows.clear()
 
         # Test that endpoints still work with defaults
@@ -146,7 +146,7 @@ class TestConfigurationPropagation:
 
         # Update configuration
         reset_document_types()
-        _phases.clear()
+        reset_phases()
 
         add_document_type(
             DocumentTypeModel(
