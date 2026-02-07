@@ -15,6 +15,7 @@ import {
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "react-hot-toast";
+import { API } from "@/lib/api";
 
 export default function NewWorkflowPage() {
   const [name, setName] = useState("");
@@ -83,12 +84,19 @@ export default function NewWorkflowPage() {
 
   const handleSave = async () => {
     const payload = { name, description, steps };
-    // naive submission
-    await fetch(`${API}/workflows`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
+    try {
+      const res = await fetch("/api/workflow-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to save workflow");
+      }
+    } catch (error) {
+      toast.error((error as Error).message);
+      return;
+    }
 
     for (const docType of docTypesSelected) {
       try {
@@ -108,14 +116,7 @@ export default function NewWorkflowPage() {
       }
     }
 
-    toast.success(
-      "Workflow saved:\n" +
-        JSON.stringify(
-          { name, description, steps, docTypesSelected },
-          null,
-          2,
-        ),
-    );
+    toast.success("Workflow saved.");
   };
 
   return (

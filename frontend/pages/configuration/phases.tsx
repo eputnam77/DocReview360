@@ -117,7 +117,7 @@ export default function PhasesPage() {
       }
 
       try {
-        const r = await fetch("/api/workflows");
+        const r = await fetch("/api/workflow-templates");
         if (r.ok) {
           const data = await r.json();
           setWorkflows(normalizeWorkflows(data));

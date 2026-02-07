@@ -14,12 +14,17 @@ import { CheckCircle, Clock, Users, Workflow, XCircle } from "lucide-react";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 
-interface Workflow {
+interface WorkflowTemplate {
   id: string;
   name: string;
   description?: string;
-  phases: string[];
-  reviewers: string[];
+  steps?: Array<{
+    role: string;
+    user?: string;
+    required?: boolean;
+  }>;
+  usage?: number;
+  updated?: string;
 }
 
 interface Approval {
@@ -48,8 +53,7 @@ export default function EditProjectPage() {
   const [description, setDescription] = useState("");
 
   // Workflow and approval fields
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [workflowNames, setWorkflowNames] = useState<string[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowTemplate[]>([]);
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>("");
   const [currentApprovals, setCurrentApprovals] = useState<Approval[]>([]);
   const [showWorkflowSelector, setShowWorkflowSelector] = useState(false);
@@ -83,7 +87,7 @@ export default function EditProjectPage() {
       if (def) {
         // Find the workflow ID that matches the mapped workflow name
         const mappedWorkflow = workflows.find(
-          w => (w.name ?? w.project ?? w.id) === def,
+          w => (w.name ?? w.id) === def,
         );
         if (mappedWorkflow) {
           setSelectedWorkflow(mappedWorkflow.id);
@@ -124,7 +128,7 @@ export default function EditProjectPage() {
             const wfRes = await fetch(`${API}/workflows/${proj.workflow}`);
             if (wfRes.ok) {
               const workflow = await wfRes.json();
-              setSelectedWorkflow(workflow.id);
+              setSelectedWorkflow(workflow.template ?? workflow.id);
             }
           } catch (error) {
             console.error('Failed to fetch workflow:', error);
@@ -153,7 +157,7 @@ export default function EditProjectPage() {
               const workflows = await wfRes.json();
               if (workflows.length > 0) {
                 const projectWorkflow = workflows[0];
-                setSelectedWorkflow(projectWorkflow.id);
+                setSelectedWorkflow(projectWorkflow.template ?? projectWorkflow.id);
 
                 // Fetch approvals for this workflow
                 const apRes = await fetch(`${API}/approvals?workflow=${projectWorkflow.id}`);
@@ -180,17 +184,15 @@ export default function EditProjectPage() {
         setLoading(false);
       });
 
-    // Fetch available workflows (instances).
-    fetch(`${API}/workflows`)
+    // Fetch available workflow templates.
+    fetch("/api/workflow-templates")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         const list = Array.isArray(data) ? data : [];
         setWorkflows(list);
-        setWorkflowNames(list.map((w) => w.name ?? w.project ?? w.id));
       })
       .catch(() => {
         setWorkflows([]);
-        setWorkflowNames([]);
       });
 
     // Fetch available phases
@@ -229,119 +231,23 @@ export default function EditProjectPage() {
     }
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append("number", String(docNumber)); // Ensure it's a string
-    formData.append("name", title);
-    formData.append("user", sme);
-    formData.append("doc_type", docType);
-    formData.append("phase", phase);
-    formData.append("description", description);
-
     try {
+      const payload: Record<string, unknown> = {
+        name: title,
+        user: sme,
+        doc_type: docType,
+        phase,
+        description,
+      };
+      if (selectedWorkflow) {
+        payload.workflow = selectedWorkflow;
+      }
       const res = await fetch(`${API}/projects/${id}`, {
         method: "PUT",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to update project");
-
-      // If a workflow is selected, update the project's workflow association
-      if (selectedWorkflow) {
-        const selectedWf = workflows.find(w => w.id === selectedWorkflow);
-        if (selectedWf) {
-          try {
-            // Update the project to associate it with the selected workflow
-            const projectUpdateRes = await fetch(`${API}/projects/${id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                workflow: selectedWf.id
-              })
-            });
-
-            if (!projectUpdateRes.ok) {
-              console.error('Failed to update project workflow association');
-            }
-
-            // Check if workflow already exists for this project
-            const existingWorkflowRes = await fetch(`${API}/workflows?project=${id}`);
-            let existingWorkflow = null;
-            if (existingWorkflowRes.ok) {
-              const workflows = await existingWorkflowRes.json();
-              existingWorkflow = workflows.find((w: any) => w.project === id);
-            }
-
-            if (!existingWorkflow) {
-              // Create new workflow for the project if none exists
-              const wfRes = await fetch(`${API}/workflows`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  project: id,
-                  phases: selectedWf.phases
-                })
-              });
-
-              if (wfRes.ok) {
-                const newWorkflow = await wfRes.json();
-
-                // Create approvals for each reviewer
-                for (const reviewer of selectedWf.reviewers) {
-                  await fetch(`${API}/approvals`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      workflow: newWorkflow.id,
-                      reviewer: reviewer,
-                      phase_id: phase,
-                      required: true,
-                    }),
-                  });
-                }
-              }
-            } else {
-              // Update existing workflow with new phases and reviewers
-              const wfUpdateRes = await fetch(`${API}/workflows/${existingWorkflow.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  phases: selectedWf.phases
-                })
-              });
-
-              if (wfUpdateRes.ok) {
-                // Clear existing approvals and create new ones
-                const existingApprovalsRes = await fetch(`${API}/approvals?workflow=${existingWorkflow.id}`);
-                if (existingApprovalsRes.ok) {
-                  const existingApprovals = await existingApprovalsRes.json();
-                  for (const approval of existingApprovals) {
-                    await fetch(`${API}/approvals/${approval.id}`, {
-                      method: "DELETE"
-                    });
-                  }
-                }
-
-                // Create new approvals for each reviewer
-                for (const reviewer of selectedWf.reviewers) {
-                  await fetch(`${API}/approvals`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      workflow: existingWorkflow.id,
-                      reviewer: reviewer,
-                      phase_id: phase,
-                      required: true,
-                    }),
-                  });
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Failed to update workflow:', error);
-            // Don't fail the entire update if workflow creation fails
-          }
-        }
-      }
-
       router.push(`/projects/${id}`);
     } catch (err) {
       setError((err as Error).message);
@@ -605,16 +511,13 @@ export default function EditProjectPage() {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <h5 className="font-medium text-sm">{workflow.name ?? workflow.project ?? workflow.id}</h5>
+                            <h5 className="font-medium text-sm">{workflow.name ?? workflow.id}</h5>
                             <p className="text-xs text-gray-600 mt-1">{workflow.description}</p>
                             <div className="flex items-center gap-2 mt-2">
                               <Badge variant="outline" className="text-xs">
-                                {workflow.phases.length} phases
+                                {(workflow.steps?.length ?? 0)} steps
                               </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {workflow.reviewers.length} reviewers
-                              </Badge>
-                              {phaseMap[phase] === (workflow.name ?? workflow.project ?? workflow.id) && (
+                              {phaseMap[phase] === (workflow.name ?? workflow.id) && (
                                 <Badge className="text-xs bg-green-100 text-green-800">
                                   Suggested
                                 </Badge>
