@@ -30,7 +30,7 @@ export default function NewTemplatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch(`${API}/document-types`)
+    fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => setDocTypes(data.map((d) => d.name)))
       .catch(() => setDocTypes([]));
