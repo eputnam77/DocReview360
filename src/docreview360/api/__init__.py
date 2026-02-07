@@ -64,7 +64,7 @@ from ..archive import (
 )
 from ..audit import AuditLogEntry, get_audit_log, log_audit_event
 from ..cache import cache_get, cache_set, clear_cache
-from ..cms import save_to_cms
+from ..cms import fetch_from_cms, save_to_cms
 from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
@@ -281,6 +281,30 @@ class RevisionCreate(BaseModel):
     content: str
     steps: list[Any] | None = None
     promote: bool = False
+
+
+class CmsExportRequest(BaseModel):
+    """Request payload for exporting a document to a CMS."""
+
+    fmt: str = "markdown"
+
+
+class CmsExportResponse(BaseModel):
+    """Response payload for CMS exports."""
+
+    cms: str
+    item_id: str
+
+
+class CmsImportRequest(BaseModel):
+    """Request payload for importing a document from a CMS."""
+
+    item_id: str
+    filename: str | None = None
+    project: str | None = None
+    user: str | None = None
+    priority: int | None = None
+    fmt: str | None = None
 
 
 class RevisionMeta(BaseModel):
@@ -1371,10 +1395,7 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         # Clear cached search results so subsequent queries reflect the update
         clear_cache()
         cfg = Config.load(CONFIG_FILE)
-        # ``cms`` may contain stray whitespace from configuration files. Strip
-        # it to avoid silently skipping uploads when the value is
-        # ``"sharepoint "``.
-        if cfg and cfg.cms.strip().lower() == "sharepoint":
+        if cfg:
             try:
                 save_to_cms(updated, config=cfg)
             except Exception as exc:  # pragma: no cover - best effort
@@ -1382,6 +1403,83 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
         return updated
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/cms/export/{doc_id}", response_model=CmsExportResponse)
+async def export_document_to_cms(
+    doc_id: str, body: CmsExportRequest, x_user: str | None = Header(None)
+) -> CmsExportResponse:
+    """Export a document to the configured CMS."""
+
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    cfg = Config.load(CONFIG_FILE)
+    if not cfg or cfg.cms.strip().lower() == "none":
+        raise HTTPException(status_code=409, detail="CMS is not configured")
+    try:
+        item_id = save_to_cms(document, config=cfg, fmt=body.fmt)
+    except Exception as exc:  # pragma: no cover - best effort
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if not item_id:
+        raise HTTPException(status_code=409, detail="CMS is not configured")
+    log_event(
+        "export_document_cms",
+        user_id=x_user,
+        document=doc_id,
+        message=render("tiptap_content_saved_to_cms_for_project_on", project_id=doc_id, date=""),
+    )
+    return CmsExportResponse(cms=cfg.cms.strip().lower(), item_id=item_id)
+
+
+def _resolve_import_filename(item_id: str, filename: str | None, fmt: str | None) -> str:
+    if filename:
+        return filename
+    if fmt:
+        fmt_normalized = fmt.strip().lower()
+        ext_map = {
+            "markdown": "md",
+            "md": "md",
+            "html": "html",
+            "docx": "docx",
+            "pdf": "pdf",
+            "txt": "txt",
+            "text": "txt",
+        }
+        ext = ext_map.get(fmt_normalized, fmt_normalized)
+        return f"cms-import.{ext}"
+    return item_id
+
+
+@app.post("/cms/import", status_code=201, response_model=DocumentModel)
+async def import_document_from_cms(body: CmsImportRequest) -> DocumentModel:
+    """Import a document from the configured CMS into DocReview360."""
+
+    cfg = Config.load(CONFIG_FILE)
+    if not cfg or cfg.cms.strip().lower() == "none":
+        raise HTTPException(status_code=409, detail="CMS is not configured")
+    try:
+        payload = fetch_from_cms(body.item_id, config=cfg)
+    except Exception as exc:  # pragma: no cover - best effort
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if payload is None:
+        raise HTTPException(status_code=409, detail="CMS is not configured")
+    filename = _resolve_import_filename(body.item_id, body.filename, body.fmt)
+    if not filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+    document = import_document(
+        filename,
+        payload,
+        project=body.project,
+        user=body.user,
+        priority=body.priority,
+    )
+    cache_set(
+        "documents",
+        json.dumps([d.model_dump(mode="json") for d in list_docs()]),
+        ttl=30,
+    )
+    return document
 
 
 @app.post("/documents/{doc_id}/revisions", status_code=201)
