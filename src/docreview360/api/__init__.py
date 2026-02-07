@@ -6,6 +6,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
+import string
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,7 +37,7 @@ from contextlib import asynccontextmanager
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict, Field
 
-from .. import auth, reporting
+from .. import auth, reporting, rbac
 from ..rbac import require_permission
 from .. import search as search_mod
 from ..ai_assist import rewrite_text, summarize_text
@@ -494,6 +496,132 @@ class UserStatusPayload(BaseModel):
     """Payload for toggling a user's active status."""
 
     active: bool
+
+
+class UserCreatePayload(BaseModel):
+    """Payload for creating a user."""
+
+    username: str
+    roles: list[str] = Field(default_factory=list)
+    active: bool = True
+    password: str | None = None
+
+
+class UserUpdatePayload(BaseModel):
+    """Payload for updating a user."""
+
+    username: str | None = None
+    roles: list[str] | None = None
+    active: bool | None = None
+    password: str | None = None
+
+
+class UserSummary(BaseModel):
+    """Summary information returned by user endpoints."""
+
+    username: str
+    roles: list[str]
+    active: bool
+
+
+def _generate_password() -> str:
+    policy = auth._password_policy()
+    class_sets: dict[str, str] = {
+        "lowercase": string.ascii_lowercase,
+        "uppercase": string.ascii_uppercase,
+        "digits": string.digits,
+        "symbols": policy.symbol_characters,
+    }
+    required: list[str] = []
+    for class_name in policy.character_classes:
+        chars = class_sets.get(class_name)
+        if chars:
+            required.append(secrets.choice(chars))
+    if not required:
+        required.append(secrets.choice(string.ascii_letters + string.digits))
+    combined = "".join(class_sets.get(name, "") for name in policy.character_classes)
+    if not combined:
+        combined = string.ascii_letters + string.digits
+    length = max(policy.min_length, len(required))
+    extra = [secrets.choice(combined) for _ in range(length - len(required))]
+    password_chars = required + extra
+    secrets.SystemRandom().shuffle(password_chars)
+    return "".join(password_chars)
+
+
+def _user_summary(username: str) -> UserSummary:
+    return UserSummary(
+        username=username,
+        roles=sorted(get_roles(username)),
+        active=auth.is_active(username),
+    )
+
+
+@app.get("/users", response_model=list[UserSummary])
+async def list_users_endpoint() -> list[UserSummary]:
+    """Return all users with role assignments and active status."""
+
+    repo = auth._get_user_repository()
+    return [_user_summary(record.username) for record in repo.list_users()]
+
+
+@app.post("/users", response_model=UserSummary, status_code=201)
+async def create_user_endpoint(body: UserCreatePayload) -> UserSummary:
+    """Create a user and assign roles."""
+
+    username = body.username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username required")
+    repo = auth._get_user_repository()
+    if repo.get_user(username):
+        raise HTTPException(status_code=409, detail="User already exists")
+    password = body.password or _generate_password()
+    repo.create_user(username, password, active=body.active)
+    if body.roles:
+        rbac.set_user_roles(username, body.roles, actor="system", context={"source": "api"})
+    return _user_summary(username)
+
+
+@app.put("/users/{username}", response_model=UserSummary)
+async def update_user_endpoint(username: str, body: UserUpdatePayload) -> UserSummary:
+    """Update a user's name, roles, active flag, or password."""
+
+    repo = auth._get_user_repository()
+    record = repo.get_user(username)
+    if record is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    target_username = body.username.strip() if body.username is not None else username
+    if body.username is not None and not target_username:
+        raise HTTPException(status_code=400, detail="Username required")
+    if target_username != username and repo.get_user(target_username):
+        raise HTTPException(status_code=409, detail="Username already exists")
+    if target_username != username:
+        repo.rename_user(username, target_username)
+        roles = get_roles(username)
+        rbac.set_user_roles(target_username, roles, actor="system", context={"source": "api"})
+        rbac.set_user_roles(username, [], actor="system", context={"source": "api"})
+        username = target_username
+    if body.password:
+        repo.create_user(username, body.password, active=record.active)
+    if body.active is not None:
+        repo.set_active(username, body.active)
+    if body.roles is not None:
+        rbac.set_user_roles(username, body.roles, actor="system", context={"source": "api"})
+    return _user_summary(username)
+
+
+@app.delete("/users/{username}", response_model=UserSummary)
+async def delete_user_endpoint(username: str) -> UserSummary:
+    """Delete a user and remove role assignments."""
+
+    repo = auth._get_user_repository()
+    record = repo.get_user(username)
+    if record is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    summary = _user_summary(username)
+    repo.delete_user(username)
+    rbac.set_user_roles(username, [], actor="system", context={"source": "api"})
+    return summary
 
 
 @app.get("/profile")
