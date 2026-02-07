@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 MESSAGES = {
     "create_project": ("{user} created project {project_id} on {date} at {time}"),
+    "delete_project": ("{user} deleted project {project_id} on {date} at {time}"),
     "selected_document_type_for_project_on": (
         "{user} selected document type '{document_type}' for project {project_id} on " "{date}"
     ),
