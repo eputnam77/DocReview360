@@ -150,12 +150,20 @@ from ..watchlist import get_watchlist, toggle_watch
 from ..collab import router as collab_router
 from ..workflows import (
     WorkflowModel,
+    WorkflowTemplateModel,
+    WorkflowTemplatePayload,
+    WorkflowTemplateStep,
     advance_workflow,
     assign_reviewer,
     create_workflow,
+    create_workflow_template,
+    delete_workflow_template,
     get_workflow,
+    get_workflow_template,
     list_workflows,
+    list_workflow_templates,
     start_workflow,
+    update_workflow_template,
     workflow_templates,
     workflows,
     list_roles,
@@ -188,6 +196,17 @@ class WorkflowCreate(BaseModel):
     project: str
     phases: list[str]
     mode: str = "sequential"
+
+
+class WorkflowTemplateResponse(BaseModel):
+    """Response payload for workflow templates."""
+
+    id: str
+    name: str
+    description: str | None = None
+    steps: list[WorkflowTemplateStep]
+    updated: str | None = None
+    usage: int = 0
 
 
 class ReviewerAssign(BaseModel):
@@ -1906,6 +1925,83 @@ async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Re
 
     try:
         delete_phase(name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(status_code=204)
+
+
+def _workflow_template_usage(template_id: str) -> int:
+    return sum(1 for wf in workflows.values() if wf.template == template_id)
+
+
+def _serialize_workflow_template(template: WorkflowTemplateModel) -> WorkflowTemplateResponse:
+    return WorkflowTemplateResponse(
+        id=template.id,
+        name=template.name,
+        description=template.description,
+        steps=template.steps,
+        updated=template.updated,
+        usage=_workflow_template_usage(template.id),
+    )
+
+
+@app.get("/workflow-templates", response_model=list[WorkflowTemplateResponse])
+@log_call
+async def list_workflow_templates_endpoint(
+    x_user: str | None = Header(None),
+) -> list[WorkflowTemplateResponse]:
+    """Return workflow templates for the admin UI."""
+    return [_serialize_workflow_template(t) for t in list_workflow_templates()]
+
+
+@app.post("/workflow-templates", status_code=201, response_model=WorkflowTemplateResponse)
+@log_call
+async def create_workflow_template_endpoint(
+    body: WorkflowTemplatePayload, x_user: str | None = Header(None)
+) -> WorkflowTemplateResponse:
+    """Create a workflow template."""
+    try:
+        template = create_workflow_template(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _serialize_workflow_template(template)
+
+
+@app.get("/workflow-templates/{template_id}", response_model=WorkflowTemplateResponse)
+@log_call
+async def get_workflow_template_endpoint(
+    template_id: str, x_user: str | None = Header(None)
+) -> WorkflowTemplateResponse:
+    """Return workflow template by id."""
+    template = get_workflow_template(template_id)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Workflow template not found")
+    return _serialize_workflow_template(template)
+
+
+@app.put("/workflow-templates/{template_id}", response_model=WorkflowTemplateResponse)
+@log_call
+async def update_workflow_template_endpoint(
+    template_id: str, body: WorkflowTemplatePayload, x_user: str | None = Header(None)
+) -> WorkflowTemplateResponse:
+    """Update workflow template by id."""
+    try:
+        template = update_workflow_template(template_id, body)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _serialize_workflow_template(template)
+
+
+@app.delete("/workflow-templates/{template_id}", status_code=204, response_class=Response)
+@log_call
+async def delete_workflow_template_endpoint(
+    template_id: str, x_user: str | None = Header(None)
+) -> Response:
+    """Delete workflow template by id."""
+    try:
+        delete_workflow_template(template_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return Response(status_code=204)

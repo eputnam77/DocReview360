@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from filelock import FileLock
+from pydantic import BaseModel, Field, field_validator
 
 from .event_dispatcher import dispatch_workflow_event
 from .logs import log_call
@@ -21,6 +25,61 @@ class ApprovalStep(BaseModel):
     description: str
     order: int
     required: bool = True
+
+
+class WorkflowTemplateStep(BaseModel):
+    """Represents a configurable template step in the admin workflow builder."""
+
+    role: str
+    user: str | None = None
+    required: bool = True
+    description: str | None = None
+
+    @field_validator("role")
+    @classmethod
+    def _ensure_role(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Workflow template step role is required")
+        return value.strip()
+
+
+class WorkflowTemplatePayload(BaseModel):
+    """Payload for creating or updating workflow templates."""
+
+    name: str
+    description: str | None = None
+    steps: list[WorkflowTemplateStep]
+
+    @field_validator("name")
+    @classmethod
+    def _ensure_name(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Workflow template name is required")
+        return value.strip()
+
+    @field_validator("steps")
+    @classmethod
+    def _ensure_steps(cls, value: list[WorkflowTemplateStep]) -> list[WorkflowTemplateStep]:
+        if not value:
+            raise ValueError("Workflow template must include at least one step")
+        return value
+
+
+class WorkflowTemplateModel(BaseModel):
+    """Workflow template stored in the backend."""
+
+    id: str
+    name: str
+    description: str | None = None
+    steps: list[WorkflowTemplateStep] = Field(default_factory=list)
+    updated: str | None = None
+
+    @field_validator("steps")
+    @classmethod
+    def _ensure_steps(cls, value: list[WorkflowTemplateStep]) -> list[WorkflowTemplateStep]:
+        if not value:
+            raise ValueError("Workflow template must include at least one step")
+        return value
 
 
 class WorkflowModel(BaseModel):
@@ -66,6 +125,31 @@ else:
 bot_callbacks: list[Callable[[WorkflowModel], None]] = []
 
 bot_callbacks.append(dispatch_workflow_event)
+
+
+def _env_flag_enabled(value: str | None) -> bool:
+    """Interpret truthy string values for the persistence feature flag."""
+
+    if value is None:
+        return True
+    normalized = value.strip().lower()
+    return normalized not in {"0", "false", "no", "off"}
+
+
+WORKFLOW_TEMPLATES_FILE = Path("workflow_templates.json")
+DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE = _env_flag_enabled(
+    os.getenv("DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE")
+)
+
+if _pkg is not None and hasattr(_pkg, "_workflow_template_definitions_store"):
+    workflow_template_definitions = getattr(_pkg, "_workflow_template_definitions_store")
+else:
+    workflow_template_definitions: Dict[str, WorkflowTemplateModel] = {}
+    if _pkg is not None:
+        setattr(_pkg, "_workflow_template_definitions_store", workflow_template_definitions)
+
+_ACTIVE_TEMPLATES_FILE: Path = WORKFLOW_TEMPLATES_FILE
+_TEMPLATES_LOADED: bool = False
 
 
 def _log_template_issue(template_name: str, reason: str) -> None:
@@ -120,193 +204,404 @@ def _validate_template_orders(template_name: str, steps: List[ApprovalStep]) -> 
         last_order = order
 
 
+DEFAULT_WORKFLOW_TEMPLATES: Dict[str, List[ApprovalStep]] = {
+    "branch-coordination": [
+        ApprovalStep(
+            role="SME",
+            description="Subject Matter Expert review and validation",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Front Line Manager",
+            description="Front Line Manager approval",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Product Policy Manager",
+            description="Product Policy Manager review and approval",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Technical Writer",
+            description="Technical Writer review and editing",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Senior Technical Writer review and approval",
+            order=5,
+        ),
+        ApprovalStep(
+            role="Technical Writing Manager",
+            description="Technical Writing Manager final approval",
+            order=6,
+        ),
+    ],
+    "pre-coordination": [
+        ApprovalStep(
+            role="Writer",
+            description="Initial drafting and self-check",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Peer Reviewer",
+            description="Peer review for technical soundness",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Branch Liaison",
+            description="Confirms alignment with branch priorities",
+            order=3,
+        ),
+    ],
+    "requirements-data-gathering": [
+        ApprovalStep(
+            role="Research Analyst",
+            description="Collects background data and stakeholder requirements",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Legal/Regulatory Reviewer",
+            description="Identifies statutory constraints",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Writer",
+            description="Creates annotated outline for downstream reviewers",
+            order=3,
+        ),
+    ],
+    "fast-track-coordination": [
+        ApprovalStep(
+            role="Writer",
+            description="Drafts minor or urgent changes",
+            order=1,
+        ),
+        ApprovalStep(
+            role="SME",
+            description="Subject Matter Expert review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Final review and approval",
+            order=3,
+        ),
+    ],
+    "multi-branch-coordination": [
+        ApprovalStep(
+            role="SME (Branch A)",
+            description="Branch A SME review",
+            order=1,
+        ),
+        ApprovalStep(
+            role="SME (Branch B)",
+            description="Branch B SME review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Branch Managers (A and B)",
+            description="Management approval from both branches",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Senior Technical Writer review",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Technical Writing Manager",
+            description="Technical Writing Manager final approval",
+            order=5,
+        ),
+    ],
+    "external-partner-coordination": [
+        ApprovalStep(
+            role="Internal SME",
+            description="Internal subject matter expert review",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Public Affairs",
+            description="Communications and public affairs review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="External Stakeholder",
+            description="External stakeholder review",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Technical Writer",
+            description="Incorporates external feedback",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Technical Writing Manager",
+            description="Final internal approval",
+            order=5,
+        ),
+    ],
+    "publication-distribution": [
+        ApprovalStep(
+            role="Technical Writer",
+            description="Prepares publication version",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Communications/Outreach",
+            description="Distributes to official channels",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Records Management",
+            description="Archives final version in CMS",
+            order=3,
+        ),
+    ],
+    "implementation-tracking": [
+        ApprovalStep(
+            role="Program Manager",
+            description="Notifies affected teams",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Compliance Officer",
+            description="Confirms procedures updated",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Records Management",
+            description="Archive and close workflow",
+            order=3,
+        ),
+    ],
+}
+
 # Workflow templates keyed by name. Persist them across module reloads so
 # updates in long-lived tests remain visible.
 if _pkg is not None and hasattr(_pkg, "_workflow_templates_store"):
     workflow_templates = getattr(_pkg, "_workflow_templates_store")  # type: ignore[assignment]
 else:
-    workflow_templates: Dict[str, List[ApprovalStep]] = {
-        "branch-coordination": [
-            ApprovalStep(
-                role="SME",
-                description="Subject Matter Expert review and validation",
-                order=1,
-            ),
-            ApprovalStep(
-                role="Front Line Manager",
-                description="Front Line Manager approval",
-                order=2,
-            ),
-            ApprovalStep(
-                role="Product Policy Manager",
-                description="Product Policy Manager review and approval",
-                order=3,
-            ),
-            ApprovalStep(
-                role="Technical Writer",
-                description="Technical Writer review and editing",
-                order=4,
-            ),
-            ApprovalStep(
-                role="Senior Technical Writer",
-                description="Senior Technical Writer review and approval",
-                order=5,
-            ),
-            ApprovalStep(
-                role="Technical Writing Manager",
-                description="Technical Writing Manager final approval",
-                order=6,
-            ),
-        ],
-        "pre-coordination": [
-            ApprovalStep(
-                role="Writer",
-                description="Initial drafting and self-check",
-                order=1,
-            ),
-            ApprovalStep(
-                role="Peer Reviewer",
-                description="Peer review for technical soundness",
-                order=2,
-            ),
-            ApprovalStep(
-                role="Branch Liaison",
-                description="Confirms alignment with branch priorities",
-                order=3,
-            ),
-        ],
-        "requirements-data-gathering": [
-            ApprovalStep(
-                role="Research Analyst",
-                description="Collects background data and stakeholder requirements",
-                order=1,
-            ),
-            ApprovalStep(
-                role="Legal/Regulatory Reviewer",
-                description="Identifies statutory constraints",
-                order=2,
-            ),
-            ApprovalStep(
-                role="Writer",
-                description="Creates annotated outline for downstream reviewers",
-                order=3,
-            ),
-        ],
-        "fast-track-coordination": [
-            ApprovalStep(
-                role="Writer",
-                description="Drafts minor or urgent changes",
-                order=1,
-            ),
-            ApprovalStep(
-                role="SME",
-                description="Subject Matter Expert review",
-                order=2,
-            ),
-            ApprovalStep(
-                role="Senior Technical Writer",
-                description="Final review and approval",
-                order=3,
-            ),
-        ],
-        "multi-branch-coordination": [
-            ApprovalStep(
-                role="SME (Branch A)",
-                description="Branch A SME review",
-                order=1,
-            ),
-            ApprovalStep(
-                role="SME (Branch B)",
-                description="Branch B SME review",
-                order=2,
-            ),
-            ApprovalStep(
-                role="Branch Managers (A and B)",
-                description="Management approval from both branches",
-                order=3,
-            ),
-            ApprovalStep(
-                role="Senior Technical Writer",
-                description="Senior Technical Writer review",
-                order=4,
-            ),
-            ApprovalStep(
-                role="Technical Writing Manager",
-                description="Technical Writing Manager final approval",
-                order=5,
-            ),
-        ],
-        "external-partner-coordination": [
-            ApprovalStep(
-                role="Internal SME",
-                description="Internal subject matter expert review",
-                order=1,
-            ),
-            ApprovalStep(
-                role="Public Affairs",
-                description="Communications and public affairs review",
-                order=2,
-            ),
-            ApprovalStep(
-                role="External Stakeholder",
-                description="External stakeholder review",
-                order=3,
-            ),
-            ApprovalStep(
-                role="Technical Writer",
-                description="Incorporates external feedback",
-                order=4,
-            ),
-            ApprovalStep(
-                role="Technical Writing Manager",
-                description="Final internal approval",
-                order=5,
-            ),
-        ],
-        "publication-distribution": [
-            ApprovalStep(
-                role="Technical Writer",
-                description="Prepares publication version",
-                order=1,
-            ),
-            ApprovalStep(
-                role="Communications/Outreach",
-                description="Distributes to official channels",
-                order=2,
-            ),
-            ApprovalStep(
-                role="Records Management",
-                description="Archives final version in CMS",
-                order=3,
-            ),
-        ],
-        "implementation-tracking": [
-            ApprovalStep(
-                role="Program Manager",
-                description="Notifies affected teams",
-                order=1,
-            ),
-            ApprovalStep(
-                role="Compliance Officer",
-                description="Confirms procedures updated",
-                order=2,
-            ),
-            ApprovalStep(
-                role="Records Management",
-                description="Archive and close workflow",
-                order=3,
-            ),
-        ],
-    }
+    workflow_templates: Dict[str, List[ApprovalStep]] = {}
     if _pkg is not None:
         setattr(_pkg, "_workflow_templates_store", workflow_templates)
-    for _template_name, _steps in workflow_templates.items():
-        _validate_template_orders(_template_name, _steps)
+
+
+def _template_steps_from_definition(template: WorkflowTemplateModel) -> list[ApprovalStep]:
+    steps: list[ApprovalStep] = []
+    for idx, step in enumerate(template.steps, start=1):
+        description = step.description or f"{step.role} review"
+        steps.append(
+            ApprovalStep(
+                role=step.role,
+                description=description,
+                order=idx,
+                required=step.required,
+            )
+        )
+    return steps
+
+
+def _build_default_template_definitions() -> Dict[str, WorkflowTemplateModel]:
+    defaults: Dict[str, WorkflowTemplateModel] = {}
+    for name, steps in DEFAULT_WORKFLOW_TEMPLATES.items():
+        defaults[name] = WorkflowTemplateModel(
+            id=name,
+            name=name,
+            description=None,
+            steps=[
+                WorkflowTemplateStep(
+                    role=step.role,
+                    required=step.required,
+                    description=step.description,
+                )
+                for step in steps
+            ],
+        )
+    return defaults
+
+
+def _workflow_template_lock() -> FileLock:
+    return FileLock(str(WORKFLOW_TEMPLATES_FILE) + ".lock")
+
+
+def _atomic_write(path: Path, data: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=path.parent, delete=False
+    ) as tmp_file:
+        tmp_file.write(data)
+        tmp_name = tmp_file.name
+    os.replace(tmp_name, path)
+
+
+def _coerce_template_payload(payload: object) -> list[dict]:
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict) and "templates" in payload:
+        templates = payload["templates"]
+        if isinstance(templates, list):
+            return templates
+    raise ValueError("Saved workflow templates must be a list or include 'templates'")
+
+
+def _load_templates_from_disk() -> None:
+    try:
+        payload = json.loads(WORKFLOW_TEMPLATES_FILE.read_text())
+    except FileNotFoundError:
+        return
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"Failed to read workflow templates from {WORKFLOW_TEMPLATES_FILE}"
+        ) from exc
+
+    templates_payload = _coerce_template_payload(payload)
+    workflow_template_definitions.clear()
+    for item in templates_payload:
+        if not isinstance(item, dict):
+            raise ValueError("Workflow template entry must be a mapping")
+        name = str(item.get("name") or item.get("id") or "").strip()
+        if not name:
+            raise ValueError("Workflow template entry missing name")
+        steps_payload = item.get("steps") or []
+        if not isinstance(steps_payload, list):
+            raise ValueError("Workflow template steps must be a list")
+        steps = [WorkflowTemplateStep.model_validate(step) for step in steps_payload]
+        template = WorkflowTemplateModel(
+            id=name,
+            name=name,
+            description=item.get("description"),
+            steps=steps,
+            updated=item.get("updated"),
+        )
+        workflow_template_definitions[name] = template
+
+
+def _sync_workflow_templates_from_definitions() -> None:
+    workflow_templates.clear()
+    for name, template in workflow_template_definitions.items():
+        steps = _template_steps_from_definition(template)
+        workflow_templates[name] = steps
+        _validate_template_orders(name, steps)
+
+
+def _ensure_templates_loaded() -> None:
+    global _ACTIVE_TEMPLATES_FILE, _TEMPLATES_LOADED
+
+    if _ACTIVE_TEMPLATES_FILE != WORKFLOW_TEMPLATES_FILE:
+        _ACTIVE_TEMPLATES_FILE = WORKFLOW_TEMPLATES_FILE
+        _TEMPLATES_LOADED = False
+
+    if _TEMPLATES_LOADED:
+        return
+
+    workflow_template_definitions.clear()
+    workflow_template_definitions.update(_build_default_template_definitions())
+
+    if DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE and WORKFLOW_TEMPLATES_FILE.exists():
+        with _workflow_template_lock():
+            _load_templates_from_disk()
+        if not workflow_template_definitions:
+            workflow_template_definitions.update(_build_default_template_definitions())
+
+    _sync_workflow_templates_from_definitions()
+    _TEMPLATES_LOADED = True
+
+
+def _save_templates_to_disk() -> None:
+    if not DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
+        return
+    payload = [template.model_dump() for template in workflow_template_definitions.values()]
+    serialized = json.dumps(payload, indent=2)
+    with _workflow_template_lock():
+        _atomic_write(WORKFLOW_TEMPLATES_FILE, serialized)
+
+
+def list_workflow_templates() -> list[WorkflowTemplateModel]:
+    _ensure_templates_loaded()
+    return list(workflow_template_definitions.values())
+
+
+def get_workflow_template(template_id: str) -> WorkflowTemplateModel | None:
+    _ensure_templates_loaded()
+    return workflow_template_definitions.get(template_id)
+
+
+def create_workflow_template(payload: WorkflowTemplatePayload) -> WorkflowTemplateModel:
+    _ensure_templates_loaded()
+    name = payload.name.strip()
+    if name in workflow_template_definitions:
+        raise ValueError("Workflow template already exists")
+    template = WorkflowTemplateModel(
+        id=name,
+        name=name,
+        description=payload.description,
+        steps=payload.steps,
+        updated=datetime.now(timezone.utc).isoformat(),
+    )
+    workflow_template_definitions[name] = template
+    _sync_workflow_templates_from_definitions()
+    _save_templates_to_disk()
+    return template
+
+
+def update_workflow_template(
+    template_id: str, payload: WorkflowTemplatePayload
+) -> WorkflowTemplateModel:
+    _ensure_templates_loaded()
+    if template_id not in workflow_template_definitions:
+        raise KeyError("Workflow template not found")
+    name = payload.name.strip()
+    if name != template_id and name in workflow_template_definitions:
+        raise ValueError("Workflow template name already exists")
+    template = WorkflowTemplateModel(
+        id=name,
+        name=name,
+        description=payload.description,
+        steps=payload.steps,
+        updated=datetime.now(timezone.utc).isoformat(),
+    )
+    if name != template_id:
+        workflow_template_definitions.pop(template_id, None)
+    workflow_template_definitions[name] = template
+    _sync_workflow_templates_from_definitions()
+    _save_templates_to_disk()
+    return template
+
+
+def delete_workflow_template(template_id: str) -> None:
+    _ensure_templates_loaded()
+    if template_id not in workflow_template_definitions:
+        raise KeyError("Workflow template not found")
+    workflow_template_definitions.pop(template_id)
+    workflow_templates.pop(template_id, None)
+    _sync_workflow_templates_from_definitions()
+    _save_templates_to_disk()
+
+
+def reset_workflow_templates(*, keep_file: bool = False) -> None:
+    """Reset workflow templates to defaults for tests."""
+
+    global _TEMPLATES_LOADED
+    _TEMPLATES_LOADED = False
+    workflow_template_definitions.clear()
+    workflow_templates.clear()
+    if not keep_file and DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
+        try:
+            WORKFLOW_TEMPLATES_FILE.unlink(missing_ok=True)
+        except OSError:
+            pass
+    _ensure_templates_loaded()
+
+
+_ensure_templates_loaded()
 
 
 @log_call
 def list_roles() -> list[str]:
     """Return a sorted list of all unique roles used in workflow templates."""
+    _ensure_templates_loaded()
     roles = {step.role for steps in workflow_templates.values() for step in steps}
     return sorted(roles)
 
@@ -316,6 +611,7 @@ def get_approval_steps_for_phase(
     phase: str, workflow: str = "branch-coordination"
 ) -> List[ApprovalStep]:
     """Return approval steps for the given workflow."""
+    _ensure_templates_loaded()
     try:
         steps = workflow_templates[workflow]
     except KeyError as exc:
@@ -326,6 +622,7 @@ def get_approval_steps_for_phase(
 
 def _bootstrap_sample() -> None:
     """Create a default workflow so the API returns initial data."""
+    _ensure_templates_loaded()
     if workflows:
         return
 

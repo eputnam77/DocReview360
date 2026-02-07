@@ -57,7 +57,7 @@ export default function WorkflowList() {
 
   useEffect(() => {
     // Use local API route to proxy to backend
-    fetch("/api/workflows")
+    fetch("/api/workflow-templates")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => setWorkflows(normalizeWorkflows(data)))
       .catch(() => setWorkflows([]));
