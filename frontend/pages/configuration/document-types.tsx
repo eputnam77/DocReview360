@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { API } from "@/lib/api";
 import { Pencil, Plus, Trash } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -162,7 +161,7 @@ export default function DocumentTypesPage() {
       workflow: []
     };
     try {
-      const r = await fetch(`${API}/document-types`, {
+      const r = await fetch("/api/document-types", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -182,7 +181,9 @@ export default function DocumentTypesPage() {
 
   const checkUsage = async (docTypeName: string) => {
     try {
-      const response = await fetch(`${API}/document-types/${encodeURIComponent(docTypeName)}/usage`);
+      const response = await fetch(
+        `/api/document-types/${encodeURIComponent(docTypeName)}/usage`,
+      );
       if (response.ok) {
         const usage = await response.json();
         setUsageInfo(usage);
@@ -202,7 +203,7 @@ export default function DocumentTypesPage() {
     }
     setTypes(types.filter((t) => t.id !== id));
     try {
-      await fetch(`${API}/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await fetch(`/api/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
     } catch {}
   };
 
@@ -210,7 +211,7 @@ export default function DocumentTypesPage() {
     if (!showDeleteDialog || !replacementDocType) return;
     try {
       const response = await fetch(
-        `${API}/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`,
+        `/api/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`,
         { method: "DELETE" }
       );
       if (response.ok) {
@@ -244,7 +245,7 @@ export default function DocumentTypesPage() {
     const body = { name: editName.trim() };
     setTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t)));
     try {
-      await fetch(`${API}/document-types/${id}`, {
+      await fetch(`/api/document-types/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -270,7 +271,7 @@ export default function DocumentTypesPage() {
       types.map((t) => (t.id === docTypeId ? { ...t, phases: updatedPhases } : t)),
     );
     try {
-      await fetch(`${API}/document-types/${encodeURIComponent(docTypeId)}`, {
+      await fetch(`/api/document-types/${encodeURIComponent(docTypeId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
