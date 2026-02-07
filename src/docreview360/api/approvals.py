@@ -7,6 +7,7 @@ from typing import AsyncIterator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from pydantic import BaseModel
 
 from .. import auth
 from ..approvals import (
@@ -16,6 +17,7 @@ from ..approvals import (
     get_approval_history,
     get_signed_document,
     handle_signature_return,
+    remind_approvals,
     verify_document_hash,
     verify_document_signature_stream,
 )
@@ -24,6 +26,12 @@ from ..logs import TRACE_ID, log_call, log_event
 from ..rbac import require_permission
 
 router = APIRouter()
+
+
+class ReminderRequest(BaseModel):
+    """Request body for approval reminders."""
+
+    ids: list[str]
 
 
 @router.get("/approvals/return")
@@ -146,6 +154,14 @@ async def verify_hash_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     valid = verify_document_hash(approval_id, data)
     return {"valid": valid}
+
+
+@router.post("/approvals/remind")
+@log_call
+async def remind_approvals_endpoint(body: ReminderRequest) -> dict[str, list[str]]:
+    """Trigger reminder events for pending approvals."""
+    ids = [aid for aid in body.ids if aid]
+    return remind_approvals(ids)
 
 
 @router.get("/dashboard/approvals")
