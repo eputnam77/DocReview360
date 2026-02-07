@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from docreview360 import auth, doc_types
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
-from docreview360.phases import _phases, add_phase
+from docreview360.phases import add_phase, reset_phases
 
 
 class TestFrontendBackendIntegration:
@@ -21,11 +21,11 @@ class TestFrontendBackendIntegration:
         """Setup and teardown for each test."""
         # Clear existing data
         doc_types.document_types.clear()
-        _phases.clear()
+        reset_phases()
         yield
         # Cleanup
         doc_types.document_types.clear()
-        _phases.clear()
+        reset_phases()
 
     def test_frontend_backend_field_mapping(self) -> None:
         """Test that frontend form fields correctly map to backend project model."""
