@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/select";
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { API } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 export default function NewWorkflowPage() {
@@ -93,12 +92,12 @@ export default function NewWorkflowPage() {
 
     for (const docType of docTypesSelected) {
       try {
-        const res = await fetch(`${API}/document-types/${docType}`);
+        const res = await fetch(`/api/document-types/${docType}`);
         if (res.ok) {
           const doc = await res.json();
           const workflow = Array.isArray(doc.workflow) ? doc.workflow : [];
           if (!workflow.includes(name)) workflow.push(name);
-          await fetch(`${API}/document-types/${docType}`, {
+          await fetch(`/api/document-types/${docType}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...doc, workflow }),
