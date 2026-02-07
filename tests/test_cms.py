@@ -7,8 +7,14 @@ from typing import cast
 
 import pytest
 
-from docreview360.api import update_document_endpoint
-from docreview360.cms import save_to_cms
+from docreview360.api import (
+    CmsExportRequest,
+    CmsImportRequest,
+    export_document_to_cms,
+    import_document_from_cms,
+    update_document_endpoint,
+)
+from docreview360.cms import fetch_from_cms, save_to_cms
 from docreview360.config import Config
 from docreview360.documents import DocumentModel, import_document
 from docreview360.sharepoint import SharePointClient
@@ -69,3 +75,41 @@ async def test_update_endpoint_calls_save(monkeypatch) -> None:
     updated = await update_document_endpoint(doc.id, body)
     assert called["doc"].id == doc.id
     assert updated.content == "next"
+
+
+def test_local_cms_saves_and_fetches(monkeypatch, tmp_path) -> None:
+    doc = DocumentModel(id="local-doc", content="hello")
+    cfg = Config(database="sqlite", editor="tiptap", cms="local", auth="oidc")
+
+    monkeypatch.setattr(
+        "docreview360.cms.load_settings",
+        lambda: {"cms": {"local": {"bucket": str(tmp_path)}}},
+    )
+    item_id = save_to_cms(doc, config=cfg)
+    assert item_id == "local-doc.md"
+    stored = tmp_path / "local-doc.md"
+    assert stored.read_text() == "hello"
+
+    payload = fetch_from_cms(item_id, config=cfg)
+    assert payload == b"hello"
+
+
+@pytest.mark.asyncio
+async def test_import_and_export_endpoints_with_local_cms(monkeypatch, tmp_path) -> None:
+    cfg = Config(database="sqlite", editor="tiptap", cms="local", auth="oidc")
+    monkeypatch.setattr("docreview360.api.Config.load", lambda path: cfg)
+    monkeypatch.setattr(
+        "docreview360.cms.load_settings",
+        lambda: {"cms": {"local": {"bucket": str(tmp_path)}}},
+    )
+
+    doc = import_document("doc.md", b"seed")
+    export_response = await export_document_to_cms(
+        doc.id, CmsExportRequest(fmt="markdown"), x_user=None
+    )
+    assert export_response.item_id == f"{doc.id}.md"
+
+    import_response = await import_document_from_cms(
+        CmsImportRequest(item_id=export_response.item_id, filename="imported.md")
+    )
+    assert import_response.content == "seed"
