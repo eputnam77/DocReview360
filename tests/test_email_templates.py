@@ -3,8 +3,9 @@ import pytest
 from docreview360 import email_templates as et
 
 
-def setup_function(_):
-    et.TEMPLATES.clear()
+@pytest.fixture(autouse=True)
+def reset_email_templates(tmp_path):
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
 
 
 def test_update_template_can_clear_task():
