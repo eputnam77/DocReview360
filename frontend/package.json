@@ -55,7 +55,7 @@
     "formidable": "^3.5.4",
     "lucide-react": "^0.556.0",
     "markreview": "github:eputnam77/MarkReview",
-    "next": "14.2.35",
+    "next": "16.1.5",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-hot-toast": "^2.4.1",
