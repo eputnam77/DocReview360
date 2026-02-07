@@ -486,6 +486,15 @@ export default function ProjectDetailsPage() {
     try {
       const data = await approve(aid);
       const sigId = data?.id ?? data?.signature?.id;
+      const signatureUrl = data?.url;
+      if (signatureUrl && typeof window !== "undefined") {
+        if (signatureUrl.startsWith("/")) {
+          router.push(signatureUrl);
+        } else {
+          window.location.assign(signatureUrl);
+        }
+        return;
+      }
       if (sigId) {
         router.push(
           `/documenso/${encodeURIComponent(String(sigId))}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${encodeURIComponent(aid)}`,
@@ -504,6 +513,22 @@ export default function ProjectDetailsPage() {
       await reset(aid);
     } catch {
       /* handled in hook */
+    }
+  };
+
+  const removeApproval = async (aid: string) => {
+    try {
+      const response = await authenticatedFetch(`${API}/approvals/${aid}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to remove approval");
+      }
+      setApprovals((prev) => prev.filter((x) => x.id !== aid));
+      toast.success("Approval removed");
+    } catch (error) {
+      console.error("Error removing approval:", error);
+      toast.error("Failed to remove approval");
     }
   };
 
@@ -761,9 +786,7 @@ export default function ProjectDetailsPage() {
                 canEdit={canEdit}
                 onSign={signApproval}
                 onReset={resetApprovalLocal}
-                onRemove={(id) =>
-                  setApprovals((prev) => prev.filter((x) => x.id !== id))
-                }
+                onRemove={removeApproval}
                 onBulkReminder={(ids) => sendReminder(ids)}
                 onHistory={viewHistory}
               />

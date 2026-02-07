@@ -11,6 +11,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
+import { authenticatedFetch } from "@/lib/api";
 
 // --- Chart Colors ---
 const COLORS = [
@@ -88,7 +89,6 @@ export default function ManagerDashboardPage() {
     });
   };
 
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
   const fallback = {
     stats: { projects: 22, users: 14, documents: 75, approvals: 18, inProgress: 6, completed: 13, overdue: 3, active: 10 },
     status: [
@@ -148,7 +148,7 @@ export default function ManagerDashboardPage() {
   const { data, isError } = useQuery<any>({
     queryKey: ["manager-dashboard"],
     queryFn: async () => {
-      const r = await fetch(`${API}/dashboard/manager`);
+      const r = await authenticatedFetch("/dashboard/manager");
       return r.ok ? r.json() : null;
     },
   });
@@ -168,7 +168,7 @@ export default function ManagerDashboardPage() {
         overdue: fallback.stats.overdue,
         active: projects.filter((p: any) => p.pending_approvals > 0).length,
       });
-      fetch(`${API}/dashboard/doc-types`)
+      authenticatedFetch("/dashboard/doc-types")
         .then((r) => (r.ok ? r.json() : {}))
         .then((dt) =>
           setDocTypes(
