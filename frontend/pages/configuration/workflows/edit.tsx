@@ -37,7 +37,7 @@ export default function EditWorkflowPage() {
   useEffect(() => {
     if (!router.isReady || !id) return;
     const wfId = Array.isArray(id) ? id[0] : id;
-    fetch(`/api/workflows/${wfId}`)
+    fetch(`/api/workflow-templates/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((wf) => {
         if (wf) {
@@ -89,9 +89,26 @@ export default function EditWorkflowPage() {
       s.id === id ? { ...s, required: !s.required } : s
     ));
   };
-  const handleSave = () => {
-    // Submit to API here
-    toast.success("Workflow updated:\n" + JSON.stringify({ name, description, steps }, null, 2));
+  const handleSave = async () => {
+    if (!id) return;
+    const wfId = Array.isArray(id) ? id[0] : id;
+    try {
+      const res = await fetch(`/api/workflow-templates/${wfId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description, steps }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update workflow template");
+      }
+      const updated = await res.json();
+      toast.success("Workflow updated.");
+      if (updated?.id && updated.id !== wfId) {
+        router.replace(`/configuration/workflows/edit?id=${updated.id}`);
+      }
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
   };
 
   return (
