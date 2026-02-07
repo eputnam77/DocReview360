@@ -120,16 +120,19 @@ from ..reporting import (
 from ..search import (
     ProjectModel,
     add_project,
+    add_project_reviewer,
     assign_temporary,
     get_project,
     list_projects,
     list_saved_searches,
+    remove_project_reviewer,
     remove_project,
     ranked_search,
     save_search,
     search,
     search_stats,
     set_project_priority,
+    update_project_reviewer,
     update_project,
 )
 from ..project_preferences import (
@@ -223,6 +226,12 @@ class ReviewerAssign(BaseModel):
     """Input model for assigning reviewers."""
 
     user: str
+
+
+class ProjectReviewerPayload(BaseModel):
+    """Input model for managing project reviewers."""
+
+    reviewer: str
 
 
 class ApprovalCreate(BaseModel):
@@ -586,6 +595,12 @@ def _user_summary(username: str) -> UserSummary:
     )
 
 
+def _ensure_reviewer_exists(reviewer: str) -> None:
+    repo = auth._get_user_repository()
+    if not repo.get_user(reviewer):
+        raise HTTPException(status_code=404, detail="Reviewer not found")
+
+
 @app.get("/users", response_model=list[UserSummary])
 async def list_users_endpoint() -> list[UserSummary]:
     """Return all users with role assignments and active status."""
@@ -703,7 +718,8 @@ async def list_projects_endpoint(
     When a user is specified, includes projects where the user is:
     1. Directly assigned as project.user
     2. Temporarily assigned as project.temp_user
-    3. Assigned as a reviewer in any approval step (SME, FLM, PPM, TW, etc.)
+    3. Listed as a project reviewer
+    4. Assigned as a reviewer in any approval step (SME, FLM, PPM, TW, etc.)
     """
     user = (user or x_user) or None
     cache_key = f"projects-{user or 'all'}"
@@ -822,6 +838,57 @@ async def get_project_endpoint(project_id: str) -> ProjectModel:
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@app.get("/projects/{project_id}/reviewers", response_model=list[str])
+async def list_project_reviewers(project_id: str) -> list[str]:
+    """Return reviewers assigned to a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return list(project.reviewers)
+
+
+@app.post("/projects/{project_id}/reviewers", response_model=list[str])
+async def add_project_reviewer_endpoint(
+    project_id: str, body: ProjectReviewerPayload
+) -> list[str]:
+    """Add a reviewer to a project."""
+    reviewer = body.reviewer.strip()
+    if not reviewer:
+        raise HTTPException(status_code=400, detail="Reviewer required")
+    _ensure_reviewer_exists(reviewer)
+    try:
+        project = add_project_reviewer(project_id, reviewer)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return list(project.reviewers)
+
+
+@app.put("/projects/{project_id}/reviewers/{reviewer}", response_model=list[str])
+async def update_project_reviewer_endpoint(
+    project_id: str, reviewer: str, body: ProjectReviewerPayload
+) -> list[str]:
+    """Update a reviewer assignment for a project."""
+    new_reviewer = body.reviewer.strip()
+    if not new_reviewer:
+        raise HTTPException(status_code=400, detail="Reviewer required")
+    _ensure_reviewer_exists(new_reviewer)
+    try:
+        project = update_project_reviewer(project_id, reviewer, new_reviewer)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return list(project.reviewers)
+
+
+@app.delete("/projects/{project_id}/reviewers/{reviewer}", response_model=list[str])
+async def remove_project_reviewer_endpoint(project_id: str, reviewer: str) -> list[str]:
+    """Remove a reviewer from a project."""
+    try:
+        project = remove_project_reviewer(project_id, reviewer)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return list(project.reviewers)
 
 
 @app.get("/projects/{project_id}/reviews", response_model=list[ReviewModel])

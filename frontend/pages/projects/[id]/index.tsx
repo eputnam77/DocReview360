@@ -4,6 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableHeader,
@@ -19,17 +20,21 @@ import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/useProject";
 import { usePhases } from "@/lib/usePhases";
 import { useApprovals } from "@/lib/useApprovals";
+import { useProjectReviewers } from "@/lib/useProjectReviewers";
 import { useReviewSummary } from "@/lib/useReviewSummary";
 import { useUserStore } from "@/state/user";
 import { Disclosure, Transition } from "@headlessui/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     FileEdit,
     History,
     LayoutList,
     Download,
     Mail,
-    Users2
+    Users2,
+    UserPlus,
+    Pencil,
+    Trash2
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -246,6 +251,9 @@ export default function ProjectDetailsPage() {
   const [reviewCount, setReviewCount] = useState(0);
   const [showPhaseDialog, setShowPhaseDialog] = useState(false);
   const [pendingPhase, setPendingPhase] = useState<string | null>(null);
+  const [reviewerInput, setReviewerInput] = useState("");
+  const [editingReviewer, setEditingReviewer] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
 
   const approvalsForPhase = useMemo(
     () =>
@@ -292,6 +300,29 @@ export default function ProjectDetailsPage() {
     projectData?.currentPhaseId,
   );
   const queryClient = useQueryClient();
+  const {
+    reviewers,
+    addReviewer,
+    updateReviewer,
+    removeReviewer,
+    isLoading: reviewersLoading,
+  } = useProjectReviewers(projectData?.id);
+  const { data: userOptions = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const res = await authenticatedFetch(`${API}/users`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const reviewerOptions = useMemo(
+    () =>
+      userOptions
+        .filter((u: any) => Array.isArray(u.roles) && u.roles.includes("reviewer"))
+        .map((u: any) => u.username),
+    [userOptions],
+  );
 
   useEffect(() => {
     setProject(projectData ?? null);
@@ -446,6 +477,60 @@ export default function ProjectDetailsPage() {
     setShowPhaseDialog(false);
     setPendingPhase(null);
   }, [pendingPhase, project, handlePhaseChange, queryClient]);
+
+  const refreshReviewerData = useCallback(() => {
+    if (!project?.id) return;
+    queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    queryClient.invalidateQueries({ queryKey: ["project-reviewers", project.id] });
+    if (project.workflow) {
+      queryClient.invalidateQueries({ queryKey: ["approvals", project.workflow] });
+      queryClient.invalidateQueries({ queryKey: ["workflow", project.workflow] });
+    }
+  }, [project?.id, project?.workflow, queryClient]);
+
+  const handleAddReviewer = useCallback(async () => {
+    const reviewer = reviewerInput.trim();
+    if (!reviewer) {
+      toast.error("Select a reviewer to add.");
+      return;
+    }
+    try {
+      await addReviewer(reviewer);
+      setReviewerInput("");
+      refreshReviewerData();
+    } catch (error) {
+      console.error(error);
+    }
+  }, [addReviewer, reviewerInput, refreshReviewerData]);
+
+  const handleUpdateReviewer = useCallback(async () => {
+    if (!editingReviewer) return;
+    const reviewer = editingValue.trim();
+    if (!reviewer) {
+      toast.error("Reviewer name required.");
+      return;
+    }
+    try {
+      await updateReviewer({ reviewer: editingReviewer, nextReviewer: reviewer });
+      setEditingReviewer(null);
+      setEditingValue("");
+      refreshReviewerData();
+    } catch (error) {
+      console.error(error);
+    }
+  }, [editingReviewer, editingValue, updateReviewer, refreshReviewerData]);
+
+  const handleRemoveReviewer = useCallback(
+    async (reviewer: string) => {
+      try {
+        await removeReviewer(reviewer);
+        refreshReviewerData();
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    [removeReviewer, refreshReviewerData],
+  );
 
   const sendReminder = (ids?: string[]) => {
     const targets = approvalsForPhase.filter(
@@ -761,7 +846,134 @@ export default function ProjectDetailsPage() {
           </div>
         </section>
 
-        {/* APPROVALS SECTION */}
+        {/* REVIEWERS SECTION */}
+        <section id="reviewers" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Users2 className="w-5 h-5" /> Reviewers
+            </h2>
+          </div>
+          <Card>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Add reviewer
+                  </label>
+                  <Input
+                    list="reviewer-options"
+                    value={reviewerInput}
+                    onChange={(e) => setReviewerInput(e.target.value)}
+                    placeholder="Select reviewer"
+                    disabled={!canEdit}
+                  />
+                  <datalist id="reviewer-options">
+                    {reviewerOptions.map((name: string) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleAddReviewer}
+                  disabled={!canEdit || !reviewerInput.trim()}
+                >
+                  <UserPlus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reviewer</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reviewersLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={2} className="text-sm text-gray-500">
+                        Loading reviewers...
+                      </TableCell>
+                    </TableRow>
+                  ) : reviewers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={2} className="text-sm text-gray-500">
+                        No reviewers assigned yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    reviewers.map((reviewer) => (
+                      <TableRow key={reviewer}>
+                        <TableCell>
+                          {editingReviewer === reviewer ? (
+                            <Input
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              placeholder="Reviewer name"
+                              disabled={!canEdit}
+                            />
+                          ) : (
+                            <span className="font-medium">{reviewer}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          {editingReviewer === reviewer ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleUpdateReviewer}
+                                disabled={!canEdit || !editingValue.trim()}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingReviewer(null);
+                                  setEditingValue("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingReviewer(reviewer);
+                                  setEditingValue(reviewer);
+                                }}
+                                disabled={!canEdit}
+                              >
+                                <Pencil className="w-4 h-4 mr-1" /> Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRemoveReviewer(reviewer)}
+                                disabled={!canEdit}
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" /> Remove
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              <p className="text-xs text-gray-500">
+                Reviewers are linked to this project and receive approval tasks.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+
         <section id="approvals" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
