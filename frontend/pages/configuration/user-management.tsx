@@ -15,11 +15,14 @@ import { API } from "@/lib/api";
 // --- System role choices, update as needed ---
 const ROLE_CHOICES = [
   { id: "admin", label: "Administrator" },
-  { id: "pm", label: "Program/Project Manager" },
+  { id: "manager", label: "Program/Project Manager" },
   { id: "user", label: "User (Contributor)" },
   { id: "reviewer", label: "Reviewer" },
   { id: "editor", label: "Editor" },
-  { id: "viewer", label: "Viewer (Read-only)" },
+  { id: "sme", label: "Subject Matter Expert" },
+  { id: "observer", label: "Viewer (Read-only)" },
+  { id: "auditor", label: "Auditor" },
+  { id: "verifier", label: "Verifier" },
 ];
 
 interface User {
@@ -37,43 +40,71 @@ export default function UserManagementPage() {
   const [editName, setEditName] = useState("");
   const [editRoles, setEditRoles] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetch(`${API}/users`)
-      .then((r) => (r.ok ? r.json() : []))
-        .then((data: any[]) =>
-          setUsers(
-            data.length
-              ? data.map((u) => ({
-                  id: u.id || u.username,
-                  username: u.username,
-                  roles: Array.isArray(u.roles)
-                    ? u.roles
-                    : typeof u.role === "string"
-                    ? [u.role]
-                    : [],
-                }))
-              : []
-          )
-        )
-        .catch(() => setUsers([]));
-  }, []);
+  const normalizeUser = (u: any): User => ({
+    id: u.id || u.username,
+    username: u.username,
+    roles: Array.isArray(u.roles)
+      ? u.roles
+      : typeof u.role === "string"
+      ? [u.role]
+      : [],
+  });
 
-  const addUser = () => {
-    if (!newName.trim()) return;
-    setUsers([
-      ...users,
-      {
-        id: "u-" + Date.now().toString(),
-        username: newName.trim(),
-        roles: newRoles.length ? newRoles : [],
-      },
-    ]);
-    setNewName("");
-    setNewRoles([]);
+  const loadUsers = async () => {
+    try {
+      const resp = await fetch(`${API}/users`);
+      const data = resp.ok ? await resp.json() : [];
+      setUsers(Array.isArray(data) ? data.map(normalizeUser) : []);
+    } catch (error) {
+      console.error("Failed to load users", error);
+      setUsers([]);
+    }
   };
 
-  const removeUser = (id: string) =>
-    setUsers(users.filter((u) => u.id !== id));
+  useEffect(() => {
+    void loadUsers();
+  }, []);
+
+  const addUser = async () => {
+    if (!newName.trim()) return;
+    try {
+      const resp = await fetch(`${API}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: newName.trim(),
+          roles: newRoles.length ? newRoles : [],
+        }),
+      });
+      if (!resp.ok) {
+        console.error("Failed to add user");
+        return;
+      }
+      const created = normalizeUser(await resp.json());
+      setUsers([...users, created]);
+      setNewName("");
+      setNewRoles([]);
+    } catch (error) {
+      console.error("Failed to add user", error);
+    }
+  };
+
+  const removeUser = async (id: string) => {
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
+    try {
+      const resp = await fetch(`${API}/users/${encodeURIComponent(target.username)}`, {
+        method: "DELETE",
+      });
+      if (!resp.ok) {
+        console.error("Failed to remove user");
+        return;
+      }
+      setUsers(users.filter((u) => u.id !== id));
+    } catch (error) {
+      console.error("Failed to remove user", error);
+    }
+  };
 
   const startEdit = (u: User) => {
     setEditingId(u.id);
@@ -81,18 +112,31 @@ export default function UserManagementPage() {
     setEditRoles(u.roles || []);
   };
 
-  const saveEdit = (id: string) => {
+  const saveEdit = async (id: string) => {
     if (!editName.trim()) return;
-    setUsers(
-      users.map((u) =>
-        u.id === id
-          ? { ...u, username: editName.trim(), roles: editRoles }
-          : u,
-      ),
-    );
-    setEditingId(null);
-    setEditName("");
-    setEditRoles([]);
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
+    try {
+      const resp = await fetch(`${API}/users/${encodeURIComponent(target.username)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: editName.trim(),
+          roles: editRoles,
+        }),
+      });
+      if (!resp.ok) {
+        console.error("Failed to update user");
+        return;
+      }
+      const updated = normalizeUser(await resp.json());
+      setUsers(users.map((u) => (u.id === id ? updated : u)));
+      setEditingId(null);
+      setEditName("");
+      setEditRoles([]);
+    } catch (error) {
+      console.error("Failed to update user", error);
+    }
   };
 
   const cancelEdit = () => {
