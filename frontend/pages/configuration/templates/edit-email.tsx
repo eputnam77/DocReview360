@@ -19,11 +19,18 @@ export default function EditEmailTemplatePage() {
 
   useEffect(() => {
     if (id) {
-        // Replace with real API call
-        setName(String(id));
-        setSubject("");
-        setBody("");
-        setTask("");
+      fetch(`${API}/email-templates/${id}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((tpl) => {
+          if (!tpl) return;
+          setName(tpl.name || String(id));
+          setSubject(tpl.subject || "");
+          setBody(tpl.body || "");
+          setTask(tpl.task || "");
+        })
+        .catch(() => {
+          setName(String(id));
+        });
     }
   }, [id]);
 

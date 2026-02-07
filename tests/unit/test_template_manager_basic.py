@@ -15,19 +15,21 @@ def test_save_and_list_template(tmp_path: Path):
 
 def test_upload_template_rejects_non_dict_metadata(tmp_path: Path):
     tm = importlib.import_module("docreview360.template_manager")
+    tm.reset_template_store(root=tmp_path / "template_store.json")
     with pytest.raises(ValueError):
         tm.upload_template("bad", b"data", metadata=["oops"])
 
 
-def test_upload_template_requires_name():
+def test_upload_template_requires_name(tmp_path: Path):
     tm = importlib.import_module("docreview360.template_manager")
+    tm.reset_template_store(root=tmp_path / "template_store.json")
     with pytest.raises(ValueError):
         tm.upload_template("", b"data")
 
 
 def test_upload_template_copies_metadata(tmp_path: Path):
     tm = importlib.import_module("docreview360.template_manager")
-    tm._template_store.clear()
+    tm.reset_template_store(root=tmp_path / "template_store.json")
     meta = {"a": {"b": 1}}
     rec = tm.upload_template("name", b"data", metadata=meta)
     meta["a"]["b"] = 2
@@ -36,7 +38,7 @@ def test_upload_template_copies_metadata(tmp_path: Path):
 
 def test_template_version_management(tmp_path: Path):
     tm = importlib.import_module("docreview360.template_manager")
-    tm._template_store.clear()
+    tm.reset_template_store(root=tmp_path / "template_store.json")
     r1 = tm.upload_template("n", b"1")
     r2 = tm.upload_template("n", b"2")
     assert r1.version == 1 and r2.version == 2

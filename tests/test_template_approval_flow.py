@@ -3,7 +3,7 @@ import json
 from fastapi.testclient import TestClient
 
 from docreview360.api import app
-from docreview360.template_manager import _template_store
+from docreview360 import template_manager
 
 
 def _token(client: TestClient, username: str) -> str:
@@ -11,9 +11,9 @@ def _token(client: TestClient, username: str) -> str:
     return resp.json()["access_token"]
 
 
-def test_template_approval_and_filtering() -> None:
+def test_template_approval_and_filtering(tmp_path) -> None:
     client = TestClient(app)
-    _template_store.clear()
+    template_manager.reset_template_store(root=tmp_path / "template_store.json")
 
     admin_token = _token(client, "alice")
     user_token = _token(client, "bob")

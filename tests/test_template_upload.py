@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.testclient import TestClient
 
 
-def test_template_upload_creates_version() -> None:
+def test_template_upload_creates_version(tmp_path: Path) -> None:
     src_root = Path(__file__).resolve().parents[1] / "src"
     sys.path.insert(0, str(src_root))
     try:
@@ -28,22 +28,17 @@ def test_template_upload_creates_version() -> None:
             return {"version": version.version}
 
         client = TestClient(app)
-        snap_store = {k: v[:] for k, v in template_manager._template_store.items()}
-        template_manager._template_store.clear()
-        try:
-            resp = client.post(
-                "/templates",
-                data={"name": "policy", "meta": json.dumps({"desc": "test"})},
-                files={"file": ("policy.md", b"# Policy")},
-            )
-            assert resp.status_code == 201
-            assert resp.json()["version"] == 1
-            versions = template_manager.list_template_versions("policy")
-            assert len(versions) == 1
-            assert versions[0].metadata == {"desc": "test"}
-        finally:
-            template_manager._template_store.clear()
-            template_manager._template_store.update(snap_store)
+        template_manager.reset_template_store(root=tmp_path / "template_store.json")
+        resp = client.post(
+            "/templates",
+            data={"name": "policy", "meta": json.dumps({"desc": "test"})},
+            files={"file": ("policy.md", b"# Policy")},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["version"] == 1
+        versions = template_manager.list_template_versions("policy")
+        assert len(versions) == 1
+        assert versions[0].metadata == {"desc": "test"}
     finally:
         sys.path.remove(str(src_root))
         sys.modules.pop("docreview360", None)

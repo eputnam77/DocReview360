@@ -64,8 +64,8 @@ def test_backup_restore_invalid_base64(tmp_path):
     assert "1" in documents  # state preserved
 
 
-def test_email_template_update_clear():
-    email_templates.TEMPLATES.clear()
+def test_email_template_update_clear(tmp_path):
+    email_templates.reset_email_templates(root=tmp_path / "email_templates.json")
     email_templates.create_template("demo", "sub", "body", task="x")
     tmpl = email_templates.update_template("demo", task=None)
     assert tmpl.task is None
