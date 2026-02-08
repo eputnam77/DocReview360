@@ -55,8 +55,9 @@ clear error in the worker logs. See **Troubleshooting** below for quick fixes.
 
 ## Secret management
 
-DocReview360 resolves service credentials through a simple vault interface. To
-configure a vault, add a section to `settings.yaml`:
+DocReview360 resolves service credentials through a simple vault interface and
+prefers external secret stores over local files. To configure a vault, add a
+section to `settings.yaml`:
 
 ```yaml
 vault:
@@ -67,6 +68,24 @@ vault:
 When configured, provider modules such as the OpenAI and SharePoint clients pull
 their tokens from the vault. If no vault is configured, the application falls
 back to environment variables like `OPENAI_KEY` or `SHAREPOINT_TOKEN`.
+
+If you must persist secrets in `settings.yaml`, enable encryption at rest and
+include the `secrets` scope so values are stored as `ENC(...)` payloads. On
+startup, plaintext legacy secrets are automatically migrated to encrypted
+payloads when keys are available:
+
+```yaml
+security:
+  encryption_at_rest:
+    enabled: true
+    key_id: encryption-primary
+    required_for:
+      - secrets
+```
+
+This is best used as a bootstrap mechanism for local or single-node installs;
+production environments should keep provider credentials in an external vault
+or environment variables to avoid storing secrets on disk.
 
 ## Encryption at rest configuration
 
