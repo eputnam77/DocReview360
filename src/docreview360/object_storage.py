@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
+from typing import Mapping
+
+from .settings_manager import load_settings
 
 
 def _validate_key(key: str) -> None:
@@ -87,6 +90,27 @@ def _sanitize_bucket(bucket: str | Path) -> Path:
     return bucket_path.resolve()
 
 
+def _normalize_setting(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _s3_encryption_defaults() -> tuple[str | None, str | None]:
+    settings = load_settings()
+    storage = settings.get("storage")
+    if not isinstance(storage, Mapping):
+        return None, None
+    s3_settings = storage.get("s3")
+    if not isinstance(s3_settings, Mapping):
+        return None, None
+    return (
+        _normalize_setting(s3_settings.get("sse")),
+        _normalize_setting(s3_settings.get("kms_key_id")),
+    )
+
+
 def download_file(bucket: str | Path, key: str) -> bytes:
     """Return the contents of ``bucket``/``key``.
 
@@ -132,6 +156,8 @@ def upload_file(
     *,
     append_only: bool = False,
     retention_days: int = 1,
+    server_side_encryption: str | None = None,
+    kms_key_id: str | None = None,
 ) -> Path | str:
     """Save ``data`` to ``bucket``/``key`` and return the file path.
 
@@ -149,6 +175,12 @@ def upload_file(
         object becomes append-only.
     retention_days:
         Optional retention period for S3 object lock.
+    server_side_encryption:
+        Optional S3 server-side encryption algorithm (for example, ``AES256`` or
+        ``aws:kms``). Falls back to the ``storage.s3.sse`` setting when unset.
+    kms_key_id:
+        Optional AWS KMS key id or ARN for S3 SSE-KMS. Falls back to the
+        ``storage.s3.kms_key_id`` setting when unset.
 
     Returns
     -------
@@ -171,11 +203,21 @@ def upload_file(
         if not bucket_name or "/" in bucket_name:
             raise ValueError("invalid s3 bucket")
         extra: dict[str, object] = {}
+        default_sse, default_kms_key_id = _s3_encryption_defaults()
+        if server_side_encryption is None:
+            server_side_encryption = default_sse
+        if kms_key_id is None:
+            kms_key_id = default_kms_key_id
+        if server_side_encryption:
+            extra["ServerSideEncryption"] = server_side_encryption
+        if kms_key_id:
+            extra["SSEKMSKeyId"] = kms_key_id
         if append_only:
             retain_until = datetime.now(timezone.utc) + timedelta(days=retention_days)
             extra = {
                 "ObjectLockMode": "COMPLIANCE",
                 "ObjectLockRetainUntilDate": retain_until,
+                **extra,
             }
         s3.put_object(Bucket=bucket_name, Key=key, Body=data, **extra)
         return f"s3://{bucket_name}/{key}"
