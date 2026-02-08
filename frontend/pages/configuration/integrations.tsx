@@ -98,6 +98,10 @@ export default function IntegrationsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [aiKey, setAiKey] = useState("");
+  const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
+  const [aiKeyLast4, setAiKeyLast4] = useState<string | null>(null);
+  const [aiKeySaving, setAiKeySaving] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -118,6 +122,20 @@ export default function IntegrationsPage() {
         setPrimaryProvider("documenso");
         setFallbackProvider("local");
         setLoadError("Failed to load integration settings; using defaults.");
+      });
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API}/ai/key`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setAiKeyConfigured(Boolean(data.configured));
+        setAiKeyLast4(typeof data.last4 === "string" ? data.last4 : null);
+      })
+      .catch(() => {
+        setAiKeyConfigured(false);
+        setAiKeyLast4(null);
       });
   }, []);
 
@@ -152,6 +170,33 @@ export default function IntegrationsPage() {
       }
     } catch {
       toast.error("Failed to save configuration");
+    }
+  };
+
+  const handleAiKeySave = async (keyOverride?: string | null) => {
+    const value = typeof keyOverride === "string" ? keyOverride : aiKey.trim();
+    setAiKeySaving(true);
+    try {
+      const resp = await fetch(`${API}/ai/key`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: value || null }),
+      });
+      if (!resp.ok) {
+        throw new Error(await resp.text());
+      }
+      const data = await resp.json();
+      setAiKeyConfigured(Boolean(data.configured));
+      setAiKeyLast4(typeof data.last4 === "string" ? data.last4 : null);
+      setAiKey("");
+      toast.success(
+        value ? "AI key saved for rewrite services." : "AI key cleared.",
+      );
+    } catch (err) {
+      console.error("Failed to save AI key", err);
+      toast.error("Failed to save AI key");
+    } finally {
+      setAiKeySaving(false);
     }
   };
 
@@ -327,6 +372,40 @@ export default function IntegrationsPage() {
             </li>
           ))}
         </ul>
+      </div>
+      <div className="pt-6 space-y-3 max-w-lg">
+        <h2 className="text-lg font-semibold">AI Rewrite</h2>
+        <p className="text-sm text-gray-500">
+          Configure the API key used for TipTap AI rewrite suggestions.{" "}
+          {aiKeyConfigured
+            ? `Key saved (ending in ${aiKeyLast4 || "••••"}).`
+            : "No key stored yet."}
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="ai-key">AI API Key</Label>
+          <Input
+            id="ai-key"
+            type="password"
+            placeholder="Paste your OpenAI API key"
+            value={aiKey}
+            onChange={(e) => setAiKey(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handleAiKeySave()}
+              disabled={aiKeySaving || !aiKey.trim()}
+            >
+              {aiKeySaving ? "Saving…" : "Save AI Key"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleAiKeySave("")}
+              disabled={aiKeySaving || !aiKeyConfigured}
+            >
+              Clear Key
+            </Button>
+          </div>
+        </div>
       </div>
       <div className="pt-6 space-y-4">
         <h2 className="text-lg font-semibold">All Settings</h2>

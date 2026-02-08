@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 import yaml
 
-from .secrets import configure_vault
+from .secrets import configure_vault, store_secret
 from .stubs import record_task_completion
 
 SETTINGS_FILE = Path("settings.yaml")
@@ -27,6 +27,11 @@ def load_settings(path: Path = SETTINGS_FILE) -> Dict[str, Any]:
     vault_cfg = data.get("vault")
     if isinstance(vault_cfg, dict):
         configure_vault(vault_cfg)
+    secrets_cfg = data.get("secrets")
+    if isinstance(secrets_cfg, dict):
+        for name, value in secrets_cfg.items():
+            if isinstance(value, str) and value.strip():
+                store_secret(name, value)
     return data
 
 
@@ -38,6 +43,34 @@ def update_setting(key: str, value: Any, path: Path = SETTINGS_FILE) -> None:
     if key == "vault" and isinstance(value, dict):
         configure_vault(value)
     record_task_completion(142)
+
+
+def update_secret(provider: str, secret: str | None, path: Path = SETTINGS_FILE) -> None:
+    """Persist a secret for ``provider`` inside ``settings.yaml``."""
+    if not isinstance(provider, str) or not provider.strip():
+        raise ValueError("provider must be a non-empty string")
+    settings = load_settings(path)
+    secrets_cfg = settings.get("secrets")
+    if secrets_cfg is None:
+        secrets_cfg = {}
+    if not isinstance(secrets_cfg, dict):
+        raise ValueError("secrets must be a mapping")
+    if secret is None or not str(secret).strip():
+        secrets_cfg.pop(provider, None)
+        secret_value = None
+    else:
+        secret_value = str(secret)
+        secrets_cfg[provider] = secret_value
+    settings["secrets"] = secrets_cfg
+    path.write_text(yaml.safe_dump(settings))
+    try:
+        from . import ai_assist
+    except Exception:
+        ai_assist = None
+    if ai_assist is not None:
+        ai_assist.OPENAI_KEY = secret_value
+    if secret_value:
+        store_secret(provider, secret_value)
 
 
 def load_providers() -> None:

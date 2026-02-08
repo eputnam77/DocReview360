@@ -8,11 +8,18 @@ const ImageIcon = dynamic(() => import("lucide-react").then(m => m.Image));
 interface InsertMenuProps {
   insertTable: () => void;
   insertImage: () => void;
+  disabled?: boolean;
 }
 
-export default function InsertMenu({ insertTable, insertImage }: InsertMenuProps) {
+export default function InsertMenu({ insertTable, insertImage, disabled = false }: InsertMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (disabled && open) {
+      setOpen(false);
+    }
+  }, [disabled, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -40,9 +47,13 @@ export default function InsertMenu({ insertTable, insertImage }: InsertMenuProps
   return (
     <div className="relative" ref={menuRef}>
       <button
-        onClick={() => setOpen(prev => !prev)}
-        className="ml-2 p-2 rounded bg-gray-200"
+        onClick={() => {
+          if (disabled) return;
+          setOpen(prev => !prev);
+        }}
+        className={`ml-2 p-2 rounded bg-gray-200 ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         title="Insert"
+        disabled={disabled}
       >
         <MenuIcon className="w-4 h-4" />
       </button>
@@ -73,4 +84,3 @@ export default function InsertMenu({ insertTable, insertImage }: InsertMenuProps
     </div>
   );
 }
-

@@ -10,6 +10,8 @@ import pytest
 from docreview360.api import (
     CmsExportRequest,
     CmsImportRequest,
+    RevisionCreate,
+    create_revision_endpoint,
     export_document_to_cms,
     import_document_from_cms,
     update_document_endpoint,
@@ -75,6 +77,27 @@ async def test_update_endpoint_calls_save(monkeypatch) -> None:
     updated = await update_document_endpoint(doc.id, body)
     assert called["doc"].id == doc.id
     assert updated.content == "next"
+
+
+@pytest.mark.asyncio
+async def test_revision_endpoint_calls_save(monkeypatch) -> None:
+    doc = import_document("doc.md", b"start")
+    cfg = Config(database="sqlite", editor="tiptap", cms=" sharepoint ", auth="oidc")
+
+    monkeypatch.setattr("docreview360.api.Config.load", lambda path: cfg)
+
+    called: dict[str, DocumentModel] = {}
+
+    def fake_save(document: DocumentModel, *, config: Config) -> str:
+        called["doc"] = document
+        return "id"
+
+    monkeypatch.setattr("docreview360.api.save_to_cms", fake_save)
+
+    body = RevisionCreate(content="next")
+    result = await create_revision_endpoint(doc.id, body, x_user="alice")
+    assert result["revisionId"]
+    assert called["doc"].id == doc.id
 
 
 def test_local_cms_saves_and_fetches(monkeypatch, tmp_path) -> None:

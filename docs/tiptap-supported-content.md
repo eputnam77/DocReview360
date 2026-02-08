@@ -66,3 +66,10 @@ exists the request fails with a 400 response instead of creating a duplicate.
 Callers that want to re-use the existing record can pass
 `link_duplicates=true` at the API layer, which instructs the backend to return
 the existing document rather than raising an error.
+
+## Template formatting locks
+
+TipTap templates can optionally signal that formatting controls should be
+restricted. Add `lock_formatting: true` (or `lockFormatting`) to the template
+metadata to disable block-level formatting controls in the editor while still
+allowing inline marks like bold or italic.
