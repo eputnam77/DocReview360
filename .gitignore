@@ -36,3 +36,6 @@ uv.lock
 
 # Archive storage (generated content)
 archive_store/
+
+# Runtime and test temp (logs, pytest cache, checker downloads)
+.tmp/

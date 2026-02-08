@@ -1,0 +1,14 @@
+{
+  "faa_ac": [
+    {
+      "version": 1,
+      "content": "PGgxIHN0eWxlPSJ0ZXh0LWFsaWduOmNlbnRlcjsgbWFyZ2luLWJvdHRvbTowIj5BZHZpc29yeSBDaXJjdWxhcjwvaDE+PHA+VGhpcyBpcyBhIHNlZWQgdGVtcGxhdGUuPC9wPg==",
+      "metadata": {
+        "label": "FAA Advisory Circular",
+        "type": "tiptap"
+      },
+      "approved": false,
+      "retired": false
+    }
+  ]
+}

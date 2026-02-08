@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
@@ -164,7 +164,7 @@ export default function NewProjectPage() {
     console.log('Creating project with data:', projectData);
 
     try {
-      const res = await fetch(`${API}/projects`, {
+      const res = await authenticatedFetch(`${API}/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(projectData),
