@@ -68,6 +68,15 @@ describe("createTiptapApi", () => {
     expect(options).toEqual({ headers: { "X-User": "bob" } });
   });
 
+  it("fetches document details for the editor", async () => {
+    const api = createTiptapApi();
+    await api.fetchDocument("doc-123");
+
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+      "http://example.com/documents/doc-123",
+    );
+  });
+
   it("fetches archive records and template content through the helper", async () => {
     const api = createTiptapApi();
     await api.fetchArchive("archive-1");

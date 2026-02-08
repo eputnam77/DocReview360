@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html import escape
+from xml.sax.saxutils import escape as xml_escape, quoteattr
 from io import BytesIO
 from typing import Any, Callable, Iterable, Optional
 from zipfile import ZipFile
@@ -90,6 +91,7 @@ class _SizeLimitedBuffer(BytesIO):
 _FORMAT_ALIASES: dict[str, str] = {
     "md": "markdown",
     "htm": "html",
+    "txt": "text",
 }
 
 
@@ -258,12 +260,29 @@ def export_document(  # noqa: C901
         media = "text/markdown"
         name = f"{base}.md"
         _ensure_size_within_limit(document, canonical_fmt, limit, len(data))
+    elif fmt in ("text", "txt"):
+        data = sanitized_content.encode()
+        media = "text/plain"
+        name = f"{base}.txt"
+        _ensure_size_within_limit(document, canonical_fmt, limit, len(data))
     elif fmt in ("html", "htm"):
         body = escape(sanitized_content)
         html_doc = f"<html><body><pre>{body}</pre></body></html>"
         data = html_doc.encode()
         media = "text/html"
         name = f"{base}.html"
+        _ensure_size_within_limit(document, canonical_fmt, limit, len(data))
+    elif fmt == "xml":
+        body = xml_escape(sanitized_content)
+        xml_doc = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            f"<document id={quoteattr(document.id)}>"
+            f"<content>{body}</content>"
+            "</document>"
+        )
+        data = xml_doc.encode()
+        media = "application/xml"
+        name = f"{base}.xml"
         _ensure_size_within_limit(document, canonical_fmt, limit, len(data))
     elif fmt == "json":
         data = document.model_dump_json().encode()

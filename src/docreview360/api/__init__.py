@@ -141,7 +141,8 @@ from ..project_preferences import (
     update_project_preferences,
 )
 from ..reviews import ReviewCreate, ReviewModel, add_review, list_reviews
-from ..settings_manager import update_setting
+from ..settings_manager import update_setting, update_secret
+from ..secrets import get_secret
 from ..status import internal_status, public_status
 from ..stubs.task223 import convert_document
 from ..template_manager import (
@@ -281,6 +282,12 @@ class RevisionCreate(BaseModel):
     content: str
     steps: list[Any] | None = None
     promote: bool = False
+
+
+class AiKeyPayload(BaseModel):
+    """Payload for storing the AI rewrite API key."""
+
+    key: str | None = None
 
 
 class CmsExportRequest(BaseModel):
@@ -1445,6 +1452,7 @@ def _resolve_import_filename(item_id: str, filename: str | None, fmt: str | None
             "pdf": "pdf",
             "txt": "txt",
             "text": "txt",
+            "xml": "xml",
         }
         ext = ext_map.get(fmt_normalized, fmt_normalized)
         return f"cms-import.{ext}"
@@ -1493,6 +1501,12 @@ async def create_revision_endpoint(
         if body.promote:
             record = archive_doc(document)
             result["archiveId"] = record.id
+        cfg = Config.load(CONFIG_FILE)
+        if cfg and cfg.cms.strip().lower() != "none" and document.editor == "tiptap":
+            try:
+                save_to_cms(document, config=cfg)
+            except Exception as exc:  # pragma: no cover - best effort
+                raise HTTPException(status_code=502, detail=str(exc)) from exc
         return result
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -1538,7 +1552,18 @@ async def list_comments_endpoint(doc_id: str) -> list[CommentModel]:
 @app.get("/documents/{doc_id}/export")
 async def export_document_endpoint(
     doc_id: str,
-    fmt: Literal["markdown", "md", "html", "htm", "docx", "pdf", "json"],
+    fmt: Literal[
+        "markdown",
+        "md",
+        "text",
+        "txt",
+        "html",
+        "htm",
+        "docx",
+        "pdf",
+        "json",
+        "xml",
+    ],
 ) -> Response:
     """Return the document converted to the requested format."""
     document = get_document(doc_id)
@@ -1701,6 +1726,21 @@ async def toggle_watch_endpoint(project_id: str, body: WatchBody) -> list[str]:
 async def get_watchlist_endpoint(user: str) -> list[str]:
     """Return the watchlist for ``user``."""
     return get_watchlist(user)
+
+
+@app.get("/ai/key")
+async def get_ai_key_endpoint() -> dict[str, str | bool | None]:
+    """Return whether the AI rewrite key is configured."""
+    key = get_secret("openai")
+    return {"configured": bool(key), "last4": key[-4:] if key else None}
+
+
+@app.put("/ai/key")
+async def update_ai_key_endpoint(payload: AiKeyPayload) -> dict[str, str | bool | None]:
+    """Store the AI rewrite key in settings."""
+    key = payload.key.strip() if payload.key else ""
+    update_secret("openai", key or None)
+    return {"configured": bool(key), "last4": key[-4:] if key else None}
 
 
 @app.post("/ai/rewrite")
