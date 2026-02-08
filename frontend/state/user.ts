@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch, clearStoredAccessToken } from "@/lib/api";
 
 const SESSION_COOKIE_NAMES = ["access_token", "session", "sessionid"];
 
@@ -119,6 +119,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     } catch {
       // ignore logout errors
     }
+    clearStoredAccessToken();
     set({
       isAdmin: false,
       isAuditor: false,

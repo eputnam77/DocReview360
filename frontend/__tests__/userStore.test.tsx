@@ -8,6 +8,8 @@ import { authenticatedFetch } from "@/lib/api";
 vi.mock("@/lib/api", () => ({
   API: "http://test",
   authenticatedFetch: vi.fn(),
+  setStoredAccessToken: vi.fn(),
+  clearStoredAccessToken: vi.fn(),
 }));
 
 vi.mock("react-hot-toast", () => ({

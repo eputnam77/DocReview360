@@ -6,9 +6,32 @@ export const API = envBase && envBase.length > 0
     : typeof window !== "undefined"
         ? `${window.location.protocol}//${window.location.hostname}:8000`
         : "http://localhost:8000";
+const ACCESS_TOKEN_STORAGE_KEY = "access_token";
+export function getStoredAccessToken() {
+    if (typeof window === "undefined") {
+        return null;
+    }
+    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+export function setStoredAccessToken(token) {
+    if (typeof window === "undefined") {
+        return;
+    }
+    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+}
+export function clearStoredAccessToken() {
+    if (typeof window === "undefined") {
+        return;
+    }
+    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+}
 // Utility function for authenticated API calls
 export async function authenticatedFetch(url, options = {}) {
     const headers = new Headers(options.headers);
+    const storedToken = getStoredAccessToken();
+    if (storedToken && !headers.has("Authorization")) {
+        headers.set("Authorization", `Bearer ${storedToken}`);
+    }
     // Prepend API base URL to relative URLs
     let fullUrl = url;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {

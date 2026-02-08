@@ -9,7 +9,7 @@ import { LogIn } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { API } from "@/lib/api";
+import { API, setStoredAccessToken } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 export default function LoginPage() {
     const [username, setUsername] = useState("");
@@ -33,6 +33,13 @@ export default function LoginPage() {
                 }),
             });
             if (response.ok) {
+                const tokenPayload = await response.json();
+                const accessToken = typeof tokenPayload?.access_token === "string"
+                    ? tokenPayload.access_token.trim()
+                    : "";
+                if (accessToken) {
+                    setStoredAccessToken(accessToken);
+                }
                 try {
                     await refreshUser();
                 }
