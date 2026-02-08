@@ -55,3 +55,29 @@ def test_parse_login_gov_response_whitespace_nameid() -> None:
     encoded = b64encode(saml.encode()).decode()
     with pytest.raises(ValueError):
         parse_login_gov_response(encoded)
+
+
+def test_parse_login_gov_response_rejects_dtd_payload() -> None:
+    saml = (
+        "<!DOCTYPE foo [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]>"
+        "<saml2:Response xmlns:saml2='urn:oasis:names:tc:SAML:2.0:assertion'>"
+        "<saml2:Assertion><saml2:Subject>"
+        "<saml2:NameID>user@example.com</saml2:NameID>"
+        "</saml2:Subject></saml2:Assertion></saml2:Response>"
+    )
+    encoded = b64encode(saml.encode()).decode()
+    with pytest.raises(ValueError):
+        parse_login_gov_response(encoded)
+
+
+def test_parse_login_gov_response_rejects_oversized_payload() -> None:
+    long_name = "a" * (300 * 1024)
+    saml = (
+        "<saml2:Response xmlns:saml2='urn:oasis:names:tc:SAML:2.0:assertion'>"
+        "<saml2:Assertion><saml2:Subject>"
+        f"<saml2:NameID>{long_name}</saml2:NameID>"
+        "</saml2:Subject></saml2:Assertion></saml2:Response>"
+    )
+    encoded = b64encode(saml.encode()).decode()
+    with pytest.raises(ValueError):
+        parse_login_gov_response(encoded)

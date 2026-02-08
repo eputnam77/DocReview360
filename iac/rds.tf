@@ -14,4 +14,9 @@ resource "aws_db_instance" "this" {
   engine     = "postgres"
   instance_class = "db.t3.micro"
   allocated_storage = 20
+  storage_encrypted = true
+  publicly_accessible = false
+  backup_retention_period = 7
+  deletion_protection = true
+  auto_minor_version_upgrade = true
 }

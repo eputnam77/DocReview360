@@ -5,13 +5,14 @@ import hmac
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from fastapi import APIRouter, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, HttpUrl, ValidationError
 
 from ..http_client import post as http_post
 from ..integrations.signature import get_provider
 from ..logs import log_call
 from ..monitoring import HASH_MISMATCHES, WEBHOOK_DELAY
+from ..rbac import require_role
 from ..secrets import get_secret
 
 router = APIRouter()
@@ -65,7 +66,7 @@ def emit_verification_completed(doc_id: str, status: str, details: List[Dict[str
 
 @router.post("/webhooks/subscribe", status_code=204, response_class=Response)
 @log_call
-async def subscribe_webhook(sub: WebhookSubscription) -> Response:
+async def subscribe_webhook(sub: WebhookSubscription, _=Depends(require_role("admin"))) -> Response:
     """Register a webhook callback URL for events."""
 
     for event in sub.events:

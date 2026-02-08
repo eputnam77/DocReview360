@@ -51,10 +51,12 @@ def test_defaults_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
         auth = importlib.import_module(module_name)
     sys.path.remove(str(src_root))
 
-    assert auth.SECRET_KEY == "docreview360-dev-secret"
+    assert isinstance(auth.SECRET_KEY, str)
+    assert len(auth.SECRET_KEY) >= 32
     assert auth.ALGORITHM == "HS256"
     assert auth.ACCESS_TOKEN_EXPIRE_MINUTES == 30
-    assert auth.OIDC_SECRET_KEY == "docreview360-oidc-dev-secret"
+    assert isinstance(auth.OIDC_SECRET_KEY, str)
+    assert len(auth.OIDC_SECRET_KEY) >= 32
     assert auth.OIDC_ALGORITHM == "HS256"
     assert auth.OIDC_TOKEN_EXPIRE_MINUTES == 30
 

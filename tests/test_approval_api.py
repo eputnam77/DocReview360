@@ -103,3 +103,27 @@ def test_update_signed_approval_returns_conflict() -> None:
     )
     assert second.status_code == 409
     assert second.json() == {"detail": "signed approvals cannot be modified; reset required"}
+
+
+def test_approval_return_rejects_external_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
+    _, approval_id, _ = _setup()
+    approvals[approval_id].signature_id = "sig-123"
+
+    async def _noop_handle_signature_return(*args, **kwargs) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "docreview360.api.approvals.handle_signature_return",
+        _noop_handle_signature_return,
+    )
+    client = TestClient(app)
+    resp = client.get(
+        "/approvals/return",
+        params={
+            "signature": "sig-123",
+            "approval": approval_id,
+            "next": "https://attacker.example/phish",
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "invalid redirect target"

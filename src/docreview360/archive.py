@@ -41,6 +41,15 @@ archives: Dict[str, ArchiveRecord] = {}
 
 
 ARCHIVE_RETENTION_DAYS = 365
+_RESERVED_METADATA_KEYS = {
+    "doc_id",
+    "hashes",
+    "public_copy",
+    "source_doc_id",
+    "public_copy_url",
+    "verification_timestamp",
+    "artefact_locations",
+}
 
 
 def archive_document(
@@ -68,7 +77,11 @@ def archive_document(
     }
     # Build full metadata for the archived record which may include
     # additional fields like ``public_copy`` or ``source_doc_id``.
-    meta = metadata.copy() if metadata else {}
+    meta = {
+        key: value
+        for key, value in (metadata or {}).items()
+        if key not in _RESERVED_METADATA_KEYS
+    }
     meta.setdefault("version_summary", f"v{len(document.history)}")
     meta.setdefault("retention_policy", "standard")
     if document.public_copy:

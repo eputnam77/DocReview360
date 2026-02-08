@@ -25,38 +25,50 @@ interface DocType {
 
 const normalizeDocTypes = (items: unknown): DocType[] => {
   if (!Array.isArray(items)) return [];
-  return items
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const anyItem = item as {
-        id?: unknown;
-        name?: unknown;
-        phases?: unknown;
-        workflow?: unknown;
-        template?: unknown;
-      };
-      const name =
-        typeof anyItem.name === "string" && anyItem.name.trim()
-          ? anyItem.name.trim()
-          : "";
-      if (!name) return null;
-      const id =
-        typeof anyItem.id === "string" && anyItem.id.trim()
-          ? anyItem.id.trim()
-          : name;
-      let phases: string[] | undefined;
-      if (Array.isArray(anyItem.phases)) {
-        phases = (anyItem.phases as string[]).filter((p) => typeof p === "string" && p.trim());
-      } else if (Array.isArray(anyItem.workflow)) {
-        phases = (anyItem.workflow as string[]).filter((p) => typeof p === "string" && p.trim());
-      }
-      const template =
-        typeof anyItem.template === "string" && anyItem.template.trim()
-          ? anyItem.template
-          : undefined;
-      return { id, name, phases, template };
-    })
-    .filter((v): v is DocType => Boolean(v));
+  const normalized: DocType[] = [];
+
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+
+    const anyItem = item as {
+      id?: unknown;
+      name?: unknown;
+      phases?: unknown;
+      workflow?: unknown;
+      template?: unknown;
+    };
+    const name =
+      typeof anyItem.name === "string" && anyItem.name.trim()
+        ? anyItem.name.trim()
+        : "";
+    if (!name) continue;
+
+    const id =
+      typeof anyItem.id === "string" && anyItem.id.trim()
+        ? anyItem.id.trim()
+        : name;
+
+    let phases: string[] = [];
+    if (Array.isArray(anyItem.phases)) {
+      phases = (anyItem.phases as string[]).filter((p) => typeof p === "string" && p.trim());
+    } else if (Array.isArray(anyItem.workflow)) {
+      phases = (anyItem.workflow as string[]).filter((p) => typeof p === "string" && p.trim());
+    }
+
+    const template =
+      typeof anyItem.template === "string" && anyItem.template.trim()
+        ? anyItem.template
+        : "";
+
+    normalized.push({
+      id,
+      name,
+      ...(phases.length > 0 ? { phases } : {}),
+      ...(template ? { template } : {}),
+    });
+  }
+
+  return normalized;
 };
 
 function PhaseSelector({

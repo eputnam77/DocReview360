@@ -1,0 +1,14 @@
+{
+  "ai_auto_assign_writers": false,
+  "auth": "oidc",
+  "cms": "none",
+  "database": "postgres",
+  "database_url": "postgresql://db/prod",
+  "debug": false,
+  "editor": "tiptap",
+  "filename_template": "{id}",
+  "host": "127.0.0.1",
+  "log_connectors": [],
+  "log_reads": true,
+  "port": 8000
+}

@@ -27,12 +27,14 @@ def test_update_state_uploads_to_cms(monkeypatch):
     uploaded = []
     patched = []
 
-    def fake_put(url: str, headers, data: bytes) -> DummyResponse:
+    def fake_put(url: str, headers, data: bytes, timeout: float) -> DummyResponse:
         uploaded.append((url, data))
+        assert timeout > 0
         return DummyResponse(json_data={"id": "x"})
 
-    def fake_patch(url: str, headers, json) -> DummyResponse:
+    def fake_patch(url: str, headers, json, timeout: float) -> DummyResponse:
         patched.append((url, json))
+        assert timeout > 0
         return DummyResponse()
 
     def fake_fetch(url: str) -> bytes:

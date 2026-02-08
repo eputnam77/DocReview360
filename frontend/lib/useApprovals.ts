@@ -3,6 +3,8 @@ import { API, authenticatedFetch } from "./api";
 import { toast } from "react-hot-toast";
 import type { Approval } from "@/types";
 
+export type { Approval };
+
 interface Options {
   workflow?: string;
   phase?: string;

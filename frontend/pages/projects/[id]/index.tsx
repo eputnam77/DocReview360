@@ -56,10 +56,11 @@ interface Project {
   type: string;
   title: string;
   owner: string;
-  status: "Draft" | "In Progress" | "Complete" | "Overdue";
+  status: string;
   progress: number;
   updated?: string;
-  editor?: "tiptap" | "word";
+  editor?: string;
+  workflow?: string;
   currentPhaseId?: string | null;
 }
 interface LogEntry {
@@ -71,7 +72,7 @@ interface LogEntry {
 }
 interface WorkflowStep {
   name: string;
-  status: "complete" | "active" | "pending";
+  status?: "complete" | "active" | "pending";
 }
 interface Workflow {
   id: string;
@@ -172,7 +173,9 @@ function StickyNav() {
         {NAV.map((s, i) => (
           <li key={s.id}>
             <a
-              ref={(el) => (linksRef.current[i] = el)}
+              ref={(el) => {
+                linksRef.current[i] = el;
+              }}
               role="tab"
               id={`nav-${s.id}`}
               aria-selected={active === s.id}
@@ -273,7 +276,7 @@ export default function ProjectDetailsPage() {
   const canEdit = isOwner || isAdmin;
 
   const phaseList = useMemo(
-    () => workflow?.steps?.map((s) => ({ id: s.name, label: s.name })) ?? [],
+    () => workflow?.steps?.map((s) => ({ id: s.name, name: s.name })) ?? [],
     [workflow?.steps],
   );
 
@@ -297,7 +300,7 @@ export default function ProjectDetailsPage() {
   } = useApprovals({ workflow: projectData?.workflow });
   const { data: reviewCountData, isLoading: reviewLoading } = useReviewSummary(
     projectData?.id,
-    projectData?.currentPhaseId,
+    projectData?.currentPhaseId ?? undefined,
   );
   const queryClient = useQueryClient();
   const {

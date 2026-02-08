@@ -40,6 +40,8 @@ class Config:
     log_reads: bool = True
     # Pattern for exported filenames; placeholders: {id}, {number}
     filename_template: str = "{id}"
+    # Global inactivity timeout (minutes) applied to all UI users.
+    inactivity_timeout_minutes: int = 30
     # External log connectors configuration
     log_connectors: list["ConnectorSettings"] = field(default_factory=list)
 
@@ -84,6 +86,17 @@ class Config:
                 normalized["batch_size"] = batch
             connectors.append(ConnectorSettings(**normalized))
         data["log_connectors"] = connectors
+        raw_timeout = data.get("inactivity_timeout_minutes")
+        if raw_timeout is not None:
+            try:
+                if isinstance(raw_timeout, bool):
+                    raise TypeError
+                timeout_value = int(raw_timeout)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("inactivity_timeout_minutes must be a positive integer") from exc
+            if timeout_value <= 0:
+                raise ValueError("inactivity_timeout_minutes must be a positive integer")
+            data["inactivity_timeout_minutes"] = timeout_value
         return cls(**data)
 
     def save(self, path: Path = CONFIG_FILE) -> None:

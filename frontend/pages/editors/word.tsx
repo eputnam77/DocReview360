@@ -23,6 +23,8 @@ interface WordTemplate {
   id: string;
   url: string;
   type: string;
+  name?: string;
+  description?: string;
   category?: string;
   label?: string;
 }

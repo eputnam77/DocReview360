@@ -70,7 +70,7 @@ export default function WorkflowDetailPage() {
               </Link>
             </Button>
             <Button
-              variant="destructive"
+              variant="danger"
               onClick={async () => {
                 if (!confirm("Delete this workflow template? This cannot be undone.")) return;
                 const res = await fetch(`/api/workflow-templates/${workflow.id}`, {
