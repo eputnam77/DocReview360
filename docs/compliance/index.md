@@ -29,6 +29,21 @@ Reducing the retention period will cause a scheduled purge job to remove items
 older than the configured number of days. Increasing the interval allows less
 frequent purge runs if desired.
 
+## Encryption at rest
+
+DocReview360 encrypts archived artefacts, archive metadata, and backup files at
+rest using AES-GCM envelope encryption. Each payload is wrapped with a versioned
+header that includes magic bytes, a key identifier, and a nonce so operators can
+rotate keys without re-encrypting existing data. Encrypted payloads are uploaded
+to object storage; decryption happens on read paths such as backup restoration
+using the key referenced in the header.
+
+Key material is sourced from the vault or environment-backed secret flow, and
+the active key identifier is configured in ``settings.yaml`` under
+``security.encryption_at_rest``. Missing or invalid key material blocks restore
+operations and surfaces a clear error so operators can correct vault
+configuration quickly.
+
 ## Audit log integrity monitoring
 
 DocReview360 continuously validates audit log append operations. If a malformed

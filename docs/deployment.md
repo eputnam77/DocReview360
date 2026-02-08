@@ -68,6 +68,28 @@ When configured, provider modules such as the OpenAI and SharePoint clients pull
 their tokens from the vault. If no vault is configured, the application falls
 back to environment variables like `OPENAI_KEY` or `SHAREPOINT_TOKEN`.
 
+## Encryption at rest configuration
+
+Archive artefacts, archive metadata, and backup payloads can be encrypted at
+rest using AES-GCM. Configure the policy in `settings.yaml` and store the key
+material in the vault or environment under the same key id:
+
+```yaml
+security:
+  encryption_at_rest:
+    enabled: true
+    key_id: encryption-primary
+    required_for:
+      - archive
+      - backup
+```
+
+The encryption key must be 16, 24, or 32 bytes (raw or base64 encoded). When
+rotating keys, keep the previous key material available under its key id until
+all encrypted artefacts and backups have been reprocessed or retired; the
+payload header records which key id was used so DocReview360 can decrypt older
+data during restore.
+
 ## Role permissions
 
 Role-to-permission mappings are sourced from `settings.yaml`.  See

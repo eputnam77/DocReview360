@@ -38,5 +38,18 @@
   "signature_verification": {
     "interval_minutes": 60,
     "scope": "approved"
+  },
+  "secrets": {
+    "encryption-primary": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+  },
+  "security": {
+    "encryption_at_rest": {
+      "enabled": true,
+      "key_id": "encryption-primary",
+      "required_for": [
+        "archive",
+        "backup"
+      ]
+    }
   }
 }

@@ -9,8 +9,10 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+from .crypto import decrypt_payload, encrypt_payload, enforce_encryption_choice, get_encryption_policy
 from .documents import DocumentModel, documents
 from .logs import LogEntry, logs
+from .settings_manager import load_settings
 
 
 def _dump_document(doc: DocumentModel) -> Dict[str, Any]:
@@ -28,7 +30,7 @@ def _dump_document(doc: DocumentModel) -> Dict[str, Any]:
     return data
 
 
-def create_backup(path: str | Path) -> Path:
+def create_backup(path: str | Path, *, encrypt: bool | None = None) -> Path:
     """Write a gzip-compressed JSON backup of documents and logs."""
     target = Path(path)
 
@@ -41,9 +43,20 @@ def create_backup(path: str | Path) -> Path:
             "logs": [entry.model_dump(mode="json") for entry in logs],
         }
 
+    payload = json.dumps(data).encode("utf-8")
+    compressed = gzip.compress(payload)
+    settings = load_settings()
+    policy = get_encryption_policy(settings)
+    if encrypt is None:
+        encrypt = policy.enabled
+    enforce_encryption_choice(scope="backup", encrypt=encrypt, settings=settings)
+    blob = (
+        encrypt_payload(compressed, settings=settings)
+        if encrypt
+        else compressed
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(target, "wt", encoding="utf-8") as fh:
-        json.dump(data, fh)
+    target.write_bytes(blob)
     return target
 
 
@@ -72,18 +85,27 @@ def restore_backup(path: str | Path) -> None:
     target = Path(path)
     if not target.exists():
         raise FileNotFoundError(target)
+    settings = load_settings()
     try:
-        with gzip.open(target, "rt", encoding="utf-8") as fh:
-            try:
-                data = json.load(fh)
-            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-                # ``restore_backup`` previously leaked ``JSONDecodeError`` or
-                # ``UnicodeDecodeError`` when the gzipped file contained malformed
-                # or non-UTF-8 JSON.  Callers expect a generic :class:`ValueError`
-                # for any format issues, mirroring the checks below for incorrect
-                # data types.  Re-wrap the exception so clients receive a consistent
-                # error surface regardless of where parsing failed.
-                raise ValueError("backup must contain valid JSON") from exc
+        raw = target.read_bytes()
+        try:
+            decrypted = decrypt_payload(raw, settings=settings, allow_plaintext=True)
+        except Exception as exc:
+            raise ValueError(f"backup decryption failed: {exc}") from exc
+        try:
+            decompressed = gzip.decompress(decrypted)
+        except OSError as exc:
+            raise ValueError("backup must be a valid gzip file") from exc
+        try:
+            data = json.loads(decompressed.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            # ``restore_backup`` previously leaked ``JSONDecodeError`` or
+            # ``UnicodeDecodeError`` when the gzipped file contained malformed
+            # or non-UTF-8 JSON.  Callers expect a generic :class:`ValueError`
+            # for any format issues, mirroring the checks below for incorrect
+            # data types.  Re-wrap the exception so clients receive a consistent
+            # error surface regardless of where parsing failed.
+            raise ValueError("backup must contain valid JSON") from exc
     except OSError as exc:
         # ``gzip.open`` or ``json.load`` may raise ``OSError`` when the file is
         # not actually a gzip archive.  Present a uniform ``ValueError`` so
