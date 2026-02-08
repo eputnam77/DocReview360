@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from docreview360 import object_storage
 from docreview360.object_storage import _validate_key, download_file, upload_file
 
 
@@ -121,6 +122,60 @@ def test_s3_upload_download(monkeypatch) -> None:
     uri = upload_file("s3://bucket", "key", b"x", append_only=True, retention_days=2)
     assert uri == "s3://bucket/key"
     assert "ObjectLockRetainUntilDate" in calls
+
+
+def test_s3_upload_applies_encryption_settings(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    class Client:
+        def put_object(self, Bucket, Key, Body, **extra):
+            calls.update(extra)
+
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda name: SimpleNamespace(client=lambda _: Client()),
+    )
+    monkeypatch.setattr(
+        object_storage,
+        "load_settings",
+        lambda: {"storage": {"s3": {"sse": "aws:kms", "kms_key_id": "key-123"}}},
+    )
+
+    upload_file("s3://bucket", "key", b"x")
+
+    assert calls["ServerSideEncryption"] == "aws:kms"
+    assert calls["SSEKMSKeyId"] == "key-123"
+
+
+def test_s3_upload_explicit_encryption_overrides_settings(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    class Client:
+        def put_object(self, Bucket, Key, Body, **extra):
+            calls.update(extra)
+
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda name: SimpleNamespace(client=lambda _: Client()),
+    )
+    monkeypatch.setattr(
+        object_storage,
+        "load_settings",
+        lambda: {"storage": {"s3": {"sse": "AES256", "kms_key_id": "key-123"}}},
+    )
+
+    upload_file(
+        "s3://bucket",
+        "key",
+        b"x",
+        server_side_encryption="aws:kms",
+        kms_key_id="override-key",
+    )
+
+    assert calls["ServerSideEncryption"] == "aws:kms"
+    assert calls["SSEKMSKeyId"] == "override-key"
 
 
 def test_s3_bucket_validation(monkeypatch) -> None:
