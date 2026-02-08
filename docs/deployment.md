@@ -90,6 +90,26 @@ all encrypted artefacts and backups have been reprocessed or retired; the
 payload header records which key id was used so DocReview360 can decrypt older
 data during restore.
 
+## S3 server-side encryption (SSE)
+
+If you store archives, audit log anchors, or backups in S3, you can enable
+bucket-side encryption by setting defaults in `settings.yaml`. DocReview360
+threads these defaults into every S3 `put_object` call, so callers do not need
+to repeat flags:
+
+```yaml
+storage:
+  s3:
+    sse: aws:kms
+    kms_key_id: arn:aws:kms:us-east-1:123456789012:key/abc-def
+```
+
+Set `sse` to `AES256` to use S3-managed keys, or to `aws:kms` to enforce
+customer-managed KMS keys. When using KMS, prefer a dedicated key and ensure
+the worker role has `kms:Encrypt` permissions on it. If `kms_key_id` is
+configured, DocReview360 will pass it through as `SSEKMSKeyId` with every S3
+write.
+
 ## Role permissions
 
 Role-to-permission mappings are sourced from `settings.yaml`.  See

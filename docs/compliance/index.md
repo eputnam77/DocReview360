@@ -44,6 +44,14 @@ the active key identifier is configured in ``settings.yaml`` under
 operations and surfaces a clear error so operators can correct vault
 configuration quickly.
 
+When using Amazon S3, you can enable server-side encryption (SSE) at the
+platform layer by setting ``storage.s3.sse`` and ``storage.s3.kms_key_id`` in
+``settings.yaml``. DocReview360 applies these defaults to every S3 upload,
+including audit log anchors and archive payloads, so encryption coverage is
+consistent without per-call flags. For regulated workloads we recommend
+``aws:kms`` with a customer-managed key and a scoped IAM policy that allows
+``kms:Encrypt`` on that key.
+
 ## Audit log integrity monitoring
 
 DocReview360 continuously validates audit log append operations. If a malformed
