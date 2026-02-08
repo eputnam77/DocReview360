@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .crypto import encrypt_payload, should_encrypt_scope
 from .documents import DocumentModel
 from .exporter import export_document
 from .object_storage import upload_file
@@ -101,19 +102,40 @@ def archive_document(
     archives[record.id] = record
 
     # Persist each artefact for durability and track locations for audit
+    settings = load_settings()
+    encrypt_at_rest = should_encrypt_scope("archive", settings=settings)
+    def _maybe_encrypt(payload: bytes) -> bytes:
+        if encrypt_at_rest:
+            return encrypt_payload(payload, settings=settings)
+        return payload
+
     base = f"{record.document_id}/{record.id}"
     locations: Dict[str, str | None] = {}
-    locations["md"] = str(upload_file(bucket, f"{base}.md", md_bytes, append_only=True) or "")
-    locations["html"] = str(upload_file(bucket, f"{base}.html", html_bytes, append_only=True) or "")
-    locations["docx"] = str(upload_file(bucket, f"{base}.docx", docx_bytes, append_only=True) or "")
-    locations["pdf"] = str(upload_file(bucket, f"{base}.pdf", pdf_bytes, append_only=True) or "")
+    locations["md"] = str(
+        upload_file(bucket, f"{base}.md", _maybe_encrypt(md_bytes), append_only=True) or ""
+    )
+    locations["html"] = str(
+        upload_file(bucket, f"{base}.html", _maybe_encrypt(html_bytes), append_only=True) or ""
+    )
+    locations["docx"] = str(
+        upload_file(bucket, f"{base}.docx", _maybe_encrypt(docx_bytes), append_only=True) or ""
+    )
+    locations["pdf"] = str(
+        upload_file(bucket, f"{base}.pdf", _maybe_encrypt(pdf_bytes), append_only=True) or ""
+    )
     if report_html:
         locations["report_html"] = str(
-            upload_file(bucket, f"{base}.report.html", report_html, append_only=True) or ""
+            upload_file(
+                bucket, f"{base}.report.html", _maybe_encrypt(report_html), append_only=True
+            )
+            or ""
         )
     if report_pdf:
         locations["report_pdf"] = str(
-            upload_file(bucket, f"{base}.report.pdf", report_pdf, append_only=True) or ""
+            upload_file(
+                bucket, f"{base}.report.pdf", _maybe_encrypt(report_pdf), append_only=True
+            )
+            or ""
         )
     meta["artefact_locations"] = locations
     metadata_json["artefact_locations"] = locations
@@ -123,7 +145,9 @@ def archive_document(
         ts = datetime.now(timezone.utc).isoformat()
         watermark = html_bytes.decode() + f"\n<!-- verified {ts} -->"
         public_key = f"{base}.public.html"
-        public_loc = upload_file(bucket, public_key, watermark.encode(), append_only=True)
+        public_loc = upload_file(
+            bucket, public_key, _maybe_encrypt(watermark.encode()), append_only=True
+        )
         meta["public_copy_url"] = str(public_loc)
         meta["verification_timestamp"] = ts
         metadata_json["public_copy_url"] = str(public_loc)
@@ -133,7 +157,7 @@ def archive_document(
     upload_file(
         bucket,
         f"{base}.metadata.json",
-        json.dumps(metadata_json).encode(),
+        _maybe_encrypt(json.dumps(metadata_json).encode()),
         append_only=True,
     )
 

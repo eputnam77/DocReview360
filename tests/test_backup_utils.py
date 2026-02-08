@@ -20,7 +20,7 @@ def test_create_and_restore_backup(tmp_path):
     documents[doc.id] = doc
     logs.append(LogEntry(id="l1", timestamp=datetime.now(timezone.utc), action="create"))
 
-    backup_path = bu.create_backup(tmp_path / "b.gz")
+    backup_path = bu.create_backup(tmp_path / "b.gz", encrypt=False)
     documents.clear()
     logs.clear()
     bu.restore_backup(backup_path)
@@ -32,7 +32,7 @@ def test_dump_encodes_yjs(tmp_path):
     doc = DocumentModel(id="1", content="hi")
     doc.__dict__["yjs_updates"] = [b"abc"]
     documents[doc.id] = doc
-    path = bu.create_backup(tmp_path / "b.gz")
+    path = bu.create_backup(tmp_path / "b.gz", encrypt=False)
     data = gzip.open(path, "rt", encoding="utf-8")
     with data as fh:
         payload = json.load(fh)

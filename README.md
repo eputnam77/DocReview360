@@ -159,6 +159,15 @@ Run the CLI wizard to generate `docreview360.yml`:
 docreview360 init
 ```
 
+## 🔒 Encryption at rest
+
+DocReview360 can encrypt archived artefacts, archive metadata, and backups at
+rest with AES-GCM. Configure `security.encryption_at_rest` in `settings.yaml`
+and store the active key in the vault or environment under the same key id.
+Rotation is handled by updating the configured key id while keeping older key
+material available for decrypting existing data. See
+[`docs/deployment.md`](docs/deployment.md) for configuration details.
+
 To copy data between environments use the migration command:
 
 ```bash
