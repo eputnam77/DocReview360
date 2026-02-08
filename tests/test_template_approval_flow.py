@@ -1,9 +1,11 @@
 import json
+from pathlib import Path
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from docreview360.api import app
 from docreview360 import template_manager
+from docreview360.api import app
 
 
 def _token(client: TestClient, username: str) -> str:
@@ -11,9 +13,11 @@ def _token(client: TestClient, username: str) -> str:
     return resp.json()["access_token"]
 
 
-def test_template_approval_and_filtering(tmp_path) -> None:
+def test_template_approval_and_filtering() -> None:
     client = TestClient(app)
-    template_manager.reset_template_store(root=tmp_path / "template_store.json")
+    base = Path(".tmp") / f"template-approval-{uuid4().hex}"
+    base.mkdir(parents=True, exist_ok=True)
+    template_manager.reset_template_store(root=base / "template_store.json")
 
     admin_token = _token(client, "alice")
     user_token = _token(client, "bob")

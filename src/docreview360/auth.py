@@ -32,7 +32,7 @@ T = TypeVar("T")
 
 
 SAFE_DEFAULT_ENVS = {"", "dev", "development", "test", "testing"}
-SAFE_SEED_ENVS = SAFE_DEFAULT_ENVS | {"stage", "staging"}
+SAFE_SEED_ENVS = SAFE_DEFAULT_ENVS
 
 
 def _current_environment() -> str:
@@ -44,7 +44,7 @@ def _current_environment() -> str:
 def _allow_demo_seed() -> bool:
     """Return ``True`` when demo users may be seeded automatically."""
 
-    return SEED_DEMO_USERS or _current_environment() in SAFE_SEED_ENVS
+    return SEED_DEMO_USERS and _current_environment() in SAFE_SEED_ENVS
 
 
 def _env_or_default(
@@ -88,8 +88,11 @@ DEFAULT_ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 DEFAULT_TOKEN_ISSUER = "docreview360.local"
 DEFAULT_TOKEN_AUDIENCE = "docreview360-users"
+_GENERATED_DEV_SECRET_KEY = secrets.token_urlsafe(48)
 
-SECRET_KEY = _env_or_default("DOCREVIEW360_SECRET_KEY", default=DEFAULT_SECRET_KEY, required=True)
+SECRET_KEY = _env_or_default(
+    "DOCREVIEW360_SECRET_KEY", default=_GENERATED_DEV_SECRET_KEY, required=True
+)
 ALGORITHM = _env_or_default("DOCREVIEW360_ALGORITHM", default=DEFAULT_ALGORITHM)
 ACCESS_TOKEN_EXPIRE_MINUTES = _env_or_default(
     "DOCREVIEW360_ACCESS_EXPIRE_MINUTES",
@@ -104,9 +107,10 @@ DEFAULT_OIDC_SECRET_KEY = "docreview360-oidc-dev-secret"
 DEFAULT_OIDC_TOKEN_EXPIRE_MINUTES = 30
 DEFAULT_OIDC_TOKEN_ISSUER = "docreview360-oidc.local"
 DEFAULT_OIDC_TOKEN_AUDIENCE = "docreview360-oidc"
+_GENERATED_DEV_OIDC_SECRET_KEY = secrets.token_urlsafe(48)
 
 OIDC_SECRET_KEY = _env_or_default(
-    "DOCREVIEW360_OIDC_SECRET_KEY", default=DEFAULT_OIDC_SECRET_KEY, required=True
+    "DOCREVIEW360_OIDC_SECRET_KEY", default=_GENERATED_DEV_OIDC_SECRET_KEY, required=True
 )
 OIDC_ALGORITHM = _env_or_default("DOCREVIEW360_OIDC_ALGORITHM", default=DEFAULT_ALGORITHM)
 OIDC_TOKEN_EXPIRE_MINUTES = _env_or_default(
@@ -131,9 +135,43 @@ def _as_bool(value: str) -> bool:
 REQUIRE_MFA = _env_or_default("DOCREVIEW360_REQUIRE_MFA", default="false", cast=_as_bool)
 SEED_DEMO_USERS = _env_or_default(
     "DOCREVIEW360_SEED_DEMO_USERS",
-    default="true",
+    default="false",
     cast=_as_bool,
 )
+
+_BANNED_NON_DEV_SECRETS = {
+    "",
+    "changeme",
+    "change-me",
+    "secret",
+    "password",
+    DEFAULT_SECRET_KEY,
+    DEFAULT_OIDC_SECRET_KEY,
+}
+
+
+def _enforce_secret_strength() -> None:
+    """Fail fast when insecure secrets are used outside local/test environments."""
+
+    environment = _current_environment()
+    if environment in SAFE_DEFAULT_ENVS:
+        return
+    if SECRET_KEY.strip().lower() in _BANNED_NON_DEV_SECRETS or len(SECRET_KEY.strip()) < 32:
+        raise RuntimeError(
+            "DOCREVIEW360_SECRET_KEY must be a unique high-entropy value (>=32 chars) "
+            f"for the {environment or 'production'} environment."
+        )
+    if (
+        OIDC_SECRET_KEY.strip().lower() in _BANNED_NON_DEV_SECRETS
+        or len(OIDC_SECRET_KEY.strip()) < 32
+    ):
+        raise RuntimeError(
+            "DOCREVIEW360_OIDC_SECRET_KEY must be a unique high-entropy value (>=32 chars) "
+            f"for the {environment or 'production'} environment."
+        )
+
+
+_enforce_secret_strength()
 
 MAX_FAILED_ATTEMPTS = _env_or_default(
     "DOCREVIEW360_MAX_FAILED_ATTEMPTS",
@@ -402,7 +440,7 @@ class UserRepository:
                 """
             )
             conn.commit()
-        if SEED_DEMO_USERS:
+        if _allow_demo_seed():
             self._seed_defaults()
 
     def _seed_defaults(self) -> None:

@@ -2,15 +2,17 @@
 // frontend/app/workflows/[id]/start/page.tsx
 
 import React, { useState } from "react";
+import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UploadDropzone } from "@/components/workflow";
 import { API } from "@/lib/api";
 
-type Props = { params: { id: string } };
-
-export default function StartWorkflowPage({ params }: Props) {
+export default function StartWorkflowPage() {
+  const router = useRouter();
+  const workflowId =
+    typeof router.query.id === "string" ? router.query.id : "";
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +36,7 @@ export default function StartWorkflowPage({ params }: Props) {
       if (file) {
         formData.append("file", file);
       }
-      const resp = await fetch(`${API}/workflows/${params.id}/start`, {
+      const resp = await fetch(`${API}/workflows/${workflowId}/start`, {
         method: "POST",
         body: formData,
       });
@@ -53,7 +55,7 @@ export default function StartWorkflowPage({ params }: Props) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
       <form
-        id={`start-${params.id}`}
+        id={`start-${workflowId || "workflow"}`}
         className="w-full max-w-md space-y-6 rounded-xl bg-white dark:bg-gray-900 shadow-lg p-8"
         onSubmit={handleSubmit}
         autoComplete="off"
@@ -91,7 +93,11 @@ export default function StartWorkflowPage({ params }: Props) {
           )}
         </div>
         {error && <div className="text-red-600 text-sm">{error}</div>}
-        <Button type="submit" className="w-full" disabled={loading || !title}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={loading || !title || !workflowId}
+        >
           {loading ? "Starting..." : "Start Workflow"}
         </Button>
       </form>

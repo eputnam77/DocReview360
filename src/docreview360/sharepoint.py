@@ -20,6 +20,25 @@ if TYPE_CHECKING:
     from .ml.torch_models import TinyCritic
 
 _GRAPH_URL = "https://graph.microsoft.com/v1.0"
+_DEFAULT_TIMEOUT_SECONDS = 15.0
+
+
+def _request_timeout_seconds() -> float:
+    """Return the configured HTTP timeout in seconds."""
+
+    raw = os.getenv("DOCREVIEW360_SHAREPOINT_TIMEOUT_SECONDS", "").strip()
+    if not raw:
+        return _DEFAULT_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return _DEFAULT_TIMEOUT_SECONDS
+    if value <= 0:
+        return _DEFAULT_TIMEOUT_SECONDS
+    return value
+
+
+_REQUEST_TIMEOUT_SECONDS = _request_timeout_seconds()
 
 
 @dataclass
@@ -36,7 +55,12 @@ class SharePointClient:
     def upload_file(self, path: str, data: bytes) -> str:
         """Upload ``data`` to ``path`` returning the created item id."""
         url = f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/root:/{path}:/content"
-        response = requests.put(url, headers=self._headers(), data=data)
+        response = requests.put(
+            url,
+            headers=self._headers(),
+            data=data,
+            timeout=_REQUEST_TIMEOUT_SECONDS,
+        )
         response.raise_for_status()
         payload = response.json()
         item_id = payload.get("id")
@@ -47,14 +71,22 @@ class SharePointClient:
     def download_file(self, item_id: str) -> bytes:
         """Return the bytes of the file ``item_id``."""
         url = f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/items/{item_id}/content"
-        response = requests.get(url, headers=self._headers())
+        response = requests.get(
+            url,
+            headers=self._headers(),
+            timeout=_REQUEST_TIMEOUT_SECONDS,
+        )
         response.raise_for_status()
         return cast(bytes, response.content)
 
     def list_versions(self, item_id: str) -> List[str]:
         """Return version identifiers for ``item_id``."""
         url = f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/items/{item_id}/versions"
-        response = requests.get(url, headers=self._headers())
+        response = requests.get(
+            url,
+            headers=self._headers(),
+            timeout=_REQUEST_TIMEOUT_SECONDS,
+        )
         response.raise_for_status()
         payload = response.json()
         values = payload.get("value", [])
@@ -73,7 +105,12 @@ class SharePointClient:
         )
         headers = self._headers()
         headers["Content-Type"] = "application/json"
-        response = requests.patch(url, headers=headers, json=properties)
+        response = requests.patch(
+            url,
+            headers=headers,
+            json=properties,
+            timeout=_REQUEST_TIMEOUT_SECONDS,
+        )
         response.raise_for_status()
 
     def upload_with_scoring(  # noqa: C901

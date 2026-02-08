@@ -766,6 +766,10 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       );
     }
     if (collabEnabled && docId) {
+      const cursorUser = {
+        name: "You",
+        color: "#3b82f6",
+      };
       if (!yDoc) {
         const doc = new Y.Doc();
         const hocusProvider = new HocuspocusProvider({
@@ -773,23 +777,25 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           name: docId,
           document: doc,
         });
-        hocusProvider.awareness.setLocalStateField("user", {
-          name: "You",
-          color: "#3b82f6",
-        });
+        const awareness = hocusProvider.awareness;
+        if (awareness) {
+          awareness.setLocalStateField("user", cursorUser);
+        }
         setYDoc(doc);
         setProvider(hocusProvider as any);
         base.push(
           Collaboration.configure({ document: doc }),
           CollaborationCursor.configure({
-            awareness: hocusProvider.awareness,
+            provider: hocusProvider,
+            user: cursorUser,
           }),
         );
       } else if (yDoc && provider) {
         base.push(
           Collaboration.configure({ document: yDoc }),
           CollaborationCursor.configure({
-            awareness: provider.awareness,
+            provider,
+            user: cursorUser,
           }),
         );
       }

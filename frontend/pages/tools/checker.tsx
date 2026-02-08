@@ -21,6 +21,7 @@ interface CheckResult {
 
 interface CheckResponse {
   results: CheckResult;
+  downloadToken?: string;
   filename?: string;
   error?: string;
 }
@@ -52,7 +53,9 @@ export default function CheckerPage() {
       if (res.ok) {
         const data: CheckResponse = await res.json();
         setResult(data.results);
-        if (data.filename) {
+        if (data.downloadToken) {
+          setDownload(`${apiUrl}/tools/checker?token=${encodeURIComponent(data.downloadToken)}`);
+        } else if (data.filename) {
           setDownload(`/downloads/${data.filename}`);
         }
         setApiStatus('connected');

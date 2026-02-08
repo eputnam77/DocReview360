@@ -56,11 +56,13 @@ const SETTING_DESCRIPTIONS: Record<string, string> = {
   host: "The hostname or IP where the server runs.",
   port: "The network port for the server.",
   debug: "Enable or disable debug mode.",
+  inactivity_timeout_minutes:
+    "Automatic logout threshold in minutes after no user activity.",
   email: "System notification sender email.",
   upload_max_mb: "Max file upload size (in MB).",
 };
 
-const SELECT_OPTIONS: Record<string, { label: string; value: string }[]> = {
+const SELECT_OPTIONS: Record<string, readonly { label: string; value: string }[]> = {
   editor: integrationOptions.editor,
   database: integrationOptions.database,
   auth: [
@@ -84,6 +86,7 @@ const DEFAULT_CONFIG: Record<string, string | number | boolean> = {
   host: "localhost",
   port: 8000,
   debug: false,
+  inactivity_timeout_minutes: 30,
   email: "noreply@example.com",
   upload_max_mb: 5,
 };
@@ -223,6 +226,10 @@ export default function IntegrationsPage() {
       value: getLabel(SELECT_OPTIONS.auth, config.auth),
     },
     {
+      label: "Auto Logout Timeout",
+      value: `${Number(config.inactivity_timeout_minutes) || 30} minute(s)`,
+    },
+    {
       label: "Signature Provider",
       value: getLabel(
         integrationOptions.signatureProviders,
@@ -360,6 +367,29 @@ export default function IntegrationsPage() {
             className="bg-gray-100"
           />
           <p className="text-xs text-gray-500">Change via CLI if required</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="inactivity-timeout-minutes">
+            Automatic Logout Timeout (minutes)
+          </Label>
+          <Input
+            id="inactivity-timeout-minutes"
+            type="number"
+            min={1}
+            step={1}
+            value={String(config.inactivity_timeout_minutes ?? 30)}
+            onChange={(e) => {
+              const parsed = Number.parseInt(e.target.value, 10);
+              update(
+                "inactivity_timeout_minutes",
+                Number.isFinite(parsed) && parsed > 0 ? parsed : 30,
+              );
+            }}
+          />
+          <p className="text-xs text-gray-500">
+            Applies to all users. Any interaction (navigation, editing, typing,
+            and similar actions) resets the inactivity timer.
+          </p>
         </div>
         <Button onClick={handleSave}>Save Changes</Button>
       </div>

@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
-  caption: React.ReactNode;
+  caption?: React.ReactNode;
 }
 
 export function Table({ className, caption, children, ...props }: TableProps) {

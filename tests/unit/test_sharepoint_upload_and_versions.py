@@ -22,7 +22,7 @@ def test_list_versions_filters_non_strings(monkeypatch):
     monkeypatch.setattr(
         sharepoint.requests,
         "get",
-        lambda url, headers: DummyResponse(
+        lambda url, headers, timeout: DummyResponse(
             {"value": [{"id": "1"}, {"id": None}, {"no": 2}, {"id": 3}]}
         ),
     )

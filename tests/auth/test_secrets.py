@@ -51,5 +51,19 @@ def test_missing_secret_in_dev_warns(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.warns(RuntimeWarning):
         auth = importlib.import_module("docreview360.auth")
 
-    assert auth.SECRET_KEY == "docreview360-dev-secret"
-    assert auth.OIDC_SECRET_KEY == "docreview360-oidc-dev-secret"
+    assert isinstance(auth.SECRET_KEY, str)
+    assert isinstance(auth.OIDC_SECRET_KEY, str)
+    assert len(auth.SECRET_KEY) >= 32
+    assert len(auth.OIDC_SECRET_KEY) >= 32
+
+
+def test_weak_secret_in_production_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DOCREVIEW360_SECRET_KEY", "weak")
+    monkeypatch.setenv("DOCREVIEW360_OIDC_SECRET_KEY", "weak")
+    monkeypatch.setenv("DOCREVIEW360_ENV", "production")
+
+    _reload_auth()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        importlib.import_module("docreview360.auth")
+    assert "DOCREVIEW360_SECRET_KEY" in str(excinfo.value)

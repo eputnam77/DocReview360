@@ -4,6 +4,7 @@ import json
 import uuid
 from datetime import datetime
 from typing import AsyncIterator, Optional
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response, StreamingResponse
@@ -32,6 +33,17 @@ class ReminderRequest(BaseModel):
     """Request body for approval reminders."""
 
     ids: list[str]
+
+
+def _safe_redirect_path(target: str) -> str | None:
+    """Return ``target`` when it is a safe local redirect path."""
+
+    if not target or not target.startswith("/") or target.startswith("//"):
+        return None
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc:
+        return None
+    return target
 
 
 @router.get("/approvals/return")
@@ -80,7 +92,10 @@ async def approval_return(
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if next:
-        return RedirectResponse(next)
+        safe_next = _safe_redirect_path(next)
+        if safe_next is None:
+            raise HTTPException(status_code=400, detail="invalid redirect target")
+        return RedirectResponse(safe_next)
     return {"status": "processed"}
 
 

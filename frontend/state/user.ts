@@ -18,6 +18,7 @@ interface UserState {
   isAdmin: boolean;
   isAuditor: boolean;
   username: string;
+  inactivityTimeoutMinutes: number;
   theme: "system" | "light" | "dark";
   initialized: boolean;
   setAdmin: (value: boolean) => void;
@@ -34,6 +35,7 @@ export const useUserStore = create<UserState>((set, get) => ({
   isAdmin: false,
   isAuditor: false,
   username: "",
+  inactivityTimeoutMinutes: 30,
   theme: "system",
   initialized: false,
   setAdmin: (value) => set({ isAdmin: value }),
@@ -50,6 +52,7 @@ export const useUserStore = create<UserState>((set, get) => ({
         isAdmin: false,
         isAuditor: false,
         username: "",
+        inactivityTimeoutMinutes: 30,
         theme: "system",
         initialized: true,
       });
@@ -63,6 +66,7 @@ export const useUserStore = create<UserState>((set, get) => ({
           isAdmin: false,
           isAuditor: false,
           username: "",
+          inactivityTimeoutMinutes: 30,
           theme: "system",
           initialized: true,
         });
@@ -76,10 +80,18 @@ export const useUserStore = create<UserState>((set, get) => ({
 
       if (resp.ok) {
         const data = await resp.json();
+        const timeoutMinutesRaw = data.inactivity_timeout_minutes;
+        const timeoutMinutes =
+          typeof timeoutMinutesRaw === "number" &&
+          Number.isFinite(timeoutMinutesRaw) &&
+          timeoutMinutesRaw > 0
+            ? timeoutMinutesRaw
+            : 30;
         set({
           username: data.username ?? "",
           isAdmin: Array.isArray(data.roles) && data.roles.includes("admin"),
           isAuditor: Array.isArray(data.roles) && data.roles.includes("auditor"),
+          inactivityTimeoutMinutes: timeoutMinutes,
           initialized: true,
         });
       }
@@ -111,6 +123,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       isAdmin: false,
       isAuditor: false,
       username: "",
+      inactivityTimeoutMinutes: 30,
       theme: "system",
       initialized: false,
     });

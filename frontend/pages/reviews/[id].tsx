@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useApprovals } from "@/lib/useApprovals";
 import {
@@ -11,7 +12,7 @@ import {
 
 const statusConfig: Record<
   string,
-  { label: string; variant: "default" | "success" | "warning" | "danger"; icon: JSX.Element }
+  { label: string; variant: "default" | "success" | "warning" | "danger"; icon: ReactElement }
 > = {
   approved: {
     label: "Approved",
@@ -58,6 +59,8 @@ export default function ReviewDetailPage() {
   const status =
     statusConfig[approval.state as keyof typeof statusConfig] ||
     statusConfig.pending;
+  const providerKey = approval.signature_provider ?? "";
+  const providerLogo = providerLogos[providerKey];
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -70,24 +73,24 @@ export default function ReviewDetailPage() {
             {status.label}
           </Badge>
           <span className="text-sm text-gray-500">
-            {approval.signed_at
-              ? `Signed ${new Date(approval.signed_at).toLocaleString()}`
+            {approval.signedAt
+              ? `Signed ${new Date(approval.signedAt).toLocaleString()}`
               : "Not signed yet"}
           </span>
         </div>
 
         <div className="flex items-center gap-2 mt-2">
-          {providerLogos[approval.signature_provider] ? (
+          {providerLogo ? (
             <img
-              src={providerLogos[approval.signature_provider]}
-              alt={approval.signature_provider}
+              src={providerLogo}
+              alt={providerKey}
               className="h-6 w-6"
             />
           ) : (
             <FileText className="h-6 w-6 text-gray-400" />
           )}
           <span className="text-sm text-gray-600">
-            {approval.signature_provider}
+            {providerKey || "N/A"}
           </span>
         </div>
 

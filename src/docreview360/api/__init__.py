@@ -4,10 +4,15 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
+import hashlib
+import hmac
 import json
 import os
 import secrets
 import string
+from threading import Lock
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -190,6 +195,83 @@ from .webhooks import router as webhooks_router
 load_dotenv()
 
 WORKER_STATE_FILE = Path(os.getenv("DOCREVIEW360_WORKER_STATE", "worker_state.json"))
+
+
+def _env_int(name: str, default: int) -> int:
+    """Return a positive integer from env or ``default``."""
+
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    if value <= 0:
+        return default
+    return value
+
+
+class _FixedWindowRateLimiter:
+    """Thread-safe fixed-window rate limiter keyed by arbitrary identifiers."""
+
+    def __init__(self, *, limit: int, window_seconds: float) -> None:
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        if window_seconds <= 0:
+            raise ValueError("window_seconds must be positive")
+        self._limit = int(limit)
+        self._window_seconds = float(window_seconds)
+        self._hits: dict[str, deque[float]] = {}
+        self._lock = Lock()
+
+    def enforce(self, key: str) -> None:
+        now = time.monotonic()
+        with self._lock:
+            bucket = self._hits.setdefault(key, deque())
+            while bucket and now - bucket[0] > self._window_seconds:
+                bucket.popleft()
+            if len(bucket) >= self._limit:
+                raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            bucket.append(now)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._hits.clear()
+
+
+_RATE_LIMIT_WINDOW_SECONDS = float(_env_int("DOCREVIEW360_RATE_LIMIT_WINDOW_SECONDS", 60))
+_TOKEN_RATE_LIMITER = _FixedWindowRateLimiter(
+    limit=_env_int("DOCREVIEW360_TOKEN_RATE_LIMIT", 20),
+    window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+)
+_LOGIN_RATE_LIMITER = _FixedWindowRateLimiter(
+    limit=_env_int("DOCREVIEW360_LOGIN_RATE_LIMIT", 20),
+    window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+)
+_UPLOAD_RATE_LIMITER = _FixedWindowRateLimiter(
+    limit=_env_int("DOCREVIEW360_UPLOAD_RATE_LIMIT", 30),
+    window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+)
+
+
+def reset_rate_limiters_for_testing() -> None:
+    """Clear API endpoint rate limiting counters (used by tests)."""
+
+    _TOKEN_RATE_LIMITER.reset()
+    _LOGIN_RATE_LIMITER.reset()
+    _UPLOAD_RATE_LIMITER.reset()
+
+
+def _request_source(request: Request) -> str:
+    """Return a stable source identifier for request-scoped rate limiting."""
+
+    forwarded_for = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if forwarded_for:
+        return forwarded_for
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
 
 
 SEED_TEMPLATES = [
@@ -434,6 +516,7 @@ class ConfigPayload(BaseModel):
     debug: bool = False
     ai_auto_assign_writers: bool = False
     filename_template: str = "{id}"
+    inactivity_timeout_minutes: int = Field(default=30, ge=1)
 
 
 class SignatureProviderPayload(BaseModel):
@@ -489,13 +572,23 @@ if allowed_origins:
         allow_origins=[o.strip() for o in allowed_origins.split(",") if o.strip()],
     )
 else:
-    # ``allow_origin_regex`` permits credentials while accepting any origin
+    # Secure defaults for local development. Production deployments should set
+    # ``DOCREVIEW360_ALLOW_ORIGINS`` explicitly.
     app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        allow_origin_regex=".*",
+        allow_origins=[
+            "http://localhost",
+            "http://127.0.0.1",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+        ],
     )
 
 # Enable compression for large responses as recommended by the
@@ -533,24 +626,26 @@ async def current_user_endpoint(
 ) -> dict[str, Any]:
     """Return information about the current user."""
     roles = list(get_roles(current_user.username))
+    cfg = Config.load(CONFIG_FILE)
+    inactivity_timeout = (
+        cfg.inactivity_timeout_minutes if cfg is not None else 30
+    )
     return {
         "username": current_user.username,
         "is_admin": "admin" in roles,
         "active": auth.is_active(current_user.username),
         "roles": roles,
+        "inactivity_timeout_minutes": inactivity_timeout,
     }
 
 
-def require_audit_access(x_user: str | None = Header(None)) -> str:
+def require_audit_access(current_user: auth.User = Depends(auth.get_current_user)) -> str:
     """Ensure the requester may view audit logs and record the attempt."""
 
-    if x_user is None:
-        log_event("audit_log_access", status="denied")
-        raise HTTPException(status_code=401, detail="Missing user")
-    if has_permission(x_user, "view_audit_log"):
-        log_event("audit_log_access", user_id=x_user, status="success")
-        return x_user
-    log_event("audit_log_access", user_id=x_user, status="denied")
+    if has_permission(current_user.username, "view_audit_log"):
+        log_event("audit_log_access", user_id=current_user.username, status="success")
+        return current_user.username
+    log_event("audit_log_access", user_id=current_user.username, status="denied")
     raise HTTPException(status_code=403, detail="Forbidden")
 
 
@@ -626,14 +721,117 @@ def _user_summary(username: str) -> UserSummary:
     )
 
 
+_SESSION_COOKIE_MAX_AGE = auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+
+def _encode_session_cookie(username: str) -> str:
+    """Return a signed session cookie value for ``username``."""
+
+    issued_at = int(time.time())
+    payload = f"{username}:{issued_at}"
+    signature = hmac.new(
+        auth.SECRET_KEY.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{payload}:{signature}"
+
+
+def _decode_session_cookie(value: str | None) -> str | None:
+    """Return the validated username from a session cookie value."""
+
+    if not value:
+        return None
+    try:
+        username, issued_raw, provided_sig = value.rsplit(":", 2)
+        issued_at = int(issued_raw)
+    except (TypeError, ValueError):
+        return None
+    payload = f"{username}:{issued_at}"
+    expected_sig = hmac.new(
+        auth.SECRET_KEY.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(expected_sig, provided_sig):
+        return None
+    if int(time.time()) - issued_at > _SESSION_COOKIE_MAX_AGE:
+        return None
+    return username or None
+
+
 def _ensure_reviewer_exists(reviewer: str) -> None:
     repo = auth._get_user_repository()
     if not repo.get_user(reviewer):
         raise HTTPException(status_code=404, detail="Reviewer not found")
 
 
+def _is_admin_user(user: auth.User) -> bool:
+    return has_role(user.username, "admin")
+
+
+def _resolve_requested_user(requested_user: str | None, current_user: auth.User) -> str:
+    """Return an actor user while preventing non-admin impersonation."""
+
+    candidate = (requested_user or "").strip()
+    if not candidate:
+        return current_user.username
+    if candidate != current_user.username and not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return candidate
+
+
+def _enforce_project_access(project: ProjectModel, current_user: auth.User) -> None:
+    """Ensure ``current_user`` can access ``project``."""
+
+    if _is_admin_user(current_user):
+        return
+    if project.user == current_user.username:
+        return
+    if project.temp_user == current_user.username:
+        return
+    if current_user.username in project.reviewers:
+        return
+    if any(p.id == project.id for p in list_projects(current_user.username)):
+        return
+    raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _enforce_project_manage_access(project: ProjectModel, current_user: auth.User) -> None:
+    """Ensure ``current_user`` can mutate ``project`` assignments and settings."""
+
+    if _is_admin_user(current_user):
+        return
+    if project.user == current_user.username:
+        return
+    if project.temp_user == current_user.username:
+        return
+    raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _enforce_document_access(document: DocumentModel, current_user: auth.User) -> None:
+    """Ensure ``current_user`` can access ``document``."""
+
+    if _is_admin_user(current_user):
+        return
+    if document.user == current_user.username:
+        return
+    if document.project:
+        project = get_project(document.project)
+        if project is not None:
+            if project.user == current_user.username:
+                return
+            if project.temp_user == current_user.username:
+                return
+            if current_user.username in project.reviewers:
+                return
+    raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @app.get("/users", response_model=list[UserSummary])
-async def list_users_endpoint() -> list[UserSummary]:
+async def list_users_endpoint(
+    user: auth.User = Depends(require_role("admin")),
+) -> list[UserSummary]:
     """Return all users with role assignments and active status."""
 
     repo = auth._get_user_repository()
@@ -641,7 +839,10 @@ async def list_users_endpoint() -> list[UserSummary]:
 
 
 @app.post("/users", response_model=UserSummary, status_code=201)
-async def create_user_endpoint(body: UserCreatePayload) -> UserSummary:
+async def create_user_endpoint(
+    body: UserCreatePayload,
+    user: auth.User = Depends(require_role("admin")),
+) -> UserSummary:
     """Create a user and assign roles."""
 
     username = body.username.strip()
@@ -658,7 +859,11 @@ async def create_user_endpoint(body: UserCreatePayload) -> UserSummary:
 
 
 @app.put("/users/{username}", response_model=UserSummary)
-async def update_user_endpoint(username: str, body: UserUpdatePayload) -> UserSummary:
+async def update_user_endpoint(
+    username: str,
+    body: UserUpdatePayload,
+    user: auth.User = Depends(require_role("admin")),
+) -> UserSummary:
     """Update a user's name, roles, active flag, or password."""
 
     repo = auth._get_user_repository()
@@ -686,7 +891,10 @@ async def update_user_endpoint(username: str, body: UserUpdatePayload) -> UserSu
 
 
 @app.delete("/users/{username}", response_model=UserSummary)
-async def delete_user_endpoint(username: str) -> UserSummary:
+async def delete_user_endpoint(
+    username: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> UserSummary:
     """Delete a user and remove role assignments."""
 
     repo = auth._get_user_repository()
@@ -742,7 +950,9 @@ async def set_user_status(
 
 @app.get("/projects", response_model=list[ProjectModel])
 async def list_projects_endpoint(
-    user: str | None = None, x_user: str | None = Header(None)
+    user: str | None = None,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[ProjectModel]:
     """Return projects optionally filtered by user with simple caching.
 
@@ -752,8 +962,12 @@ async def list_projects_endpoint(
     3. Listed as a project reviewer
     4. Assigned as a reviewer in any approval step (SME, FLM, PPM, TW, etc.)
     """
-    user = (user or x_user) or None
-    cache_key = f"projects-{user or 'all'}"
+    requested_user = (user or x_user) or None
+    if requested_user:
+        effective_user = _resolve_requested_user(requested_user, current_user)
+    else:
+        effective_user = None if _is_admin_user(current_user) else current_user.username
+    cache_key = f"projects-{effective_user or 'all'}"
     cached = cache_get(cache_key)
     if cached:
         try:
@@ -761,9 +975,9 @@ async def list_projects_endpoint(
                 cached = cached.decode()
             data = json.loads(cached)
             return [ProjectModel.model_validate(p) for p in data]
-        except Exception:
-            pass
-    projects_list = list_projects(user)
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            log_event("cache_decode_failed", key=cache_key, message=str(exc))
+    projects_list = list_projects(effective_user)
     cache_set(
         cache_key,
         json.dumps([p.model_dump(mode="json") for p in projects_list]),
@@ -773,7 +987,10 @@ async def list_projects_endpoint(
 
 
 @app.get("/projects/assigned/{username}", response_model=list[ProjectModel])
-async def get_user_assignments_endpoint(username: str) -> list[ProjectModel]:
+async def get_user_assignments_endpoint(
+    username: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[ProjectModel]:
     """Get all projects assigned to a specific user through any mechanism.
 
     This includes:
@@ -783,12 +1000,18 @@ async def get_user_assignments_endpoint(username: str) -> list[ProjectModel]:
 
     Useful for debugging and testing assignment logic.
     """
-    return list_projects(username)
+    return list_projects(_resolve_requested_user(username, current_user))
 
 
 @app.post("/projects", status_code=201, response_model=ProjectModel)
-async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa: C901
+async def create_project_endpoint(
+    body: ProjectCreate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ProjectModel:  # noqa: C901
     """Create a new project."""
+    if body.user is not None or not _is_admin_user(current_user):
+        body.user = _resolve_requested_user(body.user, current_user)
+
     # Auto-generate ID if not provided
     if body.id is None or (isinstance(body.id, str) and not body.id.strip()):
         from ..search import search_index
@@ -864,27 +1087,41 @@ async def create_project_endpoint(body: ProjectCreate) -> ProjectModel:  # noqa:
 
 
 @app.get("/projects/{project_id}", response_model=ProjectModel)
-async def get_project_endpoint(project_id: str) -> ProjectModel:
+async def get_project_endpoint(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ProjectModel:
     project = get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
     return project
 
 
 @app.get("/projects/{project_id}/reviewers", response_model=list[str])
-async def list_project_reviewers(project_id: str) -> list[str]:
+async def list_project_reviewers(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[str]:
     """Return reviewers assigned to a project."""
     project = get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
     return list(project.reviewers)
 
 
 @app.post("/projects/{project_id}/reviewers", response_model=list[str])
 async def add_project_reviewer_endpoint(
-    project_id: str, body: ProjectReviewerPayload
+    project_id: str,
+    body: ProjectReviewerPayload,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[str]:
     """Add a reviewer to a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_manage_access(project, current_user)
     reviewer = body.reviewer.strip()
     if not reviewer:
         raise HTTPException(status_code=400, detail="Reviewer required")
@@ -898,9 +1135,16 @@ async def add_project_reviewer_endpoint(
 
 @app.put("/projects/{project_id}/reviewers/{reviewer}", response_model=list[str])
 async def update_project_reviewer_endpoint(
-    project_id: str, reviewer: str, body: ProjectReviewerPayload
+    project_id: str,
+    reviewer: str,
+    body: ProjectReviewerPayload,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[str]:
     """Update a reviewer assignment for a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_manage_access(project, current_user)
     new_reviewer = body.reviewer.strip()
     if not new_reviewer:
         raise HTTPException(status_code=400, detail="Reviewer required")
@@ -913,8 +1157,16 @@ async def update_project_reviewer_endpoint(
 
 
 @app.delete("/projects/{project_id}/reviewers/{reviewer}", response_model=list[str])
-async def remove_project_reviewer_endpoint(project_id: str, reviewer: str) -> list[str]:
+async def remove_project_reviewer_endpoint(
+    project_id: str,
+    reviewer: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[str]:
     """Remove a reviewer from a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_manage_access(project, current_user)
     try:
         project = remove_project_reviewer(project_id, reviewer)
     except KeyError as exc:
@@ -923,9 +1175,16 @@ async def remove_project_reviewer_endpoint(project_id: str, reviewer: str) -> li
 
 
 @app.get("/projects/{project_id}/reviews", response_model=list[ReviewModel])
-async def list_project_reviews(project_id: str, phase: str | None = None) -> list[ReviewModel]:
+async def list_project_reviews(
+    project_id: str,
+    phase: str | None = None,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[ReviewModel]:
     """Return reviews for a project."""
-
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
     return list_reviews(project_id, phase)
 
 
@@ -934,13 +1193,19 @@ async def create_project_review(
     project_id: str,
     body: ReviewCreate,
     x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> ReviewModel:
     """Create a new review entry for a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
+    reviewer = _resolve_requested_user(x_user, current_user)
 
     review_data = {
         "id": str(uuid.uuid4()),
         "project_id": project_id,
-        "reviewer": x_user or "Anonymous",
+        "reviewer": reviewer,
         "status": body.status,
         "comment": body.comment,
         "phase_id": body.phase_id,
@@ -1035,7 +1300,7 @@ async def _import_uploaded_file(
 
 
 @app.put("/projects/{project_id}", response_model=ProjectModel)
-async def update_project_endpoint(
+async def update_project_endpoint(  # noqa: C901
     project_id: str,
     request: Request,
     name: str | None = Form(None),
@@ -1047,12 +1312,14 @@ async def update_project_endpoint(
     sme: str | None = Form(None),  # Add sme field for frontend compatibility
     docType: str | None = Form(None),  # Add docType field for frontend compatibility
     file: UploadFile | None = File(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> ProjectModel:
     """Update project fields like name, user, doc_type, or workflow."""
     try:
         existing_project = get_project(project_id)
         if existing_project is None:
             raise HTTPException(status_code=404, detail="Project not found")
+        _enforce_project_manage_access(existing_project, current_user)
         previous_workflow_id = existing_project.workflow
         body, workflow_provided = await _parse_update_body(request)
 
@@ -1071,7 +1338,11 @@ async def update_project_endpoint(
         if isinstance(workflow, str) and not workflow.strip():
             workflow = None
 
-        project_user = user or sme
+        requested_project_user = user or sme
+        if requested_project_user is not None or not _is_admin_user(current_user):
+            project_user = _resolve_requested_user(requested_project_user, current_user)
+        else:
+            project_user = requested_project_user
         project_doc_type = doc_type or docType or existing_project.doc_type
         project_description = description
 
@@ -1094,7 +1365,11 @@ async def update_project_endpoint(
             initial_phase=initial_phase,
         )
 
-        if workflow_set and previous_workflow_id and previous_workflow_id != updated_project.workflow:
+        if (
+            workflow_set
+            and previous_workflow_id
+            and previous_workflow_id != updated_project.workflow
+        ):
             previous_workflow = workflows.get(previous_workflow_id)
             if previous_workflow and previous_workflow.project == project_id:
                 previous_workflow.project = ""
@@ -1113,11 +1388,15 @@ async def update_project_endpoint(
 
 
 @app.delete("/projects/{project_id}", response_model=ProjectModel)
-async def delete_project_endpoint(project_id: str) -> ProjectModel:
+async def delete_project_endpoint(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ProjectModel:
     """Delete a project and its persisted record."""
     existing_project = get_project(project_id)
     if existing_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_manage_access(existing_project, current_user)
     try:
         removed = remove_project(project_id)
     except KeyError:
@@ -1133,8 +1412,15 @@ async def delete_project_endpoint(project_id: str) -> ProjectModel:
 
 
 @app.get("/projects/{project_id}/workflow", response_model=WorkflowModel)
-async def get_project_workflow_endpoint(project_id: str) -> WorkflowModel:
+async def get_project_workflow_endpoint(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> WorkflowModel:
     """Return the workflow associated with a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
     for wf in workflows.values():
         if wf.project == project_id:
             return wf
@@ -1142,7 +1428,15 @@ async def get_project_workflow_endpoint(project_id: str) -> WorkflowModel:
 
 
 @app.put("/projects/{project_id}/priority", response_model=ProjectModel)
-async def update_priority_endpoint(project_id: str, body: PriorityUpdate) -> ProjectModel:
+async def update_priority_endpoint(
+    project_id: str,
+    body: PriorityUpdate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ProjectModel:
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_manage_access(project, current_user)
     try:
         return set_project_priority(project_id, body.priority)
     except KeyError as exc:
@@ -1150,9 +1444,18 @@ async def update_priority_endpoint(project_id: str, body: PriorityUpdate) -> Pro
 
 
 @app.post("/projects/{project_id}/temporary", response_model=ProjectModel)
-async def temporary_assign_endpoint(project_id: str, body: TemporaryAssign) -> ProjectModel:
+async def temporary_assign_endpoint(
+    project_id: str,
+    body: TemporaryAssign,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ProjectModel:
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_manage_access(project, current_user)
+    assigned_user = _resolve_requested_user(body.user, current_user)
     try:
-        return assign_temporary(project_id, body.user, body.until)
+        return assign_temporary(project_id, assigned_user, body.until)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -1160,37 +1463,53 @@ async def temporary_assign_endpoint(project_id: str, body: TemporaryAssign) -> P
 @app.get("/projects/{project_id}/preferences", response_model=ProjectPreferences)
 async def get_project_preferences_endpoint(
     project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> ProjectPreferences:
     """Return editor extension preferences for a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
     return get_project_preferences(project_id)
 
 
 @app.put("/projects/{project_id}/preferences", response_model=ProjectPreferences)
 async def update_project_preferences_endpoint(
-    project_id: str, body: ProjectPreferences
+    project_id: str,
+    body: ProjectPreferences,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> ProjectPreferences:
     """Update editor extension preferences for a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_manage_access(project, current_user)
     return update_project_preferences(project_id, body.model_dump())
 
 
 @app.get("/projects/{project_id}/approvals/pdf")
 async def project_approvals_pdf_endpoint(
-    project_id: str, x_user: str | None = Header(None)
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """Return merged approval PDFs for a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
     try:
-        data = build_approvals_summary_pdf(project_id, actor=x_user)
+        data = build_approvals_summary_pdf(project_id, actor=current_user.username)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     log_event(
         "approval_summary_downloaded",
-        user_id=x_user,
+        user_id=current_user.username,
         project=project_id,
     )
     log_audit_event(
         project_id,
         "approval_summary_downloaded",
-        actor=x_user,
+        actor=current_user.username,
         project=project_id,
     )
     return Response(
@@ -1202,13 +1521,26 @@ async def project_approvals_pdf_endpoint(
 
 @app.post("/documents/import", status_code=201, response_model=DocumentModel)
 async def import_document_endpoint(
+    request: Request,
     file: UploadFile = File(...),
     project: str | None = Form(None),
     user: str | None = Form(None),
     priority: int | None = Form(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> DocumentModel:
     """Import a DOCX or Markdown file and store it as a document."""
     import tempfile
+
+    _UPLOAD_RATE_LIMITER.enforce(f"documents-import:{current_user.username}:{_request_source(request)}")
+
+    if project:
+        project_model = get_project(project)
+        if project_model is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        _enforce_project_access(project_model, current_user)
+    resolved_user = user
+    if user is not None or not _is_admin_user(current_user):
+        resolved_user = _resolve_requested_user(user, current_user)
 
     temp = tempfile.NamedTemporaryFile(delete=False)
     try:
@@ -1225,15 +1557,15 @@ async def import_document_endpoint(
             filename,
             data,
             project=project,
-            user=user,
+            user=resolved_user,
             priority=priority,
         )
     finally:
         temp.close()
         try:
             Path(temp.name).unlink(missing_ok=True)
-        except Exception:
-            pass
+        except OSError as cleanup_error:
+            log_event("upload_temp_cleanup_failed", message=str(cleanup_error))
     cache_set(
         "documents",
         json.dumps([d.model_dump(mode="json") for d in list_docs()]),
@@ -1241,12 +1573,12 @@ async def import_document_endpoint(
     )
     log_event(
         "import_document",
-        user_id=user,
+        user_id=resolved_user,
         project=project,
         filename=filename,
         message=render(
             "import_docx",
-            user=user or "",
+            user=resolved_user or "",
             project_id=project or "",
             filename=filename,
         ),
@@ -1256,13 +1588,19 @@ async def import_document_endpoint(
 
 @app.post("/documents/tiptap", status_code=201, response_model=DocumentModel)
 async def import_tiptap_endpoint(
-    body: dict[str, Any], link_duplicates: bool = Query(False)
+    body: dict[str, Any],
+    link_duplicates: bool = Query(False),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> DocumentModel:
     """Import a TipTap JSON document."""
     from ..tiptap import import_tiptap_document
 
     try:
-        document = import_tiptap_document(body, link_duplicates=link_duplicates)
+        document = import_tiptap_document(
+            body,
+            link_duplicates=link_duplicates,
+            user=current_user.username,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     log_event(
@@ -1283,9 +1621,16 @@ async def import_tiptap_endpoint(
 
 
 @app.get("/documents", response_model=list[DocumentModel])
-async def list_documents_endpoint() -> list[DocumentModel]:
+async def list_documents_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[DocumentModel]:
     """Return all imported documents with caching."""
-    cached = cache_get("documents")
+    cache_key = (
+        f"documents-{current_user.username}"
+        if not _is_admin_user(current_user)
+        else "documents"
+    )
+    cached = cache_get(cache_key)
     if cached:
         try:
             if isinstance(cached, bytes):
@@ -1295,11 +1640,20 @@ async def list_documents_endpoint() -> list[DocumentModel]:
             if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
                 log_event("read", entity_id="documents", count=len(docs))
             return docs
-        except Exception:
-            pass
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            log_event("cache_decode_failed", key=cache_key, message=str(exc))
     docs_list = list_docs()
+    if not _is_admin_user(current_user):
+        visible_docs: list[DocumentModel] = []
+        for document in docs_list:
+            try:
+                _enforce_document_access(document, current_user)
+                visible_docs.append(document)
+            except HTTPException:
+                continue
+        docs_list = visible_docs
     cache_set(
-        "documents",
+        cache_key,
         json.dumps([d.model_dump(mode="json") for d in docs_list]),
         ttl=30,
     )
@@ -1324,20 +1678,37 @@ async def public_documents_report_endpoint() -> list[dict[str, str | None]]:
 async def public_document_html_endpoint(doc_id: str):
     """Return the watermarked HTML copy for a public document."""
     for record in list_archives():
-        if record.document_id == doc_id and record.metadata.get("public_copy_url"):
-            url = record.metadata["public_copy_url"]
-            if str(url).startswith("s3://"):
+        if record.document_id != doc_id:
+            continue
+        url = record.metadata.get("public_copy_url")
+        if not isinstance(url, str) or not url.strip():
+            continue
+        expected_suffix = f"/{record.document_id}/{record.id}.public.html"
+        if url.startswith("s3://"):
+            if url.endswith(expected_suffix):
                 return {"url": url}
-            return FileResponse(url, media_type="text/html")
+            continue
+        local_path = Path(url)
+        if (
+            local_path.name != f"{record.id}.public.html"
+            or local_path.parent.name != record.document_id
+            or not local_path.exists()
+        ):
+            continue
+        return FileResponse(str(local_path), media_type="text/html")
     raise HTTPException(status_code=404, detail="Public copy not found")
 
 
 @app.get("/documents/{doc_id}", response_model=DocumentModel)
-async def get_document_endpoint(doc_id: str) -> DocumentModel:
+async def get_document_endpoint(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentModel:
     """Retrieve a single document by id."""
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id)
     return document
@@ -1345,12 +1716,15 @@ async def get_document_endpoint(doc_id: str) -> DocumentModel:
 
 @app.get("/documents/{doc_id}/audit", response_model=list[AuditLogEntry])
 async def get_document_audit_endpoint(
-    doc_id: str, _: str = Depends(require_audit_access)
+    doc_id: str,
+    _: str = Depends(require_audit_access),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[AuditLogEntry]:
     """Return audit events for a document."""
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     events = get_audit_log(doc_id)
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id, target="audit", count=len(events))
@@ -1390,8 +1764,16 @@ async def verify_signature_endpoint(
 
 
 @app.put("/documents/{doc_id}", response_model=DocumentModel)
-async def update_document_endpoint(doc_id: str, document: DocumentModel) -> DocumentModel:
+async def update_document_endpoint(
+    doc_id: str,
+    document: DocumentModel,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentModel:
     """Update a document's content and save the previous version."""
+    existing_document = get_document(doc_id)
+    if existing_document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(existing_document, current_user)
     try:
         updated, _ = update_document(doc_id, document.content, priority=document.priority)
         cache_set(
@@ -1414,13 +1796,16 @@ async def update_document_endpoint(doc_id: str, document: DocumentModel) -> Docu
 
 @app.post("/cms/export/{doc_id}", response_model=CmsExportResponse)
 async def export_document_to_cms(
-    doc_id: str, body: CmsExportRequest, x_user: str | None = Header(None)
+    doc_id: str,
+    body: CmsExportRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> CmsExportResponse:
     """Export a document to the configured CMS."""
 
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="document not found")
+    _enforce_document_access(document, current_user)
     cfg = Config.load(CONFIG_FILE)
     if not cfg or cfg.cms.strip().lower() == "none":
         raise HTTPException(status_code=409, detail="CMS is not configured")
@@ -1432,7 +1817,7 @@ async def export_document_to_cms(
         raise HTTPException(status_code=409, detail="CMS is not configured")
     log_event(
         "export_document_cms",
-        user_id=x_user,
+        user_id=current_user.username,
         document=doc_id,
         message=render("tiptap_content_saved_to_cms_for_project_on", project_id=doc_id, date=""),
     )
@@ -1460,9 +1845,20 @@ def _resolve_import_filename(item_id: str, filename: str | None, fmt: str | None
 
 
 @app.post("/cms/import", status_code=201, response_model=DocumentModel)
-async def import_document_from_cms(body: CmsImportRequest) -> DocumentModel:
+async def import_document_from_cms(
+    body: CmsImportRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentModel:
     """Import a document from the configured CMS into DocReview360."""
 
+    if body.project:
+        project = get_project(body.project)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        _enforce_project_access(project, current_user)
+    import_user = body.user
+    if body.user is not None or not _is_admin_user(current_user):
+        import_user = _resolve_requested_user(body.user, current_user)
     cfg = Config.load(CONFIG_FILE)
     if not cfg or cfg.cms.strip().lower() == "none":
         raise HTTPException(status_code=409, detail="CMS is not configured")
@@ -1479,7 +1875,7 @@ async def import_document_from_cms(body: CmsImportRequest) -> DocumentModel:
         filename,
         payload,
         project=body.project,
-        user=body.user,
+        user=import_user,
         priority=body.priority,
     )
     cache_set(
@@ -1492,11 +1888,24 @@ async def import_document_from_cms(body: CmsImportRequest) -> DocumentModel:
 
 @app.post("/documents/{doc_id}/revisions", status_code=201)
 async def create_revision_endpoint(
-    doc_id: str, body: RevisionCreate, x_user: str | None = Header(None)
+    doc_id: str,
+    body: RevisionCreate,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, str]:
     """Store a new document revision and optionally archive it."""
+    existing_document = get_document(doc_id)
+    if existing_document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(existing_document, current_user)
+    revision_author = _resolve_requested_user(x_user, current_user)
     try:
-        document, rev_id = update_document(doc_id, body.content, steps=body.steps, author=x_user)
+        document, rev_id = update_document(
+            doc_id,
+            body.content,
+            steps=body.steps,
+            author=revision_author,
+        )
         result: dict[str, str] = {"revisionId": rev_id}
         if body.promote:
             record = archive_doc(document)
@@ -1513,20 +1922,29 @@ async def create_revision_endpoint(
 
 
 @app.get("/documents/{doc_id}/revisions", response_model=list[RevisionMeta])
-async def list_revisions_endpoint(doc_id: str) -> list[RevisionMeta]:
+async def list_revisions_endpoint(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[RevisionMeta]:
     """List revision metadata for a document."""
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="document not found")
+    _enforce_document_access(document, current_user)
     return [RevisionMeta(id=r.id, timestamp=r.timestamp, author=r.author) for r in document.history]
 
 
 @app.get("/documents/{doc_id}/revisions/{rev_id}", response_model=DocumentRevision)
-async def get_revision_endpoint(doc_id: str, rev_id: str) -> DocumentRevision:
+async def get_revision_endpoint(
+    doc_id: str,
+    rev_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentRevision:
     """Return a specific revision for a document."""
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="document not found")
+    _enforce_document_access(document, current_user)
     for rev in document.history:
         if rev.id == rev_id:
             return rev
@@ -1534,15 +1952,31 @@ async def get_revision_endpoint(doc_id: str, rev_id: str) -> DocumentRevision:
 
 
 @app.post("/documents/{doc_id}/comments", response_model=CommentModel, status_code=201)
-async def add_comment_endpoint(doc_id: str, body: CommentCreate) -> CommentModel:
+async def add_comment_endpoint(
+    doc_id: str,
+    body: CommentCreate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> CommentModel:
     """Create a comment on the given document."""
-    comment = add_comment(doc_id, body.user, body.text, parent=body.parent)
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+    comment_user = _resolve_requested_user(body.user, current_user)
+    comment = add_comment(doc_id, comment_user, body.text, parent=body.parent)
     return render_comment_for_response(comment)
 
 
 @app.get("/documents/{doc_id}/comments", response_model=list[CommentModel])
-async def list_comments_endpoint(doc_id: str) -> list[CommentModel]:
+async def list_comments_endpoint(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[CommentModel]:
     """List comments for a document."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     comments = list_comments(doc_id)
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id, target="comments", count=len(comments))
@@ -1564,11 +1998,13 @@ async def export_document_endpoint(
         "json",
         "xml",
     ],
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """Return the document converted to the requested format."""
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     try:
         cfg = Config.load(CONFIG_FILE)
         template = cfg.filename_template if cfg else "{id}"
@@ -1590,12 +2026,15 @@ class ArchiveMetadata(BaseModel):
 
 @app.post("/archive/{doc_id}", status_code=201, response_model=ArchiveRecord)
 async def archive_document_endpoint(
-    doc_id: str, body: ArchiveMetadata | None = None
+    doc_id: str,
+    body: ArchiveMetadata | None = None,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> ArchiveRecord:
     """Archive a document in multiple formats."""
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     return archive_doc(
         document,
         metadata=body.metadata if body else None,
@@ -1604,31 +2043,60 @@ async def archive_document_endpoint(
 
 
 @app.get("/archive", response_model=list[ArchiveRecord])
-async def list_archives_endpoint() -> list[ArchiveRecord]:
+async def list_archives_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[ArchiveRecord]:
     """Return all archived documents."""
     records = list_archives()
+    if not _is_admin_user(current_user):
+        visible_records: list[ArchiveRecord] = []
+        for record in records:
+            document = get_document(record.document_id)
+            if document is None:
+                continue
+            try:
+                _enforce_document_access(document, current_user)
+                visible_records.append(record)
+            except HTTPException:
+                continue
+        records = visible_records
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id="archives", count=len(records))
     return records
 
 
 @app.get("/archive/{archive_id}", response_model=ArchiveRecord)
-async def get_archive_endpoint(archive_id: str) -> ArchiveRecord:
+async def get_archive_endpoint(
+    archive_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ArchiveRecord:
     """Retrieve a single archived record by id."""
     record = get_archive(archive_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Archive not found")
+    document = get_document(record.document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=archive_id)
     return record
 
 
 @app.get("/archive/{archive_id}/report/{fmt}")
-async def download_report(archive_id: str, fmt: Literal["html", "pdf"]) -> Response:
+async def download_report(
+    archive_id: str,
+    fmt: Literal["html", "pdf"],
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> Response:
     """Return the archived check report in the requested format."""
     record = get_archive(archive_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Archive not found")
+    document = get_document(record.document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     if fmt == "html" and record.report_html is not None:
         return Response(record.report_html, media_type="text/html")
     if fmt == "pdf" and record.report_pdf is not None:
@@ -1644,10 +2112,17 @@ async def search_documents(
     priority: int | None = None,
     after: datetime | None = None,
     before: datetime | None = None,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[DocumentModel]:
     """Return documents matching a full text query with basic caching."""
+    requested_user = user
+    if user is not None:
+        requested_user = _resolve_requested_user(user, current_user)
+    elif not _is_admin_user(current_user):
+        requested_user = current_user.username
     cache_key = (
-        f"search-{q}-{project or ''}-{user or ''}-{priority or ''}-"
+        f"search-{current_user.username}-{q}-{project or ''}-"
+        f"{requested_user or ''}-{priority or ''}-"
         f"{after.isoformat() if after else ''}-{before.isoformat() if before else ''}"
     )
     cached = cache_get(cache_key)
@@ -1657,12 +2132,12 @@ async def search_documents(
                 cached = cached.decode()
             data = json.loads(cached)
             return [DocumentModel.model_validate(d) for d in data]
-        except Exception:
-            pass
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            log_event("cache_decode_failed", key=cache_key, message=str(exc))
     results = search(
         q,
         project=project,
-        user=user,
+        user=requested_user,
         priority=priority,
         after=after,
         before=before,
@@ -1678,9 +2153,13 @@ async def search_documents(
 
 
 @app.get("/search/export")
-async def export_search_results(q: str, fmt: str = "json") -> Response:
+async def export_search_results(
+    q: str,
+    fmt: str = "json",
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> Response:
     """Return search results in JSON or CSV with ranking and snippets."""
-    docs = await search_documents(q)
+    docs = await search_documents(q, current_user=current_user)
     results = ranked_search(q, docs)
     rows = [{"id": r["document"].id, "snippet": r["snippet"], "score": r["score"]} for r in results]
     if fmt == "csv":
@@ -1695,15 +2174,27 @@ async def export_search_results(q: str, fmt: str = "json") -> Response:
 
 
 @app.post("/search/saved", status_code=201)
-async def save_search_endpoint(body: SavedSearchCreate) -> search_mod.SavedSearch:
+async def save_search_endpoint(
+    body: SavedSearchCreate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> search_mod.SavedSearch:
     """Store a search query for later reuse."""
-    return save_search(body.query, user=body.user)
+    saved_user = _resolve_requested_user(body.user, current_user)
+    return save_search(body.query, user=saved_user)
 
 
 @app.get("/search/saved", response_model=list[search_mod.SavedSearch])
-async def list_saved_searches_endpoint(user: str | None = None) -> list[search_mod.SavedSearch]:
+async def list_saved_searches_endpoint(
+    user: str | None = None,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[search_mod.SavedSearch]:
     """Return saved search queries."""
-    return list_saved_searches(user=user)
+    requested_user = user
+    if user is not None:
+        requested_user = _resolve_requested_user(user, current_user)
+    elif not _is_admin_user(current_user):
+        requested_user = current_user.username
+    return list_saved_searches(user=requested_user)
 
 
 @app.get("/search/stats")
@@ -1717,15 +2208,27 @@ class WatchBody(BaseModel):
 
 
 @app.post("/watchlist/{project_id}", status_code=201, response_model=list[str])
-async def toggle_watch_endpoint(project_id: str, body: WatchBody) -> list[str]:
+async def toggle_watch_endpoint(
+    project_id: str,
+    body: WatchBody,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[str]:
     """Toggle ``project_id`` for ``body.user`` and return the updated list."""
-    return toggle_watch(body.user, project_id)
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
+    watch_user = _resolve_requested_user(body.user, current_user)
+    return toggle_watch(watch_user, project_id)
 
 
 @app.get("/watchlist/{user}", response_model=list[str])
-async def get_watchlist_endpoint(user: str) -> list[str]:
+async def get_watchlist_endpoint(
+    user: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[str]:
     """Return the watchlist for ``user``."""
-    return get_watchlist(user)
+    return get_watchlist(_resolve_requested_user(user, current_user))
 
 
 @app.get("/ai/key")
@@ -1940,7 +2443,7 @@ def _resolve_format_from_filename(filename: str | None) -> str | None:
     return parts[-1].strip().lower()
 
 
-async def _parse_template_request(
+async def _parse_template_request(  # noqa: C901
     request: Request,
     *,
     fallback_name: str | None = None,
@@ -2049,7 +2552,10 @@ async def list_templates_endpoint(
 
 
 @app.get("/templates/{name}")
-async def get_template_endpoint(name: str) -> dict[str, Any]:
+async def get_template_endpoint(
+    name: str,
+    user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
     ver = get_latest_template(name)
     if not ver:
         raise HTTPException(status_code=404, detail="template not found")
@@ -2066,7 +2572,10 @@ async def get_template_endpoint(name: str) -> dict[str, Any]:
 
 
 @app.post("/templates", status_code=201)
-async def upload_template_endpoint(request: Request) -> dict[str, Any]:
+async def upload_template_endpoint(
+    request: Request,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
     """Store uploaded template content with metadata."""
 
     name, metadata, content = await _parse_template_request(request)
@@ -2081,7 +2590,11 @@ async def upload_template_endpoint(request: Request) -> dict[str, Any]:
 
 
 @app.put("/templates/{name}")
-async def update_template_endpoint(name: str, request: Request) -> dict[str, Any]:
+async def update_template_endpoint(
+    name: str,
+    request: Request,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
     """Update stored template content by creating a new version."""
 
     updated_name, metadata, content = await _parse_template_request(request, fallback_name=name)
@@ -2101,7 +2614,10 @@ async def update_template_endpoint(name: str, request: Request) -> dict[str, Any
 
 
 @app.delete("/templates/{name}", status_code=204, response_class=Response)
-async def delete_template_endpoint(name: str) -> Response:
+async def delete_template_endpoint(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> Response:
     """Remove a stored template."""
 
     try:
@@ -2112,7 +2628,10 @@ async def delete_template_endpoint(name: str) -> Response:
 
 
 @app.get("/templates/{name}/download", response_class=Response, name="download_template_endpoint")
-async def download_template_endpoint(name: str) -> Response:
+async def download_template_endpoint(
+    name: str,
+    user: auth.User = Depends(auth.get_current_user),
+) -> Response:
     """Download the latest template file."""
 
     ver = get_latest_template(name)
@@ -2170,7 +2689,9 @@ class EmailTemplatePayload(BaseModel):
 
 
 @app.get("/email-templates")
-async def list_email_templates_endpoint() -> list[dict[str, Any]]:
+async def list_email_templates_endpoint(
+    user: auth.User = Depends(require_role("admin")),
+) -> list[dict[str, Any]]:
     return [
         {
             "name": tmpl.name,
@@ -2183,7 +2704,10 @@ async def list_email_templates_endpoint() -> list[dict[str, Any]]:
 
 
 @app.get("/email-templates/{name}")
-async def get_email_template_endpoint(name: str) -> dict[str, Any]:
+async def get_email_template_endpoint(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
     tmpl = get_email_template(name)
     if tmpl is None:
         raise HTTPException(status_code=404, detail="email template not found")
@@ -2196,7 +2720,10 @@ async def get_email_template_endpoint(name: str) -> dict[str, Any]:
 
 
 @app.post("/email-templates", status_code=201)
-async def create_email_template_endpoint(body: EmailTemplatePayload) -> dict[str, Any]:
+async def create_email_template_endpoint(
+    body: EmailTemplatePayload,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
     try:
         tmpl = create_email_template(body.name, body.subject, body.body, task=body.task)
     except (ValueError, TypeError) as exc:
@@ -2211,7 +2738,9 @@ async def create_email_template_endpoint(body: EmailTemplatePayload) -> dict[str
 
 @app.put("/email-templates/{name}")
 async def update_email_template_endpoint(
-    name: str, body: EmailTemplatePayload
+    name: str,
+    body: EmailTemplatePayload,
+    user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     if name != body.name:
         raise HTTPException(status_code=400, detail="template name mismatch")
@@ -2228,7 +2757,10 @@ async def update_email_template_endpoint(
 
 
 @app.delete("/email-templates/{name}", status_code=204, response_class=Response)
-async def delete_email_template_endpoint(name: str) -> Response:
+async def delete_email_template_endpoint(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> Response:
     try:
         delete_email_template(name)
     except (KeyError, ValueError, TypeError) as exc:
@@ -2249,7 +2781,10 @@ class MarketplaceInstall(BaseModel):
 
 
 @app.post("/plugin-marketplace/install")
-async def install_marketplace_plugin(body: MarketplaceInstall) -> dict[str, str]:
+async def install_marketplace_plugin(
+    body: MarketplaceInstall,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, str]:
     """Install a plugin from the marketplace."""
     from ..plugin_marketplace import install_plugin
 
@@ -2705,6 +3240,8 @@ async def token(
     request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends()
 ) -> auth.Token:
     """Return a JWT access token for valid user credentials."""
+    token_key = f"token:{form_data.username.strip().lower()}:{_request_source(request)}"
+    _TOKEN_RATE_LIMITER.enforce(token_key)
     token_resp = await auth.login_for_access_token(form_data, request)
     response.set_cookie(
         "access_token",
@@ -2740,6 +3277,8 @@ async def read_current_user(current_user: auth.User = Depends(auth.get_current_u
 async def logout(response: Response) -> dict[str, str]:
     """Clear authentication cookie."""
     response.delete_cookie("access_token")
+    response.delete_cookie("csrf_token")
+    response.delete_cookie("session")
     return {"detail": "Logged out"}
 
 
@@ -2754,17 +3293,27 @@ async def read_current_oidc_user(
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request) -> HTMLResponse:
     """Display login page or dashboard depending on session."""
-    if request.cookies.get("session") == "admin":
-        return templates.TemplateResponse(request, "dashboard.html", {"user": "admin"})
+    session_user = _decode_session_cookie(request.cookies.get("session"))
+    if session_user:
+        return templates.TemplateResponse(request, "dashboard.html", {"user": session_user})
     return templates.TemplateResponse(request, "login.html")
 
 
 @app.post("/login", response_class=HTMLResponse)
 async def login(request: Request, username: str = Form(...), password: str = Form(...)) -> Response:
-    """Simple credential check for admin user."""
-    if username == "admin" and password == "admin":
+    """Validate credentials and create a hardened session cookie."""
+    login_key = f"login:{username.strip().lower()}:{_request_source(request)}"
+    _LOGIN_RATE_LIMITER.enforce(login_key)
+    if auth.authenticate_user(username, password):
         response = RedirectResponse("/projects", status_code=303)
-        response.set_cookie("session", "admin")
+        response.set_cookie(
+            "session",
+            _encode_session_cookie(username),
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=_SESSION_COOKIE_MAX_AGE,
+        )
         log_event(
             "login",
             user_id=username,
@@ -2779,9 +3328,10 @@ async def login(request: Request, username: str = Form(...), password: str = For
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request) -> Response:
     """Placeholder dashboard displayed after login."""
-    if request.cookies.get("session") != "admin":
+    session_user = _decode_session_cookie(request.cookies.get("session"))
+    if not session_user:
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse(request, "dashboard.html", {"user": "admin"})
+    return templates.TemplateResponse(request, "dashboard.html", {"user": session_user})
 
 
 @app.get("/help", response_class=HTMLResponse)
@@ -2811,7 +3361,10 @@ async def list_plugins() -> list[dict[str, Any]]:
 
 
 @app.post("/plugins", status_code=201)
-async def register_plugin(body: PluginModule) -> dict[str, list[str]]:
+async def register_plugin(
+    body: PluginModule,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, list[str]]:
     """Load and register plugins from a module path."""
     try:
         load_plugins([body.module])
@@ -2821,7 +3374,10 @@ async def register_plugin(body: PluginModule) -> dict[str, list[str]]:
 
 
 @app.put("/plugins/{name}/enable")
-async def enable_plugin(name: str) -> dict[str, str]:
+async def enable_plugin(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, str]:
     """Enable a disabled plugin."""
     try:
         plugin_registry.enable(name)
@@ -2831,7 +3387,10 @@ async def enable_plugin(name: str) -> dict[str, str]:
 
 
 @app.put("/plugins/{name}/disable")
-async def disable_plugin(name: str) -> dict[str, str]:
+async def disable_plugin(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, str]:
     """Disable a plugin."""
     try:
         plugin_registry.disable(name)
@@ -2841,7 +3400,10 @@ async def disable_plugin(name: str) -> dict[str, str]:
 
 
 @app.delete("/plugins/{name}", status_code=204, response_class=Response)
-async def unregister_plugin(name: str) -> Response:
+async def unregister_plugin(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> Response:
     """Unregister a plugin entirely."""
     try:
         plugin_registry.unregister(name)
@@ -3194,7 +3756,7 @@ async def logs_stream(websocket: WebSocket) -> None:
 
 
 @app.get("/config", response_model=ConfigPayload)
-async def get_config_endpoint() -> ConfigPayload:
+async def get_config_endpoint(user: auth.User = Depends(require_role("admin"))) -> ConfigPayload:
     """Return the current application configuration."""
     cfg = Config.load(CONFIG_FILE)
     if cfg is None:
@@ -3203,7 +3765,10 @@ async def get_config_endpoint() -> ConfigPayload:
 
 
 @app.put("/config", response_model=ConfigPayload)
-async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
+async def update_config_endpoint(
+    payload: ConfigPayload,
+    user: auth.User = Depends(require_role("admin")),
+) -> ConfigPayload:
     """Persist a new configuration."""
     cfg = Config(**payload.model_dump())
     try:
@@ -3214,7 +3779,9 @@ async def update_config_endpoint(payload: ConfigPayload) -> ConfigPayload:
 
 
 @app.get("/signature-provider")
-async def get_signature_provider_endpoint() -> dict[str, str | None]:
+async def get_signature_provider_endpoint(
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, str | None]:
     """Return the configured signature providers."""
 
     providers = get_default_providers()
@@ -3226,6 +3793,7 @@ async def get_signature_provider_endpoint() -> dict[str, str | None]:
 @app.put("/signature-provider")
 async def update_signature_provider_endpoint(
     payload: SignatureProviderPayload,
+    user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, str | None]:
     """Persist the active signature provider selection."""
 

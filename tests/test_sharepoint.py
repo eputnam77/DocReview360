@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 from typing import List
+from uuid import uuid4
 
 from docreview360.records import sync_to_sharepoint
 from docreview360.sharepoint import SharePointClient
@@ -23,10 +24,11 @@ class DummyResponse:
 def test_client_upload_builds_correct_request(monkeypatch):
     calls: List[str] = []
 
-    def fake_put(url: str, headers, data: bytes) -> DummyResponse:
+    def fake_put(url: str, headers, data: bytes, timeout: float) -> DummyResponse:
         calls.append(url)
         assert headers["Authorization"] == "Bearer token"
         assert data == b"hello"
+        assert timeout > 0
         return DummyResponse(json_data={"id": "42"})
 
     monkeypatch.setattr("docreview360.sharepoint.requests.put", fake_put)
@@ -40,7 +42,8 @@ def test_client_upload_builds_correct_request(monkeypatch):
 
 
 def test_client_download_and_versions(monkeypatch):
-    def fake_get(url: str, headers):
+    def fake_get(url: str, headers, timeout: float):
+        assert timeout > 0
         if url.endswith("/content"):
             return DummyResponse(content=b"data")
         return DummyResponse(json_data={"value": [{"id": "1"}, {"id": "2"}]})
@@ -54,9 +57,9 @@ def test_client_download_and_versions(monkeypatch):
     assert versions == ["1", "2"]
 
 
-def test_sync_to_sharepoint_uses_client(monkeypatch, tmp_path: Path):
-    src = tmp_path / "archives"
-    src.mkdir()
+def test_sync_to_sharepoint_uses_client(monkeypatch):
+    src = Path(".tmp") / f"sharepoint-sync-{uuid4().hex}" / "archives"
+    src.mkdir(parents=True, exist_ok=True)
     (src / "a.txt").write_text("x")
 
     uploaded: List[str] = []

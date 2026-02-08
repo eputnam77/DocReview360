@@ -4,8 +4,9 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: docreview360
-      POSTGRES_PASSWORD: docreview360
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in environment or .env}
       POSTGRES_DB: docreview360
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     ports:
       - "5432:5432"
   search:

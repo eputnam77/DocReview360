@@ -17,6 +17,7 @@ import React, { useEffect, useRef, useState } from "react";
 interface WorkflowTemplate {
   id: string;
   name: string;
+  project?: string;
   description?: string;
   steps?: Array<{
     role: string;

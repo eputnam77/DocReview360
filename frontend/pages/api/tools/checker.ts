@@ -1,8 +1,10 @@
 import { execFile } from "child_process";
+import { randomBytes } from "crypto";
 import type * as formidable from "formidable";
 import { IncomingForm } from "formidable";
 import fs from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
+import os from "os";
 import path from "path";
 
 export const config = {
@@ -11,7 +13,67 @@ export const config = {
   },
 };
 
+const CHECKER_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+const DOWNLOAD_TTL_MS = 10 * 60 * 1000;
+const PRIVATE_DOWNLOAD_DIR = path.join(process.cwd(), ".tmp", "checker-downloads");
+const ALLOWED_EXTENSIONS = new Set([".doc", ".docx"]);
+const downloadTokens = new Map<string, { path: string; filename: string; expiresAt: number }>();
+
+function sanitizeFilename(filename: string): string {
+  const base = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, "_");
+  return base || "document.docx";
+}
+
+function cleanupExpiredDownloads(): void {
+  const now = Date.now();
+  for (const [token, record] of downloadTokens.entries()) {
+    if (record.expiresAt > now) {
+      continue;
+    }
+    downloadTokens.delete(token);
+    fs.promises.unlink(record.path).catch(() => undefined);
+  }
+}
+
+function buildDownloadToken(filePath: string, filename: string): string {
+  cleanupExpiredDownloads();
+  const token = randomBytes(24).toString("hex");
+  downloadTokens.set(token, {
+    path: filePath,
+    filename,
+    expiresAt: Date.now() + DOWNLOAD_TTL_MS,
+  });
+  return token;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === "GET") {
+    cleanupExpiredDownloads();
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      res.status(400).json({ error: "Missing token" });
+      return;
+    }
+    const record = downloadTokens.get(token);
+    if (!record) {
+      res.status(404).json({ error: "Download not found or expired" });
+      return;
+    }
+    downloadTokens.delete(token);
+    if (!fs.existsSync(record.path)) {
+      res.status(404).json({ error: "Download not found or expired" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename="${record.filename}"`);
+    const stream = fs.createReadStream(record.path);
+    stream.on("close", () => {
+      fs.promises.unlink(record.path).catch(() => undefined);
+    });
+    stream.pipe(res);
+    return;
+  }
+
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
@@ -20,7 +82,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     console.log("Starting document checker API request");
 
-    const form = new IncomingForm({ keepExtensions: true, uploadDir: "/tmp" });
+    fs.mkdirSync(PRIVATE_DOWNLOAD_DIR, { recursive: true });
+    const form = new IncomingForm({
+      keepExtensions: true,
+      uploadDir: os.tmpdir(),
+      maxFiles: 1,
+      maxFileSize: CHECKER_UPLOAD_MAX_BYTES,
+    });
     const parsed = await new Promise<{ fields: formidable.Fields; files: formidable.Files }>((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) {
@@ -45,20 +113,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(400).json({ error: "Invalid file path" });
       return;
     }
+    const originalName = sanitizeFilename((file as any).originalFilename || path.basename(filePath));
+    const extension = path.extname(originalName).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      res.status(400).json({ error: "Unsupported file type" });
+      return;
+    }
 
-    console.log(`Processing file: ${filePath}`);
+    console.log("Processing uploaded file");
     const results = await runChecks(filePath);
-    console.log("Check results:", JSON.stringify(results, null, 2));
-
-    // Create downloads directory
-    const downloadsDir = path.join(process.cwd(), "frontend/public/downloads");
-    fs.mkdirSync(downloadsDir, { recursive: true });
-    const destPath = path.join(downloadsDir, path.basename(filePath));
+    const artifactName = `${randomBytes(16).toString("hex")}${extension}`;
+    const destPath = path.join(PRIVATE_DOWNLOAD_DIR, artifactName);
     await fs.promises.copyFile(filePath, destPath);
-    const filename = path.basename(destPath);
-
-    console.log(`File saved to: ${destPath}`);
-    res.status(200).json({ results, filename });
+    const token = buildDownloadToken(destPath, originalName);
+    res.status(200).json({ results, downloadToken: token });
 
   } catch (error) {
     console.error("API handler error:", error);

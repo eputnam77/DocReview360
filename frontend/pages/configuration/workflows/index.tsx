@@ -20,36 +20,45 @@ interface Workflow {
 
 const normalizeWorkflows = (items: unknown): Workflow[] => {
   if (!Array.isArray(items)) return [];
-  return items
-    .map((item) => {
-      if (item && typeof item === "object") {
-        const anyItem = item as {
-          id?: unknown;
-          name?: unknown;
-          project?: unknown;
-          template?: unknown;
-          description?: unknown;
-          usage?: unknown;
-          updated?: unknown;
-        };
-        const id = typeof anyItem.id === "string" ? anyItem.id : String(anyItem.id ?? "");
-        if (!id) return null;
-        const name =
-          typeof anyItem.name === "string"
-            ? anyItem.name
-            : typeof anyItem.project === "string"
-            ? anyItem.project
-            : typeof anyItem.template === "string"
-            ? anyItem.template
-            : undefined;
-        const description = typeof anyItem.description === "string" ? anyItem.description : undefined;
-        const usage = typeof anyItem.usage === "number" ? anyItem.usage : undefined;
-        const updated = typeof anyItem.updated === "string" ? anyItem.updated : undefined;
-        return { id, name, description, usage, updated };
-      }
-      return null;
-    })
-    .filter((v): v is Workflow => Boolean(v));
+  const normalized: Workflow[] = [];
+
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+
+    const anyItem = item as {
+      id?: unknown;
+      name?: unknown;
+      project?: unknown;
+      template?: unknown;
+      description?: unknown;
+      usage?: unknown;
+      updated?: unknown;
+    };
+    const id = typeof anyItem.id === "string" ? anyItem.id : String(anyItem.id ?? "");
+    if (!id) continue;
+
+    const name =
+      typeof anyItem.name === "string"
+        ? anyItem.name
+        : typeof anyItem.project === "string"
+        ? anyItem.project
+        : typeof anyItem.template === "string"
+        ? anyItem.template
+        : "";
+    const description = typeof anyItem.description === "string" ? anyItem.description : "";
+    const usage = typeof anyItem.usage === "number" ? anyItem.usage : null;
+    const updated = typeof anyItem.updated === "string" ? anyItem.updated : "";
+
+    normalized.push({
+      id,
+      ...(name ? { name } : {}),
+      ...(description ? { description } : {}),
+      ...(usage !== null ? { usage } : {}),
+      ...(updated ? { updated } : {}),
+    });
+  }
+
+  return normalized;
 };
 
 export default function WorkflowList() {
