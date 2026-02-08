@@ -51,7 +51,7 @@ def test_backup_restore_invalid_base64(tmp_path):
     logs.clear()
     doc = DocumentModel(id="1", content="text")
     documents[doc.id] = doc
-    path = backup_utils.create_backup(tmp_path / "bkp.gz")
+    path = backup_utils.create_backup(tmp_path / "bkp.gz", encrypt=False)
     import gzip
 
     with gzip.open(path, "rt", encoding="utf-8") as fh:
