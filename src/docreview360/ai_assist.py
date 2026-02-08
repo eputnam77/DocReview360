@@ -41,7 +41,7 @@ async def _call_openai(prompt: str) -> str:
     # ``OPENAI_KEY`` is resolved at import time and may be monkeypatched during
     # tests.  Using the module level variable avoids repeated secret lookups and
     # mirrors the behavior expected by the tests.
-    key = OPENAI_KEY
+    key = OPENAI_KEY or get_secret("openai")
     if not key:
         return " ".join(reversed(prompt.split()))
 

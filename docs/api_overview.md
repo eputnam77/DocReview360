@@ -18,7 +18,7 @@ DocReview360 exposes a JSON API that lets you manage projects, documents and app
 - `PUT /documents/{doc_id}` – update content
 - `POST /documents/{doc_id}/comments` – add a comment
 - `GET /documents/{doc_id}/comments` – list comments
-- `GET /documents/{doc_id}/export` – export to Markdown or DOCX
+- `GET /documents/{doc_id}/export` – export to Markdown, plain text, HTML, DOCX, PDF, JSON, or XML
 
 ## Archive
 - `POST /archive/{doc_id}` – archive a document in multiple formats
@@ -53,6 +53,8 @@ DocReview360 exposes a JSON API that lets you manage projects, documents and app
 - `DELETE /document-types/{name}` – remove a type
 
 ## AI Helpers
+- `GET /ai/key` – check whether the AI rewrite key is configured
+- `PUT /ai/key` – store or clear the AI rewrite key
 - `POST /ai/rewrite` – rewrite provided text
 - `POST /ai/summarize` – return a one sentence summary
 

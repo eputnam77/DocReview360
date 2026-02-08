@@ -39,6 +39,8 @@ export function createTiptapApi(fetcher: typeof authenticatedFetch = authenticat
   return {
     fetchPreferences: (docId: string) =>
       fetcher(`${API}/projects/${docId}/preferences`),
+    fetchDocument: (docId: string) =>
+      fetcher(`${API}/documents/${docId}`),
     savePreferences: (docId: string, prefs: Record<string, unknown>) =>
       fetcher(`${API}/projects/${docId}/preferences`, {
         method: "PUT",
@@ -146,16 +148,22 @@ function AiSuggestButton({
       : editor.state.doc.textBetween(from, to, " ");
 
     try {
-      const res = await fetch("/api/ai-suggest", {
+      const res = await authenticatedFetch("/ai/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           text: selectedText,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const { suggestion } = await res.json();
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "AI rewrite failed");
+      }
+      const data = await res.json();
+      const suggestion = data?.result ?? data?.suggestion;
+      if (!suggestion) {
+        throw new Error("AI rewrite returned no content");
+      }
 
       if (aiSuggestEnabled && onNewSuggestion) {
         onNewSuggestion({ from, to, original: selectedText, suggestion });
@@ -201,7 +209,10 @@ interface SidebarProps {
   show: boolean;
   onClose: () => void;
   onTemplateLoad: (filename: string) => void;
+  onStartBlank: () => void;
   templates: any[];
+  formattingLocked: boolean;
+  activeTemplateLabel: string | null;
   onToggleLint: () => void;
   lintEnabled: boolean;
   lintStatus: ExtensionStatus;
@@ -240,7 +251,10 @@ function Sidebar(props: SidebarProps) {
     show,
     onClose,
     onTemplateLoad,
+    onStartBlank,
     templates,
+    formattingLocked,
+    activeTemplateLabel,
     onToggleLint,
     lintEnabled,
     lintStatus,
@@ -345,7 +359,25 @@ function Sidebar(props: SidebarProps) {
         {/* Templates */}
         <section>
           <div className="font-semibold mb-1">Templates</div>
+          <div className="text-xs text-gray-500 mb-2">
+            {activeTemplateLabel ? (
+              <>
+                Active: <span className="font-semibold">{activeTemplateLabel}</span>
+                {formattingLocked ? " (formatting locked)" : ""}
+              </>
+            ) : (
+              "Choose a template or start with a blank document."
+            )}
+          </div>
           <ul className="space-y-1 text-sm">
+            <li>
+              <button
+                className="text-indigo-700 underline"
+                onClick={onStartBlank}
+              >
+                Blank document
+              </button>
+            </li>
             {templates
               .filter(t => !t.type || t.type === "tiptap" || t.type === "both")
               .map(tpl => (
@@ -506,6 +538,8 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [formattingLocked, setFormattingLocked] = useState(false);
+  const [activeTemplateLabel, setActiveTemplateLabel] = useState<string | null>(null);
 
   const [aiSuggestEnabled, setAiSuggestEnabled] = useState(false);
   interface Suggestion extends NewSuggestion {
@@ -524,6 +558,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   >("saved");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
+  const initialContentLoaded = useRef(false);
 
   const persistPreferences = useCallback(
     async (overrides: Partial<Record<string, boolean | string>> = {}) => {
@@ -578,6 +613,19 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         if (typeof data.watermark_text === "string") {
           setWatermarkText(data.watermark_text);
         }
+      })
+      .catch(() => undefined);
+  }, [api, docId]);
+
+  useEffect(() => {
+    if (!docId || initialContentLoaded.current) return;
+    api.fetchDocument(docId)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((doc) => {
+        if (!doc) return;
+        const sanitized = sanitizeHtml(doc.content || "");
+        setContent(sanitized && sanitized.trim().length > 0 ? sanitized : "<p></p>");
+        initialContentLoaded.current = true;
       })
       .catch(() => undefined);
   }, [api, docId]);
@@ -785,7 +833,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   ]);
 
   // TipTap Editor
-  const [content, setContent] = useState("<p>Hello world!</p>");
+  const [content, setContent] = useState("<p></p>");
   const editor = useEditor(
     {
       extensions,
@@ -867,6 +915,18 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       editor.chain().focus().toggleHeading({ level: 3 }).run();
   }
 
+  function handleStartBlank() {
+    if (!editor) {
+      console.error("Editor not initialized");
+      return;
+    }
+    editor.commands.setContent("<p></p>");
+    setContent("<p></p>");
+    setFormattingLocked(false);
+    setActiveTemplateLabel("Blank document");
+    setSidebarOpen(false);
+  }
+
   async function handleTemplateLoad(filename: string) {
     if (!editor) {
       console.error("Editor not initialized");
@@ -883,6 +943,14 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       }
       editor.commands.setContent(sanitized);
       setContent(sanitized);
+      const lockFormatting = Boolean(
+        data.lockFormatting ??
+          data.lock_formatting ??
+          data.formatting_lock ??
+          data.formattingLocked,
+      );
+      setFormattingLocked(lockFormatting);
+      setActiveTemplateLabel(data.label || data.name || filename);
       setSidebarOpen(false);
     } catch (error) {
       console.error("Template load error:", error);
@@ -1101,11 +1169,19 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           <MenuIcon className="w-5 h-5" />
         </button>
         <span className="text-xl font-bold">TipTap Editor</span>
+        {formattingLocked && (
+          <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
+            Template formatting locked
+          </span>
+        )}
         <select
           value={getCurrentBlock(editor)}
           onChange={(e) => setBlock(editor, e.target.value)}
-          className="rounded border px-2 py-1 ml-4"
+          className={`rounded border px-2 py-1 ml-4 ${
+            formattingLocked ? "opacity-50 cursor-not-allowed" : ""
+          }`}
           aria-label="Block style"
+          disabled={formattingLocked}
         >
           <option value="p">Paragraph</option>
           <option value="h1">Heading 1</option>
@@ -1147,32 +1223,39 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           () => editor.chain().focus().toggleBlockquote().run(),
           editor.isActive("blockquote"),
           "Blockquote",
+          formattingLocked,
         )}
         {toolbarButton(
           <List className="w-4 h-4" />,
           () => editor.chain().focus().toggleBulletList().run(),
           editor.isActive("bulletList"),
           "Bullet List",
+          formattingLocked,
         )}
         {toolbarButton(
           <ListOrdered className="w-4 h-4" />,
           () => editor.chain().focus().toggleOrderedList().run(),
           editor.isActive("orderedList"),
           "Numbered List",
+          formattingLocked,
         )}
         {toolbarButton(
           <IndentIncrease className="w-4 h-4" />,
           () => (editor.chain() as any).focus().indent().run(),
           false,
           "Indent",
-          !indentationEnabled || !(editor.can().chain() as any).focus().indent().run(),
+          formattingLocked ||
+            !indentationEnabled ||
+            !(editor.can().chain() as any).focus().indent().run(),
         )}
         {toolbarButton(
           <IndentDecrease className="w-4 h-4" />,
           () => (editor.chain() as any).focus().outdent().run(),
           false,
           "Outdent",
-          !indentationEnabled || !(editor.can().chain() as any).focus().outdent().run(),
+          formattingLocked ||
+            !indentationEnabled ||
+            !(editor.can().chain() as any).focus().outdent().run(),
         )}
         {toolbarButton(
           <Undo2 className="w-4 h-4" />,
@@ -1186,7 +1269,11 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           false,
           "Redo",
         )}
-        <InsertMenu insertTable={insertTable} insertImage={insertImage} />
+        <InsertMenu
+          insertTable={insertTable}
+          insertImage={insertImage}
+          disabled={formattingLocked}
+        />
         <button
           onClick={() => saveRevision(editor.getHTML(), true, true)}
           className="ml-4 px-2 py-1 border rounded"
@@ -1238,7 +1325,10 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         show={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onTemplateLoad={handleTemplateLoad}
+        onStartBlank={handleStartBlank}
         templates={templates}
+        formattingLocked={formattingLocked}
+        activeTemplateLabel={activeTemplateLabel}
         onToggleLint={handleToggleLint}
         lintEnabled={lintEnabled}
         lintStatus={lintStatus}
