@@ -13,7 +13,9 @@ This walkthrough helps you explore DocReview360 from the perspective of a new us
 
 1. From the projects page click **Editor**.
 2. A rich text field appears where you can type or paste content. This preview uses the Tiptap editor.
-3. Edits are currently stored in memory to show how future versions might behave.
+3. Start from a blank canvas or load a template from the sidebar. Templates can optionally lock some formatting controls while still allowing inline styling.
+4. When a CMS is configured, TipTap revisions are automatically saved to the CMS in the background.
+5. To enable AI rewrite suggestions, save an OpenAI API key in **Configuration → Integrations** under the AI Rewrite section.
 
 ### Changing the editor
 
@@ -115,4 +117,3 @@ Below is a short end-to-end walkthrough using the CLI and projects page together
    docreview360 export pdf --project "Sample Project" --out output.pdf
    ```
 5. Check the projects page to download the generated PDF and confirm the project status.
-

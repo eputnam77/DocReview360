@@ -17,6 +17,17 @@ enable or disable individual basics. When you flip a switch the editor
 reloads with the new extension set and your choice is saved in the
 browser, so the same configuration appears next time.
 
+TipTap also ships with DocReview360-specific helpers such as validation
+linting, heading locks, indentation controls, section nodes, watermarking,
+and inline review marks. These are available in the editor sidebar and can be
+enabled as needed per document.
+
+## AI rewrite suggestions
+
+The AI rewrite button in the TipTap toolbar calls `POST /ai/rewrite` on the
+backend. Store your OpenAI API key in **Configuration → Integrations** so
+rewrite suggestions are available in the editor.
+
 ## Managing plugins via the API
 
 TipTap wrappers can be added or removed at runtime. The `/plugins` endpoint
