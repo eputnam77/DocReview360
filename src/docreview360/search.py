@@ -162,7 +162,7 @@ def _default_project(project_number: int) -> ProjectModel:
         number=project_number,
         document_number="DOC-001",
         user="alice",
-        doc_type="General",
+        doc_type="General Memorandum",
         updated=current_time,
     )
 

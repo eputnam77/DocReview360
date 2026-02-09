@@ -73,6 +73,7 @@ from ..cms import fetch_from_cms, save_to_cms
 from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
+from ..demo_data import seed_demo_data
 from ..doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -109,7 +110,12 @@ from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
 from ..phases import add_phase, delete_phase, list_phases, rename_phase
 from ..plugins import load_plugins
 from ..plugins import registry as plugin_registry
-from ..profile import get_preferences, update_preferences
+from ..profile import (
+    get_preferences,
+    get_profile_data,
+    update_preferences,
+    update_profile_data,
+)
 from ..rbac import get_roles, require_role, has_permission, has_role
 from ..reporting import (
     DashboardEntry,
@@ -535,6 +541,7 @@ async def _lifespan(app: FastAPI):
             store_template(tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata"))
     schedule_archive_purge()
     warm_ml_sessions()
+    seed_demo_data()
     try:
         yield
     finally:
@@ -649,9 +656,22 @@ def require_audit_access(current_user: auth.User = Depends(auth.get_current_user
     raise HTTPException(status_code=403, detail="Forbidden")
 
 
-class PreferencePayload(BaseModel):
-    """Input model for updating user preferences."""
+class ProfilePayload(BaseModel):
+    """Input model for updating user profile details and preferences."""
 
+    picture: str | None = None
+    displayName: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    shorthand: str | None = None
+    jobTitle: str | None = None
+    department: str | None = None
+    timeZone: str | None = None
+    dashboards: list[str] | None = None
+    permissions: list[str] | None = None
+    notificationEmail: bool | None = None
+    notificationSMS: bool | None = None
+    twoFA: bool | None = None
     theme: Literal["system", "light", "dark"] | None = None
     reduce_motion: bool | None = None
 
@@ -912,25 +932,49 @@ async def get_profile(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Return profile information for the current user."""
-
+    preferences = get_preferences(current_user.username)
+    profile_data = get_profile_data(current_user.username)
+    theme = preferences.get("theme", "system")
+    if theme not in {"system", "light", "dark"}:
+        theme = "system"
     return {
         "username": current_user.username,
-        "preferences": get_preferences(current_user.username),
+        **profile_data,
+        "theme": theme,
+        "preferences": preferences,
         "roles": sorted(get_roles(current_user.username)),
     }
 
 
 @app.put("/profile")
 async def update_profile(
-    body: PreferencePayload,
+    body: ProfilePayload,
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Persist profile preference updates."""
-
-    prefs = {k: v for k, v in body.model_dump().items() if v is not None}
+    payload = body.model_dump()
+    preference_keys = {"theme", "reduce_motion"}
+    prefs = {k: v for k, v in payload.items() if k in preference_keys and v is not None}
+    profile_updates = {
+        k: v for k, v in payload.items() if k not in preference_keys and v is not None
+    }
+    updated_profile = (
+        update_profile_data(current_user.username, profile_updates)
+        if profile_updates
+        else get_profile_data(current_user.username)
+    )
+    updated_prefs = (
+        update_preferences(current_user.username, prefs) if prefs else get_preferences(current_user.username)
+    )
+    theme = updated_prefs.get("theme", "system")
+    if theme not in {"system", "light", "dark"}:
+        theme = "system"
     return {
         "username": current_user.username,
-        "preferences": update_preferences(current_user.username, prefs),
+        **updated_profile,
+        "theme": theme,
+        "preferences": updated_prefs,
+        "roles": sorted(get_roles(current_user.username)),
     }
 
 

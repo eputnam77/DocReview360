@@ -11,6 +11,7 @@ import {
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
+import { authenticatedFetch } from "@/lib/api";
 
 // Chart color palette
 const COLORS = [
@@ -41,6 +42,7 @@ export default function AdminDashboardPage() {
   const [roleStats, setRoleStats] = useState<RoleStat[]>([]);
   const [sessionStats, setSessionStats] = useState<SessionStat[]>([]);
   const [healthStats, setHealthStats] = useState<HealthStat[]>([]);
+  const [userCount, setUserCount] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
 
   // Widget visibility state
@@ -71,83 +73,74 @@ export default function AdminDashboardPage() {
     });
   };
 
-  const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
-  const fallback = {
-    stats: { users: 38, documents: 182, activeSessions: 6, apiErrors: 2, failedLogins: 3, roles: 4 },
-    logs: [
-      { timestamp: "2025-07-04T16:10", action: "User created", metadata: { user: "Jane Doe", ip: "10.0.1.5" } },
-      { timestamp: "2025-07-04T15:15", action: "Failed login", metadata: { user: "unknown", ip: "10.0.2.13" } },
-      { timestamp: "2025-07-04T14:05", action: "API 500 error", metadata: { user: "Service", ip: "127.0.0.1" } },
-      { timestamp: "2025-07-04T13:20", action: "Permission change", metadata: { user: "Admin", ip: "10.0.1.1" } },
-    ] as Log[],
-    activity: [
-      { date: "2025-07-01", actions: 8 },
-      { date: "2025-07-02", actions: 12 },
-      { date: "2025-07-03", actions: 10 },
-      { date: "2025-07-04", actions: 13 },
-      { date: "2025-07-05", actions: 9 },
-    ] as Activity[],
-    errors: [
-      { type: "API Error", count: 2 },
-      { type: "Login Failure", count: 3 },
-      { type: "Permission Denied", count: 1 },
-    ] as ErrorStat[],
-    metrics: [
-      { endpoint: "/api/documents", requests: 320, errors: 1 },
-      { endpoint: "/api/users", requests: 98, errors: 0 },
-      { endpoint: "/api/auth", requests: 52, errors: 2 },
-    ] as APIMetric[],
-    roles: [
-      { role: "Admin", count: 2 },
-      { role: "Manager", count: 5 },
-      { role: "Tech Writer", count: 18 },
-      { role: "SME", count: 13 },
-    ] as RoleStat[],
-    sessions: [
-      { id: "S1", user: "Jane Doe", ip: "10.0.1.5", active: true, started: "2025-07-04T15:01" },
-      { id: "S2", user: "John Smith", ip: "10.0.2.13", active: true, started: "2025-07-04T15:10" },
-      { id: "S3", user: "Alice Lee", ip: "10.0.2.55", active: true, started: "2025-07-04T15:30" },
-    ] as SessionStat[],
-    health: [
-      { name: "Database", value: "OK", status: "ok" },
-      { name: "API Server", value: "OK", status: "ok" },
-      { name: "Worker", value: "Delayed", status: "warning" },
-      { name: "Email Service", value: "Down", status: "down" },
-    ] as HealthStat[],
-  };
-
   const { data, isError } = useQuery<any>({
     queryKey: ["admin-dashboard"],
     queryFn: async () => {
-      const r = await fetch(`${API}/dashboard/admin`);
+      const r = await authenticatedFetch("/dashboard/admin");
       return r.ok ? r.json() : null;
     },
   });
 
   useEffect(() => {
+    authenticatedFetch("/users")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((users: any[]) => {
+        const list = Array.isArray(users) ? users : [];
+        setUserCount(list.length);
+        const roleCounts = new Map<string, number>();
+        list.forEach((user) => {
+          const roles = Array.isArray(user.roles) ? user.roles : [];
+          roles.forEach((role) => {
+            if (!role) return;
+            roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+          });
+        });
+        setRoleStats(
+          Array.from(roleCounts.entries()).map(([role, count]) => ({
+            role,
+            count,
+          })),
+        );
+      })
+      .catch(() => {
+        setUserCount(0);
+        setRoleStats([]);
+      });
+  }, []);
+
+  useEffect(() => {
     if (data) {
       setStats({
-        users: data.summary?.projects ?? fallback.stats.users,
-        documents: data.summary?.documents ?? fallback.stats.documents,
-        activeSessions: data.status?.workflows ?? fallback.stats.activeSessions,
-        apiErrors: fallback.stats.apiErrors,
-        failedLogins: fallback.stats.failedLogins,
-        roles: fallback.stats.roles,
+        users: userCount,
+        documents: data.summary?.documents ?? 0,
+        activeSessions: data.status?.workflows ?? 0,
+        apiErrors: 0,
+        failedLogins: 0,
+        roles: roleStats.length,
       });
+      setLogs([]);
+      setActivityData([]);
+      setErrorStats([]);
+      setApiMetrics([]);
+      setSessionStats([]);
+      setHealthStats([]);
     } else if (isError) {
-      setStats(fallback.stats);
+      setStats({
+        users: 0,
+        documents: 0,
+        activeSessions: 0,
+        apiErrors: 0,
+        failedLogins: 0,
+        roles: 0,
+      });
+      setLogs([]);
+      setActivityData([]);
+      setErrorStats([]);
+      setApiMetrics([]);
+      setSessionStats([]);
+      setHealthStats([]);
     }
-
-    if (!data && isError) {
-      setLogs(fallback.logs);
-      setActivityData(fallback.activity);
-      setErrorStats(fallback.errors);
-      setApiMetrics(fallback.metrics);
-      setRoleStats(fallback.roles);
-      setSessionStats(fallback.sessions);
-      setHealthStats(fallback.health);
-    }
-  }, [data, isError]);
+  }, [data, isError, roleStats.length, userCount]);
 
   // KPI Card
   const StatCard = ({

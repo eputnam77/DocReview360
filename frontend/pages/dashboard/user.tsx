@@ -36,7 +36,14 @@ type Collaborator = { name: string; role: string; projects: number };
 
 export default function UserDashboardPage() {
   // Data State
-  const [stats, setStats] = useState<Stats>({ assigned: 4, inProgress: 2, completed: 7, overdue: 1, documents: 12, approvals: 3 });
+  const [stats, setStats] = useState<Stats>({
+    assigned: 0,
+    inProgress: 0,
+    completed: 0,
+    overdue: 0,
+    documents: 0,
+    approvals: 0,
+  });
   const [statusData, setStatusData] = useState<StatusData[]>([]);
   const [activityData, setActivityData] = useState<Activity[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -79,64 +86,6 @@ export default function UserDashboardPage() {
     });
   };
 
-  const fallback = {
-    stats: { assigned: 4, inProgress: 2, completed: 7, overdue: 1, documents: 12, approvals: 3 },
-    status: [
-      { name: "Assigned", value: 4 },
-      { name: "In Progress", value: 2 },
-      { name: "Completed", value: 7 },
-      { name: "Overdue", value: 1 },
-    ] as StatusData[],
-    activity: [
-      { date: "2025-07-01", actions: 1 },
-      { date: "2025-07-02", actions: 3 },
-      { date: "2025-07-03", actions: 2 },
-      { date: "2025-07-04", actions: 4 },
-      { date: "2025-07-05", actions: 2 },
-    ] as Activity[],
-    assignments: [
-      { id: "AC-101", title: "Policy Update", status: "In Progress", updated: "2025-07-04" },
-      { id: "AC-102", title: "Compliance Review", status: "Completed", updated: "2025-07-02" },
-      { id: "AC-103", title: "Draft SOP", status: "Assigned", updated: "2025-07-01" },
-      { id: "AC-104", title: "Incident Report", status: "Overdue", updated: "2025-07-03" },
-    ] as Assignment[],
-    reviews: [
-      { id: "R-201", project: "AC-101", status: "Pending", updated: "2025-07-04" },
-      { id: "R-202", project: "AC-103", status: "Approved", updated: "2025-07-02" },
-    ] as Review[],
-    feedbacks: [
-      { id: "F-01", message: "Great summary section!", from: "Team Lead", date: "2025-07-02", sentiment: "positive" },
-      { id: "F-02", message: "Missing some regulatory context.", from: "SME", date: "2025-07-03", sentiment: "neutral" },
-      { id: "F-03", message: "Formatting issues found.", from: "Reviewer", date: "2025-07-04", sentiment: "negative" },
-    ] as Feedback[],
-    comments: [
-      { id: "C-01", content: "Clarify para 2.2 for non-native speakers.", doc: "AC-101", date: "2025-07-02" },
-      { id: "C-02", content: "Need to update references.", doc: "AC-103", date: "2025-07-03" },
-    ] as Comment[],
-    deadlines: [
-      { id: "AC-101", doc: "Policy Update", due: "2025-07-07", daysLeft: 3 },
-      { id: "AC-104", doc: "Incident Report", due: "2025-07-09", daysLeft: 5 },
-    ] as Deadline[],
-    docTypes: [
-      { type: "AC", count: 5 },
-      { type: "Order", count: 3 },
-      { type: "Memo", count: 2 },
-      { type: "TSO", count: 1 },
-      { type: "Other", count: 1 },
-    ] as DocType[],
-    errors: [
-      { type: "Formatting", count: 2 },
-      { type: "Headings", count: 1 },
-      { type: "Acronyms", count: 1 },
-      { type: "Accessibility", count: 1 },
-    ] as ErrorStat[],
-    collaborators: [
-      { name: "Jane Doe", role: "Tech Writer", projects: 3 },
-      { name: "John Smith", role: "SME", projects: 2 },
-      { name: "Alice Lee", role: "Reviewer", projects: 2 },
-    ] as Collaborator[],
-  };
-
   const { data, isError } = useQuery<any>({
     queryKey: ["user-dashboard"],
     queryFn: async () => {
@@ -148,29 +97,72 @@ export default function UserDashboardPage() {
   });
 
   useEffect(() => {
-    if (Array.isArray(data) && data.length > 0) {
+    if (Array.isArray(data)) {
       const docs = data.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
       const approvals = data.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
+      const statusCounts = new Map<string, number>();
+      const docTypeCounts = new Map<string, number>();
+      data.forEach((p: any) => {
+        const status = typeof p.status === "string" && p.status.trim()
+          ? p.status
+          : "Unknown";
+        statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+        const docType = typeof p.doc_type === "string" && p.doc_type.trim()
+          ? p.doc_type
+          : "Unknown";
+        docTypeCounts.set(docType, (docTypeCounts.get(docType) ?? 0) + 1);
+      });
+      const inProgress = statusCounts.get("In Progress") ?? 0;
+      const completed =
+        statusCounts.get("Complete") ?? statusCounts.get("Completed") ?? 0;
+      const overdue = statusCounts.get("Overdue") ?? 0;
       setStats({
         assigned: data.length,
-        inProgress: data.filter((p: any) => p.phase !== "done").length,
-        completed: data.filter((p: any) => p.phase === "done").length,
-        overdue: fallback.stats.overdue,
+        inProgress,
+        completed,
+        overdue,
         documents: docs,
         approvals,
       });
+      setStatusData(
+        Array.from(statusCounts.entries()).map(([name, value]) => ({
+          name,
+          value,
+        })),
+      );
+      setDocTypes(
+        Array.from(docTypeCounts.entries()).map(([type, count]) => ({
+          type,
+          count,
+        })),
+      );
+      setActivityData([]);
+      setAssignments([]);
+      setReviews([]);
+      setFeedbacks([]);
+      setComments([]);
+      setDeadlines([]);
+      setErrorStats([]);
+      setCollaborators([]);
     } else if (isError) {
-      setStats(fallback.stats);
-      setStatusData(fallback.status);
-      setActivityData(fallback.activity);
-      setAssignments(fallback.assignments);
-      setReviews(fallback.reviews);
-      setFeedbacks(fallback.feedbacks);
-      setComments(fallback.comments);
-      setDeadlines(fallback.deadlines);
-      setDocTypes(fallback.docTypes);
-      setErrorStats(fallback.errors);
-      setCollaborators(fallback.collaborators);
+      setStats({
+        assigned: 0,
+        inProgress: 0,
+        completed: 0,
+        overdue: 0,
+        documents: 0,
+        approvals: 0,
+      });
+      setStatusData([]);
+      setActivityData([]);
+      setAssignments([]);
+      setReviews([]);
+      setFeedbacks([]);
+      setComments([]);
+      setDeadlines([]);
+      setErrorStats([]);
+      setCollaborators([]);
+      setDocTypes([]);
     }
   }, [data, isError]);
 
