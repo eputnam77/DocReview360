@@ -20,7 +20,7 @@ from filelock import FileLock
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator
 
 # Path to store persistent data
-DATA_FILE = Path("document_types.json")
+DATA_FILE = Path(os.getenv("DOCREVIEW360_DOC_TYPES_FILE", "document_types.json"))
 
 
 def _env_flag_enabled(value: str | None) -> bool:

@@ -136,7 +136,9 @@ def _env_flag_enabled(value: str | None) -> bool:
     return normalized not in {"0", "false", "no", "off"}
 
 
-WORKFLOW_TEMPLATES_FILE = Path("workflow_templates.json")
+WORKFLOW_TEMPLATES_FILE = Path(
+    os.getenv("DOCREVIEW360_WORKFLOW_TEMPLATES_FILE", "workflow_templates.json")
+)
 DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE = _env_flag_enabled(
     os.getenv("DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE")
 )

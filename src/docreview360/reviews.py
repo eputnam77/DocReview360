@@ -34,6 +34,12 @@ class ReviewCreate(BaseModel):
 _reviews: Dict[str, List[ReviewModel]] = {}
 
 
+def reset_reviews() -> None:
+    """Clear all stored reviews."""
+
+    _reviews.clear()
+
+
 def list_reviews(project_id: str, phase_id: str | None = None) -> List[ReviewModel]:
     """Return reviews for a project, optionally filtered by phase."""
 

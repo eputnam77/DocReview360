@@ -1,4 +1,7 @@
+import json
+import os
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 import pytest
 
@@ -25,3 +28,27 @@ def pytest_configure(config: pytest.Config) -> None:
                     "playwright browsers not installed",
                     allow_module_level=True,
                 )
+
+
+@pytest.fixture(scope="session")
+def e2e_backend_url() -> str:
+    backend = os.getenv("E2E_BACKEND_URL")
+    if not backend:
+        pytest.skip("E2E_BACKEND_URL not set; run scripts/run_e2e.py", allow_module_level=True)
+    return backend.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def e2e_frontend_url() -> str:
+    frontend = os.getenv("E2E_FRONTEND_URL")
+    if not frontend:
+        pytest.skip("E2E_FRONTEND_URL not set; run scripts/run_e2e.py", allow_module_level=True)
+    return frontend.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def e2e_seed_data(e2e_backend_url: str) -> dict:
+    req = Request(f"{e2e_backend_url}/e2e/seed", method="POST")
+    with urlopen(req, timeout=10) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+    return payload

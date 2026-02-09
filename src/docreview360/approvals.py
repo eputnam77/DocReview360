@@ -122,6 +122,12 @@ class ApprovalModel(BaseModel):
 approvals: Dict[str, ApprovalModel] = {}
 
 
+def reset_approvals() -> None:
+    """Clear all in-memory approvals."""
+
+    approvals.clear()
+
+
 class SignatureValidationError(ValueError):
     """Raised when a signature callback fails validation."""
 
