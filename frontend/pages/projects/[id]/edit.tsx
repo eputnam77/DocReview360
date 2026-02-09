@@ -60,42 +60,13 @@ export default function EditProjectPage() {
   const [showWorkflowSelector, setShowWorkflowSelector] = useState(false);
   const [phases, setPhases] = useState<string[]>([]);
   const [docTypes, setDocTypes] = useState<string[]>([]);
-  const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
 
   const manualWorkflow = useRef(false);
-
-  // Load phase-workflow mapping from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("phaseWorkflowMap");
-    if (saved) {
-      try {
-        setPhaseMap(JSON.parse(saved));
-      } catch {
-        // ignore parse errors
-      }
-    }
-  }, []);
 
   // Reset manual workflow flag when phase changes
   useEffect(() => {
     manualWorkflow.current = false;
   }, [docType, phase]);
-
-  // Auto-select workflow based on phase mapping
-  useEffect(() => {
-    if (!manualWorkflow.current && phase) {
-      const def = phaseMap[phase];
-      if (def) {
-        // Find the workflow ID that matches the mapped workflow name
-        const mappedWorkflow = workflows.find(
-          w => (w.name ?? w.id) === def,
-        );
-        if (mappedWorkflow) {
-          setSelectedWorkflow(mappedWorkflow.id);
-        }
-      }
-    }
-  }, [phase, phaseMap, workflows]);
 
   // Fetch project details and available workflows on mount
   useEffect(() => {
@@ -389,22 +360,12 @@ export default function EditProjectPage() {
                       <SelectItem key={w.id} value={w.id}>
                         <div className="flex items-center justify-between w-full">
                           <span>{wfName}</span>
-                          {phaseMap[phase] === wfName && (
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            Suggested
-                          </Badge>
-                        )}
                         </div>
                       </SelectItem>
                     );
                   })}
                 </SelectContent>
               </Select>
-              {phaseMap[phase] && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Suggested workflow for "{phase}" phase
-                </p>
-              )}
             </div>
           )}
 

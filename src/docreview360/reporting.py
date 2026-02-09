@@ -216,7 +216,9 @@ class DashboardEntry(BaseModel):
     id: str
     name: str
     priority: int
+    doc_type: str | None = None
     phase: str | None = None
+    status: str | None = None
     docs: int = 0
     pending_approvals: int = 0
     quality_score: float | None = None
@@ -284,7 +286,9 @@ def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
                 id=project.id,
                 name=project.name,
                 priority=project.priority,
+                doc_type=project.doc_type,
                 phase=wf.phase if wf else None,
+                status=project.status,
                 docs=doc_count,
                 pending_approvals=pending,
                 quality_score=quality_avg,

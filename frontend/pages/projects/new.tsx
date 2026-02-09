@@ -26,7 +26,6 @@ export default function NewProjectPage() {
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [docTypeMap, setDocTypeMap] = useState<Record<string, string[]>>({});
   const [phases, setPhases] = useState<string[]>([]);
-  const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
   const [docTypeDefaultTemplates, setDocTypeDefaultTemplates] = useState<
     Record<string, string | undefined>
   >({});
@@ -42,37 +41,13 @@ export default function NewProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Auto-set workflow based on selected phase using saved mapping
+  // Auto-set workflow based on the document type configuration from backend
   useEffect(() => {
-    if (phase) {
-      const mapped = phaseMap[phase];
-      const docTypeTemplate = docType
-        ? docTypeDefaultTemplates[docType]
-        : undefined;
-      if (mapped && mapped.trim()) {
-        setWorkflow(mapped);
-        return;
-      }
-      setWorkflow(docTypeTemplate || "branch-coordination");
-    } else {
-      const fallback = docType
-        ? docTypeDefaultTemplates[docType] || "branch-coordination"
-        : undefined;
-      setWorkflow(fallback);
-    }
-  }, [phase, phaseMap, docType, docTypeDefaultTemplates]);
+    const docTypeTemplate = docType ? docTypeDefaultTemplates[docType] : undefined;
+    setWorkflow(docTypeTemplate);
+  }, [docType, docTypeDefaultTemplates]);
 
   useEffect(() => {
-    // Load workflow mapping defined in configuration/phases page
-    const saved = localStorage.getItem("phaseWorkflowMap");
-    if (saved) {
-      try {
-        setPhaseMap(JSON.parse(saved));
-      } catch {
-        // ignore invalid JSON
-      }
-    }
-
     fetch("/api/document-types")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
@@ -121,10 +96,8 @@ export default function NewProjectPage() {
       setPhases([]);
     }
     setPhase(undefined);
-    const fallback = docType
-      ? docTypeDefaultTemplates[docType] || "branch-coordination"
-      : undefined;
-    setWorkflow(fallback);
+    const defaultTemplate = docType ? docTypeDefaultTemplates[docType] : undefined;
+    setWorkflow(defaultTemplate);
   }, [docType, docTypeMap, docTypeDefaultTemplates]);
 
   const validate = () => {
@@ -133,7 +106,6 @@ export default function NewProjectPage() {
     if (!docNumber.trim()) errs.docNumber = "Required";
     if (!title.trim()) errs.title = "Required";
     if (!phase) errs.phase = "Required";
-    if (!workflow) errs.workflow = "Required";
     // Remove file upload requirement - make it optional
     // if (files.length === 0) errs.files = "Upload at least one";
     setFieldErrors(errs);
@@ -150,16 +122,18 @@ export default function NewProjectPage() {
 
     setLoading(true);
 
-    const projectData = {
+    const projectData: Record<string, unknown> = {
       // Don't send id - let backend auto-generate it
       document_number: docNumber, // User-provided document number
       name: title,
       user: sme || undefined,
       doc_type: docType,
       phase,
-      workflow,
       description,
     };
+    if (workflow) {
+      projectData.workflow = workflow;
+    }
 
     console.log('Creating project with data:', projectData);
 
@@ -266,17 +240,16 @@ export default function NewProjectPage() {
           </div>
           <FieldGate when={!!docType && !!phase}>
             <div>
-              <Label htmlFor="workflow">Workflow *</Label>
+              <Label htmlFor="workflow">Workflow</Label>
               <Input
                 id="workflow"
                 value={workflow || ""}
                 disabled={true}
-                placeholder="Auto-selected based on phase"
+                placeholder="Assigned by backend"
               />
-              <p className="text-xs text-gray-500">Automatically set based on selected phase.</p>
-              {fieldErrors.workflow && (
-                <p className="text-sm text-red-600">{fieldErrors.workflow}</p>
-              )}
+              <p className="text-xs text-gray-500">
+                Assigned based on the document type configuration.
+              </p>
             </div>
           </FieldGate>
           <details className="mt-4">
