@@ -135,7 +135,7 @@ def _as_bool(value: str) -> bool:
 REQUIRE_MFA = _env_or_default("DOCREVIEW360_REQUIRE_MFA", default="false", cast=_as_bool)
 SEED_DEMO_USERS = _env_or_default(
     "DOCREVIEW360_SEED_DEMO_USERS",
-    default="false",
+    default="true",
     cast=_as_bool,
 )
 

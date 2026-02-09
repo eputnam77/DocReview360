@@ -1,13 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import {
     Table,
     TableBody,
     TableCell,
@@ -46,23 +39,11 @@ export default function PhasesPage() {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [workflows, setWorkflows] = useState<string[]>([]);
-  const [phaseMap, setPhaseMap] = useState<Record<string, string>>({});
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
   const [replacementPhase, setReplacementPhase] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
 
   useEffect(() => {
-    // Load existing mappings from localStorage
-    const saved = localStorage.getItem("phaseWorkflowMap");
-    if (saved) {
-      try {
-        setPhaseMap(JSON.parse(saved));
-      } catch {
-        // ignore invalid JSON
-      }
-    }
-
     const normalizePhases = (items: unknown): Phase[] => {
       if (!Array.isArray(items)) return [];
       const list: Phase[] = items
@@ -88,20 +69,6 @@ export default function PhasesPage() {
       return list.length ? list : [];
     };
 
-    const normalizeWorkflows = (items: unknown): string[] => {
-      if (!Array.isArray(items)) return [];
-      const names = items
-        .map((wf) =>
-          typeof wf === "string"
-            ? wf
-            : wf && typeof wf === "object" && "name" in wf
-            ? String((wf as { name?: unknown }).name ?? "")
-            : null,
-        )
-        .filter((v): v is string => Boolean(v));
-      return names.length ? names : [];
-    };
-
     (async () => {
       try {
         const r = await fetch("/api/phases");
@@ -113,18 +80,6 @@ export default function PhasesPage() {
         }
       } catch {
         setPhases([]);
-      }
-
-      try {
-        const r = await fetch("/api/workflow-templates");
-        if (r.ok) {
-          const data = await r.json();
-          setWorkflows(normalizeWorkflows(data));
-        } else {
-          setWorkflows([]);
-        }
-      } catch {
-        setWorkflows([]);
       }
     })();
   }, []);
@@ -178,12 +133,10 @@ export default function PhasesPage() {
         };
         setPhases(normalize(data));
       } else {
-        // Fallback when API route isn't present
-        setPhases([...phases, { id: body.name, name: body.name }]);
+        toast.error("Failed to add phase");
       }
     } catch {
-      // Network or other error: fallback to local optimistic add
-      setPhases([...phases, { id: body.name, name: body.name }]);
+      toast.error("Failed to add phase");
     }
     setNewName("");
   };
@@ -199,11 +152,15 @@ export default function PhasesPage() {
     }
     
     // If not in use, delete directly
-    setPhases(phases.filter((p) => p.id !== id));
     try {
-      await fetch(`/api/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const res = await fetch(`/api/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (res.ok) {
+        setPhases(phases.filter((p) => p.id !== id));
+      } else {
+        toast.error("Failed to delete phase");
+      }
     } catch {
-      // ignore network errors in development mode
+      toast.error("Failed to delete phase");
     }
   };
 
@@ -250,29 +207,27 @@ export default function PhasesPage() {
   const saveEdit = async (id: string) => {
     if (!editName.trim()) return;
     const body = { name: editName.trim() };
-    setPhases(phases.map((p) => (p.id === id ? { ...p, name: body.name } : p)));
     try {
-      await fetch(`/api/phases/${encodeURIComponent(id)}`, {
+      const res = await fetch(`/api/phases/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        throw new Error("Failed to update phase");
+      }
+      setPhases(phases.map((p) => (p.id === id ? { ...p, name: body.name } : p)));
+      setEditingId(null);
+      setEditName("");
+      return;
     } catch {
-      // ignore network errors in development mode
+      toast.error("Failed to update phase");
     }
-    setEditingId(null);
-    setEditName("");
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
-  };
-
-  const changeWorkflow = (phaseId: string, wf: string) => {
-    const updated = { ...phaseMap, [phaseId]: wf };
-    setPhaseMap(updated);
-    localStorage.setItem("phaseWorkflowMap", JSON.stringify(updated));
   };
 
   return (
@@ -301,7 +256,6 @@ export default function PhasesPage() {
             <TableHead>Phase</TableHead>
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
-            <TableHead>Attached Workflow</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -351,28 +305,11 @@ export default function PhasesPage() {
                   <Trash className="w-4 h-4 text-red-600" />
                 </Button>
               </TableCell>
-              <TableCell>
-                <Select
-                  value={phaseMap[p.id] || ""}
-                  onValueChange={(v: string) => changeWorkflow(p.id, v)}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workflows.map((w: string) => (
-                      <SelectItem key={w} value={w}>
-                        {w}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </TableCell>
             </TableRow>
           ))}
           {phases.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-gray-400 py-6">
+              <TableCell colSpan={3} className="text-center text-gray-400 py-6">
                 No phases defined.
               </TableCell>
             </TableRow>

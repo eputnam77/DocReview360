@@ -16,7 +16,6 @@ export default function NewProjectPage() {
     const [docTypes, setDocTypes] = useState([]);
     const [docTypeMap, setDocTypeMap] = useState({});
     const [phases, setPhases] = useState([]);
-    const [phaseMap, setPhaseMap] = useState({});
     const [docTypeDefaultTemplates, setDocTypeDefaultTemplates] = useState({});
     const [docNumber, setDocNumber] = useState("");
     const [title, setTitle] = useState("");
@@ -29,37 +28,12 @@ export default function NewProjectPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
-    // Auto-set workflow based on selected phase using saved mapping
+    // Auto-set workflow based on document type configuration from backend
     useEffect(() => {
-        if (phase) {
-            const mapped = phaseMap[phase];
-            const docTypeTemplate = docType
-                ? docTypeDefaultTemplates[docType]
-                : undefined;
-            if (mapped && mapped.trim()) {
-                setWorkflow(mapped);
-                return;
-            }
-            setWorkflow(docTypeTemplate || "branch-coordination");
-        }
-        else {
-            const fallback = docType
-                ? docTypeDefaultTemplates[docType] || "branch-coordination"
-                : undefined;
-            setWorkflow(fallback);
-        }
-    }, [phase, phaseMap, docType, docTypeDefaultTemplates]);
+        const docTypeTemplate = docType ? docTypeDefaultTemplates[docType] : undefined;
+        setWorkflow(docTypeTemplate);
+    }, [docType, docTypeDefaultTemplates]);
     useEffect(() => {
-        // Load workflow mapping defined in configuration/phases page
-        const saved = localStorage.getItem("phaseWorkflowMap");
-        if (saved) {
-            try {
-                setPhaseMap(JSON.parse(saved));
-            }
-            catch {
-                // ignore invalid JSON
-            }
-        }
         fetch("/api/document-types")
             .then((r) => (r.ok ? r.json() : []))
             .then((data) => {
@@ -107,10 +81,8 @@ export default function NewProjectPage() {
             setPhases([]);
         }
         setPhase(undefined);
-        const fallback = docType
-            ? docTypeDefaultTemplates[docType] || "branch-coordination"
-            : undefined;
-        setWorkflow(fallback);
+        const defaultTemplate = docType ? docTypeDefaultTemplates[docType] : undefined;
+        setWorkflow(defaultTemplate);
     }, [docType, docTypeMap, docTypeDefaultTemplates]);
     const validate = () => {
         const errs = {};
@@ -122,8 +94,6 @@ export default function NewProjectPage() {
             errs.title = "Required";
         if (!phase)
             errs.phase = "Required";
-        if (!workflow)
-            errs.workflow = "Required";
         // Remove file upload requirement - make it optional
         // if (files.length === 0) errs.files = "Upload at least one";
         setFieldErrors(errs);
@@ -144,9 +114,11 @@ export default function NewProjectPage() {
             user: sme || undefined,
             doc_type: docType,
             phase,
-            workflow,
             description,
         };
+        if (workflow) {
+            projectData.workflow = workflow;
+        }
         console.log('Creating project with data:', projectData);
         try {
             const res = await authenticatedFetch(`${API}/projects`, {
@@ -217,10 +189,9 @@ export default function NewProjectPage() {
           </div>
           <FieldGate when={!!docType && !!phase}>
             <div>
-              <Label htmlFor="workflow">Workflow *</Label>
-              <Input id="workflow" value={workflow || ""} disabled={true} placeholder="Auto-selected based on phase"/>
-              <p className="text-xs text-gray-500">Automatically set based on selected phase.</p>
-              {fieldErrors.workflow && (<p className="text-sm text-red-600">{fieldErrors.workflow}</p>)}
+              <Label htmlFor="workflow">Workflow</Label>
+              <Input id="workflow" value={workflow || ""} disabled={true} placeholder="Assigned by backend"/>
+              <p className="text-xs text-gray-500">Assigned based on the document type configuration.</p>
             </div>
           </FieldGate>
           <details className="mt-4">

@@ -27,37 +27,11 @@ export default function EditProjectPage() {
     const [showWorkflowSelector, setShowWorkflowSelector] = useState(false);
     const [phases, setPhases] = useState([]);
     const [docTypes, setDocTypes] = useState([]);
-    const [phaseMap, setPhaseMap] = useState({});
     const manualWorkflow = useRef(false);
-    // Load phase-workflow mapping from localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem("phaseWorkflowMap");
-        if (saved) {
-            try {
-                setPhaseMap(JSON.parse(saved));
-            }
-            catch {
-                // ignore parse errors
-            }
-        }
-    }, []);
     // Reset manual workflow flag when phase changes
     useEffect(() => {
         manualWorkflow.current = false;
     }, [docType, phase]);
-    // Auto-select workflow based on phase mapping
-    useEffect(() => {
-        if (!manualWorkflow.current && phase) {
-            const def = phaseMap[phase];
-            if (def) {
-                // Find the workflow ID that matches the mapped workflow name
-                const mappedWorkflow = workflows.find(w => (w.name ?? w.id) === def);
-                if (mappedWorkflow) {
-                    setSelectedWorkflow(mappedWorkflow.id);
-                }
-            }
-        }
-    }, [phase, phaseMap, workflows]);
     // Fetch project details and available workflows on mount
     useEffect(() => {
         if (!id)
@@ -313,17 +287,11 @@ export default function EditProjectPage() {
                 return (<SelectItem key={w.id} value={w.id}>
                         <div className="flex items-center justify-between w-full">
                           <span>{wfName}</span>
-                          {phaseMap[phase] === wfName && (<Badge variant="outline" className="ml-2 text-xs">
-                            Suggested
-                          </Badge>)}
                         </div>
                       </SelectItem>);
             })}
                 </SelectContent>
               </Select>
-              {phaseMap[phase] && (<p className="text-xs text-gray-500 mt-1">
-                  Suggested workflow for "{phase}" phase
-                </p>)}
             </div>)}
 
           {/* Additional Details */}
@@ -409,9 +377,6 @@ export default function EditProjectPage() {
                               <Badge variant="outline" className="text-xs">
                                 {(workflow.steps?.length ?? 0)} steps
                               </Badge>
-                              {phaseMap[phase] === (workflow.name ?? workflow.id) && (<Badge className="text-xs bg-green-100 text-green-800">
-                                  Suggested
-                                </Badge>)}
                             </div>
                           </div>
                           {selectedWorkflow === workflow.id && (<CheckCircle className="w-4 h-4 text-blue-600"/>)}

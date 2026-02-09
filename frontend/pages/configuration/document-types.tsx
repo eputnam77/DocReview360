@@ -181,12 +181,11 @@ export default function DocumentTypesPage() {
       if (r.ok) {
         const created = await r.json();
         setTypes([...types, { id: created.name, name: created.name, phases: [] }]);
+      } else {
+        toast.error("Failed to add document type");
       }
     } catch {
-      setTypes([
-        ...types,
-        { id: "dt-" + Date.now().toString(), name: body.name, phases: [] },
-      ]);
+      toast.error("Failed to add document type");
     }
     setNewName("");
   };
@@ -213,10 +212,16 @@ export default function DocumentTypesPage() {
       setShowDeleteDialog(id);
       return;
     }
-    setTypes(types.filter((t) => t.id !== id));
     try {
-      await fetch(`/api/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
-    } catch {}
+      const res = await fetch(`/api/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (res.ok) {
+        setTypes(types.filter((t) => t.id !== id));
+      } else {
+        toast.error("Failed to delete document type");
+      }
+    } catch {
+      toast.error("Failed to delete document type");
+    }
   };
 
   const confirmDelete = async () => {
@@ -255,16 +260,22 @@ export default function DocumentTypesPage() {
   const saveEdit = async (id: string) => {
     if (!editName.trim()) return;
     const body = { name: editName.trim() };
-    setTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t)));
     try {
-      await fetch(`/api/document-types/${id}`, {
+      const res = await fetch(`/api/document-types/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-    } catch {}
-    setEditingId(null);
-    setEditName("");
+      if (!res.ok) {
+        throw new Error("Failed to update document type");
+      }
+      setTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t)));
+      setEditingId(null);
+      setEditName("");
+      return;
+    } catch {
+      toast.error("Failed to update document type");
+    }
   };
 
   const cancelEdit = () => {
@@ -279,11 +290,8 @@ export default function DocumentTypesPage() {
     const updatedPhases = currentPhases.includes(phase)
       ? currentPhases.filter((p) => p !== phase)
       : [...currentPhases, phase];
-    setTypes(
-      types.map((t) => (t.id === docTypeId ? { ...t, phases: updatedPhases } : t)),
-    );
     try {
-      await fetch(`/api/document-types/${encodeURIComponent(docTypeId)}`, {
+      const res = await fetch(`/api/document-types/${encodeURIComponent(docTypeId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -292,7 +300,15 @@ export default function DocumentTypesPage() {
           workflow: updatedPhases,
         }),
       });
-    } catch {}
+      if (!res.ok) {
+        throw new Error("Failed to update document type phases");
+      }
+      setTypes(
+        types.map((t) => (t.id === docTypeId ? { ...t, phases: updatedPhases } : t)),
+      );
+    } catch {
+      toast.error("Failed to update document type phases");
+    }
   };
 
   return (
