@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import os
 import warnings
 from importlib import import_module, metadata
 from pathlib import Path
@@ -13,7 +14,7 @@ import yaml
 from .secrets import configure_vault, store_secret
 from .stubs import record_task_completion
 
-SETTINGS_FILE = Path("settings.yaml")
+SETTINGS_FILE = Path(os.getenv("DOCREVIEW360_SETTINGS_FILE", "settings.yaml"))
 ENCRYPTED_PREFIX = "ENC("
 ENCRYPTED_SUFFIX = ")"
 

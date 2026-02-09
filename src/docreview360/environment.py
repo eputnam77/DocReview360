@@ -10,7 +10,7 @@ import yaml
 
 from .stubs import record_task_completion
 
-ENV_FILE = Path("environments.yaml")
+ENV_FILE = Path(os.getenv("DOCREVIEW360_ENVIRONMENTS_FILE", "environments.yaml"))
 
 
 def load_envs(path: Path | None = None) -> Dict[str, Dict[str, str]]:
