@@ -1,30 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { proxyToBackend } from "@/lib/apiProxy";
 
-interface Profile {
-  username: string;
-  email: string;
-  phone: string;
-  picture: string;
-  shorthand: string;
-  dashboards: string[];
-}
-
-  let profile: Profile = {
-  username: "user",
-  email: "",
-  phone: "",
-  picture: "",
-  shorthand: "",
-  dashboards: ["main"],
-};
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === "GET") {
-    res.status(200).json(profile);
-  } else if (req.method === "PUT") {
-    profile = { ...profile, ...(req.body as Partial<Profile>) };
-    res.status(200).json(profile);
-  } else {
-    res.status(405).end();
-  }
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  return proxyToBackend(req, res, "/profile");
 }
