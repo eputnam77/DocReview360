@@ -261,6 +261,7 @@ markers = [
     "property: property-based tests powered by Hypothesis",
     "e2e: end-to-end tests requiring Playwright",
 ]
+addopts = "--screenshot=off --video=off --tracing=off"
 
 # (optional) other pytest settings you may want:
 # addopts = "-ra -q"
@@ -288,4 +289,3 @@ omit = [
   "src/docreview360/api.py",
   "src/docreview360/api/*",
 ]
-

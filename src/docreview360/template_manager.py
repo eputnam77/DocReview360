@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import json
 import os
 from base64 import b64decode, b64encode
+import os
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -14,8 +15,8 @@ from filelock import FileLock
 
 from .stubs import record_task_completion
 
-TEMPLATES_DIR = Path("templates/golden")
-TEMPLATE_STORE_FILE = Path("template_store.json")
+TEMPLATES_DIR = Path(os.getenv("DOCREVIEW360_TEMPLATES_DIR", "templates/golden"))
+TEMPLATE_STORE_FILE = Path(os.getenv("DOCREVIEW360_TEMPLATE_STORE_FILE", "template_store.json"))
 
 
 def _env_flag_enabled(value: str | None) -> bool:

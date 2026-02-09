@@ -39,3 +39,6 @@ archive_store/
 
 # Runtime and test temp (logs, pytest cache, checker downloads)
 .tmp/
+.e2e-runs/
+test-results/
+playwright-report/
