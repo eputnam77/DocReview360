@@ -1,54 +1,69 @@
-import socket
-import threading
-import time
-from typing import Iterator
+import re
 
 import pytest
-import uvicorn
 from playwright.sync_api import Page
-
-from docreview360.api import app
-
-
-@pytest.fixture(scope="session")
-def live_server() -> Iterator[str]:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
-    server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    time.sleep(1)
-    try:
-        yield f"http://127.0.0.1:{port}"
-    finally:
-        server.should_exit = True
-        thread.join()
 
 
 @pytest.mark.e2e
-def test_workflow_end_to_end(page: Page, live_server: str) -> None:
-    page.goto(live_server)
-    page.fill('input[name="username"]', "admin")
-    page.fill('input[name="password"]', "admin")
+def test_workflow_end_to_end(
+    page: Page,
+    e2e_frontend_url: str,
+    e2e_backend_url: str,
+    e2e_seed_data: dict,
+) -> None:
+    project_id = e2e_seed_data["project"]["id"]
+    doc_type_names = e2e_seed_data["doc_types"]
+
+    page.goto(f"{e2e_frontend_url}/login")
+    page.fill('input[name="username"]', "alice")
+    page.fill('input[name="password"]', "password")
     page.click('button[type="submit"]')
-    page.wait_for_url(live_server + "/projects")
+    page.wait_for_url(f"{e2e_frontend_url}/projects")
 
-    create = page.request.post(
-        live_server + "/workflows",
-        data={"project": "e2e", "phases": ["draft", "review"]},
+    page.get_by_role("link", name=re.compile(project_id[:8])).click()
+    page.wait_for_url(f"{e2e_frontend_url}/projects/{project_id}")
+
+    page.goto(f"{e2e_frontend_url}/projects/{project_id}/review")
+    page.get_by_label("Add Comment").fill("Looks good, ready for approval.")
+    page.select_option("#status", "approved")
+    with page.expect_response(
+        lambda r: "/reviews" in r.url and r.status == 201
+    ):
+        page.get_by_role("button", name="Add Review").click()
+    page.get_by_role("cell", name="Looks good, ready for approval.").wait_for()
+
+    page.goto(f"{e2e_frontend_url}/projects/{project_id}")
+    page.get_by_role("tab", name=re.compile("^review$", re.I)).click()
+    page.get_by_label("Draft completed").check()
+    page.get_by_role("button", name="Advance").click()
+    page.get_by_text("Current phase: review").wait_for()
+
+    page.reload()
+    page.get_by_text("Current phase: review").wait_for()
+
+    page.goto(f"{e2e_frontend_url}/configuration/document-types")
+    page.get_by_role("cell", name=doc_type_names[0]).wait_for()
+    listed_names = [
+        cell.inner_text().strip()
+        for cell in page.locator("table tbody tr td:first-child").all()
+    ]
+    assert set(listed_names) == set(doc_type_names)
+
+    access_token = page.evaluate("() => localStorage.getItem('access_token')")
+    assert access_token
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    reviews = page.request.get(
+        f"{e2e_backend_url}/projects/{project_id}/reviews",
+        headers=headers,
     )
-    assert create.ok
-    wf_id = create.json()["id"]
+    assert reviews.ok
+    comments = [item["comment"] for item in reviews.json()]
+    assert "Looks good, ready for approval." in comments
 
-    assign = page.request.post(
-        live_server + f"/workflows/{wf_id}/assign",
-        data={"user": "alice"},
+    project = page.request.get(
+        f"{e2e_backend_url}/projects/{project_id}",
+        headers=headers,
     )
-    assert assign.ok
-    assert assign.json()["reviewers"] == ["alice"]
-
-    advance = page.request.post(live_server + f"/workflows/{wf_id}/advance")
-    assert advance.ok
-    assert advance.json()["phase"] == "review"
+    assert project.ok
+    assert project.json()["phase"] == "review"

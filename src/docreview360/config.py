@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-CONFIG_FILE = Path("docreview360.yaml")
+CONFIG_FILE = Path(os.getenv("DOCREVIEW360_CONFIG_FILE", "docreview360.yaml"))
 
 
 @dataclass

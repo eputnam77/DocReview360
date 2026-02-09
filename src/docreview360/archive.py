@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
+import os
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
@@ -52,11 +53,14 @@ _RESERVED_METADATA_KEYS = {
 }
 
 
+ARCHIVE_BUCKET = Path(os.getenv("DOCREVIEW360_ARCHIVE_BUCKET", "archive_store"))
+
+
 def archive_document(
     document: DocumentModel,
     metadata: Dict[str, Any] | None = None,
     *,
-    bucket: str | Path = "archive_store",
+    bucket: str | Path = ARCHIVE_BUCKET,
     check_results: Dict[str, Any] | None = None,
 ) -> ArchiveRecord:
     """Store a document snapshot in several formats and persist to disk."""

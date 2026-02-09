@@ -42,6 +42,10 @@ from contextlib import asynccontextmanager
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..e2e_runtime import apply_e2e_run_dir
+
+apply_e2e_run_dir()
+
 from .. import auth, reporting, rbac
 from ..rbac import require_permission
 from .. import search as search_mod
@@ -625,6 +629,20 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent
 async def health_check() -> dict[str, str]:
     """Health check endpoint for monitoring."""
     return {"status": "healthy"}
+
+
+def _e2e_enabled() -> bool:
+    return os.getenv("DOCREVIEW360_E2E_MODE") == "1"
+
+
+@app.post("/e2e/seed")
+async def seed_e2e_endpoint() -> dict[str, Any]:
+    """Reset and seed deterministic data for E2E runs."""
+    if not _e2e_enabled():
+        raise HTTPException(status_code=404, detail="Not found")
+    from ..e2e_seed import seed_e2e_data
+
+    return seed_e2e_data()
 
 
 @app.get("/users/me")
