@@ -38,8 +38,9 @@ def apply_e2e_run_dir() -> Path | None:
     logs_dir = run_dir / "logs"
     tmp_dir = run_dir / "tmp"
     artifacts_dir = run_dir / "artifacts"
+    workspace_dir = run_dir / "workspace"
 
-    for path in (db_dir, uploads_dir, logs_dir, tmp_dir, artifacts_dir):
+    for path in (db_dir, uploads_dir, logs_dir, tmp_dir, artifacts_dir, workspace_dir):
         path.mkdir(parents=True, exist_ok=True)
 
     os.environ.setdefault(
@@ -62,6 +63,7 @@ def apply_e2e_run_dir() -> Path | None:
     os.environ.setdefault("DOCREVIEW360_WORKER_STATE", str(run_dir / "worker_state.json"))
     os.environ.setdefault("DOCREVIEW360_ARCHIVE_BUCKET", str(run_dir / "archive_store"))
     os.environ.setdefault("DOCREVIEW360_SAMPLE_DIR", str(run_dir / "samples"))
+    os.environ.setdefault("DOCREVIEW360_DATA_DIR", str(workspace_dir))
 
     for temp_var in ("TMPDIR", "TEMP", "TMP"):
         os.environ.setdefault(temp_var, str(tmp_dir))
