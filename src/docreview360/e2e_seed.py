@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import urlparse
@@ -23,6 +23,12 @@ E2E_SEED_USERS = {
 }
 
 E2E_DOC_TYPE = "E2E Test Document Type"
+E2E_DOC_TYPES = [
+    "Advisory Circular",
+    "Policy Statement",
+    "Release Notes",
+    E2E_DOC_TYPE,
+]
 E2E_PHASES = ["draft", "review", "approval"]
 E2E_PROJECT_ID = "e2e-project-001"
 
@@ -51,9 +57,21 @@ def reset_e2e_state() -> None:
     """Clear persisted and in-memory state for a clean E2E run."""
 
     _unlink_if_exists(_sqlite_path_from_url(os.getenv("DOCREVIEW360_DATABASE_URL")))
-    _unlink_if_exists(Path(os.getenv("DOCREVIEW360_USER_DB", "")) if os.getenv("DOCREVIEW360_USER_DB") else None)
-    _unlink_if_exists(Path(os.getenv("DOCREVIEW360_RBAC_DB", "")) if os.getenv("DOCREVIEW360_RBAC_DB") else None)
-    _unlink_if_exists(Path(os.getenv("DOCREVIEW360_SEARCH_DB", "")) if os.getenv("DOCREVIEW360_SEARCH_DB") else None)
+    _unlink_if_exists(
+        Path(os.getenv("DOCREVIEW360_USER_DB", ""))
+        if os.getenv("DOCREVIEW360_USER_DB")
+        else None
+    )
+    _unlink_if_exists(
+        Path(os.getenv("DOCREVIEW360_RBAC_DB", ""))
+        if os.getenv("DOCREVIEW360_RBAC_DB")
+        else None
+    )
+    _unlink_if_exists(
+        Path(os.getenv("DOCREVIEW360_SEARCH_DB", ""))
+        if os.getenv("DOCREVIEW360_SEARCH_DB")
+        else None
+    )
 
     reset_template_store()
     reset_document_types()
@@ -66,7 +84,11 @@ def reset_e2e_state() -> None:
 
     search_db = os.getenv("DOCREVIEW360_SEARCH_DB")
     _reset_state_for_testing(db_path=search_db)
-    rbac.reset_role_assignments(include_defaults=True, actor="e2e", context={"source": "e2e-seed"})
+    rbac.reset_role_assignments(
+        include_defaults=True,
+        actor="e2e",
+        context={"source": "e2e-seed"},
+    )
 
     # Reset user repository if the DB path moved.
     if os.getenv("DOCREVIEW360_USER_DB"):
@@ -95,18 +117,20 @@ def seed_e2e_data() -> Dict[str, Any]:
     for phase in E2E_PHASES:
         add_phase(phase)
 
-    doc_type = DocumentTypeModel(
-        name=E2E_DOC_TYPE,
-        template="<h1>E2E Template</h1>",
-        workflow=E2E_PHASES,
-    )
-    add_document_type(doc_type)
+    for doc_type_name in E2E_DOC_TYPES:
+        doc_type = DocumentTypeModel(
+            name=doc_type_name,
+            template=f"<h1>{doc_type_name} Template</h1>",
+            workflow=E2E_PHASES,
+            default_template_id="branch-coordination",
+        )
+        add_document_type(doc_type)
 
     project = ProjectModel(
         id=E2E_PROJECT_ID,
         name="E2E Document Review",
         user="bob",
-        doc_type=E2E_DOC_TYPE,
+        doc_type=E2E_DOC_TYPES[0],
         document_number="DOC-001",
         description="Seeded project for E2E tests.",
         updated=datetime.now(UTC),
@@ -133,7 +157,7 @@ def seed_e2e_data() -> Dict[str, Any]:
 
     return {
         "users": {name: {"roles": info["roles"]} for name, info in E2E_SEED_USERS.items()},
-        "doc_types": [E2E_DOC_TYPE],
+        "doc_types": list(E2E_DOC_TYPES),
         "project": {
             "id": project.id,
             "name": project.name,

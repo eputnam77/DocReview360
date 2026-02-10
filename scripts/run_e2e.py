@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import signal
 import socket
 import subprocess
 import sys
@@ -64,16 +63,70 @@ def _terminate(proc: subprocess.Popen[str], name: str) -> None:
         print(f"[e2e] Force killed {name}", file=sys.stderr)
 
 
-def _ensure_frontend_workspace(source_dir: Path, workspace_dir: Path, env: dict) -> Path:
+def _resolve_npm_executable() -> str:
+    npm_cmd = shutil.which("npm.cmd")
+    if npm_cmd:
+        return npm_cmd
+    npm_bin = shutil.which("npm")
+    if npm_bin:
+        return npm_bin
+    raise RuntimeError("npm executable not found in PATH")
+
+
+def _resolve_next_executable(frontend_workspace: Path) -> str:
+    next_bin_name = "next.cmd" if os.name == "nt" else "next"
+    next_bin = frontend_workspace / "node_modules" / ".bin" / next_bin_name
+    if next_bin.exists():
+        return str(next_bin.resolve())
+    raise RuntimeError("Next.js executable not found in frontend/node_modules/.bin")
+
+
+def _resolve_node_executable() -> str:
+    node_bin = shutil.which("node")
+    if node_bin:
+        return node_bin
+    raise RuntimeError("node executable not found in PATH")
+
+
+def _next_cli_script(frontend_workspace: Path) -> str:
+    script = frontend_workspace / "node_modules" / "next" / "dist" / "bin" / "next"
+    if script.exists():
+        return str(script.resolve())
+    raise RuntimeError("Next.js CLI script not found in frontend/node_modules/next")
+
+
+def _select_frontend_mode(frontend_workspace: Path) -> str:
+    requested = (os.getenv("E2E_FRONTEND_MODE") or "").strip().lower()
+    if requested in {"dev", "start"}:
+        return requested
+    build_id = frontend_workspace / ".next" / "BUILD_ID"
+    return "start" if build_id.exists() else "dev"
+
+
+def _ensure_frontend_workspace(
+    source_dir: Path, workspace_dir: Path, env: dict, npm_executable: str
+) -> Path:
+    source_next_bin = source_dir / "node_modules" / ".bin" / "next"
+    if source_next_bin.exists():
+        # Prefer reusing the local frontend workspace when dependencies are already
+        # installed. This keeps E2E runs offline-friendly.
+        return source_dir
+
     frontend_workspace = workspace_dir / "frontend"
     if not frontend_workspace.exists():
-        shutil.copytree(source_dir, frontend_workspace)
+        # Keep the E2E copy lean and deterministic: runtime outputs and installed
+        # dependencies are recreated per run and can fail to copy on Windows.
+        shutil.copytree(
+            source_dir,
+            frontend_workspace,
+            ignore=shutil.ignore_patterns(".next", "node_modules"),
+        )
 
     next_bin = frontend_workspace / "node_modules" / ".bin" / "next"
     if not next_bin.exists():
         npm_env = env.copy()
         subprocess.check_call(
-            ["npm", "install", "--no-save", "--no-package-lock"],
+            [npm_executable, "install", "--no-save", "--no-package-lock"],
             cwd=frontend_workspace,
             env=npm_env,
         )
@@ -158,6 +211,7 @@ def main() -> int:
 
     backend_log = _open_log(logs_dir / "backend.log")
     frontend_log = _open_log(logs_dir / "frontend.log")
+    npm_executable = _resolve_npm_executable()
 
     backend_proc = subprocess.Popen(
         [
@@ -178,9 +232,36 @@ def main() -> int:
         text=True,
     )
 
-    frontend_workspace = _ensure_frontend_workspace(Path("frontend"), workspace_dir, env)
+    frontend_workspace = _ensure_frontend_workspace(
+        Path("frontend"), workspace_dir, env, npm_executable
+    )
+    frontend_mode = _select_frontend_mode(frontend_workspace)
+    _resolve_next_executable(frontend_workspace)
+    node_executable = _resolve_node_executable()
+    next_cli = _next_cli_script(frontend_workspace)
+    if frontend_mode == "start":
+        env.pop("NEXT_DIST_DIR", None)
+        frontend_cmd = [
+            node_executable,
+            next_cli,
+            "start",
+            "-H",
+            "0.0.0.0",
+            "-p",
+            str(frontend_port),
+        ]
+    else:
+        frontend_cmd = [
+            node_executable,
+            next_cli,
+            "dev",
+            "-H",
+            "0.0.0.0",
+            "-p",
+            str(frontend_port),
+        ]
     frontend_proc = subprocess.Popen(
-        ["npm", "run", "dev", "--", "-H", "0.0.0.0", "-p", str(frontend_port)],
+        frontend_cmd,
         cwd=frontend_workspace,
         env=env,
         stdout=frontend_log,

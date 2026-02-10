@@ -32,14 +32,19 @@ else:
 def _playwright_ready() -> tuple[bool, str]:
     if sync_playwright is None:
         return False, "playwright not installed"
-    with sync_playwright() as pw:
-        chrome = Path(pw.chromium.executable_path)
-        # locate headless_shell without triggering a download
-        cache_dir = chrome.parents[2]
-        headless_candidates = list(cache_dir.glob("chromium_headless_shell-*/**/headless_shell"))
-        headless = headless_candidates[0] if headless_candidates else None
-        if not chrome.exists() or headless is None or not headless.exists():
-            return False, "playwright browsers not installed"
+    try:
+        with sync_playwright() as pw:
+            chrome = Path(pw.chromium.executable_path)
+            # locate headless_shell without triggering a download
+            cache_dir = chrome.parents[2]
+            headless_candidates = list(
+                cache_dir.glob("chromium_headless_shell-*/**/headless_shell")
+            )
+            headless = headless_candidates[0] if headless_candidates else None
+            if not chrome.exists() or headless is None or not headless.exists():
+                return False, "playwright browsers not installed"
+    except Exception as exc:  # noqa: BLE001 - surface skip reason in constrained envs
+        return False, f"playwright unavailable: {exc}"
     return True, ""
 
 
