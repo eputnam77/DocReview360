@@ -726,7 +726,7 @@ def _get_user_repository() -> UserRepository:
 
     global USER_REPOSITORY
     current_path = Path(os.getenv("DOCREVIEW360_USER_DB", USER_DB_PATH)).resolve()
-    if USER_REPOSITORY._path.resolve() != current_path:
+    if USER_REPOSITORY._path.resolve() != current_path or not current_path.exists():
         USER_REPOSITORY = UserRepository(str(current_path))
     return USER_REPOSITORY
 
