@@ -11,14 +11,14 @@ import socket
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import IO
 from urllib.request import Request, urlopen
 
 
 def _now_run_id() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
 def _find_free_port() -> int:
@@ -96,7 +96,7 @@ def _configure_git_https(config_path: Path) -> None:
 
 def main() -> int:
     run_id = os.getenv("E2E_RUN_ID") or _now_run_id()
-    run_root = Path(".e2e-runs") / run_id
+    run_root = Path(os.getenv("E2E_RUN_DIR") or (Path(".e2e-runs") / run_id))
     db_dir = run_root / "db"
     uploads_dir = run_root / "uploads"
     logs_dir = run_root / "logs"
