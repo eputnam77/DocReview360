@@ -1,33 +1,61 @@
+import importlib.util
 import json
 import os
+import sys
+import types
 from pathlib import Path
 from urllib.request import Request, urlopen
 
 import pytest
 
-try:
-    from playwright.sync_api import sync_playwright
-except Exception:
+playwright_spec = importlib.util.find_spec("playwright")
+sync_api_spec = importlib.util.find_spec("playwright.sync_api") if playwright_spec else None
+
+if sync_api_spec is None:
     sync_playwright = None
+    if "playwright.sync_api" not in sys.modules:
+        stub_module = types.ModuleType("playwright.sync_api")
+
+        class Page:  # noqa: D401 - simple stub for type imports
+            """Stub Playwright Page."""
+
+        stub_module.Page = Page
+        sys.modules["playwright.sync_api"] = stub_module
+        if "playwright" not in sys.modules:
+            root_module = types.ModuleType("playwright")
+            root_module.sync_api = stub_module
+            sys.modules["playwright"] = root_module
+else:
+    from playwright.sync_api import sync_playwright
+
+
+def _playwright_ready() -> tuple[bool, str]:
+    if sync_playwright is None:
+        return False, "playwright not installed"
+    with sync_playwright() as pw:
+        chrome = Path(pw.chromium.executable_path)
+        # locate headless_shell without triggering a download
+        cache_dir = chrome.parents[2]
+        headless_candidates = list(cache_dir.glob("chromium_headless_shell-*/**/headless_shell"))
+        headless = headless_candidates[0] if headless_candidates else None
+        if not chrome.exists() or headless is None or not headless.exists():
+            return False, "playwright browsers not installed"
+    return True, ""
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    if sync_playwright is None:
-        pytest.skip("playwright not installed", allow_module_level=True)
-    else:
-        with sync_playwright() as pw:
-            chrome = Path(pw.chromium.executable_path)
-            # locate headless_shell without triggering a download
-            cache_dir = chrome.parents[2]
-            headless_candidates = list(
-                cache_dir.glob("chromium_headless_shell-*/**/headless_shell")
-            )
-            headless = headless_candidates[0] if headless_candidates else None
-            if not chrome.exists() or headless is None or not headless.exists():
-                pytest.skip(
-                    "playwright browsers not installed",
-                    allow_module_level=True,
-                )
+    ready, reason = _playwright_ready()
+    config._playwright_ready = ready
+    config._playwright_skip_reason = reason
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    if getattr(config, "_playwright_ready", True):
+        return
+    reason = getattr(config, "_playwright_skip_reason", "playwright not installed")
+    skip_marker = pytest.mark.skip(reason=reason)
+    for item in items:
+        item.add_marker(skip_marker)
 
 
 @pytest.fixture(scope="session")

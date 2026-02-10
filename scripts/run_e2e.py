@@ -64,6 +64,36 @@ def _terminate(proc: subprocess.Popen[str], name: str) -> None:
         print(f"[e2e] Force killed {name}", file=sys.stderr)
 
 
+def _ensure_frontend_workspace(source_dir: Path, workspace_dir: Path, env: dict) -> Path:
+    frontend_workspace = workspace_dir / "frontend"
+    if not frontend_workspace.exists():
+        shutil.copytree(source_dir, frontend_workspace)
+
+    next_bin = frontend_workspace / "node_modules" / ".bin" / "next"
+    if not next_bin.exists():
+        npm_env = env.copy()
+        subprocess.check_call(
+            ["npm", "install", "--no-save", "--no-package-lock"],
+            cwd=frontend_workspace,
+            env=npm_env,
+        )
+    return frontend_workspace
+
+
+def _configure_git_https(config_path: Path) -> None:
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.check_call(
+        [
+            "git",
+            "config",
+            "--file",
+            str(config_path),
+            "url.https://github.com/.insteadOf",
+            "ssh://git@github.com/",
+        ]
+    )
+
+
 def main() -> int:
     run_id = os.getenv("E2E_RUN_ID") or _now_run_id()
     run_root = Path(".e2e-runs") / run_id
@@ -72,8 +102,12 @@ def main() -> int:
     logs_dir = run_root / "logs"
     tmp_dir = run_root / "tmp"
     artifacts_dir = run_root / "artifacts"
-    for path in (db_dir, uploads_dir, logs_dir, tmp_dir, artifacts_dir):
+    workspace_dir = run_root / "workspace"
+    for path in (db_dir, uploads_dir, logs_dir, tmp_dir, artifacts_dir, workspace_dir):
         path.mkdir(parents=True, exist_ok=True)
+
+    git_config = tmp_dir / "gitconfig"
+    _configure_git_https(git_config)
 
     backend_port = int(os.getenv("E2E_BACKEND_PORT") or _find_free_port())
     frontend_port = int(os.getenv("E2E_FRONTEND_PORT") or _find_free_port())
@@ -82,6 +116,9 @@ def main() -> int:
     frontend_url = f"http://127.0.0.1:{frontend_port}"
 
     env = os.environ.copy()
+    pythonpath_parts = [str(Path("src").resolve())]
+    if env.get("PYTHONPATH"):
+        pythonpath_parts.append(env["PYTHONPATH"])
     env.update(
         {
             "E2E_RUN_DIR": str(run_root),
@@ -102,6 +139,7 @@ def main() -> int:
             "DOCREVIEW360_WORKER_STATE": str(run_root / "worker_state.json"),
             "DOCREVIEW360_ARCHIVE_BUCKET": str(run_root / "archive_store"),
             "DOCREVIEW360_SAMPLE_DIR": str(run_root / "samples"),
+            "DOCREVIEW360_DATA_DIR": str(workspace_dir),
             "TMPDIR": str(tmp_dir),
             "TEMP": str(tmp_dir),
             "TMP": str(tmp_dir),
@@ -111,6 +149,10 @@ def main() -> int:
             "NEXT_TELEMETRY_DISABLED": "1",
             "E2E_BACKEND_URL": backend_url,
             "E2E_FRONTEND_URL": frontend_url,
+            "PYTHONPATH": os.pathsep.join(pythonpath_parts),
+            "NPM_CONFIG_CACHE": str((tmp_dir / "npm-cache").resolve()),
+            "GIT_CONFIG_GLOBAL": str(git_config.resolve()),
+            "GIT_CONFIG_NOSYSTEM": "1",
         }
     )
 
@@ -136,9 +178,10 @@ def main() -> int:
         text=True,
     )
 
+    frontend_workspace = _ensure_frontend_workspace(Path("frontend"), workspace_dir, env)
     frontend_proc = subprocess.Popen(
         ["npm", "run", "dev", "--", "-H", "0.0.0.0", "-p", str(frontend_port)],
-        cwd="frontend",
+        cwd=frontend_workspace,
         env=env,
         stdout=frontend_log,
         stderr=frontend_log,
@@ -150,14 +193,30 @@ def main() -> int:
         _wait_for(f"{frontend_url}/api/ping")
         _post_json(f"{backend_url}/e2e/seed")
 
+        playwright_options: list[str] = []
+        try:
+            import pytest_playwright  # noqa: F401
+        except Exception:
+            playwright_options = []
+        else:
+            playwright_options = [
+                "--screenshot=off",
+                "--video=off",
+                "--tracing=off",
+                "--output",
+                str(artifacts_dir),
+            ]
+
         pytest_cmd = [
             "pytest",
+            "tests/e2e",
             "-m",
             "e2e",
             "-p",
             "no:cacheprovider",
-            "--output",
-            str(artifacts_dir),
+            "-o",
+            "addopts=",
+            *playwright_options,
         ]
         result = subprocess.call(pytest_cmd, env=env)
     finally:

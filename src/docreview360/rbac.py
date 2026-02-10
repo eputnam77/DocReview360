@@ -206,7 +206,7 @@ def _get_role_repository() -> RoleRepository:
 
     global _ROLE_REPOSITORY
     current_path = Path(_role_store_path_from_env()).resolve()
-    if _ROLE_REPOSITORY._path.resolve() != current_path:
+    if _ROLE_REPOSITORY._path.resolve() != current_path or not current_path.exists():
         _ROLE_REPOSITORY = RoleRepository(current_path)
         _ROLE_CACHE.invalidate()
     return _ROLE_REPOSITORY

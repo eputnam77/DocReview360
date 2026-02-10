@@ -1,0 +1,6 @@
+{
+  "name": "markreview",
+  "version": "0.0.0",
+  "description": "Local stub for sandboxed E2E runs.",
+  "main": "index.js"
+}
