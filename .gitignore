@@ -17,8 +17,24 @@ venv/
 # Python caches and coverage
 __pycache__/
 .poetry-cache/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+.nox/
+.tox/
 .coverage
+.coverage.*
 coverage.xml
+htmlcov/
+.cache/
+.pre-commit-cache/
+pip-wheel-metadata/
+__pypackages__/
+.ipynb_checkpoints/
 
 # MkDocs build
 site/
