@@ -1,1 +1,0 @@
-9999999999{"name": "wikipedia", "version": "1.4.0", "summary": "Wikipedia API for Python", "requires_dist": ["beautifulsoup4", "requests>=2.0.0,<3.0.0"], "requires_python": null, "files": [{"file": "wikipedia-1.4.0.tar.gz", "hash": "sha256:db0fad1829fdd441b1852306e9856398204dc0786d2996dd2e0c8bb8e26133b2"}], "yanked": false, "_cache_version": "2.0.0"}
