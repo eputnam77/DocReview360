@@ -509,23 +509,60 @@ Update your server or container orchestration tool to pull the new image and you
 
 ## Running Tests
 
-1. **Install development dependencies and browsers**
+1. **Install development dependencies**
    ```bash
    poetry install --with dev
    poetry sync --with dev
    uv pip install -r pyproject.toml --extra dev
-   playwright install
    ```
-2. **Run the full test suite**
+2. **Run the full quality gate**
    ```bash
    pre-commit run --all-files
    ```
-   This runs Ruff, Black, MyPy and the unit tests.
-3. **Run end-to-end tests only**
-   ```bash
-  pytest -m e2e
-   ```
-   The tests start a local server and drive a headless browser via Playwright.
+   This runs Ruff, Black, MyPy, and the Python test suite.
+
+## End-to-End (E2E) Testing
+
+Use the repository E2E runner as the canonical local command:
+
+```bash
+poetry run python scripts/run_e2e.py
+```
+
+### Prerequisites
+
+- Python + frontend dev dependencies installed (`poetry install --with dev` and frontend `npm install` handled automatically by the runner when needed).
+- Playwright browser binaries installed:
+  ```bash
+  poetry run playwright install
+  ```
+- No manual `E2E_BACKEND_URL` / `E2E_FRONTEND_URL` setup is required; `scripts/run_e2e.py` provisions these automatically.
+
+### Typical runtime
+
+- Usually **2-6 minutes** on a warm environment (first run can be longer because frontend dependencies may be installed).
+
+### What success looks like
+
+- `pytest` exits with status code `0`.
+- The runner shuts down backend/frontend processes and removes `.e2e-runs/<run-id>/` automatically on success.
+
+### Verbose mode
+
+```bash
+KEEP_E2E_ARTIFACTS=1 poetry run python scripts/run_e2e.py
+```
+
+This preserves logs and artifacts in `.e2e-runs/<run-id>/` for inspection.
+
+### Debugging failures
+
+1. Re-run with `KEEP_E2E_ARTIFACTS=1`.
+2. Inspect:
+   - `.e2e-runs/<run-id>/logs/backend.log`
+   - `.e2e-runs/<run-id>/logs/frontend.log`
+   - `.e2e-runs/<run-id>/artifacts/`
+3. If tests are unexpectedly skipped, ensure Playwright browsers are installed (`poetry run playwright install`).
 
 ## Git send-email hook
 
