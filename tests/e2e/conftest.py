@@ -35,13 +35,7 @@ def _playwright_ready() -> tuple[bool, str]:
     try:
         with sync_playwright() as pw:
             chrome = Path(pw.chromium.executable_path)
-            # locate headless_shell without triggering a download
-            cache_dir = chrome.parents[2]
-            headless_candidates = list(
-                cache_dir.glob("chromium_headless_shell-*/**/headless_shell")
-            )
-            headless = headless_candidates[0] if headless_candidates else None
-            if not chrome.exists() or headless is None or not headless.exists():
+            if not chrome.exists():
                 return False, "playwright browsers not installed"
     except Exception as exc:  # noqa: BLE001 - surface skip reason in constrained envs
         return False, f"playwright unavailable: {exc}"
@@ -50,8 +44,17 @@ def _playwright_ready() -> tuple[bool, str]:
 
 def pytest_configure(config: pytest.Config) -> None:
     ready, reason = _playwright_ready()
+    if not ready and os.getenv("E2E_REQUIRE_PLAYWRIGHT") == "1":
+        raise pytest.UsageError(f"Playwright required but unavailable: {reason}")
     config._playwright_ready = ready
     config._playwright_skip_reason = reason
+
+
+def pytest_report_header(config: pytest.Config) -> str | None:
+    if getattr(config, "_playwright_ready", True):
+        return None
+    reason = getattr(config, "_playwright_skip_reason", "playwright not installed")
+    return f"E2E Playwright disabled: {reason}"
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
@@ -61,6 +64,39 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     skip_marker = pytest.mark.skip(reason=reason)
     for item in items:
         item.add_marker(skip_marker)
+
+
+@pytest.fixture(autouse=True)
+def _configure_e2e_browser_runtime(page, e2e_backend_url: str) -> None:
+    """Set runtime API base and reduce Next.js overlay interaction issues."""
+    backend_literal = json.dumps(e2e_backend_url)
+    page.add_init_script(
+        f"""
+        () => {{
+          const backendUrl = {backend_literal};
+          window.__DOCREVIEW360_API_BASE = backendUrl;
+          try {{
+            localStorage.setItem("docreview360_api_base", backendUrl);
+          }} catch (_) {{
+            // ignore storage restrictions in constrained contexts
+          }}
+          const inject = () => {{
+            if (document.getElementById("__e2e_disable_nextjs_portal_pointer")) {{
+              return;
+            }}
+            const style = document.createElement("style");
+            style.id = "__e2e_disable_nextjs_portal_pointer";
+            style.textContent = "nextjs-portal {{ pointer-events: none !important; }}";
+            (document.head || document.documentElement).appendChild(style);
+          }};
+          inject();
+          new MutationObserver(() => inject()).observe(document.documentElement, {{
+            childList: true,
+            subtree: true,
+          }});
+        }}
+        """,
+    )
 
 
 @pytest.fixture(scope="session")

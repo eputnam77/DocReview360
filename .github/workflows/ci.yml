@@ -54,3 +54,101 @@ jobs:
         run: npm ci
       - name: Run Vitest suite
         run: npm test -- --run
+
+  e2e-smoke:
+    name: E2E smoke
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Cache Poetry and virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+          poetry install --with dev --no-interaction
+      - name: Install Playwright browser
+        run: poetry run playwright install --with-deps chromium
+      - name: Run E2E smoke suite
+        run: |
+          E2E_REQUIRE_PLAYWRIGHT=1 \
+          E2E_TEST_MARK=e2e_smoke \
+          E2E_PLAYWRIGHT_ARTIFACTS=failure \
+          poetry run python scripts/run_e2e.py
+      - name: Upload E2E smoke artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-artifacts
+          path: .e2e-runs/
+          if-no-files-found: ignore
+
+  e2e-full:
+    name: E2E full
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - frontend
+      - e2e-smoke
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Cache Poetry and virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+          poetry install --with dev --no-interaction
+      - name: Install Playwright browser
+        run: poetry run playwright install --with-deps chromium
+      - name: Run E2E full suite
+        run: |
+          E2E_REQUIRE_PLAYWRIGHT=1 \
+          E2E_TEST_MARK=e2e_full \
+          E2E_PLAYWRIGHT_ARTIFACTS=failure \
+          poetry run python scripts/run_e2e.py
+      - name: Upload E2E full artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-full-artifacts
+          path: .e2e-runs/
+          if-no-files-found: ignore

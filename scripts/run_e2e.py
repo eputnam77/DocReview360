@@ -26,10 +26,19 @@ def _find_free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _wait_for(url: str, timeout_s: float = 45.0) -> None:
+def _wait_for(
+    url: str,
+    timeout_s: float = 120.0,
+    proc: subprocess.Popen[str] | None = None,
+    proc_name: str = "service",
+) -> None:
     deadline = time.time() + timeout_s
     last_error: Exception | None = None
     while time.time() < deadline:
+        if proc is not None and proc.poll() is not None:
+            raise RuntimeError(
+                f"{proc_name} exited with code {proc.returncode} while waiting for {url}"
+            )
         try:
             with urlopen(url, timeout=2) as resp:
                 if 200 <= resp.status < 300:
@@ -95,12 +104,113 @@ def _next_cli_script(frontend_workspace: Path) -> str:
     raise RuntimeError("Next.js CLI script not found in frontend/node_modules/next")
 
 
+def _start_frontend(
+    *,
+    frontend_workspace: Path,
+    frontend_mode: str,
+    frontend_port: int,
+    node_executable: str,
+    next_cli: str,
+    env: dict[str, str],
+    frontend_log: IO[str],
+) -> tuple[subprocess.Popen[str], dict[str, str]]:
+    frontend_env = env.copy()
+    if frontend_mode == "start":
+        frontend_env.pop("NEXT_DIST_DIR", None)
+        frontend_cmd = [
+            node_executable,
+            next_cli,
+            "start",
+            "-H",
+            "0.0.0.0",
+            "-p",
+            str(frontend_port),
+        ]
+    else:
+        frontend_dev_engine = _select_frontend_dev_engine()
+        frontend_cmd = [
+            node_executable,
+            next_cli,
+            "dev",
+            *(["--webpack"] if frontend_dev_engine == "webpack" else []),
+            "-H",
+            "0.0.0.0",
+            "-p",
+            str(frontend_port),
+        ]
+    frontend_proc = subprocess.Popen(
+        frontend_cmd,
+        cwd=frontend_workspace,
+        env=frontend_env,
+        stdout=frontend_log,
+        stderr=frontend_log,
+        text=True,
+    )
+    return frontend_proc, frontend_env
+
+
+def _ensure_frontend_build(
+    *,
+    frontend_workspace: Path,
+    node_executable: str,
+    next_cli: str,
+    env: dict[str, str],
+    frontend_log: IO[str],
+) -> None:
+    build_id = frontend_workspace / ".next" / "BUILD_ID"
+    if build_id.exists():
+        return
+    build_env = env.copy()
+    build_env.pop("NEXT_DIST_DIR", None)
+    subprocess.check_call(
+        [node_executable, next_cli, "build"],
+        cwd=frontend_workspace,
+        env=build_env,
+        stdout=frontend_log,
+        stderr=frontend_log,
+        text=True,
+    )
+
+
 def _select_frontend_mode(frontend_workspace: Path) -> str:
     requested = (os.getenv("E2E_FRONTEND_MODE") or "").strip().lower()
     if requested in {"dev", "start"}:
         return requested
-    build_id = frontend_workspace / ".next" / "BUILD_ID"
-    return "start" if build_id.exists() else "dev"
+    # Default to dev mode for correctness: `next start` serves a prebuilt bundle
+    # where NEXT_PUBLIC_* values may be stale and cause E2E drift.
+    return "dev"
+
+
+def _select_frontend_dev_engine() -> str:
+    requested = (os.getenv("E2E_FRONTEND_DEV_ENGINE") or "").strip().lower()
+    if requested in {"webpack", "turbopack"}:
+        return requested
+    # Prefer webpack for E2E stability. Turbopack currently returns intermittent
+    # route-level 500s in this codebase under Playwright load.
+    return "webpack"
+
+
+def _select_e2e_mark_expression() -> str:
+    requested = (os.getenv("E2E_TEST_MARK") or "").strip()
+    if requested:
+        return requested
+    return "e2e"
+
+
+def _select_playwright_artifact_mode() -> tuple[str, str, str]:
+    requested = (os.getenv("E2E_PLAYWRIGHT_ARTIFACTS") or "").strip().lower()
+    if not requested:
+        requested = "failure"
+    if requested in {"off", "none"}:
+        return "off", "off", "off"
+    if requested in {"failure", "on-failure", "only-on-failure"}:
+        return "only-on-failure", "retain-on-failure", "retain-on-failure"
+    if requested in {"on", "always", "all"}:
+        return "on", "on", "on"
+    raise RuntimeError(
+        "Unsupported E2E_PLAYWRIGHT_ARTIFACTS value. "
+        "Use one of: off, failure, on."
+    )
 
 
 def _ensure_frontend_workspace(
@@ -167,6 +277,8 @@ def main() -> int:
 
     backend_url = f"http://127.0.0.1:{backend_port}"
     frontend_url = f"http://127.0.0.1:{frontend_port}"
+    startup_timeout_s = float(os.getenv("E2E_STARTUP_TIMEOUT_S") or "120")
+    e2e_mark_expression = _select_e2e_mark_expression()
 
     env = os.environ.copy()
     pythonpath_parts = [str(Path("src").resolve())]
@@ -202,6 +314,16 @@ def main() -> int:
             "NEXT_TELEMETRY_DISABLED": "1",
             "E2E_BACKEND_URL": backend_url,
             "E2E_FRONTEND_URL": frontend_url,
+            # Browser-side API calls originate from the frontend dev server's
+            # ephemeral port; allow that origin so authenticated writes (POST/PUT)
+            # are not blocked by CORS preflight during E2E.
+            "DOCREVIEW360_ALLOW_ORIGINS": ",".join(
+                [
+                    frontend_url,
+                    f"http://127.0.0.1:{frontend_port}",
+                    f"http://localhost:{frontend_port}",
+                ]
+            ),
             "PYTHONPATH": os.pathsep.join(pythonpath_parts),
             "NPM_CONFIG_CACHE": str((tmp_dir / "npm-cache").resolve()),
             "GIT_CONFIG_GLOBAL": str(git_config.resolve()),
@@ -240,38 +362,68 @@ def main() -> int:
     node_executable = _resolve_node_executable()
     next_cli = _next_cli_script(frontend_workspace)
     if frontend_mode == "start":
-        env.pop("NEXT_DIST_DIR", None)
-        frontend_cmd = [
-            node_executable,
-            next_cli,
-            "start",
-            "-H",
-            "0.0.0.0",
-            "-p",
-            str(frontend_port),
-        ]
-    else:
-        frontend_cmd = [
-            node_executable,
-            next_cli,
-            "dev",
-            "-H",
-            "0.0.0.0",
-            "-p",
-            str(frontend_port),
-        ]
-    frontend_proc = subprocess.Popen(
-        frontend_cmd,
-        cwd=frontend_workspace,
+        _ensure_frontend_build(
+            frontend_workspace=frontend_workspace,
+            node_executable=node_executable,
+            next_cli=next_cli,
+            env=env,
+            frontend_log=frontend_log,
+        )
+    frontend_proc, _ = _start_frontend(
+        frontend_workspace=frontend_workspace,
+        frontend_mode=frontend_mode,
+        frontend_port=frontend_port,
+        node_executable=node_executable,
+        next_cli=next_cli,
         env=env,
-        stdout=frontend_log,
-        stderr=frontend_log,
-        text=True,
+        frontend_log=frontend_log,
     )
 
     try:
-        _wait_for(f"{backend_url}/health")
-        _wait_for(f"{frontend_url}/api/ping")
+        _wait_for(
+            f"{backend_url}/health",
+            timeout_s=startup_timeout_s,
+            proc=backend_proc,
+            proc_name="backend",
+        )
+        try:
+            _wait_for(
+                f"{frontend_url}/api/ping",
+                timeout_s=startup_timeout_s,
+                proc=frontend_proc,
+                proc_name="frontend",
+            )
+        except RuntimeError as exc:
+            can_fallback = frontend_mode == "dev" and frontend_proc.poll() is not None
+            if not can_fallback:
+                raise
+            print(
+                f"[e2e] Frontend dev startup failed ({exc}); falling back to next start",
+                file=sys.stderr,
+            )
+            _terminate(frontend_proc, "frontend")
+            _ensure_frontend_build(
+                frontend_workspace=frontend_workspace,
+                node_executable=node_executable,
+                next_cli=next_cli,
+                env=env,
+                frontend_log=frontend_log,
+            )
+            frontend_proc, _ = _start_frontend(
+                frontend_workspace=frontend_workspace,
+                frontend_mode="start",
+                frontend_port=frontend_port,
+                node_executable=node_executable,
+                next_cli=next_cli,
+                env=env,
+                frontend_log=frontend_log,
+            )
+            _wait_for(
+                f"{frontend_url}/api/ping",
+                timeout_s=startup_timeout_s,
+                proc=frontend_proc,
+                proc_name="frontend",
+            )
         _post_json(f"{backend_url}/e2e/seed")
 
         playwright_options: list[str] = []
@@ -280,10 +432,11 @@ def main() -> int:
         except Exception:
             playwright_options = []
         else:
+            screenshot_mode, video_mode, tracing_mode = _select_playwright_artifact_mode()
             playwright_options = [
-                "--screenshot=off",
-                "--video=off",
-                "--tracing=off",
+                f"--screenshot={screenshot_mode}",
+                f"--video={video_mode}",
+                f"--tracing={tracing_mode}",
                 "--output",
                 str(artifacts_dir),
             ]
@@ -292,7 +445,7 @@ def main() -> int:
             "pytest",
             "tests/e2e",
             "-m",
-            "e2e",
+            e2e_mark_expression,
             "-p",
             "no:cacheprovider",
             "-o",

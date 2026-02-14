@@ -99,6 +99,20 @@ jobs:
           echo "exit_code=${TEST_EXIT}" >> "$GITHUB_OUTPUT"
           set -e
 
+      - name: Install Playwright browser for E2E
+        run: poetry run playwright install --with-deps chromium
+
+      - name: Run full E2E suite and capture output
+        id: e2e_full
+        shell: bash
+        continue-on-error: true
+        run: |
+          set +e
+          E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_full E2E_PLAYWRIGHT_ARTIFACTS=failure poetry run python scripts/run_e2e.py > e2e_test_output.log 2>&1
+          TEST_EXIT=$?
+          echo "exit_code=${TEST_EXIT}" >> "$GITHUB_OUTPUT"
+          set -e
+
       - name: Combine test outputs
         if: always()
         run: |
@@ -121,6 +135,13 @@ jobs:
             cat security_scan_output.log >> test_output.log
           else
             echo "No security_scan_output.log found" >> test_output.log
+          fi
+          echo "" >> test_output.log
+          echo "==================== E2E Full Output ====================" >> test_output.log
+          if [ -f e2e_test_output.log ]; then
+            cat e2e_test_output.log >> test_output.log
+          else
+            echo "No e2e_test_output.log found" >> test_output.log
           fi
           echo "=========================================================" >> test_output.log
 
@@ -145,6 +166,8 @@ jobs:
             backend_test_output.log
             frontend_test_output.log
             security_scan_output.log
+            e2e_test_output.log
+            .e2e-runs/
 
       - name: Check test results
         id: check_results
@@ -152,6 +175,7 @@ jobs:
           BACKEND_FAILED=false
           FRONTEND_FAILED=false
           SECURITY_FAILED=false
+          E2E_FAILED=false
 
           if [ "${{ steps.backend_test.outputs.exit_code }}" != "0" ]; then
             BACKEND_FAILED=true
@@ -165,16 +189,22 @@ jobs:
             SECURITY_FAILED=true
           fi
 
-          if [ "$BACKEND_FAILED" = "true" ] || [ "$FRONTEND_FAILED" = "true" ] || [ "$SECURITY_FAILED" = "true" ]; then
+          if [ "${{ steps.e2e_full.outputs.exit_code }}" != "0" ]; then
+            E2E_FAILED=true
+          fi
+
+          if [ "$BACKEND_FAILED" = "true" ] || [ "$FRONTEND_FAILED" = "true" ] || [ "$SECURITY_FAILED" = "true" ] || [ "$E2E_FAILED" = "true" ]; then
             echo "tests_failed=true" >> "$GITHUB_OUTPUT"
             echo "backend_failed=$BACKEND_FAILED" >> "$GITHUB_OUTPUT"
             echo "frontend_failed=$FRONTEND_FAILED" >> "$GITHUB_OUTPUT"
             echo "security_failed=$SECURITY_FAILED" >> "$GITHUB_OUTPUT"
+            echo "e2e_failed=$E2E_FAILED" >> "$GITHUB_OUTPUT"
           else
             echo "tests_failed=false" >> "$GITHUB_OUTPUT"
             echo "backend_failed=false" >> "$GITHUB_OUTPUT"
             echo "frontend_failed=false" >> "$GITHUB_OUTPUT"
             echo "security_failed=false" >> "$GITHUB_OUTPUT"
+            echo "e2e_failed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate machine-readable failure summary
@@ -189,9 +219,10 @@ jobs:
               "backend": {"failures": [], "log_file": "backend_test_output.log"},
               "frontend": {"failures": [], "log_file": "frontend_test_output.log"},
               "security": {"failures": [], "log_file": "security_scan_output.log"},
+              "e2e": {"failures": [], "log_file": "e2e_test_output.log"},
           }
 
-          for category in ["backend", "frontend", "security"]:
+          for category in ["backend", "frontend", "security", "e2e"]:
               log_path = Path(failures[category]["log_file"])
               if not log_path.exists():
                   continue
@@ -224,15 +255,23 @@ jobs:
                           failures[category]["failures"].append({
                               "raw_line": line.strip(),
                           })
+              elif category == "e2e":
+                  for line in text.splitlines():
+                      if line.startswith("FAILED ") or "AssertionError" in line:
+                          failures[category]["failures"].append({
+                              "raw_line": line.strip(),
+                          })
 
           summary = {
               "backend_failed": "${{ steps.check_results.outputs.backend_failed }}" == "true",
               "frontend_failed": "${{ steps.check_results.outputs.frontend_failed }}" == "true",
               "security_failed": "${{ steps.check_results.outputs.security_failed }}" == "true",
+              "e2e_failed": "${{ steps.check_results.outputs.e2e_failed }}" == "true",
               "failures": failures,
               "total_backend_failures": len(failures["backend"]["failures"]),
               "total_frontend_failures": len(failures["frontend"]["failures"]),
               "total_security_issues": len(failures["security"]["failures"]),
+              "total_e2e_failures": len(failures["e2e"]["failures"]),
           }
 
           Path("nightly_failures.json").write_text(

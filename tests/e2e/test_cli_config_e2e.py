@@ -1,8 +1,9 @@
 import pytest
 from playwright.sync_api import Page
 
+pytestmark = [pytest.mark.e2e, pytest.mark.e2e_full]
 
-@pytest.mark.e2e
+
 def test_cli_init_and_config(page: Page, e2e_backend_url: str) -> None:
     token_resp = page.request.post(
         f"{e2e_backend_url}/token",

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import { CheckCircle, Clock, Users, Workflow, XCircle } from "lucide-react";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
@@ -39,7 +39,7 @@ export default function EditProjectPage() {
         setLoading(true);
         console.log('Edit page: Fetching project data from:', `${API}/projects/${id}`);
         // Fetch project data
-        fetch(`${API}/projects/${id}`)
+        authenticatedFetch(`${API}/projects/${id}`)
             .then((r) => {
             console.log('Edit page: Response status:', r.status);
             if (!r.ok) {
@@ -60,7 +60,7 @@ export default function EditProjectPage() {
             // Fetch workflow data if project has a workflow
             if (proj.workflow) {
                 try {
-                    const wfRes = await fetch(`${API}/workflows/${proj.workflow}`);
+                    const wfRes = await authenticatedFetch(`${API}/workflows/${proj.workflow}`);
                     if (wfRes.ok) {
                         const workflow = await wfRes.json();
                         setSelectedWorkflow(workflow.template ?? workflow.id);
@@ -71,7 +71,7 @@ export default function EditProjectPage() {
                 }
                 // Fetch approvals for the workflow
                 try {
-                    const apRes = await fetch(`${API}/approvals?workflow=${proj.workflow}`);
+                    const apRes = await authenticatedFetch(`${API}/approvals?workflow=${proj.workflow}`);
                     if (apRes.ok) {
                         const approvals = await apRes.json();
                         const mapped = approvals.map((a) => ({
@@ -89,14 +89,14 @@ export default function EditProjectPage() {
             else {
                 // If no workflow is associated, try to find workflow by project ID
                 try {
-                    const wfRes = await fetch(`${API}/workflows?project=${id}`);
+                    const wfRes = await authenticatedFetch(`${API}/workflows?project=${id}`);
                     if (wfRes.ok) {
                         const workflows = await wfRes.json();
                         if (workflows.length > 0) {
                             const projectWorkflow = workflows[0];
                             setSelectedWorkflow(projectWorkflow.template ?? projectWorkflow.id);
                             // Fetch approvals for this workflow
-                            const apRes = await fetch(`${API}/approvals?workflow=${projectWorkflow.id}`);
+                            const apRes = await authenticatedFetch(`${API}/approvals?workflow=${projectWorkflow.id}`);
                             if (apRes.ok) {
                                 const approvals = await apRes.json();
                                 const mapped = approvals.map((a) => ({
@@ -174,7 +174,7 @@ export default function EditProjectPage() {
             if (selectedWorkflow) {
                 payload.workflow = selectedWorkflow;
             }
-            const res = await fetch(`${API}/projects/${id}`, {
+            const res = await authenticatedFetch(`${API}/projects/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),

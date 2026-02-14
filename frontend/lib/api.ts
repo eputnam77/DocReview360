@@ -1,7 +1,22 @@
 // Use the configured backend URL when provided; otherwise, default to the
 // local development API server.
 const envBase = process.env.NEXT_PUBLIC_API_BASE?.trim();
+const RUNTIME_API_BASE_KEY = "docreview360_api_base";
+
+function _runtimeBase(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const fromWindow = (window as { __DOCREVIEW360_API_BASE?: unknown }).__DOCREVIEW360_API_BASE;
+  if (typeof fromWindow === "string" && fromWindow.trim()) {
+    return fromWindow.trim();
+  }
+  const fromStorage = window.localStorage.getItem(RUNTIME_API_BASE_KEY);
+  return fromStorage && fromStorage.trim() ? fromStorage.trim() : null;
+}
+
 export const API =
+  _runtimeBase() ??
   envBase && envBase.length > 0
     ? envBase
     : typeof window !== "undefined"

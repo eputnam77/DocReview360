@@ -61,7 +61,7 @@ pipx install uv poetry
 
   ```bash
   playwright install
-  pytest -m e2e
+  E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke python scripts/run_e2e.py
   ```
 
 ## Database Migrations

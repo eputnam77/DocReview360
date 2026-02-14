@@ -260,6 +260,8 @@ markers = [
     # Custom markers must be declared here to silence PytestUnknownMarkWarning
     "property: property-based tests powered by Hypothesis",
     "e2e: end-to-end tests requiring Playwright",
+    "e2e_smoke: critical browser/API smoke flows for pre-merge gating",
+    "e2e_full: broader E2E coverage including permissions and edge cases",
 ]
 addopts = "--screenshot=off --video=off --tracing=off"
 

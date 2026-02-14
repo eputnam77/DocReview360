@@ -1,0 +1,21 @@
+▲ Next.js 16.1.5 (webpack)
+- Local:         http://127.0.0.1:62174
+- Network:       http://127.0.0.1:62174
+- Environments: .env.local, .env
+- Experiments (use with caution):
+  ✓ optimizeCss
+
+✓ Starting...
+✓ Ready in 4.4s
+ GET /api/ping 200 in 2.2s (compile: 2.2s, render: 10ms)
+ GET /api/ping 200 in 1971µs (compile: 861µs, render: 1110µs)
+Time 4ms
+ GET /login 200 in 3.8s (compile: 3.7s, render: 58ms)
+Time 1ms
+ GET /projects/new 200 in 261ms (compile: 249ms, render: 12ms)
+Time 2ms
+ GET /profile 200 in 2.3s (compile: 2.3s, render: 12ms)
+Time 0ms
+ GET /configuration/document-types 200 in 280ms (compile: 273ms, render: 7ms)
+Time 1ms
+ GET /projects/demo-project/review 200 in 185ms (compile: 178ms, render: 7ms)

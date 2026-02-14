@@ -1,8 +1,10 @@
 import pytest
 from playwright.sync_api import Page
 
+pytestmark = [pytest.mark.e2e, pytest.mark.e2e_full]
 
-@pytest.mark.e2e
+
+@pytest.mark.e2e_smoke
 def test_approval_lifecycle(
     page: Page, e2e_backend_url: str, e2e_seed_data: dict
 ) -> None:

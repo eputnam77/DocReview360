@@ -1,0 +1,27 @@
+▲ Next.js 16.1.5 (Turbopack)
+- Local:         http://127.0.0.1:62074
+- Network:       http://127.0.0.1:62074
+- Environments: .env.local, .env
+- Experiments (use with caution):
+  ✓ optimizeCss
+
+✓ Starting...
+✓ Ready in 1058ms
+ GET /api/ping 200 in 25ms (compile: 17ms, render: 8ms)
+○ Compiling /login ...
+[32mInlined 1.48 kB (3% of original 47.28 kB) of _next/static/chunks/styles_f00c1678._.css.[39m
+Time 1504ms
+ GET /login 500 in 16.4s (compile: 13.7s, render: 2.6s)
+[32mInlined 1.48 kB (3% of original 47.28 kB) of _next/static/chunks/styles_f00c1678._.css.[39m
+Time 724ms
+ GET /projects/new 500 in 3.5s (compile: 2.3s, render: 1164ms)
+○ Compiling /profile ...
+[32mInlined 1.48 kB (3% of original 47.28 kB) of _next/static/chunks/styles_f00c1678._.css.[39m
+Time 61ms
+ GET /profile 500 in 6.4s (compile: 6.2s, render: 269ms)
+[32mInlined 1.48 kB (3% of original 47.28 kB) of _next/static/chunks/styles_f00c1678._.css.[39m
+Time 287ms
+ GET /configuration/document-types 500 in 3.1s (compile: 2.2s, render: 898ms)
+[32mInlined 1.48 kB (3% of original 47.28 kB) of _next/static/chunks/styles_f00c1678._.css.[39m
+Time 123ms
+ GET /projects/demo-project/review 500 in 1893ms (compile: 1429ms, render: 464ms)

@@ -529,6 +529,18 @@ Use the repository E2E runner as the canonical local command:
 poetry run python scripts/run_e2e.py
 ```
 
+Smoke gate (recommended for PR checks):
+
+```bash
+E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke poetry run python scripts/run_e2e.py
+```
+
+Full suite (recommended on main/nightly):
+
+```bash
+E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_full poetry run python scripts/run_e2e.py
+```
+
 ### Prerequisites
 
 - Python + frontend dev dependencies installed (`poetry install --with dev` and frontend `npm install` handled automatically by the runner when needed).
@@ -554,6 +566,7 @@ KEEP_E2E_ARTIFACTS=1 poetry run python scripts/run_e2e.py
 ```
 
 This preserves logs and artifacts in `.e2e-runs/<run-id>/` for inspection.
+By default, Playwright artifacts are retained only on failed tests (`E2E_PLAYWRIGHT_ARTIFACTS=failure`).
 
 ### Debugging failures
 
