@@ -3,6 +3,11 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+# NOTE:
+# You currently have BOTH Poetry metadata and PEP 621 metadata.
+# If setuptools+uv is canonical, you can delete [tool.poetry] and
+# [tool.poetry.group.*] entirely. Keeping them is OK, but it’s duplicated.
+
 [tool.poetry]
 name = "docreview360"
 version = "0.1.2"
@@ -15,7 +20,7 @@ name            = "docreview360"
 version         = "0.1.2"
 description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
-requires-python = ">=3.12,<4"
+requires-python = ">=3.11,<3.13"
 license         = { text = "GPL-3.0-only" }
 
 dependencies = [
@@ -37,7 +42,12 @@ dependencies = [
   "httpx==0.28.1",
   "python-jose[cryptography]==3.5.0",
   "python-docx==1.2.0",
-  "python-magic==0.4.27",
+
+  # python-magic is problematic on Windows unless you use the prebuilt binary wheel package.
+  # Ref: https://pypi.org/project/python-magic/
+  "python-magic==0.4.27; platform_system != 'Windows'",
+  "python-magic-bin; platform_system == 'Windows'",
+
   "reportlab==4.4.3",
   "celery==5.5.3",
   "redis==6.2.0",
@@ -52,11 +62,6 @@ dependencies = [
   "pyotp==2.9.0",
   "markdown-it-py==3.0.0",
   "bleach==6.2.0",
-  "y-py==0.6.2",
-  "ypy-websocket==0.12.4",
-  "torch==2.5.1",
-  "onnx==1.17.0",
-  "onnxruntime==1.19.2 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
 ]
 
 [[project.authors]]
@@ -68,25 +73,48 @@ docreview360 = "docreview360.cli:cli"
 
 # ───────────────────────────── optional deps buckets ───────────────────────────
 [project.optional-dependencies]
+
 # FedStyleValidator (Federal Style Validator) is optional; the core app
 # falls back to internal heuristics when the integration is unavailable.
 fedstylevalidator = ["FedStyleValidator @ git+https://github.com/eputnam77/FedStyleValidator.git"]
+
 # tokenizer support for OpenAI / tiktoken
 tokenizer = ["tiktoken>=0.5.1"]
 
+realtime = [
+  "y-py>=0.6,<0.8",
+  "ypy-websocket>=0.12,<0.14",
+]
+
+# ML (kept optional so Windows installs don't fail when torch wheels aren't available)
+# PyTorch install matrix: https://pytorch.org/get-started/locally/
+ml = [
+  "torch==2.5.1",
+  "onnx==1.17.0",
+]
+
+# Choose ONE runtime extra depending on target.
+# ONNX Runtime install docs: https://onnxruntime.ai/docs/install/
+ml-cpu = [
+  "onnxruntime==1.19.2 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
+]
+
+ml-mps = [
+  "onnxruntime==1.19.2 ; platform_system == 'Darwin' and platform_machine == 'arm64'",
+]
+
+ml-gpu = [
+  "onnxruntime-gpu==1.19.2 ; platform_system != 'Darwin'",
+]
+
 # formatting & linting
-format   = ["ruff>=0.5", "black>=24"]
-lint     = ["ruff>=0.5", "black>=24"]
+format = ["ruff>=0.5", "black>=24"]
+lint   = ["ruff>=0.5", "black>=24"]
 
 # static typing
-typing   = ["mypy>=1.10"]
+typing = ["mypy>=1.10"]
 
 # testing & quality gates (unit, property, E2E, mutation, coverage)
-# NOTE: Playwright binaries are only required locally/CI, not at runtime
-#       Mutmut enables mutation‑testing gate introduced in AGENTS.md v0.4
-#       pytest‑playwright integrates Playwright with pytest collection.
-#       Versions chosen to satisfy Python 3.12 wheels.
-
 test = [
   "pytest>=8",
   "pytest-cov>=5",
@@ -98,23 +126,15 @@ test = [
   "uvicorn>=0.38.0",
 ]
 
-# machine learning acceleration
-ml-gpu = [
-  "onnxruntime-gpu==1.19.2 ; platform_system != 'Darwin'",
-]
-ml-mps = [
-  "onnxruntime==1.19.2 ; platform_system == 'Darwin' and platform_machine == 'arm64'",
-]
-
 # security scanning
 security = [
-  "bandit[toml]>=1.8.5",       # "toml" extra lets Bandit parse this file
+  "bandit[toml]>=1.8.5",
   "semgrep>=1.123.0",
   "pip-audit>=2.7",
 ]
 
-# developer convenience (superset of all tools)
-qa  = ["pre-commit>=3.7"]
+# developer convenience
+qa = ["pre-commit>=3.7"]
 
 dev = [
   "ruff>=0.5",
@@ -134,6 +154,8 @@ dev = [
 ]
 
 # ───────────────────────────── poetry dependency groups ─────────────────────────────
+# NOTE: optional; keep only if you actually run Poetry.
+# Poetry dep management docs: https://python-poetry.org/docs/managing-dependencies/
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.5"
 mypy = ">=1.10"
@@ -144,7 +166,7 @@ hypothesis = ">=6"
 pytest-playwright = ">=0.4"
 playwright = ">=1.44"
 mutmut = ">=2.4"
-bandit = {version = ">=1.8.5", extras = ["toml"]}
+bandit = { version = ">=1.8.5", extras = ["toml"] }
 semgrep = ">=1.123.0"
 pip-audit = ">=2.7"
 pre-commit = ">=3.7"
@@ -152,7 +174,6 @@ pytest-asyncio = ">=0.23"
 uvicorn = ">=0.38.0"
 
 # ──────────────────────────── package discovery ───────────────────────────────
-
 [tool.setuptools]
 
 [tool.setuptools.package-dir]
@@ -163,12 +184,12 @@ where = ["src"]
 exclude = ["tests*", ".dev*"]
 
 [tool.setuptools.package-data]
-"docreview360.styles" = ["*.md"]
-"docreview360.templates" = ["*.html"]
+"docreview360.styles"        = ["*.md"]
+"docreview360.templates"     = ["*.html"]
 "docreview360.iac_templates" = ["*.tf"]
-"docreview360" = ["py.typed"]
-"docreview360.migrations" = ["*.sql"]
-"*" = ["*.txt", "*.md", "*.yaml", "*.yml", "*.json"]
+"docreview360"              = ["py.typed"]
+"docreview360.migrations"   = ["*.sql"]
+"*"                          = ["*.txt", "*.md", "*.yaml", "*.yml", "*.json"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]
@@ -187,14 +208,14 @@ select = ["E", "F", "W", "C90", "I"]
 
 # ───────────────────────────── static typing (mypy) ───────────────────────────
 [tool.mypy]
-python_version         = "3.12"
-strict                 = true
-ignore_errors          = false
-plugins                = ["pydantic.mypy"]   # Pydantic‑v2 plugin
-exclude                = "(tests/|src/docreview360/document_checker.py)"
+python_version = "3.12"
+strict         = true
+ignore_errors  = false
+plugins        = ["pydantic.mypy"]
+exclude        = "(tests/|src/docreview360/document_checker.py)"
 
 [[tool.mypy.overrides]]
-module                 = [
+module = [
   "Jinja2.*",
   "matplotlib.*",
   "fonttools.*",
@@ -253,21 +274,15 @@ module = [
 ]
 ignore_errors = true
 
-
 # ───────────────────────────── pytest config ───────────────────────────────
 [tool.pytest.ini_options]
 markers = [
-    # Custom markers must be declared here to silence PytestUnknownMarkWarning
-    "property: property-based tests powered by Hypothesis",
-    "e2e: end-to-end tests requiring Playwright",
-    "e2e_smoke: critical browser/API smoke flows for pre-merge gating",
-    "e2e_full: broader E2E coverage including permissions and edge cases",
+  "property: property-based tests powered by Hypothesis",
+  "e2e: end-to-end tests requiring Playwright",
+  "e2e_smoke: critical browser/API smoke flows for pre-merge gating",
+  "e2e_full: broader E2E coverage including permissions and edge cases",
 ]
 addopts = "--screenshot=off --video=off --tracing=off"
-
-# (optional) other pytest settings you may want:
-# addopts = "-ra -q"
-# testpaths = ["tests"]
 
 # ──────────────────────── security scanning (Bandit) ──────────────────────────
 [tool.bandit]
@@ -275,7 +290,6 @@ targets      = ["src/docreview360"]
 exclude_dirs = ["tests", ".venv", "build", "dist"]
 skips        = ["B101", "B110", "B311"]
 
-# Example per-plugin override (optional)
 [tool.bandit.any_other_function_with_shell_equals_true]
 no_shell = ["os.execl", "os.execle", "os.spawnl", "os.spawnv"]
 shell    = ["os.system", "subprocess.Popen"]
