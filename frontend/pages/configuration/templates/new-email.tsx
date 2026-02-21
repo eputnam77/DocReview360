@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { API } from "@/lib/api";
+import { getStoredAccessToken } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 export default function NewEmailTemplatePage() {
@@ -11,13 +11,15 @@ export default function NewEmailTemplatePage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [task, setTask] = useState("");
+  const token = getStoredAccessToken();
 
   const handleSave = async () => {
     const payload = { name, subject, body, task: task || undefined };
     try {
-      await fetch(`${API}/email-templates`, {
+      await fetch("/api/email-templates", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       } catch {

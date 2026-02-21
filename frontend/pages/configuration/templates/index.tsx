@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash, Eye, Download } from "lucide-react";
-import { API, authenticatedFetch } from "@/lib/api";
+import { API, getStoredAccessToken } from "@/lib/api";
 
 interface Template {
   id: string;
@@ -28,16 +28,32 @@ interface EmailTemplate {
   task?: string;
 }
 
-export function createTemplateConfigApi(
-  fetcher: typeof authenticatedFetch = authenticatedFetch,
-) {
+export function createTemplateConfigApi() {
+  const token = getStoredAccessToken();
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
   return {
-    listTemplates: () => fetcher(`${API}/templates`),
-    listEmailTemplates: () => fetcher(`${API}/email-templates`),
+    listTemplates: () =>
+      fetch("/api/templates", {
+        headers: authHeaders,
+        credentials: "include",
+      }),
+    listEmailTemplates: () =>
+      fetch("/api/email-templates", {
+        headers: authHeaders,
+        credentials: "include",
+      }),
     deleteTemplate: (id: string) =>
-      fetcher(`${API}/templates/${id}`, { method: "DELETE" }),
+      fetch(`/api/templates/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: authHeaders,
+        credentials: "include",
+      }),
     deleteEmailTemplate: (name: string) =>
-      fetcher(`${API}/email-templates/${name}`, { method: "DELETE" }),
+      fetch(`/api/email-templates/${encodeURIComponent(name)}`, {
+        method: "DELETE",
+        headers: authHeaders,
+        credentials: "include",
+      }),
   } as const;
 }
 
@@ -60,8 +76,8 @@ export default function TemplatesIndex() {
                   id: t.id || t.name,
                   name: t.name,
                   docType: t.docType,
-                  format: t.format || "—",
-                  modified: t.modified || t.updated || "—",
+                  format: t.format || "--",
+                  modified: t.modified || t.updated || "--",
                   approved: !!t.approved,
                   retired: !!t.retired,
                 }))
@@ -75,17 +91,20 @@ export default function TemplatesIndex() {
     api
       .listEmailTemplates()
       .then((r) => (r.ok ? r.json() : []))
-        .then((data: any[]) =>
-          setEmailTemplates(
-            data.length
-              ? data.map((t) => ({
-                  name: t.name,
-                  subject: t.subject,
-                  task: t.task,
-                }))
-              : []
-          ),
-        )
+        .then((data: any[]) => {
+        const sorted = Array.isArray(data)
+          ? [...data].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
+          : [];
+        setEmailTemplates(
+          sorted.length
+            ? sorted.map((t) => ({
+                name: t.name,
+                subject: t.subject,
+                task: t.task,
+              }))
+            : []
+        );
+      })
         .catch(() => setEmailTemplates([]));
   }, [api]);
 
@@ -139,8 +158,8 @@ export default function TemplatesIndex() {
           {templates.map((t) => (
             <TableRow key={t.id} className="border-t last:border-none hover:bg-gray-50">
               <TableCell>{t.name}</TableCell>
-              <TableCell>{t.docType || <span className="text-gray-400">—</span>}</TableCell>
-              <TableCell>{t.format || <span className="text-gray-400">—</span>}</TableCell>
+              <TableCell>{t.docType || <span className="text-gray-400">--</span>}</TableCell>
+              <TableCell>{t.format || <span className="text-gray-400">--</span>}</TableCell>
               <TableCell>{t.modified}</TableCell>
               <TableCell>{t.approved ? "Approved" : "Pending"}</TableCell>
               <TableCell className="w-14">
@@ -197,7 +216,7 @@ export default function TemplatesIndex() {
       <div className="mt-4 text-xs text-gray-500">
         Templates are used to standardize document creation for each document type and editor.
         <br />
-        <b>Tip:</b> Click “Create Template” to add Word, HTML, JSON, or XML templates for your team to use.
+        <b>Tip:</b> Click "Create Template" to add Word, HTML, JSON, or XML templates for your team to use.
       </div>
 
       <div className="mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -222,7 +241,7 @@ export default function TemplatesIndex() {
             <TableRow key={t.name} className="border-t last:border-none hover:bg-gray-50">
               <TableCell>{t.name}</TableCell>
               <TableCell>{t.subject}</TableCell>
-              <TableCell>{t.task || <span className="text-gray-400">—</span>}</TableCell>
+              <TableCell>{t.task || <span className="text-gray-400">--</span>}</TableCell>
               <TableCell className="w-14">
                 <Button variant="ghost" size="icon" asChild>
                   <Link

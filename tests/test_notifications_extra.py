@@ -1,14 +1,17 @@
 import pytest
 
+from docreview360 import email_templates
 from docreview360.notifications import TEMPLATES, add_template, send_email, sent_emails
 
 
-def test_add_template_validation() -> None:
+def test_add_template_validation(tmp_path) -> None:
+    email_templates.reset_email_templates(root=tmp_path / "email_templates.json")
     with pytest.raises(ValueError):
         add_template("", "sub", "body")
 
 
-def test_send_email_validation() -> None:
+def test_send_email_validation(tmp_path) -> None:
+    email_templates.reset_email_templates(root=tmp_path / "email_templates.json")
     TEMPLATES.clear()
     add_template("tmpl", "hi {name}", "hello {name}")
     with pytest.raises(ValueError):

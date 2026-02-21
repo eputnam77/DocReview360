@@ -10,5 +10,437 @@
       "approved": false,
       "retired": false
     }
+  ],
+  "doc_type::Advisory Circular": [
+    {
+      "version": 1,
+      "content": "PGgxPkFkdmlzb3J5IENpcmN1bGFyPC9oMT4=",
+      "metadata": {
+        "label": "Advisory Circular (Default)",
+        "docType": "Advisory Circular",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Advisory Circular documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::After-Action Report": [
+    {
+      "version": 1,
+      "content": "PGgxPkFmdGVyLUFjdGlvbiBSZXBvcnQ8L2gxPg==",
+      "metadata": {
+        "label": "After-Action Report (Default)",
+        "docType": "After-Action Report",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for After-Action Report documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::API Manual / API Reference": [
+    {
+      "version": 1,
+      "content": "PGgxPkFQSSBNYW51YWwgLyBBUEkgUmVmZXJlbmNlPC9oMT4=",
+      "metadata": {
+        "label": "API Manual / API Reference (Default)",
+        "docType": "API Manual / API Reference",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for API Manual / API Reference documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Audit Report": [
+    {
+      "version": 1,
+      "content": "PGgxPkF1ZGl0IFJlcG9ydDwvaDE+",
+      "metadata": {
+        "label": "Audit Report (Default)",
+        "docType": "Audit Report",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Audit Report documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Briefing / Slide Deck": [
+    {
+      "version": 1,
+      "content": "PGgxPkJyaWVmaW5nIC8gU2xpZGUgRGVjazwvaDE+",
+      "metadata": {
+        "label": "Briefing / Slide Deck (Default)",
+        "docType": "Briefing / Slide Deck",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Briefing / Slide Deck documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Desk Guide": [
+    {
+      "version": 1,
+      "content": "PGgxPkRlc2sgR3VpZGU8L2gxPg==",
+      "metadata": {
+        "label": "Desk Guide (Default)",
+        "docType": "Desk Guide",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Desk Guide documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Exemption / Waiver": [
+    {
+      "version": 1,
+      "content": "PGgxPkV4ZW1wdGlvbiAvIFdhaXZlcjwvaDE+",
+      "metadata": {
+        "label": "Exemption / Waiver (Default)",
+        "docType": "Exemption / Waiver",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Exemption / Waiver documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::FAQ": [
+    {
+      "version": 1,
+      "content": "PGgxPkZBUTwvaDE+",
+      "metadata": {
+        "label": "FAQ (Default)",
+        "docType": "FAQ",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for FAQ documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Federal Register Notice": [
+    {
+      "version": 1,
+      "content": "PGgxPkZlZGVyYWwgUmVnaXN0ZXIgTm90aWNlPC9oMT4=",
+      "metadata": {
+        "label": "Federal Register Notice (Default)",
+        "docType": "Federal Register Notice",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Federal Register Notice documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Final Rule": [
+    {
+      "version": 1,
+      "content": "PGgxPkZpbmFsIFJ1bGU8L2gxPg==",
+      "metadata": {
+        "label": "Final Rule (Default)",
+        "docType": "Final Rule",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Final Rule documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Guidance": [
+    {
+      "version": 1,
+      "content": "PGgxPkd1aWRhbmNlPC9oMT4=",
+      "metadata": {
+        "label": "Guidance (Default)",
+        "docType": "Guidance",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Guidance documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::ICR": [
+    {
+      "version": 1,
+      "content": "PGgxPklDUjwvaDE+",
+      "metadata": {
+        "label": "ICR (Default)",
+        "docType": "ICR",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for ICR documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Letter / Correspondence": [
+    {
+      "version": 1,
+      "content": "PGgxPkxldHRlciAvIENvcnJlc3BvbmRlbmNlPC9oMT4=",
+      "metadata": {
+        "label": "Letter / Correspondence (Default)",
+        "docType": "Letter / Correspondence",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Letter / Correspondence documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Manual / Handbook": [
+    {
+      "version": 1,
+      "content": "PGgxPk1hbnVhbCAvIEhhbmRib29rPC9oMT4=",
+      "metadata": {
+        "label": "Manual / Handbook (Default)",
+        "docType": "Manual / Handbook",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Manual / Handbook documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Meeting Minutes": [
+    {
+      "version": 1,
+      "content": "PGgxPk1lZXRpbmcgTWludXRlczwvaDE+",
+      "metadata": {
+        "label": "Meeting Minutes (Default)",
+        "docType": "Meeting Minutes",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Meeting Minutes documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Memorandum": [
+    {
+      "version": 1,
+      "content": "PGgxPk1lbW9yYW5kdW08L2gxPg==",
+      "metadata": {
+        "label": "Memorandum (Default)",
+        "docType": "Memorandum",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Memorandum documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Order / Directive": [
+    {
+      "version": 1,
+      "content": "PGgxPk9yZGVyIC8gRGlyZWN0aXZlPC9oMT4=",
+      "metadata": {
+        "label": "Order / Directive (Default)",
+        "docType": "Order / Directive",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Order / Directive documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Policy": [
+    {
+      "version": 1,
+      "content": "PGgxPlBvbGljeTwvaDE+",
+      "metadata": {
+        "label": "Policy (Default)",
+        "docType": "Policy",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Policy documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Proposed Rule / NPRM": [
+    {
+      "version": 1,
+      "content": "PGgxPlByb3Bvc2VkIFJ1bGUgLyBOUFJNPC9oMT4=",
+      "metadata": {
+        "label": "Proposed Rule / NPRM (Default)",
+        "docType": "Proposed Rule / NPRM",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Proposed Rule / NPRM documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::README": [
+    {
+      "version": 1,
+      "content": "PGgxPlJFQURNRTwvaDE+",
+      "metadata": {
+        "label": "README (Default)",
+        "docType": "README",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for README documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Release Notes": [
+    {
+      "version": 1,
+      "content": "PGgxPlJlbGVhc2UgTm90ZXM8L2gxPg==",
+      "metadata": {
+        "label": "Release Notes (Default)",
+        "docType": "Release Notes",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Release Notes documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Report": [
+    {
+      "version": 1,
+      "content": "PGgxPlJlcG9ydDwvaDE+",
+      "metadata": {
+        "label": "Report (Default)",
+        "docType": "Report",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Report documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::SOP": [
+    {
+      "version": 1,
+      "content": "PGgxPlNPUDwvaDE+",
+      "metadata": {
+        "label": "SOP (Default)",
+        "docType": "SOP",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for SOP documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Special Conditions": [
+    {
+      "version": 1,
+      "content": "PGgxPlNwZWNpYWwgQ29uZGl0aW9uczwvaDE+",
+      "metadata": {
+        "label": "Special Conditions (Default)",
+        "docType": "Special Conditions",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Special Conditions documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Supporting Statement (PRA)": [
+    {
+      "version": 1,
+      "content": "PGgxPlN1cHBvcnRpbmcgU3RhdGVtZW50IChQUkEpPC9oMT4=",
+      "metadata": {
+        "label": "Supporting Statement (PRA) (Default)",
+        "docType": "Supporting Statement (PRA)",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Supporting Statement (PRA) documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::User Guide": [
+    {
+      "version": 1,
+      "content": "PGgxPlVzZXIgR3VpZGU8L2gxPg==",
+      "metadata": {
+        "label": "User Guide (Default)",
+        "docType": "User Guide",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for User Guide documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
+  ],
+  "doc_type::Web Content": [
+    {
+      "version": 1,
+      "content": "PGgxPldlYiBDb250ZW50PC9oMT4=",
+      "metadata": {
+        "label": "Web Content (Default)",
+        "docType": "Web Content",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Web Content documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false
+    }
   ]
 }

@@ -41,6 +41,8 @@ export function createTiptapApi(fetcher: typeof authenticatedFetch = authenticat
       fetcher(`${API}/projects/${docId}/preferences`),
     fetchDocument: (docId: string) =>
       fetcher(`${API}/documents/${docId}`),
+    fetchProject: (projectId: string) =>
+      fetcher(`${API}/projects/${projectId}`),
     savePreferences: (docId: string, prefs: Record<string, unknown>) =>
       fetcher(`${API}/projects/${docId}/preferences`, {
         method: "PUT",
@@ -540,6 +542,9 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [templates, setTemplates] = useState<any[]>([]);
   const [formattingLocked, setFormattingLocked] = useState(false);
   const [activeTemplateLabel, setActiveTemplateLabel] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectDocType, setProjectDocType] = useState<string | null>(null);
+  const defaultTemplateApplied = useRef(false);
 
   const [aiSuggestEnabled, setAiSuggestEnabled] = useState(false);
   interface Suggestion extends NewSuggestion {
@@ -625,10 +630,27 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         if (!doc) return;
         const sanitized = sanitizeHtml(doc.content || "");
         setContent(sanitized && sanitized.trim().length > 0 ? sanitized : "<p></p>");
+        if (doc.project && typeof doc.project === "string") {
+          setProjectId(doc.project);
+        }
         initialContentLoaded.current = true;
       })
       .catch(() => undefined);
   }, [api, docId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    api.fetchProject(projectId)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const docType = data.doc_type || data.docType || data.type;
+        if (typeof docType === "string" && docType.trim()) {
+          setProjectDocType(docType.trim());
+        }
+      })
+      .catch(() => undefined);
+  }, [api, projectId]);
 
   useEffect(() => {
     if (!docId) return;
@@ -905,6 +927,15 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     [api, docId, editor],
   );
 
+  const isBlankContent = useCallback((html: string) => {
+    const stripped = html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return stripped.length === 0;
+  }, []);
+
   function getCurrentBlock(editor: any) {
     if (editor.isActive("heading", { level: 1 })) return "h1";
     if (editor.isActive("heading", { level: 2 })) return "h2";
@@ -928,12 +959,13 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     }
     editor.commands.setContent("<p></p>");
     setContent("<p></p>");
+    defaultTemplateApplied.current = true;
     setFormattingLocked(false);
     setActiveTemplateLabel("Blank document");
     setSidebarOpen(false);
   }
 
-  async function handleTemplateLoad(filename: string) {
+  const handleTemplateLoad = useCallback(async (filename: string) => {
     if (!editor) {
       console.error("Editor not initialized");
       return;
@@ -949,6 +981,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       }
       editor.commands.setContent(sanitized);
       setContent(sanitized);
+      defaultTemplateApplied.current = true;
       const lockFormatting = Boolean(
         data.lockFormatting ??
           data.lock_formatting ??
@@ -972,7 +1005,45 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         }`,
       );
     }
-  }
+  }, [api, editor, templates]);
+
+  useEffect(() => {
+    if (!editor || defaultTemplateApplied.current) return;
+    if (!projectDocType || !templates.length) return;
+    if (!isBlankContent(content)) return;
+
+    const docTypeKey = projectDocType.trim().toLowerCase();
+    const normalize = (value: unknown) =>
+      typeof value === "string" ? value.trim().toLowerCase() : "";
+    const findTemplate = (predicate: (t: any) => boolean) =>
+      templates.find((t) => {
+        try {
+          return predicate(t);
+        } catch {
+          return false;
+        }
+      });
+
+    const defaultTemplate =
+      findTemplate((t) => {
+        const docType = normalize(t.docType || t.doc_type || t.type);
+        const isDefault =
+          t.default === true ||
+          t.isDefault === true ||
+          t.defaultTemplate === true ||
+          t.default_template === true;
+        return docType && docType === docTypeKey && isDefault;
+      }) ||
+      findTemplate((t) => {
+        const docType = normalize(t.docType || t.doc_type || t.type);
+        return docType && docType === docTypeKey;
+      });
+
+    if (defaultTemplate) {
+      defaultTemplateApplied.current = true;
+      handleTemplateLoad(defaultTemplate.id || defaultTemplate.name);
+    }
+  }, [content, editor, handleTemplateLoad, isBlankContent, projectDocType, templates]);
 
   function handleToggleLint() {
     if (lintEnabled) {

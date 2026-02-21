@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardHeader,
@@ -26,10 +26,20 @@ interface Profile {
   timeZone: string;
   dashboards?: string[];
   permissions?: string[];
+  roles?: string[];
   notificationEmail: boolean;
   notificationSMS: boolean;
   twoFA: boolean;
   theme: "system" | "light" | "dark";
+}
+
+interface RolePermissionSummary {
+  role: string;
+  permissions: string[];
+  count: number;
+  default_permissions: string[];
+  default_count: number;
+  is_default: boolean;
 }
 
 const DASHBOARD_CHOICES = [
@@ -38,11 +48,16 @@ const DASHBOARD_CHOICES = [
   { id: "admin", label: "Admin Dashboard" },
 ];
 
-const PERMISSION_CHOICES = [
-  { id: "user", label: "Standard User" },
-  { id: "editor", label: "Editor" },
+const ROLE_CHOICES = [
   { id: "admin", label: "Administrator" },
+  { id: "manager", label: "Program/Project Manager" },
+  { id: "user", label: "User (Contributor)" },
   { id: "reviewer", label: "Reviewer" },
+  { id: "editor", label: "Editor" },
+  { id: "sme", label: "Subject Matter Expert" },
+  { id: "observer", label: "Viewer (Read-only)" },
+  { id: "auditor", label: "Auditor" },
+  { id: "verifier", label: "Verifier" },
 ];
 
 const TIME_ZONES = [
@@ -67,6 +82,7 @@ const EMPTY_PROFILE: Profile = {
   timeZone: "America/New_York",
   dashboards: ["main"],
   permissions: ["user"],
+  roles: [],
   notificationEmail: true,
   notificationSMS: false,
   twoFA: false,
@@ -79,32 +95,46 @@ export default function ProfilePage() {
   const setTheme = useUserStore((s) => s.setTheme);
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [pictureFile, setPictureFile] = useState<File | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<RolePermissionSummary[]>([]);
 
   useEffect(() => {
     authenticatedFetch(`${API}/profile`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
-            const themeValue = ["system", "light", "dark"].includes(data.preferences?.theme)
-              ? data.preferences.theme
-              : ["system", "light", "dark"].includes(data.theme)
-                ? data.theme
-                : "system";
-            setProfile({
-              ...EMPTY_PROFILE,
-              ...data,
-              dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
-              permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
-              theme: themeValue,
-            });
-            setTheme(themeValue);
-          } else {
-            setProfile(EMPTY_PROFILE);
-          }
-        })
-        .catch(() => setProfile(EMPTY_PROFILE));
-
+          const themeValue = ["system", "light", "dark"].includes(data.preferences?.theme)
+            ? data.preferences.theme
+            : ["system", "light", "dark"].includes(data.theme)
+              ? data.theme
+              : "system";
+          setProfile({
+            ...EMPTY_PROFILE,
+            ...data,
+            dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
+            permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
+            roles: Array.isArray(data.roles) ? data.roles : [],
+            theme: themeValue,
+          });
+          setTheme(themeValue);
+        } else {
+          setProfile(EMPTY_PROFILE);
+        }
+      })
+      .catch(() => setProfile(EMPTY_PROFILE));
   }, [setTheme]);
+
+  useEffect(() => {
+    authenticatedFetch(`${API}/rbac/role-permissions`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setRolePermissions(data);
+        } else {
+          setRolePermissions([]);
+        }
+      })
+      .catch(() => setRolePermissions([]));
+  }, []);
 
   const updateField = (key: keyof Profile, value: any) =>
     setProfile((p) => ({ ...p, [key]: value }));
@@ -151,9 +181,29 @@ export default function ProfilePage() {
     setPictureFile(null);
   };
 
-  // Safeguard for undefined permissions/dashboards
   const userDashboards = Array.isArray(profile.dashboards) ? profile.dashboards : [];
-  const userPermissions = Array.isArray(profile.permissions) ? profile.permissions : [];
+  const userRoles = Array.isArray(profile.roles) ? profile.roles : [];
+
+  const roleLabel = useMemo(() => {
+    const mapping = new Map<string, string>();
+    ROLE_CHOICES.forEach((role) => mapping.set(role.id, role.label));
+    return mapping;
+  }, []);
+
+  const rolePermissionMap = useMemo(() => {
+    const mapping = new Map<string, RolePermissionSummary>();
+    rolePermissions.forEach((role) => mapping.set(role.role, role));
+    return mapping;
+  }, [rolePermissions]);
+
+  const effectivePermissions = useMemo(() => {
+    const permissions = new Set<string>();
+    userRoles.forEach((role) => {
+      const summary = rolePermissionMap.get(role);
+      summary?.permissions.forEach((perm) => permissions.add(perm));
+    });
+    return Array.from(permissions).sort();
+  }, [rolePermissionMap, userRoles]);
 
   return (
     <div className="p-8 space-y-8 max-w-3xl">
@@ -302,19 +352,37 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle>System Permissions</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="mb-2 text-gray-600 text-sm">
-            Your current system role(s):
+        <CardContent className="space-y-3">
+          <div>
+            <div className="mb-2 text-gray-600 text-sm">
+              Your current system role(s):
+            </div>
+            <div className="bg-gray-50 border rounded px-4 py-2 font-semibold">
+              {userRoles.length === 0
+                ? <span className="text-gray-400">No role assigned</span>
+                : userRoles
+                    .map((role) => {
+                      const summary = rolePermissionMap.get(role);
+                      const count = summary?.count ?? 0;
+                      return `${roleLabel.get(role) || role} (${count})`;
+                    })
+                    .join(", ")
+              }
+            </div>
           </div>
-          <div className="bg-gray-50 border rounded px-4 py-2 mb-2 font-semibold">
-            {userPermissions.length === 0
-              ? <span className="text-gray-400">No role assigned</span>
-              : PERMISSION_CHOICES.filter(p => userPermissions.includes(p.id))
-                  .map(p => p.label).join(", ")
-            }
+          <div>
+            <div className="mb-2 text-gray-600 text-sm">
+              Effective permissions ({effectivePermissions.length}):
+            </div>
+            <div className="text-xs text-gray-500">
+              {effectivePermissions.length
+                ? <span className="font-mono">{effectivePermissions.join(", ")}</span>
+                : <span className="text-gray-400">No permissions available</span>
+              }
+            </div>
           </div>
-          <div className="text-xs text-gray-500 mb-1">
-            Roles control your access and abilities in the system.
+          <div className="text-xs text-gray-500">
+            Permission counts are based on role defaults or configured overrides.
           </div>
         </CardContent>
       </Card>
@@ -350,10 +418,6 @@ export default function ProfilePage() {
             <span className={profile.twoFA ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
               {profile.twoFA ? "Enabled" : "Disabled"}
             </span>
-            {/* Optional: 2FA enable/disable buttons */}
-            {/* <Button size="sm" onClick={() => updateField("twoFA", !profile.twoFA)}>
-              {profile.twoFA ? "Disable" : "Enable"}
-            </Button> */}
           </div>
         </CardContent>
       </Card>
@@ -396,4 +460,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

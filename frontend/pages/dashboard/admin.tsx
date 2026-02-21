@@ -27,6 +27,7 @@ type Log = { timestamp: string; action: string; metadata?: { user?: string; ip?:
 type ErrorStat = { type: string; count: number };
 type APIMetric = { endpoint: string; requests: number; errors: number };
 type RoleStat = { role: string; count: number };
+interface RolePermissionSummary { role: string; permissions: string[]; count: number; default_permissions: string[]; default_count: number; is_default: boolean; }
 type SessionStat = { id: string; user: string; ip: string; active: boolean; started: string };
 type HealthStat = { name: string; value: string; status: "ok" | "warning" | "down" };
 
@@ -40,6 +41,7 @@ export default function AdminDashboardPage() {
   const [errorStats, setErrorStats] = useState<ErrorStat[]>([]);
   const [apiMetrics, setApiMetrics] = useState<APIMetric[]>([]);
   const [roleStats, setRoleStats] = useState<RoleStat[]>([]);
+  const [rolePermissions, setRolePermissions] = useState<RolePermissionSummary[]>([]);
   const [sessionStats, setSessionStats] = useState<SessionStat[]>([]);
   const [healthStats, setHealthStats] = useState<HealthStat[]>([]);
   const [userCount, setUserCount] = useState(0);
@@ -81,7 +83,17 @@ export default function AdminDashboardPage() {
     },
   });
 
+  const loadRolePermissions = () => {
+    authenticatedFetch("/rbac/role-permissions")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: RolePermissionSummary[]) => {
+        setRolePermissions(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setRolePermissions([]));
+  };
+
   useEffect(() => {
+    loadRolePermissions();
     authenticatedFetch("/users")
       .then((r) => (r.ok ? r.json() : []))
       .then((users: any[]) => {
@@ -107,6 +119,12 @@ export default function AdminDashboardPage() {
         setRoleStats([]);
       });
   }, []);
+
+  const rolePermissionMap = useMemo(() => {
+    const mapping = new Map<string, RolePermissionSummary>();
+    rolePermissions.forEach((item) => mapping.set(item.role, item));
+    return mapping;
+  }, [rolePermissions]);
 
   useEffect(() => {
     if (data) {
@@ -185,7 +203,10 @@ export default function AdminDashboardPage() {
                   dataKey="count"
                   nameKey="role"
                   cx="50%" cy="50%" outerRadius={80}
-                  label={({ role, count }) => `${role}: ${count}`}
+                  label={({ role, count }) => {
+                    const permCount = rolePermissionMap.get(role)?.count ?? 0;
+                    return `${role} (${permCount} perms): ${count}`;
+                  }}
                 >
                   {roleStats.map((entry, idx) => (
                     <Cell key={`cell-role-${idx}`} fill={COLORS[idx % COLORS.length]} />

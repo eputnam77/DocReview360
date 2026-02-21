@@ -1,10 +1,12 @@
 import pytest
 
+import docreview360.email_templates as et
 import docreview360.notifications as n
 import docreview360.search as search
 
 
-def test_add_template_validates_subject_and_body():
+def test_add_template_validates_subject_and_body(tmp_path) -> None:
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
     original = n.TEMPLATES.copy()
     try:
         with pytest.raises(TypeError):
@@ -20,7 +22,8 @@ def test_add_template_validates_subject_and_body():
         n.TEMPLATES.update(original)
 
 
-def test_send_email_requires_string_template():
+def test_send_email_requires_string_template(tmp_path) -> None:
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
     original = n.TEMPLATES.copy()
     try:
         with pytest.raises(TypeError) as excinfo:
@@ -31,7 +34,8 @@ def test_send_email_requires_string_template():
         n.TEMPLATES.update(original)
 
 
-def test_send_email_errors_and_defaults(monkeypatch):
+def test_send_email_errors_and_defaults(monkeypatch, tmp_path) -> None:
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
     original = n.TEMPLATES.copy()
     n.sent_emails.clear()
     try:

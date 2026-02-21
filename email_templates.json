@@ -1,0 +1,74 @@
+[
+  {
+    "name": "default",
+    "subject": "{subject}",
+    "body": "{body}",
+    "task": "system"
+  },
+  {
+    "name": "due_reminder",
+    "subject": "Reminder: {item} due {due_date}",
+    "body": "{item} is due on {due_date}.",
+    "task": "reminder"
+  },
+  {
+    "name": "completion_notice",
+    "subject": "{item} completed",
+    "body": "{item} has been completed.",
+    "task": "notification"
+  },
+  {
+    "name": "review_request",
+    "subject": "Review requested: {document_title}",
+    "body": "Please review {document_title}. {action_url}",
+    "task": "review"
+  },
+  {
+    "name": "approval_request",
+    "subject": "Approval requested: {document_title}",
+    "body": "Please approve {document_title}. {action_url}",
+    "task": "approval"
+  },
+  {
+    "name": "signature_request",
+    "subject": "Signature requested: {document_title}",
+    "body": "Please sign {document_title}. {action_url}",
+    "task": "signature"
+  },
+  {
+    "name": "comment_added",
+    "subject": "New comment: {document_title}",
+    "body": "{commenter} commented: {comment}. {action_url}",
+    "task": "comment"
+  },
+  {
+    "name": "project_assigned",
+    "subject": "Project assigned: {project_name}",
+    "body": "You are assigned to {project_name}. {action_url}",
+    "task": "assignment"
+  },
+  {
+    "name": "phase_changed",
+    "subject": "Phase update: {project_name}",
+    "body": "{project_name} moved to {phase}.",
+    "task": "status"
+  },
+  {
+    "name": "overdue_notice",
+    "subject": "{item} overdue",
+    "body": "Overdue: {item}. {action_url}",
+    "task": "reminder"
+  },
+  {
+    "name": "review_complete",
+    "subject": "Review complete: {document_title}",
+    "body": "Review complete for {document_title}.",
+    "task": "review"
+  },
+  {
+    "name": "approval_complete",
+    "subject": "Approval complete: {document_title}",
+    "body": "Approval complete for {document_title}.",
+    "task": "approval"
+  }
+]

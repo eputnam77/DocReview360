@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
+import re
 from collections import deque
 import hashlib
 import hmac
@@ -21,6 +24,7 @@ from typing import Any, Literal
 from dotenv import load_dotenv
 from fastapi import (
     Depends,
+    Body,
     FastAPI,
     File,
     Form,
@@ -292,6 +296,126 @@ def _request_source(request: Request) -> str:
     return "unknown"
 
 
+
+
+def _seed_default_document_templates() -> None:
+    """Seed one TipTap HTML template per document type when missing."""
+    for doc_type in list_document_types():
+        name = f"doc_type::{doc_type.name.strip()}"
+        if get_latest_template(name):
+            continue
+        content = doc_type.template or f"<h1>{doc_type.name}</h1>"
+        metadata = {
+            "label": f"{doc_type.name} (Default)",
+            "docType": doc_type.name,
+            "format": "HTML",
+            "type": "tiptap",
+            "description": f"Default template for {doc_type.name} documents.",
+            "default": True,
+        }
+        store_template(name, content.encode("utf-8"), metadata)
+        try:
+            approve_template(name)
+        except Exception:
+            pass
+
+
+def _seed_default_email_templates() -> None:
+    """Seed email templates used by notifications when missing."""
+    defaults = [
+        {
+            "name": "approval_complete",
+            "subject": "Approval complete: {document_title}",
+            "body": "Approval complete for {document_title}.",
+            "task": "approval",
+        },
+        {
+            "name": "approval_request",
+            "subject": "Approval requested: {document_title}",
+            "body": "Please approve {document_title}. {action_url}",
+            "task": "approval",
+        },
+        {
+            "name": "comment_added",
+            "subject": "New comment: {document_title}",
+            "body": "{commenter} commented: {comment}. {action_url}",
+            "task": "comment",
+        },
+        {
+            "name": "completion_notice",
+            "subject": "{item} complete",
+            "body": "Completed: {item}.",
+            "task": "notification",
+        },
+        {
+            "name": "default",
+            "subject": "{subject}",
+            "body": "{body}",
+            "task": "system",
+        },
+        {
+            "name": "due_reminder",
+            "subject": "{item} due {due_date}",
+            "body": "Due {due_date}: {item}.",
+            "task": "reminder",
+        },
+        {
+            "name": "overdue_notice",
+            "subject": "{item} overdue",
+            "body": "Overdue: {item}. {action_url}",
+            "task": "reminder",
+        },
+        {
+            "name": "phase_changed",
+            "subject": "Phase update: {project_name}",
+            "body": "{project_name} moved to {phase}.",
+            "task": "status",
+        },
+        {
+            "name": "project_assigned",
+            "subject": "Project assigned: {project_name}",
+            "body": "You are assigned to {project_name}. {action_url}",
+            "task": "assignment",
+        },
+        {
+            "name": "review_complete",
+            "subject": "Review complete: {document_title}",
+            "body": "Review complete for {document_title}.",
+            "task": "review",
+        },
+        {
+            "name": "review_request",
+            "subject": "Review requested: {document_title}",
+            "body": "Please review {document_title}. {action_url}",
+            "task": "review",
+        },
+        {
+            "name": "signature_request",
+            "subject": "Signature requested: {document_title}",
+            "body": "Please sign {document_title}. {action_url}",
+            "task": "signature",
+        },
+    ]
+    for tmpl in defaults:
+        existing = get_email_template(tmpl["name"])
+        if existing is not None:
+            if not existing.subject.strip() or not existing.body.strip():
+                try:
+                    update_email_template(
+                        tmpl["name"],
+                        subject=tmpl["subject"],
+                        body=tmpl["body"],
+                        task=tmpl.get("task"),
+                    )
+                except Exception:
+                    continue
+            continue
+        try:
+            create_email_template(
+                tmpl["name"], tmpl["subject"], tmpl["body"], task=tmpl.get("task")
+            )
+        except Exception:
+            continue
 SEED_TEMPLATES = [
     {
         "name": "faa_ac",
@@ -559,6 +683,8 @@ async def _lifespan(app: FastAPI):
     for tpl in SEED_TEMPLATES:
         if not get_latest_template(tpl["name"]):
             store_template(tpl["name"], tpl["content"].encode("utf-8"), tpl.get("metadata"))
+    _seed_default_document_templates()
+    _seed_default_email_templates()
     schedule_archive_purge()
     warm_ml_sessions()
     seed_demo_data()
@@ -742,6 +868,97 @@ class UserSummary(BaseModel):
     active: bool
 
 
+class RolePermissionUpdate(BaseModel):
+    """Payload for updating role permissions."""
+
+    permissions: list[str] = Field(default_factory=list)
+
+
+class RolePermissionSummary(BaseModel):
+    """Role permission summary with default counts."""
+
+    role: str
+    permissions: list[str]
+    count: int
+    default_permissions: list[str]
+    default_count: int
+    is_default: bool
+
+
+class UserImportError(BaseModel):
+    """Error detail for a single imported row."""
+
+    row: int | None = None
+    username: str | None = None
+    error: str
+
+
+class UserImportResult(BaseModel):
+    """Summary of user import results."""
+
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+    errors: list[UserImportError] = Field(default_factory=list)
+
+
+def _normalize_import_header(name: str) -> str:
+    return name.strip().lower().replace(" ", "_")
+
+
+def _parse_import_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        cleaned = value.strip().lower()
+        if cleaned in {"1", "true", "yes", "y", "on"}:
+            return True
+        if cleaned in {"0", "false", "no", "n", "off"}:
+            return False
+    return None
+
+
+def _split_import_roles(value: Any) -> list[str] | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        raw_items = value
+    else:
+        raw_items = re.split(r"[;,|]", str(value))
+    roles = [str(item).strip().lower() for item in raw_items if str(item).strip()]
+    return roles
+
+def _normalize_role_permission(value: str) -> str | None:
+    cleaned = value.strip().lower()
+    return cleaned if cleaned else None
+
+
+
+def _update_role_permissions(role: str, permissions: list[str]) -> None:
+    settings = settings_manager.load_settings(settings_manager.SETTINGS_FILE)
+    rbac_cfg = settings.get("rbac")
+    if not isinstance(rbac_cfg, dict):
+        rbac_cfg = {}
+    roles_cfg = rbac_cfg.get("roles")
+    if not isinstance(roles_cfg, dict):
+        roles_cfg = {}
+    normalized = []
+    for perm in permissions:
+        if not isinstance(perm, str):
+            continue
+        cleaned = _normalize_role_permission(perm)
+        if cleaned:
+            normalized.append(cleaned)
+    roles_cfg[role] = sorted(set(normalized))
+    rbac_cfg["roles"] = roles_cfg
+    settings_manager.update_setting("rbac", rbac_cfg, settings_manager.SETTINGS_FILE)
+    rbac.reload_role_permissions(force=True)
+
+
 def _generate_password() -> str:
     policy = auth._password_policy()
     class_sets: dict[str, str] = {
@@ -882,6 +1099,83 @@ def _enforce_document_access(document: DocumentModel, current_user: auth.User) -
     raise HTTPException(status_code=403, detail="Forbidden")
 
 
+@app.put("/rbac/role-permissions/{role}", response_model=RolePermissionSummary)
+async def update_role_permissions_endpoint(
+    role: str,
+    body: RolePermissionUpdate,
+    user: auth.User = Depends(require_role("admin")),
+) -> RolePermissionSummary:
+    """Update permissions for a role and persist overrides."""
+
+    normalized_role = role.strip().lower()
+    if not normalized_role:
+        raise HTTPException(status_code=400, detail="Role required")
+    _update_role_permissions(normalized_role, body.permissions)
+    current = rbac.get_role_permissions()
+    defaults = getattr(rbac, "_DEFAULT_ROLE_PERMISSIONS", {})
+    perms = sorted(current.get(normalized_role, set()))
+    default_perms = sorted(defaults.get(normalized_role, set()))
+    return RolePermissionSummary(
+        role=normalized_role,
+        permissions=perms,
+        count=len(perms),
+        default_permissions=default_perms,
+        default_count=len(default_perms),
+        is_default=set(perms) == set(default_perms),
+    )
+
+
+@app.delete("/rbac/role-permissions/{role}", response_model=RolePermissionSummary)
+async def reset_role_permissions_endpoint(
+    role: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> RolePermissionSummary:
+    """Reset a role back to default permissions."""
+
+    normalized_role = role.strip().lower()
+    if not normalized_role:
+        raise HTTPException(status_code=400, detail="Role required")
+    defaults = getattr(rbac, "_DEFAULT_ROLE_PERMISSIONS", {})
+    default_perms = sorted(defaults.get(normalized_role, set()))
+    _update_role_permissions(normalized_role, default_perms)
+    current = rbac.get_role_permissions()
+    perms = sorted(current.get(normalized_role, set()))
+    return RolePermissionSummary(
+        role=normalized_role,
+        permissions=perms,
+        count=len(perms),
+        default_permissions=default_perms,
+        default_count=len(default_perms),
+        is_default=set(perms) == set(default_perms),
+    )
+
+
+@app.get("/rbac/role-permissions", response_model=list[RolePermissionSummary])
+async def list_role_permissions_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[RolePermissionSummary]:
+    """Return role permissions with default counts for UI display."""
+
+    current = rbac.get_role_permissions()
+    defaults = getattr(rbac, "_DEFAULT_ROLE_PERMISSIONS", {})
+    roles = sorted(set(defaults) | set(current))
+    summaries: list[RolePermissionSummary] = []
+    for role in roles:
+        perms = sorted(current.get(role, set()))
+        default_perms = sorted(defaults.get(role, set()))
+        summaries.append(
+            RolePermissionSummary(
+                role=role,
+                permissions=perms,
+                count=len(perms),
+                default_permissions=default_perms,
+                default_count=len(default_perms),
+                is_default=set(perms) == set(default_perms),
+            )
+        )
+    return summaries
+
+
 @app.get("/users", response_model=list[UserSummary])
 async def list_users_endpoint(
     user: auth.User = Depends(require_role("admin")),
@@ -890,6 +1184,164 @@ async def list_users_endpoint(
 
     repo = auth._get_user_repository()
     return [_user_summary(record.username) for record in repo.list_users()]
+
+
+@app.post("/users/import", response_model=UserImportResult)
+@app.post("/api/users/import", response_model=UserImportResult)
+async def import_users_endpoint(
+    file: UploadFile | None = File(default=None),
+    payload: list[dict[str, Any]] | None = Body(default=None),
+    user: auth.User = Depends(require_role("admin")),
+) -> UserImportResult:
+    """Import users from CSV or JSON payload."""
+
+    if file is None and payload is None:
+        raise HTTPException(status_code=400, detail="Provide a CSV file or JSON payload")
+
+    rows: list[dict[str, Any]] = []
+    roles_present = False
+
+    if file is not None:
+        raw = await file.read()
+        try:
+            text = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = raw.decode("utf-8", errors="replace")
+        reader = csv.DictReader(io.StringIO(text))
+        if reader.fieldnames is None:
+            raise HTTPException(status_code=400, detail="CSV is missing a header row")
+        roles_present = any(
+            _normalize_import_header(name) in {"roles", "role"}
+            for name in reader.fieldnames
+            if name
+        )
+        for row in reader:
+            rows.append({
+                _normalize_import_header(k): v
+                for k, v in row.items()
+                if k is not None
+            })
+
+    if payload is not None:
+        if not isinstance(payload, list):
+            raise HTTPException(status_code=400, detail="JSON payload must be a list")
+        for item in payload:
+            if isinstance(item, dict):
+                normalized = {
+                    _normalize_import_header(str(k)): v for k, v in item.items()
+                }
+                if "roles" in normalized or "role" in normalized:
+                    roles_present = True
+                rows.append(normalized)
+            else:
+                rows.append({"username": str(item)})
+
+    if not rows:
+        return UserImportResult()
+
+    repo = auth._get_user_repository()
+    result = UserImportResult()
+
+    for idx, raw in enumerate(rows, start=1):
+        try:
+            username = str(
+                raw.get("username")
+                or raw.get("email")
+                or raw.get("user")
+                or ""
+            ).strip()
+            if not username:
+                result.errors.append(UserImportError(row=idx, error="Missing username"))
+                result.skipped += 1
+                continue
+
+            roles_value: list[str] | None = None
+            if roles_present:
+                roles_raw = raw.get("roles", raw.get("role"))
+                roles_value = _split_import_roles(roles_raw)
+                if roles_value is None:
+                    roles_value = []
+
+            active_raw = raw.get("active")
+            disabled_raw = raw.get("disabled")
+            active_val = _parse_import_bool(active_raw)
+            disabled_val = _parse_import_bool(disabled_raw)
+            if active_val is None and disabled_val is not None:
+                active_val = not disabled_val
+
+            password_raw = raw.get("password")
+            password = (
+                str(password_raw).strip()
+                if isinstance(password_raw, str) and password_raw.strip()
+                else None
+            )
+
+            existing = repo.get_user(username)
+            row_status = "skipped"
+
+            if existing is None:
+                active = True if active_val is None else active_val
+                repo.create_user(
+                    username, password or _generate_password(), active=active
+                )
+                if roles_value is not None:
+                    rbac.set_user_roles(
+                        username,
+                        roles_value,
+                        actor="system",
+                        context={"source": "import"},
+                    )
+                row_status = "created"
+            else:
+                updated_any = False
+                active = existing.active if active_val is None else active_val
+                if password:
+                    repo.create_user(username, password, active=active)
+                    updated_any = True
+                elif active_val is not None and active != existing.active:
+                    repo.set_active(username, active)
+                    updated_any = True
+                if roles_value is not None:
+                    rbac.set_user_roles(
+                        username,
+                        roles_value,
+                        actor="system",
+                        context={"source": "import"},
+                    )
+                    updated_any = True
+                row_status = "updated" if updated_any else "skipped"
+
+            profile_updates: dict[str, Any] = {}
+            display_name = raw.get("display_name") or raw.get("displayname")
+            if isinstance(display_name, str) and display_name.strip():
+                profile_updates["displayName"] = display_name.strip()
+            organization = raw.get("organization") or raw.get("org") or raw.get("department")
+            if isinstance(organization, str) and organization.strip():
+                profile_updates["department"] = organization.strip()
+            email = raw.get("email")
+            if isinstance(email, str) and email.strip():
+                profile_updates["email"] = email.strip()
+            if profile_updates:
+                update_profile_data(username, profile_updates)
+                if existing is not None and row_status == "skipped":
+                    row_status = "updated"
+
+            if row_status == "created":
+                result.created += 1
+            elif row_status == "updated":
+                result.updated += 1
+            else:
+                result.skipped += 1
+        except Exception as exc:
+            result.errors.append(
+                UserImportError(
+                    row=idx,
+                    username=str(raw.get("username") or raw.get("email") or ""),
+                    error=str(exc),
+                )
+            )
+
+    return result
 
 
 @app.post("/users", response_model=UserSummary, status_code=201)
@@ -2635,6 +3087,7 @@ async def list_templates_endpoint(
     request: Request,
     user: auth.User = Depends(auth.get_current_user),
 ) -> list[dict[str, Any]]:
+    _seed_default_document_templates()
     items: list[dict[str, Any]] = []
     is_admin = has_role(user.username, "admin")
     for name, ver in list_stored_templates().items():
@@ -2808,6 +3261,8 @@ class EmailTemplatePayload(BaseModel):
 async def list_email_templates_endpoint(
     user: auth.User = Depends(require_role("admin")),
 ) -> list[dict[str, Any]]:
+    _seed_default_email_templates()
+    templates = sorted(list_email_templates(), key=lambda t: t.name.lower())
     return [
         {
             "name": tmpl.name,
@@ -2815,7 +3270,7 @@ async def list_email_templates_endpoint(
             "body": tmpl.body,
             "task": tmpl.task,
         }
-        for tmpl in list_email_templates()
+        for tmpl in templates
     ]
 
 

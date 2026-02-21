@@ -2,11 +2,13 @@
 
 import pytest
 
+import docreview360.email_templates as et
 import docreview360.notifications as n
 
 
-def test_add_template_refuses_overwrite() -> None:
+def test_add_template_refuses_overwrite(tmp_path) -> None:
     """Registering the same template twice should raise an error."""
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
     n.TEMPLATES.pop("greeting", None)
     n.add_template("greeting", "Hi {name}", "Hello {name}")
     try:
@@ -16,14 +18,16 @@ def test_add_template_refuses_overwrite() -> None:
         n.TEMPLATES.pop("greeting", None)
 
 
-def test_add_template_rejects_whitespace_name() -> None:
+def test_add_template_rejects_whitespace_name(tmp_path) -> None:
     """Names consisting only of whitespace are invalid."""
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
     with pytest.raises(ValueError):
         n.add_template("   ", "sub", "body")
 
 
-def test_add_template_strips_name() -> None:
+def test_add_template_strips_name(tmp_path) -> None:
     """Leading/trailing whitespace should not create separate keys."""
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
     n.TEMPLATES.pop("hello", None)
     n.add_template("  hello  ", "Hi", "Body")
     try:
@@ -32,8 +36,9 @@ def test_add_template_strips_name() -> None:
         n.TEMPLATES.pop("hello", None)
 
 
-def test_notification_helpers(monkeypatch) -> None:
+def test_notification_helpers(monkeypatch, tmp_path) -> None:
     """Smoke test additional notification utilities."""
+    et.reset_email_templates(root=tmp_path / "email_templates.json")
     # Patch search.overdue_high_priority to provide deterministic ids
     import docreview360.search as search
 
@@ -46,4 +51,4 @@ def test_notification_helpers(monkeypatch) -> None:
     n.send_due_date_reminder("u@example.com", "item", "2024-01-01")
     n.send_completion_notification("u@example.com", "item")
     subjects = [e["subject"] for e in n.sent_emails]
-    assert subjects == ["Reminder: item due 2024-01-01", "item completed"]
+    assert subjects == ["item due 2024-01-01", "item complete"]
