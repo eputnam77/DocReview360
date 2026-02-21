@@ -98,8 +98,11 @@ export const useUserStore = create<UserState>((set, get) => ({
       const prefsResp = await authenticatedFetch("/profile");
       if (prefsResp.ok) {
         const pdata = await prefsResp.json();
-        const theme = ["system", "light", "dark"].includes(pdata.preferences?.theme)
-          ? pdata.preferences.theme
+        const prefTheme = pdata?.preferences?.theme;
+        const rootTheme = pdata?.theme;
+        const themeCandidate = typeof prefTheme === "string" ? prefTheme : rootTheme;
+        const theme = ["system", "light", "dark"].includes(themeCandidate)
+          ? (themeCandidate as "system" | "light" | "dark")
           : "system";
         set({ theme });
       }
@@ -130,3 +133,4 @@ export const useUserStore = create<UserState>((set, get) => ({
     });
   },
 }));
+

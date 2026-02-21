@@ -1,6 +1,7 @@
 import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "react-hot-toast";
 import "../styles/globals.css";
 import "../styles/tiptap.css";
 import Sidebar from "../components/workflow/Sidebar";
@@ -101,6 +102,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <div className="flex min-h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
           <Sidebar />
           <main className="flex-1 overflow-y-auto">
+            <Toaster position="top-right" />
             <Component {...pageProps} />
           </main>
         </div>

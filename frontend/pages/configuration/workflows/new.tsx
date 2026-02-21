@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "@/components/ui/card";
@@ -84,6 +84,8 @@ export default function NewWorkflowPage() {
 
   const handleSave = async () => {
     const payload = { name, description, steps };
+    let createdTemplateId = "";
+
     try {
       const res = await fetch("/api/workflow-templates", {
         method: "POST",
@@ -93,6 +95,9 @@ export default function NewWorkflowPage() {
       if (!res.ok) {
         throw new Error("Failed to save workflow");
       }
+      const created = await res.json();
+      createdTemplateId =
+        typeof created?.id === "string" && created.id.trim() ? created.id : name;
     } catch (error) {
       toast.error((error as Error).message);
       return;
@@ -100,17 +105,20 @@ export default function NewWorkflowPage() {
 
     for (const docType of docTypesSelected) {
       try {
-        const res = await fetch(`/api/document-types/${docType}`);
-        if (res.ok) {
-          const doc = await res.json();
-          const workflow = Array.isArray(doc.workflow) ? doc.workflow : [];
-          if (!workflow.includes(name)) workflow.push(name);
-          await fetch(`/api/document-types/${docType}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...doc, workflow }),
-          });
+        const res = await fetch(/api/document-types/);
+        if (!res.ok) {
+          continue;
         }
+
+        const doc = await res.json();
+        await fetch(/api/document-types/, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...doc,
+            default_template_id: createdTemplateId,
+          }),
+        });
       } catch {
         // ignore errors in development
       }
@@ -283,18 +291,18 @@ export default function NewWorkflowPage() {
                         disabled={idx === 0}
                         className="p-0 text-xs"
                         title="Move up"
-                      >↑</button>
+                      >â†‘</button>
                       <button
                         onClick={() => moveStep(idx, idx + 1)}
                         disabled={idx === steps.length - 1}
                         className="p-0 text-xs"
                         title="Move down"
-                      >↓</button>
+                      >â†“</button>
                       <GripVertical className="w-3 h-3 text-gray-400 ml-2" />
                     </div>
                   </TableCell>
                   <TableCell>{s.role}</TableCell>
-                  <TableCell>{s.user || <span className="text-gray-400">—</span>}</TableCell>
+                  <TableCell>{s.user || <span className="text-gray-400">â€”</span>}</TableCell>
                   <TableCell>
                     <span className={cn(
                       "px-2 py-1 rounded text-xs font-medium",
@@ -338,3 +346,4 @@ export default function NewWorkflowPage() {
     </div>
   );
 }
+

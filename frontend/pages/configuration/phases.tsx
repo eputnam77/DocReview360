@@ -1,12 +1,19 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -15,6 +22,12 @@ import { toast } from "react-hot-toast";
 interface Phase {
   id: string;
   name: string;
+  workflowTemplateId?: string;
+}
+
+interface WorkflowTemplate {
+  id: string;
+  name?: string;
 }
 
 interface UsageProject {
@@ -34,8 +47,46 @@ interface UsageInfo {
   workflows?: UsageWorkflow[];
 }
 
+const NONE_WORKFLOW_VALUE = "__none__";
+
+function normalizePhases(items: unknown): Phase[] {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (typeof item === "string") {
+        const trimmed = item.trim();
+        return trimmed ? { id: trimmed, name: trimmed } : null;
+      }
+      if (item && typeof item === "object") {
+        const value = item as {
+          id?: unknown;
+          name?: unknown;
+          workflow_template_id?: unknown;
+          workflowTemplateId?: unknown;
+        };
+        const name =
+          typeof value.name === "string" && value.name.trim()
+            ? value.name.trim()
+            : "";
+        if (!name) return null;
+        const id =
+          typeof value.id === "string" && value.id.trim() ? value.id.trim() : name;
+        const workflowTemplateId =
+          typeof value.workflow_template_id === "string" && value.workflow_template_id.trim()
+            ? value.workflow_template_id.trim()
+            : typeof value.workflowTemplateId === "string" && value.workflowTemplateId.trim()
+              ? value.workflowTemplateId.trim()
+              : undefined;
+        return { id, name, workflowTemplateId };
+      }
+      return null;
+    })
+    .filter(Boolean) as Phase[];
+}
+
 export default function PhasesPage() {
   const [phases, setPhases] = useState<Phase[]>([]);
+  const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplate[]>([]);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -43,115 +94,154 @@ export default function PhasesPage() {
   const [replacementPhase, setReplacementPhase] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
 
-  useEffect(() => {
-    const normalizePhases = (items: unknown): Phase[] => {
-      if (!Array.isArray(items)) return [];
-      const list: Phase[] = items
-        .map((item) => {
-          if (typeof item === "string") {
-            return { id: item, name: item };
-          }
-          if (item && typeof item === "object") {
-            const anyItem = item as { id?: unknown; name?: unknown };
-            const name =
-              typeof anyItem.name === "string"
-                ? anyItem.name
-                : String(anyItem.name ?? "");
-            const id =
-              typeof anyItem.id === "string" && anyItem.id
-                ? anyItem.id
-                : name;
-            if (name) return { id, name };
-          }
-          return null;
-        })
-        .filter(Boolean) as Phase[];
-      return list.length ? list : [];
-    };
-
-    (async () => {
-      try {
-        const r = await fetch("/api/phases");
-        if (r.ok) {
-          const data = await r.json();
-          setPhases(normalizePhases(data));
-        } else {
-          setPhases([]);
+  const loadPhases = async () => {
+    try {
+      const configRes = await fetch("/api/phases/config");
+      if (configRes.ok) {
+        const data = await configRes.json();
+        const normalized = normalizePhases(data);
+        if (normalized.length > 0) {
+          setPhases(normalized);
+          return;
         }
-      } catch {
-        setPhases([]);
       }
-    })();
+    } catch {
+      // fallback below
+    }
+
+    try {
+      const res = await fetch("/api/phases");
+      if (!res.ok) {
+        setPhases([]);
+        return;
+      }
+      const data = await res.json();
+      setPhases(normalizePhases(data));
+    } catch {
+      setPhases([]);
+    }
+  };
+
+  const loadWorkflowTemplates = async () => {
+    try {
+      const res = await fetch("/api/workflow-templates");
+      if (!res.ok) {
+        setWorkflowTemplates([]);
+        return;
+      }
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        setWorkflowTemplates([]);
+        return;
+      }
+      const items: WorkflowTemplate[] = data
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const value = item as { id?: unknown; name?: unknown };
+          const id = typeof value.id === "string" ? value.id : "";
+          if (!id) return null;
+          const name = typeof value.name === "string" ? value.name : undefined;
+          return { id, name };
+        })
+        .filter(Boolean) as WorkflowTemplate[];
+      setWorkflowTemplates(items);
+    } catch {
+      setWorkflowTemplates([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadPhases();
+    void loadWorkflowTemplates();
   }, []);
 
   const checkUsage = async (phaseName: string): Promise<UsageInfo | null> => {
     try {
-      const response = await fetch(
-        `/api/phases/${encodeURIComponent(phaseName)}/usage`,
-      );
-      if (response.ok) {
-        const usage = (await response.json()) as UsageInfo;
-        setUsageInfo(usage);
-        return usage;
-      }
-    } catch (error) {
-      console.error("Error checking usage:", error);
+      const response = await fetch(`/api/phases/${encodeURIComponent(phaseName)}/usage`);
+      if (!response.ok) return null;
+      const usage = (await response.json()) as UsageInfo;
+      setUsageInfo(usage);
+      return usage;
+    } catch {
+      return null;
     }
-    return null;
   };
 
   const addPhase = async () => {
-    if (!newName.trim()) return;
-    const body = { name: newName.trim() };
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+
     try {
       const r = await fetch("/api/phases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ name: trimmed }),
       });
-      if (r.ok) {
-        const data = await r.json();
-        // Normalize whether API returns strings or objects
-        const normalize = (items: unknown): Phase[] => {
-          if (!Array.isArray(items)) return phases;
-          const list: Phase[] = items
-            .map((item) =>
-              typeof item === "string"
-                ? { id: item, name: item }
-                : item && typeof item === "object"
-                ? {
-                    id:
-                      typeof (item as { id?: unknown }).id === "string"
-                        ? ((item as { id?: string }).id as string)
-                        : (item as { name?: string }).name ?? "",
-                    name: (item as { name?: string }).name ?? "",
-                  }
-                : null,
-            )
-            .filter(Boolean) as Phase[];
-          return list.length ? list : phases;
-        };
-        setPhases(normalize(data));
-      } else {
+      if (!r.ok) {
         toast.error("Failed to add phase");
+        return;
       }
+      await loadPhases();
+      setNewName("");
     } catch {
       toast.error("Failed to add phase");
     }
-    setNewName("");
+  };
+
+  const savePhaseWorkflowTemplate = async (phaseName: string, templateId: string) => {
+    const workflowTemplateId = templateId === NONE_WORKFLOW_VALUE ? null : templateId;
+
+    try {
+      const res = await fetch(
+        `/api/phases/${encodeURIComponent(phaseName)}/workflow-template`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workflow_template_id: workflowTemplateId }),
+        },
+      );
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        const detail =
+          typeof payload?.detail === "string" && payload.detail.trim()
+            ? payload.detail
+            : "Failed to update phase workflow";
+        toast.error(detail);
+        return;
+      }
+
+      const updated = (await res.json()) as {
+        name?: string;
+        workflow_template_id?: string | null;
+      };
+
+      setPhases((prev) =>
+        prev.map((phase) =>
+          phase.name === phaseName
+            ? {
+                ...phase,
+                workflowTemplateId:
+                  typeof updated.workflow_template_id === "string"
+                    ? updated.workflow_template_id
+                    : undefined,
+              }
+            : phase,
+        ),
+      );
+    } catch {
+      toast.error("Failed to update phase workflow");
+    }
   };
 
   const removePhase = async (id: string) => {
-    // Check if phase is in use
     const usage = await checkUsage(id);
-    
+
     if (usage && usage.in_use) {
-      // Show delete dialog with replacement selection
       setShowDeleteDialog(id);
       return;
     }
-    
-    // If not in use, delete directly
+
     try {
       const res = await fetch(`/api/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (res.ok) {
@@ -166,28 +256,25 @@ export default function PhasesPage() {
 
   const confirmDelete = async () => {
     if (!showDeleteDialog || !replacementPhase) return;
-    
+
     try {
       const response = await fetch(
-        `/api/phases/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(
-          replacementPhase,
-        )}`,
+        `/api/phases/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementPhase)}`,
         {
           method: "DELETE",
         },
       );
-      
+
       if (response.ok) {
         setPhases(phases.filter((p) => p.id !== showDeleteDialog));
       } else {
         const error = await response.json();
-        toast.error(`Error: ${error.detail}`);
+        toast.error(`Error: ${String(error?.detail ?? "Failed to delete phase")}`);
       }
-    } catch (error) {
-      console.error("Error deleting phase:", error);
+    } catch {
       toast.error("Error deleting phase");
     }
-    
+
     setShowDeleteDialog(null);
     setReplacementPhase("");
     setUsageInfo(null);
@@ -205,21 +292,32 @@ export default function PhasesPage() {
   };
 
   const saveEdit = async (id: string) => {
-    if (!editName.trim()) return;
-    const body = { name: editName.trim() };
+    const trimmed = editName.trim();
+    if (!trimmed) return;
+
     try {
       const res = await fetch(`/api/phases/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) {
         throw new Error("Failed to update phase");
       }
-      setPhases(phases.map((p) => (p.id === id ? { ...p, name: body.name } : p)));
+
+      setPhases(
+        phases.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                id: trimmed,
+                name: trimmed,
+              }
+            : p,
+        ),
+      );
       setEditingId(null);
       setEditName("");
-      return;
     } catch {
       toast.error("Failed to update phase");
     }
@@ -231,13 +329,13 @@ export default function PhasesPage() {
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6 p-8">
       <h1 className="text-2xl font-bold">Phases</h1>
       <form
         className="flex items-end gap-2"
         onSubmit={(e: FormEvent<HTMLFormElement>) => {
           e.preventDefault();
-          addPhase();
+          void addPhase();
         }}
       >
         <Input
@@ -254,6 +352,7 @@ export default function PhasesPage() {
         <TableHeader>
           <TableRow>
             <TableHead>Phase</TableHead>
+            <TableHead>Default Workflow</TableHead>
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
           </TableRow>
@@ -261,7 +360,7 @@ export default function PhasesPage() {
         <TableBody>
           {phases.map((p: Phase) => (
             <TableRow key={p.id}>
-              <TableCell className="min-w-[150px]">
+              <TableCell className="min-w-[180px]">
                 {editingId === p.id ? (
                   <Input
                     value={editName}
@@ -272,10 +371,28 @@ export default function PhasesPage() {
                   p.name
                 )}
               </TableCell>
+              <TableCell className="min-w-[240px]">
+                <Select
+                  value={p.workflowTemplateId || NONE_WORKFLOW_VALUE}
+                  onValueChange={(value) => void savePhaseWorkflowTemplate(p.name, value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select default workflow" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE_WORKFLOW_VALUE}>No default workflow</SelectItem>
+                    {workflowTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name || template.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </TableCell>
               <TableCell className="w-28">
                 {editingId === p.id ? (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => saveEdit(p.id)}>
+                    <Button size="sm" onClick={() => void saveEdit(p.id)}>
                       Save
                     </Button>
                     <Button size="sm" variant="ghost" onClick={cancelEdit}>
@@ -290,7 +407,7 @@ export default function PhasesPage() {
                     title="Edit"
                     aria-label="Edit"
                   >
-                    <Pencil className="w-4 h-4" />
+                    <Pencil className="h-4 w-4" />
                   </Button>
                 )}
               </TableCell>
@@ -298,18 +415,18 @@ export default function PhasesPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => removePhase(p.id)}
+                  onClick={() => void removePhase(p.id)}
                   title="Remove"
                   aria-label="Remove"
                 >
-                  <Trash className="w-4 h-4 text-red-600" />
+                  <Trash className="h-4 w-4 text-red-600" />
                 </Button>
               </TableCell>
             </TableRow>
           ))}
           {phases.length === 0 && (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-gray-400 py-6">
+              <TableCell colSpan={4} className="py-6 text-center text-gray-400">
                 No phases defined.
               </TableCell>
             </TableRow>
@@ -317,21 +434,20 @@ export default function PhasesPage() {
         </TableBody>
       </Table>
 
-      {/* Delete Confirmation Dialog */}
       {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Delete Phase</h3>
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6">
+            <h3 className="mb-4 text-lg font-semibold">Delete Phase</h3>
+
             {usageInfo && (
               <div className="mb-4">
-                <p className="text-red-600 mb-2">
+                <p className="mb-2 text-red-600">
                   This phase is currently in use by {usageInfo.usage_count} item(s):
                 </p>
                 {usageInfo.projects && usageInfo.projects.length > 0 && (
                   <div className="mb-2">
                     <p className="font-medium">Projects:</p>
-                    <ul className="list-disc list-inside text-sm text-gray-600">
+                    <ul className="list-inside list-disc text-sm text-gray-600">
                       {usageInfo.projects.map((project) => (
                         <li key={project.id}>{project.name}</li>
                       ))}
@@ -341,7 +457,7 @@ export default function PhasesPage() {
                 {usageInfo.workflows && usageInfo.workflows.length > 0 && (
                   <div className="mb-2">
                     <p className="font-medium">Workflows:</p>
-                    <ul className="list-disc list-inside text-sm text-gray-600">
+                    <ul className="list-inside list-disc text-sm text-gray-600">
                       {usageInfo.workflows.map((workflow) => (
                         <li key={workflow.id}>{workflow.project}</li>
                       ))}
@@ -350,11 +466,11 @@ export default function PhasesPage() {
                 )}
               </div>
             )}
-            
+
             <p className="mb-4">
               Please select a replacement phase to assign to all affected items:
             </p>
-            
+
             <Select value={replacementPhase} onValueChange={(v: string) => setReplacementPhase(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select replacement phase" />
@@ -369,13 +485,9 @@ export default function PhasesPage() {
                   ))}
               </SelectContent>
             </Select>
-            
-            <div className="flex gap-2 mt-6">
-              <Button 
-                onClick={confirmDelete} 
-                disabled={!replacementPhase}
-                variant="danger"
-              >
+
+            <div className="mt-6 flex gap-2">
+              <Button onClick={() => void confirmDelete()} disabled={!replacementPhase} variant="danger">
                 Delete and Replace
               </Button>
               <Button onClick={cancelDelete} variant="outline">

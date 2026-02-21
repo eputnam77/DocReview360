@@ -1,0 +1,252 @@
+[
+  {
+    "id": "branch-coordination",
+    "name": "branch-coordination",
+    "description": null,
+    "steps": [
+      {
+        "role": "SME",
+        "user": null,
+        "required": true,
+        "description": "Subject Matter Expert review and validation"
+      },
+      {
+        "role": "Front Line Manager",
+        "user": null,
+        "required": true,
+        "description": "Front Line Manager approval"
+      },
+      {
+        "role": "Product Policy Manager",
+        "user": null,
+        "required": true,
+        "description": "Product Policy Manager review and approval"
+      },
+      {
+        "role": "Technical Writer",
+        "user": null,
+        "required": true,
+        "description": "Technical Writer review and editing"
+      },
+      {
+        "role": "Senior Technical Writer",
+        "user": null,
+        "required": true,
+        "description": "Senior Technical Writer review and approval"
+      },
+      {
+        "role": "Technical Writing Manager",
+        "user": null,
+        "required": true,
+        "description": "Technical Writing Manager final approval"
+      }
+    ],
+    "updated": null
+  },
+  {
+    "id": "pre-coordination",
+    "name": "pre-coordination",
+    "description": null,
+    "steps": [
+      {
+        "role": "Writer",
+        "user": null,
+        "required": true,
+        "description": "Initial drafting and self-check"
+      },
+      {
+        "role": "Peer Reviewer",
+        "user": null,
+        "required": true,
+        "description": "Peer review for technical soundness"
+      },
+      {
+        "role": "Branch Liaison",
+        "user": null,
+        "required": true,
+        "description": "Confirms alignment with branch priorities"
+      }
+    ],
+    "updated": null
+  },
+  {
+    "id": "requirements-data-gathering",
+    "name": "requirements-data-gathering",
+    "description": null,
+    "steps": [
+      {
+        "role": "Research Analyst",
+        "user": null,
+        "required": true,
+        "description": "Collects background data and stakeholder requirements"
+      },
+      {
+        "role": "Legal/Regulatory Reviewer",
+        "user": null,
+        "required": true,
+        "description": "Identifies statutory constraints"
+      },
+      {
+        "role": "Writer",
+        "user": null,
+        "required": true,
+        "description": "Creates annotated outline for downstream reviewers"
+      }
+    ],
+    "updated": null
+  },
+  {
+    "id": "fast-track-coordination",
+    "name": "fast-track-coordination",
+    "description": null,
+    "steps": [
+      {
+        "role": "Writer",
+        "user": null,
+        "required": true,
+        "description": "Drafts minor or urgent changes"
+      },
+      {
+        "role": "SME",
+        "user": null,
+        "required": true,
+        "description": "Subject Matter Expert review"
+      },
+      {
+        "role": "Senior Technical Writer",
+        "user": null,
+        "required": true,
+        "description": "Final review and approval"
+      }
+    ],
+    "updated": null
+  },
+  {
+    "id": "multi-branch-coordination",
+    "name": "multi-branch-coordination",
+    "description": null,
+    "steps": [
+      {
+        "role": "SME (Branch A)",
+        "user": null,
+        "required": true,
+        "description": "Branch A SME review"
+      },
+      {
+        "role": "SME (Branch B)",
+        "user": null,
+        "required": true,
+        "description": "Branch B SME review"
+      },
+      {
+        "role": "Branch Managers (A and B)",
+        "user": null,
+        "required": true,
+        "description": "Management approval from both branches"
+      },
+      {
+        "role": "Senior Technical Writer",
+        "user": null,
+        "required": true,
+        "description": "Senior Technical Writer review"
+      },
+      {
+        "role": "Technical Writing Manager",
+        "user": null,
+        "required": true,
+        "description": "Technical Writing Manager final approval"
+      }
+    ],
+    "updated": null
+  },
+  {
+    "id": "external-partner-coordination",
+    "name": "external-partner-coordination",
+    "description": null,
+    "steps": [
+      {
+        "role": "Internal SME",
+        "user": null,
+        "required": true,
+        "description": "Internal subject matter expert review"
+      },
+      {
+        "role": "Public Affairs",
+        "user": null,
+        "required": true,
+        "description": "Communications and public affairs review"
+      },
+      {
+        "role": "External Stakeholder",
+        "user": null,
+        "required": true,
+        "description": "External stakeholder review"
+      },
+      {
+        "role": "Technical Writer",
+        "user": null,
+        "required": true,
+        "description": "Incorporates external feedback"
+      },
+      {
+        "role": "Technical Writing Manager",
+        "user": null,
+        "required": true,
+        "description": "Final internal approval"
+      }
+    ],
+    "updated": null
+  },
+  {
+    "id": "publication-distribution",
+    "name": "publication-distribution",
+    "description": null,
+    "steps": [
+      {
+        "role": "Technical Writer",
+        "user": null,
+        "required": true,
+        "description": "Prepares publication version"
+      },
+      {
+        "role": "Communications/Outreach",
+        "user": null,
+        "required": true,
+        "description": "Distributes to official channels"
+      },
+      {
+        "role": "Records Management",
+        "user": null,
+        "required": true,
+        "description": "Archives final version in CMS"
+      }
+    ],
+    "updated": null
+  },
+  {
+    "id": "implementation-tracking",
+    "name": "implementation-tracking",
+    "description": null,
+    "steps": [
+      {
+        "role": "Program Manager",
+        "user": null,
+        "required": true,
+        "description": "Notifies affected teams"
+      },
+      {
+        "role": "Compliance Officer",
+        "user": null,
+        "required": true,
+        "description": "Confirms procedures updated"
+      },
+      {
+        "role": "Records Management",
+        "user": null,
+        "required": true,
+        "description": "Archive and close workflow"
+      }
+    ],
+    "updated": null
+  }
+]

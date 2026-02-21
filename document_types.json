@@ -1,254 +1,291 @@
 {
-  "version": 104,
-  "updated_at": "2026-02-01T11:52:21.919795+00:00",
-  "document_types": [
-    {
-      "name": "Test Doc Type",
-      "template": "<h1>Test Template</h1>",
-      "workflow": [
-        "draft",
-        "review",
-        "approve"
-      ],
-      "default_template_id": null,
-      "id": "Test Doc Type",
-      "phases": [
-        "draft",
-        "review",
-        "approve"
-      ]
-    },
-    {
-      "name": "Initial Doc Type",
-      "template": "<h1>Initial</h1>",
-      "workflow": [
-        "Initial Phase"
-      ],
-      "default_template_id": null,
-      "id": "Initial Doc Type",
-      "phases": [
-        "Initial Phase"
-      ]
-    },
-    {
-      "name": "Updated Doc Type",
-      "template": "<h1>Updated</h1>",
-      "workflow": [
-        "Updated Phase"
-      ],
-      "default_template_id": null,
-      "id": "Updated Doc Type",
-      "phases": [
-        "Updated Phase"
-      ]
-    },
-    {
-      "name": "Consistency Test Doc",
-      "template": "<h1>Consistency</h1>",
-      "workflow": [
-        "Consistency Phase"
-      ],
-      "default_template_id": null,
-      "id": "Consistency Test Doc",
-      "phases": [
-        "Consistency Phase"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 0",
-      "template": "<h1>Performance 0</h1>",
-      "workflow": [
-        "Performance Phase 0"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 0",
-      "phases": [
-        "Performance Phase 0"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 1",
-      "template": "<h1>Performance 1</h1>",
-      "workflow": [
-        "Performance Phase 1"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 1",
-      "phases": [
-        "Performance Phase 1"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 2",
-      "template": "<h1>Performance 2</h1>",
-      "workflow": [
-        "Performance Phase 2"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 2",
-      "phases": [
-        "Performance Phase 2"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 3",
-      "template": "<h1>Performance 3</h1>",
-      "workflow": [
-        "Performance Phase 3"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 3",
-      "phases": [
-        "Performance Phase 3"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 4",
-      "template": "<h1>Performance 4</h1>",
-      "workflow": [
-        "Performance Phase 4"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 4",
-      "phases": [
-        "Performance Phase 4"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 5",
-      "template": "<h1>Performance 5</h1>",
-      "workflow": [
-        "Performance Phase 5"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 5",
-      "phases": [
-        "Performance Phase 5"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 6",
-      "template": "<h1>Performance 6</h1>",
-      "workflow": [
-        "Performance Phase 6"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 6",
-      "phases": [
-        "Performance Phase 6"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 7",
-      "template": "<h1>Performance 7</h1>",
-      "workflow": [
-        "Performance Phase 7"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 7",
-      "phases": [
-        "Performance Phase 7"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 8",
-      "template": "<h1>Performance 8</h1>",
-      "workflow": [
-        "Performance Phase 8"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 8",
-      "phases": [
-        "Performance Phase 8"
-      ]
-    },
-    {
-      "name": "Performance Test Doc 9",
-      "template": "<h1>Performance 9</h1>",
-      "workflow": [
-        "Performance Phase 9"
-      ],
-      "default_template_id": null,
-      "id": "Performance Test Doc 9",
-      "phases": [
-        "Performance Phase 9"
-      ]
-    },
-    {
-      "name": "Duplicate",
-      "template": "<h1>Dup</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Duplicate",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "Conflict",
-      "template": "<h1>One</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "Conflict",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "policy",
-      "template": "<h1>Policy</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "policy",
-      "phases": [
-        "Phase"
-      ]
-    },
-    {
-      "name": "E2E Test Document Type",
-      "template": "<h1>E2E Test Template</h1>",
-      "workflow": [
-        "draft",
-        "review",
-        "approve"
-      ],
-      "default_template_id": null,
-      "id": "E2E Test Document Type",
-      "phases": [
-        "draft",
-        "review",
-        "approve"
-      ]
-    },
-    {
-      "name": "Persistence Test Doc",
-      "template": "<h1>Persistence</h1>",
-      "workflow": [
-        "Persistence Phase"
-      ],
-      "default_template_id": null,
-      "id": "Persistence Test Doc",
-      "phases": [
-        "Persistence Phase"
-      ]
-    },
-    {
-      "name": "Recovery Test Doc",
-      "template": "<h1>Recovery</h1>",
-      "workflow": [
-        "Recovery Phase"
-      ],
-      "default_template_id": null,
-      "id": "Recovery Test Doc",
-      "phases": [
-        "Recovery Phase"
-      ]
-    }
-  ]
+    "version":  105,
+    "updated_at":  "2026-02-21T13:01:47.8751352Z",
+    "document_types":  [
+                           {
+                               "name":  "Advisory Circular",
+                               "template":  "\u003ch1\u003eAdvisory Circular\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "After-Action Report",
+                               "template":  "\u003ch1\u003eAfter-Action Report\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "API Manual / API Reference",
+                               "template":  "\u003ch1\u003eAPI Manual / API Reference\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Peer Review",
+                                                "Release Candidate Review",
+                                                "General Availability",
+                                                "Maintenance / Revision Cycle"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Audit Report",
+                               "template":  "\u003ch1\u003eAudit Report\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Briefing / Slide Deck",
+                               "template":  "\u003ch1\u003eBriefing / Slide Deck\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Desk Guide",
+                               "template":  "\u003ch1\u003eDesk Guide\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Exemption / Waiver",
+                               "template":  "\u003ch1\u003eExemption / Waiver\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Public Comment / Proposed Rulemaking",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "FAQ",
+                               "template":  "\u003ch1\u003eFAQ\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Review",
+                                                "Publication"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Federal Register Notice",
+                               "template":  "\u003ch1\u003eFederal Register Notice\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Public Comment / Proposed Rulemaking",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Final Rule",
+                               "template":  "\u003ch1\u003eFinal Rule\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Public Comment / Proposed Rulemaking",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Guidance",
+                               "template":  "\u003ch1\u003eGuidance\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "ICR",
+                               "template":  "\u003ch1\u003eICR\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Public Comment / Proposed Rulemaking",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Letter / Correspondence",
+                               "template":  "\u003ch1\u003eLetter / Correspondence\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Review",
+                                                "Publication"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Manual / Handbook",
+                               "template":  "\u003ch1\u003eManual / Handbook\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Meeting Minutes",
+                               "template":  "\u003ch1\u003eMeeting Minutes\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Memorandum",
+                               "template":  "\u003ch1\u003eMemorandum\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Order / Directive",
+                               "template":  "\u003ch1\u003eOrder / Directive\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Policy",
+                               "template":  "\u003ch1\u003ePolicy\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Proposed Rule / NPRM",
+                               "template":  "\u003ch1\u003eProposed Rule / NPRM\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Public Comment / Proposed Rulemaking",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "README",
+                               "template":  "\u003ch1\u003eREADME\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Peer Review",
+                                                "Release Candidate Review",
+                                                "General Availability",
+                                                "Maintenance / Revision Cycle"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Release Notes",
+                               "template":  "\u003ch1\u003eRelease Notes\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Peer Review",
+                                                "Release Candidate Review",
+                                                "General Availability",
+                                                "Maintenance / Revision Cycle"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Report",
+                               "template":  "\u003ch1\u003eReport\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "SOP",
+                               "template":  "\u003ch1\u003eSOP\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Special Conditions",
+                               "template":  "\u003ch1\u003eSpecial Conditions\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Public Comment / Proposed Rulemaking",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Supporting Statement (PRA)",
+                               "template":  "\u003ch1\u003eSupporting Statement (PRA)\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Coordination",
+                                                "Public Comment / Proposed Rulemaking",
+                                                "Final Issuance"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "User Guide",
+                               "template":  "\u003ch1\u003eUser Guide\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Peer Review",
+                                                "Release Candidate Review",
+                                                "General Availability",
+                                                "Maintenance / Revision Cycle"
+                                            ],
+                               "default_template_id":  null
+                           },
+                           {
+                               "name":  "Web Content",
+                               "template":  "\u003ch1\u003eWeb Content\u003c/h1\u003e",
+                               "workflow":  [
+                                                "Draft Development",
+                                                "Internal Review",
+                                                "Publication"
+                                            ],
+                               "default_template_id":  null
+                           }
+                       ]
 }

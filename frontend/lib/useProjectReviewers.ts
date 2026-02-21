@@ -25,7 +25,18 @@ export function useProjectReviewers(projectId?: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviewer }),
       });
-      if (!res.ok) throw new Error("Failed to add reviewer");
+      if (!res.ok) {
+        let detail = "Failed to add reviewer";
+        try {
+          const data = await res.json();
+          if (typeof data?.detail === "string" && data.detail.trim()) {
+            detail = data.detail;
+          }
+        } catch {
+          // ignore json parse errors
+        }
+        throw new Error(detail);
+      }
       return res.json();
     },
     onMutate: async (reviewer) => {
@@ -36,9 +47,9 @@ export function useProjectReviewers(projectId?: string) {
       }
       return { previous };
     },
-    onError: (_err, _reviewer, context) => {
+    onError: (err, _reviewer, context) => {
       queryClient.setQueryData(queryKey, context?.previous);
-      toast.error("Failed to add reviewer");
+      toast.error(err instanceof Error ? err.message : "Failed to add reviewer");
     },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey, Array.isArray(data) ? data : []);

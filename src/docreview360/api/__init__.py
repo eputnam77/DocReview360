@@ -1,4 +1,4 @@
-"""FastAPI application exposing DocReview360 endpoints."""
+﻿"""FastAPI application exposing DocReview360 endpoints."""
 
 # ruff: noqa: I001
 from __future__ import annotations
@@ -111,7 +111,15 @@ from ..integrations.signature import get_default_providers, get_provider
 from ..logs import LogEntry, log_event, log_stream, query_logs, log_call
 from ..messages import render
 from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
-from ..phases import add_phase, delete_phase, list_phases, rename_phase
+from ..phases import (
+    add_phase,
+    delete_phase,
+    get_phase_workflow_template,
+    list_phase_workflow_links,
+    list_phases,
+    rename_phase,
+    set_phase_workflow_template,
+)
 from ..plugins import load_plugins
 from ..plugins import registry as plugin_registry
 from ..profile import (
@@ -462,9 +470,11 @@ def _resolve_project_phases(doc_type_name: str | None, phase: str | None) -> lis
 
 
 def _resolve_workflow_template(
-    requested_template: str | None, doc_type_name: str | None
+    requested_template: str | None,
+    doc_type_name: str | None,
+    phase_name: str | None = None,
 ) -> str:
-    """Resolve a workflow template name from request and document type defaults."""
+    """Resolve a workflow template using request, doc type default, and phase linkage."""
     if requested_template in workflow_templates:
         return requested_template
 
@@ -476,6 +486,12 @@ def _resolve_workflow_template(
     )
     if doc_default_template in workflow_templates:
         return doc_default_template
+
+    if phase_name:
+        phase_default_template = get_phase_workflow_template(phase_name)
+        if phase_default_template in workflow_templates:
+            return phase_default_template
+
     return "branch-coordination"
 
 
@@ -1097,8 +1113,9 @@ async def create_project_endpoint(
     # :func:`create_workflow`, ensuring approval steps and workflow metadata are
     # initialized consistently with the template definition.
     if body.workflow:
+        template_requested = body.workflow in workflow_templates
         existing_workflow = workflows.get(body.workflow)
-        if existing_workflow is not None:
+        if existing_workflow is not None and not template_requested:
             if existing_workflow.project and existing_workflow.project != project.id:
                 raise HTTPException(
                     status_code=409,
@@ -1120,7 +1137,7 @@ async def create_project_endpoint(
             return project
 
         phases = _resolve_project_phases(body.doc_type, body.phase)
-        template_name = _resolve_workflow_template(body.workflow, body.doc_type)
+        template_name = _resolve_workflow_template(body.workflow, body.doc_type, body.phase)
         workflow = create_workflow(project.id, phases, template=template_name)
         project.workflow = workflow.id
         project.initial_phase = workflow.phase
@@ -1293,39 +1310,70 @@ def _resolve_workflow(
     body: ProjectUpdate | None,
     project_id: str,
     doc_type_name: str | None,
+    existing_workflow_id: str | None = None,
 ) -> tuple[str | None, bool]:
     """Determine new workflow information from the request."""
+
+    def _create_from_template(template_or_workflow: str, phase: str | None) -> tuple[str, bool]:
+        phases = _resolve_project_phases(doc_type_name, phase)
+        template_name = _resolve_workflow_template(template_or_workflow, doc_type_name, phase)
+        wf = create_workflow(project_id, phases, template=template_name)
+        return wf.id, True
+
     is_json = request.headers.get("content-type", "").startswith("application/json")
+    requested_template = isinstance(workflow, str) and workflow in workflow_templates
+
     if is_json:
         if workflow_provided:
             if workflow is not None:
+                if requested_template:
+                    if existing_workflow_id:
+                        current = workflows.get(existing_workflow_id)
+                        if (
+                            current is not None
+                            and current.project == project_id
+                            and current.template == workflow
+                        ):
+                            return current.id, True
+                    return _create_from_template(
+                        workflow,
+                        body.phase if body and body.phase else None,
+                    )
+
                 existing_workflow = workflows.get(workflow)
                 if existing_workflow is not None:
                     if existing_workflow.project and existing_workflow.project != project_id:
                         raise ValueError("Workflow already assigned to another project")
                     existing_workflow.project = project_id
                     return existing_workflow.id, True
-                phases = _resolve_project_phases(
-                    doc_type_name, body.phase if body and body.phase else None
+                return _create_from_template(
+                    workflow,
+                    body.phase if body and body.phase else None,
                 )
-                template_name = _resolve_workflow_template(workflow, doc_type_name)
-                wf = create_workflow(project_id, phases, template=template_name)
-                return wf.id, True
             return None, True
         return None, False
+
     if workflow is not None:
+        if requested_template:
+            if existing_workflow_id:
+                current = workflows.get(existing_workflow_id)
+                if (
+                    current is not None
+                    and current.project == project_id
+                    and current.template == workflow
+                ):
+                    return current.id, True
+            return _create_from_template(workflow, None)
+
         existing_workflow = workflows.get(workflow)
         if existing_workflow is not None:
             if existing_workflow.project and existing_workflow.project != project_id:
                 raise ValueError("Workflow already assigned to another project")
             existing_workflow.project = project_id
             return existing_workflow.id, True
-        phases = _resolve_project_phases(doc_type_name, None)
-        template_name = _resolve_workflow_template(workflow, doc_type_name)
-        wf = create_workflow(project_id, phases, template=template_name)
-        return wf.id, True
-    return None, False
+        return _create_from_template(workflow, None)
 
+    return None, False
 
 def _update_workflow_phase(
     request: Request, body: ProjectUpdate | None, updated_project: ProjectModel
@@ -1409,7 +1457,13 @@ async def update_project_endpoint(  # noqa: C901
         project_description = description
 
         workflow_id, workflow_set = _resolve_workflow(
-            request, workflow_provided, workflow, body, project_id, project_doc_type
+            request,
+            workflow_provided,
+            workflow,
+            body,
+            project_id,
+            project_doc_type,
+            existing_project.workflow,
         )
 
         initial_phase = None
@@ -2881,6 +2935,71 @@ async def list_phases_endpoint() -> list[str]:
     return list_phases()
 
 
+
+class PhaseWorkflowLinkModel(BaseModel):
+    """Phase configuration with optional default workflow-template linkage."""
+
+    name: str
+    workflow_template_id: str | None = None
+
+
+class PhaseWorkflowLinkUpdateModel(BaseModel):
+    """Payload for setting or clearing a phase's default workflow template."""
+
+    workflow_template_id: str | None = None
+
+
+def _serialize_phase_workflow_links() -> list[PhaseWorkflowLinkModel]:
+    phases_list = list_phases()
+    links = list_phase_workflow_links()
+    return [
+        PhaseWorkflowLinkModel(name=phase_name, workflow_template_id=links.get(phase_name))
+        for phase_name in phases_list
+    ]
+
+
+@app.get("/phases/config", response_model=list[PhaseWorkflowLinkModel])
+async def list_phase_config_endpoint() -> list[PhaseWorkflowLinkModel]:
+    """Return phases and their optional default workflow-template links."""
+
+    return _serialize_phase_workflow_links()
+
+
+@app.put(
+    "/phases/{name}/workflow-template",
+    response_model=PhaseWorkflowLinkModel,
+)
+async def set_phase_workflow_template_endpoint(
+    name: str,
+    body: PhaseWorkflowLinkUpdateModel,
+) -> PhaseWorkflowLinkModel:
+    """Set or clear the default workflow template associated with a phase."""
+
+    phases_list = list_phases()
+    if name not in phases_list:
+        raise HTTPException(status_code=404, detail=f"Phase '{name}' not found")
+
+    template_id = (
+        body.workflow_template_id.strip()
+        if isinstance(body.workflow_template_id, str)
+        else None
+    )
+
+    if template_id and template_id not in workflow_templates:
+        raise HTTPException(status_code=404, detail="Workflow template not found")
+
+    try:
+        set_phase_workflow_template(name, template_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return PhaseWorkflowLinkModel(
+        name=name,
+        workflow_template_id=get_phase_workflow_template(name),
+    )
+
 @app.put("/phases/{name}", response_model=list[str])
 async def rename_phase_endpoint(name: str, body: PhaseModel) -> list[str]:
     """Rename a phase and propagate changes to workflows."""
@@ -3800,7 +3919,7 @@ async def logs_stream(websocket: WebSocket) -> None:
 
     # Allow anonymous connections for simple dashboards and tests.  If a user
     # identifier is supplied we still honour permission checks, but omitting the
-    # header no longer results in an immediate 1008 policy‑violation close which
+    # header no longer results in an immediate 1008 policyâ€‘violation close which
     # previously broke ``test_log_websocket``.  This keeps the endpoint usable in
     # lightweight environments while retaining optional access control.
     if user and not has_permission(user, "view_audit_log"):
@@ -3889,3 +4008,7 @@ async def switch_env_endpoint(name: str) -> dict[str, str]:
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"url": url}
+
+
+
+

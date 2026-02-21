@@ -1,4 +1,4 @@
-import re
+﻿import re
 from uuid import uuid4
 
 import pytest
@@ -290,6 +290,17 @@ def test_backend_phase_and_workflow_defaults_drive_project_form(
     selected_phase = phases[0]
     default_template_id = selected_doc_type.get("default_template_id")
 
+    configured_phases_resp = page.request.get(f"{e2e_backend_url}/phases", headers=headers)
+    assert configured_phases_resp.ok
+    configured_phases = configured_phases_resp.json()
+    assert isinstance(configured_phases, list)
+    configured_phase_names = [
+        item if isinstance(item, str) else item.get("name")
+        for item in configured_phases
+        if isinstance(item, str) or isinstance(item, dict)
+    ]
+    configured_phase_names = [p for p in configured_phase_names if isinstance(p, str) and p]
+
     run_suffix = uuid4().hex[:8]
     document_number = f"E2E-PHASE-{run_suffix}"
     project_title = f"E2E Phase/Workflow {run_suffix}"
@@ -300,6 +311,7 @@ def test_backend_phase_and_workflow_defaults_drive_project_form(
     page.locator("#phase").click(force=True)
     phase_options = _visible_option_texts(page)
     assert set(phases).issubset(set(phase_options))
+    assert set(configured_phase_names).issubset(set(phase_options))
     phase_matcher = re.compile(rf"^{re.escape(selected_phase)}$", re.I)
     page.get_by_role("option", name=phase_matcher).first.click(force=True)
 
@@ -534,3 +546,185 @@ def test_review_double_submit_creates_single_entry(
     reviews = reviews_resp.json()
     assert len(reviews) == baseline_review_count + 1
     assert sum(1 for item in reviews if item.get("comment") == review_comment) == 1
+
+@pytest.mark.e2e_smoke
+def test_same_workflow_template_can_be_used_across_multiple_projects(
+    page: Page,
+    e2e_frontend_url: str,
+    e2e_backend_url: str,
+) -> None:
+    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    headers = _auth_headers(page)
+
+    doc_types_resp = page.request.get(f"{e2e_backend_url}/document-types", headers=headers)
+    assert doc_types_resp.ok
+    doc_types = doc_types_resp.json()
+    assert isinstance(doc_types, list) and doc_types
+
+    selected_doc_type = next(
+        (item for item in doc_types if item.get("phases") or item.get("workflow")),
+        doc_types[0],
+    )
+    doc_type_name = selected_doc_type["name"]
+    phases = selected_doc_type.get("phases") or selected_doc_type.get("workflow") or []
+    assert phases, "Expected backend document type to include phases"
+    selected_phase = phases[0]
+
+    templates_resp = page.request.get(f"{e2e_backend_url}/workflow-templates", headers=headers)
+    assert templates_resp.ok
+    templates = templates_resp.json()
+    assert isinstance(templates, list) and templates
+
+    template_item = next(
+        (item for item in templates if isinstance(item.get("id"), str) and item.get("id")),
+        None,
+    )
+    assert template_item is not None
+    template_id = template_item["id"]
+    template_label = template_item.get("name") or template_id
+
+    run_suffix = uuid4().hex[:8]
+
+    first_create = page.request.post(
+        f"{e2e_backend_url}/projects",
+        headers=headers,
+        json={
+            "id": f"reuse-a-{run_suffix}",
+            "name": f"Reuse A {run_suffix}",
+            "document_number": f"REUSE-A-{run_suffix}",
+            "doc_type": doc_type_name,
+            "phase": selected_phase,
+            "workflow": template_id,
+            "user": "alice",
+        },
+    )
+    assert first_create.status == 201
+    first_project = first_create.json()
+
+    second_create = page.request.post(
+        f"{e2e_backend_url}/projects",
+        headers=headers,
+        json={
+            "id": f"reuse-b-{run_suffix}",
+            "name": f"Reuse B {run_suffix}",
+            "document_number": f"REUSE-B-{run_suffix}",
+            "doc_type": doc_type_name,
+            "phase": selected_phase,
+            "user": "alice",
+        },
+    )
+    assert second_create.status == 201
+    second_project_id = second_create.json()["id"]
+
+    page.goto(f"{e2e_frontend_url}/projects/{second_project_id}/edit")
+    _select_by_id(page, "workflow", template_label)
+    page.get_by_role("button", name="Save Changes").click(force=True)
+    page.wait_for_url(f"{e2e_frontend_url}/projects/{second_project_id}")
+
+    first_project_resp = page.request.get(
+        f"{e2e_backend_url}/projects/{first_project['id']}",
+        headers=headers,
+    )
+    second_project_resp = page.request.get(
+        f"{e2e_backend_url}/projects/{second_project_id}",
+        headers=headers,
+    )
+    assert first_project_resp.ok
+    assert second_project_resp.ok
+
+    first_workflow_id = first_project_resp.json().get("workflow")
+    second_workflow_id = second_project_resp.json().get("workflow")
+
+    assert first_workflow_id
+    assert second_workflow_id
+    assert first_workflow_id != second_workflow_id
+
+    first_workflow_resp = page.request.get(
+        f"{e2e_backend_url}/workflows/{first_workflow_id}",
+        headers=headers,
+    )
+    second_workflow_resp = page.request.get(
+        f"{e2e_backend_url}/workflows/{second_workflow_id}",
+        headers=headers,
+    )
+    assert first_workflow_resp.ok
+    assert second_workflow_resp.ok
+    assert first_workflow_resp.json().get("template") == template_id
+    assert second_workflow_resp.json().get("template") == template_id
+
+def test_phase_configuration_links_workflow_defaults_for_new_project(
+    page: Page,
+    e2e_frontend_url: str,
+    e2e_backend_url: str,
+) -> None:
+    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    headers = _auth_headers(page)
+
+    templates_resp = page.request.get(f"{e2e_backend_url}/workflow-templates", headers=headers)
+    assert templates_resp.ok
+    templates = templates_resp.json()
+    assert isinstance(templates, list) and templates
+
+    template_item = next(
+        (item for item in templates if isinstance(item.get("id"), str) and item.get("id")),
+        None,
+    )
+    assert template_item is not None
+    template_id = template_item["id"]
+
+    run_suffix = uuid4().hex[:8]
+    phase_name = f"E2E Phase Link {run_suffix}"
+    doc_type_name = f"E2E Linked Type {run_suffix}"
+    document_number = f"E2E-LINK-{run_suffix}"
+    project_title = f"E2E Linked Workflow {run_suffix}"
+
+    create_phase_resp = page.request.post(
+        f"{e2e_backend_url}/phases",
+        headers=headers,
+        json={"name": phase_name},
+    )
+    assert create_phase_resp.status == 201
+
+    link_phase_resp = page.request.put(
+        f"{e2e_backend_url}/phases/{phase_name.replace(" ", "%20")}/workflow-template",
+        headers=headers,
+        json={"workflow_template_id": template_id},
+    )
+    assert link_phase_resp.status == 200
+
+    create_doc_type_resp = page.request.post(
+        f"{e2e_backend_url}/document-types",
+        headers=headers,
+        json={
+            "name": doc_type_name,
+            "template": f"<h1>{doc_type_name}</h1>",
+            "workflow": [phase_name],
+            "default_template_id": None,
+        },
+    )
+    assert create_doc_type_resp.status in {201, 400}
+
+    page.goto(f"{e2e_frontend_url}/projects/new")
+    _select_by_id(page, "docType", doc_type_name)
+    _select_by_id(page, "phase", phase_name)
+    expect(page.locator("#workflow")).to_have_value(template_id)
+
+    page.fill("#docNumber", document_number)
+    page.fill("#title", project_title)
+    page.get_by_role("button", name="Create Project").click(force=True)
+    page.wait_for_url(f"{e2e_frontend_url}/projects")
+
+    projects_resp = page.request.get(f"{e2e_backend_url}/projects", headers=headers)
+    assert projects_resp.ok
+    created_project = next(
+        (p for p in projects_resp.json() if p.get("document_number") == document_number),
+        None,
+    )
+    assert created_project is not None
+
+    workflow_id = created_project.get("workflow")
+    assert workflow_id
+    workflow_resp = page.request.get(f"{e2e_backend_url}/workflows/{workflow_id}", headers=headers)
+    assert workflow_resp.ok
+    assert workflow_resp.json().get("template") == template_id
+

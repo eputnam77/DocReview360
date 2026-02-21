@@ -255,6 +255,11 @@ export default function ProjectDetailsPage() {
   const [showPhaseDialog, setShowPhaseDialog] = useState(false);
   const [pendingPhase, setPendingPhase] = useState<string | null>(null);
   const [reviewerInput, setReviewerInput] = useState("");
+  const [reviewerActionError, setReviewerActionError] = useState<string | null>(null);
+  const [addingReviewer, setAddingReviewer] = useState(false);
+  const [approvalReviewerInput, setApprovalReviewerInput] = useState("");
+  const [approvalActionError, setApprovalActionError] = useState<string | null>(null);
+  const [addingApproval, setAddingApproval] = useState(false);
   const [editingReviewer, setEditingReviewer] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
 
@@ -491,20 +496,140 @@ export default function ProjectDetailsPage() {
     }
   }, [project?.id, project?.workflow, queryClient]);
 
+  const createApprovalForReviewer = useCallback(
+    async (reviewer: string) => {
+      if (!project?.workflow) {
+        throw new Error("This project has no workflow configured.");
+      }
+
+      const phaseId = project.currentPhaseId ?? workflow?.phase ?? undefined;
+      const alreadyExists = approvals.some(
+        (a) =>
+          a.reviewer === reviewer &&
+          ((phaseId && a.phaseId === phaseId) || (!phaseId && !a.phaseId)),
+      );
+
+      if (alreadyExists) {
+        return false;
+      }
+
+      const response = await authenticatedFetch(`${API}/approvals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workflow: project.workflow,
+          reviewer,
+          phase_id: phaseId,
+          required: true,
+          description: "Review Approval",
+        }),
+      });
+
+      if (!response.ok) {
+        let detail = "Failed to create approval";
+        try {
+          const data = await response.json();
+          if (typeof data?.detail === "string" && data.detail.trim()) {
+            detail = data.detail;
+          }
+        } catch {
+          // ignore parse failure and keep default message
+        }
+        throw new Error(detail);
+      }
+
+      const created = await response.json();
+      setApprovals((prev) => [
+        {
+          id: created.id,
+          reviewer: created.reviewer,
+          email: created.reviewer,
+          state: created.state,
+          dueAt: created.due_at || new Date().toISOString().split("T")[0],
+          signedAt: created.signed_at,
+          comments: created.comments || "",
+          documensoSigId: created.signature || created.signature_id,
+          description: created.description,
+          phaseId: created.phase_id,
+          required: created.required,
+        },
+        ...prev,
+      ]);
+
+      refreshReviewerData();
+      return true;
+    },
+    [approvals, project?.currentPhaseId, project?.workflow, refreshReviewerData, workflow?.phase],
+  );
   const handleAddReviewer = useCallback(async () => {
     const reviewer = reviewerInput.trim();
     if (!reviewer) {
-      toast.error("Select a reviewer to add.");
+      const message = "Select a reviewer to add.";
+      setReviewerActionError(message);
+      toast.error(message);
+      return;
+    }
+    if (reviewerOptions.length > 0 && !reviewerOptions.includes(reviewer)) {
+      const message = "Reviewer must be an existing reviewer username.";
+      setReviewerActionError(message);
+      toast.error(message);
       return;
     }
     try {
+      setAddingReviewer(true);
+      setReviewerActionError(null);
       await addReviewer(reviewer);
+      const created = await createApprovalForReviewer(reviewer);
       setReviewerInput("");
+      if (!created) {
+        toast("Reviewer added. Approval already exists for this phase.");
+      }
       refreshReviewerData();
     } catch (error) {
       console.error(error);
+      const message = error instanceof Error ? error.message : "Failed to add reviewer";
+      setReviewerActionError(message);
+    } finally {
+      setAddingReviewer(false);
     }
-  }, [addReviewer, reviewerInput, refreshReviewerData]);
+  }, [addReviewer, createApprovalForReviewer, reviewerInput, reviewerOptions, refreshReviewerData]);
+
+
+  const handleAddApproval = useCallback(async () => {
+    const reviewer = approvalReviewerInput.trim();
+    if (!reviewer) {
+      const message = "Select a reviewer for the approval.";
+      setApprovalActionError(message);
+      toast.error(message);
+      return;
+    }
+    if (!reviewers.includes(reviewer)) {
+      const message = "Reviewer must be assigned to the project first.";
+      setApprovalActionError(message);
+      toast.error(message);
+      return;
+    }
+    try {
+      setAddingApproval(true);
+      setApprovalActionError(null);
+      const created = await createApprovalForReviewer(reviewer);
+      if (!created) {
+        const message = "Approval already exists for this reviewer in the current phase.";
+        setApprovalActionError(message);
+        toast(message);
+        return;
+      }
+      setApprovalReviewerInput("");
+      toast.success("Approval added.");
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : "Failed to add approval";
+      setApprovalActionError(message);
+      toast.error(message);
+    } finally {
+      setAddingApproval(false);
+    }
+  }, [approvalReviewerInput, createApprovalForReviewer, reviewers]);
 
   const handleUpdateReviewer = useCallback(async () => {
     if (!editingReviewer) return;
@@ -879,11 +1004,17 @@ export default function ProjectDetailsPage() {
                 <Button
                   size="sm"
                   onClick={handleAddReviewer}
-                  disabled={!canEdit || !reviewerInput.trim()}
+                  disabled={!canEdit || !reviewerInput.trim() || addingReviewer}
                 >
-                  <UserPlus className="w-4 h-4 mr-1" /> Add
+                  <UserPlus className="w-4 h-4 mr-1" /> {addingReviewer ? "Adding..." : "Add"}
                 </Button>
               </div>
+              {reviewerActionError ? (
+                <p className="text-sm text-red-600 dark:text-red-400">{reviewerActionError}</p>
+              ) : null}
+              {!reviewersLoading && reviewerOptions.length === 0 ? (
+                <p className="text-xs text-amber-600 dark:text-amber-400">No reviewer users found in the system.</p>
+              ) : null}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -994,7 +1125,36 @@ export default function ProjectDetailsPage() {
               )}
           </div>
           <Card>
-            <CardContent className="overflow-x-auto">
+            <CardContent className="space-y-4 overflow-x-auto">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Add approval for reviewer
+                  </label>
+                  <Input
+                    list="approval-reviewer-options"
+                    value={approvalReviewerInput}
+                    onChange={(e) => setApprovalReviewerInput(e.target.value)}
+                    placeholder="Select assigned reviewer"
+                    disabled={!canEdit}
+                  />
+                  <datalist id="approval-reviewer-options">
+                    {reviewers.map((name: string) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleAddApproval}
+                  disabled={!canEdit || !approvalReviewerInput.trim() || addingApproval}
+                >
+                  <UserPlus className="w-4 h-4 mr-1" /> {addingApproval ? "Adding..." : "Add approval"}
+                </Button>
+              </div>
+              {approvalActionError ? (
+                <p className="text-sm text-red-600 dark:text-red-400">{approvalActionError}</p>
+              ) : null}
               <ApprovalTable
                 approvals={approvalsForPhase}
                 currentUser={username}
@@ -1020,7 +1180,7 @@ export default function ProjectDetailsPage() {
                 {reviewCount} reviews in this phase
               </span>
               <Button asChild>
-                <Link href={`/projects/${id}/reviews`}>
+                <Link href={`/projects/${id}/review`}>
                   Open review workspace
                 </Link>
               </Button>
@@ -1083,3 +1243,4 @@ export default function ProjectDetailsPage() {
     </>
   );
 }
+

@@ -1,12 +1,12 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 import { API, authenticatedFetch } from "@/lib/api";
@@ -17,16 +17,41 @@ function FieldGate({ when, children }: { when: boolean; children: React.ReactNod
   return when ? <>{children}</> : null;
 }
 
+export function mergeProjectPhases(
+  configuredPhases: string[],
+  docTypePhases: string[],
+): string[] {
+  const merged = [...configuredPhases, ...docTypePhases]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  return Array.from(new Set(merged));
+}
 
+export function resolveDefaultWorkflow(
+  docType: string | undefined,
+  phase: string | undefined,
+  docTypeDefaultTemplates: Record<string, string | undefined>,
+  phaseWorkflowTemplates: Record<string, string | undefined>,
+): string | undefined {
+  if (docType && docTypeDefaultTemplates[docType]) {
+    return docTypeDefaultTemplates[docType];
+  }
+  if (phase && phaseWorkflowTemplates[phase]) {
+    return phaseWorkflowTemplates[phase];
+  }
+  return undefined;
+}
 
 export default function NewProjectPage() {
   const router = useRouter();
-  // Document Number is provided by the user. The immutable Document ID will be
-  // generated server-side when the project is created.
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [docTypeMap, setDocTypeMap] = useState<Record<string, string[]>>({});
   const [phases, setPhases] = useState<string[]>([]);
+  const [configuredPhases, setConfiguredPhases] = useState<string[]>([]);
   const [docTypeDefaultTemplates, setDocTypeDefaultTemplates] = useState<
+    Record<string, string | undefined>
+  >({});
+  const [phaseWorkflowTemplates, setPhaseWorkflowTemplates] = useState<
     Record<string, string | undefined>
   >({});
   const [docNumber, setDocNumber] = useState("");
@@ -41,11 +66,61 @@ export default function NewProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Auto-set workflow based on the document type configuration from backend
   useEffect(() => {
-    const docTypeTemplate = docType ? docTypeDefaultTemplates[docType] : undefined;
-    setWorkflow(docTypeTemplate);
-  }, [docType, docTypeDefaultTemplates]);
+    fetch("/api/phases/config")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: unknown) => {
+        if (!Array.isArray(data)) {
+          setConfiguredPhases([]);
+          setPhaseWorkflowTemplates({});
+          return;
+        }
+
+        const names: string[] = [];
+        const phaseDefaults: Record<string, string | undefined> = {};
+
+        data.forEach((item) => {
+          if (!item || typeof item !== "object") return;
+          const value = item as { name?: unknown; workflow_template_id?: unknown };
+          const name = typeof value.name === "string" ? value.name.trim() : "";
+          if (!name) return;
+          names.push(name);
+          if (
+            typeof value.workflow_template_id === "string" &&
+            value.workflow_template_id.trim()
+          ) {
+            phaseDefaults[name] = value.workflow_template_id.trim();
+          }
+        });
+
+        setConfiguredPhases(names);
+        setPhaseWorkflowTemplates(phaseDefaults);
+      })
+      .catch(() => {
+        fetch("/api/phases")
+          .then((r) => (r.ok ? r.json() : []))
+          .then((data) => {
+            const phaseNames = Array.isArray(data)
+              ? data
+                  .map((d: unknown) =>
+                    typeof d === "string"
+                      ? d
+                      : typeof d === "object" && d !== null && "name" in d
+                        ? String((d as { name?: unknown }).name ?? "")
+                        : "",
+                  )
+                  .map((name) => name.trim())
+                  .filter(Boolean)
+              : [];
+            setConfiguredPhases(phaseNames);
+            setPhaseWorkflowTemplates({});
+          })
+          .catch(() => {
+            setConfiguredPhases([]);
+            setPhaseWorkflowTemplates({});
+          });
+      });
+  }, []);
 
   useEffect(() => {
     fetch("/api/document-types")
@@ -63,15 +138,14 @@ export default function NewProjectPage() {
           const name = typeof d === "string" ? d : d?.name;
           if (name) {
             names.push(name);
-            const phases = Array.isArray(d?.phases)
+            const availablePhases = Array.isArray(d?.phases)
               ? (d.phases as string[])
               : Array.isArray(d?.workflow)
-              ? (d.workflow as string[])
-              : [];
-            map[name] = phases;
+                ? (d.workflow as string[])
+                : [];
+            map[name] = availablePhases;
             const defaultTemplate =
-              typeof d?.default_template_id === "string" &&
-              d.default_template_id.trim()
+              typeof d?.default_template_id === "string" && d.default_template_id.trim()
                 ? d.default_template_id
                 : undefined;
             defaults[name] = defaultTemplate;
@@ -88,17 +162,21 @@ export default function NewProjectPage() {
       });
   }, []);
 
-  // When document type changes, reset dependent fields and phases
   useEffect(() => {
-    if (docType) {
-      setPhases(docTypeMap[docType] || []);
-    } else {
-      setPhases([]);
-    }
+    const docTypePhases = docType ? docTypeMap[docType] || [] : [];
+    setPhases(mergeProjectPhases(configuredPhases, docTypePhases));
     setPhase(undefined);
-    const defaultTemplate = docType ? docTypeDefaultTemplates[docType] : undefined;
-    setWorkflow(defaultTemplate);
-  }, [docType, docTypeMap, docTypeDefaultTemplates]);
+  }, [docType, docTypeMap, configuredPhases]);
+
+  useEffect(() => {
+    const resolved = resolveDefaultWorkflow(
+      docType,
+      phase,
+      docTypeDefaultTemplates,
+      phaseWorkflowTemplates,
+    );
+    setWorkflow(resolved);
+  }, [docType, phase, docTypeDefaultTemplates, phaseWorkflowTemplates]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -106,8 +184,6 @@ export default function NewProjectPage() {
     if (!docNumber.trim()) errs.docNumber = "Required";
     if (!title.trim()) errs.title = "Required";
     if (!phase) errs.phase = "Required";
-    // Remove file upload requirement - make it optional
-    // if (files.length === 0) errs.files = "Upload at least one";
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -116,15 +192,13 @@ export default function NewProjectPage() {
     e.preventDefault();
     setError(null);
     if (!validate()) {
-      console.log('Validation failed:', fieldErrors);
       return;
     }
 
     setLoading(true);
 
     const projectData: Record<string, unknown> = {
-      // Don't send id - let backend auto-generate it
-      document_number: docNumber, // User-provided document number
+      document_number: docNumber,
       name: title,
       user: sme || undefined,
       doc_type: docType,
@@ -135,8 +209,6 @@ export default function NewProjectPage() {
       projectData.workflow = workflow;
     }
 
-    console.log('Creating project with data:', projectData);
-
     try {
       const res = await authenticatedFetch(`${API}/projects`, {
         method: "POST",
@@ -144,21 +216,14 @@ export default function NewProjectPage() {
         body: JSON.stringify(projectData),
       });
 
-      console.log('Response status:', res.status);
-
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('Error response:', errorText);
         throw new Error(`Failed to create project: ${res.status} ${errorText}`);
       }
 
-      const result = await res.json();
-      console.log('Project created successfully:', result);
-
-      // Redirect to projects list or new project page
+      await res.json();
       router.push("/projects");
     } catch (err) {
-      console.error('Error creating project:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -167,13 +232,9 @@ export default function NewProjectPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-xl mx-auto bg-white shadow-lg rounded-xl p-8">
-        <h1 className="text-2xl font-bold mb-6">Create New Project</h1>
-        <form
-          className="space-y-5"
-          onSubmit={handleSubmit}
-          encType="multipart/form-data"
-        >
+      <div className="mx-auto max-w-xl rounded-xl bg-white p-8 shadow-lg">
+        <h1 className="mb-6 text-2xl font-bold">Create New Project</h1>
+        <form className="space-y-5" onSubmit={handleSubmit} encType="multipart/form-data">
           <div>
             <Label htmlFor="docType">Document Type *</Label>
             <Select value={docType} onValueChange={setDocType}>
@@ -188,9 +249,7 @@ export default function NewProjectPage() {
                 ))}
               </SelectContent>
             </Select>
-            {fieldErrors.docType && (
-              <p className="text-sm text-red-600">{fieldErrors.docType}</p>
-            )}
+            {fieldErrors.docType && <p className="text-sm text-red-600">{fieldErrors.docType}</p>}
           </div>
           <div>
             <Label htmlFor="docNumber">Document Number *</Label>
@@ -202,9 +261,7 @@ export default function NewProjectPage() {
               placeholder="E.g., AC 120-76E"
               aria-invalid={!!fieldErrors.docNumber}
             />
-            {fieldErrors.docNumber && (
-              <p className="text-sm text-red-600">{fieldErrors.docNumber}</p>
-            )}
+            {fieldErrors.docNumber && <p className="text-sm text-red-600">{fieldErrors.docNumber}</p>}
           </div>
           <div>
             <Label htmlFor="title">Document Title *</Label>
@@ -216,9 +273,7 @@ export default function NewProjectPage() {
               placeholder="Title of the document"
               aria-invalid={!!fieldErrors.title}
             />
-            {fieldErrors.title && (
-              <p className="text-sm text-red-600">{fieldErrors.title}</p>
-            )}
+            {fieldErrors.title && <p className="text-sm text-red-600">{fieldErrors.title}</p>}
           </div>
           <div>
             <Label htmlFor="phase">Phase *</Label>
@@ -234,49 +289,38 @@ export default function NewProjectPage() {
                 ))}
               </SelectContent>
             </Select>
-            {fieldErrors.phase && (
-              <p className="text-sm text-red-600">{fieldErrors.phase}</p>
-            )}
+            {fieldErrors.phase && <p className="text-sm text-red-600">{fieldErrors.phase}</p>}
           </div>
           <FieldGate when={!!docType && !!phase}>
             <div>
               <Label htmlFor="workflow">Workflow</Label>
-              <Input
-                id="workflow"
-                value={workflow || ""}
-                disabled={true}
-                placeholder="Assigned by backend"
-              />
+              <Input id="workflow" value={workflow || ""} disabled={true} placeholder="Assigned by backend" />
               <p className="text-xs text-gray-500">
-                Assigned based on the document type configuration.
+                Assigned from document type defaults, or from selected phase defaults.
               </p>
             </div>
           </FieldGate>
           <details className="mt-4">
-            <summary className="cursor-pointer text-sm text-gray-600">
-              Additional details (optional)
-            </summary>
-            <div className="pt-3 space-y-4">
+            <summary className="cursor-pointer text-sm text-gray-600">Additional details (optional)</summary>
+            <div className="space-y-4 pt-3">
               <div>
-                <Label htmlFor="sme">Subject Matter Expert (SME) <span className="text-gray-500">(optional)</span></Label>
-                <Input
-                  id="sme"
-                  value={sme}
-                  onChange={(e) => setSme(e.target.value)}
-                />
+                <Label htmlFor="sme">
+                  Subject Matter Expert (SME) <span className="text-gray-500">(optional)</span>
+                </Label>
+                <Input id="sme" value={sme} onChange={(e) => setSme(e.target.value)} />
               </div>
               <div>
-                <Label htmlFor="description">Description <span className="text-gray-500">(optional)</span></Label>
-                <Input
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
+                <Label htmlFor="description">
+                  Description <span className="text-gray-500">(optional)</span>
+                </Label>
+                <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
             </div>
           </details>
           <div>
-            <Label>Upload Reference Files (.docx, .pdf, .txt) <span className="text-gray-500">(optional)</span></Label>
+            <Label>
+              Upload Reference Files (.docx, .pdf, .txt) <span className="text-gray-500">(optional)</span>
+            </Label>
             <UploadDropzone
               value={files}
               onChange={(f) => setFiles(Array.isArray(f) ? f : f ? [f] : [])}

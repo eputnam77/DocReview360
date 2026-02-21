@@ -128,89 +128,104 @@ class StaleStateError(RuntimeError):
 DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
     "Advisory Circular": [
         "Draft Development",
-        "Final Issuance",
         "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
+        "Final Issuance",
     ],
-    "API Guide": [
+    "Order / Directive": [
+        "Draft Development",
+        "Internal Coordination",
+        "Final Issuance",
+    ],
+    "Policy": [
+        "Draft Development",
+        "Internal Coordination",
+        "Final Issuance",
+    ],
+    "Guidance": [
+        "Draft Development",
+        "Internal Coordination",
+        "Final Issuance",
+    ],
+    "Memorandum": [
+        "Draft Development",
+        "Internal Coordination",
+        "Final Issuance",
+    ],
+    "SOP": [
         "Draft Development",
         "Peer Review",
-        "Beta Documentation Review",
-        "Release Candidate Review",
-        "General Availability",
-        "Maintenance / Revision Cycle",
+        "Internal Coordination",
+        "Final Issuance",
     ],
-    "CLI Guide": [
+    "Desk Guide": [
         "Draft Development",
         "Peer Review",
-        "Beta Documentation Review",
-        "Release Candidate Review",
-        "General Availability",
-        "Maintenance / Revision Cycle",
-    ],
-    "Deviation Memorandum": [
-        "Draft Development",
-        "Final Issuance",
         "Internal Coordination",
-    ],
-    "Exemption": [
-        "Draft Development",
         "Final Issuance",
+    ],
+    "Manual / Handbook": [
+        "Draft Development",
+        "Peer Review",
         "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
+        "Final Issuance",
+    ],
+    "Report": [
+        "Draft Development",
+        "Peer Review",
+        "Final Issuance",
+    ],
+    "Audit Report": [
+        "Draft Development",
+        "Peer Review",
+        "Internal Coordination",
+        "Final Issuance",
+    ],
+    "After-Action Report": [
+        "Draft Development",
+        "Peer Review",
+        "Final Issuance",
+    ],
+    "Briefing / Slide Deck": [
+        "Draft Development",
+        "Internal Coordination",
+        "Final Issuance",
+    ],
+    "Meeting Minutes": [
+        "Draft Development",
+        "Internal Coordination",
+        "Final Issuance",
     ],
     "Federal Register Notice": [
         "Draft Development",
-        "Final Issuance",
         "Internal Coordination",
         "Public Comment / Proposed Rulemaking",
-    ],
-    "General Memorandum": [
-        "Draft Development",
         "Final Issuance",
-        "Internal Coordination",
     ],
-    "Manual": [
-        "Draft Development",
-        "Peer Review",
-        "Internal Coordination",
-        "Beta Documentation Review",
-        "Release Candidate Review",
-        "General Availability",
-        "Maintenance / Revision Cycle",
-    ],
-    "Order": [
-        "Draft Development",
-        "Final Issuance",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-    ],
-    "Policy Memorandum": [
-        "Draft Development",
-        "Final Issuance",
-        "Internal Coordination",
-    ],
-    "Policy Statement": [
-        "Draft Development",
-        "Final Issuance",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-    ],
-    "Release Notes": [
-        "Draft Development",
-        "Peer Review",
-        "Beta Documentation Review",
-        "Release Candidate Review",
-        "General Availability",
-        "Maintenance / Revision Cycle",
-    ],
-    "Rulemaking": [
+    "Proposed Rule / NPRM": [
         "Draft Development",
         "Internal Coordination",
         "Public Comment / Proposed Rulemaking",
         "Final Issuance",
     ],
-    "Special Class Airworthiness Criteria": [
+    "Final Rule": [
+        "Draft Development",
+        "Internal Coordination",
+        "Public Comment / Proposed Rulemaking",
+        "Final Issuance",
+    ],
+    "Supporting Statement (PRA)": [
+        "Draft Development",
+        "Internal Coordination",
+        "Public Comment / Proposed Rulemaking",
+        "Final Issuance",
+    ],
+    "ICR": [
+        "Draft Development",
+        "Internal Coordination",
+        "Public Comment / Proposed Rulemaking",
+        "Final Issuance",
+    ],
+    "Exemption / Waiver": [
         "Draft Development",
         "Internal Coordination",
         "Public Comment / Proposed Rulemaking",
@@ -218,33 +233,54 @@ DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
     ],
     "Special Conditions": [
         "Draft Development",
-        "Final Issuance",
         "Internal Coordination",
         "Public Comment / Proposed Rulemaking",
+        "Final Issuance",
     ],
-    "Standard Operating Procedure": [
+    "FAQ": [
+        "Draft Development",
+        "Internal Review",
+        "Publication",
+    ],
+    "Letter / Correspondence": [
+        "Draft Development",
+        "Internal Review",
+        "Publication",
+    ],
+    "Web Content": [
+        "Draft Development",
+        "Internal Review",
+        "Publication",
+    ],
+    "Release Notes": [
         "Draft Development",
         "Peer Review",
-        "Internal Coordination",
-        "Beta Documentation Review",
         "Release Candidate Review",
         "General Availability",
         "Maintenance / Revision Cycle",
     ],
-    "Technical Standard Order": [
-        "Draft Development",
-        "Final Issuance",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-    ],
-    "White Paper": [
+    "User Guide": [
         "Draft Development",
         "Peer Review",
-        "Internal Coordination",
-        "Final Issuance",
+        "Release Candidate Review",
+        "General Availability",
+        "Maintenance / Revision Cycle",
+    ],
+    "API Manual / API Reference": [
+        "Draft Development",
+        "Peer Review",
+        "Release Candidate Review",
+        "General Availability",
+        "Maintenance / Revision Cycle",
+    ],
+    "README": [
+        "Draft Development",
+        "Peer Review",
+        "Release Candidate Review",
+        "General Availability",
+        "Maintenance / Revision Cycle",
     ],
 }
-
 # Export default document type names for consumers and tests
 DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 
@@ -515,9 +551,9 @@ def get_document_type(name: str) -> DocumentTypeModel | None:
 
 
 def list_document_types() -> list[DocumentTypeModel]:
-    """Return all known document types."""
+    """Return all known document types sorted alphabetically by name."""
     _ensure_current_store_loaded()
-    return list(document_types.values())
+    return sorted(document_types.values(), key=lambda doc: doc.name.lower())
 
 
 def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentTypeModel:
@@ -701,3 +737,4 @@ def list_all_phases() -> list[str]:
         for phase in doc.workflow:
             phases.add(phase)
     return sorted(phases)
+

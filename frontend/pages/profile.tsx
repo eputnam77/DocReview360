@@ -12,6 +12,7 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { API, authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
+import { useUserStore } from "@/state/user";
 
 // --- Types ---
 interface Profile {
@@ -75,6 +76,7 @@ const EMPTY_PROFILE: Profile = {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile>({ ...EMPTY_PROFILE });
   const [password, setPassword] = useState("");
+  const setTheme = useUserStore((s) => s.setTheme);
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [pictureFile, setPictureFile] = useState<File | null>(null);
 
@@ -83,20 +85,26 @@ export default function ProfilePage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
+            const themeValue = ["system", "light", "dark"].includes(data.preferences?.theme)
+              ? data.preferences.theme
+              : ["system", "light", "dark"].includes(data.theme)
+                ? data.theme
+                : "system";
             setProfile({
               ...EMPTY_PROFILE,
               ...data,
               dashboards: Array.isArray(data.dashboards) ? data.dashboards : ["main"],
               permissions: Array.isArray(data.permissions) ? data.permissions : ["user"],
-              theme: ["system", "light", "dark"].includes(data.theme) ? data.theme : "system",
+              theme: themeValue,
             });
+            setTheme(themeValue);
           } else {
             setProfile(EMPTY_PROFILE);
           }
         })
         .catch(() => setProfile(EMPTY_PROFILE));
 
-  }, []);
+  }, [setTheme]);
 
   const updateField = (key: keyof Profile, value: any) =>
     setProfile((p) => ({ ...p, [key]: value }));
@@ -114,16 +122,29 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (password && password !== passwordConfirm) {
       toast.error("Passwords do not match");
       return;
     }
-    authenticatedFetch(`${API}/profile`, {
+    const resp = await authenticatedFetch(`${API}/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...profile, password: password || undefined }),
-    }).catch(() => {});
+      body: JSON.stringify({
+        ...profile,
+        preferences: {
+          theme: profile.theme,
+        },
+        password: password || undefined,
+      }),
+    }).catch(() => null);
+
+    if (!resp || !resp.ok) {
+      toast.error("Failed to save profile");
+      return;
+    }
+
+    setTheme(profile.theme);
     toast.success("Profile saved");
     setPassword("");
     setPasswordConfirm("");
@@ -243,7 +264,11 @@ export default function ProfilePage() {
           <select
             className="w-full border rounded p-2 mt-1"
             value={profile.theme}
-            onChange={(e) => updateField("theme", e.target.value as Profile["theme"])}
+            onChange={(e) => {
+              const nextTheme = e.target.value as Profile["theme"];
+              updateField("theme", nextTheme);
+              setTheme(nextTheme);
+            }}
           >
             <option value="system">System</option>
             <option value="light">Light</option>
@@ -371,3 +396,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

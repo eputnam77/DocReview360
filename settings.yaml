@@ -1,55 +1,80 @@
-{
-  "audit_log": {
-    "purge_interval_minutes": 1440,
-    "retention_days": 2555
-  },
-  "dash_bob": {
-    "activity": true,
-    "logs": true,
-    "stats": false,
-    "status": true
-  },
-  "prefs_bob": {
-    "theme": "dark"
-  },
-  "prefs_u1": {
-    "theme": "dark"
-  },
-  "projectprefs_qa-proj-20260201-062447": {
-    "ai_suggest": true,
-    "collab": false,
-    "heading_lock": false,
-    "indentation": false,
-    "lint": true,
-    "mark_review": false,
-    "section_node": false,
-    "watermark": true,
-    "watermark_text": "QA watermark"
-  },
-  "rbac": {
-    "roles": {
-      "qa_role": [
-        "read"
-      ]
-    }
-  },
-  "signature_provider_fallback": "documenso",
-  "signature_provider_primary": "sandbox",
-  "signature_verification": {
-    "interval_minutes": 60,
-    "scope": "approved"
-  },
-  "secrets": {
-    "encryption-primary": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
-  },
-  "security": {
-    "encryption_at_rest": {
-      "enabled": true,
-      "key_id": "encryption-primary",
-      "required_for": [
-        "archive",
-        "backup"
-      ]
-    }
-  }
-}
+audit_log:
+  purge_interval_minutes: 1440
+  retention_days: 2555
+dash_bob:
+  activity: true
+  logs: true
+  stats: false
+  status: true
+prefs_alice:
+  theme: dark
+prefs_bob:
+  theme: light
+prefs_u1:
+  theme: dark
+profile_alice:
+  dashboards:
+  - main
+  - admin
+  - user
+  department: Regulatory Affairs
+  displayName: Alice Johnson
+  email: alice@example.com
+  jobTitle: Program Manager
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - admin
+  - manager
+  - user
+  phone: +1 (202) 555-0142
+  picture: ''
+  shorthand: AJ
+  timeZone: America/New_York
+  twoFA: true
+profile_bob:
+  dashboards:
+  - main
+  - user
+  department: Compliance
+  displayName: Bob Carter
+  email: bob@example.com
+  jobTitle: Reviewer
+  notificationEmail: true
+  notificationSMS: true
+  permissions:
+  - user
+  - reviewer
+  phone: +1 (415) 555-0118
+  picture: ''
+  shorthand: BC
+  timeZone: America/Chicago
+  twoFA: false
+projectprefs_qa-proj-20260201-062447:
+  ai_suggest: true
+  collab: false
+  heading_lock: false
+  indentation: false
+  lint: true
+  mark_review: false
+  section_node: false
+  watermark: true
+  watermark_text: QA watermark
+rbac:
+  roles:
+    qa_role:
+    - read
+secrets:
+  encryption-primary: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+security:
+  encryption_at_rest:
+    enabled: true
+    key_id: encryption-primary
+    required_for:
+    - archive
+    - backup
+signature_provider_fallback: documenso
+signature_provider_primary: sandbox
+signature_verification:
+  interval_minutes: 60
+  scope: approved

@@ -23,6 +23,35 @@ interface DocType {
   template?: string;
 }
 
+const GOVERNMENT_FIRST_STARTER_SET = [
+  { id: "advisory_circular", label: "Advisory Circular", category: "government", is_active: true },
+  { id: "order_directive", label: "Order / Directive", category: "government", is_active: true },
+  { id: "policy", label: "Policy", category: "government", is_active: true },
+  { id: "guidance", label: "Guidance", category: "government", is_active: true },
+  { id: "memorandum", label: "Memorandum", category: "government", is_active: true },
+  { id: "sop", label: "SOP", category: "government", is_active: true },
+  { id: "desk_guide", label: "Desk Guide", category: "government", is_active: true },
+  { id: "manual_handbook", label: "Manual / Handbook", category: "government", is_active: true },
+  { id: "report", label: "Report", category: "government", is_active: true },
+  { id: "audit_report", label: "Audit Report", category: "government", is_active: true },
+  { id: "after_action_report", label: "After-Action Report", category: "government", is_active: true },
+  { id: "briefing_slide_deck", label: "Briefing / Slide Deck", category: "government", is_active: true },
+  { id: "meeting_minutes", label: "Meeting Minutes", category: "government", is_active: true },
+  { id: "federal_register_notice", label: "Federal Register Notice", category: "rulemaking", is_active: true },
+  { id: "proposed_rule_nprm", label: "Proposed Rule / NPRM", category: "rulemaking", is_active: true },
+  { id: "final_rule", label: "Final Rule", category: "rulemaking", is_active: true },
+  { id: "supporting_statement_pra", label: "Supporting Statement (PRA)", category: "rulemaking", is_active: true },
+  { id: "icr", label: "ICR", category: "rulemaking", is_active: true },
+  { id: "exemption_waiver", label: "Exemption / Waiver", category: "rulemaking", is_active: true },
+  { id: "special_conditions", label: "Special Conditions", category: "rulemaking", is_active: true },
+  { id: "faq", label: "FAQ", category: "comms", is_active: true },
+  { id: "letter_correspondence", label: "Letter / Correspondence", category: "comms", is_active: true },
+  { id: "web_content", label: "Web Content", category: "comms", is_active: true },
+  { id: "release_notes", label: "Release Notes", category: "technical", is_active: true },
+  { id: "user_guide", label: "User Guide", category: "technical", is_active: true },
+  { id: "api_manual_api_reference", label: "API Manual / API Reference", category: "technical", is_active: true },
+  { id: "readme", label: "README", category: "technical", is_active: true },
+] as const;
 const normalizeDocTypes = (items: unknown): DocType[] => {
   if (!Array.isArray(items)) return [];
   const normalized: DocType[] = [];
@@ -68,7 +97,7 @@ const normalizeDocTypes = (items: unknown): DocType[] => {
     });
   }
 
-  return normalized;
+  return normalized.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 };
 
 function PhaseSelector({
@@ -147,6 +176,7 @@ export default function DocumentTypesPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
   const [replacementDocType, setReplacementDocType] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<any>(null);
+  const [seedingStarterSet, setSeedingStarterSet] = useState(false);
 
   useEffect(() => {
     // Fetch document types from backend
@@ -180,7 +210,7 @@ export default function DocumentTypesPage() {
       });
       if (r.ok) {
         const created = await r.json();
-        setTypes([...types, { id: created.name, name: created.name, phases: [] }]);
+        setTypes(normalizeDocTypes([...types, { id: created.name, name: created.name, phases: [] }]));
       } else {
         toast.error("Failed to add document type");
       }
@@ -190,6 +220,61 @@ export default function DocumentTypesPage() {
     setNewName("");
   };
 
+  const addGovernmentStarterSet = async () => {
+    if (seedingStarterSet) {
+      return;
+    }
+
+    setSeedingStarterSet(true);
+    try {
+      const existing = new Set(types.map((t) => t.name.trim().toLowerCase()));
+      const toCreate = GOVERNMENT_FIRST_STARTER_SET.filter(
+        (item) => !existing.has(item.label.trim().toLowerCase()),
+      );
+
+      if (toCreate.length === 0) {
+        toast("Government-first starter set is already present.");
+        return;
+      }
+
+      let createdCount = 0;
+      for (const item of toCreate) {
+        const res = await fetch("/api/document-types", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: item.id,
+            name: item.label,
+            label: item.label,
+            category: item.category,
+            is_active: item.is_active,
+            template: `<h1>${item.label}</h1>`,
+            workflow: [],
+          }),
+        });
+
+        if (res.ok) {
+          createdCount += 1;
+        } else {
+          const message = await res.text().catch(() => "");
+          console.error(`Failed to create document type '${item.label}': ${message}`);
+        }
+      }
+
+      const refreshed = await fetch("/api/document-types")
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []);
+      setTypes(normalizeDocTypes(refreshed));
+
+      if (createdCount > 0) {
+        toast.success(`Added ${createdCount} government-first document types.`);
+      } else {
+        toast.error("No document types were added.");
+      }
+    } finally {
+      setSeedingStarterSet(false);
+    }
+  };
   const checkUsage = async (docTypeName: string) => {
     try {
       const response = await fetch(
@@ -269,7 +354,7 @@ export default function DocumentTypesPage() {
       if (!res.ok) {
         throw new Error("Failed to update document type");
       }
-      setTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t)));
+      setTypes(normalizeDocTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t))));
       setEditingId(null);
       setEditName("");
       return;
@@ -314,15 +399,21 @@ export default function DocumentTypesPage() {
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Document Types</h1>
-      <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); addType(); }}>
-        <Input
-          placeholder="New Document Type"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          className="max-w-xs"
-        />
-        <Button type="submit" size="sm">Add</Button>
-      </form>
+      <p className="text-sm text-muted-foreground">Document types are optimized for federal and state document review, with support for common technical documentation.</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); addType(); }}>
+          <Input
+            placeholder="New Document Type"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="max-w-xs"
+          />
+          <Button type="submit" size="sm">Add</Button>
+        </form>
+        <Button type="button" size="sm" variant="outline" onClick={addGovernmentStarterSet} disabled={seedingStarterSet}>
+          {seedingStarterSet ? "Adding starter set..." : "Add Government Starter Set"}
+        </Button>
+      </div>
       <Table caption="Document types">
         <TableHeader>
           <TableRow>
@@ -443,3 +534,4 @@ export default function DocumentTypesPage() {
     </div>
   );
 }
+
