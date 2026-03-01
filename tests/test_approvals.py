@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -298,3 +299,43 @@ def test_send_for_signature_authorization_and_lock() -> None:
     )
     with pytest.raises(ValueError):
         send_for_signature(appr3.id, "doc3", "alice")
+
+
+def test_create_approval_freezes_existing_document_hash() -> None:
+    approvals.clear()
+    doc = import_document("doc-freeze", b"hello")
+
+    approval = create_approval("wf-freeze", "alice", doc.id)
+
+    assert approval.document_hash == hashlib.sha256(doc.content.encode("utf-8")).hexdigest()
+
+
+def test_send_for_signature_rejects_changed_document_after_hash_freeze() -> None:
+    approvals.clear()
+    doc = import_document("doc-hash-lock", b"original")
+    approval = create_approval("wf-lock", "alice", doc.id)
+
+    # Mutate after approval creation: signing must fail against the frozen hash.
+    doc.content = "tampered"
+
+    with pytest.raises(ValueError):
+        send_for_signature(approval.id, doc.id, "alice")
+
+
+def test_send_for_signature_records_signature_content_hash() -> None:
+    approvals.clear()
+    doc = import_document("doc-signature-record", b"payload")
+    approval = create_approval(
+        "wf-signature-record",
+        "alice",
+        doc.id,
+        signature_provider="documenso",
+    )
+
+    send_for_signature(approval.id, doc.id, "alice")
+
+    assert approval.signature_id is not None
+    records = approval.provider_metadata.get("docreview360:signature_records")
+    assert isinstance(records, dict)
+    assert records[approval.signature_id]["content_hash"] == approval.document_hash
+

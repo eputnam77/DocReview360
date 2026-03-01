@@ -2,14 +2,30 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 CONFIG_FILE = Path(os.getenv("DOCREVIEW360_CONFIG_FILE", "docreview360.yaml"))
+SAFE_DEBUG_ENVS = {"", "dev", "development", "test", "testing"}
+
+
+def _normalized_environment() -> str:
+    """Return normalized runtime environment and enforce explicit production flag."""
+
+    environment = os.getenv("DOCREVIEW360_ENV", "").strip().lower()
+    if environment == "prod":
+        raise ValueError("DOCREVIEW360_ENV must be set to 'production' for production mode")
+    return environment
+
+
+def _is_production_environment() -> bool:
+    """Return ``True`` when the configured runtime environment is production-like."""
+
+    return _normalized_environment() not in SAFE_DEBUG_ENVS
 
 
 @dataclass
@@ -45,12 +61,21 @@ class Config:
     inactivity_timeout_minutes: int = 30
     # External log connectors configuration
     log_connectors: list["ConnectorSettings"] = field(default_factory=list)
+    # Administrator-configurable branding shown in the UI.
+    branding_company_name: str = "DocReview360"
+    branding_logo_url: str | None = None
+    branding_logo_alt: str = "Organization logo"
+    branding_support_url: str = "/docs/"
+    branding_docs_url: str = "/docs/"
+    branding_security_url: str = "/security"
+    branding_privacy_url: str = "/privacy"
 
     @classmethod
     def load(cls, path: Path = CONFIG_FILE) -> "Config | None":
         """Return a ``Config`` loaded from ``path`` or ``None`` if missing."""
         if not path.exists():
             return None
+        _normalized_environment()
         try:
             raw = yaml.safe_load(path.read_text()) or {}
         except yaml.YAMLError as exc:
@@ -98,7 +123,22 @@ class Config:
             if timeout_value <= 0:
                 raise ValueError("inactivity_timeout_minutes must be a positive integer")
             data["inactivity_timeout_minutes"] = timeout_value
-        return cls(**data)
+        branding_name = str(data.get("branding_company_name") or "").strip()
+        data["branding_company_name"] = branding_name or "DocReview360"
+        branding_alt = str(data.get("branding_logo_alt") or "").strip()
+        data["branding_logo_alt"] = branding_alt or "Organization logo"
+        for link_key, link_default in (
+            ("branding_support_url", "/docs/"),
+            ("branding_docs_url", "/docs/"),
+            ("branding_security_url", "/security"),
+            ("branding_privacy_url", "/privacy"),
+        ):
+            link_value = str(data.get(link_key) or "").strip()
+            data[link_key] = link_value or link_default
+        cfg = cls(**data)
+        if cfg.debug and _is_production_environment():
+            raise ValueError("debug must be disabled when DOCREVIEW360_ENV is production-like")
+        return cfg
 
     def save(self, path: Path = CONFIG_FILE) -> None:
         """Persist this configuration to ``path`` creating directories as needed."""
@@ -113,3 +153,4 @@ class Config:
             path.write_text(yaml.safe_dump(data))
         except OSError as exc:
             raise OSError(f"Failed to write config to {path}") from exc
+

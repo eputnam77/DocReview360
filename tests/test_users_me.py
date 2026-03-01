@@ -24,5 +24,9 @@ def test_users_me_endpoint(monkeypatch) -> None:
     client.cookies.set("csrf_token", csrf_token)
     resp = client.get("/users/me", headers={"X-CSRF-Token": csrf_token})
     assert resp.status_code == 200
-    assert resp.json()["username"] == "alice"
-    assert resp.json()["inactivity_timeout_minutes"] == 30
+    payload = resp.json()
+    assert payload["username"] == "alice"
+    assert payload["inactivity_timeout_minutes"] == 30
+    assert payload["branding_company_name"] == "DocReview360"
+    assert payload["release_build_number"]
+    assert payload["release_build_date"]

@@ -1,18 +1,18 @@
-# DocReview360 Release Checklist (First Public Release)
+﻿# DocReview360 Release Checklist (First Public Release)
 
 Target window: next month (confirm exact date and time zone).
 
 Recommended v0.1 strategy:
 
-✅ GitHub Release (required)
-✅ PyPI (CLI-first distribution)
-🔶 Docker (optional but recommended if full stack is core value)
+âœ… GitHub Release (required)
+âœ… PyPI (CLI-first distribution)
+ðŸ”¶ Docker (optional but recommended if full stack is core value)
 
 
 **WANT TO ADD**
-You’re at the stage where clarity + product positioning matter as much as features.
+Youâ€™re at the stage where clarity + product positioning matter as much as features.
 
-Given that you’re preparing DocReview360 for public release (and potentially positioning it as a serious document review platform, not just an internal tool), I’d refine your list into:
+Given that youâ€™re preparing DocReview360 for public release (and potentially positioning it as a serious document review platform, not just an internal tool), Iâ€™d refine your list into:
 
 1. Clear feature objectives
 2. Platform integrity safeguards
@@ -20,7 +20,7 @@ Given that you’re preparing DocReview360 for public release (and potentially p
 4. Enterprise-readiness features
 5. Competitive differentiators
 
-Below is a cleaned-up and expanded version of your list — followed by additional strategic ideas.
+Below is a cleaned-up and expanded version of your list â€” followed by additional strategic ideas.
 
 ---
 
@@ -50,6 +50,10 @@ Below is a cleaned-up and expanded version of your list — followed by addition
   * Clean, minimal UI
 * [ ] Add reviewer comment section directly in Project View
 * [ ] Ensure phase gating logic (cannot advance without required approvals)
+* [ ] Add shareable project URL links with permission-aware access
+* [ ] Add viewer-only project role and access controls
+* [x] Add administrator branding settings in Configuration to replace default product mark with company logo and company name
+* [x] Enforce branding guardrails (image size/type limits, alt text, and safe fallback to default DocReview360 branding)
 
 ---
 
@@ -59,6 +63,7 @@ Below is a cleaned-up and expanded version of your list — followed by addition
 * [ ] Add DocuSign integration as optional enterprise connector
 * [ ] Abstract signature provider behind provider interface (future-proofing)
 * [ ] Log signature events into audit trail
+* [ ] Add approve by initials (as in First initial Last initial, "EP")
 
 ---
 
@@ -69,6 +74,8 @@ Below is a cleaned-up and expanded version of your list — followed by addition
 * [ ] Add reviewer workload dashboard
 * [ ] Add document aging metrics
 * [ ] Add SLA tracking per phase
+* [x] Add a global page footer across all DocReview360 pages with product/company name, release build number, build date, environment, and copyright
+* [x] Add footer links for support/docs and security/privacy pages
 
 ---
 
@@ -76,8 +83,9 @@ Below is a cleaned-up and expanded version of your list — followed by addition
 
 * [ ] Inline reviewer commenting (threaded)
 * [ ] Structured comment tagging (legal, style, technical, policy, etc.)
-* [ ] Reviewer disposition workflow (open → resolved → accepted → rejected)
+* [ ] Reviewer disposition workflow (open â†’ resolved â†’ accepted â†’ rejected)
 * [ ] Comment export to Word (for legacy workflows)
+* [ ] Add document converter support (Word, Markdown, PDF)
 * [ ] Redline comparison view (document version diff)
 
 ---
@@ -94,7 +102,7 @@ Based on your broader ecosystem and FAA-heavy background, these could differenti
 * [ ] Phase-based audit snapshots
 * [ ] Exportable audit package (PDF + JSON)
 * [ ] Role-based permission matrix visualization
-* [ ] Verification override logging (you already have RBAC structure — extend it)
+* [ ] Verification override logging (you already have RBAC structure â€” extend it)
 
 This aligns well with federal compliance workflows.
 
@@ -105,11 +113,12 @@ This aligns well with federal compliance workflows.
 Given your ScriptCore and style validator background:
 
 * [ ] AI style validation pass (toggleable)
+* [ ] Define and document optimization prompts for document workflows (TBD scope)
 * [ ] Acronym validation check
 * [ ] Heading structure validation
 * [ ] Plain language scoring
 * [ ] Regulatory citation checker
-* [ ] “Pre-flight” validation before phase advancement
+* [ ] â€œPre-flightâ€ validation before phase advancement
 
 Make this optional and clearly separated from core review logic.
 
@@ -121,6 +130,7 @@ Make this optional and clearly separated from core review logic.
 * [ ] Multi-tenant architecture support
 * [ ] Per-organization configuration
 * [ ] API key management
+* [ ] Add notifications integrations (Slack, Microsoft Teams, email/webhooks)
 * [ ] Export/import full project bundle
 * [ ] Backup/restore functionality
 
@@ -133,7 +143,7 @@ For open source credibility:
 * [ ] Health endpoint
 * [ ] Full E2E test coverage for:
 
-  * Create → Edit → Review → Approve → Sign → Archive
+  * Create â†’ Edit â†’ Review â†’ Approve â†’ Sign â†’ Archive
 * [ ] Deterministic migrations
 * [ ] Seed demo data (for open source demo mode)
 * [ ] Docker Compose dev stack
@@ -155,7 +165,7 @@ More precise. Product-focused.
 
 ---
 
-# One More Thing You’re Missing
+# One More Thing Youâ€™re Missing
 
 This is important:
 
@@ -173,7 +183,7 @@ Without strong versioning, review systems become fragile.
 
 # If I Had To Prioritize (Pre-Release)
 
-If your release window is 1–2 months, I would prioritize:
+If your release window is 1â€“2 months, I would prioritize:
 
 1. Workflow clarity + phase gating
 2. Reviewer comments + disposition tracking
@@ -196,7 +206,7 @@ DocReview360 can become:
   OR
 * A hybrid AI-augmented structured authoring system
 
-Your roadmap starts to shape which direction you’re going.
+Your roadmap starts to shape which direction youâ€™re going.
 
 
 
@@ -211,12 +221,13 @@ Your roadmap starts to shape which direction you’re going.
 - [ ] Run secret scan on the full history and working tree (gitleaks/trufflehog) and remediate anything found.
 - [ ] Verify `.env.example` contains only safe placeholders.
 - [ ] Remove or rotate any hardcoded tokens, test credentials, or sample secrets.
+- [ ] Remove unnecessary files and stale artifacts before release (temporary backups, local DB files, debug dumps).
 - [ ] Confirm licensing intent: GPL-3.0-only is correct for all code and bundled assets.
 - [ ] Verify third-party licenses for frontend/vendor assets and data files (document in `docs/licenses.md` if needed).
-- [ ] Ensure all “example.com” and placeholder URLs/emails are updated to real public addresses.
-- [ ] Fix README encoding issues (the current file has mojibake) so PyPI and GitHub render correctly.
-- [ ] Update README clone instructions (currently references another repo).
-- [ ] Reconcile `docreview360.yaml` vs `docreview360.yml` references in docs and CLI output.
+- [ ] Ensure all â€œexample.comâ€ and placeholder URLs/emails are updated to real public addresses.
+- [x] Fix README encoding issues (the current file has mojibake) so PyPI and GitHub render correctly.
+- [x] Update README clone instructions (currently references another repo).
+- [x] Reconcile `docreview360.yaml` vs `docreview360.yml` references in docs and CLI output.
 - [ ] Confirm `SECURITY.md` contact email is real and monitored.
 
 **3) Packaging And Versioning**
@@ -233,7 +244,7 @@ Your roadmap starts to shape which direction you’re going.
 
 **4) Documentation And User Experience**
 - [ ] Audit docs in `docs/` for broken links and outdated instructions.
-- [ ] Ensure README structure matches `.dev/AGENTS.md` requirements (Install → Quick-start → Features → Contributing → License).
+- [ ] Ensure README structure matches `.dev/AGENTS.md` requirements (Install â†’ Quick-start â†’ Features â†’ Contributing â†’ License).
 - [ ] Add/verify Quick Start that works on Windows and macOS/Linux.
 - [ ] Update CLI docs (`docs/cli.md`) with latest commands and config file names.
 - [ ] Publish architecture overview (`docs/adr/0001-core-architecture.md`) and ensure it is accurate.
@@ -261,8 +272,8 @@ Your roadmap starts to shape which direction you’re going.
 - [ ] Run E2E full: `E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_full poetry run python scripts/run_e2e.py`
 - [ ] Manually verify the full flow on a clean environment:
 - [ ] Login as admin (`alice`) and non-admin (`bob`) works from UI.
-- [ ] Create project in UI → backend persists → refresh shows project.
-- [ ] Upload a document → backend stores → UI can view/edit.
+- [ ] Create project in UI â†’ backend persists â†’ refresh shows project.
+- [ ] Upload a document â†’ backend stores â†’ UI can view/edit.
 - [ ] Approval request flow updates status in UI.
 - [ ] Export to PDF and Markdown from UI (or CLI) and verify output.
 - [ ] Frontend uses `NEXT_PUBLIC_API_BASE` correctly with the backend URL.
@@ -294,11 +305,14 @@ Your roadmap starts to shape which direction you’re going.
 - [ ] Run targeted code review for backend (API, auth, storage, ML, integrations).
 - [ ] Run targeted code review for frontend (auth flow, API client, editor, exports).
 - [ ] Run targeted code review for CLI and scripts (edge cases, config loading).
+- [ ] For optimization changes, document prompt intent and expected output behavior before implementation.
+- [ ] For each optimization change, run targeted tests first, then optimize code, then rerun unit and impacted E2E tests.
 - [ ] For each review: open issues, fix, re-run unit tests, re-run impacted E2E.
 - [ ] Ensure any risky changes are covered by tests (add tests if not).
 
 **12) Release Execution**
 - [ ] Bump version in `pyproject.toml` and align any frontend versioning if needed.
+- [x] Stamp build metadata for UI footer (version, build number, build date, and git commit hash) during release packaging.
 - [ ] Update `CHANGELOG.md` with release notes and date.
 - [ ] Tag the release in git (annotated tag).
 - [ ] Create GitHub release with notes, assets, and checksums.
@@ -308,6 +322,105 @@ Your roadmap starts to shape which direction you’re going.
 
 **13) Post-Release Verification**
 - [ ] Install from PyPI into a fresh venv and run `docreview360 --help`.
-- [ ] Smoke test the CLI → API → UI flow using the released artifacts.
+- [ ] Smoke test the CLI â†’ API â†’ UI flow using the released artifacts.
 - [ ] Verify docs site or README links resolve correctly.
 - [ ] Monitor issues and security reports for the first week.
+
+**14) Data Model And Migration Discipline**
+- [x] Define migration policy (tooling/version pinning and forward-only migrations).
+- [x] Add migration rollback test in CI.
+- [x] Verify demo seed data works on fresh DB and migrated DB.
+- [x] Add schema compatibility test for upgrade path v0.0.x -> v0.1.
+- [x] Document supported DB engines and versions.
+- [x] Define SemVer rule for schema-breaking changes (MAJOR bump required).
+
+**15) Performance Baseline**
+- [x] Measure and record API container cold-start time.
+- [x] Measure and record load time for a representative 50-page document.
+- [x] Measure and record approval state-transition latency.
+- [x] Run a minimal concurrency load test (10-25 simultaneous reviewers) and record results.
+- [x] Document the v0.1 performance envelope in README.
+
+**16) Logging And Observability Standardization**
+- [x] Standardize production logs as structured JSON.
+- [x] Enforce request correlation IDs end-to-end.
+- [x] Standardize severity levels and error taxonomy.
+- [x] Redact sensitive fields in logs by default.
+- [x] Document a recommended monitoring stack and minimum alerts.
+
+**17) Legal And Governance Layer**
+- [x] Add `TERMS.md` (warranty/liability baseline).
+- [x] Add `CONTRIBUTING.md` with contribution and governance model.
+- [x] Add `CODE_OF_CONDUCT.md`.
+- [x] Clarify product intent: regulated approval workflow support vs informational review.
+- [x] Add disclaimer: not legal advice and no regulatory certification implied.
+
+**18) Data Retention And Deletion Policy**
+- [x] Define document retention and archival policy.
+- [x] Define soft-delete vs hard-delete behavior.
+- [x] Define audit-log immutability and retention policy.
+- [x] Add explicit export-before-delete workflow.
+- [x] Document GDPR-style delete request handling.
+
+**19) Configuration Hardening**
+- [x] Require explicit production mode flag (`DOCREVIEW360_ENV=production`).
+- [x] Fail fast if production mode is used with dev/test secrets.
+- [x] Disallow `DEBUG=True` in production.
+- [x] Enforce HTTPS-only cookies in production mode.
+- [x] Enforce secure-default CORS policy (deny-by-default plus explicit allowlist).
+
+**20) API Contract Stability**
+- [x] Add OpenAPI schema snapshot test in CI.
+- [x] Version API routes (for example `/api/v1/`).
+- [x] Add frontend-backend API contract tests.
+- [x] Document backward-compatibility guarantees and deprecation policy.
+
+**21) Disaster Recovery Simulation**
+- [x] Run backup/restore simulation before release.
+- [x] Verify projects, versions, and audit logs survive restore.
+- [x] Document restore runbook with RTO/RPO assumptions.
+
+**22) Approval Provenance Locking**
+- [x] Freeze document hash at approval time.
+- [x] Store content hash alongside each signature record.
+- [x] Validate document hash before signature finalization.
+- [x] Show warning when current document differs from approved version.
+
+**23) Security Hardening Enhancements**
+- [x] Add login endpoint rate limiting.
+- [x] Add brute-force protection policy (lockout/backoff).
+- [x] Configure session expiration and idle timeout defaults.
+- [x] Verify CSRF protection and tests for state-changing routes.
+- [x] Document dependency pinning and update strategy.
+- [x] Generate SBOM (CycloneDX) for each release artifact set.
+
+**24) Packaging And Supply Chain Integrity**
+- [x] Sign release tags (GPG or Sigstore) and verify signatures.
+- [x] Add OCI metadata labels (`org.opencontainers.image.*`) to Docker images.
+- [x] Publish container image digests in release notes.
+
+**25) Test Determinism**
+- [x] Remove time-based flakiness and freeze timestamps where needed.
+- [x] Ensure tests pass in UTC and local time zones.
+- [x] Remove implicit dependency on local machine state.
+
+**26) Release Positioning And Design Principles**
+- [x] Add a release positioning statement in README for v0.1 scope and non-goals.
+- [x] Add a README "Design Principles" section:
+- [x] Deterministic workflow enforcement.
+- [x] Immutable audit trail.
+- [x] Explicit role boundaries.
+- [x] Version lineage transparency.
+- [x] Optional AI assistance, never mandatory.
+- [x] Compliance-friendly architecture.
+
+
+
+
+
+
+
+
+
+
+

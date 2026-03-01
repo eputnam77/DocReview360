@@ -1,6 +1,6 @@
-# CLI Reference
+﻿# CLI Reference
 
-DocReview360 ships with a single entry point called `docreview360`. The command wraps a few sub‑commands implemented with a friendly wizard style.
+DocReview360 ships with a single entry point called `docreview360`. The command wraps a few subâ€‘commands implemented with a friendly wizard style.
 
 ## init
 
@@ -8,7 +8,7 @@ DocReview360 ships with a single entry point called `docreview360`. The command 
 docreview360 init [OPTIONS]
 ```
 
-Interactive wizard that generates `docreview360.yml`.
+Interactive wizard that generates `docreview360.yaml`.
 
 ### Options
 
@@ -29,9 +29,9 @@ All options are prompted interactively so you can simply press Enter to accept t
 
 If `--database-url` is omitted the wizard uses driver-specific defaults:
 
-- Postgres → `postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360`
-- MySQL → `mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360`
-- SQLite → `sqlite:///docreview360.db`
+- Postgres â†’ `postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360`
+- MySQL â†’ `mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360`
+- SQLite â†’ `sqlite:///docreview360.db`
 
 ## migrate
 
@@ -57,8 +57,8 @@ docreview360 ml train [--epochs 5] [--lr 3e-5]
 Fine-tunes the PyTorch classifier using the feature schema defined in
 `schemas/features.json`. Outputs include:
 
-- `artifacts/models/latest.pt` – most recent checkpoint.
-- `artifacts/metrics/latest.json` – training loss, accuracy, and confusion
+- `artifacts/models/latest.pt` â€“ most recent checkpoint.
+- `artifacts/metrics/latest.json` â€“ training loss, accuracy, and confusion
   matrix snapshots.
 
 ### export
@@ -70,11 +70,11 @@ docreview360 ml export [--opset 18] [--quantize dynamic|static] [--calibration-s
 Converts the PyTorch checkpoint to ONNX and optionally applies quantisation.
 Common patterns:
 
-1. `docreview360 ml export` – emit a floating-point ONNX graph.
-2. `docreview360 ml export --quantize dynamic` – generate an INT8 graph optimised
+1. `docreview360 ml export` â€“ emit a floating-point ONNX graph.
+2. `docreview360 ml export --quantize dynamic` â€“ generate an INT8 graph optimised
    for CPUs.
 3. `docreview360 ml export --quantize static --calibration-set data/calibration/`
-   – calibrate with held-out samples.
+   â€“ calibrate with held-out samples.
 
 Outputs land in `artifacts/models/` and are tagged with the export timestamp.
 
@@ -86,7 +86,7 @@ docreview360 ml package [--include-tokenizer]
 
 Bundles the ONNX model, feature schema, metrics, and optional tokenizer files
 into `artifacts/packages/<timestamp>/`. Use the resulting folder for container
-deployments—copy it to your image and set `DOCREVIEW360_ML_MODEL_DIR`.
+deploymentsâ€”copy it to your image and set `DOCREVIEW360_ML_MODEL_DIR`.
 
 ### eval
 
@@ -117,3 +117,4 @@ docreview360 ml info
 Displays the currently packaged model, detected ONNX Runtime providers, and
 expected input schema. Useful when troubleshooting provider errors or verifying
 that a quantised graph loaded correctly.
+

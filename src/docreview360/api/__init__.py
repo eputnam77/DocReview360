@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import csv
 import io
 import re
@@ -18,8 +20,10 @@ from threading import Lock
 import time
 import uuid
 from datetime import datetime, timezone
+from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -44,13 +48,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from markdown_it import MarkdownIt
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..e2e_runtime import apply_e2e_run_dir
 
 apply_e2e_run_dir()
 
-from .. import auth, reporting, rbac
+from .. import auth, reporting, rbac, settings_manager
 from ..rbac import require_permission
 from .. import search as search_mod
 from ..ai_assist import rewrite_text, summarize_text
@@ -112,7 +116,7 @@ from ..documents import (
 from ..environment import current_environment, load_envs, switch_environment
 from ..exporter import export_document, set_guardrails
 from ..integrations.signature import get_default_providers, get_provider
-from ..logs import LogEntry, log_event, log_stream, query_logs, log_call
+from ..logs import TRACE_ID, LogEntry, log_event, log_stream, query_logs, log_call
 from ..messages import render
 from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
 from ..phases import (
@@ -296,6 +300,77 @@ def _request_source(request: Request) -> str:
     return "unknown"
 
 
+
+
+
+_ALLOWED_BRANDING_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
+_ALLOWED_BRANDING_DATA_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/svg+xml",
+}
+_MAX_BRANDING_LOGO_BYTES = _env_int("DOCREVIEW360_BRANDING_MAX_LOGO_BYTES", 256 * 1024)
+
+
+def _is_valid_branding_href(value: str) -> bool:
+    """Return whether ``value`` is a safe local path or HTTP(S) URL."""
+
+    candidate = value.strip()
+    if not candidate:
+        return False
+    if candidate.startswith("/"):
+        return True
+    parsed = urlparse(candidate)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _normalize_branding_logo_url(value: str | None) -> str | None:
+    """Validate and normalize an optional branding logo URL or data URL."""
+
+    if value is None:
+        return None
+    candidate = value.strip()
+    if not candidate:
+        return None
+    if len(candidate) > 600_000:
+        raise ValueError("branding_logo_url is too large")
+
+    lower_candidate = candidate.lower()
+    if lower_candidate.startswith("data:"):
+        match = re.match(r"^data:(image/[a-z0-9.+-]+);base64,(.+)$", candidate, re.IGNORECASE)
+        if match is None:
+            raise ValueError("branding_logo_url data URL must be base64 image data")
+        mime = match.group(1).lower()
+        if mime not in _ALLOWED_BRANDING_DATA_MIME_TYPES:
+            raise ValueError("branding_logo_url data URL image type is not allowed")
+        payload = match.group(2)
+        try:
+            decoded = base64.b64decode(payload, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("branding_logo_url data URL has invalid base64 payload") from exc
+        if len(decoded) > _MAX_BRANDING_LOGO_BYTES:
+            raise ValueError(
+                f"branding_logo_url exceeds size limit of {_MAX_BRANDING_LOGO_BYTES} bytes"
+            )
+        return candidate
+
+    parsed = urlparse(candidate)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("branding_logo_url must use https/http or data URL")
+    ext = Path(parsed.path or "").suffix.lower()
+    if ext not in _ALLOWED_BRANDING_LOGO_EXTENSIONS:
+        raise ValueError("branding_logo_url must use png, jpg, jpeg, webp, or svg")
+    return candidate
+
+
+def _load_release_version() -> str:
+    """Return package version for footer metadata."""
+
+    try:
+        return importlib_metadata.version("docreview360")
+    except importlib_metadata.PackageNotFoundError:
+        return os.getenv("DOCREVIEW360_RELEASE_VERSION", "0.0.0-dev")
 
 
 def _seed_default_document_templates() -> None:
@@ -667,7 +742,63 @@ class ConfigPayload(BaseModel):
     ai_auto_assign_writers: bool = False
     filename_template: str = "{id}"
     inactivity_timeout_minutes: int = Field(default=30, ge=1)
+    branding_company_name: str = Field(default="DocReview360", max_length=80)
+    branding_logo_url: str | None = None
+    branding_logo_alt: str = Field(default="Organization logo", max_length=120)
+    branding_support_url: str = Field(default="/docs/", max_length=255)
+    branding_docs_url: str = Field(default="/docs/", max_length=255)
+    branding_security_url: str = Field(default="/security", max_length=255)
+    branding_privacy_url: str = Field(default="/privacy", max_length=255)
 
+    @field_validator("branding_company_name")
+    @classmethod
+    def _validate_branding_company_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("branding_company_name cannot be empty")
+        return normalized
+
+    @field_validator("branding_logo_url")
+    @classmethod
+    def _validate_branding_logo_url(cls, value: str | None) -> str | None:
+        return _normalize_branding_logo_url(value)
+
+    @field_validator(
+        "branding_support_url",
+        "branding_docs_url",
+        "branding_security_url",
+        "branding_privacy_url",
+    )
+    @classmethod
+    def _validate_branding_link(cls, value: str) -> str:
+        normalized = value.strip()
+        if not _is_valid_branding_href(normalized):
+            raise ValueError("branding link must be an absolute path or http(s) URL")
+        return normalized
+
+    @model_validator(mode="after")
+    def _validate_logo_alt(self) -> "ConfigPayload":
+        if self.branding_logo_url and not self.branding_logo_alt.strip():
+            raise ValueError("branding_logo_alt is required when branding_logo_url is set")
+        self.branding_logo_alt = self.branding_logo_alt.strip() or "Organization logo"
+        return self
+
+
+class BrandingPayload(BaseModel):
+    """Public branding and build metadata consumed by the frontend shell."""
+
+    branding_company_name: str
+    branding_logo_url: str | None = None
+    branding_logo_alt: str
+    branding_support_url: str
+    branding_docs_url: str
+    branding_security_url: str
+    branding_privacy_url: str
+    release_version: str
+    release_build_number: str
+    release_build_date: str
+    release_commit: str | None = None
+    environment: str
 
 class SignatureProviderPayload(BaseModel):
     """Payload for selecting active signature providers."""
@@ -697,6 +828,63 @@ async def _lifespan(app: FastAPI):
 
 app = FastAPI(title="DocReview360", lifespan=_lifespan)
 
+_CORRELATION_HEADER = "X-Correlation-ID"
+_FALLBACK_CORRELATION_HEADER = "X-Request-ID"
+
+
+@app.middleware("http")
+async def correlation_id_middleware(request: Request, call_next: Any) -> Response:
+    """Attach and propagate a correlation ID for every HTTP request."""
+
+    incoming = request.headers.get(_CORRELATION_HEADER) or request.headers.get(
+        _FALLBACK_CORRELATION_HEADER
+    )
+    correlation_id = incoming.strip() if incoming and incoming.strip() else uuid.uuid4().hex
+    request.state.trace_id = correlation_id
+
+    token = TRACE_ID.set(correlation_id)
+    try:
+        response = await call_next(request)
+    finally:
+        TRACE_ID.reset(token)
+
+    response.headers[_CORRELATION_HEADER] = correlation_id
+    return response
+
+
+def _versioned_to_unversioned_path(path: str) -> str | None:
+    """Map ``/api/v1`` aliases to existing unversioned routes."""
+
+    api_prefix = "/api/v1"
+    if path == api_prefix:
+        return "/"
+    if path.startswith(f"{api_prefix}/"):
+        return path[len(api_prefix) :]
+    return None
+
+
+class APIVersionPrefixMiddleware:
+    """Allow clients to call existing endpoints through ``/api/v1`` aliases."""
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope.get("type") in {"http", "websocket"}:
+            rewritten_path = _versioned_to_unversioned_path(str(scope.get("path", "")))
+            if rewritten_path is not None:
+                updated_scope = dict(scope)
+                updated_scope["path"] = rewritten_path
+                if isinstance(scope.get("raw_path"), (bytes, bytearray)):
+                    query = scope.get("query_string") or b""
+                    updated_scope["raw_path"] = rewritten_path.encode("utf-8") + (
+                        b"?" + query if query else b""
+                    )
+                scope = updated_scope
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(APIVersionPrefixMiddleware)
 
 @app.get("/ping")
 async def ping() -> dict[str, str]:
@@ -705,44 +893,51 @@ async def ping() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Add CORS middleware to allow frontend requests
+# Add CORS middleware to allow frontend requests.
 #
-# Previously, the API only allowed requests from hard-coded localhost
-# origins, which meant running the frontend from any other host (even a
-# test environment) resulted in a browser "Failed to fetch" error due to
-# a blocked CORS preflight request.  To support multiple environments we
-# now read the allowed origins from an environment variable.  When the
-# variable is unset we fall back to a permissive regular expression so
-# that developers can experiment in ephemeral environments without extra
-# configuration.
-allowed_origins = os.getenv("DOCREVIEW360_ALLOW_ORIGINS")
-if allowed_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        allow_origins=[o.strip() for o in allowed_origins.split(",") if o.strip()],
+# Local development falls back to known localhost origins. Production-like
+# environments must set ``DOCREVIEW360_ALLOW_ORIGINS`` explicitly so CORS
+# remains deny-by-default outside dev/test.
+_SAFE_CORS_ENVS = {"", "dev", "development", "test", "testing"}
+_LOCAL_CORS_ORIGINS = [
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+
+def _resolve_cors_origins(allowed_origins: str | None, environment: str | None = None) -> list[str]:
+    """Return allowed CORS origins with production-safe defaults."""
+
+    if allowed_origins:
+        origins = [o.strip() for o in allowed_origins.split(",") if o.strip()]
+        if origins:
+            return origins
+        raise RuntimeError("DOCREVIEW360_ALLOW_ORIGINS must include at least one origin.")
+
+    normalized_env = (environment or os.getenv("DOCREVIEW360_ENV", "")).strip().lower()
+    if normalized_env == "prod":
+        raise RuntimeError("DOCREVIEW360_ENV must be set to 'production' for production mode.")
+    if normalized_env in _SAFE_CORS_ENVS:
+        return list(_LOCAL_CORS_ORIGINS)
+
+    raise RuntimeError(
+        "DOCREVIEW360_ALLOW_ORIGINS must be set when DOCREVIEW360_ENV is production-like."
     )
-else:
-    # Secure defaults for local development. Production deployments should set
-    # ``DOCREVIEW360_ALLOW_ORIGINS`` explicitly.
-    app.add_middleware(
-        CORSMiddleware,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        allow_origins=[
-            "http://localhost",
-            "http://127.0.0.1",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:8000",
-            "http://127.0.0.1:8000",
-        ],
-    )
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_origins=_resolve_cors_origins(os.getenv("DOCREVIEW360_ALLOW_ORIGINS")),
+)
 
 # Enable compression for large responses as recommended by the
 # performance profiling report. ``minimum_size`` avoids wasting
@@ -787,6 +982,50 @@ async def seed_e2e_endpoint() -> dict[str, Any]:
     return seed_e2e_data()
 
 
+def _branding_payload_from_config(cfg: Config | None) -> BrandingPayload:
+    """Build safe branding and release metadata for UI shell rendering."""
+
+    active_cfg = cfg or Config(database="sqlite", editor="tiptap", cms="none", auth="oidc")
+    logo_url: str | None
+    try:
+        logo_url = _normalize_branding_logo_url(active_cfg.branding_logo_url)
+    except ValueError:
+        logo_url = None
+
+    def _safe_link(value: str, default: str) -> str:
+        return value if _is_valid_branding_href(value) else default
+
+    release_build_number = os.getenv("DOCREVIEW360_RELEASE_BUILD_NUMBER", "dev")
+    release_build_date = os.getenv("DOCREVIEW360_RELEASE_BUILD_DATE", "unknown")
+    release_commit = os.getenv("DOCREVIEW360_RELEASE_COMMIT")
+    environment = os.getenv("DOCREVIEW360_ENV", "dev") or "dev"
+
+    return BrandingPayload(
+        branding_company_name=(active_cfg.branding_company_name or "DocReview360").strip()
+        or "DocReview360",
+        branding_logo_url=logo_url,
+        branding_logo_alt=(active_cfg.branding_logo_alt or "Organization logo").strip()
+        or "Organization logo",
+        branding_support_url=_safe_link(active_cfg.branding_support_url, "/docs/"),
+        branding_docs_url=_safe_link(active_cfg.branding_docs_url, "/docs/"),
+        branding_security_url=_safe_link(active_cfg.branding_security_url, "/security"),
+        branding_privacy_url=_safe_link(active_cfg.branding_privacy_url, "/privacy"),
+        release_version=_load_release_version(),
+        release_build_number=release_build_number,
+        release_build_date=release_build_date,
+        release_commit=release_commit,
+        environment=environment,
+    )
+
+
+@app.get("/branding", response_model=BrandingPayload)
+async def branding_endpoint() -> BrandingPayload:
+    """Return public branding and release metadata for UI shell components."""
+
+    cfg = Config.load(CONFIG_FILE)
+    return _branding_payload_from_config(cfg)
+
+
 @app.get("/users/me")
 async def current_user_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
@@ -797,12 +1036,21 @@ async def current_user_endpoint(
     inactivity_timeout = (
         cfg.inactivity_timeout_minutes if cfg is not None else 30
     )
+    branding = _branding_payload_from_config(cfg)
     return {
         "username": current_user.username,
         "is_admin": "admin" in roles,
         "active": auth.is_active(current_user.username),
         "roles": roles,
         "inactivity_timeout_minutes": inactivity_timeout,
+        "branding_company_name": branding.branding_company_name,
+        "branding_logo_url": branding.branding_logo_url,
+        "branding_logo_alt": branding.branding_logo_alt,
+        "release_version": branding.release_version,
+        "release_build_number": branding.release_build_number,
+        "release_build_date": branding.release_build_date,
+        "release_commit": branding.release_commit,
+        "environment": branding.environment,
     }
 
 
@@ -4374,7 +4622,7 @@ async def logs_stream(websocket: WebSocket) -> None:
 
     # Allow anonymous connections for simple dashboards and tests.  If a user
     # identifier is supplied we still honour permission checks, but omitting the
-    # header no longer results in an immediate 1008 policyâ€‘violation close which
+    # header no longer results in an immediate 1008 policy-violation close which
     # previously broke ``test_log_websocket``.  This keeps the endpoint usable in
     # lightweight environments while retaining optional access control.
     if user and not has_permission(user, "view_audit_log"):
@@ -4463,6 +4711,21 @@ async def switch_env_endpoint(name: str) -> dict[str, str]:
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"url": url}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

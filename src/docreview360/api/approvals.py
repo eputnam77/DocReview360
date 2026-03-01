@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import uuid
@@ -57,47 +57,50 @@ async def approval_return(
     next: Optional[str] = Query(None),
 ):
     """Process provider return parameters for completed signatures."""
-    trace_id = uuid.uuid4().hex
+
+    trace_id = getattr(request.state, "trace_id", None) or TRACE_ID.get(None) or uuid.uuid4().hex
     request.state.trace_id = trace_id
-    TRACE_ID.set(trace_id)
-    appr = get_approval(approval)
-    if appr is None or appr.signature_id != signature:
+    token = TRACE_ID.set(trace_id)
+    try:
+        appr = get_approval(approval)
+        if appr is None or appr.signature_id != signature:
+            log_event(
+                "approval_return_invalid",
+                approval_id=approval,
+                signature_id=signature,
+                doc_id=appr.document_id if appr else None,
+            )
+            raise HTTPException(status_code=404, detail="Approval not found")
         log_event(
-            "approval_return_invalid",
+            "approval_return_received",
             approval_id=approval,
             signature_id=signature,
-            doc_id=appr.document_id if appr else None,
-        )
-        raise HTTPException(status_code=404, detail="Approval not found")
-    log_event(
-        "approval_return_received",
-        approval_id=approval,
-        signature_id=signature,
-        doc_id=appr.document_id,
-    )
-    signed_at_dt = None
-    if signed_at:
-        try:
-            signed_at_dt = datetime.fromisoformat(signed_at)
-        except ValueError:
-            signed_at_dt = None
-    try:
-        await handle_signature_return(
-            signature,
             doc_id=appr.document_id,
-            certificate_url=certificate_url,
-            signed_at=signed_at_dt,
-            client_ip=request.client.host if request.client else None,
         )
-    except (KeyError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if next:
-        safe_next = _safe_redirect_path(next)
-        if safe_next is None:
-            raise HTTPException(status_code=400, detail="invalid redirect target")
-        return RedirectResponse(safe_next)
-    return {"status": "processed"}
-
+        signed_at_dt = None
+        if signed_at:
+            try:
+                signed_at_dt = datetime.fromisoformat(signed_at)
+            except ValueError:
+                signed_at_dt = None
+        try:
+            await handle_signature_return(
+                signature,
+                doc_id=appr.document_id,
+                certificate_url=certificate_url,
+                signed_at=signed_at_dt,
+                client_ip=request.client.host if request.client else None,
+            )
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if next:
+            safe_next = _safe_redirect_path(next)
+            if safe_next is None:
+                raise HTTPException(status_code=400, detail="invalid redirect target")
+            return RedirectResponse(safe_next)
+        return {"status": "processed"}
+    finally:
+        TRACE_ID.reset(token)
 
 @router.get("/approvals/{approval_id}/history")
 @log_call
@@ -228,3 +231,4 @@ async def verify_signature_stream(
         yield f"data: {json.dumps({'status': status, 'details': details})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+

@@ -127,3 +127,30 @@ def test_approval_return_rejects_external_redirect(monkeypatch: pytest.MonkeyPat
     )
     assert resp.status_code == 400
     assert resp.json()["detail"] == "invalid redirect target"
+
+
+def test_dashboard_approvals_flags_document_version_mismatch() -> None:
+    doc_id, approval_id, _ = _setup()
+    client = TestClient(app)
+
+    approve = client.put(
+        f"/approvals/{approval_id}",
+        headers=_auth_headers(),
+        json={"state": "approved"},
+    )
+    assert approve.status_code == 200
+
+    document_resp = client.get(f"/documents/{doc_id}", headers=_auth_headers())
+    assert document_resp.status_code == 200
+    payload = document_resp.json()
+    payload["content"] = f"{payload['content']}\nchanged"
+
+    update = client.put(f"/documents/{doc_id}", headers=_auth_headers(), json=payload)
+    assert update.status_code == 200
+
+    dashboard = client.get("/dashboard/approvals", headers=_auth_headers())
+    assert dashboard.status_code == 200
+    row = next(item for item in dashboard.json() if item["id"] == approval_id)
+    assert row["approved_version_matches_current"] is False
+    assert row["version_warning"] == "This document differs from approved version."
+

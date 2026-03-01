@@ -30,3 +30,10 @@ We encourage responsible disclosure. Please avoid posting public issues for new 
 
 Refer to [.dev/BANDIT.md](.dev/BANDIT.md) for the latest automated scan results.
 Dependency-Check runs when the tool is available; network restrictions may skip this step.
+
+## Dependency Pinning Strategy
+
+- Python dependencies are pinned in `poetry.lock` and `requirements*.txt` for reproducible installs.
+- Frontend dependencies are pinned in `frontend/package-lock.json`.
+- Security updates are triaged via `pip-audit`, `npm audit`, and CI scanning.
+- High-severity findings are patched on an expedited release path per the patch policy above.

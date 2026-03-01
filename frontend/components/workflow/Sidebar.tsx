@@ -1,6 +1,6 @@
 // frontend/components/workflow/Sidebar.tsx
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkle,
@@ -13,7 +13,9 @@ import {
   LogIn,
   LogOut,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
+import { useBrandingStore } from "@/state/branding";
 import { useUserStore } from "@/state/user";
 import SearchBar from "../SearchBar";
 import EnvironmentSwitcher from "../EnvironmentSwitcher";
@@ -40,6 +42,16 @@ const PROFILE = { icon: <User className="h-4 w-4" />, label: "Profile", href: "/
 
 export default function Sidebar() {
   const router = useRouter();
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  const initializeBranding = useBrandingStore((s) => s.initialize);
+  const brandingCompanyName = useBrandingStore((s) => s.brandingCompanyName);
+  const brandingLogoUrl = useBrandingStore((s) => s.brandingLogoUrl);
+  const brandingLogoAlt = useBrandingStore((s) => s.brandingLogoAlt);
+
+  useEffect(() => {
+    void initializeBranding();
+  }, [initializeBranding]);
 
   const NavItem = ({
     icon,
@@ -72,13 +84,24 @@ export default function Sidebar() {
   const username = useUserStore((s) => s.username);
   const logout = useUserStore((s) => s.logout);
 
+  const showLogo = Boolean(brandingLogoUrl) && !logoFailed;
+
   return (
     <aside className="flex h-screen w-56 flex-col border-r border-border bg-background text-foreground">
-      {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-5">
-        <Sparkle className="h-6 w-6 text-purple-600" />
-        {/* Replace text with organization logo if available */}
-        <span className="text-lg font-semibold">DocReview360</span>
+        {showLogo ? (
+          <img
+            src={brandingLogoUrl ?? undefined}
+            alt={brandingLogoAlt || "Organization logo"}
+            className="h-6 w-6 rounded object-contain"
+            onError={() => setLogoFailed(true)}
+          />
+        ) : (
+          <Sparkle className="h-6 w-6 text-purple-600" />
+        )}
+        <span className="truncate text-lg font-semibold">
+          {brandingCompanyName || "DocReview360"}
+        </span>
       </div>
 
       <div className="px-4 pb-4">
@@ -87,7 +110,6 @@ export default function Sidebar() {
 
       <SearchBar />
 
-      {/* Main nav */}
       <nav className="flex flex-col gap-1 px-2">
         {NAV.map((item) => (
           <NavItem key={item.label} {...item} />
@@ -96,7 +118,6 @@ export default function Sidebar() {
 
       <hr className="my-4 border-border" />
 
-      {/* Secondary */}
       <div className="space-y-1 px-2">
         {SECONDARY.map((item) => (
           <NavItem key={item.label} {...item} />

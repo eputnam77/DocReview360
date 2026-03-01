@@ -11,3 +11,8 @@ def test_sidebar_has_no_logs_link() -> None:
 def test_configuration_has_audit_logs_link() -> None:
     config_index = (REPO_ROOT / "frontend/pages/configuration/index.tsx").read_text()
     assert "/configuration/audit-logs" in config_index
+
+
+def test_configuration_has_branding_link() -> None:
+    config_index = (REPO_ROOT / "frontend/pages/configuration/index.tsx").read_text()
+    assert "/configuration/branding" in config_index

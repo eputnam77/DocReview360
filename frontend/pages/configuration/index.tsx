@@ -6,6 +6,7 @@ import {
   FileText,
   Repeat,
   Layers,
+  Paintbrush2,
   Users,
   Key,
   BookA,
@@ -15,7 +16,6 @@ import {
 
 type ConfigStatus = "Required" | "Preferred" | "Optional";
 
-// List of configuration sections
 const CONFIG_ITEMS: Array<{
   label: string;
   href: string;
@@ -72,6 +72,13 @@ const CONFIG_ITEMS: Array<{
     status: "Preferred",
   },
   {
+    label: "Branding",
+    href: "/configuration/branding",
+    icon: <Paintbrush2 className="w-6 h-6 text-emerald-600" />,
+    desc: "Customize company logo, product name, and footer links.",
+    status: "Preferred",
+  },
+  {
     label: "Audit Logs",
     href: "/configuration/audit-logs",
     icon: <BookA className="w-6 h-6 text-lime-600" />,
@@ -94,10 +101,7 @@ const CONFIG_ITEMS: Array<{
   },
 ];
 
-const STATUS_STYLES: Record<
-  ConfigStatus,
-  { label: string; classes: string }
-> = {
+const STATUS_STYLES: Record<ConfigStatus, { label: string; classes: string }> = {
   Required: {
     label: "Required",
     classes: "bg-red-50 text-red-700 border border-red-200",
@@ -125,14 +129,12 @@ const CONFIG_GROUPS: Array<{
   },
   {
     title: "Preferred",
-    description:
-      "Recommended next to standardize content and speed up teams.",
+    description: "Recommended next to standardize content and speed up teams.",
     status: "Preferred",
   },
   {
     title: "Optional",
-    description:
-      "Nice to have. Configure now or come back later based on need.",
+    description: "Nice to have. Configure now or come back later based on need.",
     status: "Optional",
   },
 ];
@@ -161,9 +163,7 @@ export default function ConfigurationPage() {
       </div>
 
       {CONFIG_GROUPS.map((group) => {
-        const items = CONFIG_ITEMS.filter(
-          (item) => item.status === group.status
-        ).sort((a, b) => {
+        const items = CONFIG_ITEMS.filter((item) => item.status === group.status).sort((a, b) => {
           if (group.status !== "Required") {
             return 0;
           }
@@ -188,9 +188,7 @@ export default function ConfigurationPage() {
                     <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
                       <div className="flex items-center gap-3">
                         {item.icon}
-                        <CardTitle className="text-lg font-semibold">
-                          {item.label}
-                        </CardTitle>
+                        <CardTitle className="text-lg font-semibold">{item.label}</CardTitle>
                       </div>
                       <span
                         className={`text-xs font-medium px-2 py-1 rounded-full ${

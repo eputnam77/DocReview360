@@ -1,0 +1,17 @@
+﻿name: Verify Release Tag Signature
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  verify-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify git tag signature
+        run: |
+          git verify-tag "${GITHUB_REF_NAME}"

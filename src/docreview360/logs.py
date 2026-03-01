@@ -1,11 +1,13 @@
-"""Simple asynchronous audit log utilities."""
+﻿"""Simple asynchronous audit log utilities."""
 
 from __future__ import annotations
 
 import asyncio
 import contextvars
 import hashlib
+import logging
 import os
+import re
 import traceback
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -76,7 +78,37 @@ _listeners: List[Callable[[LogEntry], None]] = []
 _db: Database | None = None
 TRACE_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar("trace_id", default=None)
 
-SENSITIVE_KEYS = {"password", "token", "secret"}
+_logger = logging.getLogger("docreview360.audit")
+_JSON_TRUE_VALUES = {"1", "true", "yes", "on"}
+_PRODUCTION_ENVS = {"prod", "production", "staging"}
+_SEVERITY_ALIASES = {"warn": "warning", "err": "error", "fatal": "error"}
+_VALID_SEVERITIES = {"info", "warning", "error"}
+_ERROR_CODE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{2,63}$")
+ERROR_TAXONOMY = frozenset(
+    {
+        "auth_error",
+        "compliance_error",
+        "configuration_error",
+        "data_integrity_error",
+        "dependency_error",
+        "permission_error",
+        "rate_limit_error",
+        "system_error",
+        "validation_error",
+    }
+)
+SENSITIVE_KEYS = {
+    "access_token",
+    "api_key",
+    "authorization",
+    "cookie",
+    "csrf",
+    "key",
+    "password",
+    "secret",
+    "session",
+    "token",
+}
 
 
 # Default retention for operational logs (in days)
@@ -85,12 +117,73 @@ LOG_RETENTION_DAYS = 365
 
 def _redact(value: Any, key: str | None = None) -> Any:
     if key and any(s in key.lower() for s in SENSITIVE_KEYS):
+        if isinstance(value, str) and "[REDACTED]" in value:
+            return value
         return "[REDACTED]"
     if isinstance(value, dict):
         return {k: _redact(v, k) for k, v in value.items()}
     if isinstance(value, (list, tuple, set)):
         return type(value)(_redact(v) for v in value)
     return value
+
+
+def _normalize_severity(value: str) -> Literal["info", "warning", "error"]:
+    normalized = (value or "info").strip().lower()
+    normalized = _SEVERITY_ALIASES.get(normalized, normalized)
+    if normalized not in _VALID_SEVERITIES:
+        normalized = "info"
+    return cast(Literal["info", "warning", "error"], normalized)
+
+
+def _normalize_error_code(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+    if not text:
+        return None
+    if _ERROR_CODE_PATTERN.fullmatch(text) is None:
+        return "system_error"
+    if text not in ERROR_TAXONOMY:
+        return "system_error"
+    return text
+
+
+def _should_emit_structured_runtime_logs() -> bool:
+    log_format = os.getenv("DOCREVIEW360_LOG_FORMAT", "").strip().lower()
+    if log_format == "json":
+        return True
+
+    env = os.getenv("DOCREVIEW360_ENV", "").strip().lower()
+    if env in _PRODUCTION_ENVS:
+        return True
+
+    explicit = os.getenv("DOCREVIEW360_STRUCTURED_LOGS", "").strip().lower()
+    return explicit in _JSON_TRUE_VALUES
+
+
+def _emit_structured_runtime_log(entry: LogEntry) -> None:
+    if not _should_emit_structured_runtime_logs():
+        return
+
+    import json
+
+    payload = {
+        "id": entry.id,
+        "timestamp": entry.timestamp.isoformat(),
+        "action": entry.action,
+        "severity": entry.severity,
+        "user_id": entry.user_id,
+        "entity_type": entry.entity_type,
+        "entity_id": entry.entity_id,
+        "ip_address": entry.ip_address,
+        "details": entry.details,
+    }
+    level = {
+        "info": logging.INFO,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+    }.get(entry.severity, logging.INFO)
+    _logger.log(level, json.dumps(payload, sort_keys=True, default=str))
 
 
 def _get_db() -> Database:
@@ -180,13 +273,29 @@ def log_event(
 ) -> LogEntry:
     """Record a log entry in the database and return it."""
 
+    normalized_severity = _normalize_severity(str(severity))
+    sanitized_context = cast(dict[str, Any], _redact(context))
     trace = trace_id or TRACE_ID.get(None)
     if trace:
-        context.setdefault("trace_id", trace)
+        sanitized_context.setdefault("trace_id", trace)
     if document_hash is None:
-        document_hash = context.pop("document_hash", None)
+        document_hash = sanitized_context.pop("document_hash", None)
     if provider_response is None:
-        provider_response = context.pop("provider_response", None)
+        provider_response = sanitized_context.pop("provider_response", None)
+    provider_payload: dict[str, Any]
+    if isinstance(provider_response, dict):
+        provider_payload = cast(dict[str, Any], _redact(provider_response))
+    elif provider_response is None:
+        provider_payload = {}
+    else:
+        provider_payload = {"value": _redact(provider_response)}
+
+    error_code = _normalize_error_code(sanitized_context.get("error_code"))
+    if normalized_severity == "error" and error_code is None:
+        error_code = "system_error"
+    if error_code is not None:
+        sanitized_context["error_code"] = error_code
+
     timestamp = datetime.now(timezone.utc).isoformat()
     db = _get_db()
     with db.session() as conn:
@@ -198,14 +307,14 @@ def log_event(
         "timestamp": timestamp,
         "user_id": user_id,
         "action": action,
-        "entity_type": entity_type or context.pop("entity_type", None),
-        "entity_id": entity_id or context.pop("entity_id", None),
-        "details": context,
-        "severity": severity,
-        "ip_address": ip or context.get("ip_address") or context.get("ip"),
+        "entity_type": entity_type or sanitized_context.pop("entity_type", None),
+        "entity_id": entity_id or sanitized_context.pop("entity_id", None),
+        "details": sanitized_context,
+        "severity": normalized_severity,
+        "ip_address": ip or sanitized_context.get("ip_address") or sanitized_context.get("ip"),
         "prev_hash": prev_hash,
         "document_hash": document_hash,
-        "provider_response": provider_response or {},
+        "provider_response": provider_payload,
     }
     import json
 
@@ -234,6 +343,7 @@ def log_event(
             )
         )
     logs.append(entry)
+    _emit_structured_runtime_log(entry)
     for pattern, cb in alerts:
         if pattern in action:
             cb(entry)
@@ -247,7 +357,6 @@ def log_event(
         else:
             loop.create_task(log_connectors.emit(entry))
     return entry
-
 
 def log_verification_failure(user_id: str, ip: str, **context: Any) -> LogEntry:
     """Log a failed signature verification with ``user_id`` and client ``ip``."""
@@ -586,3 +695,6 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # noqa: C901
     if func is None:
         return cast(F, decorator)
     return decorator(func)
+
+
+

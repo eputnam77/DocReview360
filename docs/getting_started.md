@@ -1,4 +1,4 @@
-# Getting Started
+﻿# Getting Started
 
 This short guide walks you through the first steps with DocReview360. It assumes Python and Git are already installed.
 
@@ -82,7 +82,7 @@ pipx install uv poetry
 
    * Answer the prompts about your preferred database, editor, and other options.
      TipTap is used as the document editor unless another choice is selected.
-   * The config is saved as `docreview360.yml` in your current directory.
+   * The config is saved as `docreview360.yaml` in your current directory.
 
 5. **Start the backend API server**
 
@@ -121,3 +121,4 @@ After logging in you're taken straight to the projects page. It lists your proje
 ## Next steps
 
 Try importing a Markdown file, run a search query and create a dummy approval via the API. These simple examples show how projects, documents and approvals interact.
+

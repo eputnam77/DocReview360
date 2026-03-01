@@ -238,6 +238,63 @@ class SignedApprovalImmutableError(ValueError):
     """Raised when attempting to mutate a signed approval."""
 
 
+def _hash_document_bytes(document: bytes) -> str:
+    return hashlib.sha256(document).hexdigest()
+
+
+def _hash_document_model(document: DocumentModel) -> str:
+    return _hash_document_bytes(document.content.encode("utf-8"))
+
+
+def _load_document_bytes(doc_id: str) -> bytes | None:
+    document = get_document(doc_id)
+    if document is None:
+        return None
+    return document.content.encode("utf-8")
+
+
+def _record_signature_content_hash(
+    approval: ApprovalModel,
+    *,
+    signature_id: str,
+    content_hash: str,
+) -> None:
+    records = approval.provider_metadata.get("docreview360:signature_records")
+    if not isinstance(records, dict):
+        records = {}
+    records[signature_id] = {
+        "content_hash": content_hash,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    approval.provider_metadata["docreview360:signature_records"] = records
+
+
+def _signature_record_content_hash(approval: ApprovalModel, signature_id: str) -> str | None:
+    records = approval.provider_metadata.get("docreview360:signature_records")
+    if not isinstance(records, dict):
+        return None
+    record = records.get(signature_id)
+    if not isinstance(record, dict):
+        return None
+    content_hash = record.get("content_hash")
+    return content_hash if isinstance(content_hash, str) and content_hash else None
+
+
+def _hash_mismatch_warning(
+    approval: ApprovalModel,
+    *,
+    current_hash: str | None,
+) -> tuple[bool, str | None]:
+    if (
+        approval.state == "approved"
+        and approval.document_hash is not None
+        and current_hash is not None
+        and approval.document_hash != current_hash
+    ):
+        return True, "This document differs from approved version."
+    return False, None
+
+
 def create_approval(
     workflow: str,
     reviewer: str,
@@ -265,12 +322,12 @@ def create_approval(
         signature_provider = get_default_provider()
     approval_id = uuid4().hex
     doc_hash = None
-    if document is not None:
-        existing_document = get_document(doc_id)
-        if existing_document is not None:
-            doc_hash = hashlib.sha256(existing_document.content.encode()).hexdigest()
-        else:
-            doc_hash = hashlib.sha256(document).hexdigest()
+    existing_document = get_document(doc_id)
+    if existing_document is not None:
+        # Freeze the currently linked document at approval creation time.
+        doc_hash = _hash_document_model(existing_document)
+    elif document is not None:
+        doc_hash = _hash_document_bytes(document)
     approval = ApprovalModel(
         id=approval_id,
         workflow=workflow,
@@ -496,10 +553,7 @@ async def handle_signature_return(  # noqa: C901
     if approval is None:
         raise KeyError("approval not found for signature")
     if doc_id is not None and doc_id != approval.document_id:
-        unlink_approval(approval.document_id, approval.id)
-        approval.document_id = doc_id
-        link_approval(doc_id, approval.id)
-        approval.document_hash = None
+        raise ValueError("approval document binding mismatch")
     doc_id = approval.document_id
 
     log_event(
@@ -521,11 +575,11 @@ async def handle_signature_return(  # noqa: C901
 
     document_param = document
     if document is None:
-        stored_doc = get_document(doc_id)
-        if stored_doc is None:
+        stored_document_bytes = _load_document_bytes(doc_id)
+        if stored_document_bytes is None:
             raise KeyError("document not found")
-        document = stored_doc.content.encode("utf-8")
-    current_hash = hashlib.sha256(document).hexdigest()
+        document = stored_document_bytes
+    current_hash = _hash_document_bytes(document)
     if approval.document_hash is None:
         approval.document_hash = current_hash
     elif current_hash != approval.document_hash:
@@ -540,6 +594,31 @@ async def handle_signature_return(  # noqa: C901
         log_audit_event(
             doc_id,
             "signature_hash_mismatch",
+            provider=approval.signature_provider,
+            signature_id=signature_id,
+            approval_id=approval.id,
+            provider_metadata=approval.provider_metadata,
+        )
+        raise ValueError("document hash mismatch")
+    expected_signature_hash = _signature_record_content_hash(approval, signature_id)
+    if expected_signature_hash is None:
+        _record_signature_content_hash(
+            approval,
+            signature_id=signature_id,
+            content_hash=current_hash,
+        )
+    elif expected_signature_hash != current_hash:
+        log_event(
+            "signature_record_hash_mismatch",
+            approval_id=approval.id,
+            provider=approval.signature_provider,
+            signature_id=signature_id,
+            doc_id=doc_id,
+            provider_metadata=approval.provider_metadata,
+        )
+        log_audit_event(
+            doc_id,
+            "signature_record_hash_mismatch",
             provider=approval.signature_provider,
             signature_id=signature_id,
             approval_id=approval.id,
@@ -686,6 +765,28 @@ async def update_approval_state(  # noqa: C901
                 and a.state != "approved"
             ):
                 raise ValueError("previous steps incomplete")
+    if state == "approved":
+        resolved_document = document
+        if resolved_document is None:
+            resolved_document = _load_document_bytes(approval.document_id)
+        if resolved_document is not None:
+            resolved_hash = _hash_document_bytes(resolved_document)
+            if approval.document_hash is None:
+                approval.document_hash = resolved_hash
+            elif resolved_hash != approval.document_hash:
+                raise ValueError("document hash mismatch")
+            if approval.signature_id is not None:
+                expected_signature_hash = _signature_record_content_hash(
+                    approval, approval.signature_id
+                )
+                if expected_signature_hash is None:
+                    _record_signature_content_hash(
+                        approval,
+                        signature_id=approval.signature_id,
+                        content_hash=resolved_hash,
+                    )
+                elif expected_signature_hash != resolved_hash:
+                    raise ValueError("document hash mismatch")
     previous = approval.state
     approval.state = state
     if signature_id is not None:
@@ -794,20 +895,25 @@ def send_for_signature(  # noqa: C901
     if user != approval.reviewer and user not in approval.delegates:
         raise PermissionError("not authorized to send for signature")
     if approval.document_id != doc_id:
+        if approval.signature_id is not None:
+            raise ValueError("document cannot be changed after signature request")
         unlink_approval(approval.document_id, approval.id)
         approval.document_id = doc_id
         link_approval(doc_id, approval.id)
-        approval.document_hash = None
+    document = get_document(doc_id)
+    document_was_missing = document is None
+    if document is None:
+        # Allow signing even if the document has not yet been imported.
+        # Create an empty placeholder document so subsequent workflow steps
+        # (such as ``handle_signature_return``) can still locate it.
+        document = DocumentModel(id=doc_id, content="", history=[])
+        documents[doc_id] = document
+        link_approval(doc_id, approval.id)
+    current_hash = _hash_document_model(document)
     if approval.document_hash is None:
-        document = get_document(doc_id)
-        if document is None:
-            # Allow signing even if the document has not yet been imported.
-            # Create an empty placeholder document so subsequent workflow steps
-            # (such as ``handle_signature_return``) can still locate it.
-            document = DocumentModel(id=doc_id, content="", history=[])
-            documents[doc_id] = document
-            link_approval(doc_id, approval.id)
-        approval.document_hash = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
+        approval.document_hash = current_hash
+    elif not document_was_missing and approval.document_hash != current_hash:
+        raise ValueError("document hash mismatch")
 
     if return_url is None:
         return_url = os.getenv("SIGNATURE_RETURN_URL")
@@ -833,6 +939,11 @@ def send_for_signature(  # noqa: C901
             approval.signature_provider = name
             approval.signature_id = sig_id
             approval.provider_metadata = meta
+            _record_signature_content_hash(
+                approval,
+                signature_id=sig_id,
+                content_hash=approval.document_hash,
+            )
             set_provider_health(name, True)
             log_event(
                 "approval_sent_for_signature",
@@ -853,6 +964,7 @@ def send_for_signature(  # noqa: C901
                 document_hash=approval.document_hash,
                 workflow=approval.workflow,
                 approval_id=approval_id,
+                signature_content_hash=approval.document_hash,
                 provider_metadata=meta,
             )
             return url
@@ -1009,6 +1121,14 @@ def approval_dashboard() -> List[Dict[str, Any]]:
     """Return approval data including provider configuration and audit trail."""
     data: List[Dict[str, Any]] = []
     for approval in approvals.values():
+        current_hash = None
+        document = get_document(approval.document_id)
+        if document is not None:
+            current_hash = _hash_document_model(document)
+        hash_mismatch, version_warning = _hash_mismatch_warning(
+            approval,
+            current_hash=current_hash,
+        )
         history = [
             e.model_dump()
             for e in get_audit_log(approval.document_id)
@@ -1020,6 +1140,10 @@ def approval_dashboard() -> List[Dict[str, Any]]:
                 "state": approval.state,
                 "provider": approval.signature_provider,
                 "provider_metadata": approval.provider_metadata,
+                "approved_document_hash": approval.document_hash,
+                "current_document_hash": current_hash,
+                "approved_version_matches_current": not hash_mismatch,
+                "version_warning": version_warning,
                 "audit": history,
             }
         )
@@ -1143,6 +1267,9 @@ def verify_document_signature_stream(  # noqa: C901
         if approval.document_id != doc_id:
             continue
         hash_valid = approval.document_hash == doc_hash
+        hash_mismatch_warning = None
+        if approval.document_hash is not None and approval.document_hash != doc_hash:
+            hash_mismatch_warning = "This document differs from approved version."
         # A signature cannot be considered valid unless the approval has been
         # approved, a signature identifier exists and the corresponding
         # certificate was provided.  The previous implementation only checked for
@@ -1278,6 +1405,9 @@ def verify_document_signature_stream(  # noqa: C901
             "approval_id": approval.id,
             "signature_id": approval.signature_id,
             "hash_valid": hash_valid,
+            "approved_document_hash": approval.document_hash,
+            "current_document_hash": doc_hash,
+            "version_warning": hash_mismatch_warning,
             "signature_valid": signature_valid,
             "certificate_present": certificate_present,
             "signature_verified": provider_valid,
@@ -1375,3 +1505,4 @@ def reset_approval(
         )
 
     return task213(confirm, _do_reset)
+

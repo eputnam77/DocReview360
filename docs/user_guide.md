@@ -1,4 +1,4 @@
-# User Guide
+﻿# User Guide
 
 This walkthrough helps you explore DocReview360 from the perspective of a new user. You will log in, open the editor, add reviewers and approve documents. The guide also explains how to configure the application for different environments.
 
@@ -6,7 +6,7 @@ This walkthrough helps you explore DocReview360 from the perspective of a new us
 
 1. Start the server with `uvicorn docreview360.api:app --reload --host 0.0.0.0` so remote browsers and Playwright tests can reach it.
 2. Open `http://127.0.0.1:8000/` in your browser.
-3. Sign in with the credentials from your `docreview360.yml` file (the defaults are `admin/admin`).
+3. Sign in with the credentials from your `docreview360.yaml` file (the defaults are `admin/admin`).
 4. The projects page greets you and provides links to the editor and API docs.
 
 ## 2. Open the document editor
@@ -15,7 +15,7 @@ This walkthrough helps you explore DocReview360 from the perspective of a new us
 2. A rich text field appears where you can type or paste content. This preview uses the Tiptap editor.
 3. Start from a blank canvas or load a template from the sidebar. Templates can optionally lock some formatting controls while still allowing inline styling.
 4. When a CMS is configured, TipTap revisions are automatically saved to the CMS in the background.
-5. To enable AI rewrite suggestions, save an OpenAI API key in **Configuration → Integrations** under the AI Rewrite section.
+5. To enable AI rewrite suggestions, save an OpenAI API key in **Configuration â†’ Integrations** under the AI Rewrite section.
 
 ### Changing the editor
 
@@ -37,7 +37,7 @@ wrappers.
 
 ## 4. Configure your environment
 
-DocReview360 stores its settings in `docreview360.yml`. Before running the wizard or the server, export the authentication secrets:
+DocReview360 stores its settings in `docreview360.yaml`. Before running the wizard or the server, export the authentication secrets:
 
 ```bash
 export DOCREVIEW360_SECRET_KEY=your-secret
@@ -72,7 +72,7 @@ After modifying the file, restart the server so the changes take effect.
 
 DocReview360 can now ingest PDF uploads by converting them to plain text during
 import. The converter is behind an explicit feature flag so existing
-deployments stay unchanged. Enable it in `docreview360.yml`:
+deployments stay unchanged. Enable it in `docreview360.yaml`:
 
 ```yaml
 documents:
@@ -117,3 +117,4 @@ Below is a short end-to-end walkthrough using the CLI and projects page together
    docreview360 export pdf --project "Sample Project" --out output.pdf
    ```
 5. Check the projects page to download the generated PDF and confirm the project status.
+

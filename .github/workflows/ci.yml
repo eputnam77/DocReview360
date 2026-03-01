@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -34,6 +34,9 @@ jobs:
           poetry run black --check src tests
           poetry run mypy --strict src tests
           poetry run bandit -r src -lll --skip B101
+          poetry run pytest -q tests/test_db_migrations.py tests/test_demo_seed_data.py
+          TZ=UTC poetry run pytest -q tests/test_e2e_run_determinism.py tests/test_observability_standard.py
+          TZ=America/Los_Angeles poetry run pytest -q tests/test_e2e_run_determinism.py tests/test_observability_standard.py
           poetry run pytest -q --cov=src --cov-branch --cov-fail-under=70
 
   frontend:
@@ -94,6 +97,7 @@ jobs:
           E2E_REQUIRE_PLAYWRIGHT=1 \
           E2E_TEST_MARK=e2e_smoke \
           E2E_PLAYWRIGHT_ARTIFACTS=failure \
+          E2E_RUN_ID=e2e-smoke \
           poetry run python scripts/run_e2e.py
       - name: Upload E2E smoke artifacts on failure
         if: failure()
@@ -144,6 +148,7 @@ jobs:
           E2E_REQUIRE_PLAYWRIGHT=1 \
           E2E_TEST_MARK=e2e_full \
           E2E_PLAYWRIGHT_ARTIFACTS=failure \
+          E2E_RUN_ID=e2e-full \
           poetry run python scripts/run_e2e.py
       - name: Upload E2E full artifacts on failure
         if: failure()
