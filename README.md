@@ -116,7 +116,6 @@ pipx install uv                 # fast resolver, venv mgr, lockfile, tool runner
 # 1. Clone project ---------------------------------------------------------------
 git clone https://github.com/eputnam77/DocReview360.git
 cd DocReview360
-
 # 2. Create and activate venv (Python 3.13) --------------------------------------
 uv python install 3.12
 uv venv --python 3.12
@@ -331,7 +330,7 @@ docreview360 migrate import backup.gz
 
 ```bash
 # Ensure you're in the project root and virtual environment is activated
-cd DocReview360
+# cd DocReview360  # only if you're not already in the repo root
 # source .venv/bin/activate  # On Mac/Linux
 # .venv\Scripts\activate     # On Windows
 
@@ -361,16 +360,48 @@ pwsh -File scripts/windows/start-backend.ps1 `
   -AccessExpireMinutes 60
 ```
 
-The script falls back to the development defaults from `src/docreview360/auth.py` when
-variables are absent and automatically reads overrides from a `.env` file in the project
-root. The `--reload` flag autoreloads on code changeshandy in development.
+The script first loads values from `.env` (if present), then applies its own
+development fallback values when variables are still missing:
+`DOCREVIEW360_SECRET_KEY=docreview360-dev-secret`,
+`DOCREVIEW360_OIDC_SECRET_KEY=docreview360-oidc-dev-secret`, and a 30-minute
+token expiry for both token types.
+
+### Verify backend login (recommended)
+
+Use the standard token flow that the frontend uses (`/token` -> `/users/me`).
+
+```bash
+TOKEN=$(curl -s -X POST "http://127.0.0.1:8000/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=alice&password=password" \
+  | python -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+
+curl -s "http://127.0.0.1:8000/users/me" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```powershell
+$token = (Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/token" `
+  -ContentType "application/x-www-form-urlencoded" `
+  -Body "username=alice&password=password").access_token
+
+Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/users/me" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Optional OIDC flow: use `/oidc/token` and then `/oidc/me`.
+
+Demo users are available in local/dev/test by default:
+- `alice` / `password` (roles: `user`, `admin`)
+- `bob` / `password` (roles: `auditor`)
+- Set `DOCREVIEW360_SEED_DEMO_USERS=false` to disable automatic demo-user seeding.
 
 ---
 
 ## Run the React frontend (Node18+)
 
 ```bash
-# Ensure you are at DocReview360/DocReview360/frontend
+# Ensure you are at DocReview360/frontend
 cd frontend
 npm install --legacy-peer-deps
 
@@ -579,9 +610,14 @@ forward port 8000 in the **Ports** panel and choose **Open in Browser** to acces
 
 A test token is available with:
 ```bash
-curl -X POST -d "username=alice&password=password" http://127.0.0.1:8000/oidc/token
+TOKEN=$(curl -s -X POST "http://127.0.0.1:8000/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=alice&password=password" \
+  | python -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+
+curl -s "http://127.0.0.1:8000/users/me" -H "Authorization: Bearer $TOKEN"
 ```
-Use the token in the `Authorization` header to call `/oidc/me`.
+Use the token in the `Authorization` header to call `/users/me`.
 
 **Test Users:**
 - **Admin:** `alice` / `password` (Has admin privileges)
@@ -744,7 +780,4 @@ The hook relies on `codespell` and `gitlint` to check spelling and patch style b
 ## License
 
 DocReview360 is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html). See the LICENSE file for full details.
-
-
-
 
