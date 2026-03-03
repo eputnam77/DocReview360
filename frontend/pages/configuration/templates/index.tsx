@@ -9,8 +9,9 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash, Eye, Download } from "lucide-react";
+import { Pencil, Trash, Eye, Download, CheckCircle, Archive } from "lucide-react";
 import { API, authenticatedFetch } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 interface Template {
   id: string;
@@ -36,6 +37,10 @@ export function createTemplateConfigApi() {
       authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}`, { method: "DELETE" }),
     deleteEmailTemplate: (name: string) =>
       authenticatedFetch(`${API}/email-templates/${encodeURIComponent(name)}`, { method: "DELETE" }),
+    approveTemplate: (id: string) =>
+      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}/approve`, { method: "POST" }),
+    retireTemplate: (id: string) =>
+      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}/retire`, { method: "POST" }),
   } as const;
 }
 
@@ -45,29 +50,35 @@ export default function TemplatesIndex() {
 
   const api = useMemo(() => createTemplateConfigApi(), []);
 
-  useEffect(() => {
-    api
-      .listTemplates()
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setTemplates(
-          data.length
-            ? data
-                .filter((t) => !t.retired)
-                .map((t) => ({
-                  id: t.id || t.name,
-                  name: t.name,
-                  docType: t.docType,
-                  format: t.format || "--",
-                  modified: t.modified || t.updated || "--",
-                  approved: !!t.approved,
-                  retired: !!t.retired,
-                }))
-            : []
+  const loadTemplates = useMemo(
+    () => () =>
+      api
+        .listTemplates()
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: any[]) =>
+          setTemplates(
+            data.length
+              ? data
+                  .filter((t) => !t.retired)
+                  .map((t) => ({
+                    id: t.id || t.name,
+                    name: t.name,
+                    docType: t.docType,
+                    format: t.format || "--",
+                    modified: t.modified || t.updated || "--",
+                    approved: !!t.approved,
+                    retired: !!t.retired,
+                  }))
+              : []
+          )
         )
-      )
-        .catch(() => setTemplates([]));
-  }, [api]);
+        .catch(() => setTemplates([])),
+    [api],
+  );
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   useEffect(() => {
     api
@@ -96,6 +107,34 @@ export default function TemplatesIndex() {
       await api.deleteTemplate(id);
     } catch {
       // ignore network errors in development mode
+    }
+  };
+
+  const approveTemplate = async (id: string) => {
+    try {
+      const r = await api.approveTemplate(id);
+      if (r.ok) {
+        await loadTemplates();
+        toast.success("Template approved.");
+      } else {
+        toast.error("Failed to approve template.");
+      }
+    } catch {
+      toast.error("Failed to approve template.");
+    }
+  };
+
+  const retireTemplate = async (id: string) => {
+    try {
+      const r = await api.retireTemplate(id);
+      if (r.ok) {
+        await loadTemplates();
+        toast.success("Template retired.");
+      } else {
+        toast.error("Failed to retire template.");
+      }
+    } catch {
+      toast.error("Failed to retire template.");
     }
   };
 
@@ -131,6 +170,7 @@ export default function TemplatesIndex() {
             <TableHead>Format</TableHead>
             <TableHead>Modified</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
             <TableHead>Download</TableHead>
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
@@ -144,6 +184,30 @@ export default function TemplatesIndex() {
               <TableCell>{t.format || <span className="text-gray-400">--</span>}</TableCell>
               <TableCell>{t.modified}</TableCell>
               <TableCell>{t.approved ? "Approved" : "Pending"}</TableCell>
+              <TableCell className="w-32 space-x-1">
+                {!t.approved && !t.retired && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Approve"
+                    aria-label="Approve template"
+                    onClick={() => approveTemplate(t.id)}
+                  >
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  </Button>
+                )}
+                {t.approved && !t.retired && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Retire"
+                    aria-label="Retire template"
+                    onClick={() => retireTemplate(t.id)}
+                  >
+                    <Archive className="w-4 h-4 text-amber-600" />
+                  </Button>
+                )}
+              </TableCell>
               <TableCell className="w-14">
                 <Button
                   variant="ghost"
@@ -183,7 +247,7 @@ export default function TemplatesIndex() {
           ))}
           {templates.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-gray-400 py-10">
+              <TableCell colSpan={9} className="text-center text-gray-400 py-10">
                 No templates found.<br />
                 <Button asChild className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white">
                   <Link href="/configuration/templates/new">

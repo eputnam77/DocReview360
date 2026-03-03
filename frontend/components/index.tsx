@@ -60,6 +60,9 @@ export { default as AuditTimeline } from "./AuditTimeline";
 export { default as ProjectSummaryBar } from "./ProjectSummaryBar";
 export { default as KpiCards } from "./KpiCards";
 export { default as PhaseAdvanceModal } from "./PhaseAdvanceModal";
+export { default as WorkflowTimeline } from "./WorkflowTimeline";
+export type { TimelineStep } from "./WorkflowTimeline";
+export { default as ReviewerComments } from "./ReviewerComments";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";

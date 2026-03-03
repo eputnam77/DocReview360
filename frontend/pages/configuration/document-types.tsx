@@ -21,6 +21,12 @@ interface DocType {
   name: string;
   phases?: string[];
   template?: string;
+  default_template_id?: string;
+}
+
+interface TemplateOption {
+  id: string;
+  name: string;
 }
 
 const GOVERNMENT_FIRST_STARTER_SET = [
@@ -89,11 +95,17 @@ const normalizeDocTypes = (items: unknown): DocType[] => {
         ? anyItem.template
         : "";
 
+    const default_template_id =
+      typeof (anyItem as any).default_template_id === "string" && (anyItem as any).default_template_id.trim()
+        ? (anyItem as any).default_template_id
+        : undefined;
+
     normalized.push({
       id,
       name,
       ...(phases.length > 0 ? { phases } : {}),
       ...(template ? { template } : {}),
+      ...(default_template_id ? { default_template_id } : {}),
     });
   }
 
@@ -173,6 +185,7 @@ export default function DocumentTypesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [phases, setPhases] = useState<string[]>([]);
+  const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
   const [replacementDocType, setReplacementDocType] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<any>(null);
@@ -193,6 +206,16 @@ export default function DocumentTypesPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: string[]) => setPhases(Array.isArray(data) ? data : []))
       .catch(() => setPhases([]));
+
+    // Fetch available templates for default template selector
+    fetch("/api/templates")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          setTemplates(data.map((t) => ({ id: t.id || t.name, name: t.name || t.id })));
+        }
+      })
+      .catch(() => setTemplates([]));
   }, []);
 
   const addType = async () => {
@@ -368,6 +391,31 @@ export default function DocumentTypesPage() {
     setEditName("");
   };
 
+  const changeDefaultTemplate = async (docTypeId: string, templateId: string) => {
+    const docType = types.find((t) => t.id === docTypeId);
+    if (!docType) return;
+    try {
+      const res = await fetch(`/api/document-types/${encodeURIComponent(docTypeId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: docType.name,
+          template: docType.template || `<h1>${docType.name}</h1>`,
+          workflow: docType.phases || [],
+          default_template_id: templateId || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update default template");
+      setTypes(
+        types.map((t) =>
+          t.id === docTypeId ? { ...t, default_template_id: templateId || undefined } : t,
+        ),
+      );
+    } catch {
+      toast.error("Failed to update default template");
+    }
+  };
+
   const changePhase = async (docTypeId: string, phase: string) => {
     const docType = types.find((t) => t.id === docTypeId);
     if (!docType) return;
@@ -421,6 +469,7 @@ export default function DocumentTypesPage() {
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
             <TableHead>Attached Phase</TableHead>
+            <TableHead>Default Template</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -470,11 +519,29 @@ export default function DocumentTypesPage() {
                   changePhase={changePhase}
                 />
               </TableCell>
+              <TableCell className="min-w-[180px]">
+                <Select
+                  value={t.default_template_id || ""}
+                  onValueChange={(val) => changeDefaultTemplate(t.id, val)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {templates.map((tpl) => (
+                      <SelectItem key={tpl.id} value={tpl.id}>
+                        {tpl.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </TableCell>
             </TableRow>
           ))}
           {types.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-gray-400 py-6">
+              <TableCell colSpan={5} className="text-center text-gray-400 py-6">
                 No document types defined.
               </TableCell>
             </TableRow>

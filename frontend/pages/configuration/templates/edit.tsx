@@ -29,6 +29,7 @@ export default function EditTemplatePage() {
   const [docType, setDocType] = useState("");
   const [format, setFormat] = useState(SUPPORTED_FORMATS[0].value);
   const [content, setContent] = useState("");
+  const [version, setVersion] = useState<number | null>(null);
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +52,7 @@ export default function EditTemplatePage() {
             (tpl.format || tpl.type || SUPPORTED_FORMATS[0].value).toUpperCase(),
           );
           setContent(tpl.content || "");
+          setVersion(typeof tpl.version === "number" ? tpl.version : null);
         })
         .catch(() => {
           /* ignore fetch errors - keep defaults */
@@ -134,7 +136,14 @@ export default function EditTemplatePage() {
     <div className="p-8 space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Edit Document Template</CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-2xl font-bold">Edit Document Template</CardTitle>
+            {version !== null && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
+                v{version}
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-gray-600 text-sm mb-2">

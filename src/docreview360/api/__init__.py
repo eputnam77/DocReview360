@@ -82,7 +82,7 @@ from ..archive import (
 from ..audit import AuditLogEntry, get_audit_log, log_audit_event
 from ..cache import cache_get, cache_set, clear_cache
 from ..cms import fetch_from_cms, save_to_cms
-from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response
+from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response, update_comment
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..demo_data import seed_demo_data
@@ -700,6 +700,15 @@ class CommentCreate(BaseModel):
     user: str
     text: str
     parent: str | None = None
+    tags: list[str] = []
+
+
+class CommentUpdate(BaseModel):
+    """Input for updating an existing comment."""
+
+    status: str | None = None
+    text: str | None = None
+    tags: list[str] | None = None
 
 
 class PriorityUpdate(BaseModel):
@@ -2779,7 +2788,7 @@ async def add_comment_endpoint(
         raise HTTPException(status_code=404, detail="Document not found")
     _enforce_document_access(document, current_user)
     comment_user = _resolve_requested_user(body.user, current_user)
-    comment = add_comment(doc_id, comment_user, body.text, parent=body.parent)
+    comment = add_comment(doc_id, comment_user, body.text, parent=body.parent, tags=body.tags)
     return render_comment_for_response(comment)
 
 
@@ -2797,6 +2806,33 @@ async def list_comments_endpoint(
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id, target="comments", count=len(comments))
     return [render_comment_for_response(comment) for comment in comments]
+
+
+@app.put("/documents/{doc_id}/comments/{comment_id}", response_model=CommentModel)
+async def update_comment_endpoint(
+    doc_id: str,
+    comment_id: str,
+    body: CommentUpdate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> CommentModel:
+    """Update status, text, or tags for an existing comment."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+    try:
+        comment = update_comment(
+            doc_id,
+            comment_id,
+            status=body.status,
+            text=body.text,
+            tags=body.tags,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return render_comment_for_response(comment)
 
 
 @app.get("/documents/{doc_id}/export")

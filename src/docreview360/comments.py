@@ -12,6 +12,10 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 
+COMMENT_STATUSES = ("open", "resolved", "accepted", "rejected")
+COMMENT_TAGS = ("legal", "style", "technical", "policy")
+
+
 class CommentModel(BaseModel):
     """Representation of a comment on a document."""
 
@@ -23,6 +27,8 @@ class CommentModel(BaseModel):
     mentions: list[str] = Field(default_factory=list)
     parent: Optional[str] = None
     created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    tags: list[str] = Field(default_factory=list)
+    status: str = "open"
 
 
 _comments: Dict[str, List[CommentModel]] = {}
@@ -157,7 +163,13 @@ def render_comment_for_response(comment: CommentModel) -> CommentModel:
     return comment.model_copy(update={"text": safe_text})
 
 
-def add_comment(document: str, user: str, text: str, parent: str | None = None) -> CommentModel:
+def add_comment(
+    document: str,
+    user: str,
+    text: str,
+    parent: str | None = None,
+    tags: list[str] | None = None,
+) -> CommentModel:
     """Store a comment for the given document parsing mentions and emoji."""
     if not document or not user or not text or not text.strip():
         # ``text`` previously allowed strings containing only whitespace which
@@ -181,6 +193,7 @@ def add_comment(document: str, user: str, text: str, parent: str | None = None) 
 
     sanitized_text = _sanitize_comment_text(raw_text)
     mentions = _extract_mentions(sanitized_text)
+    valid_tags = [t for t in (tags or []) if t in COMMENT_TAGS]
     comment = CommentModel(
         id=uuid4().hex,
         document=document,
@@ -189,9 +202,43 @@ def add_comment(document: str, user: str, text: str, parent: str | None = None) 
         raw_text=raw_text,
         mentions=mentions,
         parent=parent,
+        tags=valid_tags,
     )
     _comments.setdefault(document, []).append(comment)
     return comment
+
+
+def update_comment(
+    document: str,
+    comment_id: str,
+    *,
+    status: str | None = None,
+    text: str | None = None,
+    tags: list[str] | None = None,
+) -> CommentModel:
+    """Update an existing comment's status, text, or tags.
+
+    Returns the updated comment.  Raises ``KeyError`` if not found.
+    """
+    comments_list = _comments.get(document, [])
+    for comment in comments_list:
+        if comment.id == comment_id:
+            if status is not None:
+                if status not in COMMENT_STATUSES:
+                    raise ValueError(f"invalid status: {status!r}; must be one of {COMMENT_STATUSES}")
+                comment.status = status
+            if tags is not None:
+                comment.tags = [t for t in tags if t in COMMENT_TAGS]
+            if text is not None:
+                raw = text.strip()
+                if _max_comment_length is not None and len(raw) > _max_comment_length:
+                    raise ValueError(f"comment exceeds maximum length of {_max_comment_length} characters")
+                sanitized = _sanitize_comment_text(raw)
+                comment.raw_text = raw
+                comment.text = sanitized
+                comment.mentions = _extract_mentions(sanitized)
+            return comment
+    raise KeyError(f"comment {comment_id!r} not found on document {document!r}")
 
 
 def list_comments(document: str) -> List[CommentModel]:

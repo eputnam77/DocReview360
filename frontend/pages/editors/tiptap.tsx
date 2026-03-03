@@ -545,6 +545,8 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectDocType, setProjectDocType] = useState<string | null>(null);
   const defaultTemplateApplied = useRef(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const templatePickerRef = useRef<HTMLDivElement>(null);
 
   const [aiSuggestEnabled, setAiSuggestEnabled] = useState(false);
   interface Suggestion extends NewSuggestion {
@@ -564,6 +566,18 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const initialContentLoaded = useRef(false);
+
+  // Close template picker when clicking outside
+  useEffect(() => {
+    if (!showTemplatePicker) return;
+    const handler = (e: MouseEvent) => {
+      if (templatePickerRef.current && !templatePickerRef.current.contains(e.target as Node)) {
+        setShowTemplatePicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showTemplatePicker]);
 
   const persistPreferences = useCallback(
     async (overrides: Partial<Record<string, boolean | string>> = {}) => {
@@ -1351,6 +1365,49 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           insertImage={insertImage}
           disabled={formattingLocked}
         />
+        {/* Templates quick-picker */}
+        <div className="relative" ref={templatePickerRef}>
+          <button
+            onClick={() => setShowTemplatePicker((v) => !v)}
+            className={`p-2 rounded border text-sm ${showTemplatePicker ? "bg-indigo-100 border-indigo-400" : "bg-gray-200 border-gray-300"}`}
+            aria-label="Open template picker"
+            title="Apply a template"
+          >
+            Templates
+          </button>
+          {showTemplatePicker && (
+            <div className="absolute top-full mt-1 left-0 z-50 bg-white border border-gray-200 rounded shadow-lg min-w-[200px] max-h-64 overflow-y-auto">
+              <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b">
+                {projectDocType ? `Templates for: ${projectDocType}` : "All templates"}
+              </div>
+              {templates
+                .filter((t) => {
+                  if (!projectDocType) return true;
+                  const tDocType = (t.docType || t.doc_type || t.type || "").trim().toLowerCase();
+                  return !tDocType || tDocType === projectDocType.trim().toLowerCase();
+                })
+                .map((tpl) => (
+                  <button
+                    key={tpl.id || tpl.name}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 focus:bg-indigo-50"
+                    onClick={() => {
+                      setShowTemplatePicker(false);
+                      handleTemplateLoad(tpl.id || tpl.name);
+                    }}
+                  >
+                    {tpl.label || tpl.name || tpl.id}
+                  </button>
+                ))}
+              {templates.filter((t) => {
+                if (!projectDocType) return true;
+                const tDocType = (t.docType || t.doc_type || t.type || "").trim().toLowerCase();
+                return !tDocType || tDocType === projectDocType.trim().toLowerCase();
+              }).length === 0 && (
+                <div className="px-3 py-2 text-sm text-gray-400">No templates available.</div>
+              )}
+            </div>
+          )}
+        </div>
         <button
           onClick={() => saveRevision(editor.getHTML(), true, true)}
           className="ml-4 px-2 py-1 border rounded"

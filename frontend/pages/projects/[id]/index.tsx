@@ -14,7 +14,8 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { API, authenticatedFetch } from "@/lib/api";
-import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal } from "@/components";
+import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments } from "@/components";
+import type { TimelineStep } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/useProject";
@@ -293,6 +294,24 @@ export default function ProjectDetailsPage() {
     return map;
   }, [approvals]);
 
+  const canAdvance = useMemo(
+    () =>
+      approvalsForPhase.length === 0 ||
+      approvalsForPhase
+        .filter((a) => a.required !== false)
+        .every((a) => a.state === "approved"),
+    [approvalsForPhase],
+  );
+
+  const timelineSteps = useMemo<TimelineStep[]>(
+    () =>
+      workflow?.steps?.map((s) => ({
+        name: s.name,
+        status: (s.status ?? "upcoming") as TimelineStep["status"],
+      })) ?? [],
+    [workflow?.steps],
+  );
+
   // ▼ data hooks
   const { data: projectData, isLoading: projectLoading } = useProject(id as string);
   const { data: workflowData, isLoading: phasesLoading } = usePhases(projectData?.workflow);
@@ -455,10 +474,14 @@ export default function ProjectDetailsPage() {
   const requestPhaseChange = useCallback(
     (phaseId: string) => {
       if (phaseId === project?.currentPhaseId) return;
+      if (!canAdvance) {
+        toast.error("All required approvals must be complete before advancing the phase.");
+        return;
+      }
       setPendingPhase(phaseId);
       setShowPhaseDialog(true);
     },
-    [project?.currentPhaseId],
+    [project?.currentPhaseId, canAdvance],
   );
 
   const confirmPhaseChange = useCallback(async () => {
@@ -919,33 +942,21 @@ export default function ProjectDetailsPage() {
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Workflow</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  Workflow
+                  {!canAdvance && approvalsForPhase.some((a) => a.required !== false) && (
+                    <span
+                      className="text-xs font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full"
+                      title="All required approvals must be complete before advancing"
+                    >
+                      Approvals required
+                    </span>
+                  )}
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ol className="flex items-center gap-2 text-sm">
-                  {workflow?.steps?.map((s, i) => (
-                    <li key={s.name} className="flex items-center gap-1">
-                      <span
-                        className={cn(
-                          "w-6 h-6 flex items-center justify-center rounded-full border text-xs font-semibold",
-                          s.status === "complete" &&
-                            "bg-green-500 border-green-500 text-white",
-                          s.status === "active" &&
-                            "bg-blue-500 border-blue-500 text-white animate-pulse",
-                          s.status === "pending" &&
-                            "bg-gray-200 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400",
-                        )}
-                      >
-                        {i + 1}
-                      </span>
-                      <span>{s.name}</span>
-                      {i < workflow.steps!.length - 1 && (
-                        <span className="mx-1 text-gray-400">→</span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <CardContent className="space-y-2">
+                <WorkflowTimeline steps={timelineSteps} />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Current phase: {workflow?.phase}
                 </p>
               </CardContent>
