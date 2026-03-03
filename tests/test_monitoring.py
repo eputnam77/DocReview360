@@ -1,7 +1,6 @@
 import socket
 
 import pytest
-
 from _pytest.monkeypatch import MonkeyPatch
 
 from docreview360.monitoring import init_observability

@@ -1,5 +1,5 @@
 import types
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -12,11 +12,11 @@ def test_expired_secret_falls_back_to_env(monkeypatch: pytest.MonkeyPatch) -> No
     store_secret("p", "value", ttl=timedelta(seconds=1))
 
     # Advance time beyond the stored secret's expiry.
-    future = datetime.utcnow() + timedelta(seconds=5)
+    future = datetime.now(timezone.utc) + timedelta(seconds=5)
     monkeypatch.setattr(
         secrets,
         "datetime",
-        types.SimpleNamespace(utcnow=lambda: future),
+        types.SimpleNamespace(now=lambda tz: future),
     )
 
     # Environment variable should be returned once the secret expires rather

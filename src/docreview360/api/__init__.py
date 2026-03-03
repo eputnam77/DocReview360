@@ -1,6 +1,6 @@
 ﻿"""FastAPI application exposing DocReview360 endpoints."""
 
-# ruff: noqa: I001
+# ruff: noqa: I001, E402
 from __future__ import annotations
 
 import asyncio

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from html import escape
-from xml.sax.saxutils import escape as xml_escape, quoteattr
 from io import BytesIO
 from typing import Any, Callable, Iterable, Optional
+from xml.sax.saxutils import escape as xml_escape
+from xml.sax.saxutils import quoteattr
 from zipfile import ZipFile
 
 from .documents import DocumentModel, sanitize_content

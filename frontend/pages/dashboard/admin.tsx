@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,7 @@ export default function AdminDashboardPage() {
         const roleCounts = new Map<string, number>();
         list.forEach((user) => {
           const roles = Array.isArray(user.roles) ? user.roles : [];
-          roles.forEach((role) => {
+          roles.forEach((role: string) => {
             if (!role) return;
             roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
           });

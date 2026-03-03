@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash, Eye, Download } from "lucide-react";
-import { API, getStoredAccessToken } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 
 interface Template {
   id: string;
@@ -29,31 +29,13 @@ interface EmailTemplate {
 }
 
 export function createTemplateConfigApi() {
-  const token = getStoredAccessToken();
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
   return {
-    listTemplates: () =>
-      fetch("/api/templates", {
-        headers: authHeaders,
-        credentials: "include",
-      }),
-    listEmailTemplates: () =>
-      fetch("/api/email-templates", {
-        headers: authHeaders,
-        credentials: "include",
-      }),
+    listTemplates: () => authenticatedFetch(`${API}/templates`),
+    listEmailTemplates: () => authenticatedFetch(`${API}/email-templates`),
     deleteTemplate: (id: string) =>
-      fetch(`/api/templates/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: authHeaders,
-        credentials: "include",
-      }),
+      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}`, { method: "DELETE" }),
     deleteEmailTemplate: (name: string) =>
-      fetch(`/api/email-templates/${encodeURIComponent(name)}`, {
-        method: "DELETE",
-        headers: authHeaders,
-        credentials: "include",
-      }),
+      authenticatedFetch(`${API}/email-templates/${encodeURIComponent(name)}`, { method: "DELETE" }),
   } as const;
 }
 

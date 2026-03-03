@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml
+
 from .secrets import configure_vault, store_secret
 from .stubs import record_task_completion
 

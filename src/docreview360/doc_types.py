@@ -290,14 +290,6 @@ DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 # --------------------------
 
 
-def save_state() -> None:
-    """Persist document_types to disk."""
-    try:
-        json_data = [doc.model_dump() for doc in document_types.values()]
-        DATA_FILE.write_text(json.dumps(json_data, indent=2))
-    except OSError as exc:
-        raise RuntimeError(f"Failed to save document types to {DATA_FILE}") from exc
-
 def _state_lock() -> FileLock:
     """Return a file-based lock guarding state persistence."""
 
@@ -644,8 +636,6 @@ def export_document_types(path: str | Path) -> None:
 def import_document_types(path: str | Path) -> None:
     """Load document types from a JSON file and persist."""
     _ensure_current_store_loaded()
-    expected_version = _STATE_VERSION
-    previous_state = dict(document_types)
     try:
         data = json.loads(Path(path).read_text())
     except OSError as exc:
@@ -690,7 +680,6 @@ def import_document_types_json(data: str) -> None:
     previous_active_file = _ACTIVE_DATA_FILE
 
     _ensure_current_store_loaded()
-    expected_version = _STATE_VERSION
 
     def _restore_previous() -> None:
         document_types.clear()

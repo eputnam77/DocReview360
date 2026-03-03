@@ -1032,11 +1032,11 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           t.isDefault === true ||
           t.defaultTemplate === true ||
           t.default_template === true;
-        return docType && docType === docTypeKey && isDefault;
+        return !!(docType && docType === docTypeKey && isDefault);
       }) ||
       findTemplate((t) => {
         const docType = normalize(t.docType || t.doc_type || t.type);
-        return docType && docType === docTypeKey;
+        return !!(docType && docType === docTypeKey);
       });
 
     if (defaultTemplate) {

@@ -219,11 +219,11 @@ Your roadmap starts to shape which direction youâ€™re going.
 
 **2) Repository Hygiene And Public Readiness**
 - [ ] Run secret scan on the full history and working tree (gitleaks/trufflehog) and remediate anything found.
-- [ ] Verify `.env.example` contains only safe placeholders.
+- [x] Verify `.env.example` contains only safe placeholders.
 - [ ] Remove or rotate any hardcoded tokens, test credentials, or sample secrets.
 - [ ] Remove unnecessary files and stale artifacts before release (temporary backups, local DB files, debug dumps).
 - [ ] Confirm licensing intent: GPL-3.0-only is correct for all code and bundled assets.
-- [ ] Verify third-party licenses for frontend/vendor assets and data files (document in `docs/licenses.md` if needed).
+- [x] Verify third-party licenses for frontend/vendor assets and data files (document in `docs/licenses.md` if needed).
 - [ ] Ensure all â€œexample.comâ€ and placeholder URLs/emails are updated to real public addresses.
 - [x] Fix README encoding issues (the current file has mojibake) so PyPI and GitHub render correctly.
 - [x] Update README clone instructions (currently references another repo).
@@ -231,11 +231,11 @@ Your roadmap starts to shape which direction youâ€™re going.
 - [ ] Confirm `SECURITY.md` contact email is real and monitored.
 
 **3) Packaging And Versioning**
-- [ ] Confirm version alignment across `pyproject.toml` `[project]` and `[tool.poetry]`.
+- [x] Confirm version alignment across `pyproject.toml` `[project]` and `[tool.poetry]`.
 - [ ] Decide versioning scheme (SemVer) and document it in `CHANGELOG.md`.
-- [ ] Add a `CHANGELOG.md` following Keep a Changelog (required by `.dev/AGENTS.md`).
+- [x] Add a `CHANGELOG.md` following Keep a Changelog (required by `.dev/AGENTS.md`).
 - [ ] Ensure `LICENSE` and `README.md` are included in the sdist and wheel metadata.
-- [ ] Add PyPI classifiers, keywords, and `project.urls` in `pyproject.toml`.
+- [x] Add PyPI classifiers, keywords, and `project.urls` in `pyproject.toml`.
 - [ ] Verify entry points: `docreview360` CLI works after install from a fresh venv.
 - [ ] Build distribution artifacts: `python -m build` and validate with `twine check dist/*`.
 - [ ] Test install from the built artifacts in a clean environment.
@@ -252,7 +252,7 @@ Your roadmap starts to shape which direction youâ€™re going.
 - [ ] If using MkDocs, run `mkdocs build --strict` and fix any errors.
 
 **5) Backend Quality Gates (Per `.dev/AGENTS.md`)**
-- [ ] `ruff check src tests`
+- [x] `ruff check src tests`
 - [ ] `pytest -q`
 - [ ] `pytest -q --cov=src --cov-branch --cov-report=term --cov-fail-under=90`
 - [ ] `mypy --strict src tests` (if type coverage is adequate)
@@ -262,10 +262,10 @@ Your roadmap starts to shape which direction youâ€™re going.
 - [ ] `python scripts/run-pip-audit.py`
 
 **6) Frontend Quality Gates**
-- [ ] `npm ci` in `frontend/`
-- [ ] `npm test -- --run` (Vitest)
-- [ ] `npm run build` to validate production build
-- [ ] `npm audit` (or documented alternative) and resolve critical issues
+- [x] `npm ci` in `frontend/`
+- [x] `npm test -- --run` (Vitest)
+- [x] `npm run build` to validate production build
+- [x] `npm audit` (or documented alternative) and resolve critical issues
 
 **7) Frontend-Backend Integration (Your Known Gap)**
 - [ ] Run E2E smoke: `E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke poetry run python scripts/run_e2e.py`

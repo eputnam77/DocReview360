@@ -1,6 +1,6 @@
-﻿from datetime import datetime, timezone
+﻿import importlib.util
+from datetime import datetime, timezone
 from pathlib import Path
-import importlib.util
 
 
 def _load_run_e2e_module():

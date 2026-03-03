@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import tomllib
 from datetime import date
 from pathlib import Path
 from typing import Sequence
-import tomllib
 
 
 def read_project_version(pyproject_path: Path) -> str:

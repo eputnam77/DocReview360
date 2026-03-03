@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Callable, Dict, Optional
 
@@ -36,7 +36,7 @@ class VaultClient:
                 raise TypeError("ttl must be a datetime.timedelta")
             if ttl.total_seconds() <= 0:
                 raise ValueError("ttl must be positive")
-        expiry = datetime.utcnow() + (ttl or timedelta(days=90))
+        expiry = datetime.now(timezone.utc) + (ttl or timedelta(days=90))
         with self._lock:
             self._secrets[provider] = (secret, expiry)
 
@@ -56,7 +56,7 @@ class VaultClient:
                 # which caused every subsequent lookup to raise ``RuntimeError``
                 # and prevented falling back to environment variables.  Remove
                 # the stale entry so callers can retry or rely on env vars.
-                if datetime.utcnow() >= expiry:
+                if datetime.now(timezone.utc) >= expiry:
                     # Secret expired – remove and fall through to env vars
                     # instead of raising which previously prevented callers
                     # from transparently using configured fallbacks.

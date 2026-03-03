@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Optional
-from typing import Protocol
-
-from .object_storage import download_file, upload_file
-from .settings_manager import load_settings
+from typing import Optional, Protocol
 
 from .config import Config
 from .documents import DocumentModel
 from .exporter import export_document
+from .object_storage import download_file, upload_file
+from .settings_manager import load_settings
 from .sharepoint import SharePointClient, client_from_env
 
 

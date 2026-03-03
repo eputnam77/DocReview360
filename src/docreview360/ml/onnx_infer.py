@@ -6,7 +6,7 @@ import hashlib
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, MutableMapping, Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Sequence
 
 import numpy as np
 

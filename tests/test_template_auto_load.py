@@ -1,10 +1,10 @@
 """Auto-load latest template when creating project."""
 
+from docreview360 import template_manager
 from docreview360.doc_types import DocumentTypeModel
 from docreview360.search import ProjectModel
 from docreview360.stubs.task214 import task214
 from docreview360.stubs.task215 import task215
-from docreview360 import template_manager
 
 
 def test_project_creation_autoloads_latest_template(tmp_path) -> None:

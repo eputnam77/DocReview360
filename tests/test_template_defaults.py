@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from docreview360 import doc_types, email_templates, template_manager
 from docreview360.api import _seed_default_document_templates, _seed_default_email_templates

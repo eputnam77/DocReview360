@@ -1,6 +1,5 @@
 from docreview360.api import app
 
-
 # Snapshot of selected public contract surface for v0.1.
 EXPECTED_PATH_METHODS = {
     "/ping": ["get"],

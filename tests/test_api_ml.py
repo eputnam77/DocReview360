@@ -1,3 +1,4 @@
+# ruff: noqa: E402  # stub definitions must precede module imports for monkeypatching
 from __future__ import annotations
 
 import types
@@ -9,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from docreview360 import auth
+
 
 class _FakeSession:
     """Minimal ONNX Runtime session stub for deterministic testing."""

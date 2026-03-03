@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from threading import RLock
 from typing import Any, Callable, Iterable, Iterator, Mapping, Set
-
-import sys
 
 from fastapi import Depends, HTTPException, status
 

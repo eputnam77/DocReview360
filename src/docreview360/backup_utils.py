@@ -9,7 +9,12 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from .crypto import decrypt_payload, encrypt_payload, enforce_encryption_choice, get_encryption_policy
+from .crypto import (
+    decrypt_payload,
+    encrypt_payload,
+    enforce_encryption_choice,
+    get_encryption_policy,
+)
 from .documents import DocumentModel, documents
 from .logs import LogEntry, logs
 from .settings_manager import load_settings

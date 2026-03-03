@@ -1,6 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { renderToString } from "react-dom/server";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProjectDetailsPage from "../pages/projects/[id]";
@@ -10,6 +9,43 @@ import { useUserStore } from "@/state/user";
 
 const approvalTableSpy = vi.fn();
 const routerPushMock = vi.fn();
+
+// Stable mock data — new objects on every mock call cause useEffect([dep])
+// to fire infinitely (each render produces a new reference), leading to OOM.
+const { stableProject, stableWorkflow, stableApprovals, stableReviewSummary } = vi.hoisted(() => ({
+  stableProject: {
+    id: "proj-1",
+    number: "AC-01",
+    type: "Test",
+    title: "Test Project",
+    owner: "alice",
+    status: "In Progress",
+    progress: 50,
+    updated: "2024-01-01",
+    editor: "tiptap",
+    currentPhaseId: "Review",
+    workflow: "workflow-1",
+  },
+  stableWorkflow: {
+    id: "workflow-1",
+    phase: "Review",
+    steps: [
+      { name: "Draft", status: "complete" },
+      { name: "Review", status: "active" },
+    ],
+  },
+  stableApprovals: [
+    {
+      id: "approval-1",
+      reviewer: "alice",
+      email: "alice@example.com",
+      state: "pending" as const,
+      dueAt: "2024-01-02",
+      phaseId: "Review",
+    },
+  ],
+  stableReviewSummary: { count: 0 },
+}));
 
 const { useUserStoreMock, defaultUserState } = vi.hoisted(() => {
   const defaultState = {
@@ -54,6 +90,9 @@ vi.mock("lucide-react", () => {
     Download: Icon,
     Mail: Icon,
     Users2: Icon,
+    UserPlus: Icon,
+    Pencil: Icon,
+    Trash2: Icon,
   };
 });
 
@@ -182,50 +221,16 @@ vi.mock("@/lib/api", () => ({
 }));
 
 vi.mock("@/lib/useProject", () => ({
-  useProject: () => ({
-    data: {
-      id: "proj-1",
-      number: "AC-01",
-      type: "Test",
-      title: "Test Project",
-      owner: "alice",
-      status: "In Progress",
-      progress: 50,
-      updated: "2024-01-01",
-      editor: "tiptap",
-      currentPhaseId: "Review",
-      workflow: "workflow-1",
-    },
-    isLoading: false,
-  }),
+  useProject: () => ({ data: stableProject, isLoading: false }),
 }));
 
 vi.mock("@/lib/usePhases", () => ({
-  usePhases: () => ({
-    data: {
-      id: "workflow-1",
-      phase: "Review",
-      steps: [
-        { name: "Draft", status: "complete" },
-        { name: "Review", status: "active" },
-      ],
-    },
-    isLoading: false,
-  }),
+  usePhases: () => ({ data: stableWorkflow, isLoading: false }),
 }));
 
 vi.mock("@/lib/useApprovals", () => ({
   useApprovals: () => ({
-    approvals: [
-      {
-        id: "approval-1",
-        reviewer: "alice",
-        email: "alice@example.com",
-        state: "pending" as const,
-        dueAt: "2024-01-02",
-        phaseId: "Review",
-      },
-    ],
+    approvals: stableApprovals,
     approve: vi.fn(),
     reset: vi.fn(),
     remind: vi.fn(),
@@ -234,9 +239,17 @@ vi.mock("@/lib/useApprovals", () => ({
 }));
 
 vi.mock("@/lib/useReviewSummary", () => ({
-  useReviewSummary: () => ({
-    data: { count: 0 },
+  useReviewSummary: () => ({ data: stableReviewSummary, isLoading: false }),
+}));
+
+vi.mock("@/lib/useProjectReviewers", () => ({
+  useProjectReviewers: () => ({
+    reviewers: [],
     isLoading: false,
+    error: null,
+    addReviewer: vi.fn(),
+    updateReviewer: vi.fn(),
+    removeReviewer: vi.fn(),
   }),
 }));
 
@@ -254,18 +267,20 @@ describe("ProjectDetailsPage", () => {
     useUserStore.setState({ ...defaultUserState });
   });
 
-  it("renders without crashing and forwards currentUser to ApprovalTable", () => {
+  it("renders without crashing and forwards currentUser to ApprovalTable", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    const html = renderToString(
+    const { container } = render(
       <QueryClientProvider client={queryClient}>
         <ProjectDetailsPage />
       </QueryClientProvider>,
     );
 
-    expect(html).toContain("<table");
-    expect(approvalTableSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(approvalTableSpy).toHaveBeenCalled();
+    });
+    expect(container.innerHTML).toContain("data-testid=\"approval-table\"");
     const currentUsers = approvalTableSpy.mock.calls.map(([props]: [Record<string, unknown>]) => props.currentUser);
     expect(currentUsers).toContain("alice");
   });

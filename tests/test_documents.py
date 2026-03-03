@@ -5,8 +5,8 @@ from fastapi.testclient import TestClient
 from docreview360.api import app
 from docreview360.audit import clear_audit_log
 from docreview360.documents import (
-    autosave_document,
     DocumentModel,
+    autosave_document,
     documents,
     get_document_versions,
     import_document,

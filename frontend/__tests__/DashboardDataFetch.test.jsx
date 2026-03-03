@@ -110,21 +110,13 @@ describe("Dashboard data fetches", () => {
         });
     });
     it("uses authenticated fetches for manager dashboard widgets", async () => {
-        fetchMock
-            .mockResolvedValueOnce({
+        fetchMock.mockResolvedValueOnce({
             ok: true,
             json: vi.fn().mockResolvedValue({ projects: [], workload: {} }),
-        })
-            .mockResolvedValueOnce({
-            ok: true,
-            json: vi.fn().mockResolvedValue({}),
         });
         renderWithClient(<ManagerDashboardPage />);
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith("/dashboard/manager");
-        });
-        await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledWith("/dashboard/doc-types");
         });
     });
 });

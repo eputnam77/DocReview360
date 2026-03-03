@@ -105,13 +105,13 @@ export default function NewWorkflowPage() {
 
     for (const docType of docTypesSelected) {
       try {
-        const res = await fetch(/api/document-types/);
+        const res = await fetch(`/api/document-types/${encodeURIComponent(docType)}`);
         if (!res.ok) {
           continue;
         }
 
         const doc = await res.json();
-        await fetch(/api/document-types/, {
+        await fetch(`/api/document-types/${encodeURIComponent(docType)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

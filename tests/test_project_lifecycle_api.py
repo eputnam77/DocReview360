@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from docreview360 import auth, rbac, search as search_module
+from docreview360 import auth, rbac
+from docreview360 import search as search_module
 from docreview360.api import app
 from docreview360.rbac import add_role
 
