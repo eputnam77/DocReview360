@@ -1,30 +1,49 @@
+from datetime import timedelta
+
 from fastapi.testclient import TestClient
 
-from docreview360 import reporting
+from docreview360 import auth, reporting
 from docreview360.api import app
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass  # user may already exist
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_reporting_endpoints() -> None:
     reporting.reset_metrics_for_testing()
     client = TestClient(app)
+    headers = _alice_headers()
 
     resp = client.post(
         "/projects",
         json={"id": "r1", "name": "Report", "user": "bob", "doc_type": "sample"},
+        headers=headers,
     )
     assert resp.status_code == 201
 
-    resp = client.post("/workflows", json={"project": "r1", "phases": ["start", "end"]})
+    resp = client.post("/workflows", json={"project": "r1", "phases": ["start", "end"]}, headers=headers)
     assert resp.status_code == 201
     wf_id = resp.json()["id"]
 
-    resp = client.post("/approvals", json={"workflow": wf_id, "reviewer": "alice"})
+    resp = client.post("/approvals", json={"workflow": wf_id, "reviewer": "alice"}, headers=headers)
     assert resp.status_code == 201
 
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", "hi", "text/markdown")},
         data={"project": "r1"},
+        headers=headers,
     )
     assert resp.status_code == 201
     doc_id = resp.json()["id"]

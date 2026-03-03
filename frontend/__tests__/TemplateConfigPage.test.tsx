@@ -42,7 +42,6 @@ vi.mock("next/link", () => ({
 }));
 
 import { authenticatedFetch } from "@/lib/api";
-import { toast } from "react-hot-toast";
 
 const mockFetch = vi.mocked(authenticatedFetch);
 
@@ -59,7 +58,9 @@ function makeOkResponse() {
 
 describe("TemplatesIndex – approve/retire buttons", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // resetAllMocks clears both call history AND the mockResolvedValueOnce queue,
+    // preventing queue contamination from pending async ops in previous tests.
+    vi.resetAllMocks();
     // First call: listTemplates; second call: listEmailTemplates
     mockFetch
       .mockResolvedValueOnce({
@@ -75,19 +76,19 @@ describe("TemplatesIndex – approve/retire buttons", () => {
   it("shows Approve button for pending (unapproved) template", async () => {
     render(<TemplatesIndex />);
     await waitFor(() => screen.getByText("Draft Template"));
-    expect(screen.getByLabelText("Approve template")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve template" })).toBeTruthy();
   });
 
   it("shows Retire button for approved template", async () => {
     render(<TemplatesIndex />);
     await waitFor(() => screen.getByText("Approved Template"));
-    expect(screen.getByLabelText("Retire template")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retire template" })).toBeTruthy();
   });
 
   it("does not show Approve for already-approved template", async () => {
     render(<TemplatesIndex />);
     await waitFor(() => screen.getByText("Approved Template"));
-    const approveBtns = screen.queryAllByLabelText("Approve template");
+    const approveBtns = screen.queryAllByRole("button", { name: "Approve template" });
     // Only one Approve button (for the pending template), not for approved one
     expect(approveBtns).toHaveLength(1);
   });
@@ -105,7 +106,7 @@ describe("TemplatesIndex – approve/retire buttons", () => {
     render(<TemplatesIndex />);
     await waitFor(() => screen.getByText("Draft Template"));
 
-    fireEvent.click(screen.getByLabelText("Approve template"));
+    fireEvent.click(screen.getByRole("button", { name: "Approve template" }));
 
     await waitFor(() =>
       expect(mockFetch).toHaveBeenCalledWith(
@@ -116,18 +117,20 @@ describe("TemplatesIndex – approve/retire buttons", () => {
   });
 
   it("calls retire endpoint on Retire button click", async () => {
+    render(<TemplatesIndex />);
+    // Wait for initial render (mocks 1 & 2 from beforeEach consumed here)
+    await waitFor(() => screen.getByRole("button", { name: "Retire template" }));
+
+    // Now add extra mocks for the retire POST + reload
     mockFetch
       .mockResolvedValueOnce(makeOkResponse()) // retire POST
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
-      } as Response) // reload
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) } as Response);
+      } as Response) // reload listTemplates
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) } as Response); // reload email
 
-    render(<TemplatesIndex />);
-    await waitFor(() => screen.getByText("Approved Template"));
-
-    fireEvent.click(screen.getByLabelText("Retire template"));
+    fireEvent.click(screen.getByRole("button", { name: "Retire template" }));
 
     await waitFor(() =>
       expect(mockFetch).toHaveBeenCalledWith(

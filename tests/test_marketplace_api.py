@@ -1,10 +1,26 @@
+from datetime import timedelta
 from typing import Any
 
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.plugin_marketplace import PLUGIN_DATA
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass  # user may already exist
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_marketplace_list() -> None:
@@ -45,7 +61,11 @@ def test_marketplace_install(monkeypatch: MonkeyPatch) -> None:
         called["name"] = name
 
     monkeypatch.setattr("docreview360.plugin_marketplace.install_plugin", fake_install)
-    resp = client.post("/plugin-marketplace/install", json={"name": "grammar-plugin"})
+    resp = client.post(
+        "/plugin-marketplace/install",
+        json={"name": "grammar-plugin"},
+        headers=_alice_headers(),
+    )
     assert resp.status_code == 200
     assert resp.json() == {"installed": "grammar-plugin"}
     assert called["name"] == "grammar-plugin"
@@ -60,7 +80,11 @@ def test_marketplace_install_invalid_plugin(monkeypatch: MonkeyPatch) -> None:
         raise ValueError(f"Unknown plugin: {name}")
 
     monkeypatch.setattr("docreview360.plugin_marketplace.install_plugin", fake_install)
-    resp = client.post("/plugin-marketplace/install", json={"name": "invalid-plugin"})
+    resp = client.post(
+        "/plugin-marketplace/install",
+        json={"name": "invalid-plugin"},
+        headers=_alice_headers(),
+    )
     assert resp.status_code == 400
     assert "Unknown plugin" in resp.json()["detail"]
 

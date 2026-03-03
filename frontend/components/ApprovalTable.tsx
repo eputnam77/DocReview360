@@ -25,6 +25,7 @@ interface Props {
   currentUser?: string;
   canEdit?: boolean;
   onSign: (id: string) => void;
+  onSignInitials: (id: string, initials: string) => void;
   onReset: (id: string) => void;
   onRemove: (id: string) => void;
   onBulkReminder: (ids: string[]) => void;
@@ -85,12 +86,15 @@ export default function ApprovalTable({
   currentUser,
   canEdit,
   onSign,
+  onSignInitials,
   onReset,
   onRemove,
   onBulkReminder,
   onHistory,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [initialsModalId, setInitialsModalId] = useState<string | null>(null);
+  const [initialsValue, setInitialsValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [requiredOnly, setRequiredOnly] = useState(false);
@@ -225,6 +229,26 @@ export default function ApprovalTable({
                     }}
                   >
                     Sign / Approve
+                  </button>
+                )}
+              </Menu.Item>
+            )}
+            {currentUser === a.reviewer && a.state !== "approved" && (
+              <Menu.Item as={Fragment}>
+                {({ active, close }) => (
+                  <button
+                    role="menuitem"
+                    className={classNames(
+                      "w-full px-3 py-2 text-left text-sm",
+                      active && "bg-indigo-50 dark:bg-gray-800",
+                    )}
+                    onClick={() => {
+                      close();
+                      setInitialsValue("");
+                      setInitialsModalId(a.id);
+                    }}
+                  >
+                    Sign w/ Initials
                   </button>
                 )}
               </Menu.Item>
@@ -437,6 +461,56 @@ export default function ApprovalTable({
           >
             Next
           </Button>
+        </div>
+      )}
+
+      {/* Initials signature modal */}
+      {initialsModalId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Sign with initials"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-80 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              Sign with Initials
+            </h2>
+            <p className="text-sm text-gray-500">
+              Enter 2–5 uppercase letters (e.g. &ldquo;JD&rdquo; or &ldquo;EJP&rdquo;).
+            </p>
+            <input
+              type="text"
+              aria-label="Initials"
+              maxLength={5}
+              placeholder="AB"
+              value={initialsValue}
+              onChange={(e) => setInitialsValue(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setInitialsModalId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={initialsValue.length < 2}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={() => {
+                  if (initialsValue.length >= 2) {
+                    onSignInitials(initialsModalId, initialsValue);
+                    setInitialsModalId(null);
+                  }
+                }}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

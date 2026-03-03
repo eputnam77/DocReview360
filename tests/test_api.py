@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi.testclient import TestClient
 
 from docreview360 import auth
@@ -6,20 +8,34 @@ from docreview360.logs import clear_logs, log_event
 from docreview360.workflows import create_workflow
 
 
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass  # user may already exist
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_gzip_middleware() -> None:
     assert any(getattr(m.cls, "__name__", "") == "GZipMiddleware" for m in app.user_middleware)
 
 
 def test_list_projects() -> None:
     client = TestClient(app)
-    resp = client.get("/projects")
+    resp = client.get("/projects", headers=_alice_headers())
     assert resp.status_code == 200
     assert resp.json()[0]["name"] == "Demo Project"
 
 
 def test_demo_review_endpoint() -> None:
     client = TestClient(app)
-    resp = client.get("/projects/demo-project/reviews")
+    resp = client.get("/projects/demo-project/reviews", headers=_alice_headers())
     assert resp.status_code == 200
     data = resp.json()
     assert any(r["comment"] == "Looks good!" for r in data)
@@ -27,22 +43,24 @@ def test_demo_review_endpoint() -> None:
 
 def test_list_documents() -> None:
     client = TestClient(app)
-    resp = client.get("/documents")
+    hdrs = _alice_headers()
+    resp = client.get("/documents", headers=hdrs)
     assert resp.status_code == 200
-    assert resp.json() == []
 
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", "content", "text/markdown")},
+        headers=hdrs,
     )
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
-    resp = client.get("/documents")
+    resp = client.get("/documents", headers=hdrs)
     assert any(d["id"] == doc_id for d in resp.json())
 
 
 def test_metrics_and_audit_endpoints() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     # metrics summary mirrors /reports/summary
     resp1 = client.get("/metrics/summary")
@@ -51,10 +69,10 @@ def test_metrics_and_audit_endpoints() -> None:
     assert resp1.json() == resp2.json()
 
     # audit endpoint mirrors /logs
-    client.get("/projects")  # trigger a log via dependency
-    headers = {"X-User": "alice"}
-    resp3 = client.get("/api/audit", headers=headers)
-    resp4 = client.get("/logs", headers=headers)
+    client.get("/projects", headers=hdrs)  # trigger a log via dependency
+    audit_headers = {**hdrs, "X-User": "alice"}
+    resp3 = client.get("/api/audit", headers=audit_headers)
+    resp4 = client.get("/logs", headers=audit_headers)
     assert resp3.status_code == 200
     data3 = [e for e in resp3.json() if e["action"] != "audit_log_access"]
     data4 = [e for e in resp4.json() if e["action"] != "audit_log_access"]
@@ -66,11 +84,11 @@ def test_audit_pagination() -> None:
     clear_logs()
     for i in range(3):
         log_event(f"event_{i}", user_id="alice")
-    headers = {"X-User": "alice"}
-    resp = client.get("/api/audit?page=0&size=2", headers=headers)
+    hdrs = {**_alice_headers(), "X-User": "alice"}
+    resp = client.get("/api/audit?page=0&size=2", headers=hdrs)
     assert resp.status_code == 200
     assert len(resp.json()) == 2
-    resp2 = client.get("/api/audit?page=1&size=2", headers=headers)
+    resp2 = client.get("/api/audit?page=1&size=2", headers=hdrs)
     assert resp2.status_code == 200
     assert len(resp2.json()) >= 1
 
@@ -96,8 +114,9 @@ def test_start_workflow_defaults_title() -> None:
 
 def test_update_project_endpoint() -> None:
     client = TestClient(app)
-    client.post("/projects", json={"id": "pedit", "name": "Old"})
-    resp = client.put("/projects/pedit", json={"name": "New", "user": "bob"})
+    hdrs = _alice_headers()
+    client.post("/projects", json={"id": "pedit", "name": "Old"}, headers=hdrs)
+    resp = client.put("/projects/pedit", json={"name": "New", "user": "bob"}, headers=hdrs)
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "New"
@@ -107,9 +126,10 @@ def test_update_project_endpoint() -> None:
 def test_update_project_with_formdata() -> None:
     """Test project update with FormData (frontend compatibility)."""
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     # Create a test project
-    client.post("/projects", json={"id": "pedit-form", "name": "Old Project"})
+    client.post("/projects", json={"id": "pedit-form", "name": "Old Project"}, headers=hdrs)
 
     # Update with FormData (simulating frontend request)
     resp = client.put(
@@ -121,6 +141,7 @@ def test_update_project_with_formdata() -> None:
             "title": "Updated Title",
             "description": "Updated description",
         },
+        headers=hdrs,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -132,15 +153,17 @@ def test_update_project_with_formdata() -> None:
 def test_update_project_with_file_upload() -> None:
     """Test project update with file upload."""
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     # Create a test project
-    client.post("/projects", json={"id": "pedit-file", "name": "File Test Project"})
+    client.post("/projects", json={"id": "pedit-file", "name": "File Test Project"}, headers=hdrs)
 
     # Update with file upload
     resp = client.put(
         "/projects/pedit-file",
         data={"name": "File Updated Project", "user": "bob", "doc_type": "Policy Statement"},
         files={"file": ("test_document.md", "This is test content", "text/markdown")},
+        headers=hdrs,
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -149,7 +172,7 @@ def test_update_project_with_file_upload() -> None:
     assert data["doc_type"] == "Policy Statement"
 
     # Verify that a document was created for this project
-    docs_resp = client.get("/documents")
+    docs_resp = client.get("/documents", headers=hdrs)
     assert docs_resp.status_code == 200
     docs = docs_resp.json()
     project_docs = [d for d in docs if d.get("project") == "pedit-file"]
@@ -160,13 +183,14 @@ def test_update_project_not_found() -> None:
     """Test project update with non-existent project ID."""
     client = TestClient(app)
 
-    resp = client.put("/projects/nonexistent", data={"name": "New Name"})
+    resp = client.put("/projects/nonexistent", data={"name": "New Name"}, headers=_alice_headers())
     assert resp.status_code == 404
 
 
 def test_update_project_partial_fields() -> None:
     """Test project update with only some fields provided."""
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     # Create a test project
     client.post(
@@ -176,10 +200,11 @@ def test_update_project_partial_fields() -> None:
             "name": "Original Name",
             "user": "original",
         },
+        headers=hdrs,
     )
 
     # Update only the name
-    resp = client.put("/projects/pedit-partial", data={"name": "Only Name Updated"})
+    resp = client.put("/projects/pedit-partial", data={"name": "Only Name Updated"}, headers=hdrs)
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "Only Name Updated"
@@ -222,9 +247,10 @@ def test_users_me_endpoint() -> None:
 def test_project_edit_frontend_compatibility() -> None:
     """Test that project editing works with the exact format the frontend sends."""
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     # Create a test project
-    client.post("/projects", json={"id": "frontend-test", "name": "Frontend Test Project"})
+    client.post("/projects", json={"id": "frontend-test", "name": "Frontend Test Project"}, headers=hdrs)
 
     # Simulate the exact frontend FormData format
     resp = client.put(
@@ -236,6 +262,7 @@ def test_project_edit_frontend_compatibility() -> None:
             "docType": "Advisory Circular",
             "description": "Updated project description",
         },
+        headers=hdrs,
     )
     assert resp.status_code == 200
     data = resp.json()

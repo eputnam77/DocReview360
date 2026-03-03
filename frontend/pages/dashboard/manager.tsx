@@ -102,6 +102,8 @@ export default function ManagerDashboardPage() {
       const projects = Array.isArray(data.projects) ? data.projects : [];
       const docs = projects.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
       const approvals = projects.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
+      // Sum overdue_approvals from each project entry (approval-level overdue count)
+      const overdueApprovals = projects.reduce((t: number, p: any) => t + (p.overdue_approvals ?? 0), 0);
       const statusCounts = new Map<string, number>();
       const docTypeCounts = new Map<string, number>();
       projects.forEach((p: any) => {
@@ -117,7 +119,6 @@ export default function ManagerDashboardPage() {
       const inProgress = statusCounts.get("In Progress") ?? 0;
       const completed =
         statusCounts.get("Complete") ?? statusCounts.get("Completed") ?? 0;
-      const overdue = statusCounts.get("Overdue") ?? 0;
       const workload = data.workload && typeof data.workload === "object" ? data.workload : {};
       setStats({
         projects: projects.length,
@@ -126,7 +127,7 @@ export default function ManagerDashboardPage() {
         approvals,
         inProgress,
         completed,
-        overdue,
+        overdue: overdueApprovals,
         active: projects.filter((p: any) => p.pending_approvals > 0).length,
       });
       setStatusData(
@@ -198,11 +199,12 @@ export default function ManagerDashboardPage() {
       label: "Key Performance Indicators",
       icon: LayoutDashboard,
       component: (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <StatCard icon={FolderOpen} label="Projects" value={stats.projects} color="text-indigo-600" />
           <StatCard icon={Users2} label="Users" value={stats.users} color="text-emerald-600" />
           <StatCard icon={FileText} label="Documents" value={stats.documents} color="text-cyan-600" />
           <StatCard icon={Clock} label="Active Workflows" value={stats.active} color="text-yellow-600" />
+          <StatCard icon={AlertTriangle} label="Overdue Reviews" value={stats.overdue} color="text-red-600" />
         </div>
       ),
     },

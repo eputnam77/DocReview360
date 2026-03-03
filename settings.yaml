@@ -9,7 +9,7 @@ dash_bob:
 prefs_alice:
   theme: dark
 prefs_bob:
-  theme: light
+  theme: dark
 prefs_u1:
   theme: dark
 profile_alice:

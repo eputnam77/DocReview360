@@ -2,16 +2,31 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
 
-from docreview360 import doc_types
+from docreview360 import auth, doc_types
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase, reset_phases
 from docreview360.workflows import create_workflow, workflows
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass  # user may already exist
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 class TestProjectCreationIntegration:
@@ -50,6 +65,7 @@ class TestProjectCreationIntegration:
     def test_project_creation_with_configuration_fields(self) -> None:
         """Test that project creation uses configuration from document types, phases, workflows."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Test that configuration is available
         doc_types_resp = client.get("/document-types")
@@ -79,7 +95,7 @@ class TestProjectCreationIntegration:
             "description": "Test project description",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -88,6 +104,7 @@ class TestProjectCreationIntegration:
     def test_project_creation_field_validation(self) -> None:
         """Test that all required fields are validated during project creation."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Test missing required fields
         incomplete_data = {
@@ -96,7 +113,7 @@ class TestProjectCreationIntegration:
             # Missing doc_type, phase, workflow
         }
 
-        resp = client.post("/projects", json=incomplete_data)
+        resp = client.post("/projects", json=incomplete_data, headers=headers)
         # Should still succeed as these might be optional in current implementation
         # but we can test that the fields are properly handled
         assert resp.status_code in [201, 422]  # 422 if validation is strict
@@ -110,13 +127,14 @@ class TestProjectCreationIntegration:
             "workflow": "Test Workflow",
         }
 
-        resp = client.post("/projects", json=invalid_data)
+        resp = client.post("/projects", json=invalid_data, headers=headers)
         # Should handle gracefully - either succeed with default or fail appropriately
         assert resp.status_code in [201, 400, 422]
 
     def test_project_creation_frontend_backend_sync(self) -> None:
         """Test that frontend form data correctly maps to backend project model."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Simulate frontend FormData format
         frontend_data = {
@@ -141,7 +159,7 @@ class TestProjectCreationIntegration:
             "description": frontend_data["description"],
         }
 
-        resp = client.post("/projects", json=json_data)
+        resp = client.post("/projects", json=json_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -151,13 +169,14 @@ class TestProjectCreationIntegration:
         assert project["doc_type"] == "Test Document Type"
 
         # Test FormData format (what frontend sends)
-        resp = client.post("/projects", data=frontend_data)
+        resp = client.post("/projects", data=frontend_data, headers=headers)
         # Should handle FormData appropriately
         assert resp.status_code in [201, 422]  # 422 if FormData not supported
 
     def test_project_creation_with_file_upload(self) -> None:
         """Test project creation with file upload integration."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         project_data = {
             "id": "test-project-file",
@@ -168,12 +187,12 @@ class TestProjectCreationIntegration:
         }
 
         # Create project
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         # Upload file to project
         files = {"file": ("test.txt", "Test file content", "text/plain")}
-        upload_resp = client.post(f"/projects/{project_data['id']}/upload", files=files)
+        upload_resp = client.post(f"/projects/{project_data['id']}/upload", files=files, headers=headers)
 
         # File upload might not be implemented yet, so check for appropriate response
         assert upload_resp.status_code in [200, 201, 404, 501]
@@ -181,6 +200,7 @@ class TestProjectCreationIntegration:
     def test_project_creation_error_handling(self) -> None:
         """Test error handling during project creation."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Test duplicate project ID
         project_data = {
@@ -190,11 +210,11 @@ class TestProjectCreationIntegration:
         }
 
         # Create first project
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         # Try to create duplicate
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         # Should handle duplicate gracefully
         assert resp.status_code in [201, 400, 409]  # 409 for conflict
 
@@ -204,7 +224,7 @@ class TestProjectCreationIntegration:
             "name": "",  # Empty name
         }
 
-        resp = client.post("/projects", json=invalid_data)
+        resp = client.post("/projects", json=invalid_data, headers=headers)
         # Should validate and handle appropriately
         assert resp.status_code in [201, 400, 422]
 
@@ -316,6 +336,7 @@ class TestConfigurationPropagation:
     def test_configuration_changes_affect_new_projects(self) -> None:
         """Test that configuration changes immediately affect new project creation."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Clear existing configuration
         doc_types.document_types.clear()
@@ -342,7 +363,7 @@ class TestConfigurationPropagation:
             "workflow": "Initial Workflow",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         # Update configuration
@@ -365,11 +386,11 @@ class TestConfigurationPropagation:
             "workflow": "Updated Workflow",
         }
 
-        resp = client.post("/projects", json=updated_project_data)
+        resp = client.post("/projects", json=updated_project_data, headers=headers)
         assert resp.status_code == 201
 
         # Verify both projects exist with their respective configurations
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=headers)
         assert resp.status_code == 200
 
         projects = resp.json()

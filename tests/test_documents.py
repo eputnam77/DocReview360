@@ -1,7 +1,9 @@
 import hashlib
+from datetime import timedelta
 
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.audit import clear_audit_log
 from docreview360.documents import (
@@ -13,14 +15,30 @@ from docreview360.documents import (
 )
 
 
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass  # user may already exist
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_import_and_edit_document() -> None:
     clear_audit_log()
     client = TestClient(app)
+    headers = _alice_headers()
     content = "# Title\n\nHello"
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", content, "text/markdown")},
         data={"user": "alice"},
+        headers=headers,
     )
     assert resp.status_code == 201
     doc = resp.json()
@@ -29,27 +47,27 @@ def test_import_and_edit_document() -> None:
     expected_hash = hashlib.sha256(content.encode()).hexdigest()
     assert doc["ingestion_hash"] == expected_hash
 
-    resp = client.get("/documents")
+    resp = client.get("/documents", headers=headers)
     assert any(d["id"] == doc_id for d in resp.json())
 
     updated = "# Title\n\nUpdated"
     resp = client.post(
         f"/documents/{doc_id}/revisions",
         json={"content": updated},
-        headers={"X-User": "bob"},
+        headers={**headers, "X-User": "bob"},
     )
     assert resp.status_code == 201
 
-    resp = client.get(f"/documents/{doc_id}")
+    resp = client.get(f"/documents/{doc_id}", headers=headers)
     data = resp.json()
     assert data["content"] == updated
     assert [h["content"] for h in data["history"]] == [content, updated]
 
-    resp = client.get(f"/documents/{doc_id}/revisions")
+    resp = client.get(f"/documents/{doc_id}/revisions", headers=headers)
     meta = resp.json()
     assert [m["author"] for m in meta] == ["alice", "bob"]
 
-    resp = client.get(f"/documents/{doc_id}/audit", headers={"X-User": "alice"})
+    resp = client.get(f"/documents/{doc_id}/audit", headers={**headers, "X-User": "alice"})
     events = [e["event"] for e in resp.json()]
     assert events == ["created", "updated"]
 

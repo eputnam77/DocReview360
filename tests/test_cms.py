@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from docreview360 import auth
 from docreview360.api import (
     CmsExportRequest,
     CmsImportRequest,
@@ -74,7 +75,8 @@ async def test_update_endpoint_calls_save(monkeypatch) -> None:
     monkeypatch.setattr("docreview360.api.save_to_cms", fake_save)
 
     body = DocumentModel(id=doc.id, content="next")
-    updated = await update_document_endpoint(doc.id, body)
+    mock_user = auth.User(username="alice", active=True)
+    updated = await update_document_endpoint(doc.id, body, current_user=mock_user)
     assert called["doc"].id == doc.id
     assert updated.content == "next"
 
@@ -95,7 +97,8 @@ async def test_revision_endpoint_calls_save(monkeypatch) -> None:
     monkeypatch.setattr("docreview360.api.save_to_cms", fake_save)
 
     body = RevisionCreate(content="next")
-    result = await create_revision_endpoint(doc.id, body, x_user="alice")
+    mock_user = auth.User(username="alice", active=True)
+    result = await create_revision_endpoint(doc.id, body, x_user="alice", current_user=mock_user)
     assert result["revisionId"]
     assert called["doc"].id == doc.id
 

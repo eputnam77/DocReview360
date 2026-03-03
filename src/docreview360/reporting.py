@@ -221,6 +221,7 @@ class DashboardEntry(BaseModel):
     status: str | None = None
     docs: int = 0
     pending_approvals: int = 0
+    overdue_approvals: int = 0
     quality_score: float | None = None
     compliance_score: float | None = None
     routing_latency: dict[str, int] = Field(default_factory=dict)
@@ -278,6 +279,11 @@ def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
             for a in approvals.values()
             if wf is not None and a.workflow == wf.id and a.state == "pending"
         )
+        overdue = sum(
+            1
+            for a in approvals.values()
+            if wf is not None and a.workflow == wf.id and a.state == "overdue"
+        )
         metrics = _PROJECT_METRICS.get(project.id)
         quality_avg = metrics.quality.average() if metrics else None
         compliance_avg = metrics.compliance.average() if metrics else None
@@ -291,6 +297,7 @@ def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
                 status=project.status,
                 docs=doc_count,
                 pending_approvals=pending,
+                overdue_approvals=overdue,
                 quality_score=quality_avg,
                 compliance_score=compliance_avg,
                 routing_latency=routing_snapshot.copy(),

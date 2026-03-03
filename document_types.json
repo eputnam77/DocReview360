@@ -1,29 +1,21 @@
 {
-  "version": 106,
-  "updated_at": "2026-03-03T12:44:17.035700+00:00",
+  "version": 67,
+  "updated_at": "2026-03-03T20:21:00.098240+00:00",
   "document_types": [
     {
       "name": "Test Document Type",
-      "template": "",
+      "template": "<h1>Test Template</h1>",
       "workflow": [
-        "Seed"
+        "draft",
+        "review",
+        "approve"
       ],
       "default_template_id": null,
       "id": "Test Document Type",
       "phases": [
-        "Seed"
-      ]
-    },
-    {
-      "name": "policy",
-      "template": "<h1>Policy</h1>",
-      "workflow": [
-        "Phase"
-      ],
-      "default_template_id": null,
-      "id": "policy",
-      "phases": [
-        "Phase"
+        "draft",
+        "review",
+        "approve"
       ]
     }
   ]

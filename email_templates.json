@@ -70,5 +70,17 @@
     "subject": "Approval complete: {document_title}",
     "body": "Approval complete for {document_title}.",
     "task": "approval"
+  },
+  {
+    "name": "sample",
+    "subject": "{subject}",
+    "body": "Hello {name}",
+    "task": null
+  },
+  {
+    "name": "welcome",
+    "subject": "Hi {user}",
+    "body": "Hello {user}!",
+    "task": null
   }
 ]

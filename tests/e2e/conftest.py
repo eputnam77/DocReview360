@@ -62,8 +62,13 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         return
     reason = getattr(config, "_playwright_skip_reason", "playwright not installed")
     skip_marker = pytest.mark.skip(reason=reason)
+    e2e_marks = {"e2e", "e2e_smoke", "e2e_full"}
+    e2e_dir = Path(__file__).parent
     for item in items:
-        item.add_marker(skip_marker)
+        item_path = Path(item.fspath)
+        item_marks = {m.name for m in item.iter_markers()}
+        if item_path.is_relative_to(e2e_dir) or item_marks & e2e_marks:
+            item.add_marker(skip_marker)
 
 
 @pytest.fixture(autouse=True)

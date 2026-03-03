@@ -563,6 +563,12 @@ class ApprovalUpdate(BaseModel):
     due_at: datetime | None = None
 
 
+class SignInitialsBody(BaseModel):
+    """Input model for approving via initials signature."""
+
+    initials: str
+
+
 class PluginModule(BaseModel):
     """Input model for registering plugins by module path."""
 
@@ -4106,6 +4112,32 @@ async def sign_approval_endpoint(approval_id: str) -> dict[str, str]:
     if sig_id is None:
         raise RuntimeError("signature id not set")
     return {"id": sig_id, "url": url}
+
+
+@app.post("/approvals/{approval_id}/sign-initials", response_model=ApprovalModel)
+@log_call
+async def sign_initials_endpoint(approval_id: str, body: SignInitialsBody) -> ApprovalModel:
+    """Approve an approval by recording reviewer initials as the signature."""
+    if not re.fullmatch(r"[A-Z]{2,5}", body.initials):
+        raise HTTPException(
+            status_code=422,
+            detail="Initials must be 2–5 uppercase letters (A–Z) with no spaces or numbers.",
+        )
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    try:
+        return await update_approval_state(
+            approval_id,
+            "approved",
+            signature_id=f"[initials:{body.initials}]",
+        )
+    except SignedApprovalImmutableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.post("/sign/{doc_id}")

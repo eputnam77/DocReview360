@@ -28,7 +28,7 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 
 ## 1. Authoring & Templates
 
-* [ ] Implement structured document templates using TipTap (modular, version-controlled)
+* [x] Implement structured document templates using TipTap (modular, version-controlled)
 * [ ] Keep TipTap core unmodified (consume directly from upstream repo; extend via plugins only)
 * [ ] Establish update-safe plugin architecture to allow future TipTap upgrades without breakage
 * [ ] Ensure authoring tools persist cleanly to CMS (schema validation + version snapshots)
@@ -41,15 +41,15 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 
 * [ ] Standardize Configuration/Phases schema to match Document Types schema
 * [ ] Allow dynamic phase configuration per document type
-* [ ] Enable workflow-driven approvals table (users added dynamically, not hardcoded)
-* [ ] Redesign Project View:
+* [x] Enable workflow-driven approvals table (users added dynamically, not hardcoded)
+* [x] Redesign Project View:
 
   * Visual workflow timeline
   * Phase status indicators
   * Embedded approvals grid
   * Clean, minimal UI
-* [ ] Add reviewer comment section directly in Project View
-* [ ] Ensure phase gating logic (cannot advance without required approvals)
+* [x] Add reviewer comment section directly in Project View
+* [x] Ensure phase gating logic (cannot advance without required approvals)
 * [ ] Add shareable project URL links with permission-aware access
 * [ ] Add viewer-only project role and access controls
 * [x] Add administrator branding settings in Configuration to replace default product mark with company logo and company name
@@ -61,15 +61,15 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 
 * [ ] Support Documenso as default e-signature provider
 * [ ] Add DocuSign integration as optional enterprise connector
-* [ ] Abstract signature provider behind provider interface (future-proofing)
-* [ ] Log signature events into audit trail
-* [ ] Add approve by initials (as in First initial Last initial, "EP")
+* [x] Abstract signature provider behind provider interface (future-proofing)
+* [x] Log signature events into audit trail
+* [x] Add approve by initials (as in First initial Last initial, "EP")
 
 ---
 
 ## 4. Dashboard & Visibility
 
-* [ ] Restore full dashboard view array (project status, overdue reviews, approval state)
+* [x] Restore full dashboard view array (project status, overdue reviews, approval state)
 * [ ] Add executive summary dashboard (for leadership view)
 * [ ] Add reviewer workload dashboard
 * [ ] Add document aging metrics
@@ -81,9 +81,9 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 
 ## 5. Review Experience Enhancements
 
-* [ ] Inline reviewer commenting (threaded)
-* [ ] Structured comment tagging (legal, style, technical, policy, etc.)
-* [ ] Reviewer disposition workflow (open â†’ resolved â†’ accepted â†’ rejected)
+* [x] Inline reviewer commenting (threaded)
+* [x] Structured comment tagging (legal, style, technical, policy, etc.)
+* [x] Reviewer disposition workflow (open â†’ resolved â†’ accepted â†’ rejected)
 * [ ] Comment export to Word (for legacy workflows)
 * [ ] Add document converter support (Word, Markdown, PDF)
 * [ ] Redline comparison view (document version diff)
@@ -98,7 +98,7 @@ Based on your broader ecosystem and FAA-heavy background, these could differenti
 
 ## A. Audit & Compliance Engine
 
-* [ ] Immutable audit log
+* [x] Immutable audit log
 * [ ] Phase-based audit snapshots
 * [ ] Exportable audit package (PDF + JSON)
 * [ ] Role-based permission matrix visualization
@@ -126,13 +126,13 @@ Make this optional and clearly separated from core review logic.
 
 ## C. Enterprise Readiness
 
-* [ ] SSO (OIDC / SAML)
+* [x] SSO (OIDC / SAML)
 * [ ] Multi-tenant architecture support
 * [ ] Per-organization configuration
 * [ ] API key management
 * [ ] Add notifications integrations (Slack, Microsoft Teams, email/webhooks)
-* [ ] Export/import full project bundle
-* [ ] Backup/restore functionality
+* [x] Export/import full project bundle
+* [x] Backup/restore functionality
 
 ---
 
@@ -145,9 +145,9 @@ For open source credibility:
 
   * Create â†’ Edit â†’ Review â†’ Approve â†’ Sign â†’ Archive
 * [ ] Deterministic migrations
-* [ ] Seed demo data (for open source demo mode)
+* [x] Seed demo data (for open source demo mode)
 * [ ] Docker Compose dev stack
-* [ ] Production deployment guide
+* [x] Production deployment guide
 
 ---
 
@@ -159,7 +159,7 @@ You wrote:
 
 I would rewrite that as:
 
-* [ ] Add embedded reviewer discussion panel within Project View, supporting threaded comments, tagging, and disposition tracking.
+* [x] Add embedded reviewer discussion panel within Project View, supporting threaded comments, tagging, and disposition tracking.
 
 More precise. Product-focused.
 

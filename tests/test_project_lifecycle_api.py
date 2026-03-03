@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from fastapi.testclient import TestClient
 
 from docreview360 import auth, rbac
@@ -8,17 +10,32 @@ from docreview360.api import app
 from docreview360.rbac import add_role
 
 
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass  # user may already exist
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_project_lifecycle_persists_and_deletes() -> None:
     client = TestClient(app)
+    headers = _alice_headers()
 
     project_data = {"id": "proj-1", "name": "Project One", "user": "alice"}
-    create_resp = client.post("/projects", json=project_data)
+    create_resp = client.post("/projects", json=project_data, headers=headers)
     assert create_resp.status_code == 201
     created = create_resp.json()
     assert created["id"] == "proj-1"
     assert created["name"] == "Project One"
 
-    list_resp = client.get("/projects")
+    list_resp = client.get("/projects", headers=headers)
     assert list_resp.status_code == 200
     project_ids = {item["id"] for item in list_resp.json()}
     assert "proj-1" in project_ids
@@ -44,20 +61,21 @@ def test_project_lifecycle_persists_and_deletes() -> None:
     update_resp = client.put(
         "/projects/proj-1",
         json={"name": "Project One Updated", "description": "Updated"},
+        headers=headers,
     )
     assert update_resp.status_code == 200
     updated = update_resp.json()
     assert updated["name"] == "Project One Updated"
     assert updated["description"] == "Updated"
 
-    delete_resp = client.delete("/projects/proj-1")
+    delete_resp = client.delete("/projects/proj-1", headers=headers)
     assert delete_resp.status_code == 200
     assert delete_resp.json()["id"] == "proj-1"
 
-    missing_resp = client.get("/projects/proj-1")
+    missing_resp = client.get("/projects/proj-1", headers=headers)
     assert missing_resp.status_code == 404
 
-    list_after = client.get("/projects")
+    list_after = client.get("/projects", headers=headers)
     assert list_after.status_code == 200
     after_ids = {item["id"] for item in list_after.json()}
     assert "proj-1" not in after_ids

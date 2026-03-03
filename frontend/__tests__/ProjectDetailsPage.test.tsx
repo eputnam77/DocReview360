@@ -116,6 +116,8 @@ vi.mock("@/components", async () => {
     ProjectSummaryBar: () => React.createElement("div", null),
     KpiCards: () => React.createElement("div", null),
     PhaseAdvanceModal: () => React.createElement("div", null),
+    WorkflowTimeline: () => React.createElement("div", { "data-testid": "workflow-timeline" }),
+    ReviewerComments: () => React.createElement("div", { "data-testid": "reviewer-comments" }),
   };
 });
 

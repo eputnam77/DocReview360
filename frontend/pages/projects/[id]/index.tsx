@@ -741,6 +741,26 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const signApprovalByInitials = async (aid: string, initials: string) => {
+    try {
+      const res = await authenticatedFetch(`${API}/approvals/${aid}/sign-initials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initials }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to sign with initials");
+        return;
+      }
+      const updated = await res.json();
+      setApprovals((prev) => prev.map((a) => (a.id === aid ? { ...a, ...updated } : a)));
+      toast.success("Approved with initials");
+    } catch {
+      toast.error("Failed to sign with initials");
+    }
+  };
+
   const resetApprovalLocal = async (aid: string) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(`approval-${aid}`);
@@ -1171,6 +1191,7 @@ export default function ProjectDetailsPage() {
                 currentUser={username}
                 canEdit={canEdit}
                 onSign={signApproval}
+                onSignInitials={signApprovalByInitials}
                 onReset={resetApprovalLocal}
                 onRemove={removeApproval}
                 onBulkReminder={(ids) => sendReminder(ids)}
@@ -1197,6 +1218,42 @@ export default function ProjectDetailsPage() {
               </Button>
             </CardContent>
           </Card>
+        </section>
+
+        {/* COMMENTS SECTION */}
+        <section id="comments" className="space-y-6">
+          <Disclosure>
+            {({ open }) => (
+              <>
+                <Disclosure.Button className="w-full text-left">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold">
+                    <LayoutList className="w-5 h-5" /> Reviewer Comments{" "}
+                    {open ? "" : "(collapsed)"}
+                  </h2>
+                </Disclosure.Button>
+                <Transition
+                  show={open}
+                  as={Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <Card>
+                    <CardContent className="pt-4">
+                      <ReviewerComments
+                        docId={project.id}
+                        currentUser={username ?? ""}
+                        canDispose={canEdit}
+                      />
+                    </CardContent>
+                  </Card>
+                </Transition>
+              </>
+            )}
+          </Disclosure>
         </section>
 
         {/* HISTORY SECTION */}

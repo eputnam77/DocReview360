@@ -2,16 +2,31 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
 
-from docreview360 import doc_types
+from docreview360 import auth, doc_types
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase, reset_phases
 from docreview360.workflows import create_workflow, workflows
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass  # user may already exist
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 class TestWorkflowDisplayIntegration:
@@ -52,6 +67,7 @@ class TestWorkflowDisplayIntegration:
     def test_workflow_appears_in_project_details_after_creation(self) -> None:
         """Test that workflow selected during project creation appears in project details page."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Create project with workflow
         project_data = {
@@ -65,7 +81,7 @@ class TestWorkflowDisplayIntegration:
         }
 
         # Create project
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -79,7 +95,7 @@ class TestWorkflowDisplayIntegration:
         assert workflow["project"] == "test-project-1"
 
         # Verify project details page shows the workflow
-        project_resp = client.get(f"/projects/{project['id']}")
+        project_resp = client.get(f"/projects/{project['id']}", headers=headers)
         assert project_resp.status_code == 200
         project_details = project_resp.json()
         assert project_details["workflow"] == workflow_id

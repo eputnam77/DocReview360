@@ -13,24 +13,20 @@ const steps: TimelineStep[] = [
 describe("WorkflowTimeline", () => {
   it("renders all step names", () => {
     render(<WorkflowTimeline steps={steps} />);
-    expect(screen.getByText("Draft")).toBeInTheDocument();
-    expect(screen.getByText("Review")).toBeInTheDocument();
-    expect(screen.getByText("Approval")).toBeInTheDocument();
+    expect(screen.getByText("Draft")).toBeTruthy();
+    expect(screen.getByText("Review")).toBeTruthy();
+    expect(screen.getByText("Approval")).toBeTruthy();
   });
 
   it("marks active step with aria-current=step", () => {
     render(<WorkflowTimeline steps={steps} />);
-    const activeCircle = screen.getByRole("listitem", { hidden: true }).parentElement?.querySelector(
-      '[aria-current="step"]',
-    );
-    // Alternatively check by text approach:
-    const allCircles = document.querySelectorAll('[aria-current="step"]');
-    expect(allCircles).toHaveLength(1);
+    const allCurrent = document.querySelectorAll('[aria-current="step"]');
+    expect(allCurrent).toHaveLength(1);
   });
 
   it("shows checkmark for complete steps", () => {
     render(<WorkflowTimeline steps={steps} />);
-    expect(screen.getByText("✓")).toBeInTheDocument();
+    expect(screen.getByText("✓")).toBeTruthy();
   });
 
   it("renders nothing when steps is empty", () => {
@@ -41,7 +37,7 @@ describe("WorkflowTimeline", () => {
   it("renders step role when provided", () => {
     const withRole: TimelineStep[] = [{ name: "Legal", status: "upcoming", role: "Legal Officer" }];
     render(<WorkflowTimeline steps={withRole} />);
-    expect(screen.getByText("Legal Officer")).toBeInTheDocument();
+    expect(screen.getByText("Legal Officer")).toBeTruthy();
   });
 
   it("renders connector lines between steps", () => {
