@@ -1,150 +1,108 @@
 # AGENTS.md
 
-*Authoritative playbook for this repository’s **OpenAI Codex** workflow*
+Authoritative playbook for this repository's OpenAI Codex workflow.
+This file is aligned with repo Claude configuration (`CLAUDE.md`, `.claude/settings*.json`, `.claudeignore`).
 
----
+## 1) Environment And Tooling
 
-## 0 · Global Settings
+- Shell: use repo-local shell commands; prefer minimal, reproducible commands.
+- Python: 3.11-3.12 supported. Python 3.13 is not supported.
+- Primary env setup:
 
-| Key                       | Value                                                          |
-| ------------------------- | -------------------------------------------------------------- |
-| Default shell             | `bash` (Linux)                                                 |
-| Supported Python versions | **3.12** (primary)                                             |
-| Virtual-env manager       | `uv venv` *(falls back to `python -m venv`)*                   |
-| Dependency manager        | `poetry install --with dev` → synced via `poetry sync`         |
-| Package lock-source       | `poetry.lock`                                                  |
-| Code formatter            | `ruff format`                                                  |
-| Lint checker              | `ruff check`                                                   |
-| Test runner               | `pytest`                                                       |
-| Optional type checker     | `mypy --strict` *(when annotations are available)*             |
-| Optional docs generator   | `mkdocs build --strict` *(run only when docs change)*          |
-| Commit style              | Conventional Commits                                           |
+```bash
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -e ".[dev,test,security]"
+pre-commit install
+```
 
-> **Data flow** — Each agent works off the latest commit on its branch and acquires an
-> `agent-running` lock-label to avoid concurrent pushes.
+- Backend run:
 
----
+```bash
+uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+```
 
-## 1 · Agents & Execution Order
+- Frontend run:
 
-| #  | Agent ID     | Purpose (one-liner)                                             | Auto-trigger condition    |
-| -- | ------------ | --------------------------------------------------------------- | ------------------------- |
-| 0  | `planner`    | Parse **PRD.md** → create **TASKS.md**.                         | manual                    |
-| 1  | `architect`  | Design folder layout, write ADRs, bootstrap Poetry if missing.  | `planner` PR merged       |
-| 2  | `builder`    | Implement code for `ready` issues and update/add tests.         | `architect` PR merged     |
-| 3  | `linter`     | Run Ruff (`ruff format` if needed); open PR if diff.            | after `builder:success`   |
-| 4  | `tester`     | Run `pytest`; optionally run MyPy when available.               | after `linter:success`    |
-| 5  | `docwriter`  | Update README, API refs, examples, and changelog when needed.   | branch green              |
-| 6  | `reviewer`   | Human-style review; request approvals.                          | after `docwriter:success` |
-| 7  | `releasebot` | Bump version and draft release notes.                           | PR merged → `main`        |
+```bash
+cd frontend
+npm install --legacy-peer-deps
+echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
+npm run dev
+```
 
-### Agent-handoff rules
+- CLI examples:
 
-* Success → add `ready-for:<next-agent>` **and** remove `agent-running`.
-* Gates focus on tooling we can execute inside this sandbox (see below).
+```bash
+docreview360 init
+docreview360 migrate export backup.gz
+docreview360 migrate import backup.gz
+```
 
----
+## 2) Core Validation Workflow
 
-## 2 · Quality Gates
-
-### Dev Gate (feature branches)
+- Python edits: run `ruff format` then `ruff check` (or `ruff check --fix`) on touched files.
+- Frontend TS/JS edits under `frontend/`: run `npm run lint` in `frontend/`.
+- Baseline checks for feature work:
 
 ```bash
 ruff check src tests
 pytest -q
 ```
 
-Run `mypy --strict src tests` if the project already provides annotations and MyPy is installed.
-Use `ruff format` to auto-format before re-running checks.
-
-### Release Gate (main)
+- Release-oriented checks (when applicable):
 
 ```bash
-ruff check src tests
-pytest -q --cov=src --cov-branch
-mkdocs build --strict   # only when documentation changes
-pytest -q -m e2e        # end-to-end sanity sweep
-pytest -q --cov=src --cov-branch --cov-report=term --cov-fail-under=90
-mutmut run              # mutation safety net
-trivy fs .              # container/image vulnerability scan
+pytest --cov=src --cov-branch
+pytest --cov=src --cov-branch --cov-report=term --cov-fail-under=90
+mkdocs build --strict
+pytest -q -m e2e
 ```
 
-If a tool is unavailable in the sandbox, note it in the PR and proceed with the checks that are supported here.
-
----
-
-## 3 · Documentation Standards
-
-### Tone & Voice
-
-* Friendly, conversational, inclusive.
-* Active voice.
-* Confident and helpful.
-* Avoid unnecessary jargon.
-
-### Structure & Formatting
-
-* Clear, hierarchical headings (H1 → H2 → H3).
-* Provide runnable code snippets where they add clarity.
-* Use numbered, step-by-step instructions for complex flows.
-* Cross-reference related docs when helpful.
-
-### Content Guidelines
-
-* Start with the problem a feature solves before explaining how.
-* Provide real-world use-cases.
-* Document common errors and fixes.
-* Mention any performance implications or limitations.
-
-### Technical Writing Standards
-
-* Keep terminology consistent across docs.
-* API docs include parameter types, return values, and examples.
-* Changelog follows **Keep a Changelog**.
-* README layout: Install → Quick-start → Features → Contributing → License.
-
-### Templates
-
-* `templates/README.md` — canonical README structure.
-* `templates/API_DOCS.md` — API reference template.
-* `templates/CHANGELOG.md` — release-notes skeleton.
-
----
-
-## 4 · Branch & Commit Policy
-
-* Branch prefixes: `plan/<slug>` · `feat/<slug>` · `fix/<issue>` · `docs/<topic>` · `test/<scope>`.
-* Commits follow Conventional Commits, e.g. `feat/auth: add OAuth login flow`.
-* Default merge strategy: squash-merge with required status checks on `main`.
-
----
-
-## 5 · Environment Setup
+- Security/quality commands used by this repo:
 
 ```bash
-# create & activate virtual-env
-uv venv "3.12"
-
-# install dependencies from the Poetry lock file
-poetry install --with dev
-poetry sync --with dev
-
-# (optional) enable pre-commit hooks
-pre-commit install
+pre-commit run --all-files
+bandit -r src -lll --skip B101
+python scripts/run-pip-audit.py
 ```
 
----
+## 3) Safety And Permissions Policy
 
-## 6 · Failure-Recovery Matrix
+- Never run destructive operations unless explicitly requested.
+- Explicitly prohibited by Claude config and mirrored here:
+  - `git push`
+  - `git reset --hard`
+  - `rm -rf`
+- Protected file patterns: require explicit user approval before editing:
+  - `migrations/*.sql`
+  - `.env` files
+  - `uv.lock`
+  - `poetry.lock`
 
-| Problem              | Responsible Agent | Remedy                                      |
-| -------------------- | ----------------- | ------------------------------------------- |
-| Lint error           | linter            | Auto-fix with Ruff and push                 |
-| Type error           | tester → fixer    | Adjust types and/or code                    |
-| Unit test failure    | fixer             | Add or adjust tests, then patch the code    |
-| Coverage drop        | builder/tester    | Add tests or mark legitimate exclusions     |
-| Docs build failure   | docwriter         | Regenerate or repair docs                   |
+## 4) Scope And Context Hygiene
 
----
+- Prefer `search -> read small sections -> summarize`; avoid loading very large files wholesale.
+- `src/docreview360/api/__init__.py` is very large; use targeted search instead of full-file reads.
+- Respect `.claudeignore` intent when gathering context. Avoid unnecessary reads from:
+  - `node_modules/`, `build/`, `dist/`, `.git/`, `.venv/`
+  - caches and artifacts such as `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `htmlcov/`, `site/`
+  - generated/local data such as `*.db`, `coverage.xml`, `frontend/.next/`
 
-*End of AGENTS.md*
+## 5) Workflow Conventions
+
+- For tasks touching 3+ files, draft a brief plan before implementation.
+- Keep a short working memory note for long tasks (decisions, changed files, remaining work, test commands).
+- Commit style: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
+
+## 6) Project Layout Reference
+
+```text
+src/docreview360/   backend + CLI (FastAPI, SQLAlchemy, Celery, ML)
+tests/              pytest suite
+frontend/           Next.js / React
+docs/               architecture, deployment, performance
+scripts/            development tooling
+```
+
+Key modules: `api/__init__.py`, `auth.py`, `rbac.py`, `audit.py`, `approvals.py`, `workflow_engine.py`, `ml/onnx_infer.py`, `integrations/registry.py`.
