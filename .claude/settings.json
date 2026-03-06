@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pytest:*)",
+      "Bash(pre-commit:*)",
+      "Bash(ruff:*)",
+      "Bash(npm run:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(git show:*)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in *migrations/*.sql|*/.env|*/uv.lock|*/poetry.lock) echo \"Protected file — edit requires explicit user approval: $CLAUDE_TOOL_INPUT_FILE_PATH\" >&2; exit 1;; esac"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" == *.py ]]; then python -m ruff format \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>/dev/null; python -m ruff check --fix \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>/dev/null; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" == */frontend/*.ts* || \"$CLAUDE_TOOL_INPUT_FILE_PATH\" == */frontend/*.js* ]]; then cd frontend && npm run lint --silent 2>/dev/null || true; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
