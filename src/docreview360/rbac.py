@@ -183,6 +183,7 @@ _DEFAULT_ROLE_PERMISSIONS: Mapping[str, Set[str]] = {
     "reviewer": {"read"},
     "editor": {"read", "update"},
     "observer": {"read"},
+    "viewer": {"read"},
     "user": {"read"},
     "auditor": {"view_audit_log"},
     "verifier": {"verification_override"},

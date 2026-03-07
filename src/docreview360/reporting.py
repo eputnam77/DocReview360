@@ -465,3 +465,68 @@ def admin_dashboard() -> dict[str, Any]:
     """Return system health metrics and summary for administrators."""
 
     return {"summary": generate_summary(), "status": internal_status()}
+
+
+def executive_summary() -> dict[str, Any]:
+    """Return a high-level summary dashboard for leadership.
+
+    Aggregates approval rates, overdue items, and phase distributions across
+    all projects so executives can assess portfolio health at a glance.
+    """
+
+    total_projects = len(projects)
+    active_projects = sum(1 for p in projects.values() if p.status not in {"archived", "closed"})
+
+    total_approvals = len(approvals)
+    approved_count = sum(1 for a in approvals.values() if a.state == "approved")
+    pending_count = sum(1 for a in approvals.values() if a.state == "pending")
+    overdue_count = sum(1 for a in approvals.values() if a.state == "overdue")
+    approval_rate = (approved_count / total_approvals * 100) if total_approvals else 0.0
+
+    # Phase distribution across all workflow-linked projects
+    phase_distribution: dict[str, int] = {}
+    for wf in workflows.values():
+        if wf.phase:
+            phase_distribution[wf.phase] = phase_distribution.get(wf.phase, 0) + 1
+
+    total_documents = len(documents)
+
+    # Projects with at least one overdue approval
+    projects_with_overdue: set[str] = set()
+    for approval in approvals.values():
+        if approval.state == "overdue":
+            for wf in workflows.values():
+                if wf.id == approval.workflow and wf.project:
+                    projects_with_overdue.add(wf.project)
+
+    now = datetime.now(timezone.utc)
+    recently_created = sum(
+        1
+        for a in approvals.values()
+        if a.state == "pending"
+        and a.deadline
+        and datetime.fromisoformat(str(a.deadline)).replace(tzinfo=timezone.utc) > now
+        and datetime.fromisoformat(str(a.deadline)).replace(tzinfo=timezone.utc)
+        < now + timedelta(days=7)
+    )
+
+    return {
+        "generated_at": now.isoformat(),
+        "projects": {
+            "total": total_projects,
+            "active": active_projects,
+            "with_overdue_approvals": len(projects_with_overdue),
+        },
+        "approvals": {
+            "total": total_approvals,
+            "approved": approved_count,
+            "pending": pending_count,
+            "overdue": overdue_count,
+            "approval_rate_pct": round(approval_rate, 1),
+            "due_within_7_days": recently_created,
+        },
+        "documents": {
+            "total": total_documents,
+        },
+        "phase_distribution": phase_distribution,
+    }
