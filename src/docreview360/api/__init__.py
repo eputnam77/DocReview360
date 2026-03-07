@@ -139,16 +139,21 @@ from ..profile import (
 from ..rbac import get_roles, require_role, has_permission, has_role
 from ..reporting import (
     DashboardEntry,
+    DocumentAgingReport,
+    ReviewerWorkload,
     SummaryReport,
     admin_dashboard,
     dashboard_data,
+    document_aging_metrics,
     executive_summary,
     generate_summary,
     manager_dashboard,
+    reviewer_workload_dashboard,
     user_dashboard,
     WidgetMetrics,
     widget_counts,
 )
+from ..doc_validation import preflight_validate as _preflight_validate
 from ..search import (
     ProjectModel,
     add_project,
@@ -180,9 +185,14 @@ from ..stubs.task223 import convert_document
 from ..template_manager import (
     delete_template as delete_stored_template,
     get_latest_template,
+    get_template_phase_locks,
+    is_template_locked_for_phase,
     list_stored_templates,
+    list_template_versions,
+    lock_template_for_phase,
     approve_template,
     retire_template,
+    unlock_template_for_phase,
     upload_template as store_template,
 )
 from ..email_templates import (
@@ -4866,6 +4876,121 @@ async def executive_summary_endpoint(
     """
 
     return executive_summary()
+
+
+@app.get("/dashboard/reviewer-workload", response_model=list[ReviewerWorkload])
+async def reviewer_workload_endpoint(
+    user: auth.User = Depends(require_role("admin")),
+) -> list[ReviewerWorkload]:
+    """Return per-reviewer workload metrics (pending, approved, overdue, rejected approvals).
+
+    Sorted descending by pending approval count so the most-loaded reviewers
+    appear first.  Admin-only.
+    """
+    return reviewer_workload_dashboard()
+
+
+@app.get("/reports/document-aging", response_model=DocumentAgingReport)
+async def document_aging_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentAgingReport:
+    """Return document aging metrics across all documents.
+
+    Highlights documents that are older than 30 or 90 days so reviewers can
+    prioritise stale work.  Age is measured from the document creation date.
+    """
+    return document_aging_metrics()
+
+
+# ---------------------------------------------------------------------------
+# Document pre-flight validation
+# ---------------------------------------------------------------------------
+
+
+class _PreflightRequest(BaseModel):
+    text: str
+    min_reading_ease: float = 0.0
+    require_no_undefined_acronyms: bool = False
+    require_valid_headings: bool = True
+
+
+@app.post("/documents/preflight")
+async def document_preflight_endpoint(
+    body: _PreflightRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Run pre-flight checks on document text before phase advancement.
+
+    Runs acronym validation, heading structure checks, plain language scoring,
+    and (when enabled via ``DOCREVIEW360_AI_STYLE``) style validation.
+
+    Returns a composite result indicating whether the document passes all
+    configured checks.
+    """
+    result = _preflight_validate(
+        body.text,
+        min_reading_ease=body.min_reading_ease,
+        require_no_undefined_acronyms=body.require_no_undefined_acronyms,
+        require_valid_headings=body.require_valid_headings,
+    )
+    return result.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# Template phase lock management
+# ---------------------------------------------------------------------------
+
+
+@app.put("/templates/{name}/locks/{phase}")
+async def lock_template_phase_endpoint(
+    name: str,
+    phase: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Lock template *name* for *phase*, preventing uploads while that phase is active."""
+    lock_template_for_phase(name, phase)
+    return {"template": name, "phase": phase, "locked": True}
+
+
+@app.delete("/templates/{name}/locks/{phase}", status_code=204)
+async def unlock_template_phase_endpoint(
+    name: str,
+    phase: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> None:
+    """Remove the phase lock on template *name* for *phase*."""
+    unlock_template_for_phase(name, phase)
+
+
+@app.get("/templates/{name}/locks")
+async def list_template_locks_endpoint(
+    name: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return all phases that currently lock template *name*."""
+    phases = get_template_phase_locks(name)
+    return {"template": name, "locked_phases": phases}
+
+
+@app.get("/templates/{name}/versions")
+async def list_template_versions_endpoint(
+    name: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict[str, Any]]:
+    """Return version history for template *name*, including change summaries."""
+    versions = list_template_versions(name)
+    if not versions:
+        raise HTTPException(status_code=404, detail=f"Template '{name}' not found")
+    return [
+        {
+            "version": v.version,
+            "approved": v.approved,
+            "retired": v.retired,
+            "change_summary": v.change_summary,
+            "metadata": v.metadata,
+        }
+        for v in versions
+    ]
 
 
 @app.websocket("/ws/dashboard")
