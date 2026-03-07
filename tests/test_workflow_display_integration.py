@@ -8,7 +8,7 @@ from typing import Generator
 import pytest
 from fastapi.testclient import TestClient
 
-from docreview360 import auth, doc_types
+from docreview360 import auth, doc_types, rbac
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase, reset_phases
@@ -25,6 +25,7 @@ def _alice_headers() -> dict[str, str]:
         )
     except Exception:
         pass  # user may already exist
+    rbac.add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
     return {"Authorization": f"Bearer {token}"}
 
@@ -106,6 +107,7 @@ class TestWorkflowDisplayIntegration:
     def test_workflow_appears_in_project_details_after_editing(self) -> None:
         """Test that workflow selected during project editing appears in project details page."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Create initial project without workflow
         initial_project_data = {
@@ -117,7 +119,7 @@ class TestWorkflowDisplayIntegration:
             "description": "Initial project description",
         }
 
-        resp = client.post("/projects", json=initial_project_data)
+        resp = client.post("/projects", json=initial_project_data, headers=headers)
         assert resp.status_code == 201
 
         initial_project = resp.json()
@@ -126,7 +128,7 @@ class TestWorkflowDisplayIntegration:
         # Edit project to add workflow
         edit_data = {"workflow": "test-workflow-2"}
 
-        edit_resp = client.put(f"/projects/{initial_project['id']}", json=edit_data)
+        edit_resp = client.put(f"/projects/{initial_project['id']}", json=edit_data, headers=headers)
         assert edit_resp.status_code == 200
 
         updated_project = edit_resp.json()
@@ -140,7 +142,7 @@ class TestWorkflowDisplayIntegration:
         assert workflow["project"] == "test-project-2"
 
         # Verify project details page shows the updated workflow
-        project_resp = client.get(f"/projects/{initial_project['id']}")
+        project_resp = client.get(f"/projects/{initial_project['id']}", headers=headers)
         assert project_resp.status_code == 200
         project_details = project_resp.json()
         assert project_details["workflow"] == workflow_id
@@ -148,6 +150,7 @@ class TestWorkflowDisplayIntegration:
     def test_workflow_change_appears_in_project_details_after_editing(self) -> None:
         """Test that changing workflow during editing appears in project details page."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Create project with initial workflow
         initial_project_data = {
@@ -160,7 +163,7 @@ class TestWorkflowDisplayIntegration:
             "description": "Project with initial workflow",
         }
 
-        resp = client.post("/projects", json=initial_project_data)
+        resp = client.post("/projects", json=initial_project_data, headers=headers)
         assert resp.status_code == 201
 
         initial_project = resp.json()
@@ -175,7 +178,7 @@ class TestWorkflowDisplayIntegration:
         # Edit project to change workflow
         edit_data = {"workflow": "test-workflow-2"}
 
-        edit_resp = client.put(f"/projects/{initial_project['id']}", json=edit_data)
+        edit_resp = client.put(f"/projects/{initial_project['id']}", json=edit_data, headers=headers)
         assert edit_resp.status_code == 200
 
         updated_project = edit_resp.json()
@@ -195,12 +198,12 @@ class TestWorkflowDisplayIntegration:
         assert old_workflow["project"] == ""
 
         # Verify project details page shows the new workflow
-        project_resp = client.get(f"/projects/{initial_project['id']}")
+        project_resp = client.get(f"/projects/{initial_project['id']}", headers=headers)
         assert project_resp.status_code == 200
         project_details = project_resp.json()
         assert project_details["workflow"] == new_workflow_id
 
-        project_workflow_resp = client.get(f"/projects/{initial_project['id']}/workflow")
+        project_workflow_resp = client.get(f"/projects/{initial_project['id']}/workflow", headers=headers)
         assert project_workflow_resp.status_code == 200
         project_workflow = project_workflow_resp.json()
         assert project_workflow["id"] == new_workflow_id
@@ -208,6 +211,7 @@ class TestWorkflowDisplayIntegration:
     def test_workflow_approvals_appear_in_project_details(self) -> None:
         """Test that workflow approvals appear in project details page."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Create project with workflow
         project_data = {
@@ -220,7 +224,7 @@ class TestWorkflowDisplayIntegration:
             "description": "Test project with approvals",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -242,6 +246,7 @@ class TestWorkflowDisplayIntegration:
     def test_workflow_phase_mapping_persistence(self) -> None:
         """Test that phase-workflow mapping persists through project lifecycle."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Create project with phase and workflow mapping
         project_data = {
@@ -254,7 +259,7 @@ class TestWorkflowDisplayIntegration:
             "description": "Test project with phase mapping",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -266,7 +271,7 @@ class TestWorkflowDisplayIntegration:
         # Edit project to change phase
         edit_data = {"phase": "Test Phase 2"}
 
-        edit_resp = client.put(f"/projects/{project['id']}", json=edit_data)
+        edit_resp = client.put(f"/projects/{project['id']}", json=edit_data, headers=headers)
         assert edit_resp.status_code == 200
 
         updated_project = edit_resp.json()
@@ -278,6 +283,7 @@ class TestWorkflowDisplayIntegration:
     def test_workflow_removal_from_project(self) -> None:
         """Test that removing workflow from project is reflected in details page."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Create project with workflow
         project_data = {
@@ -290,7 +296,7 @@ class TestWorkflowDisplayIntegration:
             "description": "Project for workflow removal test",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -299,14 +305,14 @@ class TestWorkflowDisplayIntegration:
         # Remove workflow from project
         edit_data = {"workflow": None}
 
-        edit_resp = client.put(f"/projects/{project['id']}", json=edit_data)
+        edit_resp = client.put(f"/projects/{project['id']}", json=edit_data, headers=headers)
         assert edit_resp.status_code == 200
 
         updated_project = edit_resp.json()
         assert updated_project["workflow"] is None
 
         # Verify project details page shows no workflow
-        project_resp = client.get(f"/projects/{project['id']}")
+        project_resp = client.get(f"/projects/{project['id']}", headers=headers)
         assert project_resp.status_code == 200
         project_details = project_resp.json()
         assert project_details["workflow"] is None
@@ -316,12 +322,13 @@ class TestWorkflowDisplayIntegration:
         workflow_details = workflow_resp.json()
         assert workflow_details["project"] == ""
 
-        project_workflow_resp = client.get(f"/projects/{project['id']}/workflow")
+        project_workflow_resp = client.get(f"/projects/{project['id']}/workflow", headers=headers)
         assert project_workflow_resp.status_code == 404
 
     def test_workflow_display_consistency_across_endpoints(self) -> None:
         """Test that workflow information is consistent across all project endpoints."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Create project with workflow
         project_data = {
@@ -334,14 +341,14 @@ class TestWorkflowDisplayIntegration:
             "description": "Project for consistency testing",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
         workflow_id = project["workflow"]
 
         # Verify workflow ID is consistent across endpoints
-        project_resp = client.get(f"/projects/{project['id']}")
+        project_resp = client.get(f"/projects/{project['id']}", headers=headers)
         assert project_resp.status_code == 200
         project_details = project_resp.json()
         assert project_details["workflow"] == workflow_id
@@ -353,7 +360,7 @@ class TestWorkflowDisplayIntegration:
         assert workflow["project"] == project["id"]
 
         # Verify project appears in workflow's project list
-        projects_resp = client.get("/projects")
+        projects_resp = client.get("/projects", headers=headers)
         assert projects_resp.status_code == 200
         projects_list = projects_resp.json()
         project_in_list = next((p for p in projects_list if p["id"] == project["id"]), None)

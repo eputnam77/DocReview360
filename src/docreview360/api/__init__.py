@@ -3391,7 +3391,7 @@ async def list_templates_endpoint(
         if not description and meta.get("docType"):
             description = f"Document type: {meta.get('docType')}"
         url = None
-        if request is not None:
+        if request is not None and "/" not in name:
             url = str(request.url_for("download_template_endpoint", name=name))
         data = {
             "id": name,

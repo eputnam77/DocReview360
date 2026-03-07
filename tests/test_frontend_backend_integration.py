@@ -7,10 +7,27 @@ from typing import Generator
 import pytest
 from fastapi.testclient import TestClient
 
-from docreview360 import auth, doc_types
+from datetime import timedelta
+
+from docreview360 import auth, doc_types, rbac
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase, reset_phases
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    rbac.add_role("alice", "admin")
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 class TestFrontendBackendIntegration:
@@ -30,6 +47,7 @@ class TestFrontendBackendIntegration:
     def test_frontend_backend_field_mapping(self) -> None:
         """Test that frontend form fields correctly map to backend project model."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Add test configuration
         add_document_type(
@@ -63,7 +81,7 @@ class TestFrontendBackendIntegration:
 
         # Test both formats work
         # Backend JSON format
-        resp = client.post("/projects", json=expected_backend_data)
+        resp = client.post("/projects", json=expected_backend_data, headers=hdrs)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -75,13 +93,14 @@ class TestFrontendBackendIntegration:
         assert project["description"] == "Frontend project description"
 
         # Frontend FormData format (if supported)
-        resp = client.post("/projects", data=frontend_form_data)
+        resp = client.post("/projects", data=frontend_form_data, headers=hdrs)
         # Should handle FormData appropriately
         assert resp.status_code in [201, 422]  # 422 if FormData not supported
 
     def test_field_validation_consistency(self) -> None:
         """Test that field validation is consistent between frontend and backend."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test required fields
         incomplete_data = {
@@ -89,7 +108,7 @@ class TestFrontendBackendIntegration:
             # Missing required fields
         }
 
-        resp = client.post("/projects", json=incomplete_data)
+        resp = client.post("/projects", json=incomplete_data, headers=hdrs)
         # Should validate appropriately
         assert resp.status_code in [201, 400, 422]
 
@@ -99,7 +118,7 @@ class TestFrontendBackendIntegration:
 
         long_data = {"id": "long-test", "name": long_name, "description": long_description}
 
-        resp = client.post("/projects", json=long_data)
+        resp = client.post("/projects", json=long_data, headers=hdrs)
         # Should handle long fields appropriately
         assert resp.status_code in [201, 400, 422]
 
@@ -110,30 +129,31 @@ class TestFrontendBackendIntegration:
             "description": "Description with <script>alert('xss')</script>",
         }
 
-        resp = client.post("/projects", json=special_chars_data)
+        resp = client.post("/projects", json=special_chars_data, headers=hdrs)
         # Should handle special characters appropriately
         assert resp.status_code in [201, 400, 422]
 
     def test_error_handling_consistency(self) -> None:
         """Test that error handling is consistent between frontend and backend."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test duplicate project ID
         project_data = {"id": "duplicate-test", "name": "First Project"}
 
         # Create first project
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
 
         # Try to create duplicate
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         # Should handle duplicate gracefully
         assert resp.status_code in [201, 400, 409]  # 409 for conflict
 
         # Test invalid project ID format
         invalid_id_data = {"id": "", "name": "Invalid ID Project"}  # Empty ID
 
-        resp = client.post("/projects", json=invalid_id_data)
+        resp = client.post("/projects", json=invalid_id_data, headers=hdrs)
         # Should validate ID format
         assert resp.status_code in [201, 400, 422]
 
@@ -144,13 +164,14 @@ class TestFrontendBackendIntegration:
             "doc_type": "Non-existent Document Type",
         }
 
-        resp = client.post("/projects", json=invalid_doc_type_data)
+        resp = client.post("/projects", json=invalid_doc_type_data, headers=hdrs)
         # Should handle invalid document type appropriately
         assert resp.status_code in [201, 400, 422]
 
     def test_api_response_consistency(self) -> None:
         """Test that API responses are consistent and well-formed."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create a test project
         project_data = {
@@ -159,7 +180,7 @@ class TestFrontendBackendIntegration:
             "description": "Test project for response consistency",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -175,14 +196,14 @@ class TestFrontendBackendIntegration:
         assert isinstance(project["created_at"], str)  # ISO date string
 
         # Test GET project endpoint
-        resp = client.get(f"/projects/{project['id']}")
+        resp = client.get(f"/projects/{project['id']}", headers=hdrs)
         assert resp.status_code == 200
 
         retrieved_project = resp.json()
         assert retrieved_project == project  # Should be identical
 
         # Test list projects endpoint
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
 
         projects = resp.json()
@@ -267,6 +288,7 @@ class TestFrontendBackendIntegration:
     def test_cors_and_headers(self) -> None:
         """Test that CORS and headers are properly configured for frontend."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test OPTIONS request (CORS preflight)
         resp = client.options("/projects")
@@ -274,7 +296,7 @@ class TestFrontendBackendIntegration:
         assert resp.status_code in [200, 405]  # 405 if OPTIONS not supported
 
         # Test that responses include appropriate headers
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
 
         # Check for common headers
@@ -285,9 +307,10 @@ class TestFrontendBackendIntegration:
     def test_error_response_format(self) -> None:
         """Test that error responses are properly formatted for frontend consumption."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test 404 error
-        resp = client.get("/projects/non-existent-project")
+        resp = client.get("/projects/non-existent-project", headers=hdrs)
         assert resp.status_code == 404
 
         # Error response should be JSON
@@ -297,7 +320,7 @@ class TestFrontendBackendIntegration:
         # Test 422 validation error
         invalid_data = {"id": "", "name": ""}  # Invalid empty ID  # Invalid empty name
 
-        resp = client.post("/projects", json=invalid_data)
+        resp = client.post("/projects", json=invalid_data, headers=hdrs)
         if resp.status_code == 422:
             error_data = resp.json()
             assert isinstance(error_data, dict)

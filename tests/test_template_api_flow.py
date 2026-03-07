@@ -3,11 +3,21 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from docreview360 import email_templates, template_manager
+from docreview360 import auth, email_templates, template_manager
 from docreview360.api import app
 
 
 def _token(client: TestClient, username: str) -> str:
+    password = auth.DEMO_USER_DEFAULTS[username]["password"]
+    otp_secret = auth.DEMO_USER_DEFAULTS[username].get("otp_secret")
+    try:
+        auth.USER_REPOSITORY.create_user(username, password, otp_secret=otp_secret)
+    except Exception:
+        try:
+            auth.USER_REPOSITORY.delete_user(username)
+            auth.USER_REPOSITORY.create_user(username, password, otp_secret=otp_secret)
+        except Exception:
+            pass
     resp = client.post("/token", data={"username": username, "password": "password"})
     return resp.json()["access_token"]
 

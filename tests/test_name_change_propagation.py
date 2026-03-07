@@ -18,11 +18,28 @@ from typing import Generator
 import pytest
 from fastapi.testclient import TestClient
 
-from docreview360 import doc_types
+from datetime import timedelta
+
+from docreview360 import auth, doc_types, rbac
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase
 from docreview360.workflows import workflows
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    rbac.add_role("alice", "admin")
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 class TestNameChangePropagation:
@@ -42,6 +59,7 @@ class TestNameChangePropagation:
     def test_document_type_rename_propagation(self) -> None:
         """Test that document type renames propagate to all related entities."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create initial document type
         original_name = "Advisory Circular"
@@ -63,7 +81,7 @@ class TestNameChangePropagation:
             "phase": "Internal Coordination",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
         project = resp.json()
         assert project["doc_type"] == original_name
@@ -79,7 +97,7 @@ class TestNameChangePropagation:
         assert resp.status_code == 200
 
         # Verify the project now references the new name
-        resp = client.get(f"/projects/{project['id']}")
+        resp = client.get(f"/projects/{project['id']}", headers=hdrs)
         assert resp.status_code == 200
         updated_project = resp.json()
         assert updated_project["doc_type"] == new_name
@@ -93,7 +111,7 @@ class TestNameChangePropagation:
         assert original_name not in doc_type_names
 
         # Verify search results include the new name
-        resp = client.get(f"/search?q={new_name}")
+        resp = client.get(f"/search?q={new_name}", headers=hdrs)
         assert resp.status_code == 200
 
         # Verify dashboard shows the new name
@@ -105,6 +123,7 @@ class TestNameChangePropagation:
     def test_phase_rename_propagation(self) -> None:
         """Test that phase renames propagate to all related entities."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create initial phase
         original_name = "Internal Coordination"
@@ -120,7 +139,7 @@ class TestNameChangePropagation:
             "phase": original_name,
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
         project = resp.json()
         assert project["phase"] == original_name
@@ -137,7 +156,7 @@ class TestNameChangePropagation:
         assert resp.status_code == 200
 
         # Verify the project now references the new phase name
-        resp = client.get(f"/projects/{project['id']}")
+        resp = client.get(f"/projects/{project['id']}", headers=hdrs)
         assert resp.status_code == 200
         updated_project = resp.json()
         assert updated_project["phase"] == new_name
@@ -159,6 +178,7 @@ class TestNameChangePropagation:
     def test_workflow_rename_propagation(self) -> None:
         """Test that workflow renames propagate to all related entities."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create workflow
         workflow_data = {
@@ -179,7 +199,7 @@ class TestNameChangePropagation:
             "workflow": workflow["id"],
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
         project = resp.json()
 
@@ -195,7 +215,7 @@ class TestNameChangePropagation:
         approval = resp.json()
 
         # Verify project still references the workflow
-        resp = client.get(f"/projects/{project['id']}")
+        resp = client.get(f"/projects/{project['id']}", headers=hdrs)
         assert resp.status_code == 200
         updated_project = resp.json()
         assert updated_project["workflow"] == workflow["id"]
@@ -209,6 +229,7 @@ class TestNameChangePropagation:
     def test_cascade_delete_propagation(self) -> None:
         """Test that deleting a document type/phase/workflow propagates correctly."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create document type
         doc_type_name = "Test Document Type"
@@ -224,7 +245,7 @@ class TestNameChangePropagation:
             "phase": "Internal Coordination",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
 
         # Delete the document type, specifying a replacement so dependent
@@ -239,7 +260,7 @@ class TestNameChangePropagation:
         assert resp.status_code == 204
 
         # Verify the project still exists but may have null/empty doc_type
-        resp = client.get("/projects/test-project")
+        resp = client.get("/projects/test-project", headers=hdrs)
         assert resp.status_code == 200
         project = resp.json()
         # The project should still exist, but doc_type might be null or empty
@@ -248,6 +269,7 @@ class TestNameChangePropagation:
     def test_name_change_in_logs(self) -> None:
         """Test that name changes are reflected in system logs."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create document type
         original_name = "Test Doc Type"
@@ -265,7 +287,7 @@ class TestNameChangePropagation:
             "phase": "Internal Coordination",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
 
         # Rename document type
@@ -280,7 +302,8 @@ class TestNameChangePropagation:
         # requires an authenticated request; the original test missed the
         # ``X-User`` header and was receiving a ``401`` response instead of the
         # expected log entries.
-        headers = {"X-User": "alice"}
+        headers = _alice_headers()
+        headers["X-User"] = "alice"
         resp = client.get("/logs", headers=headers)
         assert resp.status_code == 200
 
@@ -291,6 +314,7 @@ class TestNameChangePropagation:
     def test_name_change_in_reports(self) -> None:
         """Test that name changes are reflected in system reports."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create document type
         doc_type_name = "Report Test Doc Type"
@@ -310,7 +334,7 @@ class TestNameChangePropagation:
                 "phase": "Internal Coordination",
             }
 
-            resp = client.post("/projects", json=project_data)
+            resp = client.post("/projects", json=project_data, headers=hdrs)
             assert resp.status_code == 201
 
         # Check summary report
@@ -329,6 +353,7 @@ class TestNameChangePropagation:
     def test_name_change_in_search(self) -> None:
         """Test that name changes are reflected in search results."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Create document type
         original_name = "Search Test Doc Type"
@@ -348,11 +373,12 @@ class TestNameChangePropagation:
             "phase": "Internal Coordination",
         }
 
-        resp = client.post("/projects", json=project_data)
+        hdrs = _alice_headers()
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
 
         # Search for original name
-        resp = client.get(f"/search?q={original_name}")
+        resp = client.get(f"/search?q={original_name}", headers=hdrs)
         assert resp.status_code == 200
 
         # Rename document type
@@ -364,7 +390,7 @@ class TestNameChangePropagation:
         assert resp.status_code == 200
 
         # Search for new name
-        resp = client.get(f"/search?q={new_name}")
+        resp = client.get(f"/search?q={new_name}", headers=hdrs)
         assert resp.status_code == 200
 
         # Verify search results reflect the name change
@@ -393,7 +419,8 @@ class TestNameChangePropagation:
             "phase": phase_name,
         }
 
-        resp = client.post("/projects", json=project_data)
+        hdrs = _alice_headers()
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
         project = resp.json()
 
@@ -421,7 +448,7 @@ class TestNameChangePropagation:
         assert resp.status_code == 200
 
         # Verify all references are updated consistently
-        resp = client.get(f"/projects/{project['id']}")
+        resp = client.get(f"/projects/{project['id']}", headers=hdrs)
         assert resp.status_code == 200
         updated_project = resp.json()
         assert updated_project["doc_type"] == new_doc_type_name
@@ -481,6 +508,7 @@ class TestNameChangePropagation:
             )
 
         # Create many projects
+        hdrs = _alice_headers()
         for i in range(20):
             project_data = {
                 "id": f"perf-test-project-{i}",
@@ -489,7 +517,7 @@ class TestNameChangePropagation:
                 "phase": "Internal Coordination",
             }
 
-            resp = client.post("/projects", json=project_data)
+            resp = client.post("/projects", json=project_data, headers=hdrs)
             assert resp.status_code == 201
 
         # Rename a document type and measure performance
@@ -504,7 +532,7 @@ class TestNameChangePropagation:
         assert resp.status_code == 200
 
         # Verify all related projects are updated
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
         all_projects = resp.json()
 

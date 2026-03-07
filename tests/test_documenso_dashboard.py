@@ -9,18 +9,35 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from fastapi.testclient import TestClient
 
+from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.integrations.signature import documenso
 
 
+def _auth_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    rbac.add_role("alice", "admin")
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_dashboard_updates_after_signature() -> None:
     client = TestClient(app)
-    client.post("/projects", json={"id": "d1", "name": "Doc"})
+    hdrs = _auth_headers()
+    client.post("/projects", json={"id": "d1", "name": "Doc"}, headers=hdrs)
     wf = client.post("/workflows", json={"project": "d1", "phases": ["draft", "signed"]}).json()
     doc = client.post(
         "/documents/import",
         files={"file": ("f.txt", b"hi", "text/plain")},
         data={"project": "d1"},
+        headers=hdrs,
     ).json()
     appr = client.post(
         "/approvals",

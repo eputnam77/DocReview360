@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import (
     approvals,
@@ -57,10 +58,24 @@ def _register_certificate(content: bytes) -> str:
     return url
 
 
+def _auth_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 def _setup_document(client: TestClient, content: bytes):
     resp = client.post(
         "/documents/import",
         files={"file": ("doc.md", content, "text/markdown")},
+        headers=_auth_headers(),
     )
     assert resp.status_code == 201
     doc_id = resp.json()["id"]

@@ -2,15 +2,32 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
 from docreview360.phases import add_phase, reset_phases
 from docreview360.workflows import create_workflow, workflows
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    rbac.add_role("alice", "admin")
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 class TestEndToEndConfigurationFlow:
@@ -32,6 +49,7 @@ class TestEndToEndConfigurationFlow:
     def test_complete_configuration_to_project_flow(self) -> None:
         """Test the complete flow: config setup → frontend display → project creation."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Step 1: Setup configuration
         add_document_type(
@@ -61,7 +79,6 @@ class TestEndToEndConfigurationFlow:
         resp = client.get("/workflows")
         assert resp.status_code == 200
         workflows_data = resp.json()
-        # Workflows might be returned differently, so check structure
         assert isinstance(workflows_data, list)
 
         # Step 3: Create project using configuration
@@ -74,7 +91,7 @@ class TestEndToEndConfigurationFlow:
             "description": "E2E test project description",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -85,7 +102,7 @@ class TestEndToEndConfigurationFlow:
         assert project["user"] == "e2e-test-user"
 
         # Step 4: Verify project appears in project list
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
         projects = resp.json()
         project_ids = [p["id"] for p in projects]
@@ -94,6 +111,7 @@ class TestEndToEndConfigurationFlow:
     def test_configuration_update_workflow(self) -> None:
         """Test that configuration updates properly propagate through the system."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Initial configuration
         add_document_type(
@@ -113,7 +131,7 @@ class TestEndToEndConfigurationFlow:
             "phase": "Initial Phase",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         assert resp.status_code == 201
 
         # Update configuration
@@ -151,11 +169,11 @@ class TestEndToEndConfigurationFlow:
             "phase": "Updated Phase",
         }
 
-        resp = client.post("/projects", json=updated_project_data)
+        resp = client.post("/projects", json=updated_project_data, headers=hdrs)
         assert resp.status_code == 201
 
         # Verify both projects exist
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
         projects = resp.json()
         project_ids = [p["id"] for p in projects]
@@ -165,6 +183,7 @@ class TestEndToEndConfigurationFlow:
     def test_configuration_validation_flow(self) -> None:
         """Test configuration validation throughout the flow."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test with invalid configuration
         try:
@@ -176,13 +195,11 @@ class TestEndToEndConfigurationFlow:
                 )
             )
         except Exception:
-            # Should handle validation errors gracefully
             pass
 
         try:
             add_phase("")  # Invalid empty phase name
         except Exception:
-            # Should handle validation errors gracefully
             pass
 
         # Test project creation with invalid configuration references
@@ -193,13 +210,14 @@ class TestEndToEndConfigurationFlow:
             "phase": "Non-existent Phase",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         # Should handle invalid configuration gracefully
         assert resp.status_code in [201, 400, 422]
 
     def test_configuration_persistence_flow(self) -> None:
         """Test that configuration persists across multiple operations."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Setup configuration
         add_document_type(
@@ -220,7 +238,7 @@ class TestEndToEndConfigurationFlow:
                 "phase": "Persistence Phase",
             }
 
-            resp = client.post("/projects", json=project_data)
+            resp = client.post("/projects", json=project_data, headers=hdrs)
             assert resp.status_code == 201
 
         # Verify configuration is still available
@@ -236,7 +254,7 @@ class TestEndToEndConfigurationFlow:
         assert "Persistence Phase" in phases_data
 
         # Verify all projects exist
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
         projects = resp.json()
         project_ids = [p["id"] for p in projects]
@@ -246,6 +264,7 @@ class TestEndToEndConfigurationFlow:
     def test_configuration_error_recovery_flow(self) -> None:
         """Test error recovery in the configuration flow."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test with corrupted configuration
         reset_document_types()
@@ -255,7 +274,7 @@ class TestEndToEndConfigurationFlow:
         # Try to create project with no configuration
         project_data = {"id": "error-recovery-test", "name": "Error Recovery Test Project"}
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=hdrs)
         # Should handle missing configuration gracefully
         assert resp.status_code in [201, 400, 422]
 
@@ -297,6 +316,7 @@ class TestEndToEndConfigurationFlow:
     def test_configuration_performance_flow(self) -> None:
         """Test performance of the complete configuration flow."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         import time
 
@@ -338,7 +358,7 @@ class TestEndToEndConfigurationFlow:
                 "phase": f"Performance Phase {i % 10}",
             }
 
-            resp = client.post("/projects", json=project_data)
+            resp = client.post("/projects", json=project_data, headers=hdrs)
             assert resp.status_code == 201
 
         end_time = time.time()
@@ -347,7 +367,7 @@ class TestEndToEndConfigurationFlow:
         # Test project listing performance
         start_time = time.time()
 
-        resp = client.get("/projects")
+        resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
         projects = resp.json()
         assert len(projects) >= 5

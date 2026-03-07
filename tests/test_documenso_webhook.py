@@ -2,20 +2,36 @@ import hashlib
 import hmac
 import json
 import os
+from datetime import timedelta
 
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
+
+
+def _auth_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_documenso_webhook_advances_workflow() -> None:
     client = TestClient(app)
+    hdrs = _auth_headers()
     # create workflow with signed phase
     resp = client.post("/workflows", json={"project": "p1", "phases": ["draft", "signed"]})
     wf_id = resp.json()["id"]
 
     # import document
-    resp = client.post("/documents/import", files={"file": ("d.md", b"data", "text/markdown")})
+    resp = client.post("/documents/import", files={"file": ("d.md", b"data", "text/markdown")}, headers=hdrs)
     doc_id = resp.json()["id"]
 
     # request signature linked to workflow

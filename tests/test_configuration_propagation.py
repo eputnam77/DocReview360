@@ -2,15 +2,31 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type, reset_document_types
 from docreview360.phases import add_phase, reset_phases
 from docreview360.workflows import workflows
+
+
+def _alice_headers() -> dict[str, str]:
+    """Return Authorization headers for a test 'alice' admin user."""
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 class TestConfigurationPropagation:
@@ -32,6 +48,7 @@ class TestConfigurationPropagation:
     def test_project_settings_from_configuration(self) -> None:
         """Test that project settings are properly inherited from configuration."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Add configuration
         add_document_type(
@@ -51,7 +68,7 @@ class TestConfigurationPropagation:
             "phase": "Test Phase",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         project = resp.json()
@@ -65,6 +82,7 @@ class TestConfigurationPropagation:
     def test_configuration_validation(self) -> None:
         """Test that invalid configuration is properly handled."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Test with non-existent document type
         project_data = {
@@ -74,7 +92,7 @@ class TestConfigurationPropagation:
             "phase": "Non-existent Phase",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         # Should handle gracefully - either succeed with defaults or fail appropriately
         assert resp.status_code in [201, 400, 422]
 
@@ -95,6 +113,7 @@ class TestConfigurationPropagation:
     def test_configuration_defaults(self) -> None:
         """Test that default values are used when configuration is missing."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Clear all configuration
         reset_document_types()
@@ -114,7 +133,7 @@ class TestConfigurationPropagation:
         # Test project creation with minimal data
         project_data = {"id": "defaults-test", "name": "Defaults Test Project"}
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         # Should succeed with defaults or fail gracefully
         assert resp.status_code in [201, 400, 422]
 
@@ -174,6 +193,7 @@ class TestConfigurationPropagation:
     def test_configuration_consistency(self) -> None:
         """Test that configuration remains consistent across API calls."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Add configuration
         add_document_type(
@@ -202,7 +222,7 @@ class TestConfigurationPropagation:
             "phase": "Consistency Phase",
         }
 
-        resp = client.post("/projects", json=project_data)
+        resp = client.post("/projects", json=project_data, headers=headers)
         assert resp.status_code == 201
 
         # Configuration should still be available after project creation
