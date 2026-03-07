@@ -142,6 +142,7 @@ from ..reporting import (
     SummaryReport,
     admin_dashboard,
     dashboard_data,
+    executive_summary,
     generate_summary,
     manager_dashboard,
     user_dashboard,
@@ -1439,6 +1440,36 @@ async def list_role_permissions_endpoint(
     return summaries
 
 
+@app.get("/rbac/matrix", response_model=dict[str, Any])
+async def role_permission_matrix_endpoint(
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Return the full role-to-permission matrix for visualization.
+
+    Produces a structured payload containing all known roles and permissions,
+    suitable for rendering a matrix table in the admin UI.
+    """
+
+    current = rbac.get_role_permissions()
+    defaults = getattr(rbac, "_DEFAULT_ROLE_PERMISSIONS", {})
+    all_roles = sorted(set(defaults) | set(current))
+    all_permissions: list[str] = sorted(
+        {perm for perms in current.values() for perm in perms}
+        | {perm for perms in defaults.values() for perm in perms}
+    )
+    matrix: dict[str, dict[str, bool]] = {}
+    for role in all_roles:
+        role_perms = set(current.get(role, set()))
+        matrix[role] = {perm: (perm in role_perms) for perm in all_permissions}
+    return {
+        "roles": all_roles,
+        "permissions": all_permissions,
+        "matrix": matrix,
+        "total_roles": len(all_roles),
+        "total_permissions": len(all_permissions),
+    }
+
+
 @app.get("/users", response_model=list[UserSummary])
 async def list_users_endpoint(
     user: auth.User = Depends(require_role("admin")),
@@ -2560,6 +2591,78 @@ async def get_document_audit_endpoint(
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id, target="audit", count=len(events))
     return events
+
+
+@app.get("/documents/{doc_id}/audit/export", response_model=dict[str, Any])
+async def export_document_audit_endpoint(
+    doc_id: str,
+    _: str = Depends(require_audit_access),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Export all audit events for a document as a structured JSON package.
+
+    The returned payload includes the full event list, a summary of event
+    types, and package-level metadata for archival or compliance handoff.
+    """
+
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+    events = get_audit_log(doc_id)
+    from datetime import datetime, timezone
+
+    event_counts: dict[str, int] = {}
+    for ev in events:
+        event_counts[ev.event] = event_counts.get(ev.event, 0) + 1
+
+    return {
+        "document_id": doc_id,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_by": current_user.username,
+        "total_events": len(events),
+        "event_summary": event_counts,
+        "events": [ev.model_dump(mode="json") for ev in events],
+    }
+
+
+@app.get("/documents/{doc_id}/audit/snapshots", response_model=list[AuditLogEntry])
+async def list_phase_snapshots_endpoint(
+    doc_id: str,
+    _: str = Depends(require_audit_access),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[AuditLogEntry]:
+    """Return phase-transition snapshots recorded for a document."""
+
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+    from ..audit_snapshots import get_phase_snapshots
+
+    return get_phase_snapshots(doc_id)
+
+
+@app.post("/documents/{doc_id}/audit/snapshots", response_model=AuditLogEntry)
+async def create_phase_snapshot_endpoint(
+    doc_id: str,
+    phase: str = Body(..., embed=True),
+    previous_phase: str | None = Body(default=None, embed=True),
+    current_user: auth.User = Depends(require_permission("update")),
+) -> AuditLogEntry:
+    """Capture a phase-transition snapshot for a document."""
+
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    from ..audit_snapshots import capture_phase_snapshot
+
+    return capture_phase_snapshot(
+        doc_id,
+        phase,
+        actor=current_user.username,
+        previous_phase=previous_phase,
+    )
 
 
 @app.get("/documents/{doc_id}/verify-signature")
@@ -3871,6 +3974,92 @@ async def delete_phase_endpoint(name: str, replacement: str | None = None) -> Re
     return Response(status_code=204)
 
 
+# ---------------------------------------------------------------------------
+# Phase SLA endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/phases/sla", response_model=dict[str, Any])
+async def list_phase_slas_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return all configured per-phase SLA definitions."""
+
+    from ..phase_sla import get_all_phase_slas
+
+    slas = get_all_phase_slas()
+    return {"slas": {phase: cfg.model_dump() for phase, cfg in slas.items()}}
+
+
+@app.get("/phases/{name}/sla", response_model=dict[str, Any])
+async def get_phase_sla_endpoint(
+    name: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return the SLA configuration for a specific phase."""
+
+    from ..phase_sla import get_phase_sla
+
+    cfg = get_phase_sla(name)
+    if cfg is None:
+        raise HTTPException(status_code=404, detail=f"No SLA configured for phase '{name}'")
+    return cfg.model_dump()
+
+
+@app.put("/phases/{name}/sla", response_model=dict[str, Any])
+async def set_phase_sla_endpoint(
+    name: str,
+    max_days: int = Body(..., embed=True, gt=0),
+    warning_days: int = Body(..., embed=True, ge=0),
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Create or update the SLA configuration for a phase."""
+
+    from ..phase_sla import set_phase_sla
+
+    try:
+        cfg = set_phase_sla(name, max_days=max_days, warning_days=warning_days)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    log_audit_event(
+        f"phase::{name}",
+        "sla_updated",
+        actor=user.username,
+        max_days=max_days,
+        warning_days=warning_days,
+    )
+    return cfg.model_dump()
+
+
+@app.delete("/phases/{name}/sla", status_code=204, response_class=Response)
+async def delete_phase_sla_endpoint(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> Response:
+    """Remove the SLA configuration for a phase."""
+
+    from ..phase_sla import delete_phase_sla
+
+    existed = delete_phase_sla(name)
+    if not existed:
+        raise HTTPException(status_code=404, detail=f"No SLA configured for phase '{name}'")
+    return Response(status_code=204)
+
+
+@app.get("/phases/{name}/sla/status", response_model=dict[str, Any])
+async def evaluate_phase_sla_endpoint(
+    name: str,
+    elapsed_days: int,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Evaluate the SLA status for a phase given elapsed days."""
+
+    from ..phase_sla import evaluate_phase_sla
+
+    result = evaluate_phase_sla(name, elapsed_days)
+    return result.model_dump()
+
+
 def _workflow_template_usage(template_id: str) -> int:
     return sum(1 for wf in workflows.values() if wf.template == template_id)
 
@@ -4664,6 +4853,19 @@ async def admin_dashboard_endpoint(
     """Return system overview for administrators."""
 
     return admin_dashboard()
+
+
+@app.get("/dashboard/executive-summary", response_model=dict[str, Any])
+async def executive_summary_endpoint(
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Return a high-level portfolio summary for leadership.
+
+    Aggregates approval rates, overdue items, and phase distribution across
+    all projects so executives can assess portfolio health at a glance.
+    """
+
+    return executive_summary()
 
 
 @app.websocket("/ws/dashboard")

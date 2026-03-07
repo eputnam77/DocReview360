@@ -51,7 +51,7 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 * [x] Add reviewer comment section directly in Project View
 * [x] Ensure phase gating logic (cannot advance without required approvals)
 * [ ] Add shareable project URL links with permission-aware access
-* [ ] Add viewer-only project role and access controls
+* [x] Add viewer-only project role and access controls
 * [x] Add administrator branding settings in Configuration to replace default product mark with company logo and company name
 * [x] Enforce branding guardrails (image size/type limits, alt text, and safe fallback to default DocReview360 branding)
 
@@ -70,10 +70,10 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 ## 4. Dashboard & Visibility
 
 * [x] Restore full dashboard view array (project status, overdue reviews, approval state)
-* [ ] Add executive summary dashboard (for leadership view)
+* [x] Add executive summary dashboard (for leadership view)
 * [ ] Add reviewer workload dashboard
 * [ ] Add document aging metrics
-* [ ] Add SLA tracking per phase
+* [x] Add SLA tracking per phase
 * [x] Add a global page footer across all DocReview360 pages with product/company name, release build number, build date, environment, and copyright
 * [x] Add footer links for support/docs and security/privacy pages
 
@@ -99,9 +99,9 @@ Based on your broader ecosystem and FAA-heavy background, these could differenti
 ## A. Audit & Compliance Engine
 
 * [x] Immutable audit log
-* [ ] Phase-based audit snapshots
-* [ ] Exportable audit package (PDF + JSON)
-* [ ] Role-based permission matrix visualization
+* [x] Phase-based audit snapshots
+* [x] Exportable audit package (PDF + JSON)
+* [x] Role-based permission matrix visualization
 * [ ] Verification override logging (you already have RBAC structure â€” extend it)
 
 This aligns well with federal compliance workflows.
