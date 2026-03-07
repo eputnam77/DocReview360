@@ -1,17 +1,21 @@
 {
-  "version": 3,
-  "updated_at": "2026-03-07T14:16:01.825846+00:00",
+  "version": 59,
+  "updated_at": "2026-03-07T17:01:02.824552+00:00",
   "document_types": [
     {
-      "name": "Consistency Test Doc",
-      "template": "<h1>Consistency</h1>",
+      "name": "Test Document Type",
+      "template": "<h1>Test Template</h1>",
       "workflow": [
-        "Consistency Phase"
+        "draft",
+        "review",
+        "approve"
       ],
       "default_template_id": null,
-      "id": "Consistency Test Doc",
+      "id": "Test Document Type",
       "phases": [
-        "Consistency Phase"
+        "draft",
+        "review",
+        "approve"
       ]
     }
   ]
