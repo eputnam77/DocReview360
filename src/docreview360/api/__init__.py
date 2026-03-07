@@ -3730,7 +3730,7 @@ async def set_phase_workflow_template_endpoint(
         else None
     )
 
-    if template_id and template_id not in workflow_templates:
+    if template_id and get_workflow_template(template_id) is None:
         raise HTTPException(status_code=404, detail="Workflow template not found")
 
     try:
@@ -3876,11 +3876,13 @@ def _workflow_template_usage(template_id: str) -> int:
 
 
 def _serialize_workflow_template(template: WorkflowTemplateModel) -> WorkflowTemplateResponse:
+    # Convert steps to dicts to avoid Pydantic class-identity failures after module reloads
+    steps_data = [s.model_dump() for s in template.steps]
     return WorkflowTemplateResponse(
         id=template.id,
         name=template.name,
         description=template.description,
-        steps=template.steps,
+        steps=steps_data,
         updated=template.updated,
         usage=_workflow_template_usage(template.id),
     )

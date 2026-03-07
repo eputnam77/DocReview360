@@ -535,11 +535,13 @@ def create_workflow_template(payload: WorkflowTemplatePayload) -> WorkflowTempla
     name = payload.name.strip()
     if name in workflow_template_definitions:
         raise ValueError("Workflow template already exists")
+    # Convert steps to dicts to avoid Pydantic class-identity failures after module reloads
+    steps_data = [s.model_dump() for s in payload.steps]
     template = WorkflowTemplateModel(
         id=name,
         name=name,
         description=payload.description,
-        steps=payload.steps,
+        steps=steps_data,
         updated=datetime.now(timezone.utc).isoformat(),
     )
     workflow_template_definitions[name] = template
@@ -557,11 +559,12 @@ def update_workflow_template(
     name = payload.name.strip()
     if name != template_id and name in workflow_template_definitions:
         raise ValueError("Workflow template name already exists")
+    steps_data = [s.model_dump() for s in payload.steps]
     template = WorkflowTemplateModel(
         id=name,
         name=name,
         description=payload.description,
-        steps=payload.steps,
+        steps=steps_data,
         updated=datetime.now(timezone.utc).isoformat(),
     )
     if name != template_id:
