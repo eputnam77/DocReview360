@@ -522,9 +522,317 @@ The JSON files must be replaced with proper database-backed persistence.
 - [ ] Update `docs/` architecture docs to reflect that phases and doc types are now
   database-backed like all other entities.
 
+---
 
+**28) Core Domain State — Migrate In-Memory Dicts to Database**
 
+Context: The same JSON/in-memory anti-pattern from sections 27a–27g exists in several
+other core modules. Approvals, webhook subscriptions, and workflow state are all stored
+in module-level Python dicts or file-locked JSON, not in the SQLAlchemy models that
+already exist for them. A server restart silently destroys all live state.
 
+**28a — Approvals**
+- [ ] `approvals.py` line ~122 declares `approvals: Dict[str, ApprovalModel] = {}` as a
+  module-level dict. The SQLAlchemy `Approval` model already exists in `models.py` but
+  is unused. Wire all approval reads/writes through the DB session.
+- [ ] Remove `clear_approvals()` (or scope strictly to test fixtures with a clear warning).
+- [ ] Audit every caller of the in-memory dict in `api/__init__.py` and update to use DB
+  queries. Write a migration if the `approvals` table does not already exist.
+- [ ] Add integration tests that confirm approvals persist across server restarts.
+
+**28b — Workflow Engine**
+- [ ] `workflow_engine.py` has only one method (`active_approvals`) that filters the
+  in-memory approvals dict. It is effectively a stub. Rewrite it to query the DB for
+  approval records grouped by workflow ID.
+- [ ] `workflows.py` stores workflow templates in a file-locked JSON file
+  (`WORKFLOW_TEMPLATES_FILE`) AND in an in-memory cache; any in-flight mutations are
+  lost on restart. Migrate workflow template records to the DB (a `WorkflowTemplate`
+  table or reuse the existing `Workflow` model in `models.py`).
+- [ ] Verify that the workflow state machine (phase gating, advancement, rollback) is
+  fully implemented rather than delegating to in-memory lookups that happen to work
+  in single-process dev mode.
+
+**28c — Webhook Subscriptions**
+- [ ] `api/webhooks.py` line ~52 stores webhook subscriptions in
+  `_subscribers: Dict[str, List[str]] = {}`. Subscriptions are lost on restart, making
+  webhooks non-functional in production.
+- [ ] Add a `WebhookSubscription` table (subscriber URL, event type, secret, active flag)
+  and migrate the module to use DB-backed reads/writes.
+- [ ] Add a migration for the new table and seed tests accordingly.
+
+---
+
+**29) Auth & Session Security Gaps**
+
+Context: `auth.py` implements JWT HS256 with bcrypt and TOTP but is missing several
+production-essential mechanisms. A compromised token cannot be revoked, users cannot be
+force-logged-out, and the Keycloak enterprise path delegates to an unfinished stub.
+
+**29a — Token Revocation**
+- [ ] There is no token blacklist or revocation mechanism. A stolen token is valid until
+  it expires. Add a `revoked_tokens` table (or Redis set) keyed by JTI, checked on
+  every authenticated request.
+- [ ] Wire `POST /logout` (or add it) to insert the current token's JTI into the
+  revocation store and clear the session cookie.
+- [ ] Enforce revocation check inside `auth.get_current_user()` so it applies to all
+  routes automatically.
+
+**29b — Server-Side Session Management**
+- [ ] JWTs are stateless; there is no mechanism to invalidate all sessions for a user
+  (e.g., after password change or account suspension).
+- [ ] Add a `user_token_generation` counter (or `sessions_invalidated_at` timestamp) to
+  the User record. Include generation in the JWT payload. Reject tokens whose generation
+  is older than the DB value, allowing instant invalidation of all user sessions.
+- [ ] On password change or admin suspension, bump the counter.
+
+**29c — Keycloak Stub in Production Auth Path**
+- [ ] `auth.py` line ~841–845 calls `keycloak_mfa_login()` which delegates to
+  `stubs/task76.py`. That stub returns a dummy token without real validation.
+- [ ] Either complete the Keycloak integration (validate the token against the Keycloak
+  JWKS endpoint, map claims to local roles) or gate the entire Keycloak path behind a
+  feature flag that hard-fails in production until it is ready.
+- [ ] Remove or quarantine `stubs/task76.py` from production imports.
+
+**29d — RBAC Circular-Import Workaround**
+- [ ] `rbac.py` lines ~503–507 and ~528–532 use `sys.modules.get(__name__)` as a
+  defensive fallback for a dynamic import. This pattern is a sign of a circular
+  dependency. Resolve the root circular import instead of papering over it.
+- [ ] `has_permission()` calls `reload_role_permissions()` on every invocation, causing
+  a DB read on every permission check. Introduce an event-driven invalidation (e.g.,
+  a module-level dirty flag set on role writes) so the cache is only refreshed when
+  roles actually change.
+
+**29e — Auth Key Rotation**
+- [ ] JWT signing uses a single `SECRET_KEY` with no rotation strategy. If the secret
+  leaks, all tokens are compromised with no safe recovery path.
+- [ ] Add support for a `SECRET_KEY_PREVIOUS` env var so that tokens signed with the
+  old key remain valid during a rotation window while new tokens use the new key.
+- [ ] Document the key rotation runbook in `docs/security.md`.
+
+---
+
+**30) Frontend API URL Construction — Systematic Fix**
+
+Context: The audit found 20+ frontend pages that call `fetch("/api/...")` with hardcoded
+paths rather than using the `authenticatedFetch()` helper from `frontend/lib/api.ts`.
+This breaks any deployment where the frontend and backend are on different origins.
+
+- [ ] Audit all `fetch(` calls in `frontend/pages/` and replace raw `fetch("/api/...")` with
+  `authenticatedFetch("...")` from `frontend/lib/api.ts`. Known affected files:
+  - `pages/projects/new.tsx` (lines ~70, 100, 126)
+  - `pages/configuration/document-types.tsx` (~196, 205, 211, 229, 265, 287)
+  - `pages/configuration/phases.tsx` (~99, 113, 127, 175)
+  - `pages/configuration/templates/edit.tsx` (~39)
+  - `pages/configuration/templates/new-email.tsx` (~19)
+  - `pages/configuration/templates/new.tsx` (~33)
+  - `pages/configuration/workflows/edit.tsx` (~26)
+  - `pages/configuration/workflows/index.tsx` (~69)
+  - `pages/configuration/workflows/new.tsx` (~33, 90)
+  - `pages/configuration/permissions.tsx` (~50)
+  - `pages/projects/[id]/edit.tsx` (~184, 211)
+- [ ] Add a lint rule (ESLint `no-restricted-globals` or a custom rule) that flags any
+  `fetch("/api/` call in `frontend/pages/` to prevent regression.
+- [ ] Add a frontend integration test that sets `NEXT_PUBLIC_API_BASE` to a custom origin
+  and verifies that all API calls resolve against that base.
+
+---
+
+**31) Missing Auth Guards on Two API Routes**
+
+Context: Two GET endpoints were found in `api/__init__.py` that expose system
+configuration data without any authentication, while every other operation on the same
+resources correctly requires admin role.
+
+- [ ] `GET /plugins` (line ~4510) — add `Depends(auth.get_current_user)` at minimum; consider
+  `require_role("admin")` to match the POST/PUT/DELETE guards on the same resource.
+- [ ] `GET /plugin-marketplace` (line ~3745) — add `Depends(auth.get_current_user)` so
+  that plugin architecture details are not publicly discoverable.
+- [ ] Write a test that verifies both endpoints return 401 for unauthenticated requests.
+- [ ] Review any other GET-only routes that expose configuration or metadata without
+  authentication by grepping for `@app.get` calls that lack a `Depends(` argument on
+  the same or next line.
+
+---
+
+**32) CORS Hardening**
+
+- [ ] `CORSMiddleware` is configured with `allow_methods=["*"]` and `allow_headers=["*"]`.
+  Restrict to the specific methods the frontend uses:
+  `["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]`.
+- [ ] Restrict `allow_headers` to the explicit set needed:
+  `["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"]`.
+- [ ] Write a test that verifies a `TRACE` or `CONNECT` request is rejected.
+
+---
+
+**33) Stubs Directory — Remove Before Public Release**
+
+Context: `src/docreview360/stubs/` contains 251 stub task modules (`task03.py` through
+`task251.py`), each calling `record_task_completion()` with a task number. These appear
+to be scaffolding from a code-generation process and are excluded from coverage. They
+are dead code that should not ship in a public release.
+
+- [ ] Determine if any stub in `stubs/` is legitimately called from production code
+  (other than `task76.py` which is the Keycloak stub addressed in section 29c). Run
+  `grep -r "from.*stubs" src/ tests/` to enumerate all callers.
+- [ ] For any stub that is a genuine feature placeholder, create a proper tracking issue
+  and add a `raise NotImplementedError` with a clear message. Do not ship silent stubs.
+- [ ] Delete all unused stub files from `src/docreview360/stubs/`.
+- [ ] Remove the `stubs/` coverage exclusion from `pyproject.toml` once the directory
+  is clean (or deleted entirely).
+- [ ] Confirm `record_task_completion()` itself is also removed if it has no remaining
+  callers.
+
+---
+
+**34) Test Infrastructure & Coverage Gaps**
+
+Context: The CI coverage gate is set to 70% in `.github/workflows/ci.yml` while
+RELEASE_CHECKLIST.md section 5 and CLAUDE.md both require 90%. Additionally,
+`src/docreview360/api/__init__.py` (5,129 lines, ~181 endpoints) is entirely excluded
+from coverage measurement, meaning the 70% gate covers almost no real API behavior.
+
+**34a — Coverage Gate Alignment**
+- [ ] Raise the coverage threshold in `.github/workflows/ci.yml` from 70% to 90% to
+  match the release gate in CLAUDE.md and section 5 of this checklist.
+- [ ] Remove the `api/__init__.py` and `api/*` exclusions from `[tool.coverage.report]
+  omit` in `pyproject.toml`. The API must be covered.
+- [ ] After removing the exclusion, measure baseline coverage and add tests until the
+  90% gate passes.
+
+**34b — API Route Test Coverage**
+- [ ] Currently only 1 API test file exists (`tests/api/test_project_workflow.py`) for
+  ~181 routes. Add at minimum a smoke-test for every route group:
+  - Auth routes (`/token`, `/login`, `/logout`, `/users/me`, MFA)
+  - Project CRUD and phase-gating
+  - Document upload, view, version history
+  - Approval request, approve, reject, sign
+  - Template CRUD
+  - Workflow template CRUD and role assignments
+  - RBAC and admin user management
+  - Audit log retrieval and export
+  - Plugin list and install
+  - Dashboard and reporting endpoints
+- [ ] Each smoke-test should at minimum verify: unauthenticated → 401, wrong role → 403,
+  valid request → 2xx with expected response shape.
+
+**34c — Test Isolation (Global State Leak)**
+- [ ] `tests/conftest.py` imports `docreview360.doc_types.document_types` as a module-level
+  global (line ~40–43) and resets it between tests in a teardown fixture. This pattern
+  means tests are coupled to global module state and will behave differently depending
+  on execution order.
+- [ ] Refactor fixtures to use in-process DB sessions (SQLAlchemy `TestingSessionLocal`
+  with rollback-per-test) instead of mutating global module dicts.
+- [ ] Count the number of tests that use `monkeypatch` on module-level state (`_phases`,
+  `document_types`, `approvals`) and convert the highest-risk ones to DB-fixture style.
+
+**34d — CLI Test Gaps**
+- [ ] `tests/test_cli.py` tests only 6 of the CLI command groups. Add tests for:
+  - `docreview360 rbac show` and `docreview360 rbac set-role`
+  - `docreview360 logs hash-chain` and `docreview360 logs verify-chain`
+  - `docreview360 verify-signatures`
+  - `docreview360 migrate export` and `docreview360 migrate import` roundtrip on a
+    non-empty database
+
+---
+
+**35) Packaging & Build Hygiene**
+
+**35a — Duplicate Metadata in `pyproject.toml`**
+- [ ] `pyproject.toml` contains both a `[tool.poetry]` section and a PEP 621 `[project]`
+  section. The file itself has a comment acknowledging this inconsistency. Choose one
+  canonical metadata format (PEP 621 + setuptools, as used with `uv`) and remove the
+  Poetry section. Verify `uv pip install -e ".[dev,test,security]"` still works after
+  the change.
+- [ ] After removing the Poetry section, confirm that `python -m build` produces a valid
+  sdist and wheel and `twine check dist/*` passes.
+
+**35b — Stub Scripts**
+- [ ] Several scripts in `scripts/` are skeletal (file size < 1.5 KB with no real
+  implementation):
+  - `scripts/generate_sbom.py` — wraps CycloneDX but may be incomplete; verify it
+    produces a valid SBOM for the project.
+  - `scripts/replay_webhook.py` — stub; either implement it or remove it.
+  - `scripts/simulate_disaster_recovery.py` — stub; either implement it or remove it.
+  - `scripts/train_fann.py` — stub; either implement it or remove it.
+- [ ] Any script referenced in `RELEASE_CHECKLIST.md`, `docs/`, or CI must be fully
+  functional before release.
+
+**35c — JSON Data Files Still Committed**
+- [ ] `phases.json`, `document_types.json`, and `phase_workflow_links.json` are committed
+  to the repository root. They should not be (data belongs in the DB, not in source
+  control). Remove them and add to `.gitignore` as part of section 27e.
+
+**35d — Mypy Exclusions**
+- [ ] `pyproject.toml` disables mypy decorator checks for `api`, `cli`, and
+  `nemo_guardrails` modules and suppresses errors for `cache` and `models`. Before
+  release, tighten these: enable strict checks for `api` and `models` (the two most
+  important modules for correctness) and fix or explicitly justify each suppression.
+
+---
+
+**36) Audit Log & Observability Resilience**
+
+Context: `audit.py` has several reliability gaps that could lead to silent data loss or
+log corruption in a production environment.
+
+- [ ] `audit.py` line ~361–362 has a bare `except Exception: pass` inside the log-purge
+  loop. If an entry is corrupted or unreadable, it is silently skipped and the purge
+  continues. Replace with explicit error logging (write a warning to the Python logger
+  with the entry index and exception details) so operators know the log has a bad entry.
+- [ ] The purge operation writes a new file to replace the old log. If the process is
+  killed between the write and the rename, the log is truncated. Use an atomic
+  write-then-rename pattern (`write to .tmp → fsync → os.replace`) to prevent this.
+- [ ] The audit log uses a single HMAC secret with no rotation strategy. Add a
+  `AUDIT_HMAC_KEY_PREVIOUS` env var (same pattern as section 29e) so that log entries
+  signed with the old key remain verifiable during a rotation window.
+- [ ] `audit.py` dispatches integrity verification to Celery (`verify_integrity.delay()`)
+  with a fallback to synchronous execution. If Celery is down and the synchronous
+  fallback also fails, the failure is not surfaced. Add an alert/metric increment on
+  failed integrity dispatch so operations teams are notified.
+- [ ] Add a test that simulates a mid-purge crash (truncate the temp file) and verifies
+  the original log is intact after recovery.
+
+---
+
+**37) Database & Configuration Architecture**
+
+**37a — Connection Pooling**
+- [ ] `database.py` line ~110 calls `create_engine(url)` for Postgres/MySQL with no pool
+  configuration. Under load (10+ concurrent reviewers), this will exhaust connections.
+  Add `pool_size=10, max_overflow=20, pool_pre_ping=True` for non-SQLite engines.
+- [ ] Add a health check that verifies DB connectivity (`pool_pre_ping` catches stale
+  connections but a startup check should also exist).
+
+**37b — In-Memory SQLite Workaround**
+- [ ] `database.py` uses a `StaticPool` workaround to keep an in-memory SQLite DB alive
+  across requests during testing. This works but means the test DB is a global
+  singleton — any test that forgets to clean up leaks state into subsequent tests.
+  Replace with per-test in-memory DBs by creating a new engine per test session using
+  a pytest fixture.
+
+**37c — Multiple Config Systems**
+- [ ] Configuration is spread across three systems: YAML file (`docreview360.yaml`),
+  environment variables, and `settings_manager.py`. If the same key is set in both the
+  YAML file and an env var, the precedence is unclear and likely inconsistent between
+  modules.
+- [ ] Define a single precedence order (env var > YAML > built-in default), document it,
+  and enforce it in `config.py` so no module reads env vars directly — they all go
+  through the config layer.
+- [ ] Add a startup validation step that catches conflicting or missing required
+  configuration values early and fails fast with a clear error message.
+
+**37d — Tiptap Extension Wiring**
+- [ ] `frontend/extensions/` contains 9 Tiptap extensions (heading lock, indentation, mark
+  review, section node, slash command, structure, watermark, Yjs collaboration, lint).
+  `ExtensionsPanel.tsx` provides a toggle UI for them. However there is no confirmed
+  evidence that these extensions are wired into the actual editor pages.
+- [ ] Audit `frontend/pages/editors/` and confirm each extension is either imported and
+  registered with the Tiptap editor instance, or explicitly marked as not yet integrated
+  with a tracking issue.
+- [ ] The Yjs collaboration extension (`tiptapYjsCollab`) depends on the `y_py` Python
+  package (test skip guard found in `tests/test_collab_service.py`). Document whether
+  real-time collaboration is in scope for v0.1 or should be flagged as experimental.
 
 
 
