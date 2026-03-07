@@ -44,12 +44,6 @@ classifiers = [
   "Typing :: Typed",
 ]
 
-[project.urls]
-Homepage      = "https://github.com/eputnam77/DocReview360"
-Repository    = "https://github.com/eputnam77/DocReview360"
-Issues        = "https://github.com/eputnam77/DocReview360/issues"
-Changelog     = "https://github.com/eputnam77/DocReview360/blob/main/CHANGELOG.md"
-
 dependencies = [
   "Jinja2==3.1.6",
   "pydantic==2.11.7",
@@ -90,6 +84,12 @@ dependencies = [
   "markdown-it-py==3.0.0",
   "bleach==6.2.0",
 ]
+
+[project.urls]
+Homepage      = "https://github.com/eputnam77/DocReview360"
+Repository    = "https://github.com/eputnam77/DocReview360"
+Issues        = "https://github.com/eputnam77/DocReview360/issues"
+Changelog     = "https://github.com/eputnam77/DocReview360/blob/main/CHANGELOG.md"
 
 [[project.authors]]
 name  = "Eric Putnam"

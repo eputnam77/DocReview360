@@ -8,7 +8,8 @@
         "type": "tiptap"
       },
       "approved": false,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Advisory Circular": [
@@ -24,7 +25,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::After-Action Report": [
@@ -40,7 +42,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::API Manual / API Reference": [
@@ -56,7 +59,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Audit Report": [
@@ -72,7 +76,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Briefing / Slide Deck": [
@@ -88,7 +93,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Desk Guide": [
@@ -104,7 +110,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Exemption / Waiver": [
@@ -120,7 +127,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::FAQ": [
@@ -136,7 +144,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Federal Register Notice": [
@@ -152,7 +161,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Final Rule": [
@@ -168,7 +178,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Guidance": [
@@ -184,7 +195,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::ICR": [
@@ -200,7 +212,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Letter / Correspondence": [
@@ -216,7 +229,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Manual / Handbook": [
@@ -232,7 +246,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Meeting Minutes": [
@@ -248,7 +263,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Memorandum": [
@@ -264,7 +280,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Order / Directive": [
@@ -280,7 +297,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Policy": [
@@ -296,7 +314,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Proposed Rule / NPRM": [
@@ -312,7 +331,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::README": [
@@ -328,7 +348,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Release Notes": [
@@ -344,7 +365,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Report": [
@@ -360,7 +382,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::SOP": [
@@ -376,7 +399,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Special Conditions": [
@@ -392,7 +416,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Supporting Statement (PRA)": [
@@ -408,7 +433,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::User Guide": [
@@ -424,7 +450,8 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
     }
   ],
   "doc_type::Web Content": [
@@ -440,7 +467,25 @@
         "default": true
       },
       "approved": true,
-      "retired": false
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Test Document Type": [
+    {
+      "version": 1,
+      "content": "PGgxPlRlc3QgVGVtcGxhdGU8L2gxPg==",
+      "metadata": {
+        "label": "Test Document Type (Default)",
+        "docType": "Test Document Type",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Test Document Type documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
     }
   ]
 }

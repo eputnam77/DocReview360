@@ -32,8 +32,8 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 * [ ] Keep TipTap core unmodified (consume directly from upstream repo; extend via plugins only)
 * [ ] Establish update-safe plugin architecture to allow future TipTap upgrades without breakage
 * [ ] Ensure authoring tools persist cleanly to CMS (schema validation + version snapshots)
-* [ ] Add template version history and change tracking
-* [ ] Allow template locking per project phase
+* [x] Add template version history and change tracking
+* [x] Allow template locking per project phase
 
 ---
 
@@ -71,8 +71,8 @@ Below is a cleaned-up and expanded version of your list â€” followed by add
 
 * [x] Restore full dashboard view array (project status, overdue reviews, approval state)
 * [x] Add executive summary dashboard (for leadership view)
-* [ ] Add reviewer workload dashboard
-* [ ] Add document aging metrics
+* [x] Add reviewer workload dashboard
+* [x] Add document aging metrics
 * [x] Add SLA tracking per phase
 * [x] Add a global page footer across all DocReview360 pages with product/company name, release build number, build date, environment, and copyright
 * [x] Add footer links for support/docs and security/privacy pages
@@ -112,13 +112,13 @@ This aligns well with federal compliance workflows.
 
 Given your ScriptCore and style validator background:
 
-* [ ] AI style validation pass (toggleable)
+* [x] AI style validation pass (toggleable)
 * [ ] Define and document optimization prompts for document workflows (TBD scope)
-* [ ] Acronym validation check
-* [ ] Heading structure validation
-* [ ] Plain language scoring
+* [x] Acronym validation check
+* [x] Heading structure validation
+* [x] Plain language scoring
 * [ ] Regulatory citation checker
-* [ ] â€œPre-flightâ€ validation before phase advancement
+* [x] â€œPre-flightâ€ validation before phase advancement
 
 Make this optional and clearly separated from core review logic.
 

@@ -17,6 +17,163 @@ from .status import internal_status
 from .workflows import workflows
 
 
+# ---------------------------------------------------------------------------
+# Reviewer Workload Dashboard
+# ---------------------------------------------------------------------------
+
+
+class ReviewerWorkload(BaseModel):
+    """Per-reviewer metrics for the workload dashboard."""
+
+    reviewer: str
+    pending_approvals: int = 0
+    approved_approvals: int = 0
+    overdue_approvals: int = 0
+    rejected_approvals: int = 0
+    total_approvals: int = 0
+    assigned_projects: int = 0
+
+
+def reviewer_workload_dashboard() -> list[ReviewerWorkload]:
+    """Return per-reviewer workload metrics across all approvals.
+
+    Aggregates counts of pending, approved, overdue, and rejected approvals
+    for every reviewer present in the system.  Also includes the number of
+    projects each reviewer is directly assigned to.
+    """
+    stats: dict[str, dict[str, int]] = {}
+
+    for approval in approvals.values():
+        reviewer = approval.reviewer
+        if reviewer not in stats:
+            stats[reviewer] = {
+                "pending": 0,
+                "approved": 0,
+                "overdue": 0,
+                "rejected": 0,
+            }
+        state = approval.state
+        if state == "pending":
+            stats[reviewer]["pending"] += 1
+        elif state == "approved":
+            stats[reviewer]["approved"] += 1
+        elif state == "overdue":
+            stats[reviewer]["overdue"] += 1
+        elif state in {"rejected", "denied"}:
+            stats[reviewer]["rejected"] += 1
+
+    # Count assigned projects per user
+    project_counts: dict[str, int] = {}
+    for proj in projects.values():
+        if proj.user:
+            project_counts[proj.user] = project_counts.get(proj.user, 0) + 1
+
+    result: list[ReviewerWorkload] = []
+    for reviewer, counts in stats.items():
+        total = counts["pending"] + counts["approved"] + counts["overdue"] + counts["rejected"]
+        result.append(
+            ReviewerWorkload(
+                reviewer=reviewer,
+                pending_approvals=counts["pending"],
+                approved_approvals=counts["approved"],
+                overdue_approvals=counts["overdue"],
+                rejected_approvals=counts["rejected"],
+                total_approvals=total,
+                assigned_projects=project_counts.get(reviewer, 0),
+            )
+        )
+
+    # Sort descending by pending approvals so most-loaded reviewers appear first
+    result.sort(key=lambda r: r.pending_approvals, reverse=True)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Document Aging Metrics
+# ---------------------------------------------------------------------------
+
+
+class DocumentAgingEntry(BaseModel):
+    """Age summary for a single document."""
+
+    document_id: str
+    project: str | None = None
+    age_days: int | None = None
+    has_pending_approvals: bool = False
+    has_overdue_approvals: bool = False
+
+
+class DocumentAgingReport(BaseModel):
+    """Aggregate aging metrics across all documents."""
+
+    total_documents: int
+    documents_with_known_age: int
+    avg_age_days: float | None = None
+    oldest_age_days: int | None = None
+    documents_older_than_30_days: int = 0
+    documents_older_than_90_days: int = 0
+    entries: list[DocumentAgingEntry] = Field(default_factory=list)
+    generated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+def document_aging_metrics() -> DocumentAgingReport:
+    """Compute aging metrics for all documents in the system.
+
+    Age is measured from the document's ``date`` field if set, otherwise the
+    document is treated as having an unknown age.  The report highlights
+    documents that are older than 30 or 90 days so reviewers can prioritise
+    stale work.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Build a set of document_ids with pending/overdue approvals
+    pending_doc_ids: set[str] = set()
+    overdue_doc_ids: set[str] = set()
+    for approval in approvals.values():
+        if approval.state == "pending":
+            pending_doc_ids.add(approval.document_id)
+        elif approval.state == "overdue":
+            overdue_doc_ids.add(approval.document_id)
+
+    entries: list[DocumentAgingEntry] = []
+    age_values: list[int] = []
+
+    for doc in documents.values():
+        age_days: int | None = None
+        if doc.date is not None:
+            created = doc.date
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            delta = now - created
+            age_days = max(0, delta.days)
+            age_values.append(age_days)
+
+        entries.append(
+            DocumentAgingEntry(
+                document_id=doc.id,
+                project=doc.project,
+                age_days=age_days,
+                has_pending_approvals=doc.id in pending_doc_ids,
+                has_overdue_approvals=doc.id in overdue_doc_ids,
+            )
+        )
+
+    avg_age: float | None = sum(age_values) / len(age_values) if age_values else None
+    oldest: int | None = max(age_values) if age_values else None
+    older_30 = sum(1 for a in age_values if a > 30)
+    older_90 = sum(1 for a in age_values if a > 90)
+
+    return DocumentAgingReport(
+        total_documents=len(documents),
+        documents_with_known_age=len(age_values),
+        avg_age_days=round(avg_age, 1) if avg_age is not None else None,
+        oldest_age_days=oldest,
+        documents_older_than_30_days=older_30,
+        documents_older_than_90_days=older_90,
+        entries=entries,
+    )
+
+
 def compile_check_report(results: dict[str, Any]) -> tuple[bytes, bytes]:
     """Return HTML and PDF summaries of ``results``.
 

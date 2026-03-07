@@ -59,3 +59,7 @@ archive_store/
 .e2e-runs/
 test-results/
 playwright-report/
+
+# Filelock advisory lock files (transient, created at runtime)
+*.lock
+!uv.lock

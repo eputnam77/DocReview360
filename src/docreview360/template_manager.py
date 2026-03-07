@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import difflib
 import json
 import os
 from base64 import b64decode, b64encode
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -77,9 +78,58 @@ class TemplateVersion:
     metadata: Dict[str, Any]
     approved: bool = False
     retired: bool = False
+    change_summary: str = ""
 
 
 _template_store: dict[str, List[TemplateVersion]] = {}
+
+# ---------------------------------------------------------------------------
+# Template phase locks
+# ---------------------------------------------------------------------------
+
+# Maps (template_name, phase) -> True meaning the template is locked for that phase
+_template_phase_locks: dict[tuple[str, str], bool] = {}
+
+
+def lock_template_for_phase(name: str, phase: str) -> None:
+    """Prevent modifications to *name* while the project is in *phase*.
+
+    Raises
+    ------
+    ValueError
+        If *name* or *phase* is empty.
+    """
+    if not name or not phase:
+        raise ValueError("name and phase are required")
+    _template_phase_locks[(name, phase)] = True
+
+
+def unlock_template_for_phase(name: str, phase: str) -> None:
+    """Remove the phase lock for *name* in *phase*.
+
+    Raises
+    ------
+    ValueError
+        If *name* or *phase* is empty.
+    """
+    if not name or not phase:
+        raise ValueError("name and phase are required")
+    _template_phase_locks.pop((name, phase), None)
+
+
+def is_template_locked_for_phase(name: str, phase: str) -> bool:
+    """Return ``True`` if *name* is locked for *phase*."""
+    return bool(_template_phase_locks.get((name, phase)))
+
+
+def get_template_phase_locks(name: str) -> list[str]:
+    """Return all phases that currently lock *name*."""
+    return [phase for (tname, phase) in _template_phase_locks if tname == name]
+
+
+def reset_template_phase_locks() -> None:
+    """Clear all phase locks (used in tests)."""
+    _template_phase_locks.clear()
 
 
 def _serialize_template_store() -> dict[str, list[dict[str, Any]]]:
@@ -91,6 +141,7 @@ def _serialize_template_store() -> dict[str, list[dict[str, Any]]]:
                 "metadata": version.metadata,
                 "approved": version.approved,
                 "retired": version.retired,
+                "change_summary": version.change_summary,
             }
             for version in versions
         ]
@@ -119,6 +170,7 @@ def _load_template_store() -> None:
                     metadata=entry.get("metadata", {}),
                     approved=entry.get("approved", False),
                     retired=entry.get("retired", False),
+                    change_summary=entry.get("change_summary", ""),
                 )
             )
         _template_store[name] = parsed_versions
@@ -149,22 +201,66 @@ def reset_template_store(keep_file: bool = False, root: Path | None = None) -> N
         lock_path.unlink()
 
 
+def _compute_change_summary(old_content: bytes, new_content: bytes) -> str:
+    """Return a human-readable unified-diff summary between two content blobs.
+
+    Only the first 10 diff lines are included to keep the summary concise.
+    Returns an empty string when there is no previous content to compare against.
+    """
+    old_lines = old_content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    new_lines = new_content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    diff = list(
+        difflib.unified_diff(old_lines, new_lines, fromfile="previous", tofile="current", n=1)
+    )
+    if not diff:
+        return "no changes detected"
+    summary_lines = diff[:10]
+    summary = "".join(summary_lines)
+    if len(diff) > 10:
+        summary += f"\n... ({len(diff) - 10} more diff lines)"
+    return summary.strip()
+
+
 def upload_template(
     name: str, data: bytes, metadata: Dict[str, Any] | None = None
 ) -> TemplateVersion:
-    """Store ``data`` and ``metadata`` as a new version for ``name``."""
+    """Store ``data`` and ``metadata`` as a new version for ``name``.
 
+    When a prior version exists a diff summary is computed automatically and
+    stored in :attr:`TemplateVersion.change_summary` so reviewers can see what
+    changed without diffing the raw bytes themselves.
+
+    Raises
+    ------
+    PermissionError
+        If the template is locked for the phase specified in ``metadata["phase"]``.
+    """
     _load_template_store()
     if not name:
         raise ValueError("name is required")
     if metadata is not None and not isinstance(metadata, dict):
         raise ValueError("metadata must be a mapping")
+
+    # Enforce phase locks
+    phase = (metadata or {}).get("phase", "")
+    if phase and is_template_locked_for_phase(name, phase):
+        raise PermissionError(
+            f"template '{name}' is locked for phase '{phase}' and cannot be modified"
+        )
+
     versions = _template_store.setdefault(name, [])
     version = len(versions) + 1
+
+    # Compute change summary from the previous version if available
+    change_summary = ""
+    if versions:
+        change_summary = _compute_change_summary(versions[-1].content, data)
+
     record = TemplateVersion(
         version=version,
         content=data,
         metadata=(deepcopy(metadata) if metadata else {}),
+        change_summary=change_summary,
     )
     versions.append(record)
     _save_template_store()
