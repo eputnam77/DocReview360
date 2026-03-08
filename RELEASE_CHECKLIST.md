@@ -535,14 +535,16 @@ log corruption in production.
 - [ ] After removing the Poetry section, confirm that `python -m build` produces a valid
   sdist and wheel and `twine check dist/*` passes.
 
-**11b — Stub Scripts**
-- [ ] Several scripts in `scripts/` are skeletal (file size < 1.5 KB with no real
-  implementation):
-  - `scripts/generate_sbom.py` — wraps CycloneDX but may be incomplete; verify it
-    produces a valid SBOM for the project.
-  - `scripts/replay_webhook.py` — stub; either implement it or remove it.
-  - `scripts/simulate_disaster_recovery.py` — stub; either implement it or remove it.
-  - `scripts/train_fann.py` — stub; either implement it or remove it.
+**11b — Script Validation**
+- [ ] All four scripts are functional (not stubs), but small and need verification:
+  - `scripts/generate_sbom.py` (851 B) — calls `docreview360.sbom.generate_cyclonedx_sbom()`;
+    verify it produces a valid SBOM for the project.
+  - `scripts/replay_webhook.py` (1.5 KB) — functional webhook replay with HMAC signing;
+    verify it works against the current webhook API.
+  - `scripts/simulate_disaster_recovery.py` (1.2 KB) — delegates to
+    `docreview360.disaster_recovery.run_disaster_recovery_simulation()`; verify end-to-end.
+  - `scripts/train_fann.py` (622 B) — deprecated wrapper forwarding to `docreview360 ml train`
+    CLI; prints deprecation warning to stderr. Remove or update the script.
 - [ ] Any script referenced in this checklist, `docs/`, or CI must be fully functional
   before release.
 
@@ -697,6 +699,328 @@ log corruption in production.
 - [ ] Smoke test the CLI → API → UI flow using the released artifacts.
 - [ ] Verify docs site or README links resolve correctly.
 - [ ] Monitor issues and security reports for the first week.
+
+---
+
+## NEWLY DISCOVERED ARCHITECTURE ISSUES
+
+> Identified during deep codebase inspection (2026-03-08) by senior architecture review.
+> These were **missed** in the original analysis.
+
+---
+
+**25) Monolithic API Module — 5,129 Lines / 184 Routes**
+
+Priority: **High** (Maintainability, Testability)
+
+- [ ] `src/docreview360/api/__init__.py` is a single 5,129-line file containing all 184
+  API route definitions. Only 4 routes are factored into sub-routers (`approvals_router`,
+  `ml_router`, `webhooks_router`); the remaining 180 are inline.
+- [ ] Decompose into domain-specific routers:
+  - `api/auth.py` — login, token, logout, MFA, SSO
+  - `api/projects.py` — project CRUD, phase gating
+  - `api/documents.py` — upload, view, version history
+  - `api/workflows.py` — workflow template CRUD, role assignments
+  - `api/admin.py` — user management, RBAC, configuration
+  - `api/dashboards.py` — reporting, analytics, export
+  - `api/plugins.py` — plugin list, install, marketplace
+- [ ] Each router should be independently testable with focused fixtures.
+- [ ] Preserve existing route paths (no breaking change to API contract).
+
+---
+
+**26) Incomplete Permission Coverage — ~78% of Routes Unguarded**
+
+Priority: **Critical** (Security)
+
+- [ ] Only 41 of 184 routes have explicit permission checks (`require_role()` or
+  `require_permission()`). The remaining ~143 routes rely solely on
+  `get_current_user()` (authentication) but have no authorization guard.
+- [ ] Audit every route and classify:
+  - Public (health, branding, status) — document as intentionally public.
+  - Authenticated-only — add `Depends(auth.get_current_user)` at minimum.
+  - Role-restricted — add `Depends(require_role("admin"))` or
+    `Depends(require_permission("action"))` as appropriate.
+- [ ] Add a test that enumerates all routes and asserts each has an explicit auth
+  classification (prevent future regressions when new routes are added).
+
+---
+
+**27) Celery Defaults Non-Functional in Production**
+
+Priority: **High** (Production Readiness)
+
+- [ ] `celery_app.py` lines 18–21 default to `broker_url="memory://"`,
+  `backend_url="cache+memory://"`, and `task_always_eager=True`. All async tasks
+  (exports, reindexing, guardrail checks, integrity verification) execute
+  synchronously in-process and lose state on restart.
+- [ ] Document required production settings in `.env.example` and `docs/deployment.md`:
+  - `CELERY_BROKER_URL=redis://redis:6379/0`
+  - `CELERY_RESULT_BACKEND=redis://redis:6379/1`
+  - `CELERY_EAGER=0`
+- [ ] Add a startup health check that warns if `CELERY_BROKER_URL` is `memory://`
+  in production mode.
+- [ ] Verify `docker-compose.yml` includes Redis and properly configures workers.
+
+---
+
+**28) Broad Exception Handling — 52 Files With Silent Catches**
+
+Priority: **Medium** (Observability, Debugging)
+
+- [ ] 52 source files contain `except Exception:` blocks, many with `pass` or
+  minimal logging. Key offenders:
+  - `approvals.py` (7 instances) — approval workflow errors silently swallowed
+  - `cache.py` (4 instances) — cache failures invisible
+  - `chat_bot.py` (5 instances at module level) — import failures invisible
+  - `api/__init__.py` (3 instances) — request-handling errors hidden
+- [ ] Audit each `except Exception` and either:
+  - Replace with specific exception types, or
+  - Add `logger.exception(...)` to ensure errors are observable.
+- [ ] Never use `except Exception: pass` in request-handling code paths.
+
+---
+
+**29) Global Mutable State — 20+ Modules Use `global` Keyword**
+
+Priority: **Medium** (Concurrency, Test Isolation)
+
+- [ ] Beyond the known in-memory dicts (sections 1–2), an additional 20+ modules
+  use the `global` keyword to mutate module-level state:
+  - `doc_types.py` (6 globals: `_STATE_VERSION`, `_STATE_UPDATED_AT`, etc.)
+  - `api/ml.py` (3 globals: `_ROUTING_MODEL`, `_WARMED`, `_WARM_COUNT`)
+  - `auth.py` (1 global: `USER_REPOSITORY`)
+  - `cache.py`, `comments.py`, `documents.py`, `email_templates.py`
+- [ ] This state is not thread-safe. Under multi-worker Uvicorn (or Gunicorn), race
+  conditions can corrupt data silently.
+- [ ] Migrate hot-path globals to request-scoped dependencies or thread-safe
+  containers (e.g., `threading.Lock` guarded singletons).
+
+---
+
+**30) Large Modules Needing Decomposition**
+
+Priority: **Medium** (Maintainability)
+
+- [ ] Eight non-API Python modules exceed 600 lines:
+  - `approvals.py` — 1,508 lines (mixes CRUD, signature, ML scoring, routing)
+  - `auth.py` — 1,028 lines (mixes JWT, bcrypt, TOTP, SAML, OIDC, user repo)
+  - `search.py` — 1,018 lines (mixes document search, project search, ranking)
+  - `workflows.py` — 888 lines (state machine, templates, file-locked caching)
+  - `doc_types.py` — 729 lines (CRUD, JSON persistence, versioned caching)
+  - `logs.py` — 700 lines (logging, hash chains, event dispatch)
+  - `reporting.py` — 689 lines (dashboards, metrics, aggregations)
+  - `documents.py` — 639 lines (model, ingestion, storage)
+- [ ] Prioritize splitting `approvals.py` (most complex) into:
+  - `approvals/core.py` — approval CRUD
+  - `approvals/signatures.py` — signature logic
+  - `approvals/routing.py` — reviewer assignment / ML scoring
+
+---
+
+**31) Frontend State Management — Ad-Hoc Per Page**
+
+Priority: **Low** (Consistency)
+
+- [ ] No centralized state management exists. Each of 54 pages independently fetches
+  data via `useState` + `useEffect` (359 total `useState` calls across pages).
+- [ ] Consequence: duplicate API calls on navigation, stale data across pages,
+  no shared error/loading state.
+- [ ] Consider introducing React Query (TanStack Query) for server-state caching
+  with automatic invalidation, or a minimal context provider for auth/user state.
+
+---
+
+**32) Six Independent YAML Configuration Loaders**
+
+Priority: **Low** (Consistency)
+
+- [ ] Section 12a documents 3 config systems. Deeper inspection reveals 6 independent
+  YAML-loading modules:
+  1. `config.py` → `docreview360.yaml`
+  2. `settings_manager.py` → `settings.yaml`
+  3. `environment.py` → `environments.yaml`
+  4. `provider_store.py` → `providers.yaml`
+  5. `rbac_editor.py` → role permission YAML
+  6. `schedule_editor.py` → schedule YAML
+- [ ] Each has its own load/save/validation logic. A shared YAML config base class
+  would reduce bugs and ensure consistent precedence (env var > YAML > default).
+
+---
+
+## SECURITY REVIEW RESULTS
+
+> Automated security best-practices review performed 2026-03-08 against
+> FastAPI, Next.js, React, and general frontend security specifications.
+
+---
+
+### CRITICAL
+
+**SEC-01) JWT Tokens Stored in localStorage (XSS Token Theft)**
+
+- **Location:** `frontend/lib/api.ts:39`
+- **Evidence:** `window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);`
+- **Impact:** Any XSS vulnerability (even a minor one) allows an attacker to
+  exfiltrate the JWT and impersonate the user for the token's full TTL (30 min).
+- **Fix:** Migrate to `httpOnly`, `Secure`, `SameSite=Strict` cookies set by the
+  backend. Remove localStorage token storage. The backend already sets session
+  cookies — unify on cookie-based auth.
+- **Priority:** Critical
+
+---
+
+### HIGH
+
+**SEC-02) Missing HTTP Security Headers (Backend)**
+
+- **Location:** `src/docreview360/api/__init__.py` (middleware section ~960–975)
+- **Evidence:** No security response headers are set. Missing:
+  - `X-Content-Type-Options: nosniff`
+  - `X-Frame-Options: DENY`
+  - `Content-Security-Policy`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+  - `Permissions-Policy`
+- **Impact:** Browser-side protections against clickjacking, MIME sniffing, and
+  XSS are not activated.
+- **Fix:** Add a `SecurityHeadersMiddleware` that sets all headers on every response.
+- **Priority:** High
+
+**SEC-03) Missing CSP Headers (Frontend)**
+
+- **Location:** `frontend/next.config.js`
+- **Evidence:** No `headers()` function configured. No Content-Security-Policy
+  delivered to the browser.
+- **Impact:** No defense-in-depth against XSS. If any injection vector exists,
+  there is no browser-level mitigation.
+- **Fix:** Add `async headers()` to `next.config.js` with at minimum
+  `default-src 'self'; script-src 'self'` (adjust for inline scripts as needed).
+- **Priority:** High
+
+**SEC-04) Backend-Supplied URL Used in `window.location.assign()` Without Validation**
+
+- **Location:** `frontend/pages/projects/[id]/index.tsx:725–731`
+- **Evidence:**
+  ```typescript
+  if (signatureUrl.startsWith("/")) { router.push(signatureUrl); }
+  else { window.location.assign(signatureUrl); }
+  ```
+- **Impact:** If the backend is compromised or returns attacker-influenced data,
+  the user is redirected to an arbitrary URL — enabling phishing/credential theft.
+- **Fix:** Validate `signatureUrl` with `new URL()` and enforce a protocol/origin
+  allowlist before navigating.
+- **Priority:** High
+
+---
+
+### MEDIUM
+
+**SEC-05) Hardcoded Default JWT Secret Key**
+
+- **Location:** `src/docreview360/auth.py:86`
+- **Evidence:** `DEFAULT_SECRET_KEY = "docreview360-dev-secret"`
+- **Impact:** If `DOCREVIEW360_SECRET_KEY` is unset and the generated fallback is
+  somehow bypassed, all tokens are signed with a known key.
+- **Mitigation (in place):** Line 93 generates a random fallback; `required=True`
+  forces production to set the env var. Risk is low but the hardcoded default
+  should be removed entirely.
+- **Fix:** Remove `DEFAULT_SECRET_KEY` constant; always use `os.urandom()`.
+- **Priority:** Medium
+
+**SEC-06) `eval()` Used for Dynamic Import**
+
+- **Location:** `frontend/extensions/tiptapMarkReview.ts:20`
+- **Evidence:** `const mod = await (eval('import("markreview")') as Promise<any>);`
+- **Impact:** `eval()` is inherently dangerous and blocks strict CSP. Although the
+  input here is a constant string, it sets a precedent for unsafe patterns.
+- **Fix:** Replace with `const mod = await import("markreview").catch(() => null);`
+- **Priority:** Medium
+
+**SEC-07) Open Redirect via Query Parameter**
+
+- **Location:** `frontend/pages/documenso/[sig].tsx:12–19`
+- **Evidence:** `returnTo` from `router.query` is decoded and checked for `/` prefix,
+  but `decodeURIComponent` + prefix check is not robust against edge cases like
+  `/%2f%2fexample.com` or `//evil.com`.
+- **Impact:** Attacker can craft a URL that redirects the user after signature
+  completion — useful for phishing.
+- **Fix:** Use `new URL(returnTo, window.location.origin)` and enforce
+  `url.origin === window.location.origin`.
+- **Priority:** Medium
+
+**SEC-08) WebSocket Connection Without Authentication**
+
+- **Location:** `frontend/pages/logs/index.tsx:102–103`
+- **Evidence:**
+  ```typescript
+  const socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/logs`);
+  ```
+  No token or credentials attached to the WebSocket upgrade request.
+- **Impact:** If backend does not independently validate WebSocket connections,
+  unauthorized users can receive real-time audit log data.
+- **Fix:** Pass auth token in the WebSocket URL query parameter or validate the
+  session cookie on the server during the WebSocket upgrade.
+- **Priority:** Medium
+
+**SEC-09) Rate Limiting Covers Only 3 Endpoints**
+
+- **Location:** `src/docreview360/api/__init__.py:281–291`
+- **Evidence:** Only `_TOKEN_RATE_LIMITER`, `_LOGIN_RATE_LIMITER`, and
+  `_UPLOAD_RATE_LIMITER` are defined. 181 other endpoints have no rate protection.
+- **Impact:** Expensive operations (document export, search, batch approval,
+  workflow template updates) can be abused for DoS.
+- **Fix:** Add rate limiters for at minimum: document export, signature
+  verification, search, and bulk operations.
+- **Priority:** Medium
+
+---
+
+### LOW
+
+**SEC-10) Demo Credentials in Source Code**
+
+- **Location:** `src/docreview360/auth.py:200–209`
+- **Evidence:** `"alice": {"password": "password", "otp_secret": "123456"}`
+- **Mitigation:** Demo users are only seeded when `DOCREVIEW360_ENV=dev`. This is
+  acceptable but should be clearly documented as dev-only behavior.
+- **Priority:** Low
+
+**SEC-11) No Subresource Integrity for CDN Assets**
+
+- **Location:** Frontend build output
+- **Evidence:** No SRI hashes applied to any `<script>` or `<link>` tags.
+  Next.js self-serves assets, so this is low risk unless a CDN is used.
+- **Fix:** If deploying behind a CDN, enable SRI via Next.js configuration.
+- **Priority:** Low
+
+**SEC-12) Source Maps Configuration**
+
+- **Location:** `frontend/next.config.js`
+- **Evidence:** No explicit `productionBrowserSourceMaps` setting. Next.js defaults
+  to not publishing source maps in production (correct behavior).
+- **Status:** Pass — no action needed unless CDN deployment changes this.
+- **Priority:** Low (informational)
+
+---
+
+### VERIFICATION SUMMARY
+
+| Area | Status | Notes |
+|------|--------|-------|
+| SQL Injection | **PASS** | All queries use parameterized statements |
+| Password Hashing | **PASS** | bcrypt with PBKDF2 fallback (120k iterations) |
+| TOTP/MFA | **PASS** | pyotp with valid_window=1, constant-time comparison |
+| File Upload | **PASS** | Path traversal protection, MIME whitelist, size limits |
+| Encryption | **PASS** | AES-GCM with proper nonce handling |
+| Subprocess | **PASS** | All calls use list args, no `shell=True` |
+| CSRF | **PASS** | Token validation via `secrets.compare_digest()` |
+| Password Policy | **PASS** | 12+ chars, 3/4 character classes, reuse prevention |
+| Account Lockout | **PASS** | 5 attempts / 300s lockout, configurable |
+| Secret Management | **PASS** | Vault-based with TTL, environment variable fallback |
+| Dependencies | **PASS** | All pinned to current versions, no known CVEs |
+| dangerouslySetInnerHTML | **PASS** | Not used in production frontend code |
+| NEXT_PUBLIC_ secrets | **PASS** | Only non-secret values exposed |
+| postMessage | **PASS** | Not used |
 
 ---
 
