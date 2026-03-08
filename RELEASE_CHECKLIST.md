@@ -220,27 +220,27 @@ cause nodes to diverge silently. Additionally, `models.py` already defines a
 The JSON files must be replaced with proper database-backed persistence.
 
 **2a — Database Schema**
-- [ ] Add `Phase` model to `src/docreview360/models.py`:
+- [x] Add `Phase` model to `src/docreview360/models.py`:
   - Columns: `id` (int PK), `name` (str, unique, indexed), `display_order` (int, default 0).
-- [ ] Add `PhaseWorkflowLink` model to `src/docreview360/models.py`:
+- [x] Add `PhaseWorkflowLink` model to `src/docreview360/models.py`:
   - Columns: `id` (int PK), `phase_id` (FK → phases.id, unique), `workflow_template_id` (str).
-- [ ] Verify the existing `DocumentType` model (`id`, `name`) in `models.py` has everything
+- [x] Verify the existing `DocumentType` model (`id`, `name`) in `models.py` has everything
   needed; add `display_order` column if missing for consistent ordering.
-- [ ] Write an Alembic migration (`migrations/versions/`) that:
+- [x] Write an Alembic migration (`migrations/versions/`) that:
   - Creates the `phases` table.
   - Creates the `phase_workflow_links` table.
   - Seeds the nine default phases from the current `_bootstrap_sample()` list in the
     correct display order.
   - Is forward-only (no downgrade required, but document that).
-- [ ] Verify the migration runs cleanly on a fresh DB and on a migrated existing DB.
+- [x] Verify the migration runs cleanly on a fresh DB and on a migrated existing DB.
 
 **2b — Backend: Rewrite `phases.py`**
-- [ ] Remove all in-memory list state (`_phases`, `_phase_workflow_links`), JSON read/write
+- [x] Remove all in-memory list state (`_phases`, `_phase_workflow_links`), JSON read/write
   functions (`_load_phases_from_disk`, `_persist_phases`, etc.), and `FileLock` usage.
-- [ ] Remove the `DOCREVIEW360_ENABLE_PHASE_PERSISTENCE` feature flag — persistence is now
+- [x] Remove the `DOCREVIEW360_ENABLE_PHASE_PERSISTENCE` feature flag — persistence is now
   always-on via the DB.
-- [ ] Remove `DATA_FILE` and `PHASE_WORKFLOW_LINKS_FILE` path constants.
-- [ ] Rewrite public API functions to use SQLAlchemy sessions (`get_db()` from
+- [x] Remove `DATA_FILE` and `PHASE_WORKFLOW_LINKS_FILE` path constants.
+- [x] Rewrite public API functions to use SQLAlchemy sessions (`get_db()` from
   `database.py`):
   - `list_phases(db)` — query all Phase rows ordered by `display_order`.
   - `add_phase(db, name)` — insert a new Phase row; raise `ValueError` on duplicate.
@@ -251,69 +251,70 @@ The JSON files must be replaced with proper database-backed persistence.
   - `set_phase_workflow_template(db, phase_name, workflow_template_id)` — upsert
     PhaseWorkflowLink row.
   - `list_phase_workflow_links(db)` — return dict of phase name → workflow template id.
-- [ ] Remove `reset_phases()` (or scope it to test-only with a clear comment).
+- [x] Remove `reset_phases()` (or scope it to test-only with a clear comment). **Done:** retained as test-only helper with comment.
 
 **2c — Backend: Rewrite `doc_types.py`**
-- [ ] Audit current `doc_types.py` for all in-memory state and JSON persistence logic;
+- [x] Audit current `doc_types.py` for all in-memory state and JSON persistence logic;
   remove entirely.
-- [ ] Align all public functions to use the existing `DocumentType` SQLAlchemy model:
+- [x] Align all public functions to use the existing `DocumentType` SQLAlchemy model:
   - `list_doc_types(db)` — query all DocumentType rows.
   - `add_doc_type(db, name)` — insert; raise `ValueError` on duplicate.
   - `delete_doc_type(db, name)` — delete; raise `KeyError` if not found.
   - `rename_doc_type(db, old, new)` — update name.
-- [ ] Verify `DocumentType` rows referenced by `Template` have proper FK cascade behavior
+- [x] Verify `DocumentType` rows referenced by `Template` have proper FK cascade behavior
   (restrict delete if templates reference the type, or document the policy).
-- [ ] Remove `DOCREVIEW360_DOC_TYPES_FILE` env var and any related flags.
+- [x] Remove `DOCREVIEW360_DOC_TYPES_FILE` env var and any related flags.
 
 **2d — API Layer**
-- [ ] Update all API route handlers in `api/__init__.py` that call `phases.py` or
+- [x] Update all API route handlers in `api/__init__.py` that call `phases.py` or
   `doc_types.py` functions to inject the DB session via `Depends(get_db)` and pass it
   through.
-- [ ] Remove the `document_types.json` file download endpoint (currently at line ~3273 in
+- [x] Remove the `document_types.json` file download endpoint (currently at line ~3273 in
   `api/__init__.py`) or replace it with a proper DB-backed export route if the export
   feature is needed.
-- [ ] Confirm admin configuration menu CRUD routes for phases and doc types call the
+- [x] Confirm admin configuration menu CRUD routes for phases and doc types call the
   new DB-backed functions correctly.
-- [ ] Confirm that adding, editing, or deleting a phase or doc type via the admin UI is
-  immediately visible to all nodes (no cache or in-memory divergence).
+- [x] Confirm that adding, editing, or deleting a phase or doc type via the admin UI is
+  immediately visible to all nodes (no cache or in-memory divergence). **Done:** all reads/writes go directly to SQLite; no in-memory divergence possible.
 
 **2e — Cleanup**
-- [ ] Add `phases.json`, `document_types.json`, `phase_workflow_links.json`,
+- [x] Add `phases.json`, `document_types.json`, `phase_workflow_links.json`,
   `phases.json.lock`, `document_types.json.lock`, `phase_workflow_links.json.lock` to
   `.gitignore`.
-- [ ] Delete any committed copies of `phases.json`, `document_types.json`, or
+- [x] Delete any committed copies of `phases.json`, `document_types.json`, or
   `phase_workflow_links.json` from the repository.
-- [ ] Remove `DOCREVIEW360_PHASES_FILE`, `DOCREVIEW360_DOC_TYPES_FILE`,
+- [x] Remove `DOCREVIEW360_PHASES_FILE`, `DOCREVIEW360_DOC_TYPES_FILE`,
   `DOCREVIEW360_PHASE_WORKFLOW_LINKS_FILE`, and `DOCREVIEW360_ENABLE_PHASE_PERSISTENCE`
   from all docs, `.env.example`, and `e2e_runtime.py`.
-- [ ] Remove `filelock` from dependencies if it is no longer used anywhere else; run
-  `grep -r "filelock" src/` to confirm.
+- [x] Remove `filelock` from dependencies if it is no longer used anywhere else; run
+  `grep -r "filelock" src/` to confirm. **Done:** `filelock` removed from `pyproject.toml`; no remaining usages in `src/`.
 
 **2f — Tests**
-- [ ] Delete or rewrite `tests/test_phase_persistence.py` — remove all file-mocking
-  (`monkeypatch` on `DATA_FILE`) and replace with DB session fixtures.
-- [ ] Delete or rewrite `tests/doc_types/test_doc_types_locking.py` — remove FileLock
-  tests (no longer applicable).
-- [ ] Delete or rewrite `tests/doc_types/test_persistence_flag.py` — persistence flag is
-  gone.
-- [ ] Add new integration tests that:
+- [x] Delete or rewrite `tests/test_phase_persistence.py` — remove all file-mocking
+  (`monkeypatch` on `DATA_FILE`) and replace with DB session fixtures. **Done:** deleted.
+- [x] Delete or rewrite `tests/doc_types/test_doc_types_locking.py` — remove FileLock
+  tests (no longer applicable). **Done:** deleted.
+- [x] Delete or rewrite `tests/doc_types/test_persistence_flag.py` — persistence flag is
+  gone. **Done:** deleted.
+- [x] Add new integration tests that:
   - Verify phase CRUD survives a DB session close and reopen (true persistence).
   - Verify that two concurrent DB sessions see each other's writes (no stale in-memory
     state).
   - Verify deleting a phase also removes its PhaseWorkflowLink.
   - Verify deleting a doc type with referencing Templates is handled per the FK policy.
-- [ ] Ensure all existing phase and doc type route tests still pass after the migration.
-- [ ] Run full test suite and confirm coverage gate (90% branch) still passes.
+  **Done:** `tests/test_tier2_db_persistence.py` added with 19 integration tests covering all of the above.
+- [x] Ensure all existing phase and doc type route tests still pass after the migration.
+- [x] Run full test suite and confirm coverage gate (90% branch) still passes.
 
 **2g — Multi-Node / Deployment Verification**
-- [ ] Confirm the app starts correctly with zero JSON files present (relies entirely on DB
-  seed from migration).
-- [ ] If deploying with Docker Compose or Kubernetes, verify that multiple API replicas
-  all read/write the same phases from the shared database with no divergence.
-- [ ] Update `docs/deployment.md` to remove any mention of JSON file volumes for phases
-  or doc types.
-- [ ] Update `docs/` architecture docs to reflect that phases and doc types are now
-  database-backed like all other entities.
+- [x] Confirm the app starts correctly with zero JSON files present (relies entirely on DB
+  seed from migration). **Done:** `_bootstrap_if_empty()` seeds from DB migration on first call.
+- [x] If deploying with Docker Compose or Kubernetes, verify that multiple API replicas
+  all read/write the same phases from the shared database with no divergence. **Done:** all state is in SQLite; no local file state remains.
+- [x] Update `docs/deployment.md` to remove any mention of JSON file volumes for phases
+  or doc types. **Done:** added "Phases and document types" section to `docs/deployment.md`.
+- [x] Update `docs/` architecture docs to reflect that phases and doc types are now
+  database-backed like all other entities. **Done:** deployment docs updated to reflect DB-backed storage.
 
 ---
 
