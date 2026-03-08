@@ -131,6 +131,49 @@ class Approval(Base):
     workflow: Mapped[Workflow] = relationship(back_populates="approvals")
 
 
+class ApprovalRecord(Base):
+    """Persistent storage for approval instances (replaces in-memory dict)."""
+
+    __tablename__ = "approval_records"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    workflow_id: Mapped[str] = mapped_column(String, index=True)
+    reviewer: Mapped[str] = mapped_column(String)
+    state: Mapped[str] = mapped_column(String(20), index=True)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class WorkflowInstanceRecord(Base):
+    """Persistent storage for workflow instances (replaces in-memory dict)."""
+
+    __tablename__ = "workflow_instance_records"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    project: Mapped[str] = mapped_column(String, index=True)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class WorkflowTemplateRecord(Base):
+    """Persistent storage for workflow template definitions."""
+
+    __tablename__ = "workflow_template_records"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class WebhookSubscriptionRecord(Base):
+    """Persistent storage for webhook subscriptions."""
+
+    __tablename__ = "webhook_subscription_records"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    url: Mapped[str] = mapped_column(String)
+    event: Mapped[str] = mapped_column(String, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class Plugin(Base):
     __tablename__ = "plugins"
 
