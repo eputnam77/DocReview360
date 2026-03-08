@@ -9,19 +9,20 @@ def setup_function(_):
     search.search_index.projects.clear()
 
 
-def test_save_and_load_state(tmp_path, monkeypatch):
-    monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
-    monkeypatch.setattr(doc_types, "DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", True)
-    reset_document_types()
+def test_save_and_load_persists_to_db():
+    """Adding a document type persists to DB and is visible on the next read."""
+
+    reset_document_types(seed=False)
     doc = DocumentTypeModel(name="T", template="tpl", workflow=["Phase"])
     doc_types.add_document_type(doc)
-    doc_types.document_types.clear()
-    assert doc_types.load_state() is True
-    assert doc_types.document_types["T"].template == "tpl"
+
+    # Verify persistence: read back from DB via a fresh query
+    retrieved = doc_types.get_document_type("T")
+    assert retrieved is not None
+    assert retrieved.template == "tpl"
 
 
-def test_update_propagates_and_conflicts(tmp_path, monkeypatch):
-    monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
+def test_update_propagates_and_conflicts():
     old = DocumentTypeModel(name="Old", template="t", workflow=["Phase"])
     existing = DocumentTypeModel(name="Existing", template="t", workflow=["Phase"])
     doc_types.add_document_type(old)
@@ -37,12 +38,11 @@ def test_update_propagates_and_conflicts(tmp_path, monkeypatch):
         )
 
 
-def test_add_document_type_conflict(tmp_path, monkeypatch):
-    monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "types.json")
+def test_add_document_type_conflict():
     doc = DocumentTypeModel(name="Dup", template="t", workflow=["Phase"])
     first = doc_types.add_document_type(doc)
-    # Re-adding the exact same definition is a no-op
-    assert doc_types.add_document_type(doc) is first
+    # Re-adding the exact same definition is a no-op (returns equivalent model)
+    assert doc_types.add_document_type(doc) == first
     # A conflicting definition with the same name should still error
     with pytest.raises(ValueError):
         doc_types.add_document_type(

@@ -49,8 +49,8 @@ def apply_e2e_run_dir() -> Path | None:
     os.environ.setdefault("DOCREVIEW360_USER_DB", str(db_dir / "docreview360_users.db"))
     os.environ.setdefault("DOCREVIEW360_RBAC_DB", str(db_dir / "docreview360_roles.db"))
     os.environ.setdefault("DOCREVIEW360_SEARCH_DB", str(db_dir / "search_state.db"))
-    os.environ.setdefault("DOCREVIEW360_DOC_TYPES_FILE", str(run_dir / "document_types.json"))
-    os.environ.setdefault("DOCREVIEW360_PHASES_FILE", str(run_dir / "phases.json"))
+    # DOCREVIEW360_DOC_TYPES_FILE and DOCREVIEW360_PHASES_FILE removed in Tier 2e;
+    # doc types and phases are now persisted in the main SQLite database.
     os.environ.setdefault(
         "DOCREVIEW360_WORKFLOW_TEMPLATES_FILE",
         str(run_dir / "workflow_templates.json"),

@@ -15,6 +15,35 @@ The image expects a `PORT` environment variable supplied by the host.
 The Dockerfile installs backend and frontend dependencies and builds the Next.js
 UI so the resulting image can run on these providers with minimal setup.
 
+## Phases and document types
+
+As of Tier 2 (migration 008), phases and document types are stored in the main
+SQLAlchemy database (`DOCREVIEW360_DATABASE_URL`).  The old JSON-file approach
+(`phases.json`, `document_types.json`, `phase_workflow_links.json`) has been
+removed.
+
+**Multi-node / multi-replica deployments:** because all state lives in the
+shared database there is no longer a need to mount or share JSON files between
+replicas.  All API pods read from and write to the same database, so phase and
+document type changes made through one replica are immediately visible to all
+others.
+
+**Volume / storage configuration:** remove any Docker volume mounts or
+Kubernetes `PersistentVolumeClaims` that previously targeted the JSON files.
+The only persistent storage required is the database connection string
+(`DOCREVIEW360_DATABASE_URL`).
+
+**Removed environment variables:** the following variables are no longer
+recognised and can be deleted from deployment configs:
+
+| Variable | Status |
+| --- | --- |
+| `DOCREVIEW360_PHASES_FILE` | Removed — phases stored in DB |
+| `DOCREVIEW360_PHASE_WORKFLOW_LINKS_FILE` | Removed — links stored in DB |
+| `DOCREVIEW360_DOC_TYPES_FILE` | Removed — doc types stored in DB |
+| `DOCREVIEW360_ENABLE_PHASE_PERSISTENCE` | Removed — always DB-backed |
+| `DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE` | Removed — always DB-backed |
+
 ## Installing Office add-ins
 
 The Word editor relies on a DocReview360 Office add-in. Install the add-in in

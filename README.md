@@ -234,8 +234,6 @@ $env:DOCREVIEW360_ENV="dev"
 | `DOCREVIEW360_ARCHIVE_BUCKET` | `archive_store` | Directory for archived artifacts. |
 | `DOCREVIEW360_SAMPLE_DIR` | `samples` | Directory for sample documents. |
 | `DOCREVIEW360_DATA_DIR` | unset | Base directory for data files (used by search). |
-| `DOCREVIEW360_DOC_TYPES_FILE` | `document_types.json` | Doc type definitions JSON. |
-| `DOCREVIEW360_PHASES_FILE` | `phases.json` | Workflow phases JSON. |
 | `DOCREVIEW360_WORKFLOW_TEMPLATES_FILE` | `workflow_templates.json` | Workflow templates JSON. |
 | `DOCREVIEW360_TEMPLATE_STORE_FILE` | `template_store.json` | Template metadata store. |
 | `DOCREVIEW360_TEMPLATES_DIR` | `templates/golden` | Template file directory. |
@@ -248,8 +246,6 @@ $env:DOCREVIEW360_ENV="dev"
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE` | unset (defaults to disabled) | Persist doc type edits back to `DOCREVIEW360_DOC_TYPES_FILE`. |
-| `DOCREVIEW360_ENABLE_PHASE_PERSISTENCE` | unset (defaults to disabled) | Persist phase edits back to `DOCREVIEW360_PHASES_FILE`. |
 | `DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE` | unset (defaults to disabled) | Persist template edits to `DOCREVIEW360_TEMPLATE_STORE_FILE`. |
 | `DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE` | unset (defaults to disabled) | Persist email template edits. |
 | `DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE` | unset (defaults to disabled) | Persist workflow template edits. |

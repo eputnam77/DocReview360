@@ -1,193 +1,90 @@
-"""Project phases management with optional persistence."""
+"""Project phases management — database-backed.
+
+All phase state is stored in the ``phases`` and ``phase_workflow_links``
+database tables.  The previous JSON-file / FileLock persistence layer has been
+removed (Tier 2b).
+"""
 
 from __future__ import annotations
 
-import json
-import os
-import warnings
-from pathlib import Path
 from typing import Dict, List
 
-from filelock import FileLock
+from sqlalchemy import delete, select
+
+from .db_store import get_db
+from .models import Phase, PhaseWorkflowLink
+
+# Default phases seeded by migration 008.  Exposed here so other modules
+# (e.g. tests, e2e_seed) can reference the canonical list without importing
+# the migration file directly.
+DEFAULT_PHASES: List[str] = [
+    "Beta Documentation Review",
+    "Draft Development",
+    "Final Issuance",
+    "General Availability",
+    "Internal Coordination",
+    "Maintenance / Revision Cycle",
+    "Peer Review",
+    "Public Comment / Proposed Rulemaking",
+    "Release Candidate Review",
+]
 
 
-def _env_flag_enabled(value: str | None) -> bool:
-    """Interpret truthy string values for the persistence feature flag."""
+def _bootstrap_if_empty() -> None:
+    """Seed default phases when the table is empty (e.g. fresh in-memory DB)."""
 
-    if value is None:
-        return True
-    normalized = value.strip().lower()
-    return normalized not in {"0", "false", "no", "off"}
+    db = get_db()
+    with db.session() as conn:
+        from sqlalchemy import text as _text
 
-
-DOCREVIEW360_ENABLE_PHASE_PERSISTENCE = _env_flag_enabled(
-    os.getenv("DOCREVIEW360_ENABLE_PHASE_PERSISTENCE")
-)
-
-if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE:
-    warnings.warn(
-        "Phase persistence is disabled; customizations will not be saved.",
-        RuntimeWarning,
-        stacklevel=2,
-    )
-
-# Path to store persistent phase data
-DATA_FILE = Path(os.getenv("DOCREVIEW360_PHASES_FILE", "phases.json"))
-PHASE_WORKFLOW_LINKS_FILE = Path(
-    os.getenv("DOCREVIEW360_PHASE_WORKFLOW_LINKS_FILE", "phase_workflow_links.json")
-)
-
-_phases: List[str] = []
-_phase_workflow_links: Dict[str, str] = {}
-
-
-def _bootstrap_sample() -> None:
-    """Initialize with a default set of phases."""
-    if not _phases:
-        _phases.extend(
-            [
-                "Beta Documentation Review",
-                "Draft Development",
-                "Final Issuance",
-                "General Availability",
-                "Internal Coordination",
-                "Maintenance / Revision Cycle",
-                "Peer Review",
-                "Public Comment / Proposed Rulemaking",
-                "Release Candidate Review",
-            ]
-        )
-
-
-def _load_phases_from_disk() -> bool:
-    """Load phases from disk if persistence is enabled and data exists."""
-
-    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE or not DATA_FILE.exists():
-        return False
-    try:
-        with FileLock(f"{DATA_FILE}.lock"):
-            raw = DATA_FILE.read_text()
-        payload = json.loads(raw)
-        if not isinstance(payload, list):
-            return False
-        phases = [
-            item.strip() for item in payload if isinstance(item, str) and item.strip()
-        ]
-        _phases.clear()
-        _phases.extend(phases)
-        return True
-    except (OSError, json.JSONDecodeError):
-        return False
-
-
-def _load_phase_workflow_links_from_disk() -> bool:
-    """Load phase -> workflow-template links when persistence is enabled."""
-
-    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE or not PHASE_WORKFLOW_LINKS_FILE.exists():
-        return False
-
-    try:
-        with FileLock(f"{PHASE_WORKFLOW_LINKS_FILE}.lock"):
-            raw = PHASE_WORKFLOW_LINKS_FILE.read_text()
-        payload = json.loads(raw)
-        if not isinstance(payload, dict):
-            return False
-
-        links: Dict[str, str] = {}
-        for key, value in payload.items():
-            if not isinstance(key, str) or not isinstance(value, str):
-                continue
-            phase_name = key.strip()
-            workflow_template_id = value.strip()
-            if phase_name and workflow_template_id:
-                links[phase_name] = workflow_template_id
-
-        _phase_workflow_links.clear()
-        _phase_workflow_links.update(links)
-        _normalize_phase_workflow_links()
-        return True
-    except (OSError, json.JSONDecodeError):
-        return False
-
-
-def _persist_phases() -> None:
-    """Persist phases to disk if persistence is enabled."""
-
-    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE:
-        return
-    try:
-        DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with FileLock(f"{DATA_FILE}.lock"):
-            DATA_FILE.write_text(json.dumps(_phases, indent=2))
-    except OSError:
-        # Best-effort persistence; avoid blocking API operations on IO errors.
-        pass
-
-
-def _persist_phase_workflow_links() -> None:
-    """Persist phase -> workflow-template links to disk when enabled."""
-
-    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE:
-        return
-    try:
-        PHASE_WORKFLOW_LINKS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with FileLock(f"{PHASE_WORKFLOW_LINKS_FILE}.lock"):
-            PHASE_WORKFLOW_LINKS_FILE.write_text(
-                json.dumps(_phase_workflow_links, indent=2)
+        count = conn.execute(_text("SELECT COUNT(*) FROM phases")).scalar()
+        if count:
+            return
+        for order, name in enumerate(DEFAULT_PHASES, start=1):
+            conn.execute(
+                _text(
+                    "INSERT OR IGNORE INTO phases (name, display_order) VALUES (:name, :order)"
+                ),
+                {"name": name, "order": order},
             )
-    except OSError:
-        # Best-effort persistence; avoid blocking API operations on IO errors.
-        pass
-
-
-def _normalize_phase_workflow_links() -> None:
-    """Drop links that reference phases no longer present."""
-
-    valid_phases = set(_phases)
-    stale = [name for name in _phase_workflow_links if name not in valid_phases]
-    for name in stale:
-        _phase_workflow_links.pop(name, None)
-
-
-def reset_phases() -> None:
-    """Clear phases and remove persisted data if present."""
-
-    _phases.clear()
-    _phase_workflow_links.clear()
-    if not DOCREVIEW360_ENABLE_PHASE_PERSISTENCE:
-        return
-    try:
-        DATA_FILE.unlink(missing_ok=True)
-    except OSError:
-        pass
-    try:
-        PHASE_WORKFLOW_LINKS_FILE.unlink(missing_ok=True)
-    except OSError:
-        pass
-
-
-if not _load_phases_from_disk():
-    _bootstrap_sample()
-_load_phase_workflow_links_from_disk()
-_normalize_phase_workflow_links()
 
 
 def list_phases() -> List[str]:
-    """Return all configured phases."""
-    return list(_phases)
+    """Return all configured phases ordered by display_order."""
+
+    _bootstrap_if_empty()
+    db = get_db()
+    with db.session() as conn:
+        rows = conn.execute(
+            select(Phase.name).order_by(Phase.display_order, Phase.name)
+        ).all()
+        return [row[0] for row in rows]
 
 
 def list_phase_workflow_links() -> Dict[str, str]:
-    """Return a copy of phase -> workflow-template links."""
+    """Return a dict mapping phase name → workflow template id."""
 
-    _normalize_phase_workflow_links()
-    return dict(_phase_workflow_links)
+    db = get_db()
+    with db.session() as conn:
+        rows = conn.execute(
+            select(Phase.name, PhaseWorkflowLink.workflow_template_id)
+            .join(PhaseWorkflowLink, Phase.id == PhaseWorkflowLink.phase_id)
+        ).all()
+        return {row[0]: row[1] for row in rows}
 
 
 def get_phase_workflow_template(phase_name: str) -> str | None:
-    """Return the linked workflow template id for ``phase_name`` if configured."""
+    """Return the linked workflow template id for *phase_name* if set."""
 
-    return _phase_workflow_links.get(phase_name.strip())
+    name = phase_name.strip()
+    db = get_db()
+    with db.session() as conn:
+        row = conn.execute(
+            select(PhaseWorkflowLink.workflow_template_id)
+            .join(Phase, Phase.id == PhaseWorkflowLink.phase_id)
+            .where(Phase.name == name)
+        ).one_or_none()
+        return row[0] if row else None
 
 
 def set_phase_workflow_template(phase_name: str, workflow_template_id: str | None) -> None:
@@ -196,64 +93,119 @@ def set_phase_workflow_template(phase_name: str, workflow_template_id: str | Non
     name = phase_name.strip()
     if not name:
         raise ValueError("phase name cannot be empty")
-    if name not in _phases:
-        raise KeyError(f"Phase '{name}' not found")
 
-    if workflow_template_id is None or not workflow_template_id.strip():
-        _phase_workflow_links.pop(name, None)
-    else:
-        _phase_workflow_links[name] = workflow_template_id.strip()
+    from sqlalchemy import text as _text
 
-    _normalize_phase_workflow_links()
-    _persist_phase_workflow_links()
+    db = get_db()
+    with db.session() as conn:
+        phase_id = conn.execute(
+            select(Phase.id).where(Phase.name == name)
+        ).scalar_one_or_none()
+        if phase_id is None:
+            raise KeyError(f"Phase '{name}' not found")
+
+        if workflow_template_id is None or not workflow_template_id.strip():
+            conn.execute(
+                delete(PhaseWorkflowLink).where(PhaseWorkflowLink.phase_id == phase_id)
+            )
+        else:
+            # Upsert: remove existing link then insert the new one.
+            conn.execute(
+                delete(PhaseWorkflowLink).where(PhaseWorkflowLink.phase_id == phase_id)
+            )
+            conn.execute(
+                _text(
+                    "INSERT INTO phase_workflow_links (phase_id, workflow_template_id) "
+                    "VALUES (:pid, :wtid)"
+                ),
+                {"pid": phase_id, "wtid": workflow_template_id.strip()},
+            )
 
 
 def add_phase(name: str) -> None:
     """Add a new phase if it does not already exist."""
+
     name = name.strip()
     if not name:
         raise ValueError("phase name cannot be empty")
-    if name not in _phases:
-        _phases.append(name)
-        _persist_phases()
+
+    from sqlalchemy import text as _text
+
+    db = get_db()
+    with db.session() as conn:
+        existing = conn.execute(
+            select(Phase.id).where(Phase.name == name)
+        ).scalar_one_or_none()
+        if existing is not None:
+            return  # idempotent
+
+        max_order = conn.execute(
+            _text("SELECT COALESCE(MAX(display_order), 0) FROM phases")
+        ).scalar()
+        conn.execute(
+            _text(
+                "INSERT INTO phases (name, display_order) VALUES (:name, :order)"
+            ),
+            {"name": name, "order": (max_order or 0) + 1},
+        )
 
 
 def delete_phase(name: str) -> None:
     """Remove a phase by name.
 
-    ``add_phase`` trims surrounding whitespace when inserting new phases, but
-    ``delete_phase`` previously compared the provided name verbatim.  Passing a
-    name with incidental spaces would therefore fail to match an existing
-    entry.  Normalizing the input keeps the behavior consistent across the
-    API.
+    Normalises the input name to match the behaviour of :func:`add_phase`.
+    The associated :class:`PhaseWorkflowLink` row is removed via DB cascade.
     """
+
     name = name.strip()
-    try:
-        _phases.remove(name)
-    except ValueError as exc:
-        raise KeyError(f"Phase '{name}' not found") from exc
-    else:
-        _phase_workflow_links.pop(name, None)
-        _persist_phases()
-        _persist_phase_workflow_links()
+    db = get_db()
+    with db.session() as conn:
+        phase_id = conn.execute(
+            select(Phase.id).where(Phase.name == name)
+        ).scalar_one_or_none()
+        if phase_id is None:
+            raise KeyError(f"Phase '{name}' not found")
+        conn.execute(delete(Phase).where(Phase.id == phase_id))
 
 
 def rename_phase(old: str, new: str) -> None:
-    """Rename an existing phase from ``old`` to ``new``.
+    """Rename an existing phase from *old* to *new*.
 
-    Raises KeyError if ``old`` does not exist.
+    Raises :class:`KeyError` if *old* does not exist.
     """
+
     new = new.strip()
     if not new:
         raise ValueError("new phase name cannot be empty")
     old = old.strip()
-    try:
-        idx = _phases.index(old)
-    except ValueError as exc:
-        raise KeyError(f"Phase '{old}' not found") from exc
-    _phases[idx] = new
-    if old in _phase_workflow_links:
-        _phase_workflow_links[new] = _phase_workflow_links.pop(old)
-    _normalize_phase_workflow_links()
-    _persist_phases()
-    _persist_phase_workflow_links()
+
+    from sqlalchemy import text as _text, update
+
+    db = get_db()
+    with db.session() as conn:
+        phase_id = conn.execute(
+            select(Phase.id).where(Phase.name == old)
+        ).scalar_one_or_none()
+        if phase_id is None:
+            raise KeyError(f"Phase '{old}' not found")
+        conn.execute(
+            update(Phase).where(Phase.id == phase_id).values(name=new)
+        )
+
+
+def reset_phases() -> None:
+    """Clear all phases and re-seed defaults.  Intended for test use only."""
+
+    from sqlalchemy import text as _text
+
+    db = get_db()
+    with db.session() as conn:
+        conn.execute(delete(PhaseWorkflowLink))
+        conn.execute(delete(Phase))
+        for order, name in enumerate(DEFAULT_PHASES, start=1):
+            conn.execute(
+                _text(
+                    "INSERT INTO phases (name, display_order) VALUES (:name, :order)"
+                ),
+                {"name": name, "order": order},
+            )

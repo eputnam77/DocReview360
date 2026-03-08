@@ -63,3 +63,8 @@ playwright-report/
 # Filelock advisory lock files (transient, created at runtime)
 *.lock
 !uv.lock
+
+# Legacy JSON persistence files (superseded by database in Tier 2e)
+phases.json
+phase_workflow_links.json
+document_types.json

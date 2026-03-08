@@ -109,19 +109,22 @@ def pytest_configure(config: pytest.Config) -> None:
 
 @pytest.fixture(autouse=True)
 def _reset_document_types() -> None:
-    """Ensure global document type registry is reset between tests.
+    """Ensure the document type registry is reset between tests.
 
-    Tests frequently mutate the ``document_types`` mapping which otherwise
-    persists across modules due to being backed by a JSON file.  This fixture
-    rebuilds the default document types before each test so that individual
-    tests don't interfere with each other.
+    The registry is now database-backed (Tier 2c).  We reset the shared DB to
+    an isolated in-memory instance and re-seed the 27 default document types
+    so each test starts from a clean, deterministic state.
     """
 
-    document_types.clear()
-    for name, phases in DEFAULT_DOC_TYPE_PHASES.items():
-        document_types[name] = DocumentTypeModel(
-            name=name, template=f"<h1>{name}</h1>", workflow=phases
-        )
+    from docreview360.db_store import reset_db
+    from docreview360.doc_types import reset_document_types
+    from docreview360.phases import reset_phases
+
+    reset_db("sqlite+pysqlite:///:memory:")
+    reset_document_types(seed=True)
+    reset_phases()
+    yield
+    reset_db(None)
 
 
 @pytest.fixture(autouse=True)
