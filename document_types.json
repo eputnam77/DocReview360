@@ -1,22 +1,5 @@
 {
-  "version": 63,
-  "updated_at": "2026-03-08T15:48:57.886209+00:00",
-  "document_types": [
-    {
-      "name": "Test Document Type",
-      "template": "<h1>Test Template</h1>",
-      "workflow": [
-        "draft",
-        "review",
-        "approve"
-      ],
-      "default_template_id": null,
-      "id": "Test Document Type",
-      "phases": [
-        "draft",
-        "review",
-        "approve"
-      ]
-    }
-  ]
+  "version": 56,
+  "updated_at": "2026-03-08T18:32:22.443409+00:00",
+  "document_types": []
 }
