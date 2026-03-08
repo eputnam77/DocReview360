@@ -61,3 +61,10 @@ def test_plugin_management_cycle() -> None:
 
     resp = client.delete("/plugins/dummy", headers=headers)
     assert resp.status_code == 204
+
+
+def test_plugins_requires_auth() -> None:
+    """Unauthenticated requests to /plugins and /plugin-marketplace return 401."""
+    client = TestClient(app)
+    assert client.get("/plugins").status_code == 401
+    assert client.get("/plugin-marketplace").status_code == 401

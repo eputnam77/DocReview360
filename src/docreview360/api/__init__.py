@@ -8,6 +8,7 @@ import base64
 import binascii
 import csv
 import io
+import logging
 import re
 from collections import deque
 import hashlib
@@ -19,6 +20,8 @@ import string
 from threading import Lock
 import time
 import uuid
+
+_logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
 from pathlib import Path
@@ -116,7 +119,7 @@ from ..documents import (
 from ..environment import current_environment, load_envs, switch_environment
 from ..exporter import export_document, set_guardrails
 from ..integrations.signature import get_default_providers, get_provider
-from ..logs import TRACE_ID, LogEntry, log_event, log_stream, query_logs, log_call
+from ..logs import TRACE_ID, LogEntry, log_event, log_stream, query_logs, log_call, _get_db
 from ..messages import render
 from ..nemo_guardrails import GuardrailsMiddleware, contains_pii
 from ..phases import (
@@ -290,6 +293,22 @@ _UPLOAD_RATE_LIMITER = _FixedWindowRateLimiter(
     limit=_env_int("DOCREVIEW360_UPLOAD_RATE_LIMIT", 30),
     window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
 )
+_EXPORT_RATE_LIMITER = _FixedWindowRateLimiter(
+    limit=_env_int("DOCREVIEW360_EXPORT_RATE_LIMIT", 20),
+    window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+)
+_SEARCH_RATE_LIMITER = _FixedWindowRateLimiter(
+    limit=_env_int("DOCREVIEW360_SEARCH_RATE_LIMIT", 60),
+    window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+)
+_SIGNATURE_RATE_LIMITER = _FixedWindowRateLimiter(
+    limit=_env_int("DOCREVIEW360_SIGNATURE_RATE_LIMIT", 30),
+    window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+)
+_BULK_RATE_LIMITER = _FixedWindowRateLimiter(
+    limit=_env_int("DOCREVIEW360_BULK_RATE_LIMIT", 10),
+    window_seconds=_RATE_LIMIT_WINDOW_SECONDS,
+)
 
 
 def reset_rate_limiters_for_testing() -> None:
@@ -298,6 +317,10 @@ def reset_rate_limiters_for_testing() -> None:
     _TOKEN_RATE_LIMITER.reset()
     _LOGIN_RATE_LIMITER.reset()
     _UPLOAD_RATE_LIMITER.reset()
+    _EXPORT_RATE_LIMITER.reset()
+    _SEARCH_RATE_LIMITER.reset()
+    _SIGNATURE_RATE_LIMITER.reset()
+    _BULK_RATE_LIMITER.reset()
 
 
 def _request_source(request: Request) -> str:
@@ -402,8 +425,8 @@ def _seed_default_document_templates() -> None:
         store_template(name, content.encode("utf-8"), metadata)
         try:
             approve_template(name)
-        except Exception:
-            pass
+        except Exception as _approve_exc:
+            _logger.warning("Failed to auto-approve seeded template '%s': %s", name, _approve_exc)
 
 
 def _seed_default_email_templates() -> None:
@@ -493,14 +516,16 @@ def _seed_default_email_templates() -> None:
                         body=tmpl["body"],
                         task=tmpl.get("task"),
                     )
-                except Exception:
+                except Exception as _upd_exc:
+                    _logger.warning("Failed to update email template '%s': %s", tmpl["name"], _upd_exc)
                     continue
             continue
         try:
             create_email_template(
                 tmpl["name"], tmpl["subject"], tmpl["body"], task=tmpl.get("task")
             )
-        except Exception:
+        except Exception as _create_exc:
+            _logger.warning("Failed to create email template '%s': %s", tmpl["name"], _create_exc)
             continue
 SEED_TEMPLATES = [
     {
@@ -960,8 +985,8 @@ def _resolve_cors_origins(allowed_origins: str | None, environment: str | None =
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID", "X-Correlation-ID"],
     allow_origins=_resolve_cors_origins(os.getenv("DOCREVIEW360_ALLOW_ORIGINS")),
 )
 
@@ -969,6 +994,38 @@ app.add_middleware(
 # performance profiling report. ``minimum_size`` avoids wasting
 # CPU cycles on tiny payloads.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+class SecurityHeadersMiddleware:
+    """Add recommended HTTP security headers to every response."""
+
+    _HEADERS: dict[str, str] = {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    }
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message: Any) -> None:
+            if message["type"] == "http.response.start":
+                headers = dict(message.get("headers", []))
+                for key, value in self._HEADERS.items():
+                    headers[key.lower().encode()] = value.encode()
+                message = {**message, "headers": list(headers.items())}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(approvals_router)
 app.include_router(webhooks_router)
@@ -989,9 +1046,29 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str]:
-    """Health check endpoint for monitoring."""
-    return {"status": "healthy"}
+async def health_check() -> Response:
+    """Health check endpoint for monitoring.
+
+    Returns 200 with ``{"status": "healthy", "db": "ok"}`` when the primary
+    database is reachable, or 503 with ``{"status": "degraded", "db": "unavailable"}``
+    when the connectivity check fails.
+    """
+    import json as _json
+    from sqlalchemy import text as _text
+
+    db_status = "ok"
+    http_status = 200
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            conn.execute(_text("SELECT 1"))
+    except Exception as _db_exc:
+        _logger.warning("Health check DB connectivity failed: %s", _db_exc)
+        db_status = "unavailable"
+        http_status = 503
+
+    payload = _json.dumps({"status": "healthy" if http_status == 200 else "degraded", "db": db_status})
+    return Response(content=payload, status_code=http_status, media_type="application/json")
 
 
 def _e2e_enabled() -> bool:
@@ -2690,6 +2767,12 @@ async def verify_signature_endpoint(
         for validation. If omitted, the provider stored with each approval is
         used and secondary providers are tried on failure.
     """
+    log_event(
+        "verification_override",
+        user_id=user.username,
+        entity_id=doc_id,
+        provider=provider or "auto",
+    )
     try:
         providers_input: str | list[str] | None = provider
         if provider and "," in provider:
@@ -2969,9 +3052,11 @@ async def export_document_endpoint(
         "json",
         "xml",
     ],
+    request: Request,
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """Return the document converted to the requested format."""
+    _EXPORT_RATE_LIMITER.enforce(f"export:{current_user.username}:{_request_source(request)}")
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -3078,6 +3163,7 @@ async def download_report(
 @app.get("/search", response_model=list[DocumentModel])
 async def search_documents(
     q: str,
+    request: Request,
     project: str | None = None,
     user: str | None = None,
     priority: int | None = None,
@@ -3086,6 +3172,7 @@ async def search_documents(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[DocumentModel]:
     """Return documents matching a full text query with basic caching."""
+    _SEARCH_RATE_LIMITER.enforce(f"search:{current_user.username}:{_request_source(request)}")
     requested_user = user
     if user is not None:
         requested_user = _resolve_requested_user(user, current_user)
@@ -3169,7 +3256,9 @@ async def list_saved_searches_endpoint(
 
 
 @app.get("/search/stats")
-async def search_stats_endpoint() -> dict[str, int]:
+async def search_stats_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, int]:
     """Return counts of executed search queries."""
     return search_stats()
 
@@ -3203,14 +3292,19 @@ async def get_watchlist_endpoint(
 
 
 @app.get("/ai/key")
-async def get_ai_key_endpoint() -> dict[str, str | bool | None]:
+async def get_ai_key_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str | bool | None]:
     """Return whether the AI rewrite key is configured."""
     key = get_secret("openai")
     return {"configured": bool(key), "last4": key[-4:] if key else None}
 
 
 @app.put("/ai/key")
-async def update_ai_key_endpoint(payload: AiKeyPayload) -> dict[str, str | bool | None]:
+async def update_ai_key_endpoint(
+    payload: AiKeyPayload,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str | bool | None]:
     """Store the AI rewrite key in settings."""
     key = payload.key.strip() if payload.key else ""
     update_secret("openai", key or None)
@@ -3743,7 +3837,9 @@ async def delete_email_template_endpoint(
 
 
 @app.get("/plugin-marketplace")
-async def list_marketplace() -> list[dict[str, Any]]:
+async def list_marketplace(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict[str, Any]]:
     """Return available plugins with detailed information."""
     from ..plugin_marketplace import list_plugins_with_info
 
@@ -4091,6 +4187,7 @@ def _serialize_workflow_template(template: WorkflowTemplateModel) -> WorkflowTem
 @log_call
 async def list_workflow_templates_endpoint(
     x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[WorkflowTemplateResponse]:
     """Return workflow templates for the admin UI."""
     return [_serialize_workflow_template(t) for t in list_workflow_templates()]
@@ -4099,7 +4196,9 @@ async def list_workflow_templates_endpoint(
 @app.post("/workflow-templates", status_code=201, response_model=WorkflowTemplateResponse)
 @log_call
 async def create_workflow_template_endpoint(
-    body: WorkflowTemplatePayload, x_user: str | None = Header(None)
+    body: WorkflowTemplatePayload,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowTemplateResponse:
     """Create a workflow template."""
     try:
@@ -4112,7 +4211,9 @@ async def create_workflow_template_endpoint(
 @app.get("/workflow-templates/{template_id}", response_model=WorkflowTemplateResponse)
 @log_call
 async def get_workflow_template_endpoint(
-    template_id: str, x_user: str | None = Header(None)
+    template_id: str,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowTemplateResponse:
     """Return workflow template by id."""
     template = get_workflow_template(template_id)
@@ -4124,7 +4225,10 @@ async def get_workflow_template_endpoint(
 @app.put("/workflow-templates/{template_id}", response_model=WorkflowTemplateResponse)
 @log_call
 async def update_workflow_template_endpoint(
-    template_id: str, body: WorkflowTemplatePayload, x_user: str | None = Header(None)
+    template_id: str,
+    body: WorkflowTemplatePayload,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowTemplateResponse:
     """Update workflow template by id."""
     try:
@@ -4139,7 +4243,9 @@ async def update_workflow_template_endpoint(
 @app.delete("/workflow-templates/{template_id}", status_code=204, response_class=Response)
 @log_call
 async def delete_workflow_template_endpoint(
-    template_id: str, x_user: str | None = Header(None)
+    template_id: str,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """Delete workflow template by id."""
     try:
@@ -4152,7 +4258,9 @@ async def delete_workflow_template_endpoint(
 @app.post("/workflows", status_code=201, response_model=WorkflowModel)
 @log_call
 async def create_workflow_endpoint(
-    workflow: WorkflowCreate, x_user: str | None = Header(None)
+    workflow: WorkflowCreate,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowModel:
     """Create a new workflow."""
     return create_workflow(workflow.project, workflow.phases, mode=workflow.mode)
@@ -4160,7 +4268,11 @@ async def create_workflow_endpoint(
 
 @app.get("/workflows/{wf_id}", response_model=WorkflowModel)
 @log_call
-async def get_workflow_endpoint(wf_id: str, x_user: str | None = Header(None)) -> WorkflowModel:
+async def get_workflow_endpoint(
+    wf_id: str,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> WorkflowModel:
     """Return a workflow by id."""
     wf = get_workflow(wf_id)
     if wf is None:
@@ -4171,7 +4283,9 @@ async def get_workflow_endpoint(wf_id: str, x_user: str | None = Header(None)) -
 @app.get("/workflows", response_model=list[WorkflowModel])
 @log_call
 async def list_workflows_endpoint(
-    project: str | None = None, x_user: str | None = Header(None)
+    project: str | None = None,
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[WorkflowModel]:
     """Return workflows optionally filtered by project."""
     return list_workflows(project, bootstrap=True)
@@ -4227,7 +4341,10 @@ async def advance_workflow_endpoint(wf_id: str, x_user: str | None = Header(None
 
 @app.post("/approvals", status_code=201, response_model=ApprovalModel)
 @log_call
-async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
+async def create_approval_endpoint(
+    body: ApprovalCreate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ApprovalModel:
     """Create an approval for a workflow."""
     return create_approval(
         body.workflow,
@@ -4248,7 +4365,9 @@ async def create_approval_endpoint(body: ApprovalCreate) -> ApprovalModel:
 @app.get("/approvals", response_model=list[ApprovalModel])
 @log_call
 async def list_approvals_endpoint(
-    workflow: str | None = None, phase: str | None = None
+    workflow: str | None = None,
+    phase: str | None = None,
+    current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[ApprovalModel]:
     """Return approvals optionally filtered by workflow and phase."""
     return list_approvals(workflow, phase)
@@ -4256,7 +4375,10 @@ async def list_approvals_endpoint(
 
 @app.get("/approvals/{approval_id}", response_model=ApprovalModel)
 @log_call
-async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
+async def get_approval_endpoint(
+    approval_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ApprovalModel:
     """Retrieve a single approval by id."""
     approval = get_approval(approval_id)
     if approval is None:
@@ -4266,7 +4388,11 @@ async def get_approval_endpoint(approval_id: str) -> ApprovalModel:
 
 @app.put("/approvals/{approval_id}", response_model=ApprovalModel)
 @log_call
-async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> ApprovalModel:
+async def update_approval_endpoint(
+    approval_id: str,
+    body: ApprovalUpdate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ApprovalModel:
     """Update approval state and signature."""
     try:
         return await update_approval_state(
@@ -4283,7 +4409,10 @@ async def update_approval_endpoint(approval_id: str, body: ApprovalUpdate) -> Ap
 
 @app.delete("/approvals/{approval_id}", response_model=ApprovalModel)
 @log_call
-async def delete_approval_endpoint(approval_id: str) -> ApprovalModel:
+async def delete_approval_endpoint(
+    approval_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ApprovalModel:
     """Delete an approval by id."""
     try:
         return delete_approval(approval_id)
@@ -4345,11 +4474,13 @@ async def sign_initials_endpoint(approval_id: str, body: SignInitialsBody) -> Ap
 @log_call
 async def sign_document(
     doc_id: str,
+    request: Request,
     user: str = Form(...),
     workflow: str | None = Form(None),
     approval: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a signature request for ``doc_id`` using the active provider."""
+    _SIGNATURE_RATE_LIMITER.enforce(f"sign:{user}:{_request_source(request)}")
     provider = get_provider()
     sig_id, url, _meta = provider.request_signature(
         doc_id,
@@ -4427,8 +4558,34 @@ async def read_current_user(current_user: auth.User = Depends(auth.get_current_u
 
 
 @app.post("/logout")
-async def logout(response: Response) -> dict[str, str]:
-    """Clear authentication cookie."""
+async def logout(
+    request: Request,
+    response: Response,
+    token: str | None = Depends(auth.oauth2_scheme),
+) -> dict[str, str]:
+    """Clear authentication cookie and revoke the current JWT."""
+    # Revoke the presented Bearer token so it cannot be reused after logout.
+    active_token = token or request.cookies.get("access_token")
+    if active_token:
+        try:
+            from jose import jwt as _jwt
+
+            payload = _jwt.decode(
+                active_token,
+                auth.SECRET_KEY,
+                algorithms=[auth.ALGORITHM],
+                audience=auth.TOKEN_AUDIENCE,
+                issuer=auth.TOKEN_ISSUER,
+            )
+            jti = payload.get("jti")
+            exp_ts = payload.get("exp")
+            if jti and exp_ts:
+                from datetime import datetime, timezone
+
+                expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
+                auth.revoke_token(jti, expires_at)
+        except Exception:  # noqa: BLE001 — best-effort revocation
+            pass
     response.delete_cookie("access_token")
     response.delete_cookie("csrf_token")
     response.delete_cookie("session")
@@ -4508,7 +4665,9 @@ async def admin_panel(user: auth.User = Depends(require_role("admin"))) -> dict[
 
 
 @app.get("/plugins")
-async def list_plugins() -> list[dict[str, Any]]:
+async def list_plugins(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict[str, Any]]:
     """Return metadata about registered plugins."""
     return plugin_registry.info()
 
@@ -5015,7 +5174,28 @@ async def dashboard_stream(websocket: WebSocket) -> None:
 async def logs_stream(websocket: WebSocket) -> None:
     """Stream log events to connected clients with access control."""
 
+    from jose import JWTError, jwt as _jwt
+
     user = websocket.headers.get("x-user") or websocket.query_params.get("user")
+
+    # Accept a Bearer token passed as a query parameter (set by the frontend).
+    # When present, decode it to identify the user; this supersedes the x-user header.
+    raw_token = websocket.query_params.get("token")
+    if raw_token:
+        try:
+            payload = _jwt.decode(
+                raw_token,
+                auth.SECRET_KEY,
+                algorithms=[auth.ALGORITHM],
+                audience=auth.TOKEN_AUDIENCE,
+                issuer=auth.TOKEN_ISSUER,
+            )
+            token_user: str | None = payload.get("sub")
+            if token_user:
+                user = token_user
+        except JWTError:
+            await websocket.close(code=1008)
+            return
 
     # Allow anonymous connections for simple dashboards and tests.  If a user
     # identifier is supplied we still honour permission checks, but omitting the

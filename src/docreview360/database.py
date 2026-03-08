@@ -107,7 +107,12 @@ class Database:
             with self._engine.connect() as _:
                 pass
         else:
-            self._engine = create_engine(url)
+            self._engine = create_engine(
+                url,
+                pool_size=10,
+                max_overflow=20,
+                pool_pre_ping=True,
+            )
 
     def initialize(self) -> None:
         """Validate the connection by executing a lightweight query."""

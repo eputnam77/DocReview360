@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+_logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .search import ProjectModel
@@ -232,7 +235,8 @@ def _response_time_question(lower: str) -> str | None:  # noqa: C901
                     signed_at = datetime.fromisoformat(signed_at.replace("Z", "+00:00"))
                 if isinstance(signed_at, datetime) and signed_at <= approval.due_at:
                     response_times.append((approval.due_at - signed_at).days)
-            except Exception:
+            except Exception as _dt_exc:
+                _logger.debug("Skipping approval response-time entry: %s", _dt_exc)
                 continue
     if not response_times:
         return f"I don't have enough data to determine {user}'s typical response time."
@@ -304,7 +308,8 @@ def _repo_content_question(lower: str, root: Path | None = None) -> str | None: 
                 continue
             try:
                 text = path.read_text(encoding="utf-8", errors="ignore").lower()
-            except Exception:
+            except Exception as _read_exc:
+                _logger.debug("Skipping unreadable file '%s': %s", path, _read_exc)
                 continue
             if all(k in text for k in keywords):
                 name = path.name.lower()

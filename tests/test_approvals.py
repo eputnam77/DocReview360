@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import (
     SignatureValidationError,
@@ -25,12 +26,27 @@ from docreview360.integrations.signature import documenso
 from docreview360.logs import clear_logs, logs
 
 
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_approval_lifecycle() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
     # create a workflow first
     wf_resp = client.post(
         "/workflows",
         json={"project": "p1", "phases": ["draft", "review"]},
+        headers=hdrs,
     )
     assert wf_resp.status_code == 201
     wf_id = wf_resp.json()["id"]
@@ -38,6 +54,7 @@ def test_approval_lifecycle() -> None:
     resp = client.post(
         "/approvals",
         json={"workflow": wf_id, "reviewer": "alice", "doc_id": "doc1"},
+        headers=hdrs,
     )
     assert resp.status_code == 201
     approval = resp.json()
@@ -47,29 +64,33 @@ def test_approval_lifecycle() -> None:
     resp = client.put(
         f"/approvals/{appr_id}",
         json={"state": "approved", "signature": "signed"},
+        headers=hdrs,
     )
     assert resp.status_code == 200
     assert resp.json()["state"] == "approved"
     assert resp.json()["signature"] == "signed"
 
-    resp = client.get(f"/approvals/{appr_id}")
+    resp = client.get(f"/approvals/{appr_id}", headers=hdrs)
     assert resp.status_code == 200
     assert resp.json()["state"] == "approved"
 
-    resp = client.get("/approvals", params={"workflow": wf_id})
+    resp = client.get("/approvals", params={"workflow": wf_id}, headers=hdrs)
     assert any(a["id"] == appr_id for a in resp.json())
 
 
 def test_due_date_updates() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
     wf = client.post(
         "/workflows",
         json={"project": "p2", "phases": ["draft"]},
+        headers=hdrs,
     ).json()
     due = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
     resp = client.post(
         "/approvals",
         json={"workflow": wf["id"], "reviewer": "bob", "due_at": due, "doc_id": "doc2"},
+        headers=hdrs,
     )
     assert resp.status_code == 201
     appr = resp.json()
@@ -81,6 +102,7 @@ def test_due_date_updates() -> None:
     resp = client.put(
         f"/approvals/{appr['id']}",
         json={"state": "pending", "due_at": new_due},
+        headers=hdrs,
     )
     assert resp.status_code == 200
     # Normalize both datetime strings to handle different ISO formats

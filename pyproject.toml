@@ -3,18 +3,6 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-# NOTE:
-# You currently have BOTH Poetry metadata and PEP 621 metadata.
-# If setuptools+uv is canonical, you can delete [tool.poetry] and
-# [tool.poetry.group.*] entirely. Keeping them is OK, but it’s duplicated.
-
-[tool.poetry]
-name = "docreview360"
-version = "0.1.2"
-description = "DocReview360 simplifies document workflows with approvals and templates."
-authors = ["Eric Putnam <info@example.com>"]
-packages = [{ include = "docreview360", from = "src" }]
-
 [project]
 name            = "docreview360"
 version         = "0.1.2"
@@ -180,26 +168,6 @@ dev = [
   "uvicorn>=0.38.0",
 ]
 
-# ───────────────────────────── poetry dependency groups ─────────────────────────────
-# NOTE: optional; keep only if you actually run Poetry.
-# Poetry dep management docs: https://python-poetry.org/docs/managing-dependencies/
-[tool.poetry.group.dev.dependencies]
-ruff = ">=0.5"
-mypy = ">=1.10"
-black = ">=24"
-pytest = ">=8"
-pytest-cov = ">=5"
-hypothesis = ">=6"
-pytest-playwright = ">=0.4"
-playwright = ">=1.44"
-mutmut = ">=2.4"
-bandit = { version = ">=1.8.5", extras = ["toml"] }
-semgrep = ">=1.123.0"
-pip-audit = ">=2.7"
-pre-commit = ">=3.7"
-pytest-asyncio = ">=0.23"
-uvicorn = ">=0.38.0"
-
 # ──────────────────────────── package discovery ───────────────────────────────
 [tool.setuptools]
 
@@ -329,6 +297,4 @@ omit = [
   "src/docreview360/scripts/*",
   "src/docreview360/records.py",
   "src/docreview360/git_hooks.py",
-  "src/docreview360/api.py",
-  "src/docreview360/api/*",
 ]

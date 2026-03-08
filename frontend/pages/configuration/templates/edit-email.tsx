@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { getStoredAccessToken } from "@/lib/api";
+import { authenticatedFetch, API } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 
@@ -16,14 +16,10 @@ export default function EditEmailTemplatePage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [task, setTask] = useState("");
-  const token = getStoredAccessToken();
 
   useEffect(() => {
     if (id) {
-      fetch(`/api/email-templates/${encodeURIComponent(String(id))}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        credentials: "include",
-      })
+      authenticatedFetch(`${API}/email-templates/${encodeURIComponent(String(id))}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((tpl) => {
           if (!tpl) return;
@@ -41,10 +37,9 @@ export default function EditEmailTemplatePage() {
   const handleSave = async () => {
     const payload = { name, subject, body, task: task || undefined };
     try {
-      await fetch(`/api/email-templates/${encodeURIComponent(name)}`, {
+      await authenticatedFetch(`${API}/email-templates/${encodeURIComponent(name)}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } catch {

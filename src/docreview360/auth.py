@@ -83,7 +83,6 @@ def _env_or_default(
     return cast(value) if cast else value  # type: ignore[return-value]
 
 
-DEFAULT_SECRET_KEY = "docreview360-dev-secret"
 DEFAULT_ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 DEFAULT_TOKEN_ISSUER = "docreview360.local"
@@ -93,6 +92,10 @@ _GENERATED_DEV_SECRET_KEY = secrets.token_urlsafe(48)
 SECRET_KEY = _env_or_default(
     "DOCREVIEW360_SECRET_KEY", default=_GENERATED_DEV_SECRET_KEY, required=True
 )
+# Optional previous signing key — set during key rotation so tokens signed with
+# the old key remain valid until they expire.  Once all old tokens have expired,
+# clear this variable.  Never reuse a previous key value.
+SECRET_KEY_PREVIOUS: str | None = os.getenv("DOCREVIEW360_SECRET_KEY_PREVIOUS") or None
 ALGORITHM = _env_or_default("DOCREVIEW360_ALGORITHM", default=DEFAULT_ALGORITHM)
 ACCESS_TOKEN_EXPIRE_MINUTES = _env_or_default(
     "DOCREVIEW360_ACCESS_EXPIRE_MINUTES",
@@ -145,7 +148,7 @@ _BANNED_NON_DEV_SECRETS = {
     "change-me",
     "secret",
     "password",
-    DEFAULT_SECRET_KEY,
+    "docreview360-dev-secret",
     DEFAULT_OIDC_SECRET_KEY,
 }
 
@@ -405,6 +408,7 @@ class UserRecord:
     active: bool
     failed_attempts: int
     locked_until: datetime | None
+    token_generation: int = 0
 
 
 class UserRepository:
@@ -435,10 +439,18 @@ class UserRepository:
                     otp_secret TEXT,
                     active INTEGER NOT NULL DEFAULT 1,
                     failed_attempts INTEGER NOT NULL DEFAULT 0,
-                    locked_until TEXT
+                    locked_until TEXT,
+                    token_generation INTEGER NOT NULL DEFAULT 0
                 )
                 """
             )
+            # Add column to existing DBs that predate this field.
+            try:
+                conn.execute(
+                    "ALTER TABLE users ADD COLUMN token_generation INTEGER NOT NULL DEFAULT 0"
+                )
+            except Exception:  # column already exists
+                pass
             conn.commit()
         if _allow_demo_seed():
             self._seed_defaults()
@@ -517,6 +529,7 @@ class UserRepository:
         existing_hash = existing.password_hash if existing else None
         _password_policy().validate(password, existing_hash=existing_hash)
         password_hash = self.hash_password(password)
+        is_password_change = existing is not None
         with self._connection() as conn:
             conn.execute(
                 """
@@ -526,26 +539,32 @@ class UserRepository:
                     otp_secret,
                     active,
                     failed_attempts,
-                    locked_until
+                    locked_until,
+                    token_generation
                 )
-                VALUES (?, ?, ?, ?, 0, NULL)
+                VALUES (?, ?, ?, ?, 0, NULL, 0)
                 ON CONFLICT(username) DO UPDATE SET
                     password_hash=excluded.password_hash,
                     otp_secret=excluded.otp_secret,
                     active=excluded.active,
                     failed_attempts=0,
-                    locked_until=NULL
+                    locked_until=NULL,
+                    token_generation=token_generation + 1
                 """,
                 (username, password_hash, otp_secret, int(active)),
             )
             conn.commit()
+        if is_password_change:
+            # Generation already bumped in-DB; no extra call needed.
+            pass
 
     def get_user(self, username: str) -> UserRecord | None:
         """Return ``UserRecord`` for ``username`` if present."""
 
         with self._connection() as conn:
             row = conn.execute(
-                "SELECT username, password_hash, otp_secret, active, failed_attempts, locked_until"
+                "SELECT username, password_hash, otp_secret, active, failed_attempts,"
+                " locked_until, token_generation"
                 " FROM users WHERE username = ?",
                 (username,),
             ).fetchone()
@@ -567,6 +586,7 @@ class UserRepository:
                 active=bool(row["active"]),
                 failed_attempts=int(row["failed_attempts"]),
                 locked_until=locked_until,
+                token_generation=int(row["token_generation"] or 0),
             )
 
     def list_users(self) -> list[UserRecord]:
@@ -574,7 +594,8 @@ class UserRepository:
 
         with self._connection() as conn:
             rows = conn.execute(
-                "SELECT username, password_hash, otp_secret, active, failed_attempts, locked_until"
+                "SELECT username, password_hash, otp_secret, active, failed_attempts,"
+                " locked_until, token_generation"
                 " FROM users ORDER BY username"
             ).fetchall()
         records: list[UserRecord] = []
@@ -589,9 +610,36 @@ class UserRepository:
                     active=bool(row["active"]),
                     failed_attempts=int(row["failed_attempts"]),
                     locked_until=locked_until,
+                    token_generation=int(row["token_generation"] or 0),
                 )
             )
         return records
+
+    def bump_token_generation(self, username: str) -> int:
+        """Increment ``token_generation`` for ``username``, invalidating all existing tokens.
+
+        Returns the new generation number, or 0 if the user was not found.
+        """
+        with self._connection() as conn:
+            conn.execute(
+                "UPDATE users SET token_generation = token_generation + 1 WHERE username = ?",
+                (username,),
+            )
+            conn.commit()
+            row = conn.execute(
+                "SELECT token_generation FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()
+        return int(row["token_generation"]) if row else 0
+
+    def get_token_generation(self, username: str) -> int:
+        """Return the current ``token_generation`` for ``username``, or 0 if unknown."""
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT token_generation FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()
+        return int(row["token_generation"] or 0) if row else 0
 
     def delete_user(self, username: str) -> bool:
         """Delete ``username`` from the repository; return ``True`` if removed."""
@@ -613,13 +661,25 @@ class UserRepository:
             return updated.rowcount > 0
 
     def set_active(self, username: str, active: bool) -> bool:
-        """Toggle the active flag for ``username``; return ``True`` if updated."""
+        """Toggle the active flag for ``username``; return ``True`` if updated.
+
+        Suspending a user (``active=False``) also bumps ``token_generation`` to
+        immediately invalidate all existing sessions.
+        """
 
         with self._connection() as conn:
-            updated = conn.execute(
-                "UPDATE users SET active = ? WHERE username = ?",
-                (int(active), username),
-            )
+            if active:
+                updated = conn.execute(
+                    "UPDATE users SET active = ? WHERE username = ?",
+                    (int(active), username),
+                )
+            else:
+                # Suspend and immediately invalidate all sessions.
+                updated = conn.execute(
+                    "UPDATE users SET active = ?, token_generation = token_generation + 1"
+                    " WHERE username = ?",
+                    (int(active), username),
+                )
             conn.commit()
             if updated.rowcount > 0:
                 return True
@@ -740,6 +800,36 @@ def configure_user_repository(path: str | os.PathLike[str]) -> None:
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token", auto_error=False)
 
+# ---------------------------------------------------------------------------
+# Token revocation blacklist — stores revoked JTI values with their expiry.
+# In-memory only; for production, back with Redis or a DB table.
+# ---------------------------------------------------------------------------
+_token_blacklist: dict[str, datetime] = {}
+_token_blacklist_lock = __import__("threading").Lock()
+
+
+def revoke_token(jti: str, expires_at: datetime) -> None:
+    """Add ``jti`` to the revocation blacklist until it expires."""
+    with _token_blacklist_lock:
+        _token_blacklist[jti] = expires_at
+        # Purge expired entries to bound memory usage.
+        now = datetime.now(timezone.utc)
+        expired = [k for k, exp in _token_blacklist.items() if exp <= now]
+        for k in expired:
+            del _token_blacklist[k]
+
+
+def is_token_revoked(jti: str) -> bool:
+    """Return ``True`` if ``jti`` has been revoked and has not yet expired."""
+    with _token_blacklist_lock:
+        exp = _token_blacklist.get(jti)
+        if exp is None:
+            return False
+        if exp <= datetime.now(timezone.utc):
+            del _token_blacklist[jti]
+            return False
+        return True
+
 
 class Token(BaseModel):
     """Response model for access tokens."""
@@ -839,22 +929,57 @@ def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
 
 
 def keycloak_mfa_login(username: str, password: str, otp: str) -> str:
-    """Return a token from the Keycloak MFA stub."""
+    """Return a token from the Keycloak MFA stub.
+
+    .. warning::
+
+        This path is **not production-ready**.  It delegates to a stub that
+        performs no real token validation.  It is disabled in production
+        environments unless ``DOCREVIEW360_ENABLE_KEYCLOAK=1`` is set.
+        Set that variable only if you have completed the real Keycloak
+        integration (JWKS validation, claim-to-role mapping, etc.).
+
+    :raises RuntimeError: In production environments unless the feature flag
+        is explicitly enabled.
+    """
+    _env = _current_environment()
+    _prod_envs = {"production", "prod", "staging"}
+    _enabled = os.getenv("DOCREVIEW360_ENABLE_KEYCLOAK", "").strip().lower() in ("1", "true", "yes")
+    if _env in _prod_envs and not _enabled:
+        raise RuntimeError(
+            "Keycloak MFA login is not available in production. "
+            "The integration is not complete (stub only). "
+            "Set DOCREVIEW360_ENABLE_KEYCLOAK=1 only after completing the real integration."
+        )
     from .stubs.task76 import authenticate_keycloak
 
     return authenticate_keycloak(username, password, otp)
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
-    """Return a signed JWT access token."""
+    """Return a signed JWT access token with a unique JTI for revocation support.
+
+    The ``gen`` claim carries the user's ``token_generation`` counter.  When
+    the counter is bumped (e.g. on password change or suspension), all tokens
+    with an older generation are rejected by :func:`get_current_user`.
+    """
 
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
+    username = data.get("sub")
+    generation = 0
+    if username:
+        try:
+            generation = _get_user_repository().get_token_generation(str(username))
+        except Exception:  # repository may not be available during tests
+            generation = 0
     to_encode.update(
         {
             "exp": expire,
             "iss": TOKEN_ISSUER,
             "aud": TOKEN_AUDIENCE,
+            "jti": secrets.token_hex(16),
+            "gen": generation,
         }
     )
     return str(jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
@@ -887,16 +1012,26 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
-            audience=TOKEN_AUDIENCE,
-            issuer=TOKEN_ISSUER,
-        )
+        _decode_kwargs = {
+            "algorithms": [ALGORITHM],
+            "audience": TOKEN_AUDIENCE,
+            "issuer": TOKEN_ISSUER,
+        }
+        try:
+            payload = jwt.decode(token, SECRET_KEY, **_decode_kwargs)
+        except JWTError:
+            # Fall back to the previous key during a rotation window.
+            if SECRET_KEY_PREVIOUS is None:
+                raise
+            payload = jwt.decode(token, SECRET_KEY_PREVIOUS, **_decode_kwargs)
         username: str | None = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        jti: str | None = payload.get("jti")
+        if jti and is_token_revoked(jti):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
+        # Validate token generation — allows instant invalidation of all sessions.
+        token_gen: int = int(payload.get("gen", 0))
     except JWTError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -916,6 +1051,11 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
             record = repo.get_user(username)
     if not record or not record.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
+    if token_gen < record.token_generation:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session invalidated — please log in again",
+        )
     return User(username=username, active=True)
 
 

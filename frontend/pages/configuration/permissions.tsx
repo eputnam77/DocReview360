@@ -10,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getStoredAccessToken } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 const ROLE_CHOICES = [
@@ -46,11 +46,7 @@ export default function PermissionsPage() {
 
   const loadRoles = async () => {
     try {
-      const token = getStoredAccessToken();
-      const resp = await fetch("/api/rbac/role-permissions", {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        credentials: "include",
-      });
+      const resp = await authenticatedFetch(`${API}/rbac/role-permissions`);
       const data = resp.ok ? await resp.json() : [];
       setRoles(Array.isArray(data) ? data : []);
     } catch {
@@ -63,16 +59,13 @@ export default function PermissionsPage() {
   }, []);
 
   const updateRole = async (role: string, permissions: string[]) => {
-    const token = getStoredAccessToken();
-    const resp = await fetch(
-      `/api/rbac/role-permissions/${encodeURIComponent(role)}`,
+    const resp = await authenticatedFetch(
+      `${API}/rbac/role-permissions/${encodeURIComponent(role)}`,
       {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        credentials: "include",
         body: JSON.stringify({ permissions }),
       },
     );
@@ -86,13 +79,10 @@ export default function PermissionsPage() {
   };
 
   const resetRole = async (role: string) => {
-    const token = getStoredAccessToken();
-    const resp = await fetch(
-      `/api/rbac/role-permissions/${encodeURIComponent(role)}`,
+    const resp = await authenticatedFetch(
+      `${API}/rbac/role-permissions/${encodeURIComponent(role)}`,
       {
         method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        credentials: "include",
       },
     );
     if (!resp.ok) {

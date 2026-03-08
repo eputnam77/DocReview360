@@ -32,7 +32,9 @@ def test_dashboard_updates_after_signature() -> None:
     client = TestClient(app)
     hdrs = _auth_headers()
     client.post("/projects", json={"id": "d1", "name": "Doc"}, headers=hdrs)
-    wf = client.post("/workflows", json={"project": "d1", "phases": ["draft", "signed"]}).json()
+    wf = client.post(
+        "/workflows", json={"project": "d1", "phases": ["draft", "signed"]}, headers=hdrs
+    ).json()
     doc = client.post(
         "/documents/import",
         files={"file": ("f.txt", b"hi", "text/plain")},
@@ -42,6 +44,7 @@ def test_dashboard_updates_after_signature() -> None:
     appr = client.post(
         "/approvals",
         json={"workflow": wf["id"], "reviewer": "bob", "doc_id": doc["id"]},
+        headers=hdrs,
     ).json()
     sig = client.post(f"/approvals/{appr['id']}/sign").json()["id"]
 

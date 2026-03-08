@@ -27,7 +27,9 @@ def test_documenso_webhook_advances_workflow() -> None:
     client = TestClient(app)
     hdrs = _auth_headers()
     # create workflow with signed phase
-    resp = client.post("/workflows", json={"project": "p1", "phases": ["draft", "signed"]})
+    resp = client.post(
+        "/workflows", json={"project": "p1", "phases": ["draft", "signed"]}, headers=hdrs
+    )
     wf_id = resp.json()["id"]
 
     # import document
@@ -56,5 +58,5 @@ def test_documenso_webhook_advances_workflow() -> None:
 
     # status updated and workflow advanced
     assert client.get(f"/sign/{sig_id}").json()["status"] == "signed"
-    wf_data = client.get(f"/workflows/{wf_id}").json()
+    wf_data = client.get(f"/workflows/{wf_id}", headers=hdrs).json()
     assert wf_data["phase"] == "signed"

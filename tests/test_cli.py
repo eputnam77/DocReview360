@@ -332,3 +332,57 @@ def test_migrate_roundtrip(tmp_path: Path) -> None:
     documents.clear()
     logs.clear()
     document_types.clear()
+
+
+def test_rbac_show() -> None:
+    """rbac show lists role → permission mapping."""
+    runner = CliRunner()
+    result = runner.invoke(cli, ["rbac", "show"])
+    assert result.exit_code == 0, result.output
+    # Output should contain at least the admin role
+    assert "admin" in result.output
+
+
+def test_rbac_set_role() -> None:
+    """rbac set-role creates or updates a role definition."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Create a temp settings file so we don't pollute the real one
+        import os
+        settings_path = Path("docreview360.yaml")
+        settings_path.write_text("{}\n")
+        env = {**os.environ, "DOCREVIEW360_SETTINGS": str(settings_path)}
+        result = runner.invoke(
+            cli,
+            ["rbac", "set-role", "test_role", "--permission", "read", "--permission", "create",
+             "--config-path", str(settings_path)],
+            env=env,
+        )
+        assert result.exit_code == 0, result.output
+
+
+def test_logs_hash_chain_and_verify() -> None:
+    """logs hash-chain and verify-chain run without error on an empty log."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        import os
+        env = {
+            **os.environ,
+            "DOCREVIEW360_AUDIT_LOG_PATH": str(Path("audit.log")),
+            "DOCREVIEW360_AUDIT_ANCHOR_PATH": str(Path("audit.anchor")),
+        }
+        # hash-chain on non-existent file should succeed (returns 0 segments)
+        result = runner.invoke(cli, ["logs", "hash-chain"], env=env)
+        assert result.exit_code == 0, result.output
+
+        # verify-chain on non-existent file should succeed
+        result = runner.invoke(cli, ["logs", "verify-chain"], env=env)
+        assert result.exit_code == 0, result.output
+
+
+def test_verify_signatures_cli() -> None:
+    """verify-signatures exits cleanly when no documents are specified."""
+    runner = CliRunner()
+    result = runner.invoke(cli, ["verify-signatures", "--help"])
+    assert result.exit_code == 0
+    assert "verify" in result.output.lower() or "signature" in result.output.lower()

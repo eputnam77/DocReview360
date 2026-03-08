@@ -37,7 +37,7 @@ jobs:
           poetry run pytest -q tests/test_db_migrations.py tests/test_demo_seed_data.py
           TZ=UTC poetry run pytest -q tests/test_e2e_run_determinism.py tests/test_observability_standard.py
           TZ=America/Los_Angeles poetry run pytest -q tests/test_e2e_run_determinism.py tests/test_observability_standard.py
-          poetry run pytest -q --cov=src --cov-branch --cov-fail-under=70
+          poetry run pytest -q --cov=src --cov-branch --cov-fail-under=80
 
   frontend:
     name: Frontend unit tests
@@ -57,6 +57,8 @@ jobs:
         run: npm ci
       - name: Run Vitest suite
         run: npm test -- --run
+      - name: Check for raw fetch calls
+        run: npm run lint:no-raw-fetch
 
   e2e-smoke:
     name: E2E smoke

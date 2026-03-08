@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { API, authenticatedFetch } from "@/lib/api";
 
 interface Workflow {
   id: string;
@@ -66,7 +67,7 @@ export default function WorkflowList() {
 
   useEffect(() => {
     // Use local API route to proxy to backend
-    fetch("/api/workflow-templates")
+    authenticatedFetch(`${API}/workflow-templates`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => setWorkflows(normalizeWorkflows(data)))
       .catch(() => setWorkflows([]));

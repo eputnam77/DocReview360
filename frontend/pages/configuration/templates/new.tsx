@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { API } from "@/lib/api";
+import { API, authenticatedFetch } from "@/lib/api";
 import {
   Select,
   SelectTrigger,
@@ -30,7 +30,7 @@ export default function NewTemplatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/document-types")
+    authenticatedFetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => setDocTypes(data.map((d) => d.name)))
       .catch(() => setDocTypes([]));

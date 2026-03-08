@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -92,12 +93,43 @@ DEFAULT_AUDIT_LOG_SETTINGS: Dict[str, int] = {
     "purge_interval_minutes": 60 * 24,
 }
 
+# ---------------------------------------------------------------------------
+# HMAC key management
+#
+# Set ``DOCREVIEW360_AUDIT_HMAC_KEY`` to sign and verify new entries.
+# During key rotation, set ``DOCREVIEW360_AUDIT_HMAC_KEY_PREVIOUS`` to the
+# old key so that entries signed with it remain verifiable until they expire.
+# Once all old entries have been purged, clear the previous key.
+# ---------------------------------------------------------------------------
+
+_AUDIT_HMAC_KEY: str | None = os.environ.get("DOCREVIEW360_AUDIT_HMAC_KEY") or None
+_AUDIT_HMAC_KEY_PREVIOUS: str | None = (
+    os.environ.get("DOCREVIEW360_AUDIT_HMAC_KEY_PREVIOUS") or None
+)
+
 
 def _compute_hash(data: Dict[str, Any], secret: str | None) -> str:
     payload = json.dumps(data, sort_keys=True, default=str).encode()
     if secret:
         return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
     return hashlib.sha256(payload).hexdigest()
+
+
+def _verify_hash(data: Dict[str, Any], stored_hash: str, secret: str | None) -> bool:
+    """Return True if ``stored_hash`` matches ``data`` under ``secret``.
+
+    Falls back to ``_AUDIT_HMAC_KEY_PREVIOUS`` when the primary key does not
+    match, enabling zero-downtime HMAC key rotation.
+    """
+    expected = _compute_hash(data, secret)
+    if hmac.compare_digest(expected, stored_hash):
+        return True
+    # Attempt verification with the previous key during a rotation window.
+    if _AUDIT_HMAC_KEY_PREVIOUS is not None:
+        prev_expected = _compute_hash(data, _AUDIT_HMAC_KEY_PREVIOUS)
+        if hmac.compare_digest(prev_expected, stored_hash):
+            return True
+    return False
 
 
 def log_audit_event(
@@ -124,6 +156,7 @@ def log_audit_event(
     trace = context.pop("trace_id", None) or TRACE_ID.get(None)
     if trace:
         context.setdefault("trace_id", trace)
+    effective_secret = secret if secret is not None else _AUDIT_HMAC_KEY
     entry = AuditLogEntry(
         id=str(uuid.uuid4()),
         event=event,
@@ -136,11 +169,12 @@ def log_audit_event(
         hash="",
         context=context,
     )
-    data = entry.model_dump()
+    # Use mode="json" so that datetime fields are serialized as ISO strings,
+    # matching the JSON representation read back from disk during verification.
+    data = entry.model_dump(mode="json")
     data_without_hash = {k: v for k, v in data.items() if k != "hash"}
-    entry.hash = _compute_hash(data_without_hash, secret)
+    entry.hash = _compute_hash(data_without_hash, effective_secret)
     data["hash"] = entry.hash
-    data["verified_at"] = entry.verified_at.isoformat()
     _AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _AUDIT_LOG_PATH.open("a", encoding="utf-8") as fh:
         # ``_compute_hash`` serialises using ``default=str`` so it gracefully
@@ -173,6 +207,19 @@ def _load_audit_log_settings() -> Dict[str, int]:
     return data
 
 
+def _emit_dispatch_failure_event(reason: str) -> None:
+    """Emit an audit event when integrity dispatch fails so it appears in the audit log."""
+    try:
+        from .logs import log_event as _log_event
+        _log_event(
+            "integrity_dispatch_failed",
+            entity_type="audit",
+            metadata={"reason": reason[:200]},
+        )
+    except Exception as _evt_exc:  # pragma: no cover - defensive
+        logger.warning("Unable to emit integrity_dispatch_failed event: %s", _evt_exc)
+
+
 def _dispatch_verification_tasks() -> None:
     try:
         from .integrity import verify_integrity
@@ -185,9 +232,17 @@ def _dispatch_verification_tasks() -> None:
             try:
                 verify_integrity()
             except Exception as call_exc:  # pragma: no cover - integrity runtime failure
-                logger.warning("Integrity verification call failed: %s", call_exc)
+                logger.error(
+                    "ALERT: Integrity verification failed (both Celery and sync fallback): %s",
+                    call_exc,
+                )
+                _emit_dispatch_failure_event(str(call_exc))
         except Exception as exc:  # pragma: no cover - Celery transport specific
-            logger.warning("Failed to enqueue verify_integrity task: %s", exc)
+            logger.error(
+                "ALERT: Failed to enqueue verify_integrity task (Celery unavailable): %s",
+                exc,
+            )
+            _emit_dispatch_failure_event(str(exc))
 
     try:
         hash_new_log_segments()
@@ -236,8 +291,14 @@ def _raise_corruption(
 
 
 def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogEntry]:
-    """Return the audit log for ``document_id`` sorted by timestamp."""
+    """Return the audit log for ``document_id`` sorted by timestamp.
 
+    ``secret`` defaults to ``DOCREVIEW360_AUDIT_HMAC_KEY`` when not provided
+    explicitly.  During a key-rotation window, entries signed with the previous
+    key are still accepted via ``DOCREVIEW360_AUDIT_HMAC_KEY_PREVIOUS``.
+    """
+
+    effective_secret = secret if secret is not None else _AUDIT_HMAC_KEY
     events: List[AuditLogEntry] = []
     if not _AUDIT_LOG_PATH.exists():
         return events
@@ -256,8 +317,8 @@ def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogE
             if data.get("document_id") != document_id:
                 continue
             try:
-                expected = _compute_hash({k: v for k, v in data.items() if k != "hash"}, secret)
-                if secret and not hmac.compare_digest(expected, data.get("hash", "")):
+                body = {k: v for k, v in data.items() if k != "hash"}
+                if effective_secret and not _verify_hash(body, data.get("hash", ""), effective_secret):
                     _raise_corruption(
                         reason="hash_mismatch",
                         message="Audit log entry failed HMAC verification",
@@ -282,8 +343,14 @@ def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogE
 
 
 def get_audit_entry(entry_id: str, secret: str | None = None) -> AuditLogEntry | None:
-    """Return a single audit log entry by ``entry_id`` if present."""
+    """Return a single audit log entry by ``entry_id`` if present.
 
+    ``secret`` defaults to ``DOCREVIEW360_AUDIT_HMAC_KEY`` when not provided
+    explicitly.  Entries signed with the previous key are still accepted during
+    a rotation window via ``DOCREVIEW360_AUDIT_HMAC_KEY_PREVIOUS``.
+    """
+
+    effective_secret = secret if secret is not None else _AUDIT_HMAC_KEY
     if not _AUDIT_LOG_PATH.exists():
         return None
     with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
@@ -301,8 +368,8 @@ def get_audit_entry(entry_id: str, secret: str | None = None) -> AuditLogEntry |
             if data.get("id") != entry_id:
                 continue
             try:
-                expected = _compute_hash({k: v for k, v in data.items() if k != "hash"}, secret)
-                if secret and not hmac.compare_digest(expected, data.get("hash", "")):
+                body = {k: v for k, v in data.items() if k != "hash"}
+                if effective_secret and not _verify_hash(body, data.get("hash", ""), effective_secret):
                     _raise_corruption(
                         reason="hash_mismatch",
                         message="Audit log entry failed HMAC verification",
@@ -351,21 +418,29 @@ def purge_audit_logs(retention_days: int | None = None) -> int:
     removed = 0
     keep: List[str] = []
     with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
-        for line in fh:
+        for idx, line in enumerate(fh):
             try:
                 data = json.loads(line)
                 created = datetime.fromisoformat(data["verified_at"])
                 if should_purge(created, retention_days):
                     removed += 1
                     continue
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Skipping malformed audit log entry at index %d: %s", idx, exc)
             keep.append(line)
     if removed:
         if keep:
-            with _AUDIT_LOG_PATH.open("w", encoding="utf-8") as fh:
-                for line in keep:
-                    fh.write(line)
+            tmp_path = _AUDIT_LOG_PATH.with_suffix(".tmp")
+            try:
+                with tmp_path.open("w", encoding="utf-8") as fh:
+                    for line in keep:
+                        fh.write(line)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                os.replace(tmp_path, _AUDIT_LOG_PATH)
+            except Exception:
+                tmp_path.unlink(missing_ok=True)
+                raise
         else:
             _AUDIT_LOG_PATH.unlink()
     return removed

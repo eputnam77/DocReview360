@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 import time
 from typing import TYPE_CHECKING, Any, Dict, Tuple, cast
+
+_logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from redis import Redis
@@ -51,7 +54,8 @@ def _get_client() -> "Redis | None":
                 client = cast("Redis", redis_cls(url))
             client.ping()
             _client = client
-        except Exception:
+        except Exception as _conn_exc:
+            _logger.warning("Redis unavailable (%s); falling back to in-memory cache", _conn_exc)
             _client = _UNREACHABLE
     if _client is _UNREACHABLE:
         return None
@@ -84,8 +88,8 @@ def cache_delete(key: str) -> None:
     if client:
         try:
             client.delete(key)
-        except Exception:
-            pass
+        except Exception as _del_exc:
+            _logger.warning("Redis cache_delete failed for key '%s': %s", key, _del_exc)
     _cache.pop(key, None)
 
 
@@ -108,9 +112,9 @@ def clear_cache() -> None:
     if client:
         try:
             client.flushdb()
-        except Exception:
+        except Exception as _flush_exc:
             # In tests or degraded environments the Redis instance may be
             # unreachable.  Clearing the local fallback cache should still
             # succeed so callers are not left with stale data.
-            pass
+            _logger.warning("Redis flushdb failed: %s", _flush_exc)
     _cache.clear()

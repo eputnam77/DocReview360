@@ -727,7 +727,14 @@ export default function ProjectDetailsPage() {
         if (signatureUrl.startsWith("/")) {
           router.push(signatureUrl);
         } else {
-          window.location.assign(signatureUrl);
+          try {
+            const parsed = new URL(signatureUrl);
+            if (parsed.origin === window.location.origin) {
+              window.location.assign(parsed.href);
+            }
+          } catch {
+            /* ignore invalid URLs */
+          }
         }
         return;
       }

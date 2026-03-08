@@ -62,9 +62,10 @@ def test_default_role_permissions_seed() -> None:
         "auditor": {"view_audit_log"},
         "verifier": {"verification_override"},
         "qa_role": {"read"},
+        "viewer": {"read"},
     }
     assert ROLE_PERMISSIONS == expected
-    assert len(ROLE_PERMISSIONS) == 10
+    assert len(ROLE_PERMISSIONS) == 11
 
 
 def test_field_level_rbac() -> None:

@@ -90,7 +90,7 @@ class TestWorkflowDisplayIntegration:
         workflow_id = project["workflow"]
 
         # Verify workflow exists
-        wf_resp = client.get(f"/workflows/{workflow_id}")
+        wf_resp = client.get(f"/workflows/{workflow_id}", headers=headers)
         assert wf_resp.status_code == 200
         workflow = wf_resp.json()
         assert workflow["project"] == "test-project-1"
@@ -136,7 +136,7 @@ class TestWorkflowDisplayIntegration:
         workflow_id = updated_project["workflow"]
 
         # Verify workflow exists and is linked to project
-        wf_resp = client.get(f"/workflows/{workflow_id}")
+        wf_resp = client.get(f"/workflows/{workflow_id}", headers=headers)
         assert wf_resp.status_code == 200
         workflow = wf_resp.json()
         assert workflow["project"] == "test-project-2"
@@ -170,7 +170,7 @@ class TestWorkflowDisplayIntegration:
         initial_workflow_id = initial_project["workflow"]
 
         # Verify initial workflow
-        wf_resp = client.get(f"/workflows/{initial_workflow_id}")
+        wf_resp = client.get(f"/workflows/{initial_workflow_id}", headers=headers)
         assert wf_resp.status_code == 200
         initial_workflow = wf_resp.json()
         assert initial_workflow["project"] == "test-project-3"
@@ -186,13 +186,13 @@ class TestWorkflowDisplayIntegration:
         assert new_workflow_id != initial_workflow_id
 
         # Verify new workflow exists and is linked to project
-        wf_resp = client.get(f"/workflows/{new_workflow_id}")
+        wf_resp = client.get(f"/workflows/{new_workflow_id}", headers=headers)
         assert wf_resp.status_code == 200
         new_workflow = wf_resp.json()
         assert new_workflow["project"] == "test-project-3"
 
         # Verify the previous workflow is no longer linked to the project
-        old_wf_resp = client.get(f"/workflows/{initial_workflow_id}")
+        old_wf_resp = client.get(f"/workflows/{initial_workflow_id}", headers=headers)
         assert old_wf_resp.status_code == 200
         old_workflow = old_wf_resp.json()
         assert old_workflow["project"] == ""
@@ -233,11 +233,11 @@ class TestWorkflowDisplayIntegration:
         # Create approvals for the workflow
         approval_data = {"workflow": workflow_id, "reviewer": "reviewer1@example.com"}
 
-        approval_resp = client.post("/approvals", json=approval_data)
+        approval_resp = client.post("/approvals", json=approval_data, headers=headers)
         assert approval_resp.status_code == 201
 
         # Verify approvals are linked to the workflow
-        approvals_resp = client.get(f"/approvals?workflow={workflow_id}")
+        approvals_resp = client.get(f"/approvals?workflow={workflow_id}", headers=headers)
         assert approvals_resp.status_code == 200
         approvals = approvals_resp.json()
         assert len(approvals) > 0
@@ -317,7 +317,7 @@ class TestWorkflowDisplayIntegration:
         project_details = project_resp.json()
         assert project_details["workflow"] is None
 
-        workflow_resp = client.get(f"/workflows/{project['workflow']}")
+        workflow_resp = client.get(f"/workflows/{project['workflow']}", headers=headers)
         assert workflow_resp.status_code == 200
         workflow_details = workflow_resp.json()
         assert workflow_details["project"] == ""
@@ -354,7 +354,7 @@ class TestWorkflowDisplayIntegration:
         assert project_details["workflow"] == workflow_id
 
         # Verify workflow details are accessible
-        wf_resp = client.get(f"/workflows/{workflow_id}")
+        wf_resp = client.get(f"/workflows/{workflow_id}", headers=headers)
         assert wf_resp.status_code == 200
         workflow = wf_resp.json()
         assert workflow["project"] == project["id"]

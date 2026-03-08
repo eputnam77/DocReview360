@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, cast
+
+_logger = logging.getLogger(__name__)
 
 from celery import Celery, Task
 
@@ -19,6 +22,16 @@ broker_url = os.environ.get("CELERY_BROKER_URL", "memory://")
 backend_url = os.environ.get("CELERY_RESULT_BACKEND", "cache+memory://")
 app = Celery("docreview360", broker=broker_url, backend=backend_url)
 app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
+
+_env = os.environ.get("DOCREVIEW360_ENV", "").strip().lower()
+_prod_envs = {"production", "prod", "staging"}
+if _env in _prod_envs and broker_url.startswith("memory://"):
+    _logger.warning(
+        "CELERY_BROKER_URL is set to 'memory://' in environment '%s'. "
+        "This is not suitable for production — tasks will not be distributed. "
+        "Set CELERY_BROKER_URL to a Redis or RabbitMQ URL.",
+        _env,
+    )
 
 
 class TracedTask(Task):

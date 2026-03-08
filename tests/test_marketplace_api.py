@@ -25,7 +25,7 @@ def _alice_headers() -> dict[str, str]:
 
 def test_marketplace_list() -> None:
     client = TestClient(app)
-    resp = client.get("/plugin-marketplace")
+    resp = client.get("/plugin-marketplace", headers=_alice_headers())
     assert resp.status_code == 200
 
     plugins: list[dict[str, Any]] = resp.json()

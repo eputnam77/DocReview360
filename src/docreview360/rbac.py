@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import sys
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from threading import RLock
@@ -194,6 +195,8 @@ ROLE_PERMISSIONS: dict[str, Set[str]] = {
 }
 
 _ROLE_PERMISSIONS_MTIME: float | None = None
+_ROLE_PERMISSIONS_LAST_CHECK: float = 0.0
+_ROLE_PERMISSIONS_CHECK_INTERVAL: float = 5.0  # seconds between stat calls
 _ROLE_PERMISSIONS_LOCK = RLock()
 
 _ROLE_CACHE = _RoleCache()
@@ -468,14 +471,23 @@ def _load_role_permissions_from_settings() -> dict[str, Set[str]]:
 
 
 def reload_role_permissions(force: bool = False) -> None:
-    """Reload role permissions from settings when they change."""
+    """Reload role permissions from settings when they change.
 
-    global _ROLE_PERMISSIONS_MTIME
+    Uses a time-based debounce to avoid a ``stat()`` syscall on every
+    ``has_permission()`` call — the settings file is only re-checked at most
+    once every ``_ROLE_PERMISSIONS_CHECK_INTERVAL`` seconds.
+    """
+
+    global _ROLE_PERMISSIONS_MTIME, _ROLE_PERMISSIONS_LAST_CHECK
+    now = time.monotonic()
+    if not force and ROLE_PERMISSIONS and (now - _ROLE_PERMISSIONS_LAST_CHECK) < _ROLE_PERMISSIONS_CHECK_INTERVAL:
+        return
     path = settings_manager.SETTINGS_FILE
     try:
         mtime = path.stat().st_mtime
     except FileNotFoundError:  # pragma: no cover - defensive
         mtime = None
+    _ROLE_PERMISSIONS_LAST_CHECK = now
     with _ROLE_PERMISSIONS_LOCK:
         if not force and ROLE_PERMISSIONS and _ROLE_PERMISSIONS_MTIME == mtime:
             return

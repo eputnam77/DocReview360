@@ -181,7 +181,7 @@ export default function EditProjectPage() {
         setLoading(false);
       });
 
-    fetch("/api/workflow-templates")
+    authenticatedFetch(`${API}/workflow-templates`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {
@@ -208,7 +208,7 @@ export default function EditProjectPage() {
         setWorkflows([]);
       });
 
-    fetch("/api/phases/config")
+    authenticatedFetch(`${API}/phases/config`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {
@@ -240,7 +240,7 @@ export default function EditProjectPage() {
         setPhaseWorkflowTemplates({});
       });
 
-    fetch("/api/document-types")
+    authenticatedFetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {

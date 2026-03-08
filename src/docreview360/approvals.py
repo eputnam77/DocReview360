@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import os
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 from functools import lru_cache
 from io import BytesIO
 from time import perf_counter
@@ -968,7 +971,8 @@ def send_for_signature(  # noqa: C901
                 provider_metadata=meta,
             )
             return url
-        except Exception:
+        except Exception as _sig_exc:
+            logger.warning("Signature provider '%s' failed: %s", name, _sig_exc)
             set_provider_health(name, False)
             continue
 
@@ -1094,12 +1098,13 @@ def build_approvals_summary_pdf(project_id: str, actor: str | None = None) -> by
     for approval in relevant:
         try:
             pdf_parts.append(build_approval_pdf(approval.id))
-        except Exception:
-            pass
+        except Exception as _pdf_exc:
+            logger.warning("Failed to build PDF for approval '%s': %s", approval.id, _pdf_exc)
 
     try:
         summary = _merge_pdf_parts(pdf_parts)
-    except Exception:
+    except Exception as _merge_exc:
+        logger.warning("PDF merge failed, using fallback summary: %s", _merge_exc)
         summary = _fallback_summary_pdf(relevant)
 
     log_event(
@@ -1181,7 +1186,8 @@ def _certificate_chain_for_approval(approval: ApprovalModel) -> list[bytes]:
     if not material and approval.certificate_url:
         try:
             data = fetch_certificate(approval.certificate_url)
-        except Exception:
+        except Exception as _cert_exc:
+            logger.warning("Failed to fetch certificate for approval '%s': %s", approval.id, _cert_exc)
             data = None
         if data:
             material.append(data)
@@ -1324,7 +1330,13 @@ def verify_document_signature_stream(  # noqa: C901
                         approval.certificate_url,
                         approval.provider_metadata,
                     )
-                except Exception:
+                except Exception as _validate_exc:
+                    logger.warning(
+                        "Provider '%s' validation failed for approval '%s': %s",
+                        provider_name,
+                        approval.id,
+                        _validate_exc,
+                    )
                     result = False
                 provider_results[provider_name] = result
                 if result:

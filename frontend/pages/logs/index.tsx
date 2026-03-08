@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { API } from "@/lib/api";
+import { API, getStoredAccessToken } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import SeverityBadge, { SeverityLegend } from "@/components/SeverityBadge";
 
@@ -100,7 +100,10 @@ export default function LiveLogsPage() {
   useEffect(() => {
     if (!allowed) return;
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/logs`);
+    const token = getStoredAccessToken();
+    const wsUrl = new URL(`${wsProtocol}://${window.location.host}/ws/logs`);
+    if (token) wsUrl.searchParams.set("token", token);
+    const socket = new WebSocket(wsUrl.toString());
     socket.onmessage = (event) => {
       try {
         const entry = JSON.parse(event.data) as LogEntry;

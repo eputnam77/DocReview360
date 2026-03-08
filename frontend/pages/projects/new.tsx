@@ -67,7 +67,7 @@ export default function NewProjectPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch("/api/phases/config")
+    authenticatedFetch(`${API}/phases/config`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {
@@ -97,7 +97,7 @@ export default function NewProjectPage() {
         setPhaseWorkflowTemplates(phaseDefaults);
       })
       .catch(() => {
-        fetch("/api/phases")
+        authenticatedFetch(`${API}/phases`)
           .then((r) => (r.ok ? r.json() : []))
           .then((data) => {
             const phaseNames = Array.isArray(data)
@@ -123,7 +123,7 @@ export default function NewProjectPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/document-types")
+    authenticatedFetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (!Array.isArray(data)) {

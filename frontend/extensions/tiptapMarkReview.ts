@@ -17,7 +17,7 @@ export function tiptapMarkReview() {
 
       try {
         // Use a more explicit approach with type assertion
-        const mod = await (eval('import("markreview")') as Promise<any>);
+        const mod = await import("markreview").catch(() => null) as any;
         if (mod && mod.attach) {
           mod.attach(this.editor.view);
           console.log("MarkReview: Successfully attached to editor");

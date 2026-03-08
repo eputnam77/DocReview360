@@ -147,7 +147,7 @@ class TestNameChangePropagation:
         # Create workflow using the phase
         workflow_data = {"project": "test-project", "phases": [original_name]}
 
-        resp = client.post("/workflows", json=workflow_data)
+        resp = client.post("/workflows", json=workflow_data, headers=hdrs)
         assert resp.status_code == 201
         workflow = resp.json()
 
@@ -162,7 +162,7 @@ class TestNameChangePropagation:
         assert updated_project["phase"] == new_name
 
         # Verify the workflow now references the new phase name
-        resp = client.get(f"/workflows/{workflow['id']}")
+        resp = client.get(f"/workflows/{workflow['id']}", headers=hdrs)
         assert resp.status_code == 200
         updated_workflow = resp.json()
         assert new_name in updated_workflow["phases"]
@@ -186,7 +186,7 @@ class TestNameChangePropagation:
             "phases": ["Internal Coordination", "Public Comment / Proposed Rulemaking"],
         }
 
-        resp = client.post("/workflows", json=workflow_data)
+        resp = client.post("/workflows", json=workflow_data, headers=hdrs)
         assert resp.status_code == 201
         workflow = resp.json()
 
@@ -210,7 +210,7 @@ class TestNameChangePropagation:
             "description": "Test approval",
         }
 
-        resp = client.post("/approvals", json=approval_data)
+        resp = client.post("/approvals", json=approval_data, headers=hdrs)
         assert resp.status_code == 201
         approval = resp.json()
 
@@ -221,7 +221,7 @@ class TestNameChangePropagation:
         assert updated_project["workflow"] == workflow["id"]
 
         # Verify approval still references the workflow
-        resp = client.get(f"/approvals/{approval['id']}")
+        resp = client.get(f"/approvals/{approval['id']}", headers=hdrs)
         assert resp.status_code == 200
         updated_approval = resp.json()
         assert updated_approval["workflow"] == workflow["id"]
@@ -427,7 +427,7 @@ class TestNameChangePropagation:
         # Create workflow
         workflow_data = {"project": project["id"], "phases": [phase_name]}
 
-        resp = client.post("/workflows", json=workflow_data)
+        resp = client.post("/workflows", json=workflow_data, headers=hdrs)
         assert resp.status_code == 201
         workflow = resp.json()
 
@@ -455,7 +455,7 @@ class TestNameChangePropagation:
         assert updated_project["phase"] == new_phase_name
 
         # Verify workflow is updated
-        resp = client.get(f"/workflows/{workflow['id']}")
+        resp = client.get(f"/workflows/{workflow['id']}", headers=hdrs)
         assert resp.status_code == 200
         updated_workflow = resp.json()
         assert new_phase_name in updated_workflow["phases"]

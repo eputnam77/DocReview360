@@ -249,7 +249,7 @@ class TestFrontendBackendIntegration:
         assert "Consistency Phase" in phases
 
         # Test workflows endpoint
-        resp = client.get("/workflows")
+        resp = client.get("/workflows", headers=_alice_headers())
         assert resp.status_code == 200
 
         workflows = resp.json()

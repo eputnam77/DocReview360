@@ -487,5 +487,394 @@
       "retired": false,
       "change_summary": ""
     }
+  ],
+  "_smoke_test_tmpl": [
+    {
+      "version": 1,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T14:56:16.331518+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": ""
+    },
+    {
+      "version": 2,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T14:57:08.752103+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 3,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T14:59:16.916453+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 4,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:00:24.265650+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 5,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:01:19.798651+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 6,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:06:39.972830+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 7,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:08:52.894010+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 8,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:11:11.074921+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 9,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:16:54.719117+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 10,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:18:56.138933+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 11,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:23:44.885142+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 12,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:24:44.417361+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 13,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:25:06.802312+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 14,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:35:40.332035+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 15,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:36:29.234293+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 16,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:38:59.334707+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 17,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:41:28.322411+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 18,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:45:11.492282+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 19,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T15:47:22.234586+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    },
+    {
+      "version": 20,
+      "content": "PHA+c21va2U8L3A+",
+      "metadata": {
+        "updated": "2026-03-08T16:00:00.478957+00:00"
+      },
+      "approved": false,
+      "retired": false,
+      "change_summary": "no changes detected"
+    }
+  ],
+  "doc_type::Replacement Doc Type": [
+    {
+      "version": 1,
+      "content": "PGgxPlJlcGxhY2VtZW50PC9oMT4=",
+      "metadata": {
+        "label": "Replacement Doc Type (Default)",
+        "docType": "Replacement Doc Type",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Replacement Doc Type documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 1": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgMTwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 1 (Default)",
+        "docType": "Performance Test Doc Type 1",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 1 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 2": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgMjwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 2 (Default)",
+        "docType": "Performance Test Doc Type 2",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 2 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 3": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgMzwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 3 (Default)",
+        "docType": "Performance Test Doc Type 3",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 3 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 4": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgNDwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 4 (Default)",
+        "docType": "Performance Test Doc Type 4",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 4 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 5": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgNTwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 5 (Default)",
+        "docType": "Performance Test Doc Type 5",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 5 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 6": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgNjwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 6 (Default)",
+        "docType": "Performance Test Doc Type 6",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 6 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 7": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgNzwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 7 (Default)",
+        "docType": "Performance Test Doc Type 7",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 7 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 8": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgODwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 8 (Default)",
+        "docType": "Performance Test Doc Type 8",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 8 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Performance Test Doc Type 9": [
+    {
+      "version": 1,
+      "content": "PGgxPlBlcmZvcm1hbmNlIFRlc3QgOTwvaDE+",
+      "metadata": {
+        "label": "Performance Test Doc Type 9 (Default)",
+        "docType": "Performance Test Doc Type 9",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Performance Test Doc Type 9 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
+  ],
+  "doc_type::Updated Performance Test Doc Type 0": [
+    {
+      "version": 1,
+      "content": "PGgxPlVwZGF0ZWQgUGVyZm9ybWFuY2UgVGVzdDwvaDE+",
+      "metadata": {
+        "label": "Updated Performance Test Doc Type 0 (Default)",
+        "docType": "Updated Performance Test Doc Type 0",
+        "format": "HTML",
+        "type": "tiptap",
+        "description": "Default template for Updated Performance Test Doc Type 0 documents.",
+        "default": true
+      },
+      "approved": true,
+      "retired": false,
+      "change_summary": ""
+    }
   ]
 }

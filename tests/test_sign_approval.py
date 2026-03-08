@@ -1,12 +1,37 @@
+from datetime import timedelta
+
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
+
+
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_sign_approval_flow() -> None:
     client = TestClient(app)
-    wf = client.post("/workflows", json={"project": "p42", "phases": ["draft", "signed"]}).json()
-    appr = client.post("/approvals", json={"workflow": wf["id"], "reviewer": "jane"}).json()
+    hdrs = _alice_headers()
+    wf = client.post(
+        "/workflows",
+        json={"project": "p42", "phases": ["draft", "signed"]},
+        headers=hdrs,
+    ).json()
+    appr = client.post(
+        "/approvals",
+        json={"workflow": wf["id"], "reviewer": "jane"},
+        headers=hdrs,
+    ).json()
 
     resp = client.post(f"/approvals/{appr['id']}/sign")
     assert resp.status_code == 200
@@ -14,15 +39,24 @@ def test_sign_approval_flow() -> None:
 
     client.post(f"/sign/{sig_id}/complete")
 
-    appr2 = client.get(f"/approvals/{appr['id']}").json()
+    appr2 = client.get(f"/approvals/{appr['id']}", headers=hdrs).json()
     assert appr2["state"] == "approved"
     assert appr2["signature"] == sig_id
 
 
 def test_sign_approval_duplicate_returns_conflict() -> None:
     client = TestClient(app)
-    wf = client.post("/workflows", json={"project": "p43", "phases": ["draft", "signed"]}).json()
-    appr = client.post("/approvals", json={"workflow": wf["id"], "reviewer": "jane"}).json()
+    hdrs = _alice_headers()
+    wf = client.post(
+        "/workflows",
+        json={"project": "p43", "phases": ["draft", "signed"]},
+        headers=hdrs,
+    ).json()
+    appr = client.post(
+        "/approvals",
+        json={"workflow": wf["id"], "reviewer": "jane"},
+        headers=hdrs,
+    ).json()
 
     resp1 = client.post(f"/approvals/{appr['id']}/sign")
     assert resp1.status_code == 200

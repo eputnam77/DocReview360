@@ -11,10 +11,10 @@ export default function DocumensoSign() {
   const returnTo = (router.query.return as string) || "/";
   const safeReturnTo = (() => {
     try {
-      const decoded = decodeURIComponent(returnTo);
-      return typeof decoded === 'string' && decoded.startsWith('/') ? decoded : '/';
+      const url = new URL(returnTo, window.location.origin);
+      return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/';
     } catch {
-      return returnTo.startsWith('/') ? returnTo : '/';
+      return '/';
     }
   })();
   const approvalId = router.query.approval as string | undefined;

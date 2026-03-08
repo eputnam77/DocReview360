@@ -18,6 +18,7 @@ import {
 import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "react-hot-toast";
+import { API, authenticatedFetch } from "@/lib/api";
 
 interface Phase {
   id: string;
@@ -96,7 +97,7 @@ export default function PhasesPage() {
 
   const loadPhases = async () => {
     try {
-      const configRes = await fetch("/api/phases/config");
+      const configRes = await authenticatedFetch(`${API}/phases/config`);
       if (configRes.ok) {
         const data = await configRes.json();
         const normalized = normalizePhases(data);
@@ -110,7 +111,7 @@ export default function PhasesPage() {
     }
 
     try {
-      const res = await fetch("/api/phases");
+      const res = await authenticatedFetch(`${API}/phases`);
       if (!res.ok) {
         setPhases([]);
         return;
@@ -124,7 +125,7 @@ export default function PhasesPage() {
 
   const loadWorkflowTemplates = async () => {
     try {
-      const res = await fetch("/api/workflow-templates");
+      const res = await authenticatedFetch(`${API}/workflow-templates`);
       if (!res.ok) {
         setWorkflowTemplates([]);
         return;
@@ -157,7 +158,7 @@ export default function PhasesPage() {
 
   const checkUsage = async (phaseName: string): Promise<UsageInfo | null> => {
     try {
-      const response = await fetch(`/api/phases/${encodeURIComponent(phaseName)}/usage`);
+      const response = await authenticatedFetch(`${API}/phases/${encodeURIComponent(phaseName)}/usage`);
       if (!response.ok) return null;
       const usage = (await response.json()) as UsageInfo;
       setUsageInfo(usage);
@@ -172,7 +173,7 @@ export default function PhasesPage() {
     if (!trimmed) return;
 
     try {
-      const r = await fetch("/api/phases", {
+      const r = await authenticatedFetch(`${API}/phases`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
@@ -192,8 +193,8 @@ export default function PhasesPage() {
     const workflowTemplateId = templateId === NONE_WORKFLOW_VALUE ? null : templateId;
 
     try {
-      const res = await fetch(
-        `/api/phases/${encodeURIComponent(phaseName)}/workflow-template`,
+      const res = await authenticatedFetch(
+        `${API}/phases/${encodeURIComponent(phaseName)}/workflow-template`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -243,7 +244,7 @@ export default function PhasesPage() {
     }
 
     try {
-      const res = await fetch(`/api/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const res = await authenticatedFetch(`${API}/phases/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (res.ok) {
         setPhases(phases.filter((p) => p.id !== id));
       } else {
@@ -258,8 +259,8 @@ export default function PhasesPage() {
     if (!showDeleteDialog || !replacementPhase) return;
 
     try {
-      const response = await fetch(
-        `/api/phases/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementPhase)}`,
+      const response = await authenticatedFetch(
+        `${API}/phases/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementPhase)}`,
         {
           method: "DELETE",
         },
@@ -296,7 +297,7 @@ export default function PhasesPage() {
     if (!trimmed) return;
 
     try {
-      const res = await fetch(`/api/phases/${encodeURIComponent(id)}`, {
+      const res = await authenticatedFetch(`${API}/phases/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),

@@ -57,7 +57,7 @@ def test_project_reviewer_crud_updates_assignments() -> None:
     project = client.get(f"/projects/{project_id}", headers=headers).json()
     assert "alice" in project["reviewers"]
 
-    approvals = client.get(f"/approvals?workflow={wf_id}").json()
+    approvals = client.get(f"/approvals?workflow={wf_id}", headers=headers).json()
     assert any(a["reviewer"] == "alice" for a in approvals)
 
     assigned = client.get("/projects", params={"user": "alice"}, headers=headers).json()
@@ -70,12 +70,12 @@ def test_project_reviewer_crud_updates_assignments() -> None:
     )
     assert update_resp.status_code == 200
     assert "bob" in update_resp.json()
-    approvals = client.get(f"/approvals?workflow={wf_id}").json()
+    approvals = client.get(f"/approvals?workflow={wf_id}", headers=headers).json()
     assert any(a["reviewer"] == "bob" for a in approvals)
     assert not any(a["reviewer"] == "alice" for a in approvals)
 
     delete_resp = client.delete(f"/projects/{project_id}/reviewers/bob", headers=headers)
     assert delete_resp.status_code == 200
     assert delete_resp.json() == []
-    approvals = client.get(f"/approvals?workflow={wf_id}").json()
+    approvals = client.get(f"/approvals?workflow={wf_id}", headers=headers).json()
     assert not any(a["reviewer"] == "bob" for a in approvals)

@@ -1,10 +1,26 @@
 """Tests for the POST /approvals/{approval_id}/sign-initials endpoint."""
 
+from datetime import timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval
+
+
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture(autouse=True)
@@ -19,6 +35,7 @@ def _create_workflow(client: TestClient) -> str:
     resp = client.post(
         "/workflows",
         json={"project": "p-initials", "phases": ["review"]},
+        headers=_alice_headers(),
     )
     assert resp.status_code == 201
     return resp.json()["id"]
@@ -28,6 +45,7 @@ def _create_approval(client: TestClient, workflow_id: str, reviewer: str = "alic
     resp = client.post(
         "/approvals",
         json={"workflow": workflow_id, "reviewer": reviewer, "doc_id": "doc-initials"},
+        headers=_alice_headers(),
     )
     assert resp.status_code == 201
     return resp.json()["id"]

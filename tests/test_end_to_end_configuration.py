@@ -76,7 +76,7 @@ class TestEndToEndConfigurationFlow:
         assert "E2E Test Phase 1" in phases_data
         assert "E2E Test Phase 2" in phases_data
 
-        resp = client.get("/workflows")
+        resp = client.get("/workflows", headers=hdrs)
         assert resp.status_code == 200
         workflows_data = resp.json()
         assert isinstance(workflows_data, list)
@@ -287,7 +287,7 @@ class TestEndToEndConfigurationFlow:
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-        resp = client.get("/workflows")
+        resp = client.get("/workflows", headers=hdrs)
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 

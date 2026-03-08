@@ -127,7 +127,7 @@ class TestConfigurationPropagation:
         resp = client.get("/phases")
         assert resp.status_code == 200
 
-        resp = client.get("/workflows")
+        resp = client.get("/workflows", headers=_alice_headers())
         assert resp.status_code == 200
 
         # Test project creation with minimal data

@@ -1,6 +1,22 @@
-﻿from fastapi.testclient import TestClient
+﻿from datetime import timedelta
 
+from fastapi.testclient import TestClient
+
+from docreview360 import auth
 from docreview360.api import app
+
+
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_phase_crud() -> None:
@@ -24,6 +40,7 @@ def test_phase_crud() -> None:
 
 def test_phase_workflow_template_link_config_round_trip() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     template_name = "Phase Link Test Flow"
     create_template = client.post(
@@ -33,6 +50,7 @@ def test_phase_workflow_template_link_config_round_trip() -> None:
           "description": "Phase link test template",
           "steps": [{"role": "Reviewer", "required": True}],
       },
+      headers=hdrs,
     )
     assert create_template.status_code in {201, 409}
 

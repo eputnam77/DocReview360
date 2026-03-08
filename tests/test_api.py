@@ -26,6 +26,29 @@ def test_gzip_middleware() -> None:
     assert any(getattr(m.cls, "__name__", "") == "GZipMiddleware" for m in app.user_middleware)
 
 
+def test_security_headers_middleware() -> None:
+    client = TestClient(app)
+    resp = client.get("/health")
+    assert resp.headers.get("x-content-type-options") == "nosniff"
+    assert resp.headers.get("x-frame-options") == "DENY"
+    assert resp.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+
+
+def test_cors_restricts_methods() -> None:
+    """CORS should not allow TRACE or CONNECT methods."""
+    from docreview360.api import app as _app
+
+    cors_middleware = next(
+        (m for m in _app.user_middleware if getattr(m.cls, "__name__", "") == "CORSMiddleware"),
+        None,
+    )
+    assert cors_middleware is not None
+    allowed = cors_middleware.kwargs.get("allow_methods", [])
+    assert "TRACE" not in allowed
+    assert "CONNECT" not in allowed
+    assert "*" not in allowed
+
+
 def test_list_projects() -> None:
     client = TestClient(app)
     resp = client.get("/projects", headers=_alice_headers())
@@ -269,3 +292,94 @@ def test_project_edit_frontend_compatibility() -> None:
     assert data["name"] == "Updated Document Title"  # title should map to name
     assert data["user"] == "John Doe"  # sme should map to user
     assert data["doc_type"] == "Advisory Circular"
+
+
+def test_token_revocation_on_logout() -> None:
+    """Token should be rejected after logout revokes its JTI."""
+    client = TestClient(app)
+    hdrs = _alice_headers()
+
+    # Confirm token works before logout.
+    resp = client.get("/projects", headers=hdrs)
+    assert resp.status_code == 200
+
+    # Extract the raw token to use after logout.
+    token = hdrs["Authorization"].split(" ", 1)[1]
+
+    # Logout should revoke the token.
+    resp = client.post("/logout", headers=hdrs)
+    assert resp.status_code == 200
+
+    # Same token should now be rejected.
+    resp = client.get("/projects", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 401
+
+
+def test_token_includes_jti() -> None:
+    """Tokens must include a JTI claim for revocation support."""
+    from jose import jwt as _jwt
+
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=5))
+    payload = _jwt.decode(
+        token,
+        auth.SECRET_KEY,
+        algorithms=[auth.ALGORITHM],
+        audience=auth.TOKEN_AUDIENCE,
+        issuer=auth.TOKEN_ISSUER,
+    )
+    assert "jti" in payload
+    assert len(payload["jti"]) == 32  # 16 bytes hex = 32 chars
+    assert "gen" in payload  # token generation claim present
+
+
+def test_token_generation_invalidates_sessions() -> None:
+    """Bumping token_generation invalidates all existing tokens for a user."""
+    import uuid
+
+    from fastapi.testclient import TestClient
+    from jose import jwt as _jwt
+
+    client = TestClient(app)
+
+    # Create a temporary user to avoid affecting shared state.
+    test_user = f"gen_test_{uuid.uuid4().hex[:8]}"
+    test_password = "GoodPass123!"
+    try:
+        auth.USER_REPOSITORY.create_user(test_user, test_password)
+    except Exception:
+        pass  # policy may reject or user exists
+
+    # Mint a token before generation bump.
+    token_before = auth.create_access_token({"sub": test_user}, timedelta(minutes=5))
+    hdrs_before = {"Authorization": f"Bearer {token_before}"}
+
+    # The token should work initially.
+    resp = client.get("/users/me", headers=hdrs_before)
+    # May be 200 or 401 depending on user state, but should not error unexpectedly.
+    initial_status = resp.status_code
+
+    # Bump the generation (simulates password change / suspension).
+    new_gen = auth.USER_REPOSITORY.bump_token_generation(test_user)
+    assert new_gen >= 1
+
+    # Verify the `gen` claim in the old token is now stale.
+    payload = _jwt.decode(
+        token_before,
+        auth.SECRET_KEY,
+        algorithms=[auth.ALGORITHM],
+        audience=auth.TOKEN_AUDIENCE,
+        issuer=auth.TOKEN_ISSUER,
+    )
+    assert payload["gen"] < new_gen
+
+    # Old token must now be rejected.
+    resp = client.get("/users/me", headers=hdrs_before)
+    assert resp.status_code == 401
+
+    # A freshly minted token with the new generation must work.
+    token_after = auth.create_access_token({"sub": test_user}, timedelta(minutes=5))
+    resp = client.get("/users/me", headers={"Authorization": f"Bearer {token_after}"})
+    assert resp.status_code == 200
+
+    # Cleanup.
+    auth.USER_REPOSITORY.delete_user(test_user)

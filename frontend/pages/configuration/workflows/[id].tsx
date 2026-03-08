@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Edit3, Users2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { authenticatedFetch, API } from "@/lib/api";
 
 export default function WorkflowDetailPage() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function WorkflowDetailPage() {
     if (!id) return;
     const wfId = String(id);
     // Retrieve workflow template details via local API route
-    fetch(`/api/workflow-templates/${wfId}`)
+    authenticatedFetch(`${API}/workflow-templates/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
@@ -73,7 +74,7 @@ export default function WorkflowDetailPage() {
               variant="danger"
               onClick={async () => {
                 if (!confirm("Delete this workflow template? This cannot be undone.")) return;
-                const res = await fetch(`/api/workflow-templates/${workflow.id}`, {
+                const res = await authenticatedFetch(`${API}/workflow-templates/${workflow.id}`, {
                   method: "DELETE",
                 });
                 if (res.ok) {

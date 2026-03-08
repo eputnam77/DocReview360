@@ -196,7 +196,7 @@ class TestReplacementDeletion:
 
         # Create workflow using the phase
         workflow_data = {"project": "test-project", "phases": ["Test Phase 1"]}
-        resp = client.post("/workflows", json=workflow_data)
+        resp = client.post("/workflows", json=workflow_data, headers=_alice_headers())
         assert resp.status_code == 201
 
         # Check usage
@@ -227,7 +227,7 @@ class TestReplacementDeletion:
 
         # Create workflow using the original phase
         workflow_data = {"project": "test-project", "phases": ["Original Phase"]}
-        resp = client.post("/workflows", json=workflow_data)
+        resp = client.post("/workflows", json=workflow_data, headers=_alice_headers())
         assert resp.status_code == 201
 
         # Try to delete without replacement (should fail)
@@ -274,7 +274,7 @@ class TestReplacementDeletion:
 
         # Create workflow using the phase
         workflow_data = {"project": "test-project", "phases": ["Test Phase"]}
-        resp = client.post("/workflows", json=workflow_data)
+        resp = client.post("/workflows", json=workflow_data, headers=_alice_headers())
         assert resp.status_code == 201
 
         # Try to delete with non-existent replacement

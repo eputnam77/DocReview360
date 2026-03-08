@@ -80,7 +80,7 @@ class TestProjectCreationIntegration:
         assert "Test Phase 1" in phases_data
         assert "Test Phase 2" in phases_data
 
-        workflows_resp = client.get("/workflows")
+        workflows_resp = client.get("/workflows", headers=headers)
         assert workflows_resp.status_code == 200
         workflows_data = workflows_resp.json()
         assert any(wf["project"] == "test-project" for wf in workflows_data)
@@ -325,7 +325,7 @@ class TestConfigurationPropagation:
             )
 
         # Test that they appear in the API
-        resp = client.get("/workflows")
+        resp = client.get("/workflows", headers=_alice_headers())
         assert resp.status_code == 200
 
         workflows_data = resp.json()

@@ -15,6 +15,7 @@ import { Pencil, Plus, Trash } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
+import { API, authenticatedFetch } from "@/lib/api";
 
 interface DocType {
   id: string;
@@ -193,7 +194,7 @@ export default function DocumentTypesPage() {
 
   useEffect(() => {
     // Fetch document types from backend
-    fetch("/api/document-types")
+    authenticatedFetch(`${API}/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         const list = normalizeDocTypes(data);
@@ -202,13 +203,13 @@ export default function DocumentTypesPage() {
       .catch(() => setTypes([]));
 
     // Fetch available phases from backend
-    fetch("/api/phases")
+    authenticatedFetch(`${API}/phases`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: string[]) => setPhases(Array.isArray(data) ? data : []))
       .catch(() => setPhases([]));
 
     // Fetch available templates for default template selector
-    fetch("/api/templates")
+    authenticatedFetch(`${API}/templates`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         if (Array.isArray(data)) {
@@ -226,7 +227,7 @@ export default function DocumentTypesPage() {
       workflow: []
     };
     try {
-      const r = await fetch("/api/document-types", {
+      const r = await authenticatedFetch(`${API}/document-types`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -262,7 +263,7 @@ export default function DocumentTypesPage() {
 
       let createdCount = 0;
       for (const item of toCreate) {
-        const res = await fetch("/api/document-types", {
+        const res = await authenticatedFetch(`${API}/document-types`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -284,7 +285,7 @@ export default function DocumentTypesPage() {
         }
       }
 
-      const refreshed = await fetch("/api/document-types")
+      const refreshed = await authenticatedFetch(`${API}/document-types`)
         .then((r) => (r.ok ? r.json() : []))
         .catch(() => []);
       setTypes(normalizeDocTypes(refreshed));
@@ -300,8 +301,8 @@ export default function DocumentTypesPage() {
   };
   const checkUsage = async (docTypeName: string) => {
     try {
-      const response = await fetch(
-        `/api/document-types/${encodeURIComponent(docTypeName)}/usage`,
+      const response = await authenticatedFetch(
+        `${API}/document-types/${encodeURIComponent(docTypeName)}/usage`,
       );
       if (response.ok) {
         const usage = await response.json();
@@ -321,7 +322,7 @@ export default function DocumentTypesPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const res = await authenticatedFetch(`${API}/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (res.ok) {
         setTypes(types.filter((t) => t.id !== id));
       } else {
@@ -335,8 +336,8 @@ export default function DocumentTypesPage() {
   const confirmDelete = async () => {
     if (!showDeleteDialog || !replacementDocType) return;
     try {
-      const response = await fetch(
-        `/api/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`,
+      const response = await authenticatedFetch(
+        `${API}/document-types/${encodeURIComponent(showDeleteDialog)}?replacement=${encodeURIComponent(replacementDocType)}`,
         { method: "DELETE" }
       );
       if (response.ok) {
@@ -369,7 +370,7 @@ export default function DocumentTypesPage() {
     if (!editName.trim()) return;
     const body = { name: editName.trim() };
     try {
-      const res = await fetch(`/api/document-types/${id}`, {
+      const res = await authenticatedFetch(`${API}/document-types/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -395,7 +396,7 @@ export default function DocumentTypesPage() {
     const docType = types.find((t) => t.id === docTypeId);
     if (!docType) return;
     try {
-      const res = await fetch(`/api/document-types/${encodeURIComponent(docTypeId)}`, {
+      const res = await authenticatedFetch(`${API}/document-types/${encodeURIComponent(docTypeId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -424,7 +425,7 @@ export default function DocumentTypesPage() {
       ? currentPhases.filter((p) => p !== phase)
       : [...currentPhases, phase];
     try {
-      const res = await fetch(`/api/document-types/${encodeURIComponent(docTypeId)}`, {
+      const res = await authenticatedFetch(`${API}/document-types/${encodeURIComponent(docTypeId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
