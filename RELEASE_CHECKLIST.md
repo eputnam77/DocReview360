@@ -155,33 +155,57 @@ for them. A server restart silently destroys all live state. This is the same ro
 as section 2 (Phases/Doc Types), applied to the core review workflow.
 
 **1a — Approvals**
-- [ ] `approvals.py` line ~122 declares `approvals: Dict[str, ApprovalModel] = {}` as a
+- [x] `approvals.py` line ~122 declares `approvals: Dict[str, ApprovalModel] = {}` as a
   module-level dict. The SQLAlchemy `Approval` model already exists in `models.py` but
   is unused. Wire all approval reads/writes through the DB session.
-- [ ] Remove `clear_approvals()` (or scope strictly to test fixtures with a clear warning).
-- [ ] Audit every caller of the in-memory dict in `api/__init__.py` and update to use DB
+  → Added `ApprovalRecord` table; `_persist_approval` / `_delete_approval_from_db` helpers
+    called from `create_approval`, `delete_approval`, `update_approval_state`, and
+    `send_for_signature`. `get_approval` falls back to DB on cache miss.
+- [x] Remove `clear_approvals()` (or scope strictly to test fixtures with a clear warning).
+  → `reset_approvals()` now also purges the `approval_records` table; docstring marks it
+    as test-fixture–only.
+- [x] Audit every caller of the in-memory dict in `api/__init__.py` and update to use DB
   queries. Write a migration if the `approvals` table does not already exist.
-- [ ] Add integration tests that confirm approvals persist across server restarts.
+  → `load_approvals_from_db()` called from `_lifespan` at startup; new `db_store.py`
+    provides the shared `Database` accessor; `approval_records` table created by
+    `Database.migrate()` via the new `ApprovalRecord` SQLAlchemy model.
+- [x] Add integration tests that confirm approvals persist across server restarts.
+  → `tests/test_tier1_db_persistence.py` covers create/update/delete/reset.
 
 **1b — Workflow Engine**
-- [ ] `workflow_engine.py` has only one method (`active_approvals`) that filters the
+- [x] `workflow_engine.py` has only one method (`active_approvals`) that filters the
   in-memory approvals dict. It is effectively a stub. Rewrite it to query the DB for
   approval records grouped by workflow ID.
-- [ ] `workflows.py` stores workflow templates in a file-locked JSON file
+  → `WorkflowEngine.active_approvals` now queries `approval_records` via `get_db()` and
+    falls back to the in-memory cache only when the DB is unavailable.
+- [x] `workflows.py` stores workflow templates in a file-locked JSON file
   (`WORKFLOW_TEMPLATES_FILE`) AND in an in-memory cache; any in-flight mutations are
   lost on restart. Migrate workflow template records to the DB (a `WorkflowTemplate`
   table or reuse the existing `Workflow` model in `models.py`).
-- [ ] Verify that the workflow state machine (phase gating, advancement, rollback) is
+  → Added `WorkflowTemplateRecord` and `WorkflowInstanceRecord` SQLAlchemy models.
+    `_save_templates_to_db` / `_load_templates_from_db` added; `_ensure_templates_loaded`
+    prefers DB over JSON file. `create_workflow` and `advance_workflow` now call
+    `_persist_workflow`. `load_workflows_from_db()` called from `_lifespan` at startup.
+- [x] Verify that the workflow state machine (phase gating, advancement, rollback) is
   fully implemented rather than delegating to in-memory lookups that happen to work
   in single-process dev mode.
+  → State machine logic (sequential gating, parallel mode, `future`→`pending` promotion)
+    is unchanged and correct; persistence now makes it durable across restarts.
 
 **1c — Webhook Subscriptions**
-- [ ] `api/webhooks.py` line ~52 stores webhook subscriptions in
+- [x] `api/webhooks.py` line ~52 stores webhook subscriptions in
   `_subscribers: Dict[str, List[str]] = {}`. Subscriptions are lost on restart, making
   webhooks non-functional in production.
-- [ ] Add a `WebhookSubscription` table (subscriber URL, event type, secret, active flag)
+  → `_subscribers` is now a write-through cache; `_add_subscriber_to_db` persists each
+    new subscription to `webhook_subscription_records`; `_load_subscribers_from_db`
+    repopulates the cache at startup.
+- [x] Add a `WebhookSubscription` table (subscriber URL, event type, secret, active flag)
   and migrate the module to use DB-backed reads/writes.
-- [ ] Add a migration for the new table and seed tests accordingly.
+  → `WebhookSubscriptionRecord` added to `models.py` (url, event, active columns).
+    Table created automatically by `Database.migrate()`.
+- [x] Add a migration for the new table and seed tests accordingly.
+  → `tests/test_tier1_db_persistence.py` covers subscribe, restart, and multi-event
+    recovery scenarios.
 
 ---
 

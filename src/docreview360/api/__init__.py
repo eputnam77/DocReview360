@@ -71,6 +71,7 @@ from ..approvals import (
     delete_approval,
     get_approval,
     list_approvals,
+    load_approvals_from_db,
     send_for_signature,
     update_approval_state,
     verify_document_signature,
@@ -221,6 +222,7 @@ from ..workflows import (
     get_workflow_template,
     list_workflows,
     list_workflow_templates,
+    load_workflows_from_db,
     start_workflow,
     update_workflow_template,
     workflow_templates,
@@ -229,7 +231,7 @@ from ..workflows import (
 )
 from .approvals import router as approvals_router
 from .ml import router as ml_router, warm_ml_sessions
-from .webhooks import router as webhooks_router
+from .webhooks import router as webhooks_router, _load_subscribers_from_db
 
 # Load environment variables from .env file
 load_dotenv()
@@ -860,7 +862,10 @@ class SignatureProviderPayload(BaseModel):
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    # Startup
+    # Startup: restore persisted state from DB
+    load_approvals_from_db()
+    load_workflows_from_db()
+    _load_subscribers_from_db()
     load_worker_state(WORKER_STATE_FILE)
     for tpl in SEED_TEMPLATES:
         if not get_latest_template(tpl["name"]):

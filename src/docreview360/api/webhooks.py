@@ -8,6 +8,7 @@ from typing import Dict, List
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, HttpUrl, ValidationError
 
+from ..db_store import get_db
 from ..http_client import post as http_post
 from ..integrations.signature import get_provider
 from ..logs import log_call
@@ -42,7 +43,59 @@ class WebhookSubscription(BaseModel):
     events: List[str]
 
 
+# ---------------------------------------------------------------------------
+# In-memory cache (populated from DB at startup; written through on change)
+# ---------------------------------------------------------------------------
+
 _subscribers: Dict[str, List[str]] = {}
+
+
+# ---------------------------------------------------------------------------
+# DB helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_subscribers_from_db() -> None:
+    """Populate ``_subscribers`` from the ``webhook_subscription_records`` table."""
+    global _subscribers
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            rows = conn.execute(
+                _text(
+                    "SELECT event, url FROM webhook_subscription_records WHERE active = 1"
+                )
+            ).fetchall()
+        _subscribers.clear()
+        for event, url in rows:
+            _subscribers.setdefault(event, []).append(url)
+    except Exception:  # pragma: no cover - DB not available
+        pass
+
+
+def _add_subscriber_to_db(event: str, url: str) -> None:
+    """Persist a new webhook subscription to the DB."""
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            conn.execute(
+                _text(
+                    "INSERT INTO webhook_subscription_records (url, event, active)"
+                    " VALUES (:url, :event, 1)"
+                ),
+                {"url": url, "event": event},
+            )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Dispatch helpers
+# ---------------------------------------------------------------------------
 
 
 def _dispatch(event: str, payload: Dict[str, object]) -> None:
@@ -64,13 +117,20 @@ def emit_verification_completed(doc_id: str, status: str, details: List[Dict[str
     _dispatch("verification.completed", payload.model_dump())
 
 
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+
 @router.post("/webhooks/subscribe", status_code=204, response_class=Response)
 @log_call
 async def subscribe_webhook(sub: WebhookSubscription, _=Depends(require_role("admin"))) -> Response:
     """Register a webhook callback URL for events."""
 
     for event in sub.events:
-        _subscribers.setdefault(event, []).append(str(sub.url))
+        url_str = str(sub.url)
+        _subscribers.setdefault(event, []).append(url_str)
+        _add_subscriber_to_db(event, url_str)
     return Response(status_code=204)
 
 

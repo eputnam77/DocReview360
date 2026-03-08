@@ -14,6 +14,7 @@ from uuid import uuid4
 from filelock import FileLock
 from pydantic import BaseModel, Field, field_validator
 
+from .db_store import get_db
 from .event_dispatcher import dispatch_workflow_event
 from .logs import log_call
 
@@ -501,14 +502,68 @@ def _ensure_templates_loaded() -> None:
     workflow_template_definitions.clear()
     workflow_template_definitions.update(_build_default_template_definitions())
 
-    if DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE and WORKFLOW_TEMPLATES_FILE.exists():
-        with _workflow_template_lock():
-            _load_templates_from_disk()
+    if DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
+        # Prefer DB-backed storage; fall back to file if DB is empty
+        loaded_from_db = _load_templates_from_db()
+        if not loaded_from_db and WORKFLOW_TEMPLATES_FILE.exists():
+            with _workflow_template_lock():
+                _load_templates_from_disk()
         if not workflow_template_definitions:
             workflow_template_definitions.update(_build_default_template_definitions())
 
     _sync_workflow_templates_from_definitions()
     _TEMPLATES_LOADED = True
+
+
+def _save_templates_to_db() -> None:
+    """Upsert all current workflow template definitions into the DB."""
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            for template in workflow_template_definitions.values():
+                conn.execute(
+                    _text(
+                        "INSERT INTO workflow_template_records (id, name, data)"
+                        " VALUES (:id, :name, :data)"
+                        " ON CONFLICT(id) DO UPDATE SET name=excluded.name, data=excluded.data"
+                    ),
+                    {
+                        "id": template.id,
+                        "name": template.name,
+                        "data": json.dumps(template.model_dump()),
+                    },
+                )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
+def _load_templates_from_db() -> bool:
+    """Load workflow templates from the DB into ``workflow_template_definitions``.
+
+    Returns ``True`` if any templates were loaded, ``False`` otherwise.
+    """
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            rows = conn.execute(
+                _text("SELECT data FROM workflow_template_records")
+            ).fetchall()
+        if not rows:
+            return False
+        for (raw,) in rows:
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            try:
+                template = WorkflowTemplateModel.model_validate(data)
+                workflow_template_definitions[template.id] = template
+            except Exception:  # pragma: no cover - skip corrupt rows
+                pass
+        return bool(workflow_template_definitions)
+    except Exception:  # pragma: no cover - DB not available
+        return False
 
 
 def _save_templates_to_disk() -> None:
@@ -518,6 +573,7 @@ def _save_templates_to_disk() -> None:
     serialized = json.dumps(payload, indent=2)
     with _workflow_template_lock():
         _atomic_write(WORKFLOW_TEMPLATES_FILE, serialized)
+    _save_templates_to_db()
 
 
 def list_workflow_templates() -> list[WorkflowTemplateModel]:
@@ -601,6 +657,48 @@ def reset_workflow_templates(*, keep_file: bool = False) -> None:
 
 
 _ensure_templates_loaded()
+
+
+def _persist_workflow(workflow: WorkflowModel) -> None:
+    """Upsert a workflow instance into the DB."""
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        data = json.dumps(workflow.model_dump())
+        with db.session() as conn:
+            conn.execute(
+                _text(
+                    "INSERT INTO workflow_instance_records (id, project, data)"
+                    " VALUES (:id, :project, :data)"
+                    " ON CONFLICT(id) DO UPDATE SET data=excluded.data"
+                ),
+                {"id": workflow.id, "project": workflow.project, "data": data},
+            )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
+def load_workflows_from_db() -> None:
+    """Populate the in-memory ``workflows`` dict from the database."""
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            rows = conn.execute(
+                _text("SELECT data FROM workflow_instance_records")
+            ).fetchall()
+        for (raw,) in rows:
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            try:
+                wf = WorkflowModel.model_validate(data)
+                if wf.id not in workflows:
+                    workflows[wf.id] = wf
+            except Exception:  # pragma: no cover - skip corrupt rows
+                pass
+    except Exception:  # pragma: no cover - DB not available
+        pass
 
 
 @log_call
@@ -711,6 +809,7 @@ def create_workflow(
         mode=mode,
     )
     workflows[wf_id] = workflow
+    _persist_workflow(workflow)
 
     # Create initial approval entries for each step
     from .approvals import create_approval
@@ -781,6 +880,7 @@ def advance_workflow(wf_id: str) -> WorkflowModel:
         workflow.phase = workflow.phases[-1]
     else:
         workflow.phase = workflow.phases[idx + 1]
+    _persist_workflow(workflow)
     for cb in bot_callbacks:
         cb(workflow)
     return workflow

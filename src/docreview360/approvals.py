@@ -31,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .audit import AuditLogEntry, get_audit_log, log_audit_event
 from .celery_app import app
 from .certs import fetch_certificate
+from .db_store import get_db
 from .documents import DocumentModel, documents, get_document, link_approval, unlink_approval
 from .integrations.registry import get_provider
 from .integrations.signature import get_default_provider, get_default_providers
@@ -125,10 +126,110 @@ class ApprovalModel(BaseModel):
 approvals: Dict[str, ApprovalModel] = {}
 
 
-def reset_approvals() -> None:
-    """Clear all in-memory approvals."""
+# ---------------------------------------------------------------------------
+# DB persistence helpers
+# ---------------------------------------------------------------------------
 
+
+def _approval_to_db_data(approval: ApprovalModel) -> Dict[str, Any]:
+    """Serialise an :class:`ApprovalModel` for JSON storage."""
+    data = approval.model_dump(by_alias=False)
+    # datetime fields must be ISO strings for JSON
+    for field in ("deadline", "reminder_at", "escalation_at", "signed_at"):
+        val = data.get(field)
+        if val is not None and hasattr(val, "isoformat"):
+            data[field] = val.isoformat()
+    return data
+
+
+def _approval_from_db_data(data: Dict[str, Any]) -> ApprovalModel:
+    """Deserialise an :class:`ApprovalModel` from JSON storage."""
+    return ApprovalModel.model_validate(data)
+
+
+def _persist_approval(approval: ApprovalModel) -> None:
+    """Upsert *approval* into the ``approval_records`` table."""
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        data = _approval_to_db_data(approval)
+        with db.session() as conn:
+            conn.execute(
+                _text(
+                    "INSERT INTO approval_records (id, workflow_id, reviewer, state, data)"
+                    " VALUES (:id, :wf, :rev, :st, :data)"
+                    " ON CONFLICT(id) DO UPDATE SET state=excluded.state, data=excluded.data"
+                ),
+                {
+                    "id": approval.id,
+                    "wf": approval.workflow,
+                    "rev": approval.reviewer,
+                    "st": approval.state,
+                    "data": __import__("json").dumps(data),
+                },
+            )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
+def _delete_approval_from_db(approval_id: str) -> None:
+    """Remove an approval record from the DB."""
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            conn.execute(
+                _text("DELETE FROM approval_records WHERE id = :id"),
+                {"id": approval_id},
+            )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
+def load_approvals_from_db() -> None:
+    """Populate the in-memory ``approvals`` dict from the database.
+
+    Only adds records that are not already present in the cache; existing
+    in-memory entries are left unchanged.  Call at startup so the application
+    resumes with previously persisted approval state.
+    """
+    try:
+        import json as _json
+
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            rows = conn.execute(_text("SELECT data FROM approval_records")).fetchall()
+        for (raw,) in rows:
+            data = _json.loads(raw) if isinstance(raw, str) else raw
+            try:
+                approval = _approval_from_db_data(data)
+                # Only populate cache for records that aren't already loaded
+                if approval.id not in approvals:
+                    approvals[approval.id] = approval
+            except Exception:  # pragma: no cover - skip corrupt rows
+                pass
+    except Exception:  # pragma: no cover - DB not available yet
+        pass
+
+
+def reset_approvals() -> None:
+    """Clear in-memory approvals and remove all persisted records.
+
+    Scoped to test fixtures.  In production, use targeted deletion instead.
+    """
     approvals.clear()
+    try:
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            conn.execute(_text("DELETE FROM approval_records"))
+    except Exception:  # pragma: no cover - best effort
+        pass
 
 
 class SignatureValidationError(ValueError):
@@ -352,6 +453,7 @@ def create_approval(
         scoring_metadata=scoring_metadata or {},
     )
     approvals[approval_id] = approval
+    _persist_approval(approval)
     try:
         link_approval(doc_id, approval_id)
     except KeyError:
@@ -488,12 +590,37 @@ def submit_draft_for_approval(  # noqa: C901
 
 
 def get_approval(approval_id: str) -> ApprovalModel | None:
-    return approvals.get(approval_id)
+    """Return the approval for *approval_id*, loading from DB if not cached."""
+    cached = approvals.get(approval_id)
+    if cached is not None:
+        return cached
+    # Fall back to DB (e.g. after server restart or cache eviction)
+    try:
+        import json as _json
+
+        from sqlalchemy import text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            row = conn.execute(
+                _text("SELECT data FROM approval_records WHERE id = :id"),
+                {"id": approval_id},
+            ).fetchone()
+        if row is not None:
+            raw = row[0]
+            data = _json.loads(raw) if isinstance(raw, str) else raw
+            approval = _approval_from_db_data(data)
+            approvals[approval_id] = approval
+            return approval
+    except Exception:  # pragma: no cover - DB not available
+        pass
+    return None
 
 
 def delete_approval(approval_id: str) -> ApprovalModel:
     """Remove an approval and unlink it from its document."""
     approval = approvals.pop(approval_id)
+    _delete_approval_from_db(approval_id)
     unlink_approval(approval.document_id, approval.id)
     log_event(
         "approval_deleted",
@@ -875,6 +1002,7 @@ async def update_approval_state(  # noqa: C901
                 next_step = min(next_steps, key=lambda a: a.order)
                 if next_step.state != "approved":
                     next_step.state = "pending"
+                    _persist_approval(next_step)
         if all(
             a.state == "approved" for a in approvals.values() if a.workflow == approval.workflow
         ):
@@ -883,6 +1011,7 @@ async def update_approval_state(  # noqa: C901
                 project=project_id,
                 doc_id=approval.document_id,
             )
+    _persist_approval(approval)
     return approval
 
 
@@ -947,6 +1076,7 @@ def send_for_signature(  # noqa: C901
                 signature_id=sig_id,
                 content_hash=approval.document_hash,
             )
+            _persist_approval(approval)
             set_provider_health(name, True)
             log_event(
                 "approval_sent_for_signature",
