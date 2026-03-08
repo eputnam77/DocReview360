@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from pydantic import ValidationError
 
@@ -9,12 +7,9 @@ import docreview360.doc_types as doc_types_module
 
 
 @pytest.fixture(autouse=True)
-def _isolate_doc_types(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Prevent persistence side effects and reset in-memory state."""
+def _isolate_doc_types() -> None:
+    """Clear document types so each test starts from a known-empty state."""
 
-    monkeypatch.setenv("DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", "0")
-    monkeypatch.setattr(doc_types_module, "DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", False)
-    monkeypatch.setattr(doc_types_module, "DATA_FILE", tmp_path / "doc_types.json")
     doc_types_module.document_types.clear()
     yield
     doc_types_module.document_types.clear()

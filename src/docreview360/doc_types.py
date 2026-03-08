@@ -1,47 +1,30 @@
-"""In-memory + persisted document type management with default bootstrapping.
+"""Database-backed document type management.
 
-When document type persistence is disabled via
-``DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE``, this module emits a runtime
-warning to make it clear that any customization happens in-memory only and will
-not survive a restart.
+All document type state is stored in the ``document_types`` database table.
+The previous JSON-file / FileLock / optimistic-locking persistence layer has
+been removed (Tier 2c).
+
+The module-level ``document_types`` attribute is a :class:`_DocumentTypesView`
+that provides a dict-like interface backed directly by the database so that
+existing call-sites (tests, chat_bot, etc.) continue to work without changes.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import tempfile
-import warnings
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from collections.abc import Iterator, MutableMapping
+from typing import Any, Dict, List
 
-from filelock import FileLock
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator
+from sqlalchemy import delete, select, update
 
-# Path to store persistent data
-DATA_FILE = Path(os.getenv("DOCREVIEW360_DOC_TYPES_FILE", "document_types.json"))
-
-
-def _env_flag_enabled(value: str | None) -> bool:
-    """Interpret truthy string values for the persistence feature flag."""
-
-    if value is None:
-        return True
-    normalized = value.strip().lower()
-    return normalized not in {"0", "false", "no", "off"}
+from .db_store import get_db
+from .models import DocumentType as DocumentTypeORM
 
 
-DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE = _env_flag_enabled(
-    os.getenv("DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE")
-)
-
-if not DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-    warnings.warn(
-        "Document type persistence is disabled; customizations will not be saved.",
-        RuntimeWarning,
-        stacklevel=2,
-    )
+# ---------------------------------------------------------------------------
+# Pydantic schema (kept for API compatibility)
+# ---------------------------------------------------------------------------
 
 
 class DocumentTypeModel(BaseModel):
@@ -53,7 +36,7 @@ class DocumentTypeModel(BaseModel):
     default_template_id: str | None = None
 
     @computed_field(return_type=str)
-    def id(self) -> str:
+    def id(self) -> str:  # noqa: A003
         """Expose ``name`` under an ``id`` field for frontend compatibility."""
         return self.name
 
@@ -80,51 +63,20 @@ class _WorkflowPayload(BaseModel):
 
 
 def _validate_workflow(doc_type: DocumentTypeModel) -> None:
-    """Raise :class:`ValidationError` if ``doc_type`` has invalid workflow phases."""
+    """Raise :class:`ValidationError` if *doc_type* has invalid workflow phases."""
 
     try:
         _WorkflowPayload.model_validate({"workflow": doc_type.workflow})
     except ValidationError as exc:  # pragma: no cover - defensive
-        raise ValidationError.from_exception_data(DocumentTypeModel.__name__, exc.errors()) from exc
+        raise ValidationError.from_exception_data(
+            DocumentTypeModel.__name__, exc.errors()
+        ) from exc
 
 
-# In-memory store
-document_types: Dict[str, DocumentTypeModel] = {}
+# ---------------------------------------------------------------------------
+# Default data
+# ---------------------------------------------------------------------------
 
-
-def reset_document_types() -> None:
-    """Clear document types and reset persistence metadata."""
-
-    global _STATE_VERSION, _STATE_UPDATED_AT, _ACTIVE_DATA_FILE
-
-    document_types.clear()
-    _STATE_VERSION = 0
-    _STATE_UPDATED_AT = None
-    _ACTIVE_DATA_FILE = DATA_FILE
-
-    if not DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        return
-    try:
-        DATA_FILE.unlink(missing_ok=True)
-    except OSError:
-        # If the file cannot be removed (e.g., permissions), keep going with the
-        # in-memory reset so tests and in-process updates are not blocked.
-        pass
-
-# Track persisted version metadata for optimistic locking
-_STATE_VERSION: int = 0
-_STATE_UPDATED_AT: str | None = None
-# Remember which persistence backend the in-memory state reflects so switching
-# ``DATA_FILE`` between tests (or at runtime) transparently reloads the new
-# store instead of tripping optimistic locking checks.
-_ACTIVE_DATA_FILE: Path = DATA_FILE
-
-
-class StaleStateError(RuntimeError):
-    """Raised when attempting to persist stale in-memory document type data."""
-
-
-# Default phases per document type
 DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
     "Advisory Circular": [
         "Draft Development",
@@ -281,361 +233,256 @@ DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
         "Maintenance / Revision Cycle",
     ],
 }
-# Export default document type names for consumers and tests
+
 DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 
 
-# --------------------------
-# Persistence helpers
-# --------------------------
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+# Tracks whether an explicit reset with seed=False has been performed.  When
+# True the lazy-bootstrap in ``_bootstrap_if_empty`` is skipped so that code
+# which deliberately empties the table (e.g. tests) gets an actually empty
+# result from subsequent reads.
+_explicit_clear_active: bool = False
 
 
-def _state_lock() -> FileLock:
-    """Return a file-based lock guarding state persistence."""
+def _bootstrap_if_empty() -> None:
+    """Seed default document types when the table is empty.
 
-    return FileLock(str(DATA_FILE) + ".lock")
+    Skipped after an explicit ``reset_document_types(seed=False)`` call so that
+    test code can work with an intentionally empty registry.
+    """
 
-
-def _atomic_write(path: Path, data: str) -> None:
-    """Write ``data`` to ``path`` atomically using a temporary file."""
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        "w", encoding="utf-8", dir=path.parent, delete=False
-    ) as tmp_file:
-        tmp_file.write(data)
-        tmp_name = tmp_file.name
-    os.replace(tmp_name, path)
-
-
-def _load_persisted_payload() -> Tuple[list[dict[str, Any]], int, str | None, bool]:
-    """Return persisted document types, version, timestamp and file presence."""
-
-    exists = DATA_FILE.exists()
-    if not exists:
-        return [], 0, None, False
-    try:
-        payload = json.loads(DATA_FILE.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Failed to read document types from {DATA_FILE}") from exc
-
-    if isinstance(payload, list):
-        return payload, 0, None, True
-    if not isinstance(payload, dict):
-        raise ValueError("Saved document types must be a list or mapping")
-
-    if "document_types" not in payload:
-        raise ValueError("Saved document types mapping must include 'document_types'")
-
-    document_payload = payload["document_types"]
-    if not isinstance(document_payload, list):
-        raise ValueError("Saved document types mapping must include a list under 'document_types'")
-
-    version = payload.get("version")
-    if not isinstance(version, int):
-        raise ValueError("Saved document types version must be an integer")
-
-    updated_at = payload.get("updated_at")
-    if updated_at is not None and not isinstance(updated_at, str):
-        raise ValueError("Saved document types updated_at must be a string when provided")
-
-    return document_payload, version, updated_at, True
-
-
-def _populate_from_payload(
-    payload: list[dict[str, Any]], version: int, updated_at: str | None
-) -> None:
-    """Load ``payload`` into ``document_types`` and update metadata."""
-
-    global _STATE_VERSION, _STATE_UPDATED_AT
-
-    document_types.clear()
-    for item in payload:
-        try:
-            doc = DocumentTypeModel(**item)
-            _validate_workflow(doc)
-        except ValidationError as exc:
-            raise ValueError(f"Invalid document type entry in saved file: {item}") from exc
-        document_types[doc.name] = doc
-
-    _STATE_VERSION = version
-    _STATE_UPDATED_AT = updated_at
-
-
-def _ensure_current_store_loaded() -> None:
-    """Reload persisted state when ``DATA_FILE`` changes between calls."""
-
-    global _ACTIVE_DATA_FILE, _STATE_VERSION, _STATE_UPDATED_AT
-
-    if DATA_FILE == _ACTIVE_DATA_FILE:
+    global _explicit_clear_active
+    if _explicit_clear_active:
         return
 
-    _ACTIVE_DATA_FILE = DATA_FILE
-    _STATE_VERSION = 0
-    _STATE_UPDATED_AT = None
+    db = get_db()
+    with db.session() as conn:
+        from sqlalchemy import text as _text
 
-    if not DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        document_types.clear()
-        return
-
-    with _state_lock():
-        try:
-            payload, version, updated_at, exists = _load_persisted_payload()
-        except RuntimeError:
-            raise
-        except ValueError as exc:
-            raise ValueError("Invalid document types data on disk") from exc
-
-    if exists:
-        _populate_from_payload(payload, version, updated_at)
-    else:
-        document_types.clear()
-
-
-def save_state(expected_version: int | None = None) -> None:
-    """Persist document_types to disk with optimistic locking."""
-
-    global _STATE_VERSION, _STATE_UPDATED_AT
-
-    _ensure_current_store_loaded()
-
-    documents = [doc.model_dump() for doc in document_types.values()]
-    if expected_version is None:
-        expected_version = _STATE_VERSION
-
-    timestamp = datetime.now(timezone.utc).isoformat()
-
-    with _state_lock():
-        _, current_version, _, exists = _load_persisted_payload()
-        if not exists and expected_version:
-            # When switching persistence backends (e.g., during tests) the
-            # in-memory version may reflect the previous file.  Treat the
-            # fresh store as version 0 to avoid spurious StaleStateError and
-            # allow the new file to be initialised.
-            expected_version = 0
-            current_version = 0
-        file_version = current_version
-
-        if file_version != expected_version:
-            raise StaleStateError(
-                "Document types changed on disk while attempting to save. "
-                "Reload the state before retrying the save."
-            )
-
-        new_version = file_version + 1
-        payload = {
-            "version": new_version,
-            "updated_at": timestamp,
-            "document_types": documents,
-        }
-
-        try:
-            serialized = json.dumps(payload, indent=2)
-        except (TypeError, ValueError) as exc:
-            raise RuntimeError("Failed to serialize document types for persistence") from exc
-
-        try:
-            _atomic_write(DATA_FILE, serialized)
-        except OSError as exc:
-            raise RuntimeError(f"Failed to save document types to {DATA_FILE}") from exc
-
-        _STATE_VERSION = new_version
-        _STATE_UPDATED_AT = timestamp
-
-
-def load_state() -> bool:
-    """Load document_types from disk. Returns True if loaded, False if file missing."""
-
-    global _STATE_VERSION, _STATE_UPDATED_AT
-
-    _ensure_current_store_loaded()
-
-    with _state_lock():
-        try:
-            payload, version, updated_at, exists = _load_persisted_payload()
-        except RuntimeError:
-            raise
-        except ValueError as exc:
-            raise ValueError("Invalid document types data on disk") from exc
-
-    if not exists:
-        _STATE_VERSION = 0
-        _STATE_UPDATED_AT = None
-        return False
-
-    _populate_from_payload(payload, version, updated_at)
-    return True
-
-
-# --------------------------
-# Bootstrapping
-# --------------------------
-
-
-def _bootstrap_sample() -> None:
-    """Create default document types with predefined phases if none exist."""
-    if not document_types:
-        for name, phases in DEFAULT_DOC_TYPE_PHASES.items():
-            document_types[name] = DocumentTypeModel(
-                name=name,
-                template=f"<h1>{name}</h1>",
-                workflow=phases,
+        count = conn.execute(_text("SELECT COUNT(*) FROM document_types")).scalar()
+        if count:
+            return
+        # Fresh DB — seed defaults and clear the explicit-clear flag.
+        _explicit_clear_active = False
+        for order, (name, phases) in enumerate(DEFAULT_DOC_TYPE_PHASES.items(), start=1):
+            conn.execute(
+                _text(
+                    "INSERT OR IGNORE INTO document_types "
+                    "(name, template, workflow, display_order) "
+                    "VALUES (:name, :template, :workflow, :order)"
+                ),
+                {
+                    "name": name,
+                    "template": f"<h1>{name}</h1>",
+                    "workflow": json.dumps(phases),
+                    "order": order,
+                },
             )
 
 
-# Load from disk or bootstrap
-if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE and load_state():
-    pass
-else:
-    _bootstrap_sample()
-    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        save_state()
+def _row_to_model(row: Any) -> DocumentTypeModel:
+    """Convert a DB row (or ORM object) to :class:`DocumentTypeModel`."""
+
+    if isinstance(row, DocumentTypeORM):
+        workflow = row.workflow if isinstance(row.workflow, list) else json.loads(row.workflow or "[]")
+        return DocumentTypeModel(
+            name=row.name,
+            template=row.template or "",
+            workflow=workflow,
+            default_template_id=row.default_template_id,
+        )
+    # SQLAlchemy Row / named tuple
+    name = row.name if hasattr(row, "name") else row[0]
+    template = row.template if hasattr(row, "template") else (row[1] if len(row) > 1 else "")
+    raw_workflow = row.workflow if hasattr(row, "workflow") else (row[2] if len(row) > 2 else "[]")
+    workflow = raw_workflow if isinstance(raw_workflow, list) else json.loads(raw_workflow or "[]")
+    default_template_id = (
+        row.default_template_id
+        if hasattr(row, "default_template_id")
+        else (row[3] if len(row) > 3 else None)
+    )
+    return DocumentTypeModel(
+        name=name,
+        template=template or "",
+        workflow=workflow,
+        default_template_id=default_template_id,
+    )
 
 
-# --------------------------
-# CRUD Operations
-# --------------------------
+# ---------------------------------------------------------------------------
+# CRUD operations
+# ---------------------------------------------------------------------------
 
 
 def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentTypeModel:
-    """Store a document type in memory and persist it."""
-    _ensure_current_store_loaded()
-    expected_version = _STATE_VERSION
+    """Store a document type in the database."""
+
     if isinstance(doc_type, dict):
         doc_type = DocumentTypeModel(**doc_type)
     else:
         doc_type = DocumentTypeModel.model_validate(doc_type.model_dump())
     _validate_workflow(doc_type)
-    # Avoid accidental overwrites; callers should use ``update_document_type``
-    # when modifying existing entries.  Previously ``add_document_type`` would
-    # silently replace an existing document type which caused confusing test
-    # failures where a duplicate definition clobbered the original.
+
     if not doc_type.name.strip():
         raise ValueError("Document type name must not be empty")
-    if doc_type.name in document_types:
-        # Adding the exact same document type multiple times should be
-        # idempotent.  Several tests seed a "Test Doc" type and expect calls
-        # that repeat that seed not to fail.  The previous implementation
-        # always raised ``ValueError`` which made subsequent identical inserts
-        # blow up even though no data would actually change.  We now treat an
-        # identical re-add as a no-op while still erroring on conflicting
-        # definitions to guard against accidental overwrites.
-        existing = document_types[doc_type.name]
-        if existing.model_dump() != doc_type.model_dump():
-            raise ValueError(f"Document type '{doc_type.name}' already exists")
-        return existing
-    previous_state = dict(document_types)
-    document_types[doc_type.name] = doc_type
-    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-        try:
-            save_state(expected_version=expected_version)
-        except Exception:
-            document_types.clear()
-            document_types.update(previous_state)
-            raise
+
+    from sqlalchemy import text as _text
+
+    db = get_db()
+    with db.session() as conn:
+        existing = conn.execute(
+            select(
+                DocumentTypeORM.name,
+                DocumentTypeORM.template,
+                DocumentTypeORM.workflow,
+                DocumentTypeORM.default_template_id,
+            ).where(DocumentTypeORM.name == doc_type.name)
+        ).one_or_none()
+
+        if existing is not None:
+            existing_model = _row_to_model(existing)
+            if existing_model.model_dump() != doc_type.model_dump():
+                raise ValueError(f"Document type '{doc_type.name}' already exists")
+            return existing_model
+
+        conn.execute(
+            _text(
+                "INSERT INTO document_types (name, template, workflow, default_template_id) "
+                "VALUES (:name, :template, :workflow, :dtid)"
+            ),
+            {
+                "name": doc_type.name,
+                "template": doc_type.template,
+                "workflow": json.dumps(doc_type.workflow),
+                "dtid": doc_type.default_template_id,
+            },
+        )
     return doc_type
 
 
 def get_document_type(name: str) -> DocumentTypeModel | None:
     """Retrieve a document type by name."""
-    _ensure_current_store_loaded()
-    return document_types.get(name)
+
+    _bootstrap_if_empty()
+    db = get_db()
+    with db.session() as conn:
+        row = conn.execute(
+            select(
+                DocumentTypeORM.name,
+                DocumentTypeORM.template,
+                DocumentTypeORM.workflow,
+                DocumentTypeORM.default_template_id,
+            ).where(DocumentTypeORM.name == name)
+        ).one_or_none()
+        if row is None:
+            return None
+        return _row_to_model(row)
 
 
 def list_document_types() -> list[DocumentTypeModel]:
     """Return all known document types sorted alphabetically by name."""
-    _ensure_current_store_loaded()
-    return sorted(document_types.values(), key=lambda doc: doc.name.lower())
+
+    _bootstrap_if_empty()
+    db = get_db()
+    with db.session() as conn:
+        rows = conn.execute(
+            select(
+                DocumentTypeORM.name,
+                DocumentTypeORM.template,
+                DocumentTypeORM.workflow,
+                DocumentTypeORM.default_template_id,
+            ).order_by(DocumentTypeORM.name)
+        ).all()
+        return [_row_to_model(row) for row in rows]
 
 
 def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentTypeModel:
     """Update an existing document type and persist changes."""
-    _ensure_current_store_loaded()
-    if name not in document_types:
-        raise KeyError(f"Document type '{name}' not found")
 
-    expected_version = _STATE_VERSION
-    previous_state = dict(document_types)
+    existing = get_document_type(name)
+    if existing is None:
+        raise KeyError(f"Document type '{name}' not found")
 
     doc_type = DocumentTypeModel.model_validate(doc_type.model_dump())
     _validate_workflow(doc_type)
 
-    # If the document type is renamed, propagate that change to any projects that
-    # reference the old name.  Tests create a project, rename the document type
-    # and expect the project's ``doc_type`` field to follow the rename.  The
-    # original implementation simply replaced the entry in ``document_types`` and
-    # left existing projects stale.
+    from sqlalchemy import text as _text
+
     if doc_type.name != name:
-        # Prevent accidental overwrites when renaming to an already existing
-        # document type. Previously the code unconditionally removed the old
-        # entry and inserted the new one, clobbering any existing type with the
-        # same name.  This surfaced in tests expecting a 409 Conflict when
-        # attempting to rename to an existing name.
-        if doc_type.name in document_types:
+        if get_document_type(doc_type.name) is not None:
             raise ValueError(f"Document type '{doc_type.name}' already exists")
 
-        from .search import projects  # Local import to avoid circular dependency
-
-        for proj in projects.values():
-            if proj.doc_type == name:
-                proj.doc_type = doc_type.name
-
-        # Remove the old key when renaming to keep ``document_types`` consistent
-        del document_types[name]
-        document_types[doc_type.name] = doc_type
-    else:
-        document_types[name] = doc_type
-
-    if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
+        # Propagate rename to any in-memory project references.
         try:
-            save_state(expected_version=expected_version)
-        except Exception:
-            document_types.clear()
-            document_types.update(previous_state)
-            raise
+            from .search import projects
+
+            for proj in projects.values():
+                if proj.doc_type == name:
+                    proj.doc_type = doc_type.name
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+    db = get_db()
+    with db.session() as conn:
+        conn.execute(
+            _text(
+                "UPDATE document_types SET name=:new_name, template=:template, "
+                "workflow=:workflow, default_template_id=:dtid WHERE name=:old_name"
+            ),
+            {
+                "old_name": name,
+                "new_name": doc_type.name,
+                "template": doc_type.template,
+                "workflow": json.dumps(doc_type.workflow),
+                "dtid": doc_type.default_template_id,
+            },
+        )
     return doc_type
 
 
 def delete_document_type(name: str) -> None:
-    """Delete a document type by name and persist changes."""
-    _ensure_current_store_loaded()
-    expected_version = _STATE_VERSION
-    previous_state = dict(document_types)
-    try:
-        del document_types[name]
-        if DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE:
-            try:
-                save_state(expected_version=expected_version)
-            except Exception:
-                document_types.clear()
-                document_types.update(previous_state)
-                raise
-    except KeyError as exc:
-        raise KeyError(f"Document type '{name}' not found") from exc
+    """Delete a document type by name."""
+
+    db = get_db()
+    with db.session() as conn:
+        result = conn.execute(
+            delete(DocumentTypeORM).where(DocumentTypeORM.name == name)
+        )
+        if result.rowcount == 0:
+            raise KeyError(f"Document type '{name}' not found")
 
 
-# --------------------------
+# ---------------------------------------------------------------------------
 # Import / Export
-# --------------------------
+# ---------------------------------------------------------------------------
 
 
-def export_document_types(path: str | Path) -> None:
-    """Serialize document types to ``path`` as JSON."""
-    _ensure_current_store_loaded()
+def export_document_types(path: str) -> None:
+    """Serialize document types to *path* as JSON."""
+
+    import os
+    from pathlib import Path
+
     try:
         dest = Path(path)
         if dest.is_dir():
             raise ValueError(f"Export path {dest} must be a file")
         dest.parent.mkdir(parents=True, exist_ok=True)
-        json_data = [doc.model_dump() for doc in document_types.values()]
+        json_data = [doc.model_dump() for doc in list_document_types()]
         dest.write_text(json.dumps(json_data, indent=2))
     except OSError as exc:
         raise RuntimeError(f"Failed to export document types to {path}") from exc
 
 
-def import_document_types(path: str | Path) -> None:
-    """Load document types from a JSON file and persist."""
-    _ensure_current_store_loaded()
+def import_document_types(path: str) -> None:
+    """Load document types from a JSON file and persist to DB."""
+
+    from pathlib import Path
+
     try:
         data = json.loads(Path(path).read_text())
     except OSError as exc:
@@ -646,12 +493,6 @@ def import_document_types(path: str | Path) -> None:
     if not isinstance(data, list):
         raise ValueError("JSON must contain a list of document types")
 
-    # Build a temporary mapping first so a validation error does not leave the
-    # global ``document_types`` in a partially updated state.  The previous
-    # implementation cleared the existing entries before validating the payload,
-    # meaning a single bad item could wipe the in-memory registry while still
-    # raising an exception.  By validating into ``temp`` we ensure atomic
-    # replacement only when the input is entirely valid.
     temp: dict[str, DocumentTypeModel] = {}
     for item in data:
         try:
@@ -660,43 +501,44 @@ def import_document_types(path: str | Path) -> None:
         except ValidationError as exc:
             raise ValueError(f"Invalid document type entry: {item}") from exc
         temp[doc.name] = doc
-    document_types.clear()
-    document_types.update(temp)
-    save_state()
+
+    # Atomic replacement: clear all then insert validated set.
+    db = get_db()
+    with db.session() as conn:
+        from sqlalchemy import text as _text
+
+        conn.execute(_text("DELETE FROM document_types"))
+        for doc in temp.values():
+            conn.execute(
+                _text(
+                    "INSERT INTO document_types (name, template, workflow, default_template_id) "
+                    "VALUES (:name, :template, :workflow, :dtid)"
+                ),
+                {
+                    "name": doc.name,
+                    "template": doc.template,
+                    "workflow": json.dumps(doc.workflow),
+                    "dtid": doc.default_template_id,
+                },
+            )
 
 
 def export_document_types_json() -> str:
     """Return document types as a JSON string."""
-    _ensure_current_store_loaded()
-    json_data = [doc.model_dump() for doc in document_types.values()]
+
+    json_data = [doc.model_dump() for doc in list_document_types()]
     return json.dumps(json_data, indent=2)
 
 
 def import_document_types_json(data: str) -> None:
-    """Load document types from a JSON string and persist."""
-    previous_state = dict(document_types)
-    previous_version = _STATE_VERSION
-    previous_updated_at = _STATE_UPDATED_AT
-    previous_active_file = _ACTIVE_DATA_FILE
-
-    _ensure_current_store_loaded()
-
-    def _restore_previous() -> None:
-        document_types.clear()
-        document_types.update(previous_state)
-        global _STATE_VERSION, _STATE_UPDATED_AT, _ACTIVE_DATA_FILE
-        _STATE_VERSION = previous_version
-        _STATE_UPDATED_AT = previous_updated_at
-        _ACTIVE_DATA_FILE = previous_active_file
+    """Load document types from a JSON string and persist to DB."""
 
     try:
         payload = json.loads(data)
     except json.JSONDecodeError as exc:
-        _restore_previous()
         raise ValueError("Invalid JSON payload") from exc
 
     if not isinstance(payload, list):
-        _restore_previous()
         raise ValueError("JSON must contain a list of document types")
 
     temp: dict[str, DocumentTypeModel] = {}
@@ -705,25 +547,142 @@ def import_document_types_json(data: str) -> None:
             doc = DocumentTypeModel(**item)
             _validate_workflow(doc)
         except ValidationError as exc:
-            _restore_previous()
             raise ValueError(f"Invalid document type entry: {item}") from exc
         temp[doc.name] = doc
-    document_types.clear()
-    document_types.update(temp)
-    save_state()
+
+    db = get_db()
+    with db.session() as conn:
+        from sqlalchemy import text as _text
+
+        conn.execute(_text("DELETE FROM document_types"))
+        for doc in temp.values():
+            conn.execute(
+                _text(
+                    "INSERT INTO document_types (name, template, workflow, default_template_id) "
+                    "VALUES (:name, :template, :workflow, :dtid)"
+                ),
+                {
+                    "name": doc.name,
+                    "template": doc.template,
+                    "workflow": json.dumps(doc.workflow),
+                    "dtid": doc.default_template_id,
+                },
+            )
 
 
-# --------------------------
+# ---------------------------------------------------------------------------
 # Utility
-# --------------------------
+# ---------------------------------------------------------------------------
 
 
 def list_all_phases() -> list[str]:
     """Return a sorted list of all unique phases across all document types."""
-    _ensure_current_store_loaded()
-    phases = set()
-    for doc in document_types.values():
+
+    phases: set[str] = set()
+    for doc in list_document_types():
         for phase in doc.workflow:
             phases.add(phase)
     return sorted(phases)
 
+
+def reset_document_types(seed: bool = True) -> None:
+    """Clear all document types and optionally re-seed defaults.
+
+    Intended primarily for test use to achieve a known-clean state.
+    When *seed* is ``True`` (the default) the 27 built-in document types are
+    re-inserted after clearing.
+    """
+
+    global _explicit_clear_active
+    from sqlalchemy import text as _text
+
+    db = get_db()
+    with db.session() as conn:
+        conn.execute(_text("DELETE FROM document_types"))
+        if seed:
+            _explicit_clear_active = False
+            for order, (name, phases) in enumerate(DEFAULT_DOC_TYPE_PHASES.items(), start=1):
+                conn.execute(
+                    _text(
+                        "INSERT INTO document_types "
+                        "(name, template, workflow, display_order) "
+                        "VALUES (:name, :template, :workflow, :order)"
+                    ),
+                    {
+                        "name": name,
+                        "template": f"<h1>{name}</h1>",
+                        "workflow": json.dumps(phases),
+                        "order": order,
+                    },
+                )
+        else:
+            # Signal that the table was intentionally emptied — suppress
+            # lazy-bootstrap on the next read so callers get an empty result.
+            _explicit_clear_active = True
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible dict-like view
+# ---------------------------------------------------------------------------
+
+
+class _DocumentTypesView(MutableMapping):
+    """A dict-like view over the database-backed document types.
+
+    Provides backward compatibility for code that accesses the module-level
+    ``document_types`` mapping directly (e.g. ``doc_types.document_types.clear()``
+    or ``doc_types.document_types[name]``).  All operations delegate to the DB
+    so there is no in-memory caching — changes made through one process are
+    immediately visible to another.
+    """
+
+    def __getitem__(self, key: str) -> DocumentTypeModel:
+        result = get_document_type(key)
+        if result is None:
+            raise KeyError(key)
+        return result
+
+    def __setitem__(self, key: str, value: DocumentTypeModel) -> None:
+        if get_document_type(key) is not None:
+            update_document_type(key, value)
+        else:
+            add_document_type(value)
+
+    def __delitem__(self, key: str) -> None:
+        delete_document_type(key)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(dt.name for dt in list_document_types())
+
+    def __len__(self) -> int:
+        from sqlalchemy import func, text as _text
+
+        db = get_db()
+        with db.session() as conn:
+            result = conn.execute(
+                _text("SELECT COUNT(*) FROM document_types")
+            ).scalar()
+            return int(result or 0)
+
+    def clear(self) -> None:  # type: ignore[override]
+        """Remove all document types from the database (without re-seeding)."""
+        reset_document_types(seed=False)
+
+
+# Module-level dict-like object backed by the database.
+# Existing code can continue to do ``from .doc_types import document_types``
+# and use it as a mapping.
+document_types: MutableMapping[str, DocumentTypeModel] = _DocumentTypesView()
+
+
+# ---------------------------------------------------------------------------
+# Removed symbols kept for import compatibility
+# ---------------------------------------------------------------------------
+
+# These were present in the old file-based implementation.  They are
+# intentionally absent from the new DB-backed version.  Importing code that
+# references them will get an AttributeError rather than a silent no-op.
+
+# Removed: StaleStateError, save_state, load_state, DATA_FILE,
+#          DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE, _STATE_VERSION,
+#          _STATE_UPDATED_AT, _ACTIVE_DATA_FILE, _atomic_write

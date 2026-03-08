@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, text as _sa_text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 try:  # pragma: no cover - pydantic optional
@@ -64,7 +64,33 @@ class DocumentType(Base):
     __tablename__ = "document_types"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    template: Mapped[str] = mapped_column(String, server_default="")
+    workflow: Mapped[list] = mapped_column(JSON, server_default="[]")
+    display_order: Mapped[int] = mapped_column(Integer, server_default=_sa_text("0"))
+    default_template_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class Phase(Base):
+    __tablename__ = "phases"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    display_order: Mapped[int] = mapped_column(Integer, server_default=_sa_text("0"))
+
+    workflow_links: Mapped[list["PhaseWorkflowLink"]] = relationship(
+        back_populates="phase", cascade="all, delete-orphan"
+    )
+
+
+class PhaseWorkflowLink(Base):
+    __tablename__ = "phase_workflow_links"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phase_id: Mapped[int] = mapped_column(ForeignKey("phases.id"), unique=True)
+    workflow_template_id: Mapped[str] = mapped_column(String(200))
+
+    phase: Mapped["Phase"] = relationship(back_populates="workflow_links")
 
 
 class Template(Base):
