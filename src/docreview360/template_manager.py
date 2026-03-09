@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import json
 import os
+import threading
 from base64 import b64decode, b64encode
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -33,6 +34,8 @@ DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE = _env_flag_enabled(
 
 _ACTIVE_TEMPLATES_FILE: Path = TEMPLATE_STORE_FILE
 _TEMPLATES_LOADED: bool = False
+# Guards the _TEMPLATES_LOADED flag to prevent duplicate loads under concurrent requests.
+_TEMPLATE_LOAD_LOCK = threading.Lock()
 
 
 def save_template(name: str, content: str, root: Path = TEMPLATES_DIR) -> Path:
@@ -148,31 +151,32 @@ def _serialize_template_store() -> dict[str, list[dict[str, Any]]]:
 
 
 def _load_template_store() -> None:
-    global _TEMPLATES_LOADED
-    if _TEMPLATES_LOADED or not DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE:
-        return
-    if not _ACTIVE_TEMPLATES_FILE.exists():
-        _TEMPLATES_LOADED = True
-        return
-    lock = FileLock(f"{_ACTIVE_TEMPLATES_FILE}.lock")
-    with lock:
-        data = json.loads(_ACTIVE_TEMPLATES_FILE.read_text())
-    _template_store.clear()
-    for name, versions in data.items():
-        parsed_versions = []
-        for entry in versions:
-            parsed_versions.append(
-                TemplateVersion(
-                    version=entry["version"],
-                    content=b64decode(entry["content"]),
-                    metadata=entry.get("metadata", {}),
-                    approved=entry.get("approved", False),
-                    retired=entry.get("retired", False),
-                    change_summary=entry.get("change_summary", ""),
+    with _TEMPLATE_LOAD_LOCK:
+        global _TEMPLATES_LOADED
+        if _TEMPLATES_LOADED or not DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE:
+            return
+        if not _ACTIVE_TEMPLATES_FILE.exists():
+            _TEMPLATES_LOADED = True
+            return
+        lock = FileLock(f"{_ACTIVE_TEMPLATES_FILE}.lock")
+        with lock:
+            data = json.loads(_ACTIVE_TEMPLATES_FILE.read_text())
+        _template_store.clear()
+        for name, versions in data.items():
+            parsed_versions = []
+            for entry in versions:
+                parsed_versions.append(
+                    TemplateVersion(
+                        version=entry["version"],
+                        content=b64decode(entry["content"]),
+                        metadata=entry.get("metadata", {}),
+                        approved=entry.get("approved", False),
+                        retired=entry.get("retired", False),
+                        change_summary=entry.get("change_summary", ""),
+                    )
                 )
-            )
-        _template_store[name] = parsed_versions
-    _TEMPLATES_LOADED = True
+            _template_store[name] = parsed_versions
+        _TEMPLATES_LOADED = True
 
 
 def _save_template_store() -> None:

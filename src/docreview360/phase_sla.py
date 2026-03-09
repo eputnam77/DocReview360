@@ -7,6 +7,7 @@ phase.  The SLA data is persisted to a JSON file so it survives restarts.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from threading import RLock
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 
 _SLA_FILE = Path(os.getenv("DOCREVIEW360_PHASE_SLA_FILE", "phase_sla.json"))
 _LOCK = RLock()
+_logger = logging.getLogger(__name__)
 
 # In-memory store: phase_name -> SLAConfig
 _SLA_STORE: dict[str, "PhaseSLAConfig"] = {}
@@ -63,10 +65,10 @@ def _load() -> None:
                 for phase, cfg in raw.items():
                     try:
                         _SLA_STORE[phase] = PhaseSLAConfig(**cfg)
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+                    except Exception as exc:
+                        _logger.debug("Skipping invalid SLA entry for phase %r: %s", phase, exc)
+        except Exception as exc:
+            _logger.warning("Failed to load SLA config from %s: %s", _SLA_FILE, exc)
     _LOADED = True
 
 

@@ -10,7 +10,7 @@ import json
 import time
 from pathlib import Path
 
-import requests
+import httpx
 
 
 def main() -> None:
@@ -32,7 +32,7 @@ def main() -> None:
         "X-Signature": signature,
     }
     for i in range(args.count):
-        resp = requests.post(args.url, data=body, headers=headers, timeout=5)
+        resp = httpx.post(args.url, content=body, headers=headers, timeout=5)
         print(f"Replay {i + 1}: {resp.status_code}")
         time.sleep(0.1)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
@@ -17,6 +18,8 @@ from .ml.features import quality_features
 from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session, infer
 from .ml.routing_critic import ROUTING_FEATURE_NAMES, routing_feature_vector
 from .ml.torch_models import TinyCritic, update_critic
+
+_logger = logging.getLogger(__name__)
 
 _DEFAULT_ROUTING_MODEL = Path(__file__).resolve().parent / "ml" / "assets" / "routing_reviewer.onnx"
 _FALLBACK_REVIEWERS: tuple[str, ...] = ("alice", "bob", "charlie")
@@ -348,8 +351,8 @@ def _hash_path(path: Path) -> str:
         with open(path, "rb") as handle:
             for chunk in iter(lambda: handle.read(8192), b""):
                 digest.update(chunk)
-    except FileNotFoundError:
-        pass
+    except FileNotFoundError as exc:
+        _logger.debug("Model file not found for hashing: %s", exc)
     return digest.hexdigest()
 
 

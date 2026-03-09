@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 from datetime import datetime, timezone
 from typing import Dict, List
 
@@ -17,6 +18,8 @@ from ..rbac import require_role
 from ..secrets import get_secret
 
 router = APIRouter()
+
+_logger = logging.getLogger(__name__)
 
 
 class VerificationCompletedEvent(BaseModel):
@@ -71,8 +74,8 @@ def _load_subscribers_from_db() -> None:
         _subscribers.clear()
         for event, url in rows:
             _subscribers.setdefault(event, []).append(url)
-    except Exception:  # pragma: no cover - DB not available
-        pass
+    except Exception as exc:  # pragma: no cover - DB not available
+        _logger.warning("Failed to load webhook subscribers from DB: %s", exc)
 
 
 def _add_subscriber_to_db(event: str, url: str) -> None:
@@ -89,8 +92,8 @@ def _add_subscriber_to_db(event: str, url: str) -> None:
                 ),
                 {"url": url, "event": event},
             )
-    except Exception:  # pragma: no cover - best effort
-        pass
+    except Exception as exc:  # pragma: no cover - best effort
+        _logger.warning("Failed to persist webhook subscription (event=%r, url=%r): %s", event, url, exc)
 
 
 # ---------------------------------------------------------------------------

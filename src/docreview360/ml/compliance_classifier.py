@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +27,8 @@ except Exception:  # pragma: no cover - allow runtime without torch
     torch = None  # type: ignore[assignment]
     Tensor = Any  # type: ignore[misc, assignment]
     nn = Any  # type: ignore[assignment]
+
+_logger = logging.getLogger(__name__)
 
 __all__ = [
     "ComplianceClassification",
@@ -160,8 +163,8 @@ def _run_model(vector: np.ndarray) -> tuple[float | None, str]:
             session = _onnx.get_session(model_path())
             outputs = _onnx.infer(session, {"input": vector})
             return float(outputs[0].reshape(-1)[0]), "onnx"
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("ONNX model inference failed: %s", exc)
     if torch is not None and model_path().exists():
         try:
             model = ComplianceMLP()
@@ -170,8 +173,8 @@ def _run_model(vector: np.ndarray) -> tuple[float | None, str]:
                 inputs = torch.from_numpy(vector)
                 outputs = model(inputs)
             return float(outputs.reshape(-1)[0].item()), "onnx"
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("PyTorch model inference failed: %s", exc)
     return None, "heuristic"
 
 

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import List
 
 from .approvals import ApprovalModel, approvals
 from .db_store import get_db
+
+_logger = logging.getLogger(__name__)
 
 
 class WorkflowEngine:
@@ -63,8 +66,8 @@ class WorkflowEngine:
                     # Keep the in-memory cache in sync
                     approvals.setdefault(approval.id, approval)
                     result.append(approval)
-                except Exception:  # pragma: no cover - skip corrupt rows
-                    pass
+                except Exception as exc:  # pragma: no cover - skip corrupt rows
+                    _logger.debug("Skipping corrupt approval row: %s", exc)
             return result
         except Exception:  # pragma: no cover - DB not available
             return []

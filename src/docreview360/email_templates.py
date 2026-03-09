@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
@@ -37,6 +38,8 @@ DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE = _env_flag_enabled(
 
 _ACTIVE_EMAIL_TEMPLATES_FILE: Path = EMAIL_TEMPLATES_FILE
 _EMAIL_TEMPLATES_LOADED: bool = False
+# Guards the _EMAIL_TEMPLATES_LOADED flag to prevent duplicate loads under concurrent requests.
+_EMAIL_TEMPLATE_LOAD_LOCK = threading.Lock()
 
 TEMPLATES: Dict[str, EmailTemplate] = {}
 
@@ -54,25 +57,26 @@ def _serialize_templates() -> list[dict[str, Any]]:
 
 
 def _load_templates() -> None:
-    global _EMAIL_TEMPLATES_LOADED
-    if _EMAIL_TEMPLATES_LOADED or not DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE:
-        return
-    if not _ACTIVE_EMAIL_TEMPLATES_FILE.exists():
+    with _EMAIL_TEMPLATE_LOAD_LOCK:
+        global _EMAIL_TEMPLATES_LOADED
+        if _EMAIL_TEMPLATES_LOADED or not DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE:
+            return
+        if not _ACTIVE_EMAIL_TEMPLATES_FILE.exists():
+            _EMAIL_TEMPLATES_LOADED = True
+            return
+        lock = FileLock(f"{_ACTIVE_EMAIL_TEMPLATES_FILE}.lock")
+        with lock:
+            data = json.loads(_ACTIVE_EMAIL_TEMPLATES_FILE.read_text())
+        TEMPLATES.clear()
+        for entry in data:
+            template = EmailTemplate(
+                name=entry["name"],
+                subject=entry["subject"],
+                body=entry["body"],
+                task=entry.get("task"),
+            )
+            TEMPLATES[template.name] = template
         _EMAIL_TEMPLATES_LOADED = True
-        return
-    lock = FileLock(f"{_ACTIVE_EMAIL_TEMPLATES_FILE}.lock")
-    with lock:
-        data = json.loads(_ACTIVE_EMAIL_TEMPLATES_FILE.read_text())
-    TEMPLATES.clear()
-    for entry in data:
-        template = EmailTemplate(
-            name=entry["name"],
-            subject=entry["subject"],
-            body=entry["body"],
-            task=entry.get("task"),
-        )
-        TEMPLATES[template.name] = template
-    _EMAIL_TEMPLATES_LOADED = True
 
 
 def _save_templates() -> None:

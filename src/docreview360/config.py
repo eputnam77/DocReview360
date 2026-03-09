@@ -1,7 +1,23 @@
-"""Load and save application configuration."""
+"""Load and save application configuration.
+
+Configuration precedence (highest to lowest)
+-------------------------------------------
+1. **Environment variables** — ``DOCREVIEW360_<FIELD>`` variables listed in
+   ``_ENV_OVERRIDES`` always win, regardless of what the YAML file says.
+2. **YAML file** — ``docreview360.yaml`` (path overridable via
+   ``DOCREVIEW360_CONFIG_FILE``).  Explicit values in the file take precedence
+   over built-in defaults.
+3. **Built-in defaults** — defined as default values on the ``Config`` dataclass
+   fields.
+
+No module should read environment variables directly; everything must go through
+:func:`Config.load` (or :func:`load_with_defaults`) so that the precedence order
+is enforced consistently.
+"""
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,7 +25,24 @@ from typing import Any
 
 import yaml
 
+_logger = logging.getLogger(__name__)
+
 CONFIG_FILE = Path(os.getenv("DOCREVIEW360_CONFIG_FILE", "docreview360.yaml"))
+
+# Mapping: Config field name → environment variable name.
+# Env vars in this table always override the corresponding YAML value.
+_ENV_OVERRIDES: dict[str, str] = {
+    "database": "DOCREVIEW360_DATABASE",
+    "editor": "DOCREVIEW360_EDITOR",
+    "cms": "DOCREVIEW360_CMS",
+    "auth": "DOCREVIEW360_AUTH",
+    "database_url": "DOCREVIEW360_DATABASE_URL",
+    "host": "DOCREVIEW360_HOST",
+    "debug": "DOCREVIEW360_DEBUG",
+    "inactivity_timeout_minutes": "DOCREVIEW360_INACTIVITY_TIMEOUT",
+    "branding_company_name": "DOCREVIEW360_BRANDING_COMPANY_NAME",
+    "branding_logo_url": "DOCREVIEW360_BRANDING_LOGO_URL",
+}
 SAFE_DEBUG_ENVS = {"", "dev", "development", "test", "testing"}
 
 
@@ -136,9 +169,70 @@ class Config:
             link_value = str(data.get(link_key) or "").strip()
             data[link_key] = link_value or link_default
         cfg = cls(**data)
+        # Apply env var overrides (highest precedence tier).
+        cfg._apply_env_overrides()
         if cfg.debug and _is_production_environment():
             raise ValueError("debug must be disabled when DOCREVIEW360_ENV is production-like")
         return cfg
+
+    def _apply_env_overrides(self) -> None:
+        """Override YAML-loaded values with environment variable values (in-place).
+
+        This implements the top tier of the configuration precedence hierarchy:
+        env var > YAML > built-in default.  Called automatically by :meth:`load`.
+        """
+        for field_name, env_var in _ENV_OVERRIDES.items():
+            raw = os.environ.get(env_var)
+            if raw is None:
+                continue
+            current = getattr(self, field_name, None)
+            _logger.debug("Config override via %s: %s=%r (was %r)", env_var, field_name, raw, current)
+            # Coerce string env var to the field's Python type.
+            if isinstance(current, bool):
+                setattr(self, field_name, raw.strip().lower() not in {"0", "false", "no", ""})
+            elif isinstance(current, int) or field_name == "inactivity_timeout_minutes":
+                try:
+                    setattr(self, field_name, int(raw))
+                except ValueError:
+                    raise ValueError(
+                        f"Environment variable {env_var} must be an integer, got {raw!r}"
+                    )
+            else:
+                setattr(self, field_name, raw)
+
+    def validate_startup(self) -> None:
+        """Validate required configuration and fail fast with a clear error message.
+
+        Call this once during application startup (e.g. in the lifespan handler)
+        so configuration mistakes surface immediately rather than causing
+        cryptic runtime failures.
+
+        Raises:
+            ValueError: with a list of all validation failures, so operators can
+                fix all problems in a single pass.
+        """
+        errors: list[str] = []
+
+        # Required non-empty string fields.
+        for field_name in ("database", "editor", "auth"):
+            value = getattr(self, field_name, "")
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"  '{field_name}' is required but not set")
+
+        # Port must be a valid TCP port.
+        if not (1 <= self.port <= 65535):
+            errors.append(f"  'port' must be between 1 and 65535, got {self.port!r}")
+
+        # Inactivity timeout must be positive.
+        if self.inactivity_timeout_minutes <= 0:
+            errors.append(
+                f"  'inactivity_timeout_minutes' must be > 0, got {self.inactivity_timeout_minutes!r}"
+            )
+
+        if errors:
+            raise ValueError(
+                "DocReview360 startup configuration validation failed:\n" + "\n".join(errors)
+            )
 
     def save(self, path: Path = CONFIG_FILE) -> None:
         """Persist this configuration to ``path`` creating directories as needed."""
@@ -153,4 +247,27 @@ class Config:
             path.write_text(yaml.safe_dump(data))
         except OSError as exc:
             raise OSError(f"Failed to write config to {path}") from exc
+
+
+def load_with_defaults(path: Path = CONFIG_FILE) -> Config:
+    """Return a :class:`Config` applying the full precedence hierarchy.
+
+    Precedence (highest → lowest):
+
+    1. Environment variables (``DOCREVIEW360_<FIELD>``).
+    2. YAML file at ``path`` (defaults to ``docreview360.yaml``).
+    3. Built-in defaults defined on :class:`Config` fields.
+
+    When no YAML file is present the function constructs a ``Config`` from
+    built-in defaults and env var overrides only, using sensible values for
+    required fields (``database="sqlite"``, ``editor="tiptap"``, ``auth="jwt"``).
+    Use :meth:`Config.validate_startup` if you need to enforce that all required
+    settings are explicitly provided.
+    """
+    cfg = Config.load(path)
+    if cfg is None:
+        # No YAML file — build from built-in defaults then apply env overrides.
+        cfg = Config(database="sqlite", editor="tiptap", cms="none", auth="jwt")
+        cfg._apply_env_overrides()
+    return cfg
 

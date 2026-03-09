@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
@@ -13,6 +14,8 @@ class ProviderInfo:
 
 
 _providers: Dict[str, ProviderInfo] = {}
+
+_logger = logging.getLogger(__name__)
 
 
 def register_provider(
@@ -58,5 +61,5 @@ try:  # pragma: no cover - best effort loading
     from .. import settings_manager as _settings
 
     _settings.load_providers()
-except Exception:  # pragma: no cover - no action on failure
-    pass
+except Exception as exc:  # pragma: no cover - no action on failure
+    _logger.warning("Failed to load integration providers: %s", exc)

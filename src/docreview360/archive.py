@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
@@ -19,6 +20,8 @@ from .object_storage import upload_file
 from .reporting import compile_check_report
 from .security_compliance import should_purge
 from .settings_manager import load_settings
+
+_logger = logging.getLogger(__name__)
 
 
 class ArchiveRecord(BaseModel):
@@ -222,16 +225,16 @@ def purge_archives(
             for path in base_dir.glob(f"{archive_id}*"):
                 try:
                     path.unlink()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _logger.warning("Failed to delete archive file %s: %s", path, exc)
             # Clean up empty document directories to avoid leaving behind
             # orphaned folders after purging. This previously caused empty
             # directories to accumulate on disk.
             try:
                 if base_dir.exists() and not any(base_dir.iterdir()):
                     base_dir.rmdir()
-            except Exception:
-                pass
+            except Exception as exc:
+                _logger.debug("Could not remove empty dir %s: %s", base_dir, exc)
             archives.pop(archive_id, None)
             removed += 1
     return removed

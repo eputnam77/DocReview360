@@ -12,6 +12,7 @@ existing call-sites (tests, chat_bot, etc.) continue to work without changes.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Iterator, MutableMapping
 from typing import Any, Dict, List
 
@@ -20,6 +21,8 @@ from sqlalchemy import delete, select, update
 
 from .db_store import get_db
 from .models import DocumentType as DocumentTypeORM
+
+_logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -423,8 +426,8 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
             for proj in projects.values():
                 if proj.doc_type == name:
                     proj.doc_type = doc_type.name
-        except Exception:  # pragma: no cover - best-effort
-            pass
+        except Exception as exc:  # pragma: no cover - best-effort
+            _logger.warning("Failed to update in-memory project doc_type on rename: %s", exc)
 
     db = get_db()
     with db.session() as conn:

@@ -15,13 +15,20 @@ from docreview360.api import app
 
 
 def _alice_headers() -> dict[str, str]:
-    """Return Authorization headers for alice (admin)."""
+    """Return Authorization headers for alice (admin + manager)."""
+    from docreview360 import rbac as _rbac
+
     try:
         auth.USER_REPOSITORY.create_user(
             "alice",
             auth.DEMO_USER_DEFAULTS["alice"]["password"],
             otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
         )
+    except Exception:
+        pass
+    # Ensure alice has admin + manager roles so role-restricted smoke tests pass.
+    try:
+        _rbac.set_user_roles("alice", ["admin", "manager", "user"], actor="test", context={})
     except Exception:
         pass
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))

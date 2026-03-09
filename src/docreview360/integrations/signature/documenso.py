@@ -17,6 +17,8 @@ from typing import Any, Dict, Tuple
 from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
 
+import logging
+
 import httpx
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
@@ -28,6 +30,8 @@ from ...http_client import get as http_get
 from ...http_client import post as http_post
 from ...logs import log_event
 from ...monitoring import SIGNATURE_FAILURES
+
+_logger = logging.getLogger(__name__)
 from ...provider_store import set_provider_health
 from ...secrets import get_secret
 from .base import register_provider
@@ -91,10 +95,10 @@ def _now() -> datetime:
 def _set_remote_health_flag(healthy: bool) -> None:
     try:
         set_provider_health("documenso", healthy)
-    except Exception:
+    except Exception as exc:
         # Persisting provider health is best-effort; failures should not mask
         # the original error condition.
-        pass
+        _logger.debug("Failed to persist provider health flag (healthy=%s): %s", healthy, exc)
 
 
 def _reason_label(context: str, exc: httpx.HTTPError) -> str:
@@ -493,8 +497,8 @@ def process_webhook(data: Dict[str, str]) -> None:
                 from ...workflows import advance_workflow
 
                 advance_workflow(wf_id)
-            except KeyError:
-                pass
+            except KeyError as exc:
+                _logger.warning("advance_workflow failed for wf_id %r: %s", wf_id, exc)
         try:
             import asyncio
 
@@ -511,8 +515,8 @@ def process_webhook(data: Dict[str, str]) -> None:
                 asyncio.run(coro)
             else:
                 loop.create_task(coro)
-        except (KeyError, ValueError):
-            pass
+        except (KeyError, ValueError) as exc:
+            _logger.warning("handle_signature_return failed for sig_id %r: %s", sig_id, exc)
     log_event("signature_webhook", entity_id=sig_id, status=status)
 
 

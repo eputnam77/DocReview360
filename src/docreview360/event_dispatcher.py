@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import TYPE_CHECKING, Dict, List
 
@@ -9,6 +10,8 @@ from .http_client import post as http_post
 
 if TYPE_CHECKING:
     from .workflows import WorkflowModel
+
+_logger = logging.getLogger(__name__)
 
 # in-memory store of failed events for inspection or replay
 # Each item is a dict with ``url``, ``event`` and ``payload`` keys
@@ -52,8 +55,8 @@ class EventDispatcher:
                 )
                 if response.status_code < 400:
                     return
-            except Exception:  # pragma: no cover - network errors
-                pass
+            except Exception as exc:  # pragma: no cover - network errors
+                _logger.debug("Webhook attempt %d failed: %s", attempt + 1, exc)
             # ``time.sleep`` was previously called unconditionally which meant
             # we slept once more even after the final failed attempt.  This
             # unnecessarily slowed down callers without offering any benefit.

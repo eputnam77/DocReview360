@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import suppress
 from threading import Lock
 from typing import Iterable
@@ -11,6 +12,7 @@ from .config import CONFIG_FILE, Config
 from .search import project_lock, projects, update_project
 
 _balancer_lock = Lock()
+_logger = logging.getLogger(__name__)
 
 
 def assign_technical_writer(  # noqa: C901
@@ -161,13 +163,13 @@ def reassign_projects_from_writer(
         # Decrement load for departing writer if tracked.
         try:
             ai_balancer.complete_job(writer)
-        except KeyError:
-            pass
+        except KeyError as exc:
+            _logger.warning("complete_job failed for writer %r: %s", writer, exc)
         assign_technical_writer(pid, cand_list, cfg)
 
     try:
         ai_balancer.deregister_worker(writer)
-    except KeyError:
-        pass
+    except KeyError as exc:
+        _logger.warning("deregister_worker failed for writer %r: %s", writer, exc)
 
     return to_reassign

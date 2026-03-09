@@ -5,6 +5,7 @@ from __future__ import annotations
 import atexit
 import os
 import re
+import threading
 from collections import Counter, defaultdict
 from math import isfinite, log, sqrt
 from typing import Dict, Iterable, List, Tuple
@@ -26,6 +27,11 @@ _dirty_tfidf = False
 _tfidf_terms: List[str] = []
 _tfidf_idf: List[float] = []
 _TOKEN_PATTERN = re.compile(r"\b\w+\b")
+
+# Guards all local-index mutations (_vectors, _doc_freq, _total_docs, TF-IDF state).
+# Must be acquired before reading or writing any of those shared variables in a
+# multithreaded Uvicorn/Gunicorn worker.
+_vs_lock = threading.Lock()
 
 
 def _embed(text: str) -> Counter[str]:
@@ -56,28 +62,29 @@ def index_document(doc_id: str, content: str) -> None:
         or not content
     ):
         raise ValueError("doc_id and content are required strings")
-    global _total_docs, _dirty_tfidf
     tf = _embed(content)
 
-    # If the document already exists, remove its previous contribution to
-    # document frequencies so re-indexing keeps statistics accurate.
-    if doc_id in _vectors:
-        old_tf, _, _, _ = _vectors[doc_id]
-        for term in old_tf:
-            _doc_freq[term] -= 1
-            if _doc_freq[term] <= 0:
-                del _doc_freq[term]
-    else:
-        _total_docs += 1
+    with _vs_lock:
+        global _total_docs, _dirty_tfidf
+        # If the document already exists, remove its previous contribution to
+        # document frequencies so re-indexing keeps statistics accurate.
+        if doc_id in _vectors:
+            old_tf, _, _, _ = _vectors[doc_id]
+            for term in old_tf:
+                _doc_freq[term] -= 1
+                if _doc_freq[term] <= 0:
+                    del _doc_freq[term]
+        else:
+            _total_docs += 1
 
-    for term in tf:
-        _doc_freq[term] += 1
-    # ``len(content.split())`` counted tokens separated solely by whitespace and
-    # misreported lengths for inputs like ``"foo-bar"`` which our tokenizer splits
-    # into two words.  Store the length based on the tokenised representation so
-    # the metadata remains consistent with the embedding.
-    _vectors[doc_id] = (tf, sum(tf.values()), [], 0.0)
-    _dirty_tfidf = True
+        for term in tf:
+            _doc_freq[term] += 1
+        # ``len(content.split())`` counted tokens separated solely by whitespace and
+        # misreported lengths for inputs like ``"foo-bar"`` which our tokenizer splits
+        # into two words.  Store the length based on the tokenised representation so
+        # the metadata remains consistent with the embedding.
+        _vectors[doc_id] = (tf, sum(tf.values()), [], 0.0)
+        _dirty_tfidf = True
 
     if OPENSEARCH_URL:
         try:
@@ -211,25 +218,27 @@ def search(query: str, top_k: int = 5) -> List[Tuple[str, float]]:
         except httpx.HTTPError as exc:
             raise RuntimeError("pgvector search failed") from exc
 
-    if _dirty_tfidf:
-        _refresh_tfidf_cache()
+    with _vs_lock:
+        if _dirty_tfidf:
+            _refresh_tfidf_cache()
 
-    q_vec = _build_tfidf_vector(_embed(query), _tfidf_terms, _tfidf_idf)
-    q_norm = sqrt(sum(val * val for val in q_vec))
-    scored = []
-    for doc_id, (_, _, doc_vec, doc_norm) in _vectors.items():
-        scored.append((doc_id, _cosine_with_norms(q_vec, q_norm, doc_vec, doc_norm)))
+        q_vec = _build_tfidf_vector(_embed(query), _tfidf_terms, _tfidf_idf)
+        q_norm = sqrt(sum(val * val for val in q_vec))
+        scored = []
+        for doc_id, (_, _, doc_vec, doc_norm) in _vectors.items():
+            scored.append((doc_id, _cosine_with_norms(q_vec, q_norm, doc_vec, doc_norm)))
     scored.sort(key=lambda t: t[1], reverse=True)
     return scored[:top_k]
 
 
 def clear() -> None:
     """Remove all indexed vectors and statistics."""
-    _vectors.clear()
-    _doc_freq.clear()
-    global _total_docs
-    _total_docs = 0
-    global _dirty_tfidf, _tfidf_terms, _tfidf_idf
-    _dirty_tfidf = False
-    _tfidf_terms = []
-    _tfidf_idf = []
+    with _vs_lock:
+        _vectors.clear()
+        _doc_freq.clear()
+        global _total_docs
+        _total_docs = 0
+        global _dirty_tfidf, _tfidf_terms, _tfidf_idf
+        _dirty_tfidf = False
+        _tfidf_terms = []
+        _tfidf_idf = []

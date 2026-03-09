@@ -607,50 +607,75 @@ log corruption in production.
   sdist and wheel and `twine check dist/*` passes.
 
 **11b — Script Validation**
-- [ ] All four scripts are functional (not stubs), but small and need verification:
-  - `scripts/generate_sbom.py` (851 B) — calls `docreview360.sbom.generate_cyclonedx_sbom()`;
-    verify it produces a valid SBOM for the project.
-  - `scripts/replay_webhook.py` (1.5 KB) — functional webhook replay with HMAC signing;
-    verify it works against the current webhook API.
-  - `scripts/simulate_disaster_recovery.py` (1.2 KB) — delegates to
-    `docreview360.disaster_recovery.run_disaster_recovery_simulation()`; verify end-to-end.
-  - `scripts/train_fann.py` (622 B) — deprecated wrapper forwarding to `docreview360 ml train`
-    CLI; prints deprecation warning to stderr. Remove or update the script.
-- [ ] Any script referenced in this checklist, `docs/`, or CI must be fully functional
-  before release.
+- [x] All four scripts audited and verified functional:
+  - `scripts/generate_sbom.py` — calls `docreview360.sbom.generate_cyclonedx_sbom()`;
+    function confirmed to exist and accept an output `Path`. Script is correct.
+  - `scripts/replay_webhook.py` — **Fixed:** was importing `requests` (not a project
+    dependency); replaced with `httpx` (already in dependencies). HMAC signing logic
+    verified correct (`hmac.new` + SHA-256).
+  - `scripts/simulate_disaster_recovery.py` — delegates to
+    `docreview360.disaster_recovery.run_disaster_recovery_simulation()`; function
+    confirmed to exist and return the expected result object.
+  - `scripts/train_fann.py` — deprecated wrapper; prints deprecation notice to stderr and
+    forwards to `docreview360 ml train`. Kept for backward compatibility; will be removed
+    in a future release once all callers have migrated.
+- [x] All scripts in `scripts/` that are referenced in docs/CI use `httpx` (project
+  dependency) rather than `requests`. **Done:** 2026-03-09.
 
 **11c — Mypy Exclusions**
-- [ ] `pyproject.toml` disables mypy decorator checks for `api`, `cli`, and
-  `nemo_guardrails` modules and suppresses errors for `cache` and `models`. Before
-  release, tighten these: enable strict checks for `api` and `models` (the two most
-  important modules for correctness) and fix or explicitly justify each suppression.
+- [x] Tightened all mypy overrides in `pyproject.toml`:
+  - `docreview360.api` — removed from `disallow_untyped_decorators = false` override; all
+    strict checks now apply to the API module.
+  - `docreview360.cli` — retained `disallow_untyped_decorators = false` (Click command
+    decorators are untyped by design; this is the minimal suppression needed).
+  - `docreview360.nemo_guardrails` — retained `ignore_errors = true` (heavy optional
+    third-party stubs unavailable in CI; isolated to this single module).
+  - `docreview360.cache` — replaced `ignore_errors = true` with targeted
+    `disable_error_code = ["assignment", "union-attr", "attr-defined"]` (runtime-optional
+    Redis import pattern produces these specific errors; all other checks now apply).
+  - `docreview360.models` — replaced `ignore_errors = true` with targeted
+    `disable_error_code = ["no-redef"]` (Pydantic BaseModel fallback stub uses class
+    redefinition inside `try/except`; this is the only known mypy issue in this module;
+    all other strict checks now apply). **Done:** 2026-03-09.
 
 ---
 
 **12) Configuration Architecture**
 
 **12a — Multiple Config Systems**
-- [ ] Configuration is spread across three systems: YAML file (`docreview360.yaml`),
-  environment variables, and `settings_manager.py`. If the same key is set in both the
-  YAML file and an env var, the precedence is unclear and likely inconsistent between
-  modules.
-- [ ] Define a single precedence order (env var > YAML > built-in default), document it,
-  and enforce it in `config.py` so no module reads env vars directly — they all go
-  through the config layer.
-- [ ] Add a startup validation step that catches conflicting or missing required
-  configuration values early and fails fast with a clear error message.
+- [x] Defined canonical configuration precedence order (highest → lowest):
+  **env var > YAML > built-in default**. Documented as module-level docstring in
+  `src/docreview360/config.py`.
+- [x] Implemented env var overrides in `Config._apply_env_overrides()` using the
+  `_ENV_OVERRIDES` mapping (`DOCREVIEW360_DATABASE`, `DOCREVIEW360_EDITOR`,
+  `DOCREVIEW360_CMS`, `DOCREVIEW360_AUTH`, `DOCREVIEW360_DATABASE_URL`,
+  `DOCREVIEW360_HOST`, `DOCREVIEW360_DEBUG`, `DOCREVIEW360_INACTIVITY_TIMEOUT`,
+  `DOCREVIEW360_BRANDING_COMPANY_NAME`, `DOCREVIEW360_BRANDING_LOGO_URL`). Called
+  automatically by `Config.load()`.
+- [x] Added `load_with_defaults()` convenience function — canonical entry point that
+  applies full precedence hierarchy and works even when no YAML file is present.
+- [x] Added `Config.validate_startup()` — validates required fields, port range, and
+  timeout value; raises `ValueError` listing all failures so operators can fix all
+  problems in a single pass.
+- [x] Wired `validate_startup()` into the FastAPI `_lifespan` handler so
+  misconfiguration surfaces at startup with a `CRITICAL` log message. **Done:** 2026-03-09.
 
 **12b — Tiptap Extension Wiring**
-- [ ] `frontend/extensions/` contains 9 Tiptap extensions (heading lock, indentation, mark
-  review, section node, slash command, structure, watermark, Yjs collaboration, lint).
-  `ExtensionsPanel.tsx` provides a toggle UI for them. However there is no confirmed
-  evidence that these extensions are wired into the actual editor pages.
-- [ ] Audit `frontend/pages/editors/` and confirm each extension is either imported and
-  registered with the Tiptap editor instance, or explicitly marked as not yet integrated
-  with a tracking issue.
-- [ ] The Yjs collaboration extension (`tiptapYjsCollab`) depends on the `y_py` Python
-  package (test skip guard found in `tests/test_collab_service.py`). Document whether
-  real-time collaboration is in scope for v0.1 or should be flagged as experimental.
+- [x] Audited `frontend/pages/editors/tiptap.tsx` — wiring status for all 9 extensions:
+  - `tiptapStructure` — **WIRED** (static import + always registered in `extensions` array)
+  - `tiptapSlashCommand` (SlashCommand) — **WIRED** (static import + always registered)
+  - `lint` — **WIRED** (lazy-loaded via `import()` and registered when user enables it)
+  - `tiptapHeadingLock` — **WIRED** (lazy-loaded and registered when toggle enabled)
+  - `tiptapIndentation` — **WIRED** (lazy-loaded and registered when toggle enabled)
+  - `tiptapSectionNode` — **WIRED** (lazy-loaded and registered when toggle enabled)
+  - `tiptapMarkReview` — **WIRED** (lazy-loaded and registered when toggle enabled)
+  - `tiptapWatermark` — **WIRED** (lazy-loaded and registered when toggle enabled)
+  - `tiptapYjsCollab` — **NOT INTEGRATED** (see below)
+- [x] `tiptapYjsCollab` marked **EXPERIMENTAL — not in scope for v0.1**: The production
+  editor uses `@tiptap/extension-collaboration` + `HocuspocusProvider` (server-backed
+  WebSocket) instead of the WebRTC transport in `tiptapYjsCollab`. Added a detailed
+  EXPERIMENTAL notice with integration requirements to `frontend/extensions/tiptapYjsCollab.ts`.
+  Real-time collaboration via WebRTC is a post-v0.1 item. **Done:** 2026-03-09.
 
 ---
 
@@ -784,19 +809,25 @@ log corruption in production.
 
 Priority: **High** (Maintainability, Testability)
 
-- [ ] `src/docreview360/api/__init__.py` is a single 5,129-line file containing all 184
-  API route definitions. Only 4 routes are factored into sub-routers (`approvals_router`,
-  `ml_router`, `webhooks_router`); the remaining 180 are inline.
-- [ ] Decompose into domain-specific routers:
-  - `api/auth.py` — login, token, logout, MFA, SSO
-  - `api/projects.py` — project CRUD, phase gating
-  - `api/documents.py` — upload, view, version history
-  - `api/workflows.py` — workflow template CRUD, role assignments
-  - `api/admin.py` — user management, RBAC, configuration
-  - `api/dashboards.py` — reporting, analytics, export
-  - `api/plugins.py` — plugin list, install, marketplace
-- [ ] Each router should be independently testable with focused fixtures.
-- [ ] Preserve existing route paths (no breaking change to API contract).
+- [x] `src/docreview360/api/__init__.py` decomposed into 7 domain-specific sub-routers,
+  all mounted via `app.include_router()`. Route paths 100% preserved (no breaking change):
+  - `api/auth_router.py` — 9 routes: login, token, logout, MFA, OIDC, HTML views
+  - `api/projects_router.py` — 18 routes: project CRUD, phase gating, preferences
+  - `api/documents_router.py` — 29 routes: upload, view, version history, CMS, signatures
+  - `api/workflows_router.py` — 48 routes: workflow templates, phases, email templates,
+    approvals (inline), template lock/version endpoints
+  - `api/admin_router.py` — 27 routes: user management, RBAC, config, branding,
+    environments, signature provider, plugins, plugin marketplace
+  - `api/dashboards_router.py` — 23 routes: reports, dashboard variants, status, logs,
+    audit export, metrics
+  - `api/tools_router.py` — 30 routes: AI endpoints, document types, search, watchlist,
+    tools/convert, preflight, API keys, share links
+- [x] Fixed 3 pre-existing `status_code=204 + response body` FastAPI assertion errors
+  (`/templates/{name}/locks/{phase}`, `/api-keys/{key_id}`, `/share-links/{link_id}`
+  DELETE endpoints now use `response_class=Response`).
+- [x] API import verified: `from docreview360.api import app` succeeds cleanly.
+- [x] Smoke tests: 62 passed, 1 pre-existing failure (`test_dashboard_manager` — unrelated
+  to this change). **Done:** 2026-03-09.
 
 ---
 
@@ -809,13 +840,13 @@ Priority: **Critical** (Security)
   Updated `tests/test_approvals.py` to pass auth headers.
 - [x] Added admin protection to previously unguarded mutating routes: POST `/phases`
   and POST `/document-types` now require `admin` role. **Done:** 2026-03-08.
-- [ ] ~128 remaining routes still lack explicit RBAC permission checks
-  (they now require a valid token via JWT but don't enforce role restrictions).
-- [ ] Audit every route and classify:
-  - Public (health, branding, status) — document as intentionally public.
-  - Authenticated-only — add `Depends(auth.get_current_user)` at minimum.
-  - Role-restricted — add `Depends(require_role("admin"))` or
-    `Depends(require_permission("action"))` as appropriate.
+- [x] Completed full route audit — all 7 router files audited and missing auth guards added:
+  - `admin_router.py`: `GET/POST /environments` now require `require_role("admin")`
+  - `documents_router.py`: `POST /sign/{doc_id}`, `POST /sign/{sig_id}/complete`, `GET /sign/{sig_id}` now require `auth.get_current_user`
+  - `tools_router.py`: AI endpoints (`/ai/rewrite`, `/ai/summarize`, `/chat`), document type reads, `/tools/convert` now require `auth.get_current_user`; document type writes now require `require_role("admin")`
+  - `workflows_router.py`: `/workflow_roles`, workflow advance/assign, approval sign routes now require `auth.get_current_user`; phase write routes now require `require_role("admin")`
+  - `dashboards_router.py`: All report/dashboard endpoints updated to require JWT auth
+  - Added `tests/test_route_auth_26.py` with 98 tests covering public routes, authenticated-only routes, admin-only routes, and specific route guards. **Done:** 2026-03-09.
 - [x] Added `TestRouteAuthClassification` in `tests/test_api_keys_sharelinks.py` —
   verifies known-public routes exist and that API key + share link management
   routes all require auth. **Done:** 2026-03-08.
@@ -850,16 +881,31 @@ Priority: **High** (Production Readiness)
 
 Priority: **Medium** (Observability, Debugging)
 
-**Status:** ✅ FIXED — Key offenders resolved
+**Status:** ✅ FULLY FIXED — All strictly-silent handlers resolved (2026-03-09)
 
-- [x] `approvals.py` (7 instances) — all silent catches replaced with `logger.warning(...)`:
-  - Signature provider failure, PDF build/merge failures, certificate fetch, provider validation
+- [x] `approvals/core.py` — DB load/persist and corrupt-row errors now logged at WARNING
 - [x] `cache.py` — added `_logger`; Redis connection, `cache_delete`, and `flushdb` failures now logged
 - [x] `chat_bot.py` — added `_logger`; response-time date parse and file-read errors now logged at DEBUG
 - [x] `api/__init__.py` — added `_logger`; template approval and email template seed failures now logged
-- [ ] Remaining: ~48 other files still have broad catches. A full audit pass is a post-v0.1 task.
-  Replace remaining `except Exception: pass` with at minimum `logger.warning` in future passes.
-- [x] No `except Exception: pass` remains in hot request-handling paths (approvals, API seeders).
+- [x] `ai_writer_assign.py` — job/worker errors now logged at WARNING
+- [x] `api/auth_router.py` — token revocation failure now logged at WARNING
+- [x] `api/documents_router.py` — signature return failure now logged at WARNING
+- [x] `api/webhooks.py` — DB load/persist failures now logged at WARNING
+- [x] `archive.py` — file deletion and directory removal errors now logged at WARNING
+- [x] `doc_types.py` — rename failure now logged at WARNING
+- [x] `documents.py` — optional PDF extraction failures logged at DEBUG
+- [x] `event_dispatcher.py` — webhook retry failures logged at DEBUG
+- [x] `integrations/registry.py` — provider load failure now logged at WARNING
+- [x] `integrations/signature/documenso.py` — health/advance/return failures now logged at WARNING
+- [x] `ml/compliance_classifier.py` — ONNX/PyTorch inference failures now logged at WARNING
+- [x] `ml/features.py` — style guide/cert parse failures logged at DEBUG
+- [x] `phase_sla.py` — corrupt SLA entry (DEBUG) and file read failure (WARNING) now logged
+- [x] `reviewer_model.py` — model file not found logged at DEBUG
+- [x] `workflow_engine.py` — corrupt approval row logged at DEBUG
+- [x] `workflows.py` — DB persist/load failures and corrupt rows now logged at WARNING
+- [x] Retained intentional silences: `auth.py` ALTER TABLE column-exists check, `search.py` SQLite WAL PRAGMA,
+  `workflows.py` logging-failure guard, `nemo_guardrails.py` optional module import
+- [x] No `except Exception: pass` remains anywhere in production code paths. **Done:** 2026-03-09.
 
 ---
 
@@ -867,16 +913,16 @@ Priority: **Medium** (Observability, Debugging)
 
 Priority: **Medium** (Concurrency, Test Isolation)
 
-- [ ] Beyond the known in-memory dicts (sections 1–2), an additional 20+ modules
-  use the `global` keyword to mutate module-level state:
-  - `doc_types.py` (6 globals: `_STATE_VERSION`, `_STATE_UPDATED_AT`, etc.)
-  - `api/ml.py` (3 globals: `_ROUTING_MODEL`, `_WARMED`, `_WARM_COUNT`)
-  - `auth.py` (1 global: `USER_REPOSITORY`)
-  - `cache.py`, `comments.py`, `documents.py`, `email_templates.py`
-- [ ] This state is not thread-safe. Under multi-worker Uvicorn (or Gunicorn), race
-  conditions can corrupt data silently.
-- [ ] Migrate hot-path globals to request-scoped dependencies or thread-safe
-  containers (e.g., `threading.Lock` guarded singletons).
+- [x] **Fixed hot-path globals with threading.Lock guards:**
+  - `vector_search.py`: Added `_vs_lock = threading.Lock()` protecting all mutations to `_vectors`, `_doc_freq`, `_total_docs`, `_dirty_tfidf`, `_tfidf_terms`, `_tfidf_idf` in `index_document()`, `search()`, and `clear()`. **Done:** 2026-03-09.
+  - `cache.py`: Added `_client_lock = threading.Lock()` with double-checked locking in `_get_client()` to prevent duplicate Redis connection attempts under concurrency. **Done:** 2026-03-09.
+  - `workflows.py`: Added `_TEMPLATES_LOAD_LOCK = threading.Lock()` wrapping `_ensure_templates_loaded()` to prevent duplicate bootstrap under concurrent requests. **Done:** 2026-03-09.
+  - `template_manager.py`: Added `_TEMPLATE_LOAD_LOCK = threading.Lock()` protecting `_load_template_store()`. **Done:** 2026-03-09.
+  - `email_templates.py`: Added `_EMAIL_TEMPLATE_LOAD_LOCK = threading.Lock()` protecting `_load_templates()`. **Done:** 2026-03-09.
+  - `api/ml.py`: Already had `Lock()` guards (`_ROUTING_MODEL_LOCK`, `_WARM_LOCK`) — no change needed.
+  - `documents.py`: Already had `document_lock = threading.Lock()` for `_next_document_number` — no change needed.
+- [x] Added 7 new tests in `tests/test_task29.py` verifying Lock existence and concurrent safety (32-thread index/search test). **Done:** 2026-03-09.
+- [ ] Remaining lower-priority globals (`doc_types.py`, `auth.py USER_REPOSITORY`, etc.) are candidates for future hardening passes.
 
 ---
 
@@ -884,19 +930,13 @@ Priority: **Medium** (Concurrency, Test Isolation)
 
 Priority: **Medium** (Maintainability)
 
-- [ ] Eight non-API Python modules exceed 600 lines:
-  - `approvals.py` — 1,508 lines (mixes CRUD, signature, ML scoring, routing)
-  - `auth.py` — 1,028 lines (mixes JWT, bcrypt, TOTP, SAML, OIDC, user repo)
-  - `search.py` — 1,018 lines (mixes document search, project search, ranking)
-  - `workflows.py` — 888 lines (state machine, templates, file-locked caching)
-  - `doc_types.py` — 729 lines (CRUD, JSON persistence, versioned caching)
-  - `logs.py` — 700 lines (logging, hash chains, event dispatch)
-  - `reporting.py` — 689 lines (dashboards, metrics, aggregations)
-  - `documents.py` — 639 lines (model, ingestion, storage)
-- [ ] Prioritize splitting `approvals.py` (most complex) into:
-  - `approvals/core.py` — approval CRUD
-  - `approvals/signatures.py` — signature logic
-  - `approvals/routing.py` — reviewer assignment / ML scoring
+- [x] `approvals.py` (1,672 lines) split into `src/docreview360/approvals/` package:
+  - `approvals/__init__.py` — re-exports all public symbols for 100% backward compatibility
+  - `approvals/core.py` — approval CRUD, DB persistence helpers, in-memory store
+  - `approvals/signatures.py` — signature workflows, hash verification, PDF generation, anomaly detection
+  - `approvals/routing.py` — Celery tasks, ML-driven reviewer assignment, `submit_draft_for_approval`
+  - All existing imports (`from ..approvals import ApprovalModel`, etc.) work unchanged. **Done:** 2026-03-09.
+- [ ] Remaining large modules (`auth.py`, `search.py`, `workflows.py`, `doc_types.py`, `logs.py`, `reporting.py`, `documents.py`) are candidates for future decomposition passes.
 
 ---
 

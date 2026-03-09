@@ -14,7 +14,7 @@ dash_bob:
 prefs_alice:
   theme: dark
 prefs_bob:
-  theme: dark
+  theme: light
 prefs_u1:
   theme: dark
 profile_alice:

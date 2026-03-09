@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import mimetypes
 import re
 import threading
@@ -23,6 +24,8 @@ from . import fts
 from .audit import log_audit_event
 from .logs import log_event
 from .settings_manager import load_settings
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_ALLOWED_MIME_TYPES: frozenset[str] = frozenset(
     {
@@ -324,8 +327,8 @@ def _extract_pdf_text(data: bytes) -> str:
     if extract_text is not None:
         try:
             return extract_text(BytesIO(data)) or ""
-        except Exception:  # pragma: no cover - pdfminer failure
-            pass
+        except Exception as exc:  # pragma: no cover - pdfminer failure
+            _logger.debug("pdfminer extraction failed: %s", exc)
 
     try:
         from pypdf import PdfReader  # type: ignore[import-not-found]
@@ -336,8 +339,8 @@ def _extract_pdf_text(data: bytes) -> str:
         try:
             reader = PdfReader(BytesIO(data))
             return "\n".join(filter(None, (page.extract_text() or "" for page in reader.pages)))
-        except Exception:  # pragma: no cover - pypdf failure
-            pass
+        except Exception as exc:  # pragma: no cover - pypdf failure
+            _logger.debug("pypdf extraction failed: %s", exc)
 
     raise ValueError("PDF ingestion requires pdfminer.six or pypdf")
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import logging
 import os
 import re
 import tempfile
@@ -25,6 +26,8 @@ __all__ = [
     "structural_pattern_score",
     "style_guide_score",
 ]
+
+_logger = logging.getLogger(__name__)
 
 StyleValidatorRunner = Callable[[str, str], Mapping[str, object]]
 
@@ -179,8 +182,8 @@ def style_guide_score(text: str) -> float:
             sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
             total = len(sentences) or 1
             return max(0.0, 1 - len(issues) / total)
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.debug("Style guide runner failed, falling back to heuristic: %s", exc)
     return _heuristic_style_score(text)
 
 
@@ -399,9 +402,9 @@ def _certificate_attributes(chain: Sequence[bytes | str] | None) -> tuple[float,
         subject = cert.subject.rfc4514_string()
         if subject:
             entropy = _clamp(len(set(subject)) / 64.0)
-    except Exception:
+    except Exception as exc:
         # If the certificate payload cannot be parsed we fall back to depth-only
-        pass
+        _logger.debug("Certificate payload could not be parsed, using depth-only fallback: %s", exc)
     return depth, validity, entropy
 
 

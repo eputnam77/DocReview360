@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 import tempfile
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -17,6 +19,8 @@ from pydantic import BaseModel, Field, field_validator
 from .db_store import get_db
 from .event_dispatcher import dispatch_workflow_event
 from .logs import log_call
+
+_logger = logging.getLogger(__name__)
 
 
 class ApprovalStep(BaseModel):
@@ -153,6 +157,9 @@ else:
 
 _ACTIVE_TEMPLATES_FILE: Path = WORKFLOW_TEMPLATES_FILE
 _TEMPLATES_LOADED: bool = False
+# Guards the _TEMPLATES_LOADED flag and template definition bootstrap to prevent
+# duplicate loading under multi-threaded Uvicorn workers.
+_TEMPLATES_LOAD_LOCK = threading.Lock()
 
 
 def _log_template_issue(template_name: str, reason: str) -> None:
@@ -490,29 +497,30 @@ def _sync_workflow_templates_from_definitions() -> None:
 
 
 def _ensure_templates_loaded() -> None:
-    global _ACTIVE_TEMPLATES_FILE, _TEMPLATES_LOADED
+    with _TEMPLATES_LOAD_LOCK:
+        global _ACTIVE_TEMPLATES_FILE, _TEMPLATES_LOADED
 
-    if _ACTIVE_TEMPLATES_FILE != WORKFLOW_TEMPLATES_FILE:
-        _ACTIVE_TEMPLATES_FILE = WORKFLOW_TEMPLATES_FILE
-        _TEMPLATES_LOADED = False
+        if _ACTIVE_TEMPLATES_FILE != WORKFLOW_TEMPLATES_FILE:
+            _ACTIVE_TEMPLATES_FILE = WORKFLOW_TEMPLATES_FILE
+            _TEMPLATES_LOADED = False
 
-    if _TEMPLATES_LOADED:
-        return
+        if _TEMPLATES_LOADED:
+            return
 
-    workflow_template_definitions.clear()
-    workflow_template_definitions.update(_build_default_template_definitions())
+        workflow_template_definitions.clear()
+        workflow_template_definitions.update(_build_default_template_definitions())
 
-    if DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
-        # Prefer DB-backed storage; fall back to file if DB is empty
-        loaded_from_db = _load_templates_from_db()
-        if not loaded_from_db and WORKFLOW_TEMPLATES_FILE.exists():
-            with _workflow_template_lock():
-                _load_templates_from_disk()
-        if not workflow_template_definitions:
-            workflow_template_definitions.update(_build_default_template_definitions())
+        if DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
+            # Prefer DB-backed storage; fall back to file if DB is empty
+            loaded_from_db = _load_templates_from_db()
+            if not loaded_from_db and WORKFLOW_TEMPLATES_FILE.exists():
+                with _workflow_template_lock():
+                    _load_templates_from_disk()
+            if not workflow_template_definitions:
+                workflow_template_definitions.update(_build_default_template_definitions())
 
-    _sync_workflow_templates_from_definitions()
-    _TEMPLATES_LOADED = True
+        _sync_workflow_templates_from_definitions()
+        _TEMPLATES_LOADED = True
 
 
 def _save_templates_to_db() -> None:
@@ -535,8 +543,8 @@ def _save_templates_to_db() -> None:
                         "data": json.dumps(template.model_dump()),
                     },
                 )
-    except Exception:  # pragma: no cover - best effort
-        pass
+    except Exception as exc:  # pragma: no cover - best effort
+        _logger.warning("Failed to save templates to DB: %s", exc)
 
 
 def _load_templates_from_db() -> bool:
@@ -559,8 +567,8 @@ def _load_templates_from_db() -> bool:
             try:
                 template = WorkflowTemplateModel.model_validate(data)
                 workflow_template_definitions[template.id] = template
-            except Exception:  # pragma: no cover - skip corrupt rows
-                pass
+            except Exception as exc:  # pragma: no cover - skip corrupt rows
+                _logger.debug("Skipping corrupt template row: %s", exc)
         return bool(workflow_template_definitions)
     except Exception:  # pragma: no cover - DB not available
         return False
@@ -651,8 +659,8 @@ def reset_workflow_templates(*, keep_file: bool = False) -> None:
     if not keep_file and DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
         try:
             WORKFLOW_TEMPLATES_FILE.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as exc:
+            _logger.warning("Failed to remove workflow templates file %s: %s", WORKFLOW_TEMPLATES_FILE, exc)
     _ensure_templates_loaded()
 
 
@@ -675,8 +683,8 @@ def _persist_workflow(workflow: WorkflowModel) -> None:
                 ),
                 {"id": workflow.id, "project": workflow.project, "data": data},
             )
-    except Exception:  # pragma: no cover - best effort
-        pass
+    except Exception as exc:  # pragma: no cover - best effort
+        _logger.warning("Failed to persist workflow %r to DB: %s", workflow.id, exc)
 
 
 def load_workflows_from_db() -> None:
@@ -695,10 +703,10 @@ def load_workflows_from_db() -> None:
                 wf = WorkflowModel.model_validate(data)
                 if wf.id not in workflows:
                     workflows[wf.id] = wf
-            except Exception:  # pragma: no cover - skip corrupt rows
-                pass
-    except Exception:  # pragma: no cover - DB not available
-        pass
+            except Exception as exc:  # pragma: no cover - skip corrupt rows
+                _logger.debug("Skipping corrupt workflow row: %s", exc)
+    except Exception as exc:  # pragma: no cover - DB not available
+        _logger.warning("Failed to load workflows from DB: %s", exc)
 
 
 @log_call

@@ -87,7 +87,7 @@ from ..audit import AuditLogEntry, get_audit_log, log_audit_event
 from ..cache import cache_get, cache_set, clear_cache
 from ..cms import fetch_from_cms, save_to_cms
 from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response, update_comment
-from ..config import CONFIG_FILE, Config
+from ..config import CONFIG_FILE, Config, load_with_defaults
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..demo_data import seed_demo_data
 from ..doc_types import (
@@ -232,6 +232,13 @@ from ..workflows import (
 from .approvals import router as approvals_router
 from .ml import router as ml_router, warm_ml_sessions
 from .webhooks import router as webhooks_router, _load_subscribers_from_db
+from .auth_router import router as auth_router
+from .admin_router import router as admin_router
+from .projects_router import router as projects_router
+from .documents_router import router as documents_router
+from .workflows_router import router as workflows_router
+from .dashboards_router import router as dashboards_router
+from .tools_router import router as tools_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -862,7 +869,17 @@ class SignatureProviderPayload(BaseModel):
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    # Startup: restore persisted state from DB
+    # Startup: validate configuration eagerly so misconfigurations surface
+    # immediately with a clear error message instead of causing cryptic
+    # runtime failures deep in request handlers.
+    _startup_cfg = load_with_defaults()
+    try:
+        _startup_cfg.validate_startup()
+    except ValueError as _cfg_err:
+        _logger.critical("Configuration validation failed at startup: %s", _cfg_err)
+        raise
+
+    # Restore persisted state from DB
     load_approvals_from_db()
     load_workflows_from_db()
     _load_subscribers_from_db()
@@ -1036,6 +1053,13 @@ app.include_router(approvals_router)
 app.include_router(webhooks_router)
 app.include_router(collab_router)
 app.include_router(ml_router)
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(projects_router)
+app.include_router(documents_router)
+app.include_router(workflows_router)
+app.include_router(dashboards_router)
+app.include_router(tools_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
@@ -5122,14 +5146,15 @@ async def lock_template_phase_endpoint(
     return {"template": name, "phase": phase, "locked": True}
 
 
-@app.delete("/templates/{name}/locks/{phase}", status_code=204)
+@app.delete("/templates/{name}/locks/{phase}", status_code=204, response_class=Response)
 async def unlock_template_phase_endpoint(
     name: str,
     phase: str,
     user: auth.User = Depends(require_role("admin")),
-) -> None:
+) -> Response:
     """Remove the phase lock on template *name* for *phase*."""
     unlock_template_for_phase(name, phase)
+    return Response(status_code=204)
 
 
 @app.get("/templates/{name}/locks")
@@ -5368,15 +5393,16 @@ async def get_api_key(
     return record
 
 
-@app.delete("/api-keys/{key_id}", status_code=204)
+@app.delete("/api-keys/{key_id}", status_code=204, response_class=Response)
 async def revoke_api_key(
     key_id: str,
     current_user: auth.User = Depends(auth.get_current_user),
-) -> None:
+) -> Response:
     """Revoke an API key owned by the authenticated user."""
     ok = _api_keys_mod.revoke_api_key(key_id, current_user.username)
     if not ok:
         raise HTTPException(status_code=404, detail="API key not found")
+    return Response(status_code=204)
 
 
 # ---------------------------------------------------------------------------
@@ -5466,16 +5492,16 @@ async def get_share_link(
     raise HTTPException(status_code=404, detail="Share link not found")
 
 
-@app.delete("/share-links/{link_id}", status_code=204)
+@app.delete("/share-links/{link_id}", status_code=204, response_class=Response)
 async def revoke_share_link(
     link_id: str,
     current_user: auth.User = Depends(auth.get_current_user),
-) -> None:
+) -> Response:
     """Revoke a share link."""
     for record in _share_links.values():
         if record["id"] == link_id and record["created_by"] == current_user.username:
             record["is_active"] = False
-            return
+            return Response(status_code=204)
     raise HTTPException(status_code=404, detail="Share link not found")
 
 

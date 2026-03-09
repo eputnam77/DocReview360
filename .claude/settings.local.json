@@ -6,7 +6,8 @@
       "Bash(ls:*)",
       "Bash(source:*)",
       "Bash(grep:*)",
-      "Bash(docreview360 logs:*)"
+      "Bash(docreview360 logs:*)",
+      "Bash(python3:*)"
     ]
   }
 }

@@ -250,23 +250,39 @@ module = ["fedstylevalidator"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# FastAPI and Click route/command decorators emit untyped-decorator errors because
+# their decorator factories return `Callable[..., Any]`. Disabling this one check
+# is the minimal suppression; all other strict rules still apply to these modules.
 module = [
-  "docreview360.api",
   "docreview360.cli",
   "docreview360.nemo_guardrails",
 ]
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
+# docreview360.cache uses a runtime-optional Redis import pattern (try/except at
+# module level) that produces assignment/union-attr errors because mypy cannot
+# narrow the `_redis` name after the bare `except Exception` clause.  The
+# conditional Redis client initialisation is well-tested; the suppression is
+# intentional and limited to this module.
 module = ["docreview360.cache"]
+disable_error_code = ["assignment", "union-attr", "attr-defined"]
+
+[[tool.mypy.overrides]]
+# docreview360.models defines a Pydantic BaseModel fallback stub (for environments
+# where pydantic is unavailable) using `# type: ignore[no-redef]` on the class
+# body.  The no-redef error is the only known mypy issue in this module.
+# nemo_guardrails depends on heavy optional third-party stubs that are not
+# available in CI; ignore_errors is kept for that module only.
+module = ["docreview360.nemo_guardrails"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = [
-  "docreview360.models",
-  "docreview360.nemo_guardrails",
-]
-ignore_errors = true
+# The fallback `BaseModel` stub in models.py redefines the class name imported
+# from pydantic inside a try/except block, which mypy flags as no-redef.  All
+# other strict checks are enabled for this module.
+module = ["docreview360.models"]
+disable_error_code = ["no-redef"]
 
 # ───────────────────────────── pytest config ───────────────────────────────
 [tool.pytest.ini_options]

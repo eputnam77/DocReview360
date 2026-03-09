@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import threading
 import time
 from typing import TYPE_CHECKING, Any, Dict, Tuple, cast
 
@@ -24,11 +25,26 @@ except Exception:
 _cache: Dict[str, Tuple[Any, float | None]] = {}
 _UNREACHABLE = object()
 _client: "Redis | None | object" = None
+# Guards _client initialization to prevent duplicate connection attempts under
+# concurrent requests when multiple threads call _get_client() simultaneously.
+_client_lock = threading.Lock()
 
 
 def _get_client() -> "Redis | None":
     global _client
-    if _client is None and _redis is not None:
+    # Fast path: already initialized (avoids lock acquisition on every cache call).
+    if _client is not None:
+        if _client is _UNREACHABLE:
+            return None
+        return cast("Redis | None", _client)
+    if _redis is None:
+        return None
+    with _client_lock:
+        # Double-check inside the lock to prevent duplicate connection attempts.
+        if _client is not None:
+            if _client is _UNREACHABLE:
+                return None
+            return cast("Redis | None", _client)
         url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         try:
             redis_cls = getattr(_redis, "Redis", None)
