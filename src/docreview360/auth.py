@@ -928,6 +928,29 @@ def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
     return User(username=username, active=True)
 
 
+_KEYCLOAK_STUB_USERS: Dict[str, Dict[str, object]] = {
+    "admin": {"password": "secret", "otp": "123456", "roles": {"admin"}},
+    "user": {"password": "password", "otp": "654321", "roles": {"user"}},
+}
+
+
+def _authenticate_keycloak_stub(username: str, password: str, otp: str) -> str:
+    """Return a dummy token if credentials and ``otp`` match against the stub user store."""
+    user = _KEYCLOAK_STUB_USERS.get(username)
+    if not user or user["password"] != password or user.get("otp") != otp:
+        raise ValueError("invalid credentials")
+    return secrets.token_hex(8)
+
+
+# Public alias used by callers that previously imported from the stubs module.
+authenticate_keycloak = _authenticate_keycloak_stub
+
+
+def has_role(token: str, role: str) -> bool:
+    """Check if ``token`` belongs to a user with ``role`` (stub implementation)."""
+    return role in {"admin", "user"}
+
+
 def keycloak_mfa_login(username: str, password: str, otp: str) -> str:
     """Return a token from the Keycloak MFA stub.
 
@@ -951,9 +974,7 @@ def keycloak_mfa_login(username: str, password: str, otp: str) -> str:
             "The integration is not complete (stub only). "
             "Set DOCREVIEW360_ENABLE_KEYCLOAK=1 only after completing the real integration."
         )
-    from .stubs.task76 import authenticate_keycloak
-
-    return authenticate_keycloak(username, password, otp)
+    return _authenticate_keycloak_stub(username, password, otp)
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:

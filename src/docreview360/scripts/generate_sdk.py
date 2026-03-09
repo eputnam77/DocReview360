@@ -5,7 +5,6 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from docreview360.stubs import record_task_completion
 
 
 def generate(output: str = "packages/sdk-ts") -> None:
@@ -24,7 +23,6 @@ def generate(output: str = "packages/sdk-ts") -> None:
         ],
         check=True,
     )
-    record_task_completion(138)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ from time import perf_counter
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     Iterator,
     List,
@@ -52,6 +53,22 @@ from .provider_store import set_provider_health
 from .quality import approval_likelihood, quality_model_metadata
 from .reviewer_model import ReviewerModel
 from .workflows import workflows
+
+
+def run_confirmed_action(confirm: bool, action: Callable[[], None] | None = None) -> bool:
+    """Run ``action`` if ``confirm`` is ``True`` and return the result.
+
+    Returns ``True`` when the action was executed successfully, ``False``
+    when ``confirm`` is falsy or the action raises an exception.
+    """
+    if confirm:
+        if action:
+            try:
+                action()
+            except Exception:
+                return False
+        return True
+    return False
 
 
 @app.task(name="docreview360.approval_reminder")
@@ -1604,7 +1621,6 @@ def reset_approval(
     reason: str,
 ) -> bool:
     from .auth import authenticate_mfa
-    from .stubs.task213 import task213
 
     if not authenticate_mfa(username, password, otp):
         return False
@@ -1646,5 +1662,11 @@ def reset_approval(
             provider_metadata=metadata,
         )
 
-    return task213(confirm, _do_reset)
+    if confirm:
+        try:
+            _do_reset()
+        except Exception:
+            return False
+        return True
+    return False
 

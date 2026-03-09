@@ -13,7 +13,6 @@ from typing import Any, Dict, List
 
 from filelock import FileLock
 
-from .stubs import record_task_completion
 
 TEMPLATES_DIR = Path(os.getenv("DOCREVIEW360_TEMPLATES_DIR", "templates/golden"))
 TEMPLATE_STORE_FILE = Path(os.getenv("DOCREVIEW360_TEMPLATE_STORE_FILE", "template_store.json"))
@@ -58,7 +57,6 @@ def save_template(name: str, content: str, root: Path = TEMPLATES_DIR) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{stem.name}.md"
     path.write_text(content)
-    record_task_completion(143)
     return path
 
 

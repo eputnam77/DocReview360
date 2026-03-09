@@ -5,7 +5,6 @@ from __future__ import annotations
 import httpx
 from pydantic import BaseModel, HttpUrl
 
-from .stubs import record_task_completion
 
 
 class Suggestion(BaseModel):
@@ -41,6 +40,4 @@ async def suggest(host: HttpUrl, text: str, index: str = "documents") -> list[Su
             options = simple[0].get("options", [])
         else:
             options = []
-
-    record_task_completion(135)
     return [Suggestion(text=o["text"], score=o.get("_score", 0.0)) for o in options]

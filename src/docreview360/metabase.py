@@ -8,8 +8,6 @@ from typing import Any, Dict, List
 
 import httpx
 
-from .stubs import record_task_completion
-
 
 def load_dashboards(path: str | Path) -> Dict[str, Any]:
     """Return the dashboard configuration from ``path``.
@@ -47,14 +45,14 @@ class MetabaseClient:
         """Return chart metadata by ``chart_id``."""
         for chart in self.dashboards.get("charts", []):
             if chart.get("id") == chart_id:
-                record_task_completion(83)
+
                 return {"id": chart_id, "title": chart.get("title", "")}
-        record_task_completion(83)
+
         return {"id": chart_id, "title": f"Chart {chart_id}"}
 
     def heatmap(self, project_id: str) -> List[List[int]]:
         """Return a dummy 3x3 heatmap for ``project_id``."""
-        record_task_completion(83)
+
         return [[i + j for j in range(3)] for i in range(3)]
 
 
@@ -81,7 +79,7 @@ def fetch_dashboards(base_url: str, token: str) -> List[Dict[str, Any]]:
     data = resp.json()
     if not isinstance(data, list):
         raise RuntimeError("invalid response from Metabase")
-    record_task_completion(83)
+
     return data
 
 
@@ -95,5 +93,5 @@ def fetch_card_csv(base_url: str, card_id: int, token: str) -> str:
     url = f"{base_url.rstrip('/')}/api/card/{card_id}/query/csv"
     resp = httpx.post(url, headers={"X-Metabase-Session": token}, timeout=10)
     resp.raise_for_status()
-    record_task_completion(83)
+
     return str(resp.text)

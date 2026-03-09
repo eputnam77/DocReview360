@@ -9,7 +9,6 @@ try:
 except Exception:
     UnleashClient = None
 
-from .stubs import record_task_completion
 
 
 class FeatureFlags:
@@ -28,6 +27,5 @@ class FeatureFlags:
         """Return True if ``name`` flag is enabled."""
         result = self.client.is_enabled(name, context or {})
         if not self._logged:
-            record_task_completion(139)
             self._logged = True
         return bool(result)

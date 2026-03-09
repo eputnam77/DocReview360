@@ -262,5 +262,33 @@
       }
     ],
     "updated": "2026-03-08T19:33:28.450387+00:00"
+  },
+  {
+    "id": "_smoke_wf_template",
+    "name": "_smoke_wf_template",
+    "description": null,
+    "steps": [
+      {
+        "role": "reviewer",
+        "user": null,
+        "required": true,
+        "description": null
+      }
+    ],
+    "updated": "2026-03-09T00:16:04.769487+00:00"
+  },
+  {
+    "id": "_CovWFTemplate",
+    "name": "_CovWFTemplate",
+    "description": null,
+    "steps": [
+      {
+        "role": "reviewer",
+        "user": null,
+        "required": true,
+        "description": null
+      }
+    ],
+    "updated": "2026-03-09T00:23:21.068059+00:00"
   }
 ]

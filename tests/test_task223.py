@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from docreview360.stubs.task223 import convert_document
+from docreview360.document_converter import convert_document
 
 
 def test_task223_convert_document() -> None:

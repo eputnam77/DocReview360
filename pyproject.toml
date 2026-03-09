@@ -265,7 +265,6 @@ ignore_errors = true
 module = [
   "docreview360.models",
   "docreview360.nemo_guardrails",
-  "docreview360.stubs.*",
 ]
 ignore_errors = true
 
@@ -293,7 +292,6 @@ shell    = ["os.system", "subprocess.Popen"]
 omit = [
   "src/docreview360/templates/*",
   "src/docreview360/styles/*",
-  "src/docreview360/stubs/*",
   "src/docreview360/scripts/*",
   "src/docreview360/records.py",
   "src/docreview360/git_hooks.py",
