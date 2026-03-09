@@ -3340,8 +3340,11 @@ async def chat_bot_endpoint(body: TextBody) -> dict[str, str]:
 
 
 @app.post("/document-types", status_code=201, response_model=DocumentTypeModel)
-async def create_document_type(doc_type: DocumentTypeModel) -> DocumentTypeModel:
-    """Create a new document type."""
+async def create_document_type(
+    doc_type: DocumentTypeModel,
+    _user: auth.User = Depends(require_role("admin")),
+) -> DocumentTypeModel:
+    """Create a new document type (admin only)."""
     from fastapi import HTTPException
 
     try:
@@ -3882,8 +3885,11 @@ class PhaseModel(BaseModel):
 
 
 @app.post("/phases", status_code=201, response_model=list[str])
-async def create_phase_endpoint(body: PhaseModel) -> list[str]:
-    """Create a new project phase."""
+async def create_phase_endpoint(
+    body: PhaseModel,
+    _user: auth.User = Depends(require_role("admin")),
+) -> list[str]:
+    """Create a new project phase (admin only)."""
     add_phase(body.name)
     return list_phases()
 
@@ -5293,6 +5299,206 @@ async def switch_env_endpoint(name: str) -> dict[str, str]:
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"url": url}
+
+
+# ---------------------------------------------------------------------------
+# API key management (item C — Enterprise Readiness)
+# ---------------------------------------------------------------------------
+
+from docreview360 import api_keys as _api_keys_mod  # noqa: E402
+
+
+class _APIKeyCreateRequest(BaseModel):
+    name: str
+    scopes: list[str] = []
+    expires_at: str | None = None
+
+
+class _APIKeyResponse(BaseModel):
+    id: str
+    owner: str
+    name: str
+    prefix: str
+    created_at: str
+    expires_at: str | None = None
+    last_used_at: str | None = None
+    is_active: bool
+    scopes: list[str]
+    key: str | None = None  # only on create
+
+
+@app.post("/api-keys", response_model=_APIKeyResponse, status_code=201)
+async def create_api_key(
+    body: _APIKeyCreateRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> Any:
+    """Create a new API key for the authenticated user."""
+    from datetime import datetime as _dt
+
+    expires_at = None
+    if body.expires_at:
+        try:
+            expires_at = _dt.fromisoformat(body.expires_at)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid expires_at format") from exc
+    record = _api_keys_mod.create_api_key(
+        current_user.username,
+        body.name,
+        scopes=body.scopes,
+        expires_at=expires_at,
+    )
+    return record
+
+
+@app.get("/api-keys", response_model=list[_APIKeyResponse])
+async def list_api_keys(current_user: auth.User = Depends(auth.get_current_user)) -> Any:
+    """List all API keys owned by the authenticated user."""
+    return _api_keys_mod.list_api_keys(current_user.username)
+
+
+@app.get("/api-keys/{key_id}", response_model=_APIKeyResponse)
+async def get_api_key(
+    key_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> Any:
+    """Retrieve metadata for a single API key."""
+    record = _api_keys_mod.get_api_key(key_id, current_user.username)
+    if record is None:
+        raise HTTPException(status_code=404, detail="API key not found")
+    return record
+
+
+@app.delete("/api-keys/{key_id}", status_code=204)
+async def revoke_api_key(
+    key_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> None:
+    """Revoke an API key owned by the authenticated user."""
+    ok = _api_keys_mod.revoke_api_key(key_id, current_user.username)
+    if not ok:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+
+# ---------------------------------------------------------------------------
+# Shareable project/document URL links (item 2 — Strategic Roadmap)
+# ---------------------------------------------------------------------------
+
+import secrets as _secrets_mod  # noqa: E402
+
+_share_links: dict[str, dict[str, Any]] = {}  # token → record
+
+
+class _ShareLinkCreateRequest(BaseModel):
+    resource_type: str  # "project" | "document"
+    resource_id: str
+    permission: str = "read"  # "read" | "comment"
+    expires_at: str | None = None
+
+
+class _ShareLinkResponse(BaseModel):
+    id: str
+    resource_type: str
+    resource_id: str
+    token: str
+    created_by: str
+    created_at: str
+    expires_at: str | None = None
+    permission: str
+    is_active: bool
+    url: str
+
+
+def _make_share_url(token: str) -> str:
+    import os
+    base = os.getenv("DOCREVIEW360_PUBLIC_URL", "http://localhost:8000")
+    return f"{base}/share/{token}"
+
+
+@app.post("/share-links", response_model=_ShareLinkResponse, status_code=201)
+async def create_share_link(
+    body: _ShareLinkCreateRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> Any:
+    """Create a shareable link for a project or document."""
+    from datetime import datetime as _dt, timezone as _tz
+
+    if body.resource_type not in ("project", "document"):
+        raise HTTPException(status_code=422, detail="resource_type must be 'project' or 'document'")
+    if body.permission not in ("read", "comment"):
+        raise HTTPException(status_code=422, detail="permission must be 'read' or 'comment'")
+
+    expires_at = None
+    if body.expires_at:
+        try:
+            expires_at = _dt.fromisoformat(body.expires_at)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid expires_at format") from exc
+
+    token = _secrets_mod.token_urlsafe(24)
+    link_id = _secrets_mod.token_hex(16)
+    now = _dt.now(tz=_tz.utc)
+
+    record: dict[str, Any] = {
+        "id": link_id,
+        "resource_type": body.resource_type,
+        "resource_id": body.resource_id,
+        "token": token,
+        "created_by": current_user.username,
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat() if expires_at else None,
+        "permission": body.permission,
+        "is_active": True,
+        "url": _make_share_url(token),
+    }
+    _share_links[token] = record
+    return record
+
+
+@app.get("/share-links/{link_id}", response_model=_ShareLinkResponse)
+async def get_share_link(
+    link_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> Any:
+    """Get metadata for a share link by ID."""
+    for record in _share_links.values():
+        if record["id"] == link_id and record["created_by"] == current_user.username:
+            return record
+    raise HTTPException(status_code=404, detail="Share link not found")
+
+
+@app.delete("/share-links/{link_id}", status_code=204)
+async def revoke_share_link(
+    link_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> None:
+    """Revoke a share link."""
+    for record in _share_links.values():
+        if record["id"] == link_id and record["created_by"] == current_user.username:
+            record["is_active"] = False
+            return
+    raise HTTPException(status_code=404, detail="Share link not found")
+
+
+@app.get("/share/{token}")
+async def resolve_share_link(token: str) -> Any:
+    """Public endpoint: resolve a share token to the underlying resource.
+
+    No authentication required — the token itself grants read access.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+
+    record = _share_links.get(token)
+    if record is None or not record["is_active"]:
+        raise HTTPException(status_code=404, detail="Share link not found or expired")
+    if record["expires_at"] is not None:
+        exp = _dt.fromisoformat(record["expires_at"])
+        if _dt.now(tz=_tz.utc) > exp:
+            raise HTTPException(status_code=410, detail="Share link has expired")
+    return {
+        "resource_type": record["resource_type"],
+        "resource_id": record["resource_id"],
+        "permission": record["permission"],
+    }
 
 
 

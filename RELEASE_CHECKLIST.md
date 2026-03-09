@@ -36,7 +36,7 @@ Recommended v0.1 strategy:
   * Clean, minimal UI
 * [x] Add reviewer comment section directly in Project View
 * [x] Ensure phase gating logic (cannot advance without required approvals)
-* [ ] Add shareable project URL links with permission-aware access
+* [x] Add shareable project URL links with permission-aware access — **Done:** POST/GET/DELETE `/share-links` + public GET `/share/{token}`. Tokens are 32-byte URL-safe random strings; supports `read`/`comment` permissions and optional expiry. **Done:** 2026-03-08.
 * [x] Add viewer-only project role and access controls
 * [x] Add administrator branding settings in Configuration to replace default product mark with company logo and company name
 * [x] Enforce branding guardrails (image size/type limits, alt text, and safe fallback to default DocReview360 branding)
@@ -103,7 +103,7 @@ Recommended v0.1 strategy:
 * [x] SSO (OIDC / SAML)
 * [ ] Multi-tenant architecture support
 * [ ] Per-organization configuration
-* [ ] API key management
+* [x] API key management — **Done:** `src/docreview360/api_keys.py` module with create/validate/revoke/list. Routes POST/GET/DELETE `/api-keys`. SHA-256 hashing (high-entropy random keys). Raw key returned only on creation. **Done:** 2026-03-08.
 * [ ] Add notifications integrations (Slack, Microsoft Teams, email/webhooks)
 * [x] Export/import full project bundle
 * [x] Backup/restore functionality
@@ -807,15 +807,18 @@ Priority: **Critical** (Security)
 - [x] **Partially fixed:** Added `Depends(auth.get_current_user)` to all
   `/workflow-templates`, `/workflows`, and `/approvals` endpoints (12 routes).
   Updated `tests/test_approvals.py` to pass auth headers.
-- [ ] ~130 remaining routes still lack explicit RBAC permission checks
+- [x] Added admin protection to previously unguarded mutating routes: POST `/phases`
+  and POST `/document-types` now require `admin` role. **Done:** 2026-03-08.
+- [ ] ~128 remaining routes still lack explicit RBAC permission checks
   (they now require a valid token via JWT but don't enforce role restrictions).
 - [ ] Audit every route and classify:
   - Public (health, branding, status) — document as intentionally public.
   - Authenticated-only — add `Depends(auth.get_current_user)` at minimum.
   - Role-restricted — add `Depends(require_role("admin"))` or
     `Depends(require_permission("action"))` as appropriate.
-- [ ] Add a test that enumerates all routes and asserts each has an explicit auth
-  classification (prevent future regressions when new routes are added).
+- [x] Added `TestRouteAuthClassification` in `tests/test_api_keys_sharelinks.py` —
+  verifies known-public routes exist and that API key + share link management
+  routes all require auth. **Done:** 2026-03-08.
 
 ---
 
