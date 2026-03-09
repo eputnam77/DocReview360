@@ -57,7 +57,9 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "AB"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "AB"}, headers=_alice_headers()
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["state"] == "approved"
@@ -68,7 +70,9 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "ABCDE"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "ABCDE"}, headers=_alice_headers()
+        )
         assert resp.status_code == 200
         assert resp.json()["state"] == "approved"
 
@@ -77,7 +81,9 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "ab"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "ab"}, headers=_alice_headers()
+        )
         assert resp.status_code == 422
         assert "uppercase" in resp.json()["detail"].lower()
 
@@ -86,7 +92,9 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "A"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "A"}, headers=_alice_headers()
+        )
         assert resp.status_code == 422
 
     def test_invalid_six_letters(self) -> None:
@@ -94,7 +102,9 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "ABCDEF"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "ABCDEF"}, headers=_alice_headers()
+        )
         assert resp.status_code == 422
 
     def test_invalid_with_digit(self) -> None:
@@ -102,7 +112,9 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "A1"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "A1"}, headers=_alice_headers()
+        )
         assert resp.status_code == 422
 
     def test_invalid_with_space(self) -> None:
@@ -110,7 +122,9 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "A B"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "A B"}, headers=_alice_headers()
+        )
         assert resp.status_code == 422
 
     def test_empty_initials(self) -> None:
@@ -118,19 +132,27 @@ class TestSignInitialsValidation:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": ""})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": ""}, headers=_alice_headers()
+        )
         assert resp.status_code == 422
 
 
 class TestSignInitialsNotFound:
     def test_nonexistent_approval(self) -> None:
         client = TestClient(app)
-        resp = client.post("/approvals/does-not-exist/sign-initials", json={"initials": "AB"})
+        resp = client.post(
+            "/approvals/does-not-exist/sign-initials",
+            json={"initials": "AB"},
+            headers=_alice_headers(),
+        )
         assert resp.status_code == 404
 
     def test_missing_body(self) -> None:
         client = TestClient(app)
-        resp = client.post("/approvals/any-id/sign-initials", json={})
+        resp = client.post(
+            "/approvals/any-id/sign-initials", json={}, headers=_alice_headers()
+        )
         assert resp.status_code == 422
 
 
@@ -141,11 +163,15 @@ class TestSignInitialsIdempotency:
         aid = _create_approval(client, wf_id)
 
         # First initials sign
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "EP"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "EP"}, headers=_alice_headers()
+        )
         assert resp.status_code == 200
 
         # Second attempt on already-approved approval
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "EP"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "EP"}, headers=_alice_headers()
+        )
         assert resp.status_code == 409
 
     def test_signature_id_format(self) -> None:
@@ -153,6 +179,8 @@ class TestSignInitialsIdempotency:
         wf_id = _create_workflow(client)
         aid = _create_approval(client, wf_id)
 
-        resp = client.post(f"/approvals/{aid}/sign-initials", json={"initials": "JD"})
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials", json={"initials": "JD"}, headers=_alice_headers()
+        )
         assert resp.status_code == 200
         assert resp.json()["signature"] == "[initials:JD]"

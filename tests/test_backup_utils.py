@@ -15,7 +15,8 @@ def setup_function(_):
     logs.clear()
 
 
-def test_create_and_restore_backup(tmp_path):
+def test_create_and_restore_backup(tmp_path, monkeypatch):
+    monkeypatch.setattr(bu, "enforce_encryption_choice", lambda **kwargs: None)
     doc = DocumentModel(id="1", content="hi")
     documents[doc.id] = doc
     logs.append(LogEntry(id="l1", timestamp=datetime.now(timezone.utc), action="create"))
@@ -28,7 +29,8 @@ def test_create_and_restore_backup(tmp_path):
     assert logs[0].action == "create"
 
 
-def test_dump_encodes_yjs(tmp_path):
+def test_dump_encodes_yjs(tmp_path, monkeypatch):
+    monkeypatch.setattr(bu, "enforce_encryption_choice", lambda **kwargs: None)
     doc = DocumentModel(id="1", content="hi")
     doc.__dict__["yjs_updates"] = [b"abc"]
     documents[doc.id] = doc

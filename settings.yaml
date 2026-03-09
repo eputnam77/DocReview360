@@ -55,6 +55,198 @@ profile_bob:
   shorthand: BC
   timeZone: America/Chicago
   twoFA: false
+profile_existing:
+  dashboards:
+  - main
+  department: Dept
+  displayName: Existing User
+  email: existing@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_imported1:
+  dashboards:
+  - main
+  department: Agency
+  displayName: Import One
+  email: import1@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_missing@example.com:
+  dashboards:
+  - main
+  department: Dept
+  displayName: Missing User
+  email: missing@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_02b481df:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_0855ce7c:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_3f698748:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_ab47b269:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_c9691748:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_cbc52a86:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_ddb23ca4:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_e009d00f:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
+profile_user_f573c055:
+  dashboards:
+  - main
+  department: ''
+  displayName: Test User
+  email: test.user@example.com
+  jobTitle: ''
+  notificationEmail: true
+  notificationSMS: false
+  permissions:
+  - user
+  phone: ''
+  picture: ''
+  shorthand: ''
+  timeZone: America/New_York
+  twoFA: false
 projectprefs_qa-proj-20260201-062447:
   ai_suggest: true
   collab: false

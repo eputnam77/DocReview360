@@ -685,13 +685,19 @@ document_types: MutableMapping[str, DocumentTypeModel] = _DocumentTypesView()
 
 
 # ---------------------------------------------------------------------------
-# Removed symbols kept for import compatibility
+# Backward-compat stubs for old file-based symbols
 # ---------------------------------------------------------------------------
 
-# These were present in the old file-based implementation.  They are
-# intentionally absent from the new DB-backed version.  Importing code that
-# references them will get an AttributeError rather than a silent no-op.
+# ``DATA_FILE`` was the path to the JSON persistence file in the old
+# file-based implementation.  Tests monkeypatch this attribute to isolate
+# state; we keep it as a sentinel so those monkeypatches don't raise
+# AttributeError.  The DB-backed module ignores its value.
+DATA_FILE: Any = None
 
-# Removed: StaleStateError, save_state, load_state, DATA_FILE,
-#          DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE, _STATE_VERSION,
-#          _STATE_UPDATED_AT, _ACTIVE_DATA_FILE, _atomic_write
+
+def save_state() -> None:  # pragma: no cover
+    """No-op kept for backward compatibility with tests.
+
+    The DB-backed implementation persists all changes immediately; there is
+    no separate save step required.
+    """

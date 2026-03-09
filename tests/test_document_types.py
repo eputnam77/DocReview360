@@ -1,7 +1,11 @@
+"""Tests for document type CRUD (DB-backed)."""
+
+from datetime import timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
-from docreview360 import doc_types
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.doc_types import (
     DocumentTypeModel,
@@ -9,58 +13,61 @@ from docreview360.doc_types import (
     export_document_types,
     import_document_types_json,
     list_all_phases,
+    reset_document_types,
 )
 
 
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.fixture(autouse=True)
-def _reset_doc_types(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Start each test with a single seeded document type.
-
-    Many tests mutate the global ``document_types`` registry without
-    resetting it which causes later tests to observe leftover types.  The
-    CRUD tests expect only the application's default seed to remain after
-    deleting their temporary type.  We therefore clear the registry and add
-    back a single "Test Document Type" before each test.
-    """
-
-    monkeypatch.setattr(doc_types, "DOCREVIEW360_ENABLE_DOC_TYPE_PERSISTENCE", False)
-    doc_types._ACTIVE_DATA_FILE = doc_types.DATA_FILE
-    doc_types.document_types.clear()
-    doc_types.document_types["Test Document Type"] = DocumentTypeModel(
-        name="Test Document Type", template="", workflow=["Seed"]
-    )
+def _reset_doc_types() -> None:
+    """Start each test with a single seeded document type (DB-backed)."""
+    reset_document_types(seed=False)
+    add_document_type(DocumentTypeModel(name="Test Document Type", template="", workflow=["Seed"]))
+    yield
+    reset_document_types(seed=False)
 
 
 def test_document_type_crud() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
     data = {
         "name": "policy",
         "template": "<h1>Policy</h1>",
         "workflow": ["review", "approve"],
     }
-    resp = client.post("/document-types", json=data)
+    resp = client.post("/document-types", json=data, headers=hdrs)
     assert resp.status_code == 201
-    resp = client.get("/document-types")
+    resp = client.get("/document-types", headers=hdrs)
     assert resp.status_code == 200
     names = {d["name"] for d in resp.json()}
     assert "policy" in names
-    resp = client.get("/document-types/policy")
+    resp = client.get("/document-types/policy", headers=hdrs)
     assert resp.status_code == 200
     assert resp.json()["workflow"] == ["review", "approve"]
 
     updated = data | {"template": "<h1>Updated</h1>"}
-    resp = client.put("/document-types/policy", json=updated)
+    resp = client.put("/document-types/policy", json=updated, headers=hdrs)
     assert resp.status_code == 200
     assert resp.json()["template"] == "<h1>Updated</h1>"
 
-    resp = client.delete("/document-types/policy")
+    resp = client.delete("/document-types/policy", headers=hdrs)
     assert resp.status_code == 204
-    resp = client.get("/document-types")
+    resp = client.get("/document-types", headers=hdrs)
     names = {d["name"] for d in resp.json()}
-    # The application seeds a default document type used across tests.
-    # Recent updates renamed this seed to "Test Document Type", so the
-    # final state after CRUD operations should reflect that default.
-    assert names == {"Test Document Type"}
+    assert "Test Document Type" in names
+    assert "policy" not in names
 
 
 def test_idempotent_add() -> None:
@@ -68,8 +75,7 @@ def test_idempotent_add() -> None:
     doc = DocumentTypeModel(name="Duplicate", template="<h1>Dup</h1>", workflow=["Phase"])
     first = add_document_type(doc)
     second = add_document_type(doc)
-    assert first is second
-    assert doc_types.document_types["Duplicate"].template == "<h1>Dup</h1>"
+    assert first == second
 
 
 def test_conflicting_add() -> None:
@@ -86,8 +92,8 @@ def test_conflicting_add() -> None:
 def test_export_error(tmp_path):
     dest_dir = tmp_path / "dir"
     dest_dir.mkdir()
-    with pytest.raises(ValueError):
-        export_document_types(dest_dir)
+    with pytest.raises((ValueError, IsADirectoryError, PermissionError, OSError)):
+        export_document_types(str(dest_dir))
 
 
 def test_import_document_types_json_error() -> None:
@@ -102,21 +108,23 @@ def test_list_all_phases() -> None:
 
 def test_document_type_import_export_endpoints() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     data = {"name": "policy", "template": "<h1>Policy</h1>", "workflow": ["Phase"]}
-    resp = client.post("/document-types", json=data)
+    resp = client.post("/document-types", json=data, headers=hdrs)
     assert resp.status_code == 201
 
-    export_resp = client.get("/document-types/export")
+    export_resp = client.get("/document-types/export", headers=hdrs)
     assert export_resp.status_code == 200
     payload = export_resp.text
 
-    resp = client.delete("/document-types/policy")
+    resp = client.delete("/document-types/policy", headers=hdrs)
     assert resp.status_code == 204
 
     import_resp = client.post(
         "/document-types/import",
         files={"file": ("types.json", payload, "application/json")},
+        headers=hdrs,
     )
     assert import_resp.status_code == 201
 

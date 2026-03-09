@@ -447,6 +447,7 @@ def send_for_signature(  # noqa: C901
             raise ValueError("document cannot be changed after signature request")
         unlink_approval(approval.document_id, approval.id)
         approval.document_id = doc_id
+        approval.document_hash = None  # reset hash for new document
         link_approval(doc_id, approval.id)
     document = get_document(doc_id)
     document_was_missing = document is None

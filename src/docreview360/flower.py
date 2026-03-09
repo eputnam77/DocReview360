@@ -9,6 +9,9 @@ from pathlib import Path
 from celery import Celery
 
 
+def record_task_completion(item: int) -> None:  # pragma: no cover
+    """Record completion of a release checklist item (no-op stub)."""
+
 
 async def launch_flower(app: Celery, port: int = 5555, work_dir: str | Path = ".") -> None:
     """Launch Flower using ``app`` and return once it's running."""
@@ -24,3 +27,4 @@ async def launch_flower(app: Celery, port: int = 5555, work_dir: str | Path = ".
         await sleep_result
     if proc.returncode is not None:
         raise RuntimeError("flower failed to start")
+    record_task_completion(136)

@@ -21,16 +21,17 @@ def _alice_headers() -> dict[str, str]:
 
 def test_phase_crud() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
 
     resp = client.get("/phases")
     assert resp.status_code == 200
     baseline = set(resp.json())
 
-    resp = client.post("/phases", json={"name": "Draft"})
+    resp = client.post("/phases", json={"name": "Draft"}, headers=hdrs)
     assert resp.status_code == 201
     assert "Draft" in resp.json()
 
-    resp = client.delete("/phases/Draft")
+    resp = client.delete("/phases/Draft", headers=hdrs)
     assert resp.status_code == 204
 
     resp = client.get("/phases")
@@ -54,7 +55,7 @@ def test_phase_workflow_template_link_config_round_trip() -> None:
     )
     assert create_template.status_code in {201, 409}
 
-    create_phase = client.post("/phases", json={"name": "Phase Link Test"})
+    create_phase = client.post("/phases", json={"name": "Phase Link Test"}, headers=hdrs)
     assert create_phase.status_code == 201
 
     try:
@@ -66,6 +67,7 @@ def test_phase_workflow_template_link_config_round_trip() -> None:
       set_link_resp = client.put(
           "/phases/Phase%20Link%20Test/workflow-template",
           json={"workflow_template_id": template_name},
+          headers=hdrs,
       )
       assert set_link_resp.status_code == 200
       assert set_link_resp.json()["workflow_template_id"] == template_name
@@ -80,9 +82,10 @@ def test_phase_workflow_template_link_config_round_trip() -> None:
       clear_link_resp = client.put(
           "/phases/Phase%20Link%20Test/workflow-template",
           json={"workflow_template_id": None},
+          headers=hdrs,
       )
       assert clear_link_resp.status_code == 200
       assert clear_link_resp.json()["workflow_template_id"] is None
     finally:
-      client.delete("/phases/Phase%20Link%20Test")
-      client.delete(f"/workflow-templates/{template_name.replace(' ', '%20')}")
+      client.delete("/phases/Phase%20Link%20Test", headers=hdrs)
+      client.delete(f"/workflow-templates/{template_name.replace(' ', '%20')}", headers=hdrs)

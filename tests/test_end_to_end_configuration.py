@@ -64,7 +64,7 @@ class TestEndToEndConfigurationFlow:
         create_workflow("e2e-test-project", ["E2E Test Phase 1", "E2E Test Phase 2"])
 
         # Step 2: Verify configuration appears in frontend endpoints
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
@@ -148,7 +148,7 @@ class TestEndToEndConfigurationFlow:
         add_phase("Updated Phase")
 
         # Verify configuration is updated
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
@@ -242,7 +242,7 @@ class TestEndToEndConfigurationFlow:
             assert resp.status_code == 201
 
         # Verify configuration is still available
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
@@ -279,7 +279,7 @@ class TestEndToEndConfigurationFlow:
         assert resp.status_code in [201, 400, 422]
 
         # Verify endpoints still work
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
@@ -302,7 +302,7 @@ class TestEndToEndConfigurationFlow:
         add_phase("Recovery Phase")
 
         # Verify recovery worked
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
@@ -334,7 +334,7 @@ class TestEndToEndConfigurationFlow:
         # Test configuration retrieval performance
         start_time = time.time()
 
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
         doc_types = resp.json()
         assert len(doc_types) >= 10

@@ -16,11 +16,9 @@ def test_load_settings_non_mapping(tmp_path: Path) -> None:
 def test_update_setting_and_vault(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     calls = []
     monkeypatch.setattr(settings_manager, "configure_vault", lambda cfg: calls.append(cfg))
-    monkeypatch.setattr(settings_manager, "record_task_completion", lambda tid: calls.append(tid))
     path = tmp_path / "set.yaml"
     settings_manager.update_setting("vault", {"url": "u"}, path)
     assert calls[0] == {"url": "u"}
-    assert calls[1] == 142
     assert settings_manager.load_settings(path)["vault"] == {"url": "u"}
 
 

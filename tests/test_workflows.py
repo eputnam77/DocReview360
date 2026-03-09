@@ -32,10 +32,10 @@ def test_workflow_lifecycle() -> None:
     wf_id = wf["id"]
     assert wf["phase"] == "draft"
 
-    resp = client.post(f"/workflows/{wf_id}/assign", json={"user": "alice"})
+    resp = client.post(f"/workflows/{wf_id}/assign", json={"user": "alice"}, headers=hdrs)
     assert resp.status_code == 200
     assert resp.json()["reviewers"] == ["alice"]
 
-    resp = client.post(f"/workflows/{wf_id}/advance")
+    resp = client.post(f"/workflows/{wf_id}/advance", headers=hdrs)
     assert resp.status_code == 200
     assert resp.json()["phase"] == "review"

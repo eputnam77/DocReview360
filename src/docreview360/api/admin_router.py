@@ -450,11 +450,22 @@ async def list_users_endpoint(
 @router.post("/users/import", response_model=UserImportResult)
 @router.post("/api/users/import", response_model=UserImportResult)
 async def import_users_endpoint(
+    request: Request,
     file: UploadFile | None = File(default=None),
-    payload: list[dict[str, Any]] | None = Body(default=None),
     user: auth.User = Depends(require_role("admin")),
 ) -> UserImportResult:
     """Import users from CSV or JSON payload."""
+    payload: list[dict[str, Any]] | None = None
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        import json as _json
+
+        raw_body = await request.body()
+        try:
+            payload = _json.loads(raw_body)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
     if file is None and payload is None:
         raise HTTPException(status_code=400, detail="Provide a CSV file or JSON payload")
 

@@ -11,6 +11,51 @@ A schema-breaking change requires a MAJOR version bump.
 
 ## [Unreleased]
 
+### Added
+
+- **TipTap plugin architecture** (`frontend/extensions/registry.ts`): immutable `PLUGIN_REGISTRY` manifest with semver compatibility checker, `PLUGIN_CONTRACT` constants, and Vitest CI tests ensuring no core patching.
+- **TipTap content schema validation** (`frontend/lib/contentSchema.ts`): `validateTipTapContent`, `parseTipTapContent`, `isContentValid`, `getContentValidationError` with 22 Vitest tests.
+- **Documenso e-signature provider** (`src/docreview360/integrations/signature/documenso.py`): full `SignatureProvider` protocol implementation with circuit breaker, webhook processing, and PKI validation.
+- **DocuSign enterprise connector** (`src/docreview360/integrations/signature/docusign.py`): eSign REST API v2.1 integration with Connect webhook support, circuit breaker, and 20 tests.
+- **Notifications integrations** (`src/docreview360/notifications.py`): Slack, Teams, generic webhook, and email dispatcher. `GET/PUT /notifications/settings`, `POST /notifications/test`.
+- **Multi-tenant organizations** (`src/docreview360/organizations.py`): full CRUD with per-org settings (max_users, allowed_doc_types, branding, custom_phases). `GET/PUT /organizations/{id}/settings`.
+- **Regulatory citation checker** (`src/docreview360/regulatory.py`): regex-first extraction of 21 CFR, ISO, IEC, EU MDR/IVDR citations. `POST /ai/regulatory-check` endpoint.
+- **Document version lineage**: `version_number` auto-increment, `frozen` field, `freeze_document/unfreeze_document`, `get_version_history`, `restore_document_version`. Endpoints: `GET /documents/{id}/versions`, `POST /documents/{id}/restore/{rev}`, `POST/DELETE /documents/{id}/freeze`.
+- **Redline comparison** (`diff_document_revisions`): unified diff with `lines_added/removed`, `similarity_ratio`. `GET /documents/{id}/diff/{rev_a}/{rev_b}`.
+- **Document converter rewrite** (`src/docreview360/document_converter.py`): real DOCX/MD/HTML/PDF conversion using python-docx and pypdf. `/tools/convert` returns file bytes with `Content-Disposition`.
+- **Comment export to Word**: `GET /comments/{project_id}/export/docx` with python-docx, plain-text fallback.
+- **Shareable project links**: `POST/GET/DELETE /share-links`, public `GET /share/{token}`. 32-byte random tokens with permission scopes and optional expiry.
+- **API key management** (`src/docreview360/api_keys.py`): SHA-256 hashed keys, `POST/GET/DELETE /api-keys`.
+- **Security headers middleware**: `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`, `Referrer-Policy`, `Permissions-Policy` on all responses.
+- **Frontend CSP headers** via `next.config.js` `headers()`.
+- **Auth key rotation**: `SECRET_KEY_PREVIOUS` env var; `get_current_user()` falls back to old key during rotation window. Runbook in `docs/security/key-rotation.md`.
+- **Audit HMAC key rotation**: `DOCREVIEW360_AUDIT_HMAC_KEY_PREVIOUS` env var; dual-key verification during rotation window.
+- **Token revocation**: JTI blacklist in `auth.py`; `POST /logout` inserts JTI; all authenticated routes check revocation.
+- **Server-side session generation**: `token_generation` column on users table; all tokens include `gen` claim; password change and account suspension invalidate all sessions.
+- **Approvals package split**: `approvals.py` decomposed into `approvals/` package (`core.py`, `signatures.py`, `routing.py`) with full backward-compatible re-exports.
+- **Monolithic API decomposed** into 7 sub-routers (`auth_router`, `projects_router`, `documents_router`, `workflows_router`, `admin_router`, `dashboards_router`, `tools_router`).
+- **Deterministic DB migrations**: numbered SQL files in `migrations/` tracked by `schema_versions` table; idempotent apply.
+- **AI optimization prompts documentation** (`docs/ai-optimization-prompts.md`): 8 sections with system/user prompt templates, tuning notes, and fallback strategies.
+- **Phase configuration aligned** with Document Types schema: `PhaseWorkflowLinkModel` with `id`, `display_order`, `workflow_template_id`. `GET /phases/config` returns full metadata.
+- **FedRAMP backup scheduling** (`security_hardening.py`): `enable_fedramp_backup` configures Celery beat task for encrypted daily backups.
+- **Rate limiters** for document export, search, signature, and bulk operations.
+- **WebSocket auth** for `/ws/logs`: token passed as query param, validated server-side.
+- **`approve_by_initials` endpoint** for compact reviewer sign-off.
+- **RBAC cache invalidation** with 5-second monotonic debounce.
+- **Contributing section** added to README.
+
+### Fixed
+
+- `send_for_signature` now resets `document_hash` when re-linking an approval to a different document, preventing spurious hash-mismatch errors.
+- `GET /sign/{sig_id}` made public (removed duplicate auth-gated route from `documents_router.py`).
+- `POST /users/import` now accepts both JSON body and CSV file upload (FastAPI `File`/`Body` incompatibility resolved via raw `Request` body reading).
+- `scripts/replay_webhook.py` replaced `requests` with `httpx` (project dependency).
+- Audit log purge uses atomic write-then-rename (`os.replace`) to prevent truncation on crash.
+- `eval()` in `tiptapMarkReview.ts` replaced with standard dynamic `import()`.
+- Open redirect in `documenso/[sig].tsx` fixed with `new URL()` + origin comparison.
+- Backend-supplied signature URL validated with `new URL()` + same-origin enforcement before `window.location.assign()`.
+- `DEFAULT_SECRET_KEY` constant removed from `auth.py`; only `os.urandom()` fallback remains.
+
 ---
 
 ## [0.1.2] - 2026-03-03

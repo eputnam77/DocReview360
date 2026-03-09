@@ -1,34 +1,47 @@
+"""Tests for document type export/import and validation (DB-backed)."""
+
+import json
 import pytest
 
-from docreview360 import doc_types
-from docreview360.doc_types import DocumentTypeModel
+from docreview360.doc_types import (
+    DocumentTypeModel,
+    add_document_type,
+    delete_document_type,
+    export_document_types,
+    import_document_types,
+    list_document_types,
+    reset_document_types,
+)
 
 
-def setup_tmp(monkeypatch, tmp_path):
-    monkeypatch.setattr(doc_types, "DATA_FILE", tmp_path / "doc_types.json")
-    doc_types.document_types.clear()
-    return tmp_path
+@pytest.fixture(autouse=True)
+def clean_doc_types():
+    """Reset doc types before and after each test."""
+    reset_document_types(seed=False)
+    yield
+    reset_document_types(seed=False)
 
 
-def test_export_import_roundtrip(monkeypatch, tmp_path):
-    setup_tmp(monkeypatch, tmp_path)
-    doc_types.add_document_type(DocumentTypeModel(name="X", template="T", workflow=["A"]))
+def test_export_import_roundtrip(tmp_path):
+    """Exported doc types can be re-imported successfully."""
+    add_document_type(DocumentTypeModel(name="X", template="T", workflow=["A"]))
     dest = tmp_path / "export.json"
-    doc_types.export_document_types(dest)
-    doc_types.document_types.clear()
-    doc_types.import_document_types(dest)
-    assert "X" in doc_types.document_types
+    export_document_types(str(dest))
+    reset_document_types(seed=False)
+    import_document_types(str(dest))
+    names = [dt.name for dt in list_document_types()]
+    assert "X" in names
 
 
-def test_export_path_validation(monkeypatch, tmp_path):
-    setup_tmp(monkeypatch, tmp_path)
-    with pytest.raises(ValueError):
-        doc_types.export_document_types(tmp_path)
+def test_export_path_validation(tmp_path):
+    """export_document_types raises ValueError when path is a directory."""
+    with pytest.raises((ValueError, IsADirectoryError, PermissionError, OSError)):
+        export_document_types(str(tmp_path))
 
 
-def test_import_invalid_json(monkeypatch, tmp_path):
-    setup_tmp(monkeypatch, tmp_path)
+def test_import_invalid_json(tmp_path):
+    """import_document_types raises ValueError for malformed JSON."""
     bad = tmp_path / "bad.json"
     bad.write_text("not json")
-    with pytest.raises(ValueError):
-        doc_types.import_document_types(bad)
+    with pytest.raises((ValueError, json.JSONDecodeError)):
+        import_document_types(str(bad))

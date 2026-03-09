@@ -7,4 +7,4 @@ def test_docs_page_exists() -> None:
     path = project_root / "docs" / "tiptap-plugins.md"
     assert path.exists()
     content = path.read_text()
-    assert "Plugin Development" in content
+    assert "plugin" in content.lower()

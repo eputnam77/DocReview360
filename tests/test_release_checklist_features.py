@@ -43,6 +43,7 @@ def _alice_headers() -> dict[str, str]:
         )
     except Exception:
         pass
+    rbac.add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
     return {"Authorization": f"Bearer {token}"}
 

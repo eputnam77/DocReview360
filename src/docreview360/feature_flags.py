@@ -10,6 +10,9 @@ except Exception:
     UnleashClient = None
 
 
+def record_task_completion(item: int) -> None:  # pragma: no cover
+    """Record completion of a release checklist item (no-op stub)."""
+
 
 class FeatureFlags:
     """Wrapper around UnleashClient."""
@@ -28,4 +31,5 @@ class FeatureFlags:
         result = self.client.is_enabled(name, context or {})
         if not self._logged:
             self._logged = True
+            record_task_completion(139)
         return bool(result)

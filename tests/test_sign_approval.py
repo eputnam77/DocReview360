@@ -33,11 +33,11 @@ def test_sign_approval_flow() -> None:
         headers=hdrs,
     ).json()
 
-    resp = client.post(f"/approvals/{appr['id']}/sign")
+    resp = client.post(f"/approvals/{appr['id']}/sign", headers=hdrs)
     assert resp.status_code == 200
     sig_id = resp.json()["id"]
 
-    client.post(f"/sign/{sig_id}/complete")
+    client.post(f"/sign/{sig_id}/complete", headers=hdrs)
 
     appr2 = client.get(f"/approvals/{appr['id']}", headers=hdrs).json()
     assert appr2["state"] == "approved"
@@ -58,11 +58,11 @@ def test_sign_approval_duplicate_returns_conflict() -> None:
         headers=hdrs,
     ).json()
 
-    resp1 = client.post(f"/approvals/{appr['id']}/sign")
+    resp1 = client.post(f"/approvals/{appr['id']}/sign", headers=hdrs)
     assert resp1.status_code == 200
     sig_id = resp1.json()["id"]
 
-    client.post(f"/sign/{sig_id}/complete")
+    client.post(f"/sign/{sig_id}/complete", headers=hdrs)
 
-    resp2 = client.post(f"/approvals/{appr['id']}/sign")
+    resp2 = client.post(f"/approvals/{appr['id']}/sign", headers=hdrs)
     assert resp2.status_code == 409

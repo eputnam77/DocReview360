@@ -32,7 +32,7 @@ def test_sandbox_webhook_idempotent(monkeypatch):
 
     resp = client.post("/documents/import", files={"file": ("d.md", b"data", "text/markdown")}, headers=hdrs)
     doc_id = resp.json()["id"]
-    resp = client.post(f"/sign/{doc_id}", data={"user": "bob"})
+    resp = client.post(f"/sign/{doc_id}", data={"user": "bob"}, headers=hdrs)
     sig_id = resp.json()["id"]
 
     payload = {
@@ -55,7 +55,7 @@ def test_sandbox_webhook_idempotent(monkeypatch):
         )
         assert res.status_code == 204
 
-    status = client.get(f"/sign/{sig_id}").json()["status"]
+    status = client.get(f"/sign/{sig_id}", headers=hdrs).json()["status"]
     assert status == "signed"
 
 

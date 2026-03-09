@@ -65,6 +65,8 @@ pytest -q -m e2e
 pre-commit run --all-files
 bandit -r src -lll --skip B101
 python scripts/run-pip-audit.py
+mutmut run
+trivy fs .
 ```
 
 ## 3) Safety And Permissions Policy

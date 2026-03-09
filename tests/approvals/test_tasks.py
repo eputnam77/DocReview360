@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Tuple
 
 from docreview360 import approvals as approvals_mod
+from docreview360.approvals import routing as approvals_routing
 
 
 class _EventRecorder:
@@ -31,7 +32,7 @@ def _make_approval(state: str = "pending") -> approvals_mod.ApprovalModel:
 def test_reminder_task_warns_when_missing(monkeypatch: Any) -> None:
     approvals_mod.approvals.clear()
     recorder = _EventRecorder()
-    monkeypatch.setattr(approvals_mod, "log_event", recorder)
+    monkeypatch.setattr(approvals_routing, "log_event", recorder)
 
     approvals_mod._reminder_task("missing")
 
@@ -46,7 +47,7 @@ def test_escalation_task_skips_non_pending(monkeypatch: Any) -> None:
     approvals_mod.approvals.clear()
     approvals_mod.approvals["approval-1"] = _make_approval(state="approved")
     recorder = _EventRecorder()
-    monkeypatch.setattr(approvals_mod, "log_event", recorder)
+    monkeypatch.setattr(approvals_routing, "log_event", recorder)
 
     approvals_mod._escalation_task("approval-1", target="owner@example.com")
 
@@ -62,7 +63,7 @@ def test_escalation_task_logs_for_pending(monkeypatch: Any) -> None:
     approvals_mod.approvals.clear()
     approvals_mod.approvals["approval-1"] = _make_approval(state="pending")
     recorder = _EventRecorder()
-    monkeypatch.setattr(approvals_mod, "log_event", recorder)
+    monkeypatch.setattr(approvals_routing, "log_event", recorder)
 
     approvals_mod._escalation_task("approval-1", target="ops@example.com")
 

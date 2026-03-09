@@ -927,7 +927,7 @@ async def complete_sign(
 @router.get("/sign/{sig_id}")
 async def get_sign_status(
     sig_id: str,
-    current_user: auth.User = Depends(auth.get_current_user),
+    user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, str]:
     """Return signature status."""
     status = signature_status(sig_id)

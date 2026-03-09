@@ -11,10 +11,25 @@ def _setup() -> None:
     add_project(ProjectModel(id="m1", name="MgrProj", user="bob"))
 
 
+def _alice_token() -> str:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice", auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    return auth.create_access_token({"sub": "alice"})
+
+
 def test_user_dashboard_endpoint() -> None:
     _setup()
     client = TestClient(app)
-    resp = client.get("/dashboard/user", headers={"X-User": "alice"})
+    token = _alice_token()
+    resp = client.get(
+        "/dashboard/user",
+        headers={"X-User": "alice", "Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     data = resp.json()
     ids = {e["id"] for e in data}

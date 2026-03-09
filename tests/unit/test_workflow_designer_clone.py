@@ -14,6 +14,5 @@ def test_clone_workflow_allows_empty_reviewers(monkeypatch):
         approval_steps=[],
     )
     workflows[original.id] = original
-    monkeypatch.setattr(wd, "record_task_completion", lambda task: None)
     clone = wd.clone_workflow(original.id, reviewers=[])
     assert clone.reviewers == []

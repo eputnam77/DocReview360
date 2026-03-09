@@ -55,13 +55,13 @@ def test_reporting_endpoints() -> None:
         {"version": "r1", "sha256": "stub"},
     )
 
-    summary = client.get("/reports/summary").json()
+    summary = client.get("/reports/summary", headers=headers).json()
     assert summary["projects"] >= 2
     assert summary["documents"] >= 1
     assert summary["workflows"] >= 1
     assert summary["approvals"] >= 1
 
-    entries = client.get("/reports/dashboard").json()
+    entries = client.get("/reports/dashboard", headers=headers).json()
     entry = next(e for e in entries if e["id"] == "r1")
     assert entry["docs"] == 1
     assert entry["phase"] == "start"
@@ -70,16 +70,16 @@ def test_reporting_endpoints() -> None:
     assert entry["routing_latency"]["<10ms"] == 1
     assert "critic_models" in entry
 
-    widgets = client.get("/dashboard/widgets").json()
+    widgets = client.get("/dashboard/widgets", headers=headers).json()
     assert "avg_quality_score" in widgets
     assert "routing_latency" in widgets
 
-    assert isinstance(client.get("/reports/throughput").json(), list)
-    assert isinstance(client.get("/reports/workload").json(), dict)
+    assert isinstance(client.get("/reports/throughput", headers=headers).json(), list)
+    assert isinstance(client.get("/reports/workload", headers=headers).json(), dict)
 
-    counts = client.get("/dashboard/doc-types").json()
+    counts = client.get("/dashboard/doc-types", headers=headers).json()
     assert counts["sample"] >= 1
 
-    csv_resp = client.get("/reports/summary.csv")
+    csv_resp = client.get("/reports/summary.csv", headers=headers)
     header, _values = csv_resp.text.strip().splitlines()
     assert "avg_quality_score" in header

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple
 import pytest
 
 from docreview360 import approvals as approvals_mod
+from docreview360.approvals import signatures as approvals_sig
 from docreview360.monitoring import APPROVAL_UPLOAD_RETRIES
 
 
@@ -42,12 +43,12 @@ async def test_update_state_retries_and_logs(monkeypatch: pytest.MonkeyPatch) ->
     approvals_mod.approvals.clear()
     approvals_mod.approvals["approval-xyz"] = _make_pending_approval()
 
-    monkeypatch.setattr(approvals_mod, "log_audit_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(approvals_sig, "log_audit_event", lambda *args, **kwargs: None)
     recorder = _EventRecorder()
-    monkeypatch.setattr(approvals_mod, "log_event", recorder)
+    monkeypatch.setattr(approvals_sig, "log_event", recorder)
 
     monkeypatch.setattr(
-        approvals_mod,
+        approvals_sig,
         "_approvals_settings_cached",
         lambda: {"upload_retry": {"max_attempts": 3, "base_delay": 0.01, "max_delay": 0.02}},
     )
@@ -59,14 +60,14 @@ async def test_update_state_retries_and_logs(monkeypatch: pytest.MonkeyPatch) ->
         attempts += 1
         raise RuntimeError("upload failed")
 
-    monkeypatch.setattr(approvals_mod, "_upload_approval_artifacts", failing_upload)
+    monkeypatch.setattr(approvals_sig, "_upload_approval_artifacts", failing_upload)
 
     sleeps: List[float] = []
 
     async def fake_sleep(delay: float) -> None:
         sleeps.append(delay)
 
-    monkeypatch.setattr(approvals_mod.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(approvals_sig.asyncio, "sleep", fake_sleep)
 
     retry_before = _baseline("retry")
     exhausted_before = _baseline("exhausted")
@@ -94,12 +95,12 @@ async def test_update_state_succeeds_after_retry(monkeypatch: pytest.MonkeyPatch
     approvals_mod.approvals.clear()
     approvals_mod.approvals["approval-xyz"] = _make_pending_approval()
 
-    monkeypatch.setattr(approvals_mod, "log_audit_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(approvals_sig, "log_audit_event", lambda *args, **kwargs: None)
     recorder = _EventRecorder()
-    monkeypatch.setattr(approvals_mod, "log_event", recorder)
+    monkeypatch.setattr(approvals_sig, "log_event", recorder)
 
     monkeypatch.setattr(
-        approvals_mod,
+        approvals_sig,
         "_approvals_settings_cached",
         lambda: {"upload_retry": {"max_attempts": 4, "base_delay": 0.0, "max_delay": 0.0}},
     )
@@ -112,8 +113,8 @@ async def test_update_state_succeeds_after_retry(monkeypatch: pytest.MonkeyPatch
         if attempts < 3:
             raise RuntimeError("temporary issue")
 
-    monkeypatch.setattr(approvals_mod, "_upload_approval_artifacts", flaky_upload)
-    monkeypatch.setattr(approvals_mod.asyncio, "sleep", lambda delay: asyncio.sleep(0))
+    monkeypatch.setattr(approvals_sig, "_upload_approval_artifacts", flaky_upload)
+    monkeypatch.setattr(approvals_sig.asyncio, "sleep", lambda delay: asyncio.sleep(0))
 
     retry_before = _baseline("retry")
     exhausted_before = _baseline("exhausted")

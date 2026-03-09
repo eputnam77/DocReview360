@@ -4,12 +4,14 @@ from pathlib import Path
 
 import pytest
 
+import docreview360.archive as _archive_mod
 from docreview360.archive import archive_document, archives
 from docreview360.documents import DocumentModel
 from docreview360.object_storage import download_file, upload_file
 
 
-def test_archive_writes_files(tmp_path: Path) -> None:
+def test_archive_writes_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_archive_mod, "should_encrypt_scope", lambda scope, **kw: False)
     doc = DocumentModel(id="d", content="hello")
     records_before = len(archives)
     record = archive_document(doc, bucket=tmp_path)

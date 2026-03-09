@@ -100,7 +100,7 @@ class TestConfigurationPropagation:
         reset_document_types()
         reset_phases()
 
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=headers)
         assert resp.status_code == 200
         # Should return empty list or default values
         assert isinstance(resp.json(), list)
@@ -121,7 +121,7 @@ class TestConfigurationPropagation:
         workflows.clear()
 
         # Test that endpoints still work with defaults
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=headers)
         assert resp.status_code == 200
 
         resp = client.get("/phases")
@@ -140,6 +140,7 @@ class TestConfigurationPropagation:
     def test_configuration_update_workflow(self) -> None:
         """Test that configuration updates properly propagate through the system."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Initial configuration
         add_document_type(
@@ -152,7 +153,7 @@ class TestConfigurationPropagation:
         add_phase("Initial Phase")
 
         # Verify initial state
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=headers)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
@@ -177,7 +178,7 @@ class TestConfigurationPropagation:
         add_phase("Updated Phase")
 
         # Verify updated state
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=headers)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
@@ -206,8 +207,8 @@ class TestConfigurationPropagation:
         add_phase("Consistency Phase")
 
         # Multiple API calls should return consistent data
-        resp1 = client.get("/document-types")
-        resp2 = client.get("/document-types")
+        resp1 = client.get("/document-types", headers=headers)
+        resp2 = client.get("/document-types", headers=headers)
         assert resp1.json() == resp2.json()
 
         resp1 = client.get("/phases")
@@ -226,7 +227,7 @@ class TestConfigurationPropagation:
         assert resp.status_code == 201
 
         # Configuration should still be available after project creation
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=headers)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] if isinstance(dt, dict) else dt for dt in doc_types]
@@ -257,13 +258,15 @@ class TestConfigurationPropagation:
             pass
 
         # Test API endpoints with invalid data
-        resp = client.post("/document-types", json={"name": "", "template": ""})  # Invalid data
+        hdrs = _alice_headers()
+        resp = client.post("/document-types", json={"name": "", "template": ""}, headers=hdrs)  # Invalid data
         # Should handle validation appropriately
         assert resp.status_code in [201, 400, 422]
 
     def test_configuration_performance(self) -> None:
         """Test that configuration operations perform well."""
         client = TestClient(app)
+        headers = _alice_headers()
 
         # Add multiple configuration items
         for i in range(10):
@@ -281,7 +284,7 @@ class TestConfigurationPropagation:
 
         start_time = time.time()
 
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=headers)
         assert resp.status_code == 200
 
         doc_types = resp.json()

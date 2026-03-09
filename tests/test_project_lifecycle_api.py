@@ -53,7 +53,7 @@ def test_project_lifecycle_persists_and_deletes() -> None:
     manager_projects = {item["id"] for item in manager_resp.json()["projects"]}
     assert "proj-1" in manager_projects
 
-    user_resp = client.get("/dashboard/user", headers={"X-User": "alice"})
+    user_resp = client.get("/dashboard/user", headers=headers)
     assert user_resp.status_code == 200
     user_projects = {item["id"] for item in user_resp.json()}
     assert "proj-1" in user_projects
@@ -88,7 +88,7 @@ def test_project_lifecycle_persists_and_deletes() -> None:
     manager_ids = {item["id"] for item in manager_after.json()["projects"]}
     assert "proj-1" not in manager_ids
 
-    user_after = client.get("/dashboard/user", headers={"X-User": "alice"})
+    user_after = client.get("/dashboard/user", headers=headers)
     assert user_after.status_code == 200
     user_ids = {item["id"] for item in user_after.json()}
     assert "proj-1" not in user_ids

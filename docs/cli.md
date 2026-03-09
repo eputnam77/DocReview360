@@ -1,6 +1,6 @@
-﻿# CLI Reference
+# CLI Reference
 
-DocReview360 ships with a single entry point called `docreview360`. The command wraps a few subâ€‘commands implemented with a friendly wizard style.
+DocReview360 ships with a single entry point called `docreview360`. The command wraps a few sub-commands implemented with a friendly wizard style.
 
 ## init
 
@@ -29,9 +29,9 @@ All options are prompted interactively so you can simply press Enter to accept t
 
 If `--database-url` is omitted the wizard uses driver-specific defaults:
 
-- Postgres â†’ `postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360`
-- MySQL â†’ `mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360`
-- SQLite â†’ `sqlite:///docreview360.db`
+- Postgres -> `postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360`
+- MySQL -> `mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360`
+- SQLite -> `sqlite:///docreview360.db`
 
 ## migrate
 
@@ -42,6 +42,89 @@ docreview360 migrate [export|import] PATH
 Export or import an entire instance for migration. The command writes a gzip
 archive containing documents, logs and document types which can be restored on
 another environment.
+
+## logs
+
+```
+docreview360 logs [hash-chain|verify-chain]
+```
+
+Audit log utilities.
+
+### hash-chain
+
+```
+docreview360 logs hash-chain
+```
+
+Compute and store a tamper-evident hash chain over all audit log entries.
+
+### verify-chain
+
+```
+docreview360 logs verify-chain
+```
+
+Verify the stored audit log hash chain. Exits non-zero if any entry has been
+tampered with or is missing.
+
+---
+
+## rbac
+
+```
+docreview360 rbac [show|set-role]
+```
+
+Manage role definitions stored in `docreview360.yaml`.
+
+### show
+
+```
+docreview360 rbac show
+```
+
+Display the current role-to-permission mapping.
+
+### set-role
+
+```
+docreview360 rbac set-role ROLE PERMISSIONS...
+```
+
+Update or create `role` with the supplied permission list.
+
+---
+
+## validate
+
+```
+docreview360 validate [--ml FILE...]
+```
+
+Run validation checks across configuration and ML artifacts. Pass one or more
+`--ml FILE` paths to inspect ONNX artifacts.
+
+---
+
+## verify-signatures
+
+```
+docreview360 verify-signatures [OPTIONS]
+```
+
+Verify document signatures. When no document IDs are supplied, all approvals
+in `--scope` are processed.
+
+### Options
+
+| Option | Description |
+| ------ | ----------- |
+| `--scope TEXT` | Approval scope filter (default: `approved`). |
+| `--document-id TEXT` | Verify a specific document (repeatable). |
+| `--parallel / --sequential` | Process concurrently or sequentially (default: sequential). |
+
+---
 
 ## ml
 
@@ -57,8 +140,8 @@ docreview360 ml train [--epochs 5] [--lr 3e-5]
 Fine-tunes the PyTorch classifier using the feature schema defined in
 `schemas/features.json`. Outputs include:
 
-- `artifacts/models/latest.pt` â€“ most recent checkpoint.
-- `artifacts/metrics/latest.json` â€“ training loss, accuracy, and confusion
+- `artifacts/models/latest.pt` -- most recent checkpoint.
+- `artifacts/metrics/latest.json` -- training loss, accuracy, and confusion
   matrix snapshots.
 
 ### export
@@ -70,11 +153,11 @@ docreview360 ml export [--opset 18] [--quantize dynamic|static] [--calibration-s
 Converts the PyTorch checkpoint to ONNX and optionally applies quantisation.
 Common patterns:
 
-1. `docreview360 ml export` â€“ emit a floating-point ONNX graph.
-2. `docreview360 ml export --quantize dynamic` â€“ generate an INT8 graph optimised
+1. `docreview360 ml export` -- emit a floating-point ONNX graph.
+2. `docreview360 ml export --quantize dynamic` -- generate an INT8 graph optimised
    for CPUs.
 3. `docreview360 ml export --quantize static --calibration-set data/calibration/`
-   â€“ calibrate with held-out samples.
+   -- calibrate with held-out samples.
 
 Outputs land in `artifacts/models/` and are tagged with the export timestamp.
 
@@ -86,7 +169,7 @@ docreview360 ml package [--include-tokenizer]
 
 Bundles the ONNX model, feature schema, metrics, and optional tokenizer files
 into `artifacts/packages/<timestamp>/`. Use the resulting folder for container
-deploymentsâ€”copy it to your image and set `DOCREVIEW360_ML_MODEL_DIR`.
+deployments--copy it to your image and set `DOCREVIEW360_ML_MODEL_DIR`.
 
 ### eval
 

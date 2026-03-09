@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from docreview360 import approvals
-from docreview360.approvals import ReviewerModel
+from docreview360.approvals import routing as approvals_routing
+from docreview360.reviewer_model import ReviewerModel
 from docreview360.ml.routing_critic import ROUTING_FEATURE_NAMES
 from docreview360.ml.torch_models import build_clarity_critic
 from docreview360.reviewer_model import Recommendation
@@ -39,7 +40,7 @@ def test_submit_draft_captures_scoring_metadata(monkeypatch):
     def fake_log_event(name: str, **kwargs) -> None:
         events.append((name, kwargs))
 
-    monkeypatch.setattr(approvals, "log_event", fake_log_event)
+    monkeypatch.setattr(approvals_routing, "log_event", fake_log_event)
 
     model = ReviewerModel()
     text = "Highly structured document with metadata"

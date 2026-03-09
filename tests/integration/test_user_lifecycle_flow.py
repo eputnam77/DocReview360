@@ -6,8 +6,14 @@ from docreview360 import auth, rbac, settings_manager
 from docreview360.api import app
 
 
+_STRONG_PASSWORD = "Password1!XYZabc"
+
+
 def _admin_headers() -> dict[str, str]:
-    auth.USER_REPOSITORY.create_user("admin_user", "Password1!")
+    try:
+        auth.USER_REPOSITORY.create_user("admin_user", _STRONG_PASSWORD)
+    except Exception:
+        pass
     rbac.add_role("admin_user", "admin")
     token = auth.create_access_token({"sub": "admin_user"})
     return {"Authorization": f"Bearer {token}"}
@@ -30,7 +36,7 @@ def test_user_lifecycle_from_config_to_workflow(tmp_path) -> None:
     admin_headers = _admin_headers()
 
     username = f"user_{uuid4().hex[:8]}"
-    password = "Password1!"
+    password = _STRONG_PASSWORD
 
     resp = client.post(
         "/users",
@@ -52,7 +58,7 @@ def test_user_lifecycle_from_config_to_workflow(tmp_path) -> None:
     dashboard_resp = client.get("/dashboard/user", headers=user_headers)
     assert dashboard_resp.status_code == 200
 
-    doc_types_resp = client.get("/document-types")
+    doc_types_resp = client.get("/document-types", headers=user_headers)
     assert doc_types_resp.status_code == 200
     doc_types = doc_types_resp.json()
     assert doc_types
@@ -60,7 +66,7 @@ def test_user_lifecycle_from_config_to_workflow(tmp_path) -> None:
     phases = doc_types[0].get("phases") or doc_types[0].get("workflow") or []
     assert phases
 
-    templates_resp = client.get("/workflow-templates")
+    templates_resp = client.get("/workflow-templates", headers=user_headers)
     assert templates_resp.status_code == 200
     templates = templates_resp.json()
     assert templates
@@ -115,6 +121,7 @@ def test_user_lifecycle_from_config_to_workflow(tmp_path) -> None:
 
     approval_resp = client.post(
         "/approvals",
+        headers=user_headers,
         json={
             "workflow": workflow_id,
             "reviewer": username,
@@ -125,7 +132,7 @@ def test_user_lifecycle_from_config_to_workflow(tmp_path) -> None:
     assert approval_resp.status_code == 201
     approval_id = approval_resp.json()["id"]
 
-    sign_resp = client.post(f"/approvals/{approval_id}/sign")
+    sign_resp = client.post(f"/approvals/{approval_id}/sign", headers=user_headers)
     assert sign_resp.status_code == 200
     sign_payload = sign_resp.json()
     assert sign_payload.get("id")

@@ -69,7 +69,7 @@ class TestProjectCreationIntegration:
         headers = _alice_headers()
 
         # Test that configuration is available
-        doc_types_resp = client.get("/document-types")
+        doc_types_resp = client.get("/document-types", headers=headers)
         assert doc_types_resp.status_code == 200
         doc_types = doc_types_resp.json()
         assert any(dt["name"] == "Test Document Type" for dt in doc_types)
@@ -236,6 +236,7 @@ class TestConfigurationPropagation:
     def test_document_types_propagate_to_frontend(self) -> None:
         """Test that document types from configuration appear in frontend endpoints."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Clear existing document types
         doc_types.document_types.clear()
@@ -263,7 +264,7 @@ class TestConfigurationPropagation:
             add_document_type(doc_type)
 
         # Test that they appear in the API
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
 
         types_payload = resp.json()

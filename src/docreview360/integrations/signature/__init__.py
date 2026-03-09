@@ -1,4 +1,5 @@
 from . import documenso as _documenso
+from . import docusign as _docusign
 from . import sandbox as _sandbox
 from .base import (
     DEFAULT_PROVIDER,
@@ -17,5 +18,6 @@ __all__ = [
     "register_provider",
     "DEFAULT_PROVIDER",
     "_documenso",
+    "_docusign",
     "_sandbox",
 ]

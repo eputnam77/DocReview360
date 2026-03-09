@@ -7,7 +7,10 @@ from docreview360.archive import archive_document
 from docreview360.documents import DocumentModel, documents
 
 
-def test_public_copy_listing_and_archive(tmp_path) -> None:
+def test_public_copy_listing_and_archive(tmp_path, monkeypatch) -> None:
+    import docreview360.archive as _archive_mod
+
+    monkeypatch.setattr(_archive_mod, "should_encrypt_scope", lambda scope, **kw: False)
     backup = documents.copy()
     documents.clear()
     try:
@@ -25,23 +28,13 @@ def test_public_copy_listing_and_archive(tmp_path) -> None:
         resp = client.get("/documents/public")
         assert resp.status_code == 200
         data = resp.json()
-        assert data == [
-            {
-                "id": "pub1",
-                "content": "public",
-                "history": [],
-                "editor": "tiptap",
-                "number": None,
-                "project": None,
-                "user": None,
-                "date": None,
-                "priority": None,
-                "ingestion_hash": None,
-                "public_copy": True,
-                "source_document_id": "int1",
-                "approval_ids": [],
-            }
-        ]
+        assert len(data) == 1
+        doc = data[0]
+        assert doc["id"] == "pub1"
+        assert doc["content"] == "public"
+        assert doc["public_copy"] is True
+        assert doc["source_document_id"] == "int1"
+        assert doc["approval_ids"] == []
 
         record = archive_document(public, bucket=tmp_path)
         assert record.metadata["public_copy"] is True

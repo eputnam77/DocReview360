@@ -46,9 +46,9 @@ def test_dashboard_updates_after_signature() -> None:
         json={"workflow": wf["id"], "reviewer": "bob", "doc_id": doc["id"]},
         headers=hdrs,
     ).json()
-    sig = client.post(f"/approvals/{appr['id']}/sign").json()["id"]
+    sig = client.post(f"/approvals/{appr['id']}/sign", headers=hdrs).json()["id"]
 
-    entry = next(e for e in client.get("/reports/dashboard").json() if e["id"] == "d1")
+    entry = next(e for e in client.get("/reports/dashboard", headers=hdrs).json() if e["id"] == "d1")
     pending = entry["pending_approvals"]
     assert pending >= 1
 
@@ -84,5 +84,5 @@ def test_dashboard_updates_after_signature() -> None:
             "X-Signature": signature,
         },
     )
-    entry2 = next(e for e in client.get("/reports/dashboard").json() if e["id"] == "d1")
+    entry2 = next(e for e in client.get("/reports/dashboard", headers=hdrs).json() if e["id"] == "d1")
     assert entry2["pending_approvals"] == pending - 1

@@ -261,20 +261,6 @@
         "description": null
       }
     ],
-    "updated": "2026-03-09T16:06:20.980134+00:00"
-  },
-  {
-    "id": "_smoke_wf_template",
-    "name": "_smoke_wf_template",
-    "description": null,
-    "steps": [
-      {
-        "role": "reviewer",
-        "user": null,
-        "required": true,
-        "description": null
-      }
-    ],
-    "updated": "2026-03-09T16:22:52.098587+00:00"
+    "updated": "2026-03-09T20:19:23.127963+00:00"
   }
 ]

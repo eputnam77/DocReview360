@@ -43,7 +43,7 @@ def test_update_state_uploads_to_cms(monkeypatch):
 
     monkeypatch.setattr("docreview360.sharepoint.requests.put", fake_put)
     monkeypatch.setattr("docreview360.sharepoint.requests.patch", fake_patch)
-    monkeypatch.setattr("docreview360.approvals.fetch_certificate", fake_fetch)
+    monkeypatch.setattr("docreview360.approvals.signatures.fetch_certificate", fake_fetch)
 
     document = b"hello"
     approval = create_approval("wf1", "bob", "doc1", document=document)

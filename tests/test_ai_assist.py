@@ -1,11 +1,25 @@
+import sys
+from datetime import timedelta
 from types import TracebackType
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from docreview360 import ai_assist, ai_utils
+from docreview360 import ai_assist, ai_utils, auth
 from docreview360.api import app
+
+
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice", auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.mark.asyncio
@@ -13,11 +27,10 @@ async def test_ai_rewrite_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_call(text: str) -> str:
         return "rewritten"
 
-    from docreview360 import api
-
-    monkeypatch.setattr(api, "rewrite_text", fake_call)
+    tools_mod = sys.modules["docreview360.api.tools_router"]
+    monkeypatch.setattr(tools_mod, "rewrite_text", fake_call)
     client = TestClient(app)
-    resp = client.post("/ai/rewrite", json={"text": "hello"})
+    resp = client.post("/ai/rewrite", json={"text": "hello"}, headers=_alice_headers())
     assert resp.status_code == 200
     assert resp.json()["result"] == "rewritten"
 
@@ -27,11 +40,10 @@ async def test_ai_summarize_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_sum(text: str) -> str:
         return "summary"
 
-    from docreview360 import api
-
-    monkeypatch.setattr(api, "summarize_text", fake_sum)
+    tools_mod = sys.modules["docreview360.api.tools_router"]
+    monkeypatch.setattr(tools_mod, "summarize_text", fake_sum)
     client = TestClient(app)
-    resp = client.post("/ai/summarize", json={"text": "some text"})
+    resp = client.post("/ai/summarize", json={"text": "some text"}, headers=_alice_headers())
     assert resp.status_code == 200
     assert resp.json()["result"] == "summary"
 

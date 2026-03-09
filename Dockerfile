@@ -25,12 +25,11 @@ ENV PORT=${PORT}
 
 # Install runtime dependencies
 COPY pyproject.toml ./
-COPY poetry.lock ./
 COPY src ./src
 COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/* && \
     pip install --upgrade pip && \
-    pip install . && \
+    pip install ".[ml]" && \
     pip install uvicorn && \
     npm ci --prefix frontend && npm run build --prefix frontend
 

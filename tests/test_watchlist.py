@@ -1,5 +1,6 @@
 import importlib
 import json
+from datetime import timedelta
 from importlib import reload
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,20 @@ import pytest
 from fastapi.testclient import TestClient
 
 import docreview360.api as api
+from docreview360 import auth
+
+
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_watchlist_toggle(tmp_path: Path, monkeypatch: Any) -> None:
@@ -28,11 +43,21 @@ def test_watchlist_api(tmp_path: Path, monkeypatch: Any) -> None:
     reload(watchlist)
     importlib.reload(api)
     client = TestClient(api.app)
-    resp = client.post("/watchlist/p1", json={"user": "bob"})
+    hdrs = _alice_headers()
+    # Create a project first so the watchlist endpoint can find it
+    proj_resp = client.post(
+        "/projects",
+        json={"name": "watchlist-test-proj", "description": ""},
+        headers=hdrs,
+    )
+    assert proj_resp.status_code in (200, 201)
+    project_id = proj_resp.json()["id"]
+    # Toggle alice's own watchlist (non-admin impersonation is forbidden)
+    resp = client.post(f"/watchlist/{project_id}", json={"user": "alice"}, headers=hdrs)
     assert resp.status_code == 201
-    assert resp.json() == ["p1"]
-    resp = client.get("/watchlist/bob")
-    assert resp.json() == ["p1"]
+    assert project_id in resp.json()
+    resp = client.get("/watchlist/alice", headers=hdrs)
+    assert project_id in resp.json()
 
 
 def test_watchlist_custom_path(tmp_path: Path, monkeypatch: Any) -> None:

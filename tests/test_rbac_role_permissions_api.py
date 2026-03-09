@@ -7,7 +7,14 @@ from docreview360.api import app
 
 
 def _auth_headers() -> dict[str, str]:
-    auth.USER_REPOSITORY.create_user("alice", "Password1!")
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
     rbac.add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"})
     return {"Authorization": f"Bearer {token}"}

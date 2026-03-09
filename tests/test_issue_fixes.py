@@ -46,7 +46,10 @@ def test_object_storage_validation(tmp_path):
     assert path.read_bytes() == b"data"
 
 
-def test_backup_restore_invalid_base64(tmp_path):
+def test_backup_restore_invalid_base64(tmp_path, monkeypatch):
+    import docreview360.backup_utils as _backup_mod
+
+    monkeypatch.setattr(_backup_mod, "enforce_encryption_choice", lambda **kw: None)
     documents.clear()
     logs.clear()
     doc = DocumentModel(id="1", content="text")

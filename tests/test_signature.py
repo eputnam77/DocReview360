@@ -43,7 +43,7 @@ def test_signature_flow() -> None:
     assert resp.status_code == 200
     sig_id = resp.json()["id"]
     assert "url" in resp.json()
-    status = client.get(f"/sign/{sig_id}").json()["status"]
+    status = client.get(f"/sign/{sig_id}", headers=headers).json()["status"]
     assert status == "pending"
     secret = "testsecret"
     os.environ["DOCUMENSO_WEBHOOK"] = secret
@@ -59,5 +59,5 @@ def test_signature_flow() -> None:
             "X-Signature": signature,
         },
     )
-    status2 = client.get(f"/sign/{sig_id}").json()["status"]
+    status2 = client.get(f"/sign/{sig_id}", headers=headers).json()["status"]
     assert status2 == "signed"

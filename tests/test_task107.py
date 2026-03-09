@@ -5,6 +5,9 @@ import pytest
 
 from docreview360 import approvals
 from docreview360 import quality as quality_module
+from docreview360.approvals import core as approvals_core
+from docreview360.approvals import routing as approvals_routing
+from docreview360.approvals import signatures as approvals_sig
 from docreview360.quality import (
     QUALITY_FLAG_NAMES,
     explain_score,
@@ -69,12 +72,17 @@ def test_quality_scoring_records_model_metadata(monkeypatch: pytest.MonkeyPatch)
     log_calls: list[tuple[str, dict[str, object]]] = []
 
     monkeypatch.setattr(
-        approvals,
+        approvals_core,
         "log_audit_event",
         lambda *args, **kwargs: audit_calls.append((args, kwargs)),
     )
     monkeypatch.setattr(
-        approvals,
+        approvals_routing,
+        "log_event",
+        lambda action, **kwargs: log_calls.append((action, kwargs)),
+    )
+    monkeypatch.setattr(
+        approvals_core,
         "log_event",
         lambda action, **kwargs: log_calls.append((action, kwargs)),
     )

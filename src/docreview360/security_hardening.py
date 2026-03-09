@@ -41,13 +41,12 @@ def enforce_mfa_login(username: str, password: str, otp: str) -> str:
 
 
 def secure_backup(path: str) -> str:
-    """Create and encrypt a daily backup."""
-    backup = create_backup(Path(path))
-    import gzip
+    """Create and encrypt a daily backup.
 
-    with gzip.open(backup, "rt", encoding="utf-8") as fh:
-        data = fh.read()
-    encrypt_backup(backup, data)
+    Delegates to :func:`~.backup_utils.create_backup` which already supports
+    optional Fernet encryption. The resulting file is written to ``path``.
+    """
+    backup = create_backup(Path(path), encrypt=True)
     return str(backup)
 
 

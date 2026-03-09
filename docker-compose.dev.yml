@@ -1,0 +1,90 @@
+# docker-compose.dev.yml — LOCAL DEVELOPMENT ONLY
+#
+# This file is a lightweight alternative to docker-compose.yml for local
+# development.  Key differences from production:
+#
+#   - No Postgres: uses SQLite (the default when DOCREVIEW360_ENV=dev)
+#   - No OpenSearch: full-text search falls back to the in-process SQLite FTS5
+#   - Redis is included but optional; set CELERY_BROKER_URL=memory:// to skip it
+#   - Source code is mounted as a bind-mount so changes hot-reload without rebuild
+#   - DOCREVIEW360_ENV=dev seeds demo users (alice/password, bob/password) and
+#     relaxes secret enforcement — DO NOT use this compose file in production
+#
+# Quick start:
+#   docker compose -f docker-compose.dev.yml up
+#
+# Visit the API at http://localhost:8000 and the frontend at http://localhost:3000
+# ---------------------------------------------------------------------------
+
+version: '3.9'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Redis — used by Celery for background tasks.
+  # Set CELERY_BROKER_URL=memory:// in the `web` service to skip Redis entirely.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Backend — FastAPI app with SQLite + hot-reload via --reload
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      python -m uvicorn docreview360.api:app
+        --reload
+        --host 0.0.0.0
+        --port 8000
+    volumes:
+      # Bind-mount the full repo so code changes trigger hot-reload
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      # Dev mode: skips secret enforcement, seeds demo users on startup
+      - DOCREVIEW360_ENV=dev
+      # SQLite is used by default when DOCREVIEW360_DATABASE_URL is unset
+      # Uncomment to override the SQLite path inside the container:
+      # - DOCREVIEW360_DATABASE_URL=sqlite:////app/.dev-data/docreview360.db
+      #
+      # Celery: use Redis broker (comment out to fall back to in-memory broker)
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      # Run Celery tasks synchronously in dev so you don't need a separate worker
+      - CELERY_TASK_ALWAYS_EAGER=1
+      #
+      # Signature provider: sandbox avoids external calls in dev
+      - SIGNATURE_PROVIDER=sandbox
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Next.js dev server with hot-reload
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: node:18-alpine
+    working_dir: /app/frontend
+    command: sh -c "npm install --legacy-peer-deps && npm run dev"
+    volumes:
+      # Bind-mount only the frontend directory for faster builds
+      - ./frontend:/app/frontend
+      # Persist node_modules in an anonymous volume to avoid host overwrites
+      - /app/frontend/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      # Points the Next.js client at the local backend
+      - NEXT_PUBLIC_API_BASE=http://localhost:8000
+    depends_on:
+      - web

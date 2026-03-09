@@ -17,9 +17,7 @@ def test_restore_backup_async_invokes_dependencies(
         called["task_id"] = task_id
 
     monkeypatch.setattr(panel, "restore_backup", fake_restore)
-    monkeypatch.setattr(panel, "record_task_completion", fake_record)
 
     panel.restore_backup_async(str(tmp_path))
 
     assert called["path"] == tmp_path
-    assert called["task_id"] == 146

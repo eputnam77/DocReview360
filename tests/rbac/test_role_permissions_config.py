@@ -28,6 +28,7 @@ def test_role_permissions_override_refreshes_cache(tmp_path: Path, monkeypatch) 
     settings_path.write_text(yaml.safe_dump({"rbac": {"roles": {"admin": ["delete"]}}}))
     stat = settings_path.stat()
     os.utime(settings_path, (stat.st_atime + 1, stat.st_mtime + 1))
+    rbac.reload_role_permissions(force=True)
 
     assert rbac.has_permission("alice", "delete")
     assert not rbac.has_permission("alice", "create")

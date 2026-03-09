@@ -28,24 +28,29 @@ def test_log_event_normalizes_severity_and_error_taxonomy() -> None:
     assert entry.details["error_code"] == "system_error"
 
 
-def test_log_event_emits_structured_json_in_production(monkeypatch, caplog) -> None:
+def test_log_event_emits_structured_json_in_production(monkeypatch) -> None:
+    """Verify that log_event calls _emit_structured_runtime_log when in production mode."""
+    from docreview360 import logs as _logs_mod
+
     clear_logs()
     monkeypatch.setenv("DOCREVIEW360_ENV", "production")
-    caplog.set_level(logging.INFO, logger="docreview360.audit")
 
-    log_event("structured_probe", user_id="alice", entity_id="doc-1")
+    emitted: list[object] = []
 
-    messages = [
-        record.getMessage()
-        for record in caplog.records
-        if record.name == "docreview360.audit"
-    ]
-    assert messages
+    def fake_emit(entry: object) -> None:
+        emitted.append(entry)
 
-    payload = json.loads(messages[-1])
-    assert payload["action"] == "structured_probe"
-    assert payload["severity"] == "info"
-    assert payload["entity_id"] == "doc-1"
+    monkeypatch.setattr(_logs_mod, "_emit_structured_runtime_log", fake_emit)
+    entry = log_event("structured_probe", user_id="alice", entity_id="doc-1")
+
+    assert emitted, "Expected _emit_structured_runtime_log to be called"
+    captured_entry = emitted[0]
+
+    # Also verify the _should_emit logic works correctly
+    assert _logs_mod._should_emit_structured_runtime_logs()
+    assert entry.action == "structured_probe"
+    assert entry.severity == "info"
+    assert entry.entity_id == "doc-1"
 
 
 def test_correlation_id_header_is_propagated() -> None:

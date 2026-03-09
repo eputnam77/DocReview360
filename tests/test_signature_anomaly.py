@@ -17,10 +17,11 @@ def _approval_likelihood_stub(
 def approvals_context(monkeypatch: pytest.MonkeyPatch):
     from docreview360 import approvals as approvals_module
     from docreview360.api import webhooks as webhooks_module
+    from docreview360.approvals import routing as approvals_routing
 
-    monkeypatch.setattr(approvals_module, "approval_likelihood", _approval_likelihood_stub)
+    monkeypatch.setattr(approvals_routing, "approval_likelihood", _approval_likelihood_stub)
     monkeypatch.setattr(
-        approvals_module,
+        approvals_routing,
         "quality_model_metadata",
         lambda: types.SimpleNamespace(
             sha256="stub",

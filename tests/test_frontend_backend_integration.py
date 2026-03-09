@@ -216,6 +216,7 @@ class TestFrontendBackendIntegration:
     def test_configuration_endpoint_consistency(self) -> None:
         """Test that configuration endpoints return consistent data."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Add test configuration
         add_document_type(
@@ -228,7 +229,7 @@ class TestFrontendBackendIntegration:
         add_phase("Consistency Phase")
 
         # Test document types endpoint
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
 
         doc_types = resp.json()
@@ -258,9 +259,10 @@ class TestFrontendBackendIntegration:
     def test_frontend_compatibility_endpoints(self) -> None:
         """Test endpoints that frontend specifically uses."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test environments endpoint (used by frontend)
-        resp = client.get("/environments")
+        resp = client.get("/environments", headers=hdrs)
         assert resp.status_code == 200
 
         # Test users/me endpoint (used by frontend)
@@ -279,7 +281,7 @@ class TestFrontendBackendIntegration:
         assert resp.status_code == 200
 
         # Test metrics endpoint (used by frontend dashboards)
-        resp = client.get("/metrics/summary")
+        resp = client.get("/metrics/summary", headers=hdrs)
         assert resp.status_code == 200
 
         metrics = resp.json()

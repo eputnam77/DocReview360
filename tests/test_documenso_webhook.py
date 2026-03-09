@@ -37,7 +37,7 @@ def test_documenso_webhook_advances_workflow() -> None:
     doc_id = resp.json()["id"]
 
     # request signature linked to workflow
-    resp = client.post(f"/sign/{doc_id}", data={"user": "bob", "workflow": wf_id})
+    resp = client.post(f"/sign/{doc_id}", data={"user": "bob", "workflow": wf_id}, headers=hdrs)
     sig_id = resp.json()["id"]
 
     # webhook callback marks signed
@@ -57,6 +57,6 @@ def test_documenso_webhook_advances_workflow() -> None:
     )
 
     # status updated and workflow advanced
-    assert client.get(f"/sign/{sig_id}").json()["status"] == "signed"
+    assert client.get(f"/sign/{sig_id}", headers=hdrs).json()["status"] == "signed"
     wf_data = client.get(f"/workflows/{wf_id}", headers=hdrs).json()
     assert wf_data["phase"] == "signed"

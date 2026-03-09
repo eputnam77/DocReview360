@@ -10,6 +10,7 @@ description     = "DocReview360 simplifies document workflows with approvals and
 readme          = "README.md"
 requires-python = ">=3.11,<3.13"
 license         = { text = "GPL-3.0-only" }
+license-files   = ["LICENSE"]
 keywords        = [
   "document-review",
   "workflow",

@@ -93,7 +93,7 @@ class TestNameChangePropagation:
             workflow=["draft", "review", "final"],
         )
 
-        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
+        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump(), headers=hdrs)
         assert resp.status_code == 200
 
         # Verify the project now references the new name
@@ -103,7 +103,7 @@ class TestNameChangePropagation:
         assert updated_project["doc_type"] == new_name
 
         # Verify document types list shows the new name
-        resp = client.get("/document-types")
+        resp = client.get("/document-types", headers=hdrs)
         assert resp.status_code == 200
         doc_types = resp.json()
         doc_type_names = [dt["name"] for dt in doc_types]
@@ -115,7 +115,7 @@ class TestNameChangePropagation:
         assert resp.status_code == 200
 
         # Verify dashboard shows the new name
-        resp = client.get("/dashboard/doc-types")
+        resp = client.get("/dashboard/doc-types", headers=hdrs)
         assert resp.status_code == 200
         dashboard_data = resp.json()
         assert new_name in dashboard_data
@@ -152,7 +152,7 @@ class TestNameChangePropagation:
         workflow = resp.json()
 
         # Rename the phase
-        resp = client.put(f"/phases/{original_name}", json={"name": new_name})
+        resp = client.put(f"/phases/{original_name}", json={"name": new_name}, headers=hdrs)
         assert resp.status_code == 200
 
         # Verify the project now references the new phase name
@@ -255,7 +255,7 @@ class TestNameChangePropagation:
             DocumentTypeModel(name="Replacement", template="<h1>R</h1>", workflow=["Phase"])
         )
         resp = client.delete(
-            f"/document-types/{doc_type_name}", params={"replacement": "Replacement"}
+            f"/document-types/{doc_type_name}", params={"replacement": "Replacement"}, headers=hdrs
         )
         assert resp.status_code == 204
 
@@ -295,7 +295,7 @@ class TestNameChangePropagation:
             name=new_name, template="<h1>Updated Test</h1>", workflow=["Phase"]
         )
 
-        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
+        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump(), headers=hdrs)
         assert resp.status_code == 200
 
         # Check logs for the name change.  Accessing the operational logs
@@ -338,14 +338,14 @@ class TestNameChangePropagation:
             assert resp.status_code == 201
 
         # Check summary report
-        resp = client.get("/reports/summary")
+        resp = client.get("/reports/summary", headers=hdrs)
         assert resp.status_code == 200
 
         # Verify the document type appears in reports
         # The exact structure depends on the report format
 
         # Check dashboard data
-        resp = client.get("/dashboard/doc-types")
+        resp = client.get("/dashboard/doc-types", headers=hdrs)
         assert resp.status_code == 200
         dashboard_data = resp.json()
         assert doc_type_name in dashboard_data
@@ -386,7 +386,7 @@ class TestNameChangePropagation:
             name=new_name, template="<h1>Updated Search Test</h1>", workflow=["Phase"]
         )
 
-        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
+        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump(), headers=hdrs)
         assert resp.status_code == 200
 
         # Search for new name
@@ -440,11 +440,11 @@ class TestNameChangePropagation:
             name=new_doc_type_name, template="<h1>Updated Consistency Test</h1>", workflow=["Phase"]
         )
 
-        resp = client.put(f"/document-types/{doc_type_name}", json=updated_doc_type.model_dump())
+        resp = client.put(f"/document-types/{doc_type_name}", json=updated_doc_type.model_dump(), headers=hdrs)
         assert resp.status_code == 200
 
         # Update phase
-        resp = client.put(f"/phases/{phase_name}", json={"name": new_phase_name})
+        resp = client.put(f"/phases/{phase_name}", json={"name": new_phase_name}, headers=hdrs)
         assert resp.status_code == 200
 
         # Verify all references are updated consistently
@@ -464,6 +464,7 @@ class TestNameChangePropagation:
     def test_name_change_error_handling(self) -> None:
         """Test error handling during name changes."""
         client = TestClient(app)
+        hdrs = _alice_headers()
 
         # Test renaming to existing name
         add_document_type(
@@ -485,12 +486,12 @@ class TestNameChangePropagation:
             workflow=["Phase"],
         )
 
-        resp = client.put("/document-types/Another Doc Type", json=updated_doc_type.model_dump())
+        resp = client.put("/document-types/Another Doc Type", json=updated_doc_type.model_dump(), headers=hdrs)
         # Renaming to an existing name should now result in a conflict error
         assert resp.status_code == 409
 
         # Test renaming non-existent item
-        resp = client.put("/document-types/Non-existent", json=updated_doc_type.model_dump())
+        resp = client.put("/document-types/Non-existent", json=updated_doc_type.model_dump(), headers=hdrs)
         assert resp.status_code == 404
 
     def test_name_change_performance(self) -> None:
@@ -528,7 +529,7 @@ class TestNameChangePropagation:
             name=new_name, template="<h1>Updated Performance Test</h1>", workflow=["Phase"]
         )
 
-        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump())
+        resp = client.put(f"/document-types/{original_name}", json=updated_doc_type.model_dump(), headers=hdrs)
         assert resp.status_code == 200
 
         # Verify all related projects are updated

@@ -51,29 +51,6 @@ def test_enforce_mode_rejects_wrong_name() -> None:
     assert EXPECTED in r.json()["detail"]
 
 
-# FN-03
-
-spec_task159 = importlib.util.spec_from_file_location(
-    "docreview360.stubs.task159", PACKAGE_DIR / "stubs" / "task159.py"
-)
-task159 = importlib.util.module_from_spec(spec_task159)
-sys.modules["docreview360.stubs.task159"] = task159
-spec_task159.loader.exec_module(task159)
-
-
-def test_auto_rename_logs_event() -> None:
-    events: list[str] = []
-
-    def auto_rename(filename: str) -> str:
-        new = f"fixed_{filename}"
-        events.append(task159.task159(new))
-        return new
-
-    new_name = auto_rename("bad.txt")
-    assert new_name == "fixed_bad.txt"
-    assert events == ["renamed:fixed_bad.txt"]
-
-
 # FN-04
 
 
