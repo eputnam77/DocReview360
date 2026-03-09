@@ -32,6 +32,7 @@ from ..phases import (
     get_phase_workflow_template,
     list_phase_workflow_links,
     list_phases,
+    list_phases_detail,
     rename_phase,
     set_phase_workflow_template,
 )
@@ -152,9 +153,21 @@ class PhaseModel(BaseModel):
 
 
 class PhaseWorkflowLinkModel(BaseModel):
-    """Phase configuration with optional default workflow-template linkage."""
+    """Rich phase schema — the canonical structured phase response.
 
+    Mirrors the style of ``DocumentTypeModel`` so that both phases and document
+    types can be consumed uniformly by clients:
+
+    - ``id`` — stable string identifier (equal to ``name``); used in URLs and
+      FK references so clients need not encode the name.
+    - ``name`` — human-readable display name.
+    - ``display_order`` — sort position (lower = first).
+    - ``workflow_template_id`` — linked workflow template if set, else ``None``.
+    """
+
+    id: str
     name: str
+    display_order: int = 0
     workflow_template_id: str | None = None
 
 
@@ -194,11 +207,14 @@ def _serialize_workflow_template(template: WorkflowTemplateModel) -> WorkflowTem
 
 
 def _serialize_phase_workflow_links() -> list[PhaseWorkflowLinkModel]:
-    phases_list = list_phases()
-    links = list_phase_workflow_links()
     return [
-        PhaseWorkflowLinkModel(name=phase_name, workflow_template_id=links.get(phase_name))
-        for phase_name in phases_list
+        PhaseWorkflowLinkModel(
+            id=entry["id"],  # type: ignore[arg-type]
+            name=entry["name"],  # type: ignore[arg-type]
+            display_order=entry["display_order"],  # type: ignore[arg-type]
+            workflow_template_id=entry["workflow_template_id"],  # type: ignore[arg-type]
+        )
+        for entry in list_phases_detail()
     ]
 
 
@@ -443,8 +459,14 @@ async def set_phase_workflow_template_endpoint(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    detail = next(
+        (e for e in list_phases_detail() if e["name"] == name),
+        None,
+    )
     return PhaseWorkflowLinkModel(
+        id=name,
         name=name,
+        display_order=int(detail["display_order"]) if detail else 0,
         workflow_template_id=get_phase_workflow_template(name),
     )
 

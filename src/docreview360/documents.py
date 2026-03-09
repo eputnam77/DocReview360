@@ -719,6 +719,86 @@ def unfreeze_document(doc_id: str) -> DocumentModel:
     return document
 
 
+def diff_document_revisions(
+    doc_id: str,
+    revision_id_a: str,
+    revision_id_b: str,
+) -> dict[str, Any]:
+    """Return a unified-diff and per-line change breakdown between two revisions.
+
+    ``revision_id_a`` is treated as the "before" (old) side and
+    ``revision_id_b`` as the "after" (new) side.  Either ID may be the
+    special sentinel ``"current"`` to refer to the live document content.
+
+    Returns a dict with:
+    - ``unified_diff``: list of unified-diff lines (strings, no trailing newline)
+    - ``lines_added``: count of added lines
+    - ``lines_removed``: count of removed lines
+    - ``similarity_ratio``: float 0–1 from :class:`difflib.SequenceMatcher`
+    - ``revision_a``: metadata dict (id, version_number, timestamp, author)
+    - ``revision_b``: metadata dict (id, version_number, timestamp, author)
+
+    Raises :class:`KeyError` if the document or either revision is not found.
+    """
+    import difflib as _difflib
+
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"Document '{doc_id}' not found")
+
+    base_version = document.version_number - len(document.history) + 1
+
+    def _find_revision(rev_id: str) -> tuple[str, dict[str, Any]]:
+        if rev_id == "current":
+            latest = document.history[-1] if document.history else None
+            meta: dict[str, Any] = {
+                "id": "current",
+                "version_number": document.version_number,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "author": latest.author if latest else None,
+            }
+            return document.content, meta
+        for i, rev in enumerate(document.history):
+            if rev.id == rev_id:
+                meta = {
+                    "id": rev.id,
+                    "version_number": max(1, base_version + i),
+                    "timestamp": rev.timestamp.isoformat(),
+                    "author": rev.author,
+                }
+                return rev.content, meta
+        raise KeyError(f"Revision '{rev_id}' not found in document '{doc_id}'")
+
+    content_a, meta_a = _find_revision(revision_id_a)
+    content_b, meta_b = _find_revision(revision_id_b)
+
+    lines_a = content_a.splitlines()
+    lines_b = content_b.splitlines()
+
+    unified = list(
+        _difflib.unified_diff(
+            lines_a,
+            lines_b,
+            fromfile=f"revision/{revision_id_a}",
+            tofile=f"revision/{revision_id_b}",
+            lineterm="",
+        )
+    )
+
+    added = sum(1 for ln in unified if ln.startswith("+") and not ln.startswith("+++"))
+    removed = sum(1 for ln in unified if ln.startswith("-") and not ln.startswith("---"))
+    ratio = SequenceMatcher(None, content_a, content_b).ratio()
+
+    return {
+        "unified_diff": unified,
+        "lines_added": added,
+        "lines_removed": removed,
+        "similarity_ratio": round(ratio, 4),
+        "revision_a": meta_a,
+        "revision_b": meta_b,
+    }
+
+
 def set_document_editor(doc_id: str, editor: str) -> DocumentModel:
     """Set the preferred editor for ``doc_id`` and return the document."""
     if not isinstance(editor, str):

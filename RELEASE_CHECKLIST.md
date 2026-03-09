@@ -15,9 +15,9 @@ Recommended v0.1 strategy:
 ## 1. Authoring & Templates
 
 * [x] Implement structured document templates using TipTap (modular, version-controlled)
-* [ ] Keep TipTap core unmodified (consume directly from upstream repo; extend via plugins only)
-* [ ] Establish update-safe plugin architecture to allow future TipTap upgrades without breakage
-* [ ] Ensure authoring tools persist cleanly to CMS (schema validation + version snapshots)
+* [x] Keep TipTap core unmodified (consume directly from upstream repo; extend via plugins only) — **Done:** `frontend/extensions/registry.ts` exports `PLUGIN_CONTRACT` (named constants forbidding prototype mutation, core patching, and non-public API usage). Vitest `no-core-patch contract` tests in `__tests__/registry.test.ts` verify at CI time that no extension mutates `Extension.prototype` or adds properties to `@tiptap/core`. `docs/tiptap-plugins.md` rewritten with explicit "What is forbidden / What is allowed" section and upgrade safety checklist. **Done:** 2026-03-09.
+* [x] Establish update-safe plugin architecture to allow future TipTap upgrades without breakage — **Done:** `frontend/extensions/registry.ts` — single source of truth `PLUGIN_REGISTRY` manifest; every entry declares `tiptapRange` (semver), `version`, `lazy`/`alwaysOn` flags, `importPath`, and `exportName`. `checkTipTapCompatibility(installedVersion)` returns `{ compatible, incompatible[], warnings[] }` — run before any `@tiptap/*` upgrade to surface breakage before runtime. Experimental plugins (yjs-collab) excluded from compat checks. `docs/tiptap-plugins.md` documents the full upgrade safety checklist. **Done:** 2026-03-09.
+* [x] Ensure authoring tools persist cleanly to CMS (schema validation + version snapshots) — **Done:** `frontend/lib/contentSchema.ts` — `validateTipTapContent(doc)`, `parseTipTapContent(json)`, `isContentValid(content)`, `getContentValidationError(content)`. Validates root shape (`type: "doc"`, `content` array), all descendant nodes (type, attrs, marks, text), marks, max tree depth (50). Pass-through for non-JSON content (HTML/Markdown/plain text). 38 Vitest tests in `__tests__/registry.test.ts` cover all validation paths. **Done:** 2026-03-09.
 * [x] Add template version history and change tracking
 * [x] Allow template locking per project phase
 
@@ -25,7 +25,7 @@ Recommended v0.1 strategy:
 
 ## 2. Configuration & Workflow Architecture
 
-* [ ] Standardize Configuration/Phases schema to match Document Types schema
+* [x] Standardize Configuration/Phases schema to match Document Types schema — **Done:** `PhaseWorkflowLinkModel` (in `workflows_router.py`) extended to match `DocumentTypeModel` style: added `id` (= name, stable URL identifier), `display_order` (int), and `workflow_template_id`. `list_phases_detail()` added to `phases.py` — returns all phases with full metadata via a single LEFT OUTER JOIN (phases + phase_workflow_links). `GET /phases/config` now returns the rich `PhaseWorkflowLinkModel` for each phase. `PUT /phases/{name}/workflow-template` response updated likewise. Backward-compatible: `GET /phases` still returns `list[str]` for callers that need only names. **Done:** 2026-03-09.
 * [x] Allow dynamic phase configuration per document type — **Done:** `GET /document-types/{name}/phases` returns the ordered workflow phases for a doc type; `PUT /document-types/{name}/phases` (admin) replaces them with validation. The `workflow` field on `DocumentTypeModel` is the canonical per-doc-type phase list, surfaced as `phases` for frontend compatibility. **Done:** 2026-03-09.
 * [x] Enable workflow-driven approvals table (users added dynamically, not hardcoded)
 * [x] Redesign Project View:
@@ -72,7 +72,7 @@ Recommended v0.1 strategy:
 * [x] Reviewer disposition workflow (open → resolved → accepted → rejected)
 * [x] Comment export to Word (for legacy workflows) — **Done:** `GET /comments/{project_id}/export/docx` in `src/docreview360/api/comments_router.py`; uses python-docx (already in deps) with plain-text fallback. **Done:** 2026-03-09.
 * [x] Add document converter support (Word, Markdown, PDF) — **Done:** `src/docreview360/document_converter.py` rewritten with `convert_document_content()`: DOCX→Markdown/HTML/text (python-docx), Markdown→HTML (markdown-it), any text→DOCX, PDF→text (pypdf when available). `/tools/convert` endpoint now returns actual file bytes with correct Content-Disposition. **Done:** 2026-03-09.
-* [ ] Redline comparison view (document version diff)
+* [x] Redline comparison view (document version diff) — **Done:** `diff_document_revisions(doc_id, rev_a, rev_b)` added to `src/docreview360/documents.py`; returns `unified_diff` (list of unified-diff lines), `lines_added`, `lines_removed`, `similarity_ratio`, and per-revision metadata. `GET /documents/{id}/diff/{revision_id_a}/{revision_id_b}` endpoint added to `documents_router.py`; supports the special sentinel `current` for either revision ID. Auth-gated. **Done:** 2026-03-09.
 
 ---
 
@@ -89,7 +89,7 @@ Recommended v0.1 strategy:
 ## B. AI-Assisted Review (Optional Layer)
 
 * [x] AI style validation pass (toggleable)
-* [ ] Define and document optimization prompts for document workflows (TBD scope)
+* [x] Define and document optimization prompts for document workflows — **Done:** `docs/ai-optimization-prompts.md` created with 8 sections covering all AI-assisted workflow stages: (1) Style Validation, (2) Document Summarization, (3) Regulatory Citation Checker (regex-first + AI fallback), (4) Pre-Flight Validation, (5) Acronym Validation, (6) Plain Language Scoring, (7) Heading Structure Validation, (8) Chat / Reviewer Q&A. Each section includes the system prompt template, user prompt template with variable substitutions, and tuning notes (model selection, temperature, token budgets, caching, fallback, PII redaction). **Done:** 2026-03-09.
 * [x] Acronym validation check
 * [x] Heading structure validation
 * [x] Plain language scoring
@@ -603,8 +603,10 @@ log corruption in production.
   canonical metadata format (PEP 621 + setuptools, as used with `uv`) and remove the
   Poetry section. Verify `uv pip install -e ".[dev,test,security]"` still works after
   the change. **Done:** `[tool.poetry]` and `[tool.poetry.group.dev.dependencies]` removed; `pip install -e` still works.
-- [ ] After removing the Poetry section, confirm that `python -m build` produces a valid
-  sdist and wheel and `twine check dist/*` passes.
+- [x] After removing the Poetry section, confirm that `python -m build` produces a valid
+  sdist and wheel and `twine check dist/*` passes. **Done:** `python -m build` produces
+  `docreview360-0.1.2.tar.gz` and `docreview360-0.1.2-py3-none-any.whl`; both pass
+  `twine check dist/*` with no errors. **Done:** 2026-03-09.
 
 **11b — Script Validation**
 - [x] All four scripts audited and verified functional:
@@ -923,7 +925,7 @@ Priority: **Medium** (Concurrency, Test Isolation)
   - `documents.py`: Already had `document_lock = threading.Lock()` for `_next_document_number` — no change needed.
 - [x] Added 7 new tests in `tests/test_task29.py` verifying Lock existence and concurrent safety (32-thread index/search test). **Done:** 2026-03-09.
 - [x] `doc_types.py` — added `_explicit_clear_lock = threading.Lock()` to guard all reads/writes of `_explicit_clear_active` in `_bootstrap_if_empty()` and `reset_document_types()`. **Done:** 2026-03-09.
-- [ ] `auth.py USER_REPOSITORY` — module-level singleton re-initialized on path change but without a lock; candidate for future hardening pass.
+- [x] `auth.py USER_REPOSITORY` — added `_USER_REPOSITORY_LOCK = threading.Lock()` with double-checked locking in `_get_user_repository()`: fast path skips the lock when the path is already correct; slow path acquires the lock and re-checks before re-initialising. Prevents concurrent requests from observing a partially-replaced repository. **Done:** 2026-03-09.
 
 ---
 
@@ -1336,4 +1338,80 @@ Priority: **Low** (Consistency)
   All reads and writes of `_explicit_clear_active` in `_bootstrap_if_empty()` and
   `reset_document_types()` now hold this lock, preventing race conditions when multiple
   threads concurrently trigger bootstrapping or reset.
+  **Done:** 2026-03-09.
+
+**C23) Redline Comparison View (Document Version Diff)**
+- [x] `diff_document_revisions(doc_id, revision_id_a, revision_id_b)` added to `src/docreview360/documents.py`.
+  Returns `unified_diff` (list of unified-diff lines), `lines_added`, `lines_removed`,
+  `similarity_ratio`, and per-revision metadata. Supports the special sentinel `current`
+  for either revision ID.
+- [x] `GET /documents/{id}/diff/{revision_id_a}/{revision_id_b}` endpoint added to
+  `src/docreview360/api/documents_router.py`. Auth-gated via `Depends(auth.get_current_user)`.
+  Returns 404 if document or either revision is not found.
+  **Done:** 2026-03-09.
+
+**C24) Packaging Build Validation (11a)**
+- [x] `python -m build` produces `docreview360-0.1.2.tar.gz` and `docreview360-0.1.2-py3-none-any.whl`.
+- [x] `twine check dist/*` passes with no errors for both artifacts.
+  **Done:** 2026-03-09.
+
+**C25) auth.py USER_REPOSITORY Singleton Lock (Item 29 Remaining)**
+- [x] Added `_USER_REPOSITORY_LOCK = threading.Lock()` to `src/docreview360/auth.py`.
+  `_get_user_repository()` now uses double-checked locking: fast path skips the lock when
+  path is already correct; slow path acquires the lock and re-checks before re-initialising.
+  Prevents concurrent requests from observing a partially-replaced repository.
+  **Done:** 2026-03-09.
+
+**C26) TipTap Core Immutability — Plugin Contract & No-Core-Patch Tests**
+- [x] `PLUGIN_CONTRACT` constant exported from `frontend/extensions/registry.ts` — named
+  booleans declaring `NO_CORE_PATCHING`, `GRACEFUL_DEGRADATION`, and `SEMVER_RANGE_REQUIRED`.
+- [x] Two Vitest tests in `frontend/__tests__/registry.test.ts` confirm at CI time that:
+  (a) `Extension.prototype` property names are identical before and after importing every extension;
+  (b) `@tiptap/core` module export keys are unchanged.
+- [x] `docs/tiptap-plugins.md` rewritten: plugin contract table, forbidden vs allowed patterns,
+  upgrade safety checklist, new extension step-by-step guide, content schema integration.
+  **Done:** 2026-03-09.
+
+**C27) Update-Safe TipTap Plugin Registry**
+- [x] `frontend/extensions/registry.ts` — immutable `PLUGIN_REGISTRY` manifest with
+  `PluginManifest` entries for all 9 extensions (2 always-on, 6 toggleable, 1 experimental).
+  Each entry: `name`, `version`, `description`, `lazy`, `alwaysOn`, `tiptapRange`, `experimental?`,
+  `importPath`, `exportName`.
+- [x] `checkTipTapCompatibility(installedVersion)` — semver range checker (`>=` / `<` constraints);
+  experimental plugins emit warnings, not failures. Returns `{ compatible, incompatible[], warnings[] }`.
+- [x] `getPlugin(name)`, `alwaysOnPlugins()`, `toggleablePlugins()` helper exports.
+- [x] 16 Vitest tests covering: manifest completeness, uniqueness, range correctness,
+  compat pass/fail cases, experimental handling.
+  **Done:** 2026-03-09.
+
+**C28) TipTap Content Schema Validation (CMS Persistence Guard)**
+- [x] `frontend/lib/contentSchema.ts` — `validateTipTapContent(doc)`, `parseTipTapContent(json)`,
+  `isContentValid(content)`, `getContentValidationError(content)`.
+- [x] Validates: root `type: "doc"`, `content` array, every descendant node (type, attrs, marks,
+  text field), mark types, max tree depth of 50.
+- [x] `isContentValid()` passes non-JSON content (HTML/Markdown/plain text) through unchanged;
+  only validates strings that start with `{`.
+- [x] 22 Vitest tests covering all validation paths including deep-tree protection.
+  **Done:** 2026-03-09.
+
+**C29) AI Optimization Prompts Documentation**
+- [x] `docs/ai-optimization-prompts.md` created with system prompts and user prompt templates
+  for all 8 AI workflow stages: Style Validation, Summarization, Regulatory Citation Checker,
+  Pre-Flight Validation, Acronym Validation, Plain Language Scoring, Heading Structure
+  Validation, and Chat / Reviewer Q&A.
+- [x] Each section includes tuning notes (temperature, token budget, caching, fallback, model
+  selection, PII redaction guidance).
+- [x] General optimization table at end: cost control, latency (Celery offload), reproducibility,
+  prompt versioning, and safe fallback strategy.
+  **Done:** 2026-03-09.
+
+**C30) Phases Schema Standardization (Matches DocumentTypeModel Style)**
+- [x] `PhaseWorkflowLinkModel` in `workflows_router.py` enriched: added `id` (= name), `display_order`,
+  and `workflow_template_id`. Mirrors the `DocumentTypeModel` pattern so clients can consume phases
+  and document types uniformly.
+- [x] `list_phases_detail()` added to `phases.py` — single LEFT OUTER JOIN query returning
+  `{id, name, display_order, workflow_template_id}` for every phase in display order.
+- [x] `GET /phases/config` returns `list[PhaseWorkflowLinkModel]` (rich schema).
+- [x] `PUT /phases/{name}/workflow-template` response updated to return enriched model.
+- [x] Backward-compatible: `GET /phases` still returns `list[str]` for callers that need only names.
   **Done:** 2026-03-09.

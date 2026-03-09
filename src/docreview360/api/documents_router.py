@@ -43,6 +43,7 @@ from ..documents import (
     freeze_document,
     unfreeze_document,
     restore_document_version,
+    diff_document_revisions,
     import_document,
     list_public_documents,
     public_documents_report,
@@ -999,5 +1000,31 @@ async def unfreeze_doc(
     """Lift the freeze on a document, allowing content changes again."""
     try:
         return unfreeze_document(doc_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/documents/{doc_id}/diff/{revision_id_a}/{revision_id_b}")
+async def diff_revisions_endpoint(
+    doc_id: str,
+    revision_id_a: str,
+    revision_id_b: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, object]:
+    """Return a redline (unified diff) between two document revisions.
+
+    Use the special sentinel ``current`` as either revision ID to compare
+    against the live document content.  The response includes:
+
+    - ``unified_diff``: list of unified-diff lines
+    - ``lines_added`` / ``lines_removed``: change counts
+    - ``similarity_ratio``: 0–1 text similarity score
+    - ``revision_a`` / ``revision_b``: revision metadata (id, version_number,
+      timestamp, author)
+
+    Returns 404 if the document or either revision is not found.
+    """
+    try:
+        return diff_document_revisions(doc_id, revision_id_a, revision_id_b)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

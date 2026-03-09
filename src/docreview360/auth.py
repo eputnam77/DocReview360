@@ -6,6 +6,7 @@ import hashlib
 import os
 import secrets
 import sqlite3
+import threading
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -779,15 +780,25 @@ class UserRepository:
 
 
 USER_REPOSITORY = UserRepository(USER_DB_PATH)
+_USER_REPOSITORY_LOCK = threading.Lock()
 
 
 def _get_user_repository() -> UserRepository:
-    """Return the active user repository, reloading if the DB path changed."""
+    """Return the active user repository, reloading if the DB path changed.
+
+    A :class:`threading.Lock` guards the singleton re-initialisation so that
+    concurrent requests cannot observe a partially-replaced repository.
+    """
 
     global USER_REPOSITORY
     current_path = Path(os.getenv("DOCREVIEW360_USER_DB", USER_DB_PATH)).resolve()
-    if USER_REPOSITORY._path.resolve() != current_path or not current_path.exists():
-        USER_REPOSITORY = UserRepository(str(current_path))
+    # Fast path: no lock needed when path is already correct.
+    if USER_REPOSITORY._path.resolve() == current_path and current_path.exists():
+        return USER_REPOSITORY
+    with _USER_REPOSITORY_LOCK:
+        # Re-check inside the lock to avoid double-initialisation.
+        if USER_REPOSITORY._path.resolve() != current_path or not current_path.exists():
+            USER_REPOSITORY = UserRepository(str(current_path))
     return USER_REPOSITORY
 
 

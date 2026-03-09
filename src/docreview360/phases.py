@@ -61,6 +61,42 @@ def list_phases() -> List[str]:
         return [row[0] for row in rows]
 
 
+def list_phases_detail() -> List[Dict[str, object]]:
+    """Return all phases with full metadata, matching the DocumentTypeModel schema style.
+
+    Each entry is a dict with:
+    - ``id`` (str) — same as ``name``; the stable identifier used in URLs and FK references.
+    - ``name`` (str) — display name.
+    - ``display_order`` (int) — sort order (lower = first).
+    - ``workflow_template_id`` (str | None) — linked workflow template, if set.
+
+    This is the canonical "rich" phase schema, returned by ``GET /phases/config``.
+    The simpler ``list_phases()`` (returning plain strings) is preserved for backward
+    compatibility with callers that only need names.
+    """
+    _bootstrap_if_empty()
+    db = get_db()
+    with db.session() as conn:
+        rows = conn.execute(
+            select(
+                Phase.name,
+                Phase.display_order,
+                PhaseWorkflowLink.workflow_template_id,
+            )
+            .outerjoin(PhaseWorkflowLink, Phase.id == PhaseWorkflowLink.phase_id)
+            .order_by(Phase.display_order, Phase.name)
+        ).all()
+        return [
+            {
+                "id": row[0],
+                "name": row[0],
+                "display_order": row[1],
+                "workflow_template_id": row[2],
+            }
+            for row in rows
+        ]
+
+
 def list_phase_workflow_links() -> Dict[str, str]:
     """Return a dict mapping phase name → workflow template id."""
 
