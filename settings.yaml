@@ -1,6 +1,11 @@
 audit_log:
   purge_interval_minutes: 1440
   retention_days: 2555
+dash_alice:
+  activity: true
+  logs: true
+  stats: true
+  status: false
 dash_bob:
   activity: true
   logs: true
@@ -73,7 +78,7 @@ security:
     required_for:
     - archive
     - backup
-signature_provider_fallback: documenso
+signature_provider_fallback: null
 signature_provider_primary: sandbox
 signature_verification:
   interval_minutes: 60

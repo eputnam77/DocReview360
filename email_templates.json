@@ -82,5 +82,11 @@
     "subject": "Hi {user}",
     "body": "Hello {user}!",
     "task": null
+  },
+  {
+    "name": "_cov_email_tmpl",
+    "subject": "Test",
+    "body": "Hello",
+    "task": null
   }
 ]
