@@ -1,10 +1,13 @@
-"""Simple email notification helpers (task 31)."""
+"""Notification helpers — email, Slack, and Microsoft Teams."""
 
 from __future__ import annotations
 
-from typing import Dict, List
+import logging
+from typing import Any, Dict, List
 
 from . import email_templates
+
+_logger = logging.getLogger(__name__)
 
 
 class Template:
@@ -142,3 +145,143 @@ def notify_overdue_projects() -> list[dict[str, str]]:
             )
         )
     return emails
+
+
+# ---------------------------------------------------------------------------
+# Slack / Microsoft Teams / generic webhook notifications
+# ---------------------------------------------------------------------------
+
+# Inspection lists for tests (mirror the sent_emails pattern)
+sent_slack_notifications: List[Dict[str, str]] = []
+sent_teams_notifications: List[Dict[str, str]] = []
+sent_webhook_notifications: List[Dict[str, Any]] = []
+
+
+def send_slack_notification(webhook_url: str, message: str) -> Dict[str, str]:
+    """POST ``message`` to a Slack incoming-webhook URL.
+
+    The Slack Incoming Webhooks API expects ``{"text": "<message>"}``
+    (https://api.slack.com/messaging/webhooks).  Errors are logged and returned
+    as ``{"error": "..."}`` rather than raised so a failing webhook never
+    interrupts application flow.
+    """
+    if not isinstance(webhook_url, str) or not webhook_url.startswith("https://"):
+        raise ValueError("webhook_url must be an https:// URL")
+    if not isinstance(message, str) or not message.strip():
+        raise ValueError("message is required")
+
+    payload: Dict[str, str] = {"webhook_url": webhook_url, "message": message}
+    try:
+        from .http_client import post as _http_post
+
+        resp = _http_post(webhook_url, json={"text": message})
+        resp.raise_for_status()
+        sent_slack_notifications.append(payload)
+        return payload
+    except Exception as exc:
+        _logger.warning("Slack notification failed (url=%s): %s", webhook_url, exc)
+        return {**payload, "error": str(exc)}
+
+
+def send_teams_notification(webhook_url: str, message: str) -> Dict[str, str]:
+    """POST ``message`` to a Microsoft Teams incoming-webhook URL.
+
+    Teams uses the Adaptive Card schema
+    (https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/
+    how-to/add-incoming-webhook).  The minimal payload that renders a text message
+    is an Adaptive Card body attached to a ``message`` activity.
+    """
+    if not isinstance(webhook_url, str) or not webhook_url.startswith("https://"):
+        raise ValueError("webhook_url must be an https:// URL")
+    if not isinstance(message, str) or not message.strip():
+        raise ValueError("message is required")
+
+    adaptive_card = {
+        "type": "message",
+        "attachments": [
+            {
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                    "type": "AdaptiveCard",
+                    "version": "1.4",
+                    "body": [{"type": "TextBlock", "text": message, "wrap": True}],
+                },
+            }
+        ],
+    }
+    payload: Dict[str, str] = {"webhook_url": webhook_url, "message": message}
+    try:
+        from .http_client import post as _http_post
+
+        resp = _http_post(webhook_url, json=adaptive_card)
+        resp.raise_for_status()
+        sent_teams_notifications.append(payload)
+        return payload
+    except Exception as exc:
+        _logger.warning("Teams notification failed (url=%s): %s", webhook_url, exc)
+        return {**payload, "error": str(exc)}
+
+
+def send_webhook_notification(webhook_url: str, event: str, **context: str) -> Dict[str, Any]:
+    """POST a generic JSON event payload to ``webhook_url``.
+
+    Useful for custom integrations that are not Slack or Teams.  The body is
+    ``{"event": "<event>", **context}`` as a JSON object.
+    """
+    if not isinstance(webhook_url, str) or not webhook_url.startswith("https://"):
+        raise ValueError("webhook_url must be an https:// URL")
+    if not event or not event.strip():
+        raise ValueError("event is required")
+
+    body: Dict[str, Any] = {"event": event, **context}
+    try:
+        from .http_client import post as _http_post
+
+        resp = _http_post(webhook_url, json=body)
+        resp.raise_for_status()
+        sent_webhook_notifications.append(body)
+        return body
+    except Exception as exc:
+        _logger.warning("Webhook notification failed (url=%s): %s", webhook_url, exc)
+        return {**body, "error": str(exc)}
+
+
+def send_notification(event: str, **context: str) -> Dict[str, List[Dict[str, Any]]]:
+    """Dispatch ``event`` to all enabled notification channels.
+
+    Settings are read from ``settings_manager`` under the ``notifications``
+    key.  Missing or malformed settings are silently ignored so this function
+    is always safe to call even if the user has not configured notifications.
+
+    Returns a dict mapping channel name to the list of results produced by
+    each delivery attempt.
+    """
+    try:
+        from .settings_manager import load_settings
+
+        ns: Dict[str, Any] = load_settings().get("notifications", {})
+    except Exception as exc:  # pragma: no cover — settings not available
+        _logger.warning("Could not load notification settings: %s", exc)
+        ns = {}
+
+    results: Dict[str, List[Dict[str, Any]]] = {"slack": [], "teams": [], "email": [], "webhook": []}
+    message = context.get("message") or f"DocReview360 event: {event}"
+
+    if ns.get("slack_enabled") and ns.get("slack_webhook_url"):
+        results["slack"].append(send_slack_notification(ns["slack_webhook_url"], message))
+
+    if ns.get("teams_enabled") and ns.get("teams_webhook_url"):
+        results["teams"].append(send_teams_notification(ns["teams_webhook_url"], message))
+
+    if ns.get("email_enabled") and ns.get("email_recipient"):
+        if "default" not in TEMPLATES:
+            TEMPLATES["default"] = Template("{subject}", "{body}")
+        results["email"].append(
+            send_email("default", ns["email_recipient"], subject=f"[DocReview360] {event}", body=message)
+        )
+
+    if ns.get("webhook_enabled") and ns.get("webhook_url"):
+        results["webhook"].append(send_webhook_notification(ns["webhook_url"], event, **context))
+
+    return results

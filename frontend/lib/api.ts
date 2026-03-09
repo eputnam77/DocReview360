@@ -23,27 +23,23 @@ export const API =
       ? `${window.location.protocol}//${window.location.hostname}:8000`
       : "http://localhost:8000");
 
-const ACCESS_TOKEN_STORAGE_KEY = "access_token";
+// JWT is stored in memory only — never in localStorage or sessionStorage.
+// This prevents XSS-based token theft: a cross-site script injected into the
+// page cannot exfiltrate a token it cannot reach via the DOM or Storage APIs.
+// The backend sets an httpOnly cookie on /token so authenticated requests work
+// across page refreshes even when _memoryToken is null.
+let _memoryToken: string | null = null;
 
 export function getStoredAccessToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+  return _memoryToken;
 }
 
 export function setStoredAccessToken(token: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+  _memoryToken = token;
 }
 
 export function clearStoredAccessToken(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  _memoryToken = null;
 }
 
 // Utility function for authenticated API calls

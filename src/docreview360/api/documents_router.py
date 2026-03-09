@@ -37,7 +37,12 @@ from ..documenso import (
 )
 from ..documents import (
     DocumentModel,
+    FrozenDocumentError,
     get_document,
+    get_version_history,
+    freeze_document,
+    unfreeze_document,
+    restore_document_version,
     import_document,
     list_public_documents,
     public_documents_report,
@@ -926,3 +931,73 @@ async def get_sign_status(
     """Return signature status."""
     status = signature_status(sig_id)
     return {"status": status}
+
+
+# ---------------------------------------------------------------------------
+# Document Version Lineage endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/documents/{doc_id}/versions")
+async def get_document_version_history(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict[str, object]]:
+    """Return the version history timeline for a document.
+
+    Each entry contains ``revision_id``, ``version_number``, ``timestamp``,
+    ``author``, and ``content_length`` (byte count) without transferring
+    full content for every revision.
+    """
+    try:
+        return get_version_history(doc_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/documents/{doc_id}/restore/{revision_id}", response_model=DocumentModel)
+async def restore_version(
+    doc_id: str,
+    revision_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentModel:
+    """Restore a document to a prior revision.
+
+    The current content is saved as a new revision before the restore so the
+    operation is reversible.  Returns HTTP 404 if the document or revision is
+    not found, and HTTP 409 if the document is frozen.
+    """
+    try:
+        return restore_document_version(doc_id, revision_id, author=current_user.username)
+    except FrozenDocumentError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/documents/{doc_id}/freeze", response_model=DocumentModel)
+async def freeze_doc(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentModel:
+    """Freeze a document at its current version.
+
+    Once frozen, any attempt to update content returns HTTP 409.  Typically
+    called automatically at approval stage to lock the reviewed version.
+    """
+    try:
+        return freeze_document(doc_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/documents/{doc_id}/freeze", response_model=DocumentModel)
+async def unfreeze_doc(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> DocumentModel:
+    """Lift the freeze on a document, allowing content changes again."""
+    try:
+        return unfreeze_document(doc_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

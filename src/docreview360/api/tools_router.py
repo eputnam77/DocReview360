@@ -30,7 +30,7 @@ from ..doc_types import (
     update_document_type,
 )
 from ..doc_validation import preflight_validate as _preflight_validate
-from ..document_converter import convert_document
+from ..document_converter import convert_document, convert_document_content
 from ..documents import DocumentModel
 from ..logs import log_event
 from ..search import (
@@ -255,6 +255,49 @@ async def update_document_type_endpoint(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+class _PhasesUpdateRequest(BaseModel):
+    phases: list[str]
+
+
+@router.get("/document-types/{name}/phases", response_model=list[str])
+async def get_document_type_phases(
+    name: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[str]:
+    """Return the ordered list of workflow phases configured for a document type."""
+    doc_type = get_document_type(name)
+    if doc_type is None:
+        raise HTTPException(status_code=404, detail=f"Document type '{name}' not found")
+    return list(doc_type.workflow)
+
+
+@router.put("/document-types/{name}/phases", response_model=DocumentTypeModel)
+async def update_document_type_phases(
+    name: str,
+    body: _PhasesUpdateRequest,
+    _user: auth.User = Depends(require_role("admin")),
+) -> DocumentTypeModel:
+    """Replace the workflow phases for a document type (admin only).
+
+    Phases must be non-empty strings.  The order of the list defines the
+    review progression for documents of this type.  Returns HTTP 404 if
+    the document type does not exist and HTTP 422 on invalid phase data.
+    """
+    existing = get_document_type(name)
+    if existing is None:
+        raise HTTPException(status_code=404, detail=f"Document type '{name}' not found")
+    if not body.phases:
+        raise HTTPException(status_code=422, detail="phases must contain at least one entry")
+    for phase in body.phases:
+        if not isinstance(phase, str) or not phase.strip():
+            raise HTTPException(status_code=422, detail="Each phase must be a non-empty string")
+    updated = existing.model_copy(update={"workflow": body.phases})
+    try:
+        return update_document_type(name, updated)
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.get("/document-types/{name}/usage", response_model=dict[str, Any])
 async def check_document_type_usage_endpoint(
     name: str,
@@ -464,11 +507,29 @@ async def convert_tool_endpoint(
     output_format: str = Form(...),
     file: UploadFile = File(...),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> dict[str, str]:
-    """Convert an uploaded document and return the filename."""
-    _ = await file.read()
-    dest = convert_document(Path(file.filename or ""), output_format)
-    return {"filename": dest.name}
+) -> Response:
+    """Convert an uploaded document to the requested output format.
+
+    Accepts DOCX, Markdown, HTML, plain text, or PDF uploads and returns the
+    converted file as a downloadable response.  Supported output formats:
+    ``markdown``, ``html``, ``txt``, ``docx``, ``word``.
+    """
+    data = await file.read()
+    source_filename = file.filename or "document.txt"
+    try:
+        result = convert_document_content(data, source_filename, output_format)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    content: bytes = (
+        result.content if isinstance(result.content, bytes)
+        else result.content.encode("utf-8")
+    )
+    return Response(
+        content=content,
+        media_type=result.media_type,
+        headers={"Content-Disposition": f'attachment; filename="{result.filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -681,3 +742,51 @@ async def resolve_share_link(token: str) -> Any:
         "resource_id": record["resource_id"],
         "permission": record["permission"],
     }
+
+
+# ---------------------------------------------------------------------------
+# Regulatory citation checker (AI-Assisted Review)
+# ---------------------------------------------------------------------------
+
+
+class _RegulatoryCheckRequest(BaseModel):
+    text: str
+
+
+class _RegulatoryCheckResponse(BaseModel):
+    citations_found: int
+    results: list[dict[str, object]]
+    has_issues: bool
+
+
+@router.post("/ai/regulatory-check", response_model=_RegulatoryCheckResponse)
+async def regulatory_check(
+    body: _RegulatoryCheckRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> _RegulatoryCheckResponse:
+    """Check regulatory citations in ``text`` for format correctness and catalog membership.
+
+    Extracts citations matching known regulatory schemas (21 CFR, ISO, IEC, EU MDR/IVDR)
+    and reports format validity, catalog membership, and any issues found.
+    Returns HTTP 422 when ``text`` is empty.
+    """
+    from ..regulatory import check_regulatory_citations
+
+    if not body.text.strip():
+        raise HTTPException(status_code=422, detail="text is required")
+
+    citation_results = check_regulatory_citations(body.text)
+    serialized: list[dict[str, object]] = [
+        {
+            "citation": r.citation,
+            "valid_format": r.valid_format,
+            "known": r.known,
+            "issues": r.issues,
+        }
+        for r in citation_results
+    ]
+    return _RegulatoryCheckResponse(
+        citations_found=len(citation_results),
+        results=serialized,
+        has_issues=any(r.issues for r in citation_results),
+    )

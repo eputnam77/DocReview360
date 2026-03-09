@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from collections.abc import Iterator, MutableMapping
 from typing import Any, Dict, List
 
@@ -249,6 +250,8 @@ DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 # which deliberately empties the table (e.g. tests) gets an actually empty
 # result from subsequent reads.
 _explicit_clear_active: bool = False
+_explicit_clear_lock = threading.Lock()
+"""Guards reads and writes of ``_explicit_clear_active`` across threads."""
 
 
 def _bootstrap_if_empty() -> None:
@@ -257,10 +260,11 @@ def _bootstrap_if_empty() -> None:
     Skipped after an explicit ``reset_document_types(seed=False)`` call so that
     test code can work with an intentionally empty registry.
     """
-
     global _explicit_clear_active
-    if _explicit_clear_active:
-        return
+
+    with _explicit_clear_lock:
+        if _explicit_clear_active:
+            return
 
     db = get_db()
     with db.session() as conn:
@@ -270,7 +274,8 @@ def _bootstrap_if_empty() -> None:
         if count:
             return
         # Fresh DB — seed defaults and clear the explicit-clear flag.
-        _explicit_clear_active = False
+        with _explicit_clear_lock:
+            _explicit_clear_active = False
         for order, (name, phases) in enumerate(DEFAULT_DOC_TYPE_PHASES.items(), start=1):
             conn.execute(
                 _text(
@@ -595,33 +600,34 @@ def reset_document_types(seed: bool = True) -> None:
     When *seed* is ``True`` (the default) the 27 built-in document types are
     re-inserted after clearing.
     """
-
     global _explicit_clear_active
+
     from sqlalchemy import text as _text
 
     db = get_db()
     with db.session() as conn:
         conn.execute(_text("DELETE FROM document_types"))
-        if seed:
-            _explicit_clear_active = False
-            for order, (name, phases) in enumerate(DEFAULT_DOC_TYPE_PHASES.items(), start=1):
-                conn.execute(
-                    _text(
-                        "INSERT INTO document_types "
-                        "(name, template, workflow, display_order) "
-                        "VALUES (:name, :template, :workflow, :order)"
-                    ),
-                    {
-                        "name": name,
-                        "template": f"<h1>{name}</h1>",
-                        "workflow": json.dumps(phases),
-                        "order": order,
-                    },
-                )
-        else:
-            # Signal that the table was intentionally emptied — suppress
-            # lazy-bootstrap on the next read so callers get an empty result.
-            _explicit_clear_active = True
+        with _explicit_clear_lock:
+            if seed:
+                _explicit_clear_active = False
+                for order, (name, phases) in enumerate(DEFAULT_DOC_TYPE_PHASES.items(), start=1):
+                    conn.execute(
+                        _text(
+                            "INSERT INTO document_types "
+                            "(name, template, workflow, display_order) "
+                            "VALUES (:name, :template, :workflow, :order)"
+                        ),
+                        {
+                            "name": name,
+                            "template": f"<h1>{name}</h1>",
+                            "workflow": json.dumps(phases),
+                            "order": order,
+                        },
+                    )
+            else:
+                # Signal that the table was intentionally emptied — suppress
+                # lazy-bootstrap on the next read so callers get an empty result.
+                _explicit_clear_active = True
 
 
 # ---------------------------------------------------------------------------

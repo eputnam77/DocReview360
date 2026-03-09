@@ -239,6 +239,8 @@ from .documents_router import router as documents_router
 from .workflows_router import router as workflows_router
 from .dashboards_router import router as dashboards_router
 from .tools_router import router as tools_router
+from .notifications_router import router as notifications_router
+from .comments_router import router as comments_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1060,6 +1062,8 @@ app.include_router(documents_router)
 app.include_router(workflows_router)
 app.include_router(dashboards_router)
 app.include_router(tools_router)
+app.include_router(notifications_router)
+app.include_router(comments_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)

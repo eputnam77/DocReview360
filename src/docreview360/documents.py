@@ -241,6 +241,11 @@ class DocumentModel(BaseModel):
     # adding an approval to one document unexpectedly appeared on others.
     # Using ``default_factory`` gives each model its own list.
     approval_ids: List[str] = Field(default_factory=list)
+    # Version lineage fields
+    version_number: int = 1
+    """Monotonically increasing integer incremented on every successful update."""
+    frozen: bool = False
+    """When True, update_document() raises FrozenDocumentError instead of modifying content."""
 
 
 # Stored documents keyed by id
@@ -253,6 +258,15 @@ _project_document_numbers: Dict[str, int] = {}
 
 # Guard shared document state in multithreaded scenarios
 document_lock = threading.Lock()
+
+
+class FrozenDocumentError(RuntimeError):
+    """Raised when attempting to modify a document that has been frozen.
+
+    Documents are frozen at approval stage to preserve the exact content that
+    was reviewed and approved.  Call ``unfreeze_document()`` or revoke the
+    approval before making further edits.
+    """
 
 
 def next_document_number(project: Optional[str] = None) -> int:
@@ -517,10 +531,18 @@ def update_document(
     author: str | None = None,
     yjs_updates: list[bytes] | None = None,
 ) -> tuple[DocumentModel, str]:
-    """Replace document content and record a new revision."""
+    """Replace document content and record a new revision.
+
+    Raises :class:`FrozenDocumentError` if the document has been frozen
+    (e.g., at approval stage).
+    """
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
+    if document.frozen:
+        raise FrozenDocumentError(
+            f"Document '{doc_id}' is frozen. Unfreeze it before making changes."
+        )
     content = sanitize_content(content)
     # Remove the old version from the search index before updating
     from . import search as search_module
@@ -532,6 +554,7 @@ def update_document(
         old_content = document.content
         revision_id = uuid4().hex
         document.content = content
+        document.version_number += 1
         document.history.append(
             DocumentRevision(
                 id=revision_id,
@@ -618,6 +641,82 @@ def get_document_version(doc_id: str, index: int) -> str:
     if index < 0 or index >= len(versions):
         raise IndexError("version index out of range")
     return versions[index]
+
+
+def get_version_history(doc_id: str) -> list[dict[str, Any]]:
+    """Return rich version history metadata for ``doc_id``.
+
+    Each entry includes ``revision_id``, ``version_number``, ``timestamp``,
+    ``author``, and a ``content_length`` so callers can render a timeline
+    without transferring full content for every entry.
+    """
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"Document '{doc_id}' not found")
+    history: list[dict[str, Any]] = []
+    # version_number started at 1 and incremented on each update; revision 0
+    # corresponds to version 1, revision N to version N+1.
+    base_version = document.version_number - len(document.history) + 1
+    for i, rev in enumerate(document.history):
+        history.append(
+            {
+                "revision_id": rev.id,
+                "version_number": max(1, base_version + i),
+                "timestamp": rev.timestamp.isoformat(),
+                "author": rev.author,
+                "content_length": len(rev.content),
+            }
+        )
+    return history
+
+
+def restore_document_version(doc_id: str, revision_id: str, author: str | None = None) -> DocumentModel:
+    """Restore ``doc_id`` content to the revision identified by ``revision_id``.
+
+    The current content is saved as a new revision before restoring so the
+    restore operation is itself reversible.  Raises :class:`KeyError` if the
+    document or revision is not found.  Raises :class:`FrozenDocumentError`
+    if the document is frozen.
+    """
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"Document '{doc_id}' not found")
+    if document.frozen:
+        raise FrozenDocumentError(
+            f"Document '{doc_id}' is frozen. Unfreeze it before restoring."
+        )
+    target = next((r for r in document.history if r.id == revision_id), None)
+    if target is None:
+        raise KeyError(f"Revision '{revision_id}' not found in document '{doc_id}'")
+    doc, _ = update_document(doc_id, target.content, author=author)
+    log_audit_event(doc_id, "version_restored", revision_id=revision_id, actor=author)
+    return doc
+
+
+def freeze_document(doc_id: str) -> DocumentModel:
+    """Freeze ``doc_id`` so its content can no longer be changed.
+
+    Call this at approval stage to lock the exact content that was reviewed.
+    Use :func:`unfreeze_document` to lift the freeze.
+    """
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"Document '{doc_id}' not found")
+    with document_lock:
+        document.frozen = True
+    log_audit_event(doc_id, "version_frozen")
+    return document
+
+
+def unfreeze_document(doc_id: str) -> DocumentModel:
+    """Lift the freeze on ``doc_id``, allowing content changes again."""
+    document = documents.get(doc_id)
+    if document is None:
+        raise KeyError(f"Document '{doc_id}' not found")
+    with document_lock:
+        document.frozen = False
+    log_audit_event(doc_id, "version_unfrozen")
+    return document
 
 
 def set_document_editor(doc_id: str, editor: str) -> DocumentModel:

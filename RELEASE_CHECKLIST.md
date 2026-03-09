@@ -26,7 +26,7 @@ Recommended v0.1 strategy:
 ## 2. Configuration & Workflow Architecture
 
 * [ ] Standardize Configuration/Phases schema to match Document Types schema
-* [ ] Allow dynamic phase configuration per document type
+* [x] Allow dynamic phase configuration per document type — **Done:** `GET /document-types/{name}/phases` returns the ordered workflow phases for a doc type; `PUT /document-types/{name}/phases` (admin) replaces them with validation. The `workflow` field on `DocumentTypeModel` is the canonical per-doc-type phase list, surfaced as `phases` for frontend compatibility. **Done:** 2026-03-09.
 * [x] Enable workflow-driven approvals table (users added dynamically, not hardcoded)
 * [x] Redesign Project View:
 
@@ -70,8 +70,8 @@ Recommended v0.1 strategy:
 * [x] Inline reviewer commenting (threaded)
 * [x] Structured comment tagging (legal, style, technical, policy, etc.)
 * [x] Reviewer disposition workflow (open → resolved → accepted → rejected)
-* [ ] Comment export to Word (for legacy workflows)
-* [ ] Add document converter support (Word, Markdown, PDF)
+* [x] Comment export to Word (for legacy workflows) — **Done:** `GET /comments/{project_id}/export/docx` in `src/docreview360/api/comments_router.py`; uses python-docx (already in deps) with plain-text fallback. **Done:** 2026-03-09.
+* [x] Add document converter support (Word, Markdown, PDF) — **Done:** `src/docreview360/document_converter.py` rewritten with `convert_document_content()`: DOCX→Markdown/HTML/text (python-docx), Markdown→HTML (markdown-it), any text→DOCX, PDF→text (pypdf when available). `/tools/convert` endpoint now returns actual file bytes with correct Content-Disposition. **Done:** 2026-03-09.
 * [ ] Redline comparison view (document version diff)
 
 ---
@@ -93,7 +93,7 @@ Recommended v0.1 strategy:
 * [x] Acronym validation check
 * [x] Heading structure validation
 * [x] Plain language scoring
-* [ ] Regulatory citation checker
+* [x] Regulatory citation checker — **Done:** `src/docreview360/regulatory.py` extracts and validates 21 CFR, ISO, IEC, and EU MDR/IVDR citations against a known catalog. `POST /ai/regulatory-check` endpoint in `tools_router.py`. **Done:** 2026-03-09.
 * [x] "Pre-flight" validation before phase advancement
 
 ---
@@ -104,7 +104,7 @@ Recommended v0.1 strategy:
 * [ ] Multi-tenant architecture support
 * [ ] Per-organization configuration
 * [x] API key management — **Done:** `src/docreview360/api_keys.py` module with create/validate/revoke/list. Routes POST/GET/DELETE `/api-keys`. SHA-256 hashing (high-entropy random keys). Raw key returned only on creation. **Done:** 2026-03-08.
-* [ ] Add notifications integrations (Slack, Microsoft Teams, email/webhooks)
+* [x] Add notifications integrations (Slack, Microsoft Teams, email/webhooks) — **Done:** `send_slack_notification`, `send_teams_notification`, `send_webhook_notification`, and `send_notification` dispatcher added to `src/docreview360/notifications.py`. `GET/PUT /notifications/settings` + `POST /notifications/test` in `src/docreview360/api/notifications_router.py`. Settings persisted via `settings_manager`. **Done:** 2026-03-09.
 * [x] Export/import full project bundle
 * [x] Backup/restore functionality
 
@@ -125,11 +125,11 @@ Recommended v0.1 strategy:
 
 ## Document Version Lineage
 
-* [ ] Automatic version incrementing
+* [x] Automatic version incrementing — **Done:** `version_number: int = 1` added to `DocumentModel`; `update_document()` increments it on every successful content change. **Done:** 2026-03-09.
 * [ ] Branch/merge support (parallel review tracks)
-* [ ] Visual version history timeline
-* [ ] Restore prior versions
-* [ ] Freeze version at approval stage
+* [x] Visual version history timeline — **Done:** `get_version_history(doc_id)` returns rich metadata (revision_id, version_number, timestamp, author, content_length) without full content transfer. `GET /documents/{id}/versions` endpoint in `documents_router.py`. **Done:** 2026-03-09.
+* [x] Restore prior versions — **Done:** `restore_document_version(doc_id, revision_id)` in `documents.py` saves the current content as a new revision before restoring. `POST /documents/{id}/restore/{revision_id}` endpoint in `documents_router.py`. Returns HTTP 409 if frozen, 404 if not found. **Done:** 2026-03-09.
+* [x] Freeze version at approval stage — **Done:** `frozen: bool = False` field on `DocumentModel`; `freeze_document()`/`unfreeze_document()` functions; `update_document()` raises `FrozenDocumentError` when frozen. `POST /documents/{id}/freeze` and `DELETE /documents/{id}/freeze` endpoints. **Done:** 2026-03-09.
 
 ---
 
@@ -922,7 +922,8 @@ Priority: **Medium** (Concurrency, Test Isolation)
   - `api/ml.py`: Already had `Lock()` guards (`_ROUTING_MODEL_LOCK`, `_WARM_LOCK`) — no change needed.
   - `documents.py`: Already had `document_lock = threading.Lock()` for `_next_document_number` — no change needed.
 - [x] Added 7 new tests in `tests/test_task29.py` verifying Lock existence and concurrent safety (32-thread index/search test). **Done:** 2026-03-09.
-- [ ] Remaining lower-priority globals (`doc_types.py`, `auth.py USER_REPOSITORY`, etc.) are candidates for future hardening passes.
+- [x] `doc_types.py` — added `_explicit_clear_lock = threading.Lock()` to guard all reads/writes of `_explicit_clear_active` in `_bootstrap_if_empty()` and `reset_document_types()`. **Done:** 2026-03-09.
+- [ ] `auth.py USER_REPOSITORY` — module-level singleton re-initialized on path change but without a lock; candidate for future hardening pass.
 
 ---
 
@@ -989,6 +990,7 @@ Priority: **Low** (Consistency)
   backend. Remove localStorage token storage. The backend already sets session
   cookies — unify on cookie-based auth.
 - **Priority:** Critical
+- **Status:** ✅ FIXED — `getStoredAccessToken`, `setStoredAccessToken`, and `clearStoredAccessToken` in `frontend/lib/api.ts` now use a module-level in-memory variable (`_memoryToken`) instead of `window.localStorage`. The httpOnly cookie set by `/token` handles persistent auth across page refreshes. The public API of these three functions is unchanged (no downstream callers required modification). **Done:** 2026-03-09.
 
 ---
 
@@ -1251,3 +1253,87 @@ Priority: **Low** (Consistency)
 - [x] Version lineage transparency.
 - [x] Optional AI assistance, never mandatory.
 - [x] Compliance-friendly architecture.
+
+**C15) SEC-01 — JWT Token XSS Exposure via localStorage (CRITICAL)**
+- [x] Replaced all `window.localStorage` token storage in `frontend/lib/api.ts` with a
+  module-level in-memory variable (`_memoryToken`). Public API of `getStoredAccessToken`,
+  `setStoredAccessToken`, `clearStoredAccessToken` is unchanged; all callers work without
+  modification. Tokens now survive only for the browser tab lifetime; the backend httpOnly
+  cookie set on `/token` handles re-authentication across page refreshes.
+  **Done:** 2026-03-09.
+
+**C16) Notifications Integrations (Slack, Microsoft Teams, email/webhooks)**
+- [x] `send_slack_notification(webhook_url, message)` — POSTs `{"text": message}` to Slack
+  incoming webhook; validates `https://` URL; logs errors without raising.
+- [x] `send_teams_notification(webhook_url, message)` — POSTs Adaptive Card JSON to Teams
+  incoming webhook; same error semantics.
+- [x] `send_webhook_notification(webhook_url, event, **context)` — generic JSON event dispatcher.
+- [x] `send_notification(event, **context)` — single dispatcher that routes to all enabled
+  channels based on persisted `NotificationSettings`.
+- [x] `GET /notifications/settings` — return current channel config (authenticated).
+- [x] `PUT /notifications/settings` — update channel config (admin only); validates `https://`
+  URLs before persisting.
+- [x] `POST /notifications/test` — sends a test message to all enabled channels (admin only).
+- [x] Settings persisted via `settings_manager.update_setting("notifications", ...)`.
+  **Done:** 2026-03-09.
+
+**C17) Comment Export to Word**
+- [x] `GET /comments/{project_id}/export/docx` in `src/docreview360/api/comments_router.py`.
+  Collects all comments across every document belonging to the project and writes a
+  structured Word document (grouped by document, with commenter, date, status, and text).
+  Falls back to `text/plain` response if `python-docx` is not installed. Auth-gated.
+  **Done:** 2026-03-09.
+
+**C18) Regulatory Citation Checker (AI-Assisted Review)**
+- [x] `src/docreview360/regulatory.py` — extracts and validates regulatory citations from
+  arbitrary document text using regex patterns for 21 CFR (all titles), ISO, IEC, and
+  EU MDR/IVDR. Returns per-citation `valid_format`, `known` (catalog lookup), and
+  human-readable `issues`.
+- [x] `POST /ai/regulatory-check` endpoint in `tools_router.py` — accepts `{"text": "..."}`,
+  returns `citations_found`, `results[]`, and `has_issues` flag. Auth-gated.
+  **Done:** 2026-03-09.
+
+**C19) Document Converter Support (Word, Markdown, PDF)**
+- [x] `src/docreview360/document_converter.py` rewritten with real conversion logic:
+  - DOCX → Markdown/HTML/plain text (via python-docx, already in deps)
+  - Markdown → HTML (via markdown-it) or plain text
+  - Any text → Word DOCX output (builds structured document with heading levels)
+  - PDF → text (via pypdf when available; graceful fallback message otherwise)
+- [x] `convert_document_content(data, source_filename, output_format)` — public API returning
+  `ConversionResult` with `content`, `filename`, `media_type`, and `is_binary`.
+- [x] `POST /tools/convert` endpoint updated to return actual file bytes with
+  `Content-Disposition` attachment header rather than just a filename string.
+- [x] `convert_document()` stub preserved for backward compatibility.
+  **Done:** 2026-03-09.
+
+**C20) Document Version Lineage**
+- [x] `version_number: int = 1` field added to `DocumentModel`; auto-increments on every
+  successful `update_document()` call.
+- [x] `frozen: bool = False` field added to `DocumentModel`; `update_document()` raises
+  `FrozenDocumentError` when True, blocking all content changes.
+- [x] `freeze_document(doc_id)` / `unfreeze_document(doc_id)` — lock/unlock with audit events.
+- [x] `get_version_history(doc_id)` — returns rich timeline metadata (revision_id,
+  version_number, timestamp, author, content_length) without full content.
+- [x] `restore_document_version(doc_id, revision_id)` — saves current content as new revision
+  before restoring, making restores reversible; raises `FrozenDocumentError` if frozen.
+- [x] `GET /documents/{id}/versions` — version timeline endpoint (authenticated).
+- [x] `POST /documents/{id}/restore/{revision_id}` — restore endpoint (409 if frozen, 404 if not found).
+- [x] `POST /documents/{id}/freeze` — freeze at current version (authenticated).
+- [x] `DELETE /documents/{id}/freeze` — lift freeze (authenticated).
+  **Done:** 2026-03-09.
+
+**C21) Dynamic Phase Configuration per Document Type**
+- [x] `GET /document-types/{name}/phases` — returns the ordered workflow phase list for a
+  doc type (authenticated).
+- [x] `PUT /document-types/{name}/phases` (admin) — replaces the workflow phases with
+  validation (non-empty strings required); updates persisted `DocumentTypeModel.workflow`.
+- [x] `DocumentTypeModel.workflow` is the canonical per-doc-type phase sequence, surfaced
+  as `phases` via a computed field for frontend compatibility.
+  **Done:** 2026-03-09.
+
+**C22) Item 29 Remaining — doc_types.py Global State Lock**
+- [x] Added `_explicit_clear_lock = threading.Lock()` to `src/docreview360/doc_types.py`.
+  All reads and writes of `_explicit_clear_active` in `_bootstrap_if_empty()` and
+  `reset_document_types()` now hold this lock, preventing race conditions when multiple
+  threads concurrently trigger bootstrapping or reset.
+  **Done:** 2026-03-09.
