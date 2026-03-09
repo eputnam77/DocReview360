@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .stubs import record_task_completion
 
 
 def run_regression(fixtures: Path) -> int:
@@ -16,5 +15,4 @@ def run_regression(fixtures: Path) -> int:
     # to contribute to the regression count.  The previous implementation missed
     # those files which under-reported the number of processed fixtures.
     count = len(list(fixtures.rglob("*.md")))
-    record_task_completion(132)
     return count

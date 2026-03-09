@@ -6,7 +6,6 @@ from pathlib import Path
 
 import yaml
 
-from .stubs import record_task_completion
 
 SCHEDULE_FILE = Path("schedules.yaml")
 
@@ -23,4 +22,3 @@ def update_schedule(name: str, cron: str, path: Path = SCHEDULE_FILE) -> None:
     schedules = load_schedules(path)
     schedules[name] = cron
     path.write_text(yaml.safe_dump(schedules))
-    record_task_completion(149)

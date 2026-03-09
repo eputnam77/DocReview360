@@ -6,7 +6,6 @@ from pathlib import Path
 
 import yaml
 
-from .stubs import record_task_completion
 
 RBAC_FILE = Path("rbac.yaml")
 
@@ -24,4 +23,3 @@ def update_permission(role: str, action: str, allowed: bool, path: Path = RBAC_F
     perms = data.setdefault(role, {})
     perms[action] = allowed
     path.write_text(yaml.safe_dump(data))
-    record_task_completion(148)

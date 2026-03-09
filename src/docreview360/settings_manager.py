@@ -13,7 +13,6 @@ from typing import Any, Dict
 import yaml
 
 from .secrets import configure_vault, store_secret
-from .stubs import record_task_completion
 
 SETTINGS_FILE = Path(os.getenv("DOCREVIEW360_SETTINGS_FILE", "settings.yaml"))
 ENCRYPTED_PREFIX = "ENC("
@@ -110,7 +109,6 @@ def update_setting(key: str, value: Any, path: Path = SETTINGS_FILE) -> None:
     path.write_text(yaml.safe_dump(settings))
     if key == "vault" and isinstance(value, dict):
         configure_vault(value)
-    record_task_completion(142)
 
 
 def update_secret(provider: str, secret: str | None, path: Path = SETTINGS_FILE) -> None:

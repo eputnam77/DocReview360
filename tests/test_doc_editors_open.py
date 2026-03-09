@@ -2,7 +2,7 @@ from pathlib import Path
 
 from docreview360.documents import DocumentModel
 from docreview360.editor_switcher import render_editor
-from docreview360.stubs.task79 import OnlyofficeConnector
+from docreview360.onlyoffice_editor import OnlyofficeConnector
 
 
 def test_all_editors_open() -> None:

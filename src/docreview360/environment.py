@@ -8,7 +8,6 @@ from typing import Dict, Optional
 
 import yaml
 
-from .stubs import record_task_completion
 
 ENV_FILE = Path(os.getenv("DOCREVIEW360_ENVIRONMENTS_FILE", "environments.yaml"))
 
@@ -67,7 +66,6 @@ def switch_environment(name: str, path: Path | None = None) -> str:
     if normalized not in data:
         raise KeyError(name)
     os.environ["DOCREVIEW360_ENV"] = normalized
-    record_task_completion(147)
     return data[normalized]["url"]
 
 

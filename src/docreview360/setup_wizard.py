@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from .config import CONFIG_FILE, Config
-from .stubs import record_task_completion
 
 
 def run_setup(
@@ -26,5 +25,4 @@ def run_setup(
     )
     target = path or CONFIG_FILE
     config.save(target)
-    record_task_completion(141)
     return config

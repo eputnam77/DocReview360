@@ -1,4 +1,4 @@
-from docreview360.stubs.task213 import task213
+from docreview360.approvals import run_confirmed_action
 
 
 def test_task213_confirm_runs_action() -> None:
@@ -8,7 +8,7 @@ def test_task213_confirm_runs_action() -> None:
         nonlocal called
         called = True
 
-    assert task213(True, do)
+    assert run_confirmed_action(True, do)
     assert called
 
 
@@ -19,5 +19,5 @@ def test_task213_cancel() -> None:
         nonlocal called
         called = True
 
-    assert not task213(False, do)
+    assert not run_confirmed_action(False, do)
     assert not called

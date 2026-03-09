@@ -7,7 +7,6 @@ import subprocess
 import sys
 from typing import Any
 
-from .stubs import record_task_completion
 
 # Real PyPI packages relevant to DocReview360's document review functionality
 PLUGIN_DATA = {
@@ -223,4 +222,3 @@ def install_plugin(name: str) -> None:
     # Use the PyPI package name for installation
     pypi_name = PLUGIN_DATA[name].get("pypi_name", name)
     subprocess.check_call([sys.executable, "-m", "pip", "install", str(pypi_name)])
-    record_task_completion(145)

@@ -8,7 +8,6 @@ from .config import CONFIG_FILE, Config
 from .documents import list_documents
 from .logs import log_event
 from .search import list_projects
-from .stubs import record_task_completion
 
 
 class Document(graphene.ObjectType):
@@ -44,7 +43,6 @@ schema = graphene.Schema(query=Query)
 
 def execute_query(query: str) -> dict[str, object]:
     """Execute a GraphQL ``query`` and return the resulting data."""
-    record_task_completion(88)
     result = schema.execute(query)
     if result.errors:
         raise ValueError(str(result.errors[0]))

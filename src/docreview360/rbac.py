@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import sqlite3
-import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -512,13 +511,8 @@ def require_role(role: str) -> Callable[[auth.User], auth.User]:
     """Return a dependency ensuring the current user has ``role``."""
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
-        rbac_module = sys.modules.get(__name__)
-        if rbac_module is None:
-            import importlib
-
-            rbac_module = importlib.import_module(__name__)
         try:
-            if not rbac_module.has_role(user.username, role):
+            if not has_role(user.username, role):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",
@@ -537,13 +531,8 @@ def require_permission(action: str) -> Callable[[auth.User], auth.User]:
     """Return a dependency ensuring the user has permission ``action``."""
 
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
-        rbac_module = sys.modules.get(__name__)
-        if rbac_module is None:
-            import importlib
-
-            rbac_module = importlib.import_module(__name__)
         try:
-            if not rbac_module.has_permission(user.username, action):
+            if not has_permission(user.username, action):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",

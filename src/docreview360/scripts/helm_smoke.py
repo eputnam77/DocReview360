@@ -7,7 +7,6 @@ from pathlib import Path
 
 import httpx
 
-from docreview360.stubs import record_task_completion
 
 
 async def run() -> None:
@@ -17,7 +16,6 @@ async def run() -> None:
     async with httpx.AsyncClient() as client:
         resp = await client.get("http://localhost/health", timeout=10)
         resp.raise_for_status()
-    record_task_completion(137)
 
 
 if __name__ == "__main__":

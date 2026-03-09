@@ -1,9 +1,37 @@
+"""Pytest configuration and shared fixtures.
+
+## Test Isolation Model (addresses RELEASE_CHECKLIST.md Item 8c)
+
+Each test runs against a fresh in-memory SQLite database:
+
+1. ``_reset_document_types`` (autouse) calls ``reset_db("sqlite+pysqlite:///:memory:")``
+   before every test, creating a brand-new engine + StaticPool connection.
+   ``reset_document_types(seed=True)`` and ``reset_phases()`` re-populate the
+   DB-backed registries.  After the test, ``reset_db(None)`` releases the engine.
+
+2. The ``testing_db`` fixture (opt-in) provides explicit access to the per-test
+   :class:`~docreview360.database.Database` instance so tests that need to execute
+   raw SQL or verify DB state can do so without bypassing the ORM layer.
+
+3. The ``_reset_approvals`` fixture (autouse) clears in-memory approval state
+   between tests so the approval dict does not leak across test boundaries.
+
+Known limitation: ~20 tests use ``monkeypatch.setattr`` on module-level
+functions (``log_event``, ``_upload_approval_artifacts``, etc.).  Those tests
+are safe because monkeypatch reverts all patches after each test.  The two tests
+that patch ``phases._phases`` directly
+(``tests/unit/test_phases_errors.py``,
+``tests/unit/test_phases_whitespace.py``) are also safe for the same reason.
+"""
+
+from __future__ import annotations
+
 import asyncio
-import importlib
 import os
 import sys
 import tempfile
 from pathlib import Path
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -36,11 +64,6 @@ def _configure_test_tempdir() -> None:
 
 
 _configure_test_tempdir()
-
-doc_types = importlib.import_module("docreview360.doc_types")
-DEFAULT_DOC_TYPE_PHASES = doc_types.DEFAULT_DOC_TYPE_PHASES
-DocumentTypeModel = doc_types.DocumentTypeModel
-document_types = doc_types.document_types
 
 os.environ.setdefault("DOCREVIEW360_SECRET_KEY", "test-secret")
 os.environ.setdefault("DOCREVIEW360_ALGORITHM", "HS256")
@@ -108,12 +131,16 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _reset_document_types() -> None:
+def _reset_document_types() -> Generator[None, None, None]:
     """Ensure the document type registry is reset between tests.
 
     The registry is now database-backed (Tier 2c).  We reset the shared DB to
     an isolated in-memory instance and re-seed the 27 default document types
     so each test starts from a clean, deterministic state.
+
+    Each test gets its own SQLAlchemy engine backed by a private in-memory
+    SQLite database (StaticPool keeps the connection alive for the engine's
+    lifetime).  This guarantees no data leaks between tests.
     """
 
     from docreview360.db_store import reset_db
@@ -125,6 +152,55 @@ def _reset_document_types() -> None:
     reset_phases()
     yield
     reset_db(None)
+
+
+@pytest.fixture(autouse=True)
+def _reset_approvals() -> Generator[None, None, None]:
+    """Reset in-memory approval state between tests.
+
+    The approvals module keeps a module-level ``approvals`` dict that is
+    DB-backed for production use but still has an in-memory cache layer.
+    Clearing it between tests prevents approval state leaking across boundaries.
+    """
+    try:
+        import docreview360.approvals as approvals_mod
+
+        if hasattr(approvals_mod, "approvals") and hasattr(
+            approvals_mod.approvals, "clear"
+        ):
+            approvals_mod.approvals.clear()
+    except Exception:
+        pass
+    yield
+    try:
+        import docreview360.approvals as approvals_mod
+
+        if hasattr(approvals_mod, "approvals") and hasattr(
+            approvals_mod.approvals, "clear"
+        ):
+            approvals_mod.approvals.clear()
+    except Exception:
+        pass
+
+
+@pytest.fixture()
+def testing_db():
+    """Provide direct access to the per-test Database instance.
+
+    Use this fixture when a test needs to execute raw SQL or verify
+    schema state without going through the ORM layer.  The DB is
+    automatically reset between tests by ``_reset_document_types``.
+
+    Example::
+
+        def test_something(testing_db) -> None:
+            with testing_db.session() as conn:
+                rows = conn.execute(text("SELECT * FROM document_types")).fetchall()
+            assert len(rows) == 27
+    """
+    from docreview360.db_store import get_db
+
+    return get_db()
 
 
 @pytest.fixture(autouse=True)

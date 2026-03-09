@@ -6,12 +6,24 @@ import json
 from pathlib import Path
 from typing import Any, Dict, cast
 
+from cryptography.fernet import Fernet
 from celery.schedules import crontab
 
 from .auth import keycloak_mfa_login
 from .backup_utils import create_backup
 from .celery_app import app
-from .stubs.task90 import create_backup as encrypt_backup
+
+
+def encrypt_backup(path: str | Path, data: str = "", key: bytes | None = None) -> bytes:
+    """Write ``data`` encrypted to ``path`` and return the key used."""
+    dest = Path(path)
+    if not dest.parent.exists():
+        raise FileNotFoundError(dest.parent)
+    enc_key = key or Fernet.generate_key()
+    cipher = Fernet(enc_key)
+    token = cipher.encrypt(data.encode())
+    dest.write_bytes(token)
+    return enc_key
 
 
 def import_realm_file(path: str) -> Dict[str, Any]:

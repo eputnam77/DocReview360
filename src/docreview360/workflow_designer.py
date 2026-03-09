@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Iterable
 from uuid import uuid4
 
-from .stubs import record_task_completion
 from .workflows import WorkflowModel, workflows
 
 
@@ -28,5 +27,4 @@ def clone_workflow(wf_id: str, reviewers: Iterable[str] | None = None) -> Workfl
         approval_steps=[s.model_dump() for s in original.approval_steps],
     )
     workflows[clone.id] = clone
-    record_task_completion(144)
     return clone

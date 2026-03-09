@@ -185,7 +185,7 @@ from ..reviews import ReviewCreate, ReviewModel, add_review, list_reviews
 from ..settings_manager import update_setting, update_secret
 from ..secrets import get_secret
 from ..status import internal_status, public_status
-from ..stubs.task223 import convert_document
+from ..document_converter import convert_document
 from ..template_manager import (
     delete_template as delete_stored_template,
     get_latest_template,

@@ -8,7 +8,6 @@ from pathlib import Path
 
 from celery import Celery
 
-from .stubs import record_task_completion
 
 
 async def launch_flower(app: Celery, port: int = 5555, work_dir: str | Path = ".") -> None:
@@ -25,4 +24,3 @@ async def launch_flower(app: Celery, port: int = 5555, work_dir: str | Path = ".
         await sleep_result
     if proc.returncode is not None:
         raise RuntimeError("flower failed to start")
-    record_task_completion(136)

@@ -1,5 +1,0 @@
-from docreview360.stubs.task57 import task57
-
-
-def test_task57_returns_none() -> None:
-    task57()

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 
-from .stubs import record_task_completion
 
 
 def measure_typing_time(char_count: int = 100) -> float:
@@ -15,5 +14,4 @@ def measure_typing_time(char_count: int = 100) -> float:
     for _ in range(char_count):
         time.sleep(0)
     duration = time.perf_counter() - start
-    record_task_completion(131)
     return duration
