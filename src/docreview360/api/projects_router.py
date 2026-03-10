@@ -44,7 +44,14 @@ from ..workflows import (
     get_workflow_template,
 )
 from ..doc_types import get_document_type
-from ..documents import import_document
+from ..documents import DocumentModel, import_document, list_documents
+from ..quality import (
+    QUALITY_FLAG_NAMES,
+    QualityAssessment,
+    high_risk_warnings,
+    quality_assessment,
+)
+from ..doc_validation import score_plain_language
 
 _logger = logging.getLogger(__name__)
 
@@ -787,3 +794,83 @@ async def project_approvals_pdf_endpoint(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="approvals-{project_id}.pdf"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# Per-document quality scores
+# ---------------------------------------------------------------------------
+
+class DocumentScore(BaseModel):
+    """Quality metrics for a single document."""
+
+    document_id: str
+    quality_score: float
+    plain_language_grade: str
+    flesch_reading_ease: float
+    quality_flags: dict[str, float]
+    high_risk_terms: list[str]
+    doc_type_avg_score: float | None = None
+
+
+@router.get(
+    "/projects/{project_id}/documents/scores",
+    response_model=list[DocumentScore],
+)
+async def get_project_document_scores(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[DocumentScore]:
+    """Return per-document quality metrics for every document in a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
+
+    project_docs = [
+        d for d in list_documents() if d.project == project_id
+    ]
+    if not project_docs:
+        return []
+
+    # Pre-compute quality assessments so we can derive per-type averages.
+    assessments: list[tuple[DocumentModel, QualityAssessment]] = []
+    for doc in project_docs:
+        qa = quality_assessment(doc.content)
+        assessments.append((doc, qa))
+
+    # Build per-doc_type average scores across *all* documents (not just
+    # this project) so each document can be compared against its type.
+    all_docs = list_documents()
+    type_scores: dict[str | None, list[float]] = {}
+    for d in all_docs:
+        dt = d.project and get_project(d.project)
+        doc_type = dt.doc_type if dt else None
+        qa = quality_assessment(d.content)
+        type_scores.setdefault(doc_type, []).append(qa.score)
+
+    project_doc_type = project.doc_type
+
+    results: list[DocumentScore] = []
+    for doc, qa in assessments:
+        pl = score_plain_language(doc.content)
+        flags = dict(zip(QUALITY_FLAG_NAMES, qa.flags))
+        risky = high_risk_warnings(doc.content)
+
+        avg_scores = type_scores.get(project_doc_type)
+        avg: float | None = None
+        if avg_scores:
+            avg = round(sum(avg_scores) / len(avg_scores), 4)
+
+        results.append(
+            DocumentScore(
+                document_id=doc.id,
+                quality_score=round(qa.score, 4),
+                plain_language_grade=pl.grade_level,
+                flesch_reading_ease=pl.flesch_reading_ease,
+                quality_flags=flags,
+                high_risk_terms=risky,
+                doc_type_avg_score=avg,
+            )
+        )
+
+    return results

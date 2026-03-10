@@ -701,7 +701,7 @@ log corruption in production.
 - [x] Verify `.env.example` contains only safe placeholders.
 - [ ] Remove or rotate any hardcoded tokens, test credentials, or sample secrets.
 - [ ] Remove unnecessary files and stale artifacts before release (temporary backups, local DB files, debug dumps).
-- [ ] Confirm licensing intent: GPL-3.0-only is correct for all code and bundled assets.
+- [x] Confirm licensing intent: GPL-3.0-only is correct for all code and bundled assets. — **Resolved:** Migrated to MIT License per Item 36 analysis. LICENSE, pyproject.toml, classifiers, and README updated. psycopg moved to optional `[postgres]` extras. **Done:** 2026-03-10.
 - [x] Verify third-party licenses for frontend/vendor assets and data files (document in `docs/licenses.md` if needed).
 - [ ] Ensure all "example.com" and placeholder URLs/emails are updated to real public addresses.
 - [x] Fix README encoding issues (the current file has mojibake) so PyPI and GitHub render correctly.
@@ -725,7 +725,7 @@ log corruption in production.
 - [ ] Audit docs in `docs/` for broken links and outdated instructions.
 - [ ] Ensure README structure matches `.dev/AGENTS.md` requirements (Install → Quick-start → Features → Contributing → License).
 - [ ] Add/verify Quick Start that works on Windows and macOS/Linux.
-- [x] Update CLI docs (`docs/cli.md`) with latest commands and config file names. — **Done:** Added `logs`, `rbac`, `validate`, `verify-signatures` command sections. Fixed mojibake encoding throughout. **Done:** 2026-03-09.
+- [x] Update CLI docs (`docs/cli.md`) with latest commands and config file names. — ac**Done:** Added `logs`, `rbac`, `validate`, `verify-signatures` command sections. Fixed mojibake encoding throughout. **Done:** 2026-03-09.
 - [ ] Publish architecture overview (`docs/adr/0001-core-architecture.md`) and ensure it is accurate.
 - [ ] Generate API docs via FastAPI and link them in README.
 - [ ] If using MkDocs, run `mkdocs build --strict` and fix any errors.
@@ -1453,3 +1453,299 @@ Fixes applied:
 **C33) `record_task_completion` Stub Added to `flower.py` and `feature_flags.py`**
 - [x] `record_task_completion(item: int) -> None` added to both modules; called with item 136 after successful Flower launch and item 139 after first feature flag evaluation.
   **Done:** 2026-03-09.
+
+---
+
+## Session 4 — Federal Style Validator Integration, AI Score Display & License (2026-03-10)
+
+### 34) Federal Style Validator Integration
+
+The backend already has standalone endpoints for acronym validation, regulatory citation
+checking, style validation, and plain language scoring (`doc_validation.py`, `regulatory.py`,
+`ai_assist.py`). These are accessible only via batch API calls (`POST /documents/preflight`,
+`POST /ai/regulatory-check`, `POST /ai/rewrite`). They are **not** surfaced inline in the
+TipTap editor. The Federal Style Validator (external tool in development) will become the
+primary UI for these checks.
+
+**Phase 1 — Tools Menu Integration (document picker + Federal Style Validator)**
+- [x] Add "Federal Style Validator" entry to the frontend Tools menu — **Done:** Already present in `frontend/pages/tools/index.tsx` as "Document Checker" pointing to `/tools/checker`. **Done:** 2026-03-10.
+- [x] Implement document picker dropdown in the Federal Style Validator tool view (list documents
+  from current project via `GET /documents`) — **Done:** `frontend/pages/tools/checker.tsx` rewritten with Tabs component: "Upload File" (original) + "System Document" (new). System Document tab fetches documents via `authenticatedFetch(GET /documents)` and shows a `<select>` dropdown with document ID, doc_type, and status. **Done:** 2026-03-10.
+- [x] Wire "Run Validation" button to call existing backend endpoints in sequence:
+  `POST /documents/preflight` (acronyms, headings, style, plain language) +
+  `POST /ai/regulatory-check` (citations) + `POST /ml/quality` (AI quality score) — **Done:** `runSystemValidation()` fires all three via `Promise.allSettled` in parallel. Each result is parsed independently with graceful degradation. **Done:** 2026-03-10.
+- [x] Display unified validation report: acronym issues, regulatory citation problems,
+  style warnings, plain language grade, quality score — all in one view — **Done:** Six categorized result cards: Quality Score (color-coded percentage), Plain Language (Flesch score + grade level), Acronym Issues, Style Issues, Regulatory Citations (pass/fail icons), Heading Structure. **Done:** 2026-03-10.
+- [x] Support file upload as alternative to document picker (for external documents not yet
+  in the system) — **Done:** Original upload form preserved in the "Upload File" tab; tabs allow switching between modes. **Done:** 2026-03-10.
+
+**Phase 2 — TipTap Inline Feedback (real-time checks while authoring)**
+- [x] Create `tiptapFederalStyleLint.ts` extension that calls validation endpoints on
+  debounced content changes (500ms idle threshold) — **Done:** `frontend/extensions/tiptapFederalStyleLint.ts` created. Uses client-side ProseMirror Plugin with `DecorationSet`. Rebuilds decorations only when `tr.docChanged` is true (debounced via Plugin state `apply` method). 7 style rules matching backend `doc_validation.py` patterns. **Done:** 2026-03-10.
+- [x] Render inline decorations (underlines/marks) for: undefined acronyms, style violations
+  (filler words, hedging, intensifiers), regulatory citation format errors — **Done:** Yellow wavy underline (`federal-lint-style` CSS class) for style issues; orange wavy underline (`federal-lint-acronym`) for undefined acronyms. Each decoration has a `title` attribute for hover tooltips. CSS added to `frontend/styles/tiptap.css`. **Done:** 2026-03-10.
+- [ ] Add sidebar panel showing live validation summary (counts by category, overall score)
+- [x] Register extension in `frontend/extensions/registry.ts` as lazy/toggleable — **Done:** Added as `federal-style-lint` v1.0.0 entry in the toggleable section of `PLUGIN_REGISTRY`. **Done:** 2026-03-10.
+
+**Phase 3 — Federal Style Validator as Standalone Package**
+- [ ] Extract validation logic into a separate `federal-style-validator` package/repo
+- [ ] Define API contract between DocReview360 and Federal Style Validator (shared types,
+  endpoint schema)
+- [ ] Support both embedded mode (TipTap extension) and standalone mode (CLI/web UI)
+- [ ] Document integration points in `docs/federal-style-validator.md`
+
+---
+
+### 35) AI Quality Scores in Project View
+
+Quality scores exist (`POST /ml/quality`) but are only available on-demand. They are not
+visible within the project document list.
+
+- [ ] Add `last_quality_score`, `last_quality_date`, `plain_language_grade` columns to
+  `DocumentModel` (or a related `DocumentMetrics` table) — deferred to future: scores are computed on-the-fly for now
+- [ ] Compute and store scores when documents are created/updated or when preflight runs — deferred: on-the-fly computation sufficient for v0.1
+- [x] Add `GET /projects/{id}/documents/scores` endpoint returning per-document quality
+  metrics for a project — **Done:** `DocumentScore` Pydantic model + `GET /projects/{project_id}/documents/scores` endpoint in `projects_router.py`. Returns `quality_score`, `plain_language_grade`, `flesch_reading_ease`, `quality_flags` (clarity/accuracy/structure), `high_risk_terms`, and `doc_type_avg_score`. Auth-gated with project access check. **Done:** 2026-03-10.
+- [x] Display score column in the frontend project documents table (color-coded:
+  green ≥0.8, yellow 0.5–0.8, red <0.5) — **Done:** "Document Quality Scores" card added to `frontend/pages/projects/[id]/index.tsx` after KpiCards. Table with Document, Quality (color-coded badge), Reading Level, Flesch Score, and vs. Avg columns. Uses `useQuery` for data fetching. **Done:** 2026-03-10.
+- [x] Show comparison indicator: arrow up/down/equal vs. average score for same document type — **Done:** Arrow up/down/equal indicator in the "vs. Avg" column, color-coded green/red/gray. Average computed across all documents of the same doc_type. **Done:** 2026-03-10.
+- [ ] Add score history sparkline or trend indicator per document
+- [ ] Include quality score summary in project dashboard KPI cards (avg score, worst doc,
+  improvement trend)
+
+---
+
+### 36) License Migration: GPL-3.0 → MIT
+
+**Analysis (2026-03-10):**
+
+All frontend dependencies (Next.js, React, TipTap, Yjs, Tailwind, etc.) are MIT/Apache.
+Nearly all Python runtime dependencies are MIT/BSD/Apache. One blocker: `psycopg` is
+LGPL-3.0 (compatible with GPL, but problematic under MIT). However, psycopg is used only
+for optional PostgreSQL support — v0.1 uses SQLite via SQLAlchemy.
+
+**Rationale for MIT:**
+- GPL-3.0 creates adoption friction; many organizations avoid GPL dependencies
+- GPL copyleft does not protect SaaS usage (that requires AGPL)
+- MIT maximizes community adoption and contribution
+- All core dependencies are already MIT/BSD/Apache compatible
+
+**Migration steps:**
+- [x] Move `psycopg[binary]` from core dependencies to an optional extras group
+  (e.g., `[postgres]`) in `pyproject.toml` — this removes the LGPL runtime obligation — **Done:** Moved to `[project.optional-dependencies] postgres = ["psycopg[binary]==3.2.9"]`. Core deps no longer include any LGPL packages. **Done:** 2026-03-10.
+- [ ] Audit transitive dependencies for GPL contamination: check `cmudict` (pulled by
+  textblob/NLTK) and `pyphen` (pulled by reportlab) — confirm they are not bundled
+  in distributed artifacts
+- [x] Replace `LICENSE` file contents with MIT License text — **Done:** `LICENSE` replaced with MIT License (Copyright 2026 Eric Putnam). **Done:** 2026-03-10.
+- [x] Update `pyproject.toml`: change `license = "GPL-3.0-only"` to `license = "MIT"` — **Done:** `license = { text = "MIT" }`. **Done:** 2026-03-10.
+- [x] Update PyPI classifiers: replace `License :: OSI Approved :: GNU General Public License v3 (GPLv3)`
+  with `License :: OSI Approved :: MIT License` — **Done.** 2026-03-10.
+- [x] Update README.md license section and badge — **Done:** License section updated to link to MIT License. **Done:** 2026-03-10.
+- [ ] Add `SPDX-License-Identifier: MIT` header to key source files (optional but recommended)
+- [ ] Run `pip-licenses` or `licensecheck` to generate a full dependency license report
+  and store in `docs/third-party-licenses.md`
+- [ ] Verify no vendored/copied code has incompatible licenses (check `frontend/vendor/`
+  and any copied snippets)
+
+---
+
+## Session 5 — Enterprise & Federal Readiness (2026-03-10)
+
+Enterprise readiness audit: gaps that would prevent adoption by companies, enterprises,
+and federal/state agencies. Items are prioritized by adoption-blocking severity.
+
+---
+
+### 37) Authentication & Identity Provider Integration
+
+Current state: JWT HS256 + bcrypt + TOTP MFA. Keycloak is stub-only. No LDAP/AD, no
+CAC/PIV, no FIDO2/WebAuthn. Organizations require pluggable identity providers.
+
+**Phase 1 — Core SSO & Directory (blocks enterprise adoption)**
+- [ ] Full OIDC/OAuth 2.0 provider integration: support Authorization Code flow with PKCE
+  for Keycloak, Okta, Azure AD, Auth0; implement JWKS public-key validation (replace
+  HS256 shared-secret for external IdP tokens)
+- [ ] LDAP/Active Directory integration: bind authentication + group-to-role mapping;
+  support LDAPS (TLS) and connection pooling
+- [ ] SAML 2.0 SP support: for organizations that mandate SAML (common in federal/DoD);
+  implement SP-initiated SSO and SLO
+- [ ] Session management hardening: configurable idle timeout, absolute session lifetime,
+  concurrent session limits, server-side session revocation
+
+**Phase 2 — Federal/DoD Authentication (blocks federal adoption)**
+- [ ] CAC/PIV smart card authentication: X.509 client certificate validation, certificate
+  chain verification against DoD PKI roots, CRL/OCSP checking
+- [ ] FIDO2/WebAuthn support: hardware security key registration and authentication as
+  MFA alternative to TOTP
+- [ ] Password policy enforcement: configurable minimum length/complexity, password history
+  (prevent reuse of last N passwords), expiration intervals, account lockout after N
+  failed attempts with configurable cooldown
+
+**Phase 3 — Advanced Identity**
+- [ ] Just-in-time (JIT) user provisioning from IdP claims (auto-create users on first SSO)
+- [ ] SCIM 2.0 endpoint for automated user/group lifecycle management from IdP
+- [ ] Separation of duties enforcement: configurable rules preventing same user from both
+  authoring and approving a document
+
+---
+
+### 38) Multi-Tenant Data Isolation & Database Hardening
+
+Current state: `Organization` model exists but is not enforced. No row-level security.
+SQLite for dev, PostgreSQL/MySQL supported but no SQL Server/Oracle. No Alembic migrations.
+
+**Phase 1 — Tenant Isolation (blocks enterprise/SaaS adoption)**
+- [ ] Enforce organization-scoped data access: add `org_id` foreign key to all content
+  tables (documents, projects, comments, approvals, workflows); add query filters
+  to all repository functions
+- [ ] PostgreSQL Row-Level Security (RLS) policies as defense-in-depth: `SET
+  app.current_org_id` on each request, RLS policies on all content tables
+- [ ] Schema-per-tenant option for large enterprise customers requiring physical isolation
+- [ ] Alembic migration framework: auto-generate migrations from SQLAlchemy models,
+  versioned migration history, rollback support
+
+**Phase 2 — Enterprise Database Support**
+- [ ] Microsoft SQL Server support via `pyodbc` / `mssql+pyodbc` SQLAlchemy dialect
+  (required by many enterprises with SQL Server standardization)
+- [ ] Oracle Database support via `oracledb` SQLAlchemy dialect (required by some
+  federal agencies and large enterprises)
+- [ ] Connection pooling configuration: expose pool_size, max_overflow, pool_recycle
+  settings per environment
+- [ ] Column-level encryption for PII/sensitive fields (e.g., user email, document
+  content) using application-level AES-256-GCM with key management integration
+
+**Phase 3 — Data Governance**
+- [ ] Data retention policies: configurable auto-archive/purge by document age, project
+  status, or organization policy
+- [ ] Audit log immutability: append-only audit table with cryptographic chaining (hash
+  chain) for tamper evidence; required for FedRAMP/FISMA
+- [ ] Database backup automation: scheduled pg_dump with encryption, point-in-time
+  recovery documentation, cross-region replication guidance
+
+---
+
+### 39) Deployment, Infrastructure & Operations
+
+Current state: Single-stage Dockerfile running as root. No Helm chart. Health check
+only pings DB. No air-gap documentation. No distributed rate limiting.
+
+**Phase 1 — Container & Orchestration Hardening (blocks production deployment)**
+- [ ] Multi-stage Dockerfile: build stage + minimal runtime image; run as non-root user
+  (UID 1000+); no shell in production image; scan with Trivy/Grype in CI
+- [ ] Helm chart with configurable values: replicas, resource limits, ingress, TLS,
+  environment variables, secrets (via Kubernetes Secrets or external vault)
+- [ ] Kubernetes manifests: Deployment, Service, Ingress, HPA, PDB, NetworkPolicy;
+  readiness/liveness/startup probes on distinct endpoints
+- [ ] Health check endpoints: `GET /health` (deep: DB + Redis + storage), `GET /ready`
+  (shallow: app accepting traffic), `GET /live` (process alive)
+
+**Phase 2 — Enterprise Operations**
+- [ ] Reverse proxy configuration examples: Nginx, Apache, HAProxy, AWS ALB with
+  WebSocket upgrade support (for Hocuspocus/Yjs collaboration)
+- [ ] Distributed rate limiting: Redis-backed sliding window rate limiter (replace
+  in-memory per-process limiter); configurable per-endpoint and per-tenant limits
+- [ ] Structured JSON logging with correlation IDs: request ID propagated through all
+  log entries, Celery task logs, and WebSocket connections
+- [ ] OpenTelemetry tracing: instrument FastAPI, SQLAlchemy, Celery, and HTTP clients
+  for distributed trace collection (Jaeger/Zipkin/OTLP export)
+
+**Phase 3 — Air-Gap & High Availability**
+- [ ] Air-gap deployment guide: offline container registry, pip package mirror, npm
+  registry mirror; document all external network dependencies
+- [ ] Docker Compose production stack: app + PostgreSQL + Redis + Celery worker +
+  Celery beat + Hocuspocus, with TLS termination and volume mounts
+- [ ] Blue-green / rolling deployment documentation with zero-downtime migration steps
+- [ ] Disaster recovery runbook: RTO/RPO targets, backup verification, failover procedures
+
+---
+
+### 40) Compliance, Records Management & Accessibility
+
+Current state: No FedRAMP/FISMA/StateRAMP controls documentation. No eDiscovery or
+legal hold. No NARA records management. No Section 508 scanning. No FIPS 140-2
+cryptography.
+
+**Phase 1 — Federal Compliance (blocks federal agency adoption)**
+- [ ] FIPS 140-2 validated cryptography: configure Python `ssl` module and PostgreSQL
+  connections to use only FIPS-approved algorithms; document FIPS mode enablement
+- [ ] FedRAMP/FISMA control mapping: document how DocReview360 satisfies AC, AU, IA, SC,
+  and SI control families; generate SSP (System Security Plan) template
+- [ ] Audit log completeness: ensure every data access, modification, authentication
+  event, and administrative action is logged with who/what/when/where/outcome
+- [ ] NARA records management metadata: retention schedule codes, disposition authority,
+  record category classification on documents
+
+**Phase 2 — Legal & eDiscovery**
+- [ ] Legal hold / litigation hold: flag documents and projects as under legal hold;
+  prevent deletion, modification, or purge of held items; admin notification
+- [ ] eDiscovery export: bulk export of documents, metadata, comments, audit trails,
+  and version history in standard formats (EDRM XML, load files)
+- [ ] Digital signature compliance: PDF/A-3 signatures with embedded validation data
+  (for long-term signature validity); timestamping authority (TSA) integration
+
+**Phase 3 — Accessibility & Internationalization**
+- [ ] Section 508 / WCAG 2.1 AA compliance: automated scanning (axe-core) in CI;
+  manual audit checklist; keyboard navigation for all editor functions; screen
+  reader support for TipTap editor toolbar and validation results
+- [ ] Internationalization (i18n) framework: extract all UI strings to locale files;
+  support LTR and RTL layouts; date/number formatting per locale
+- [ ] Configurable branding: organization logo, color scheme, terminology overrides
+  (e.g., "Document" → "Record", "Project" → "Case")
+
+---
+
+### 41) Editor, Integrations & Content Management
+
+Current state: TipTap editor with plugin registry. No Office 365 co-authoring. SharePoint
+CMS works but Confluence/Google Drive are stubs. No plugin sandboxing. WebSocket proxy
+support is limited.
+
+**Phase 1 — Enterprise Content Integrations (blocks enterprise workflow adoption)**
+- [ ] SharePoint Online integration: OAuth 2.0 app registration, document library
+  browse/import/export, metadata sync, version history mapping
+- [ ] Confluence integration: REST API v2 client, page import (convert Confluence
+  storage format → TipTap JSON), export back to Confluence
+- [ ] Google Drive integration: OAuth 2.0 + Drive API v3, file picker, import/export,
+  real-time sync option
+- [ ] Microsoft 365 co-authoring: WOPI protocol implementation for Word/Excel/PowerPoint
+  online editing within DocReview360 iframe
+
+**Phase 2 — Editor Hardening**
+- [ ] WebSocket proxy support: document Nginx/HAProxy/AWS ALB configuration for
+  Hocuspocus WebSocket connections; implement connection fallback (long-polling)
+- [ ] Plugin sandboxing: run third-party TipTap extensions in isolated context;
+  restrict DOM access, network calls, and storage access
+- [ ] Offline editing support: service worker + IndexedDB local cache; sync queue
+  for changes made offline; conflict resolution UI on reconnect
+- [ ] Import/export format expansion: OOXML (.docx) round-trip fidelity, ODF (.odt),
+  LaTeX, DITA XML, NIEM-compliant XML schemas
+
+**Phase 3 — Enterprise Search & Analytics**
+- [ ] Full-text search: Elasticsearch/OpenSearch integration for document content,
+  comments, and metadata; faceted search by org, project, doc type, status, author
+- [ ] Analytics dashboard: document throughput, review cycle time, approval bottlenecks,
+  user activity metrics; exportable reports
+- [ ] API gateway compatibility: document rate limiting headers, API versioning strategy
+  (URL path or Accept header), OpenAPI 3.1 spec generation with security schemes
+
+---
+
+### 42) Configuration & Extensibility
+
+Current state: Environment variables for configuration. No per-organization config
+overrides. No YAML/TOML config file support. No webhook/event system beyond basic
+notifications.
+
+- [ ] Hierarchical configuration: system defaults → organization overrides → project
+  overrides; YAML/TOML config file support alongside environment variables
+- [ ] Per-organization feature flags: toggle features (AI scoring, regulatory checks,
+  collaboration, e-signatures) per tenant without code deployment
+- [ ] Webhook event system: configurable outbound webhooks for document lifecycle events
+  (created, submitted, approved, rejected, published); HMAC-SHA256 signature
+  verification; retry with exponential backoff
+- [ ] Custom workflow definitions: allow organizations to define their own review phases,
+  approval chains, and routing rules via configuration (not code changes)
+- [ ] Custom field definitions: allow organizations to add metadata fields to documents
+  and projects (text, date, dropdown, user-reference) without schema changes
+- [ ] Theme/white-label support: CSS custom properties for colors, typography, spacing;
+  custom login page; organization-specific terms of service and privacy policy

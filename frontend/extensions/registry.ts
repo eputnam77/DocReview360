@@ -175,6 +175,18 @@ export const PLUGIN_REGISTRY: readonly PluginManifest[] = [
     exportName: "default",
   },
   {
+    name: "federal-style-lint",
+    version: "1.0.0",
+    description:
+      "Real-time Federal Style Validator: inline marks for style violations, " +
+      "filler words, hedging, and undefined acronyms.",
+    lazy: true,
+    alwaysOn: false,
+    tiptapRange: ">=2.0.0 <3.0.0",
+    importPath: "./tiptapFederalStyleLint",
+    exportName: "federalStyleLint",
+  },
+  {
     name: "mark-review",
     version: "1.0.0",
     description:

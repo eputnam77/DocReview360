@@ -11,7 +11,10 @@
       "Bash(npx vitest:*)",
       "Bash(DOCREVIEW360_ENV=dev python:*)",
       "Bash(DOCREVIEW360_ENV=dev .venv/bin/pytest:*)",
-      "Bash(DOCREVIEW360_ENV=dev .venv/bin/python:*)"
+      "Bash(DOCREVIEW360_ENV=dev .venv/bin/python:*)",
+      "Bash(wc:*)",
+      "Bash(npx:*)",
+      "Bash(cat:*)"
     ]
   }
 }

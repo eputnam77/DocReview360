@@ -448,6 +448,27 @@ export default function ProjectDetailsPage() {
     };
   }, [approvalsForPhase]);
 
+  // ▼ document quality scores
+  interface DocumentScore {
+    document_id: string;
+    quality_score: number;
+    plain_language_grade: string;
+    flesch_reading_ease: number;
+    quality_flags: Record<string, number>;
+    high_risk_terms: string[];
+    doc_type_avg_score: number | null;
+  }
+  const { data: qualityScores } = useQuery<DocumentScore[]>({
+    queryKey: ["project-doc-scores", id],
+    queryFn: async () => {
+      const res = await authenticatedFetch(`${API}/projects/${id}/documents/scores`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+
   // ▼ handlers --------------------------------------------------------------
   const handlePhaseChange = useCallback(
     (phaseId: string) => {
@@ -964,6 +985,76 @@ export default function ProjectDetailsPage() {
           </Disclosure>
 
           <KpiCards stats={stats} />
+
+          {/* Document Quality Scores */}
+          {qualityScores && qualityScores.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">
+                  Document Quality Scores
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Document</TableHead>
+                      <TableHead>Quality</TableHead>
+                      <TableHead>Reading Level</TableHead>
+                      <TableHead>Flesch Score</TableHead>
+                      <TableHead>vs. Avg</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {qualityScores.map((ds) => {
+                      const pct = Math.round(ds.quality_score * 100);
+                      const color =
+                        pct >= 80
+                          ? "text-green-700 bg-green-50"
+                          : pct >= 50
+                            ? "text-amber-700 bg-amber-50"
+                            : "text-red-700 bg-red-50";
+                      const avg = ds.doc_type_avg_score;
+                      const diff = avg != null ? ds.quality_score - avg : null;
+                      return (
+                        <TableRow key={ds.document_id}>
+                          <TableCell className="font-mono text-xs truncate max-w-[200px]">
+                            {ds.document_id}
+                          </TableCell>
+                          <TableCell>
+                            <span className={cn("px-2 py-0.5 rounded text-sm font-semibold", color)}>
+                              {pct}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {ds.plain_language_grade}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {ds.flesch_reading_ease}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {diff != null ? (
+                              <span className={diff > 0.02 ? "text-green-600" : diff < -0.02 ? "text-red-600" : "text-gray-500"}>
+                                {diff > 0.02 ? "▲" : diff < -0.02 ? "▼" : "="}{" "}
+                                {avg != null ? `${Math.round(avg * 100)}% avg` : ""}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                {qualityScores.some((ds) => ds.high_risk_terms.length > 0) && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    ⚠ Some documents contain high-risk terms that may affect scoring.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Workflow & progress */}
           <div className="grid md:grid-cols-2 gap-6">

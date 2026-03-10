@@ -98,3 +98,16 @@
   display: block;
   margin: 1em 0;
 }
+
+/* Federal Style Lint decorations */
+.federal-lint-style {
+  text-decoration: underline wavy #ca8a04; /* amber-600 */
+  text-decoration-skip-ink: none;
+  cursor: help;
+}
+
+.federal-lint-acronym {
+  text-decoration: underline wavy #ea580c; /* orange-600 */
+  text-decoration-skip-ink: none;
+  cursor: help;
+}

@@ -797,5 +797,5 @@ pytest -q   # verify baseline passes
 
 ## License
 
-DocReview360 is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html). See the LICENSE file for full details.
+DocReview360 is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the LICENSE file for full details.
 
