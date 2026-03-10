@@ -55,6 +55,8 @@ export function useUserProjects(username: string | undefined) {
 
 interface CreateProjectPayload {
   name: string;
+  document_number?: string;
+  user?: string;
   doc_type?: string;
   workflow?: string;
   phase?: string;

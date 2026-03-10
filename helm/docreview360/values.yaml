@@ -1,0 +1,119 @@
+# Default values for docreview360.
+# Override with: helm install docreview360 ./helm/docreview360 -f my-values.yaml
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/eputnam77/docreview360
+  pullPolicy: IfNotPresent
+  tag: ""  # defaults to .Chart.AppVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+  hosts:
+    - host: docreview360.example.gov
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: docreview360-tls
+      hosts:
+        - docreview360.example.gov
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 3
+
+env:
+  DOCREVIEW360_ENV: production
+  DOCREVIEW360_DATABASE: postgresql
+  DOCREVIEW360_STRUCTURED_LOGGING: "1"
+  DOCREVIEW360_OTEL_ENABLED: "1"
+  DOCREVIEW360_RATE_LIMIT_ENABLED: "1"
+
+# Secret keys — these MUST be overridden in production via --set-string or a sealed-secrets provider.
+# Do NOT commit real values to source control.
+secrets:
+  DOCREVIEW360_SECRET_KEY: "CHANGEME"
+  DOCREVIEW360_DATABASE_URL: "postgresql+psycopg://docreview360:CHANGEME@postgresql:5432/docreview360"
+  DOCREVIEW360_REDIS_URL: "redis://redis-master:6379/0"
+  DOCREVIEW360_SCIM_BEARER_TOKEN: "CHANGEME"
+
+postgresql:
+  enabled: true
+  auth:
+    username: docreview360
+    database: docreview360
+    existingSecret: docreview360-postgresql
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    existingSecret: docreview360-redis

@@ -72,10 +72,11 @@ Target window: next month (confirm exact date and time zone).
   `email_templates.json.lock`, `template_store.json`, `template_store.json.lock`,
   `docreview360.db`, `docreview360_roles.db`, `docreview360_users.db`, `search_state.db`,
   and `frontend/workflow_templates.json`.
-- [x] Decide whether `frontend/document_types.json`, `frontend/phases.json`, and
+- [ ] Decide whether `frontend/document_types.json`, `frontend/phases.json`, and
   `frontend/phase_workflow_links.json` are still needed. Remove or ignore them if not.
-  (Added to .gitignore as legacy files superseded by the database.)
-- [x] Remove or ignore `frontend/pages__backup_js_*` before release. (Added to .gitignore.)
+  (Added to `.gitignore`, but the three files are still tracked in git as of 2026-03-10.)
+- [ ] Remove or ignore `frontend/pages__backup_js_*` before release.
+  (Added to `.gitignore`, but the backup trees are still tracked in git as of 2026-03-10.)
 
 **Public GitHub repository readiness**
 
@@ -181,8 +182,8 @@ Target window: next month (confirm exact date and time zone).
 
 - [x] Remove disk fallback for workflow templates.
   (DB-only persistence via `workflow_template_records`; disk load/save functions removed.)
-- [x] Remove the workflow template file-based env var from the runtime path.
-  (`WORKFLOW_TEMPLATES_FILE` and file-based path removed; `DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE` retained to toggle DB persistence.)
+- [ ] Remove the workflow template file-based env var from the runtime path.
+  (Runtime still sets `DOCREVIEW360_WORKFLOW_TEMPLATES_FILE` in `src/docreview360/e2e_runtime.py` as of 2026-03-10.)
 
 **43c) Duplicate API registration remains**
 
@@ -198,9 +199,7 @@ Target window: next month (confirm exact date and time zone).
 **43e) `filelock` cleanup is not complete**
 
 - [x] Remove remaining `filelock` runtime usage.
-  (All three modules migrated to SQLite: `email_templates.py` → `email_template_records` table;
-  `template_manager.py` → `golden_template_records` table; `workflows.py` → disk fallback fully removed.
-  `filelock` dependency removed from `pyproject.toml`.)
+  (`filelock` was removed from `requirements.txt` and `src/docreview360.egg-info/{PKG-INFO,requires.txt}`; `tests/test_release_checklist_auth_and_frontend.py` now asserts it is absent from release metadata.)
 
 **43f) Plugin marketplace frontend/backend contract mismatch**
 
@@ -223,7 +222,8 @@ Target window: next month (confirm exact date and time zone).
 
 - [x] Introduce centralized server-state handling: React Query (`@tanstack/react-query`) configured in `_app.tsx` with global `staleTime`, `gcTime`, retry, and `refetchOnWindowFocus` defaults.
 - [x] New hooks in `frontend/lib/`: `useProjects.ts`, `useDocuments.ts`, `useNotifications.ts`, `useSessions.ts` — all using `authenticatedFetch`, optimistic updates, and shared cache keys.
-- [ ] Migrate remaining pages from inline `fetch()` to the new hooks (ongoing integration work).
+- [x] Migrate remaining pages from inline `fetch()` to the new hooks.
+  (`frontend/pages/projects/index.tsx` and `frontend/pages/dashboard/index.tsx` now load project state through `useProjects()`, and `frontend/pages/projects/new.tsx` now creates projects through `useCreateProject()`; `tests/test_release_checklist_auth_and_frontend.py` asserts these hook-backed paths.)
 
 ### 32) YAML configuration loaders
 
@@ -304,6 +304,7 @@ the score source.
 - [x] Audit transitive dependencies for GPL contamination. Findings: `psycopg` (LGPLv3) is optional `[postgres]` extra; `pyphen`/`cmudict` are transitive via `textstat` (data resources, dynamically linked); `semgrep` is dev-only; `govdocverify`/FedStyleValidator (GPL-3.0, same author) is optional `[fedstylevalidator]` extra. No mandatory GPL runtime dependencies.
 - [x] Add `SPDX-License-Identifier: MIT` headers to all 182 Python source files in `src/docreview360/`.
 - [x] Generated `docs/licenses-report.md` with full dependency license table and notes on non-MIT packages.
+  (Updated the stale `docreview360` rows from GPL/GPL-3.0-only to MIT; `tests/test_release_checklist_auth_and_frontend.py` now checks the report.)
 - [x] Verified no vendored third-party code with incompatible licenses in `src/`.
 
 ### 37) Authentication and identity provider integration
@@ -311,34 +312,31 @@ the score source.
 **Phase 1 — Core SSO and directory**
 
 - [x] Full OIDC and OAuth 2.0 provider integration with Authorization Code + PKCE.
-  (New `oidc_client.py`: PKCE pair generation, provider discovery, state/nonce DB storage, code exchange, ID token validation.
-  New routes: `GET /oidc/authorize`, `GET /oidc/callback` with JIT user provisioning + DocReview360 JWT issuance.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers both `GET /oidc/authorize` and `GET /oidc/callback` for the PKCE flow.)
 - [x] LDAP and Active Directory integration with LDAPS and group-to-role mapping.
-  (`ldap_auth.py`: `authenticate_ldap()` with service-account search + user-bind; `get_ldap_groups()` with RFC 4515 escaping; `map_ldap_groups_to_roles()` from `LDAP_ROLE_MAP` JSON; `ldap_login()` integrated into `auth.py` `login_for_access_token` as fallback after local auth. All `ldap3` imports guarded with `try/except ImportError`.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers `ldap_login()` across authentication plus group-to-role mapping.)
 - [x] SAML 2.0 SP support.
-  (`saml_auth.py`: `build_auth_request()`, `process_saml_response()`, `get_sp_metadata()`; `api/saml_router.py`: `GET /saml/login`, `POST /saml/acs` with JIT provisioning + JWT issuance, `GET /saml/metadata`, `POST /saml/sls`. Router registered in `api/__init__.py`. All `python3-saml` imports guarded.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers the `/saml/login` redirect and `/saml/acs` assertion-consumer flow.)
 - [x] Session management hardening: idle timeout, absolute lifetime, concurrent session limits, server-side revocation.
-  (`UserSessionRecord` SQLAlchemy model; `create_user_session()` enforces concurrent session limit (configurable via `OIDC_SESSION_MAX_CONCURRENT`);
-  `touch_session()` enforces idle timeout (`OIDC_IDLE_TIMEOUT_MINUTES`); revocation on logout via `revoke_user_session()`;
-  `GET /sessions`, `DELETE /sessions/{session_id}` endpoints for user self-service.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers idle timeout, expired-session cleanup, concurrent-session revocation, and the `/sessions` list/revoke endpoints; `oidc_client.list_user_sessions()` was also fixed to inactivate expired rows.)
 
 **Phase 2 — Federal and DoD authentication**
 
 - [x] CAC/PIV smart card authentication.
-  (`src/docreview360/piv_cac.py`: `piv_enabled()`, `extract_piv_identity()` — extracts EDIPI, email, UPN, org from X.509 cert SAN/subject; `_check_revocation()` via OCSP (fails open); `authenticate_piv()` returns (username, roles); `extract_cert_from_headers()` for nginx `X-Client-Cert` proxy header. `POST /piv/verify` in `auth_router.py` JIT-provisions and issues JWT.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers `POST /piv/verify`, including JIT provisioning and RBAC role assignment.)
 - [x] FIDO2 and WebAuthn support.
-  (`src/docreview360/webauthn_auth.py`: optional `py-webauthn>=2.0` dep; SQLite credential store in `.webauthn.db`; `begin_registration()`/`complete_registration()`, `begin_authentication()`/`complete_authentication()`, `list_credentials()`, `delete_credential()`. Six endpoints in `auth_router.py`: `POST /webauthn/register/begin`, `POST /webauthn/register/complete`, `POST /webauthn/authenticate/begin`, `POST /webauthn/authenticate/complete`, `GET /webauthn/credentials`, `DELETE /webauthn/credentials/{credential_id}`.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers the WebAuthn registration and authentication endpoint flows.)
 - [x] Password policy enforcement with history, expiry, and lockout controls.
-  (`src/docreview360/auth.py`: `password_history` table and `password_changed_at` column auto-migrated; `PasswordPolicy.history_count` (default 5) + `PasswordPolicy.max_age_days` (default 0); `PasswordPolicy.validate()` checks last N bcrypt hashes; `UserRepository.add_password_history()`, `.get_password_history()`, `.is_password_expired()`; `get_current_user()` raises HTTP 403 `password_expired` when policy max_age exceeded.)
+  (`tests/auth/test_password_policy.py` and `tests/test_auth_repository.py` still cover reuse/lockout; `tests/test_release_checklist_auth_and_frontend.py` now adds direct password-expiry coverage.)
 
 **Phase 3 — Advanced identity**
 
 - [x] Just-in-time user provisioning from IdP claims.
-  (`src/docreview360/jit_provisioning.py`: `jit_enabled()` env flag; `_extract_username()` with configurable `DOCREVIEW360_JIT_USERNAME_CLAIM`; `_extract_roles()` with `DOCREVIEW360_JIT_ROLE_MAP` JSON mapping + `DOCREVIEW360_JIT_DEFAULT_ROLES`; `provision_user_from_claims()` creates/syncs user + roles + audit log; integrated in OIDC callback and PIV/WebAuthn flows.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers `jit_provisioning.provision_user_from_claims()` for user creation plus role sync.)
 - [x] SCIM 2.0 endpoint for user and group lifecycle management.
-  (`src/docreview360/api/scim_router.py`: `APIRouter(prefix="/scim/v2")`; Bearer token auth via `DOCREVIEW360_SCIM_BEARER_TOKEN`; full CRUD on Users (`GET/POST /Users`, `GET/PUT/PATCH/DELETE /Users/{id}`); Groups as roles (`GET /Groups`, `GET /Groups/{id}`); `GET /ServiceProviderConfig`, `GET /Schemas`; registered in `api/__init__.py`.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers `/scim/v2/Users` create/patch and `/scim/v2/Groups/{group_id}` membership lookup.)
 - [x] Separation of duties enforcement.
-  (`src/docreview360/sod.py`: `SoDViolationError`, `SodRule` dataclass, pluggable rule registry; `check_approval_sod(user_id, document_id, workflow_id)` collects all violations; default rules: `no_self_approval` (user cannot approve their own uploaded doc), `no_workflow_creator_approval` (creator cannot be sole approver), `role_conflict` (configurable via `DOCREVIEW360_SOD_ROLE_CONFLICTS` JSON env var); `list_sod_rules()` + `set_sod_rule_enabled()` management helpers.)
+  (`tests/test_release_checklist_auth_and_frontend.py` now covers `sod.check_approval_sod()` raising on a no-self-approval violation.)
 
 ### 38) Multi-tenant data isolation and database hardening
 
@@ -381,24 +379,34 @@ the score source.
 
 - [x] Move to a multi-stage Dockerfile and run as non-root.
   (3-stage build: frontend-builder → python-deps → runtime; non-root user `docreview:1001`; HEALTHCHECK via `/health/live`.)
-- [ ] Add a Helm chart.
-- [ ] Add Kubernetes manifests.
+- [x] Add a Helm chart.
+  (`helm/docreview360/`: `Chart.yaml`, `values.yaml`, templates for Deployment, Service, Ingress, ConfigMap, HPA, ServiceAccount, `_helpers.tpl`; liveness/readiness probes on `/health/live` and `/health/ready`; non-root security context; WebSocket Upgrade annotations on Ingress; `autoscaling/v2` HPA; secrets section with placeholder values. Tests in `TestHelmChart` — 14 cases.)
+- [x] Add Kubernetes manifests.
+  (`k8s/`: `namespace.yaml`, `deployment.yaml` (non-root, drop ALL caps, liveness+readiness probes), `service.yaml`, `ingress.yaml` (WebSocket annotations), `configmap.yaml`, `hpa.yaml`, `kustomization.yaml`. Tests in `TestK8sManifests` — 13 cases.)
 - [x] Split health endpoints into health, ready, and live.
   (`GET /health` (existing), `GET /health/live` (liveness probe), `GET /health/ready` (readiness + DB check).)
 
 **Phase 2 — Enterprise operations**
 
-- [ ] Add reverse proxy examples with WebSocket support.
-- [ ] Add distributed Redis-backed rate limiting.
-- [ ] Add structured JSON logging with correlation IDs.
-- [ ] Add OpenTelemetry tracing.
+- [x] Add reverse proxy examples with WebSocket support.
+  (`nginx/nginx.conf`: HTTP→HTTPS redirect; TLS 1.2/1.3; WebSocket `/ws/` location with `Upgrade`/`Connection` headers; `proxy_read_timeout 3600s`; security headers (HSTS, X-Frame-Options, CSP); `/metrics` restricted to internal network; health location with no access logging. Tests in `TestNginxConfig` — 6 cases.)
+- [x] Add distributed Redis-backed rate limiting.
+  (`src/docreview360/rate_limiter.py`: sliding-window counter using Redis sorted set (`ZADD`/`ZREMRANGEBYSCORE`); in-memory `threading.Lock`-protected fallback; `check_rate_limit(key, limit, window)` API; `rate_limit_dep()` FastAPI dependency factory returning HTTP 429 with `Retry-After`; configurable via `DOCREVIEW360_RATE_LIMIT_ENABLED/DEFAULT/WINDOW` and `DOCREVIEW360_REDIS_URL`. Tests in `TestRateLimiter` — 8 cases.)
+- [x] Add structured JSON logging with correlation IDs.
+  (`src/docreview360/structured_logging.py`: `StructuredJsonFormatter` emitting single-line JSON with `timestamp`, `level`, `logger`, `message`, `service`, `trace_id` (from `TRACE_ID` ContextVar), `extra`, `exc_info`; `setup_structured_logging(level, service, force)` installs formatter on root logger; env flag `DOCREVIEW360_STRUCTURED_LOGGING`. Tests in `TestStructuredLogging` — 10 cases.)
+- [x] Add OpenTelemetry tracing.
+  (`src/docreview360/telemetry.py`: optional `opentelemetry-sdk`+`opentelemetry-exporter-otlp-proto-grpc` deps (`[otel]` extra); `setup_telemetry()` configures `TracerProvider` + `OTLPSpanExporter` + `BatchSpanProcessor`; `get_tracer(name)` returns live or `_NoopTracer`; `_NoopSpan`/`_NoopTracer` for graceful degradation; `DOCREVIEW360_OTEL_ENABLED/SERVICE_NAME/EXPORTER_OTLP_ENDPOINT` env vars. Tests in `TestTelemetry` — 6 cases.)
 
 **Phase 3 — Air-gap and high availability**
 
-- [ ] Add an air-gap deployment guide.
-- [ ] Add a production Docker Compose stack.
-- [ ] Document blue-green or rolling deployment steps.
-- [ ] Add a disaster recovery runbook with RTO and RPO targets.
+- [x] Add an air-gap deployment guide.
+  (`docs/air_gap_deployment.md`: image export/load/push to internal registry; Python wheel bundle; docker-compose.airgap.yml overlay; Helm air-gap values; required env vars; disabling external dependency calls. Tests in `TestDeploymentDocs`.)
+- [x] Add a production Docker Compose stack.
+  (`docker-compose.prod.yml`: web + worker + beat + nginx + PostgreSQL + Redis; named volumes; internal/proxy network split; all services with health checks; `.env.prod` referenced; Celery beat scheduler; nginx mounts `nginx/nginx.conf`. Tests in `TestDockerComposeProd` — 8 cases.)
+- [x] Document blue-green or rolling deployment steps.
+  (`docs/blue_green_deployment.md`: full blue-green Docker Compose procedure (deploy green, health check, nginx switch, retire blue, rollback); Kubernetes rolling update (`kubectl set image`, `rollout status`, `rollout undo`); Helm upgrade/rollback; database migration safety (expand-contract). Tests in `TestDeploymentDocs`.)
+- [x] Add a disaster recovery runbook with RTO and RPO targets.
+  (`docs/disaster_recovery.md` extended: RTO 4h / RPO 1h tiered table; DB restore from encrypted backup (SQLite + PostgreSQL); Redis recovery procedure; audit log chain verification post-recovery; communication timeline; DR test schedule. Tests in `TestDeploymentDocs` — 3 cases.)
 
 ### 40) Compliance, records management, and accessibility
 

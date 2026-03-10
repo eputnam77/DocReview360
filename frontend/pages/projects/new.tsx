@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
 import { API, authenticatedFetch } from "@/lib/api";
+import { useCreateProject } from "@/lib/useProjects";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
@@ -62,9 +63,9 @@ export default function NewProjectPage() {
   const [workflow, setWorkflow] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const createProject = useCreateProject();
 
   useEffect(() => {
     authenticatedFetch(`${API}/phases/config`)
@@ -195,9 +196,7 @@ export default function NewProjectPage() {
       return;
     }
 
-    setLoading(true);
-
-    const projectData: Record<string, unknown> = {
+    const projectData = {
       document_number: docNumber,
       name: title,
       user: sme || undefined,
@@ -210,23 +209,10 @@ export default function NewProjectPage() {
     }
 
     try {
-      const res = await authenticatedFetch(`${API}/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(projectData),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to create project: ${res.status} ${errorText}`);
-      }
-
-      await res.json();
+      await createProject.mutateAsync(projectData);
       router.push("/projects");
     } catch (err) {
       setError((err as Error).message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -330,8 +316,8 @@ export default function NewProjectPage() {
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Creating..." : "Create Project"}
+          <Button type="submit" disabled={createProject.isPending} className="w-full">
+            {createProject.isPending ? "Creating..." : "Create Project"}
           </Button>
         </form>
       </div>

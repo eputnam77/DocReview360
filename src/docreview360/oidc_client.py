@@ -382,8 +382,16 @@ def create_user_session(
                     exp_dt = exp_raw
                 if now < exp_dt:
                     valid_sessions.append((sid, row_jti))
+                else:
+                    conn.execute(
+                        _text("UPDATE user_sessions SET is_active = 0 WHERE id = :sid"),
+                        {"sid": sid},
+                    )
             except (ValueError, TypeError):
-                pass
+                conn.execute(
+                    _text("UPDATE user_sessions SET is_active = 0 WHERE id = :sid"),
+                    {"sid": sid},
+                )
 
         # Revoke oldest sessions if at limit
         while len(valid_sessions) >= SESSION_MAX_CONCURRENT:
@@ -514,18 +522,39 @@ def list_user_sessions(username: str) -> list[dict[str, Any]]:
         ).fetchall()
 
     result = []
+    expired_session_ids: list[str] = []
     for row in rows:
         sid, jti, created_raw, last_active_raw, expires_raw, ip, ua, method = row
+        try:
+            if isinstance(expires_raw, str):
+                expires_at = datetime.fromisoformat(expires_raw)
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+            else:
+                expires_at = expires_raw
+        except (ValueError, TypeError):
+            expired_session_ids.append(sid)
+            continue
+        if now >= expires_at:
+            expired_session_ids.append(sid)
+            continue
         result.append(
             {
                 "session_id": sid,
                 "jti": jti,
                 "created_at": str(created_raw),
                 "last_active_at": str(last_active_raw),
-                "expires_at": str(expires_raw),
+                "expires_at": str(expires_at),
                 "ip_address": ip,
                 "user_agent": ua,
                 "auth_method": method,
             }
         )
+    if expired_session_ids:
+        with db.session() as conn:
+            for sid in expired_session_ids:
+                conn.execute(
+                    _text("UPDATE user_sessions SET is_active = 0 WHERE id = :sid"),
+                    {"sid": sid},
+                )
     return result

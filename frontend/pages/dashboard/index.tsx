@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ChatBot } from "@/components";
@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { useDashboardVisibility } from "@/state/visibility";
 import { authenticatedFetch } from "@/lib/api";
+import { useProjects } from "@/lib/useProjects";
 import { useUserStore } from "@/state/user";
 
 // Color palette for charts
@@ -174,62 +175,19 @@ function computeDashboardData(
 }
 
 export default function MainDashboardPage() {
-  const [stats, setStats] = useState<Stats>({
-    assigned: 0,
-    inProgress: 0,
-    completed: 0,
-    overdue: 0,
-  });
-  const [statusData, setStatusData] = useState<StatusData[]>([]);
-  const [activityData, setActivityData] = useState<Activity[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const { vis } = useDashboardVisibility();
   const username = useUserStore((s) => s.username);
+  const { data: projects = [] } = useProjects();
+  const dashboardData = useMemo(
+    () => computeDashboardData(projects, username),
+    [projects, username],
+  );
+  const { stats, statusData, activityData } = dashboardData;
 
-  // Simulated API calls — replace with your own endpoints!
   useEffect(() => {
     let isActive = true;
-
-    async function loadProjects() {
-      try {
-        const response = await authenticatedFetch("/projects");
-        let payload: unknown = [];
-
-        if (response.ok) {
-          try {
-            payload = await response.json();
-          } catch {
-            payload = [];
-          }
-        }
-
-        const projects = Array.isArray(payload)
-          ? payload.filter((item): item is ProjectRecord =>
-              item !== null && typeof item === "object",
-            )
-          : [];
-
-        if (!isActive) {
-          return;
-        }
-
-        const { stats: computedStats, statusData, activityData } = computeDashboardData(
-          projects,
-          username,
-        );
-        setStats(computedStats);
-        setStatusData(statusData);
-        setActivityData(activityData);
-      } catch {
-        if (!isActive) {
-          return;
-        }
-        setStats({ assigned: 0, inProgress: 0, completed: 0, overdue: 0 });
-        setStatusData([]);
-        setActivityData([]);
-      }
-    }
 
     async function loadLogs() {
       try {
@@ -273,13 +231,12 @@ export default function MainDashboardPage() {
       }
     }
 
-    loadProjects();
     loadLogs();
 
     return () => {
       isActive = false;
     };
-  }, [username]);
+  }, []);
 
   // Unique projects for filter dropdown
   const projectOptions = Array.from(

@@ -103,12 +103,12 @@ All source files in `src/docreview360/` carry `# SPDX-License-Identifier: MIT`.
 | starlette                                | 0.47.2      | BSD-3-Clause                                                                                                                                   |
 | uvicorn                                  | 0.35.0      | BSD-3-Clause                                                                                                                                   |
 | pyphen                                   | 0.17.2      | GNU General Public License v2 or later (GPLv2+); GNU Lesser General Public License v2 or later (LGPLv2+); Mozilla Public License 1.1 (MPL 1.1) |
-| docreview360                             | 0.1.2       | GNU General Public License v3 (GPLv3)                                                                                                          |
+| docreview360                             | 0.1.2       | MIT                                                                                                                                            |
 | cmudict                                  | 1.1.1       | GNU General Public License v3 or later (GPLv3+)                                                                                                |
 | semgrep                                  | 1.131.0     | GNU Lesser General Public License v2 (LGPLv2)                                                                                                  |
 | psycopg                                  | 3.2.9       | GNU Lesser General Public License v3 (LGPLv3)                                                                                                  |
 | psycopg-binary                           | 3.2.9       | GNU Lesser General Public License v3 (LGPLv3)                                                                                                  |
-| docreview360                             | 0.1.2       | GPL-3.0-only                                                                                                                                   |
+| docreview360                             | 0.1.2       | MIT                                                                                                                                            |
 | govdocverify                             | 0.1.0       | GPL-3.0-only                                                                                                                                   |
 | SQLAlchemy                               | 2.0.41      | MIT                                                                                                                                            |
 | anyio                                    | 4.10.0      | MIT                                                                                                                                            |

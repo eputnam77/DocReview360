@@ -12,8 +12,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useProjects } from "@/lib/useProjects";
 import { useUserStore } from "@/state/user";
-import { authenticatedFetch } from "@/lib/api";
 
 // The Project type: extend as needed
 interface Project {
@@ -80,41 +80,27 @@ function ProgressBar({ value }: { value: number }) {
 }
 
 export default function ProjectList() {
-  const [projects, setProjects] = useState<Project[]>([]);
   const [sortKey, setSortKey] = useState<keyof Project>("number");
   const [viewMode, setViewMode] = useState<"assigned" | "all">("assigned");
   const username = useUserStore((s) => s.username);
   const isAdmin = useUserStore((s) => s.isAdmin);
+  const { data: fetchedProjects = [] } = useProjects();
 
   useEffect(() => {
     setViewMode(isAdmin ? "all" : "assigned");
   }, [isAdmin]);
 
-  useEffect(() => {
-    if (!username) {
-      setProjects([]);
-      return;
-    }
-
-    const endpoint = isAdmin
-      ? "/projects"
-      : `/projects?user=${encodeURIComponent(username)}`;
-
-    authenticatedFetch(endpoint)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any) => {
-        const fetchedProjects = Array.isArray(data)
-          ? data.map((p: any) => ({
-              ...p,
-              currentPhaseId: p.current_phase_id ?? p.phase ?? null,
-            }))
-          : [];
-        setProjects(fetchedProjects);
-      })
-      .catch(() => {
-        setProjects([]);
-      });
-  }, [isAdmin, username]);
+  const projects = useMemo(
+    () =>
+      fetchedProjects.map((project) => ({
+        ...project,
+        title: project.name,
+        type: project.doc_type ?? "",
+        progress: 0,
+        currentPhaseId: project.current_phase_id ?? project.phase ?? null,
+      })),
+    [fetchedProjects],
+  );
 
   const isAssignedToUser = useMemo(
     () =>

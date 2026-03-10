@@ -1,0 +1,18 @@
+apiVersion: v2
+name: docreview360
+description: DocReview360 — federal document workflow and approval platform
+type: application
+version: 0.1.2
+appVersion: "0.1.2"
+keywords:
+  - document-review
+  - workflow
+  - approvals
+  - federal
+  - compliance
+home: https://github.com/eputnam77/DocReview360
+sources:
+  - https://github.com/eputnam77/DocReview360
+maintainers:
+  - name: Eric Putnam
+    email: info@example.com
