@@ -348,22 +348,32 @@ the score source.
   (`org_id` added to `ProjectModel`; `_enforce_project_access()` and `_enforce_project_manage_access()`
   enforce org membership for projects with an `org_id`; auto-assigned from creator's org on creation.
   `UserSessionRecord` and `OIDCStateRecord` models added to `models.py`.)
-- [ ] Add PostgreSQL row-level security as defense in depth.
-- [ ] Add schema-per-tenant option for customers that require physical isolation.
-- [ ] Adopt Alembic migration framework with rollback support.
+- [x] Add PostgreSQL row-level security as defense in depth.
+  (`src/docreview360/db_rls.py`: `install_rls_policies(conn)` creates per-table `rls_org_isolation_<table>` policies using `app.current_org_id` session variable; `set_rls_org_context(conn, org_id)` sets the session variable; `verify_rls_active(conn)` returns RLS status per table for health checks; no-op on non-PostgreSQL backends. Tests in `tests/test_item38_database.py::TestDbRls`.)
+- [x] Add schema-per-tenant option for customers that require physical isolation.
+  (`Database.tenant_session(tenant_schema)` in `database.py`: context manager that applies `schema_translate_map={None: tenant_schema}` execution option, rewriting all unqualified table references to the tenant schema. Tests in `TestTenantSchema`.)
+- [x] Adopt Alembic migration framework with rollback support.
+  (`alembic.ini` at project root; `alembic/env.py` reads `DOCREVIEW360_DATABASE_URL`, imports `Base.metadata` for `--autogenerate` support; `alembic/versions/001_baseline.py` no-op root anchor; `alembic/script.py.mako` migration template. Existing deployments: `alembic stamp 001_baseline`. `alembic = ["alembic>=1.14"]` optional dep added. Tests in `TestAlembicSetup`.)
 
 **Phase 2 — Enterprise database support**
 
-- [ ] Add Microsoft SQL Server support.
-- [ ] Add Oracle Database support.
-- [ ] Expose connection pooling configuration per environment.
-- [ ] Add column-level encryption for sensitive fields.
+- [x] Add Microsoft SQL Server support.
+  (`database.default_url("mssql")` returns `mssql+pyodbc://...` URL; `mssql = ["pyodbc>=5.0"]` optional dep in `pyproject.toml`. Tests in `TestDefaultUrl::test_mssql_url`.)
+- [x] Add Oracle Database support.
+  (`database.default_url("oracle")` returns `oracle+oracledb://...` URL; `oracle = ["oracledb>=2.0"]` optional dep in `pyproject.toml`. Tests in `TestDefaultUrl::test_oracle_url`.)
+- [x] Expose connection pooling configuration per environment.
+  (`Database.__init__()` now reads `DOCREVIEW360_DB_POOL_SIZE` (default 10), `DOCREVIEW360_DB_MAX_OVERFLOW` (default 20), `DOCREVIEW360_DB_POOL_TIMEOUT` (default 30), `DOCREVIEW360_DB_POOL_RECYCLE` (default -1) from environment. Tests in `TestConnectionPooling`.)
+- [x] Add column-level encryption for sensitive fields.
+  (`src/docreview360/db_encryption.py`: `EncryptedString` SQLAlchemy TypeDecorator using AES-256-GCM; key from `DOCREVIEW360_COLUMN_ENCRYPTION_KEY` (64 hex chars); ciphertext format `enc:v1:<base64(nonce+ct)>`; fails open (no data loss on errors); `encryption_available()` helper. Tests in `TestDbEncryption` — 9 cases including roundtrip, nonce uniqueness, key-removal fallback.)
 
 **Phase 3 — Data governance**
 
-- [ ] Add data retention policies.
-- [ ] Make audit logs append-only with cryptographic chaining at the database level.
-- [ ] Add automated encrypted database backup guidance.
+- [x] Add data retention policies.
+  (`src/docreview360/data_retention.py`: `RetentionPolicy` dataclass with env-var-driven periods (`DOCREVIEW360_RETAIN_*_DAYS`); `run_retention_pass(policy)` purges user_sessions, oidc_states, audit_logs (only when explicitly configured); `RetentionResult.total` summary; audit log deletion bypasses WORM guard via `allow_audit_log_mutations=True`. Tests in `TestDataRetention` — 7 cases.)
+- [x] Make audit logs append-only with cryptographic chaining at the database level.
+  (Already in place: SQLite `BEFORE UPDATE/DELETE` triggers in `005_add_audit_log_hash_chain.sql`; SHA-256 hash chain with `prev_hash` written by `log_event()` in `logs/_dispatch.py`. New: `verify_audit_log_chain()` in `logs/_query.py` / exported from `logs/__init__.py` — verifies every entry's `prev_hash` links correctly to the previous entry's `hash`. Tests in `TestAuditLogChain` — 4 cases including tamper detection.)
+- [x] Add automated encrypted database backup guidance.
+  (`scripts/db_backup.sh`: auto-detects SQLite/PostgreSQL from `DOCREVIEW360_DATABASE_URL`; dumps via `sqlite3`/`pg_dump`; pipes through `gzip | openssl enc -aes-256-cbc -pbkdf2`; requires `BACKUP_PASSPHRASE` env var; includes restore command in output.)
 
 ### 39) Deployment, infrastructure, and operations
 

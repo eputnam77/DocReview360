@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from contextlib import contextmanager
 from pathlib import Path
@@ -35,6 +36,13 @@ def default_url(database: str) -> str:
         return "postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360"
     if db in {"mysql"}:
         return "mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360"
+    if db in {"mssql", "sqlserver", "mssql+pyodbc"}:
+        return (
+            "mssql+pyodbc://docreview360:docreview360@localhost:1433/docreview360"
+            "?driver=ODBC+Driver+17+for+SQL+Server"
+        )
+    if db in {"oracle", "oracledb"}:
+        return "oracle+oracledb://docreview360:docreview360@localhost:1521/docreview360"
     raise ValueError(f"Unsupported database '{database}'")
 
 
@@ -108,10 +116,16 @@ class Database:
             with self._engine.connect() as _:
                 pass
         else:
+            pool_size = int(os.environ.get("DOCREVIEW360_DB_POOL_SIZE", "10"))
+            max_overflow = int(os.environ.get("DOCREVIEW360_DB_MAX_OVERFLOW", "20"))
+            pool_timeout = int(os.environ.get("DOCREVIEW360_DB_POOL_TIMEOUT", "30"))
+            pool_recycle = int(os.environ.get("DOCREVIEW360_DB_POOL_RECYCLE", "-1"))
             self._engine = create_engine(
                 url,
-                pool_size=10,
-                max_overflow=20,
+                pool_size=pool_size,
+                max_overflow=max_overflow,
+                pool_timeout=pool_timeout,
+                pool_recycle=pool_recycle,
                 pool_pre_ping=True,
             )
 
@@ -124,6 +138,24 @@ class Database:
     def session(self) -> Iterator[Any]:
         """Yield a connection context."""
         with self._engine.begin() as conn:
+            yield conn
+
+    @contextmanager
+    def tenant_session(self, tenant_schema: str) -> Iterator[Any]:
+        """Yield a connection scoped to *tenant_schema* via ``schema_translate_map``.
+
+        Useful for schema-per-tenant deployments where each organisation lives
+        in its own PostgreSQL schema (e.g. ``org_1``, ``org_2``).  The
+        ``schema_translate_map`` execution option instructs SQLAlchemy to
+        rewrite every unqualified table reference to ``tenant_schema.<table>``.
+
+        Example::
+
+            with db.tenant_session("org_42") as conn:
+                conn.execute(select(ProjectModel))  # → SELECT FROM org_42.projects
+        """
+        opts: dict[str, Any] = {"schema_translate_map": {None: tenant_schema}}
+        with self._engine.execution_options(**opts).begin() as conn:
             yield conn
 
     def migrate(self, migrations_path: str | Path | None = None) -> None:

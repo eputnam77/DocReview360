@@ -160,3 +160,28 @@ def clear_logs() -> None:
 
     logs.clear()
     alerts.clear()
+
+
+def verify_audit_log_chain() -> tuple[bool, list[str]]:
+    """Verify the cryptographic hash chain across all stored audit log entries.
+
+    Iterates entries in ascending timestamp order and checks that each entry's
+    ``prev_hash`` equals the ``hash`` of the immediately preceding entry (or
+    ``None`` for the first entry).  This detects any gaps or tampering in the
+    linked hash chain without requiring access to the original payload bytes.
+
+    Returns ``(is_valid, broken_ids)`` where ``broken_ids`` is a list of entry
+    IDs whose linkage is broken.  An empty list means the chain is intact.
+    """
+    entries = query_logs()
+    if not entries:
+        return True, []
+
+    broken: list[str] = []
+    prev_hash: str | None = None
+    for entry in entries:
+        if entry.prev_hash != prev_hash:
+            broken.append(entry.id)
+        prev_hash = entry.hash
+
+    return len(broken) == 0, broken

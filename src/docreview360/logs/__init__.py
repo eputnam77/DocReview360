@@ -29,6 +29,7 @@ from ._query import (
     purge_expired_logs,
     delete_log,
     clear_logs,
+    verify_audit_log_chain,
 )
 
 __all__ = [
@@ -42,6 +43,7 @@ __all__ = [
     "purge_expired_logs",
     "delete_log",
     "clear_logs",
+    "verify_audit_log_chain",
     "log_stream",
     "register_alert",
     "register_listener",

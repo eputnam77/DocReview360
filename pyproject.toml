@@ -107,6 +107,15 @@ saml = ["python3-saml>=1.16"]
 # WebAuthn / FIDO2 authentication (Item 37 Phase 2)
 webauthn = ["py-webauthn>=2.0"]
 
+# Alembic schema migration framework (Item 38)
+alembic = ["alembic>=1.14"]
+
+# Microsoft SQL Server support via ODBC (Item 38 Phase 2)
+mssql = ["pyodbc>=5.0"]
+
+# Oracle Database support (Item 38 Phase 2)
+oracle = ["oracledb>=2.0"]
+
 realtime = [
   "y-py>=0.6,<0.8",
   "ypy-websocket>=0.12,<0.14",
