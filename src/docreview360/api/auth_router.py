@@ -446,3 +446,276 @@ async def revoke_session(
     from datetime import datetime, timedelta, timezone as _tz
     auth.revoke_token(jti, datetime.now(_tz.utc) + timedelta(days=7))
     return {"detail": "Session revoked"}
+
+
+# ---------------------------------------------------------------------------
+# CAC/PIV smart card authentication
+# ---------------------------------------------------------------------------
+
+
+@router.post("/piv/verify")
+async def piv_verify(request: Request, response: Response) -> auth.Token:
+    """Authenticate via a CAC/PIV client certificate.
+
+    The reverse proxy (nginx/Apache) must forward the client certificate in
+    the ``X-Client-Cert`` (or ``X-SSL-Cert``) header as a PEM-encoded string.
+    Set ``DOCREVIEW360_PIV_ENABLED=true`` to activate.
+    """
+    from .. import piv_cac
+
+    if not piv_cac.piv_enabled():
+        raise HTTPException(status_code=404, detail="CAC/PIV authentication is not enabled")
+
+    cert_pem = piv_cac.extract_cert_from_headers(dict(request.headers))
+    if not cert_pem:
+        raise HTTPException(
+            status_code=400,
+            detail="No client certificate found in request headers",
+        )
+
+    try:
+        username, roles = piv_cac.authenticate_piv(cert_pem)
+    except ValueError as exc:
+        log_event("piv_auth_failure", severity="warning", reason=str(exc))
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+    # JIT-provision the user if needed
+    repo = auth._get_user_repository()
+    if repo.get_user(username) is None:
+        import secrets as _sec
+        repo._seed_user(username, _sec.token_hex(32), active=True)
+        _logger.info("JIT-provisioned PIV user %r", username)
+
+    # Assign roles
+    try:
+        from .. import rbac as _rbac
+        for role in roles:
+            _rbac.add_role(username, role)
+    except Exception as _role_exc:
+        _logger.debug("PIV role assignment failed (non-fatal): %s", _role_exc)
+
+    # Issue JWT
+    from datetime import datetime, timedelta, timezone as _tz
+    from jose import jwt as _jwt
+    import uuid as _uuid
+
+    now = datetime.now(_tz.utc)
+    jti = str(_uuid.uuid4())
+    expire = now + timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "sub": username,
+        "jti": jti,
+        "iat": now,
+        "exp": expire,
+        "iss": auth.TOKEN_ISSUER,
+        "aud": auth.TOKEN_AUDIENCE,
+        "auth_method": "piv",
+    }
+    access_token = _jwt.encode(payload, auth.SECRET_KEY, algorithm=auth.ALGORITHM)
+
+    ip = request.client.host if request.client else None
+    oidc_client.create_user_session(
+        username=username,
+        jti=jti,
+        expires_at=expire,
+        auth_method="piv",
+        ip_address=ip,
+        user_agent=request.headers.get("user-agent"),
+    )
+    log_event("login", user_id=username, message=f"PIV/CAC login from {ip or 'unknown'}")
+
+    response.set_cookie(
+        "access_token",
+        access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return auth.Token(access_token=access_token, token_type="bearer")
+
+
+# ---------------------------------------------------------------------------
+# WebAuthn / FIDO2 endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/webauthn/register/begin")
+async def webauthn_register_begin(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Begin a WebAuthn credential registration ceremony for the current user."""
+    try:
+        from .. import webauthn_auth
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail="WebAuthn module unavailable") from exc
+
+    if not webauthn_auth.webauthn_enabled():
+        raise HTTPException(status_code=404, detail="WebAuthn is not enabled on this server")
+
+    try:
+        options_json, challenge_b64 = webauthn_auth.begin_registration(
+            current_user.username, current_user.username
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    import json
+    return {"options": json.loads(options_json), "challenge": challenge_b64}
+
+
+@router.post("/webauthn/register/complete")
+async def webauthn_register_complete(
+    request: Request,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Complete a WebAuthn registration ceremony and store the credential."""
+    try:
+        from .. import webauthn_auth
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail="WebAuthn module unavailable") from exc
+
+    if not webauthn_auth.webauthn_enabled():
+        raise HTTPException(status_code=404, detail="WebAuthn is not enabled on this server")
+
+    body = await request.json()
+    credential_response = body.get("credential")
+    challenge_b64 = body.get("challenge")
+    if not credential_response or not challenge_b64:
+        raise HTTPException(status_code=400, detail="credential and challenge are required")
+
+    import json
+    try:
+        credential_id = webauthn_auth.complete_registration(
+            current_user.username,
+            json.dumps(credential_response),
+            challenge_b64,
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    log_event("webauthn_register", user_id=current_user.username, credential_id=credential_id)
+    return {"credential_id": credential_id, "detail": "WebAuthn credential registered"}
+
+
+@router.post("/webauthn/authenticate/begin")
+async def webauthn_auth_begin(request: Request) -> dict:
+    """Begin a WebAuthn authentication ceremony."""
+    try:
+        from .. import webauthn_auth
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail="WebAuthn module unavailable") from exc
+
+    if not webauthn_auth.webauthn_enabled():
+        raise HTTPException(status_code=404, detail="WebAuthn is not enabled on this server")
+
+    body = await request.json()
+    username = body.get("username", "")
+
+    try:
+        options_json, challenge_b64 = webauthn_auth.begin_authentication(username)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    import json
+    return {"options": json.loads(options_json), "challenge": challenge_b64}
+
+
+@router.post("/webauthn/authenticate/complete")
+async def webauthn_auth_complete(request: Request, response: Response) -> auth.Token:
+    """Complete a WebAuthn authentication ceremony and issue a JWT."""
+    try:
+        from .. import webauthn_auth
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail="WebAuthn module unavailable") from exc
+
+    if not webauthn_auth.webauthn_enabled():
+        raise HTTPException(status_code=404, detail="WebAuthn is not enabled on this server")
+
+    body = await request.json()
+    username = body.get("username", "")
+    assertion = body.get("assertion")
+    challenge_b64 = body.get("challenge")
+    if not assertion or not challenge_b64:
+        raise HTTPException(status_code=400, detail="assertion and challenge are required")
+
+    import json
+    try:
+        ok = webauthn_auth.complete_authentication(username, json.dumps(assertion), challenge_b64)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not ok:
+        log_event("webauthn_auth_failure", user_id=username, severity="warning")
+        raise HTTPException(status_code=401, detail="WebAuthn authentication failed")
+
+    # Issue JWT
+    from datetime import datetime, timedelta, timezone as _tz
+    from jose import jwt as _jwt
+    import uuid as _uuid
+
+    now = datetime.now(_tz.utc)
+    jti = str(_uuid.uuid4())
+    expire = now + timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    jwt_payload = {
+        "sub": username,
+        "jti": jti,
+        "iat": now,
+        "exp": expire,
+        "iss": auth.TOKEN_ISSUER,
+        "aud": auth.TOKEN_AUDIENCE,
+        "auth_method": "webauthn",
+    }
+    access_token = _jwt.encode(jwt_payload, auth.SECRET_KEY, algorithm=auth.ALGORITHM)
+
+    ip = request.client.host if request.client else None
+    oidc_client.create_user_session(
+        username=username,
+        jti=jti,
+        expires_at=expire,
+        auth_method="webauthn",
+        ip_address=ip,
+        user_agent=request.headers.get("user-agent"),
+    )
+    log_event("login", user_id=username, message=f"WebAuthn login from {ip or 'unknown'}")
+
+    response.set_cookie(
+        "access_token",
+        access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return auth.Token(access_token=access_token, token_type="bearer")
+
+
+@router.get("/webauthn/credentials")
+async def webauthn_list_credentials(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict]:
+    """List all registered WebAuthn credentials for the current user."""
+    try:
+        from .. import webauthn_auth
+    except ImportError:
+        return []
+    return webauthn_auth.list_credentials(current_user.username)
+
+
+@router.delete("/webauthn/credentials/{credential_id}")
+async def webauthn_delete_credential(
+    credential_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Remove a registered WebAuthn credential."""
+    try:
+        from .. import webauthn_auth
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail="WebAuthn module unavailable") from exc
+
+    removed = webauthn_auth.delete_credential(credential_id, current_user.username)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    log_event("webauthn_credential_deleted", user_id=current_user.username,
+              credential_id=credential_id)
+    return {"detail": "Credential removed"}

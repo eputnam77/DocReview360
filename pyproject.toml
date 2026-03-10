@@ -104,6 +104,9 @@ ldap = ["ldap3>=2.9"]
 # SAML 2.0 Service Provider authentication (Item 37)
 saml = ["python3-saml>=1.16"]
 
+# WebAuthn / FIDO2 authentication (Item 37 Phase 2)
+webauthn = ["py-webauthn>=2.0"]
+
 realtime = [
   "y-py>=0.6,<0.8",
   "ypy-websocket>=0.12,<0.14",
@@ -176,6 +179,7 @@ dev = [
   "uvicorn>=0.38.0",
   "ldap3>=2.9",
   "python3-saml>=1.16",
+  "py-webauthn>=2.0",
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────

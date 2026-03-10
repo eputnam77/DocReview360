@@ -258,6 +258,8 @@ class PasswordPolicy:
     min_character_classes: int
     disallow_reuse: bool
     symbol_characters: str
+    history_count: int = 5       # number of previous passwords to check (0 = disabled)
+    max_age_days: int = 0         # 0 = never expire
 
     @classmethod
     def load(cls) -> "PasswordPolicy":  # noqa: C901
@@ -270,6 +272,8 @@ class PasswordPolicy:
             "min_character_classes": 3,
             "disallow_reuse": True,
             "symbol_characters": "!@#$%^&*()-_=+[]{}|;:,.<>/?",
+            "history_count": 5,
+            "max_age_days": 0,
         }
 
         try:
@@ -314,9 +318,23 @@ class PasswordPolicy:
             if isinstance(symbol_characters, str) and symbol_characters.strip():
                 config["symbol_characters"] = symbol_characters.strip()
 
+            history_count = policy_settings.get("history_count")
+            if isinstance(history_count, int) and history_count >= 0:
+                config["history_count"] = history_count
+
+            max_age_days = policy_settings.get("max_age_days")
+            if isinstance(max_age_days, int) and max_age_days >= 0:
+                config["max_age_days"] = max_age_days
+
         return cls(**config)
 
-    def validate(self, password: str, *, existing_hash: str | None = None) -> None:
+    def validate(
+        self,
+        password: str,
+        *,
+        existing_hash: str | None = None,
+        password_history: list[str] | None = None,
+    ) -> None:
         """Raise :class:`PasswordPolicyError` when ``password`` violates the policy."""
 
         errors: list[str] = []
@@ -346,6 +364,7 @@ class PasswordPolicy:
                     + "."
                 )
 
+        # Check against current password
         if self.disallow_reuse and existing_hash:
             try:
                 reused = UserRepository.verify_password(password, existing_hash)
@@ -353,6 +372,19 @@ class PasswordPolicy:
                 reused = False
             if reused:
                 errors.append("Password must differ from the previously used password.")
+
+        # Check against password history
+        if self.history_count > 0 and password_history:
+            for hist_hash in password_history[: self.history_count]:
+                try:
+                    if UserRepository.verify_password(password, hist_hash):
+                        n = min(self.history_count, len(password_history))
+                        errors.append(
+                            f"Password must differ from your last {n} password(s)."
+                        )
+                        break
+                except Exception:
+                    pass
 
         if errors:
             raise PasswordPolicyError(" ".join(errors))
@@ -461,6 +493,23 @@ class UserRepository:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS password_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    changed_at TEXT NOT NULL
+                )
+                """
+            )
+            # Add password_changed_at to existing DBs
+            try:
+                conn.execute(
+                    "ALTER TABLE users ADD COLUMN password_changed_at TEXT"
+                )
+            except Exception:  # column already exists
+                pass
             conn.commit()
         if _allow_demo_seed():
             self._seed_defaults()
@@ -537,7 +586,8 @@ class UserRepository:
 
         existing = self.get_user(username)
         existing_hash = existing.password_hash if existing else None
-        _password_policy().validate(password, existing_hash=existing_hash)
+        history = self.get_password_history(username) if existing else []
+        _password_policy().validate(password, existing_hash=existing_hash, password_history=history)
         password_hash = self.hash_password(password)
         is_password_change = existing is not None
         with self._connection() as conn:
@@ -564,9 +614,8 @@ class UserRepository:
                 (username, password_hash, otp_secret, int(active)),
             )
             conn.commit()
-        if is_password_change:
-            # Generation already bumped in-DB; no extra call needed.
-            pass
+        # Record the new hash in password history for reuse prevention
+        self.add_password_history(username, password_hash)
 
     def get_user(self, username: str) -> UserRecord | None:
         """Return ``UserRecord`` for ``username`` if present."""
@@ -745,6 +794,72 @@ class UserRepository:
                 (username,),
             )
             conn.commit()
+
+    def add_password_history(self, username: str, password_hash: str) -> None:
+        """Record ``password_hash`` in the history table for ``username``."""
+
+        now = datetime.now(timezone.utc).isoformat()
+        with self._connection() as conn:
+            conn.execute(
+                "INSERT INTO password_history (username, password_hash, changed_at)"
+                " VALUES (?, ?, ?)",
+                (username, password_hash, now),
+            )
+            # Trim to last 20 entries per user to bound table growth
+            conn.execute(
+                """
+                DELETE FROM password_history WHERE id IN (
+                    SELECT id FROM password_history WHERE username = ?
+                    ORDER BY id DESC LIMIT -1 OFFSET 20
+                )
+                """,
+                (username,),
+            )
+            conn.execute(
+                "UPDATE users SET password_changed_at = ? WHERE username = ?",
+                (now, username),
+            )
+            conn.commit()
+
+    def get_password_history(self, username: str, limit: int = 20) -> list[str]:
+        """Return the last ``limit`` password hashes for ``username``."""
+
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT password_hash FROM password_history"
+                " WHERE username = ? ORDER BY id DESC LIMIT ?",
+                (username, limit),
+            ).fetchall()
+        return [row["password_hash"] for row in rows]
+
+    def get_password_age_days(self, username: str) -> int | None:
+        """Return the number of days since the last password change, or None if unknown."""
+
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT password_changed_at FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()
+        if row is None or not row["password_changed_at"]:
+            return None
+        try:
+            changed_at = datetime.fromisoformat(row["password_changed_at"])
+            if changed_at.tzinfo is None:
+                changed_at = changed_at.replace(tzinfo=timezone.utc)
+            delta = datetime.now(timezone.utc) - changed_at
+            return max(0, delta.days)
+        except Exception:
+            return None
+
+    def is_password_expired(self, username: str, max_age_days: int) -> bool:
+        """Return True if the password is older than ``max_age_days``."""
+
+        if max_age_days <= 0:
+            return False
+        age = self.get_password_age_days(username)
+        if age is None:
+            return False  # no history → not considered expired
+        return age >= max_age_days
 
     def is_locked(self, record: UserRecord) -> bool:
         """Return ``True`` when ``record`` is currently locked out."""
@@ -1119,6 +1234,13 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session invalidated — please log in again",
+        )
+    # Password expiry check — raises 403 so the client can redirect to change-password UI
+    policy = _password_policy()
+    if policy.max_age_days > 0 and repo.is_password_expired(username, policy.max_age_days):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="password_expired",
         )
     return User(username=username, active=True)
 

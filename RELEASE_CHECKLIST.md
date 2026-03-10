@@ -324,15 +324,21 @@ the score source.
 
 **Phase 2 — Federal and DoD authentication**
 
-- [ ] CAC/PIV smart card authentication.
-- [ ] FIDO2 and WebAuthn support.
-- [ ] Password policy enforcement with history, expiry, and lockout controls.
+- [x] CAC/PIV smart card authentication.
+  (`src/docreview360/piv_cac.py`: `piv_enabled()`, `extract_piv_identity()` — extracts EDIPI, email, UPN, org from X.509 cert SAN/subject; `_check_revocation()` via OCSP (fails open); `authenticate_piv()` returns (username, roles); `extract_cert_from_headers()` for nginx `X-Client-Cert` proxy header. `POST /piv/verify` in `auth_router.py` JIT-provisions and issues JWT.)
+- [x] FIDO2 and WebAuthn support.
+  (`src/docreview360/webauthn_auth.py`: optional `py-webauthn>=2.0` dep; SQLite credential store in `.webauthn.db`; `begin_registration()`/`complete_registration()`, `begin_authentication()`/`complete_authentication()`, `list_credentials()`, `delete_credential()`. Six endpoints in `auth_router.py`: `POST /webauthn/register/begin`, `POST /webauthn/register/complete`, `POST /webauthn/authenticate/begin`, `POST /webauthn/authenticate/complete`, `GET /webauthn/credentials`, `DELETE /webauthn/credentials/{credential_id}`.)
+- [x] Password policy enforcement with history, expiry, and lockout controls.
+  (`src/docreview360/auth.py`: `password_history` table and `password_changed_at` column auto-migrated; `PasswordPolicy.history_count` (default 5) + `PasswordPolicy.max_age_days` (default 0); `PasswordPolicy.validate()` checks last N bcrypt hashes; `UserRepository.add_password_history()`, `.get_password_history()`, `.is_password_expired()`; `get_current_user()` raises HTTP 403 `password_expired` when policy max_age exceeded.)
 
 **Phase 3 — Advanced identity**
 
-- [ ] Just-in-time user provisioning from IdP claims.
-- [ ] SCIM 2.0 endpoint for user and group lifecycle management.
-- [ ] Separation of duties enforcement.
+- [x] Just-in-time user provisioning from IdP claims.
+  (`src/docreview360/jit_provisioning.py`: `jit_enabled()` env flag; `_extract_username()` with configurable `DOCREVIEW360_JIT_USERNAME_CLAIM`; `_extract_roles()` with `DOCREVIEW360_JIT_ROLE_MAP` JSON mapping + `DOCREVIEW360_JIT_DEFAULT_ROLES`; `provision_user_from_claims()` creates/syncs user + roles + audit log; integrated in OIDC callback and PIV/WebAuthn flows.)
+- [x] SCIM 2.0 endpoint for user and group lifecycle management.
+  (`src/docreview360/api/scim_router.py`: `APIRouter(prefix="/scim/v2")`; Bearer token auth via `DOCREVIEW360_SCIM_BEARER_TOKEN`; full CRUD on Users (`GET/POST /Users`, `GET/PUT/PATCH/DELETE /Users/{id}`); Groups as roles (`GET /Groups`, `GET /Groups/{id}`); `GET /ServiceProviderConfig`, `GET /Schemas`; registered in `api/__init__.py`.)
+- [x] Separation of duties enforcement.
+  (`src/docreview360/sod.py`: `SoDViolationError`, `SodRule` dataclass, pluggable rule registry; `check_approval_sod(user_id, document_id, workflow_id)` collects all violations; default rules: `no_self_approval` (user cannot approve their own uploaded doc), `no_workflow_creator_approval` (creator cannot be sole approver), `role_conflict` (configurable via `DOCREVIEW360_SOD_ROLE_CONFLICTS` JSON env var); `list_sod_rules()` + `set_sod_rule_enabled()` management helpers.)
 
 ### 38) Multi-tenant data isolation and database hardening
 
