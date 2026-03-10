@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Notification helpers — email, Slack, and Microsoft Teams."""
 
 from __future__ import annotations

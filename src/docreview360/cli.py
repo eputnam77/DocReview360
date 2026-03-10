@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Command line interface for DocReview360 configuration wizard."""
 
 from __future__ import annotations

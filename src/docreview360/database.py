@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Lightweight database abstraction layer using SQLAlchemy."""
 
 from __future__ import annotations

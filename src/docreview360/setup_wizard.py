@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """First-run configuration helper (Task 141)."""
 
 from __future__ import annotations

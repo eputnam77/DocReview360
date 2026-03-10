@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Vector search helper with optional OpenSearch integration."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for populating sample data during setup."""
 
 from __future__ import annotations

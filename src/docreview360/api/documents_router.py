@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Documents sub-router: /documents/*, /cms/*, /sign/* routes."""
 from __future__ import annotations
 
@@ -13,6 +14,15 @@ from pydantic import BaseModel
 
 from .. import auth
 from ..rbac import has_role, require_permission
+
+
+def _emit_webhook(event: str, data: dict) -> None:
+    """Best-effort lifecycle webhook emission — never raises."""
+    try:
+        from .webhooks import emit_lifecycle_event
+        emit_lifecycle_event(event, data)  # type: ignore[arg-type]
+    except Exception:
+        pass
 from ..approvals import (
     SignedApprovalImmutableError,
     get_approval,
@@ -256,6 +266,10 @@ async def import_document_endpoint(
             project_id=project or "",
             filename=filename,
         ),
+    )
+    _emit_webhook(
+        "document.created",
+        {"document_id": document.id, "project_id": project, "user": resolved_user, "filename": filename},
     )
     return document
 

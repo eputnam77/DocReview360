@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Helpers for configuring the app in end-to-end (E2E) mode."""
 
 from __future__ import annotations

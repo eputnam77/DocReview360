@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Sandbox signature provider used for integration tests.
 
 The provider implements the minimal :class:`SignatureProvider` protocol and

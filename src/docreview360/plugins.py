@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Minimal plugin registry used for editors, exporters and validators."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """API key management for DocReview360.
 
 Provides creation, validation, revocation, and listing of API keys.

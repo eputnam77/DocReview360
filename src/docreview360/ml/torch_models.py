@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Torch-based critic models and ONNX export utilities."""
 
 from __future__ import annotations

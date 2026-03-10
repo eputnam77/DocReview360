@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Documenso signature connector.
 
 This module exposes a minimal wrapper around the Documenso REST API. When the

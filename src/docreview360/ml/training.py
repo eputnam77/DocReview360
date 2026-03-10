@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Training and evaluation helpers for DocReview360 ML artefacts."""
 
 from __future__ import annotations

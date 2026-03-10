@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Event dispatcher with retry/backoff and dead-letter queue."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """DocuSign eSign REST API connector.
 
 This module exposes a minimal wrapper around the DocuSign eSign REST API v2.1.

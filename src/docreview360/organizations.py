@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Multi-tenant organization management for DocReview360.
 
 Provides CRUD operations and per-organization configuration backed by

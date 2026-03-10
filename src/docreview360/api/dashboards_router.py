@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Dashboards sub-router: /reports/*, /dashboard/*, /status/*, /metrics/*, /logs/*, /api/audit."""
 from __future__ import annotations
 

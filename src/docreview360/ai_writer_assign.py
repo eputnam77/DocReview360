@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """AI-assisted technical writer assignment utilities."""
 
 from __future__ import annotations

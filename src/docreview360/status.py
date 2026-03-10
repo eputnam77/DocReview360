@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Public vs internal status helpers."""
 
 from __future__ import annotations

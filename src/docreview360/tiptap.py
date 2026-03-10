@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for TipTap editor conversions."""
 
 from __future__ import annotations

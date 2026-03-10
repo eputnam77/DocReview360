@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Lightweight full-text search using SQLite FTS5.
 
 This module is a simplified stand in for Postgres full-text search so tests can

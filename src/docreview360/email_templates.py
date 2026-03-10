@@ -1,15 +1,14 @@
+# SPDX-License-Identifier: MIT
 """Manage email templates used for notifications."""
 
 from __future__ import annotations
 
-import json
 import os
 import threading
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict, List
 
-from filelock import FileLock
+from sqlalchemy import text as _text
 
 
 @dataclass
@@ -18,9 +17,6 @@ class EmailTemplate:
     subject: str
     body: str
     task: str | None = None
-
-
-EMAIL_TEMPLATES_FILE = Path("email_templates.json")
 
 
 def _env_flag_enabled(value: str | None) -> bool:
@@ -36,7 +32,6 @@ DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE = _env_flag_enabled(
     os.getenv("DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE")
 )
 
-_ACTIVE_EMAIL_TEMPLATES_FILE: Path = EMAIL_TEMPLATES_FILE
 _EMAIL_TEMPLATES_LOADED: bool = False
 # Guards the _EMAIL_TEMPLATES_LOADED flag to prevent duplicate loads under concurrent requests.
 _EMAIL_TEMPLATE_LOAD_LOCK = threading.Lock()
@@ -44,16 +39,69 @@ _EMAIL_TEMPLATE_LOAD_LOCK = threading.Lock()
 TEMPLATES: Dict[str, EmailTemplate] = {}
 
 
-def _serialize_templates() -> list[dict[str, Any]]:
-    return [
-        {
-            "name": template.name,
-            "subject": template.subject,
-            "body": template.body,
-            "task": template.task,
-        }
-        for template in TEMPLATES.values()
-    ]
+# ---------------------------------------------------------------------------
+# DB helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_db():  # type: ignore[return]
+    from .db_store import get_db
+    return get_db()
+
+
+def _load_from_db() -> bool:
+    """Load templates from the database. Returns True if any were loaded."""
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            rows = conn.execute(
+                _text("SELECT name, subject, body, task FROM email_template_records")
+            ).fetchall()
+        if not rows:
+            return False
+        for row in rows:
+            tmpl = EmailTemplate(name=row[0], subject=row[1], body=row[2], task=row[3])
+            TEMPLATES[tmpl.name] = tmpl
+        return True
+    except Exception:  # pragma: no cover - DB not available
+        return False
+
+
+def _save_to_db() -> None:
+    """Upsert all in-memory templates into the database."""
+    if not DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE:
+        return
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            for tmpl in TEMPLATES.values():
+                conn.execute(
+                    _text(
+                        "INSERT INTO email_template_records (name, subject, body, task)"
+                        " VALUES (:name, :subject, :body, :task)"
+                        " ON CONFLICT(name) DO UPDATE SET"
+                        "  subject=excluded.subject,"
+                        "  body=excluded.body,"
+                        "  task=excluded.task"
+                    ),
+                    {"name": tmpl.name, "subject": tmpl.subject, "body": tmpl.body, "task": tmpl.task},
+                )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
+def _delete_from_db(name: str) -> None:
+    if not DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE:
+        return
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            conn.execute(
+                _text("DELETE FROM email_template_records WHERE name = :name"),
+                {"name": name},
+            )
+    except Exception:  # pragma: no cover - best effort
+        pass
 
 
 def _load_templates() -> None:
@@ -61,57 +109,24 @@ def _load_templates() -> None:
         global _EMAIL_TEMPLATES_LOADED
         if _EMAIL_TEMPLATES_LOADED or not DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE:
             return
-        if not _ACTIVE_EMAIL_TEMPLATES_FILE.exists():
-            _EMAIL_TEMPLATES_LOADED = True
-            return
-        lock = FileLock(f"{_ACTIVE_EMAIL_TEMPLATES_FILE}.lock")
-        with lock:
-            data = json.loads(_ACTIVE_EMAIL_TEMPLATES_FILE.read_text())
-        TEMPLATES.clear()
-        for entry in data:
-            template = EmailTemplate(
-                name=entry["name"],
-                subject=entry["subject"],
-                body=entry["body"],
-                task=entry.get("task"),
-            )
-            TEMPLATES[template.name] = template
+        _load_from_db()
         _EMAIL_TEMPLATES_LOADED = True
 
 
-def _save_templates() -> None:
-    if not DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE:
-        return
-    _ACTIVE_EMAIL_TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    lock = FileLock(f"{_ACTIVE_EMAIL_TEMPLATES_FILE}.lock")
-    with lock:
-        _ACTIVE_EMAIL_TEMPLATES_FILE.write_text(json.dumps(_serialize_templates(), indent=2))
+def reset_email_templates(keep_file: bool = False, root: Any = None) -> None:  # noqa: ARG001
+    """Reset the in-memory templates.
 
-
-def reset_email_templates(keep_file: bool = False, root: Path | None = None) -> None:
-    """Reset the in-memory templates and optionally remove persisted file."""
-    global _EMAIL_TEMPLATES_LOADED, _ACTIVE_EMAIL_TEMPLATES_FILE
-
-    if root is not None:
-        _ACTIVE_EMAIL_TEMPLATES_FILE = root
+    ``keep_file`` and ``root`` are accepted for backwards compatibility but
+    have no effect: templates are persisted to the database only.
+    """
+    global _EMAIL_TEMPLATES_LOADED
     TEMPLATES.clear()
     _EMAIL_TEMPLATES_LOADED = False
-    if not keep_file and _ACTIVE_EMAIL_TEMPLATES_FILE.exists():
-        _ACTIVE_EMAIL_TEMPLATES_FILE.unlink()
-    lock_path = Path(f"{_ACTIVE_EMAIL_TEMPLATES_FILE}.lock")
-    if lock_path.exists():
-        lock_path.unlink()
 
 
 def create_template(name: str, subject: str, body: str, task: str | None = None) -> EmailTemplate:
     """Create and register a new template."""
     _load_templates()
-    # ``dataclasses`` do not enforce type annotations at runtime which meant
-    # callers could accidentally pass non-string values for ``subject`` or
-    # ``body`` and end up with malformed templates.  Additionally a name
-    # consisting solely of whitespace previously slipped through the simple
-    # truthiness check.  Validate the inputs explicitly to avoid subtle bugs in
-    # downstream formatting code.
     if not isinstance(name, str) or not name.strip():
         raise ValueError("name required")
     if not isinstance(subject, str):
@@ -129,20 +144,12 @@ def create_template(name: str, subject: str, body: str, task: str | None = None)
         raise ValueError(f"template '{name}' already exists")
     template = EmailTemplate(name=name, subject=subject, body=body, task=task)
     TEMPLATES[name] = template
-    _save_templates()
+    _save_to_db()
     return template
 
 
 def get_template(name: str) -> EmailTemplate | None:
-    """Return a template by ``name`` if it exists.
-
-    ``create_template`` normalises template names by stripping surrounding
-    whitespace.  Callers passing a name with incidental spaces to
-    :func:`get_template` would therefore fail to retrieve an existing
-    template even though :func:`create_template` accepted it.  Normalise the
-    lookup key here so the API behaves consistently regardless of
-    whitespace around the provided name.
-    """
+    """Return a template by ``name`` if it exists."""
     _load_templates()
     if not isinstance(name, str):
         raise TypeError("name must be a string")
@@ -158,13 +165,7 @@ def update_template(  # noqa: C901
     body: str | None | Any = _UNSET,
     task: str | None | Any = _UNSET,
 ) -> EmailTemplate:
-    """Update fields of an existing template and return it.
-
-    Using a sentinel allows callers to explicitly clear optional fields by
-    passing ``None``. Previously ``task=None`` was indistinguishable from the
-    default argument, making it impossible to remove an assigned task from a
-    template.
-    """
+    """Update fields of an existing template and return it."""
 
     _load_templates()
     if not isinstance(name, str):
@@ -189,19 +190,12 @@ def update_template(  # noqa: C901
         if task is not None and not isinstance(task, str):
             raise TypeError("task must be a string or None")
         tmpl.task = task
-    _save_templates()
+    _save_to_db()
     return tmpl
 
 
 def delete_template(name: str) -> None:
-    """Remove ``name`` from the registry.
-
-    Similar to :func:`get_template`, callers may accidentally include
-    surrounding whitespace when deleting templates.  The previous
-    implementation attempted the deletion with the unmodified string which
-    resulted in a ``KeyError`` even though the template existed.  Strip the
-    name first so lookups are consistent across the module.
-    """
+    """Remove ``name`` from the registry."""
     _load_templates()
     if not isinstance(name, str):
         raise TypeError("name must be a string")
@@ -212,7 +206,7 @@ def delete_template(name: str) -> None:
         del TEMPLATES[name]
     except KeyError as exc:
         raise KeyError(f"template '{name}' not found") from exc
-    _save_templates()
+    _delete_from_db(name)
 
 
 def list_templates() -> List[EmailTemplate]:

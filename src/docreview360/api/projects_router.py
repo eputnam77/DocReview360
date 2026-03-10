@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Projects sub-router: all /projects/* routes."""
 from __future__ import annotations
 
@@ -13,6 +14,15 @@ from pydantic import BaseModel
 from .. import auth
 from ..rbac import has_role
 from ..cache import cache_get, cache_set, clear_cache
+
+
+def _emit_webhook(event: str, data: dict) -> None:
+    """Best-effort lifecycle webhook emission — never raises."""
+    try:
+        from .webhooks import emit_lifecycle_event
+        emit_lifecycle_event(event, data)  # type: ignore[arg-type]
+    except Exception:
+        pass
 from ..approvals import build_approvals_summary_pdf
 from ..audit import log_audit_event
 from ..logs import log_event
@@ -82,10 +92,30 @@ def _ensure_reviewer_exists(reviewer: str) -> None:
         raise HTTPException(status_code=404, detail="Reviewer not found")
 
 
+def _get_user_org_id(username: str) -> int | None:
+    """Return the organization ID for ``username``, or None if unassigned."""
+    try:
+        from ..organizations import get_user_org
+        org = get_user_org(username=username)
+        return org.get("id") if org else None
+    except Exception:
+        return None
+
+
 def _enforce_project_access(project: ProjectModel, current_user: auth.User) -> None:
-    """Ensure ``current_user`` can access ``project``."""
+    """Ensure ``current_user`` can access ``project``.
+
+    Multi-tenant isolation: when the project has an ``org_id``, the requesting
+    user must either be an admin or belong to the same organization.
+    """
     if _is_admin_user(current_user):
         return
+    # Org-scoped isolation check: reject cross-org access
+    if project.org_id is not None:
+        user_org = _get_user_org_id(current_user.username)
+        if user_org != project.org_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return  # org membership is sufficient for read access
     if project.user == current_user.username:
         return
     if project.temp_user == current_user.username:
@@ -98,9 +128,17 @@ def _enforce_project_access(project: ProjectModel, current_user: auth.User) -> N
 
 
 def _enforce_project_manage_access(project: ProjectModel, current_user: auth.User) -> None:
-    """Ensure ``current_user`` can mutate ``project`` assignments and settings."""
+    """Ensure ``current_user`` can mutate ``project`` assignments and settings.
+
+    For org-scoped projects, only admins may manage the project.
+    """
     if _is_admin_user(current_user):
         return
+    # Cross-org management is always denied for non-admins
+    if project.org_id is not None:
+        user_org = _get_user_org_id(current_user.username)
+        if user_org != project.org_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
     if project.user == current_user.username:
         return
     if project.temp_user == current_user.username:
@@ -168,6 +206,8 @@ class ProjectCreate(BaseModel):
     name: str
     document_number: str | None = None
     user: str | None = None
+    # Optional organization scoping — if omitted the creator's org is used.
+    org_id: int | None = None
     doc_type: str | None = None
     phase: str | None = None
     workflow: str | None = None
@@ -381,6 +421,10 @@ async def create_project_endpoint(
     if body.user is not None or not _is_admin_user(current_user):
         body.user = _resolve_requested_user(body.user, current_user)
 
+    # Auto-assign the creator's org when no org_id is explicitly given
+    if body.org_id is None:
+        body.org_id = _get_user_org_id(current_user.username)
+
     if body.id is None or (isinstance(body.id, str) and not body.id.strip()):
         from ..search import search_index
         body.id = search_index.generate_project_id()
@@ -418,6 +462,7 @@ async def create_project_endpoint(
                     "create_project", user=project.user or "", project_id=project.id
                 ),
             )
+            _emit_webhook("project.created", {"project_id": project.id, "user": project.user})
             return project
 
         phases = _resolve_project_phases(body.doc_type, body.phase)
@@ -437,6 +482,7 @@ async def create_project_endpoint(
         project=project.id,
         message=render("create_project", user=project.user or "", project_id=project.id),
     )
+    _emit_webhook("project.created", {"project_id": project.id, "user": project.user})
     return project
 
 

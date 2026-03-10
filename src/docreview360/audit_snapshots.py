@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Phase-based audit snapshots.
 
 A phase snapshot captures the state of the audit trail at a specific workflow

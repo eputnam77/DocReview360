@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Load and save application configuration.
 
 Configuration precedence (highest to lowest)
@@ -24,6 +25,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from .yaml_loader import load_yaml_file, save_yaml_file
 
 _logger = logging.getLogger(__name__)
 
@@ -109,10 +112,7 @@ class Config:
         if not path.exists():
             return None
         _normalized_environment()
-        try:
-            raw = yaml.safe_load(path.read_text()) or {}
-        except yaml.YAMLError as exc:
-            raise ValueError(f"Invalid YAML in {path}") from exc
+        raw = load_yaml_file(path, default={}) or {}
         if not isinstance(raw, dict):
             raise ValueError(f"Invalid config structure in {path}")
         data: dict[str, Any] = raw
@@ -237,14 +237,13 @@ class Config:
     def save(self, path: Path = CONFIG_FILE) -> None:
         """Persist this configuration to ``path`` creating directories as needed."""
         path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
         try:
             data = {
                 k: ([c.__dict__ for c in v] if k == "log_connectors" else v)
                 for k, v in self.__dict__.items()
                 if v is not None
             }
-            path.write_text(yaml.safe_dump(data))
+            save_yaml_file(path, data)
         except OSError as exc:
             raise OSError(f"Failed to write config to {path}") from exc
 

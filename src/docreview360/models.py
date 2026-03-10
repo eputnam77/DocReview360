@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """SQLAlchemy models for DocReview360."""
 
 from __future__ import annotations
@@ -190,6 +191,58 @@ class WorkflowTemplateRecord(Base):
     data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
+class UserSessionRecord(Base):
+    """Tracks active user sessions for concurrent-session limits and idle-timeout enforcement."""
+
+    __tablename__ = "user_sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # session_id (random UUID)
+    username: Mapped[str] = mapped_column(String, index=True)
+    jti: Mapped[str] = mapped_column(String, unique=True, index=True)  # JWT ID
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ip_address: Mapped[str | None] = mapped_column(String, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    # "password" | "oidc" | "mfa" | "api_key"
+    auth_method: Mapped[str] = mapped_column(String(20), default="password")
+
+
+class OIDCStateRecord(Base):
+    """Ephemeral record for in-flight OIDC Authorization Code + PKCE flows."""
+
+    __tablename__ = "oidc_states"
+
+    state: Mapped[str] = mapped_column(String, primary_key=True)
+    nonce: Mapped[str] = mapped_column(String)
+    code_verifier: Mapped[str] = mapped_column(String)
+    redirect_uri: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Expires after a short window (e.g. 10 minutes)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class EmailTemplateRecord(Base):
+    """Persistent storage for email notification templates."""
+
+    __tablename__ = "email_template_records"
+
+    name: Mapped[str] = mapped_column(String, primary_key=True)
+    subject: Mapped[str] = mapped_column(String)
+    body: Mapped[str] = mapped_column(String)
+    task: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class GoldenTemplateRecord(Base):
+    """Persistent storage for golden document template versions."""
+
+    __tablename__ = "golden_template_records"
+
+    name: Mapped[str] = mapped_column(String, primary_key=True)
+    versions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+
+
 class WebhookSubscriptionRecord(Base):
     """Persistent storage for webhook subscriptions."""
 
@@ -199,6 +252,12 @@ class WebhookSubscriptionRecord(Base):
     url: Mapped[str] = mapped_column(String)
     event: Mapped[str] = mapped_column(String, index=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # HMAC-SHA256 secret for signing outgoing payloads; null = unsigned
+    signing_secret: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Delivery tracking
+    delivery_count: Mapped[int] = mapped_column(Integer, server_default=_sa_text("0"))
+    last_delivery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_status: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "ok" | "failed"
 
 
 class Plugin(Base):

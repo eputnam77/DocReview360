@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Approval management package.
 
 All public symbols are re-exported here for backward compatibility so that

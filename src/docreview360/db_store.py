@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared database accessor for core domain persistence.
 
 All modules that need to persist state across server restarts should import

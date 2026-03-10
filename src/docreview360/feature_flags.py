@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Feature flag utilities."""
 
 from __future__ import annotations

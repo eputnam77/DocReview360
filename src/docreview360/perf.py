@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Performance measurement helpers."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Compliance classifier built on structural features exported as ONNX."""
 
 from __future__ import annotations

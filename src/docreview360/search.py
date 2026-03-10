@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Search index module backed by a lightweight persistent store."""
 
 from __future__ import annotations
@@ -36,6 +37,10 @@ class ProjectModel(BaseModel):
     number: int | None = None
     document_number: str | None = None  # User-provided document number/reference
     user: Optional[str] = None
+    # Organization identifier for multi-tenant isolation.
+    # When set, access control is enforced so only users in the same org
+    # (or admins) can read or modify this project.
+    org_id: int | None = None
     doc_type: str | None = None
     workflow: str | None = None
     requested_workflow: str | None = None

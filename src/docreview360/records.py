@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for syncing archive files to a SharePoint records repository."""
 
 from __future__ import annotations

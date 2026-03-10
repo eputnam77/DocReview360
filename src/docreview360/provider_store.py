@@ -1,9 +1,12 @@
+# SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List
 
 import yaml
+
+from .yaml_loader import load_yaml_file, save_yaml_file
 
 # Default location for provider configuration
 # Default path for provider configuration.  The value is intentionally kept
@@ -40,10 +43,7 @@ def load_providers(path: Path | None = None) -> Dict[str, Dict[str, Any]]:
     path = path or PROVIDERS_FILE
     if not path.exists():
         return {k: v.copy() for k, v in DEFAULT_PROVIDERS.items()}
-    try:
-        data = yaml.safe_load(path.read_text()) or {}
-    except yaml.YAMLError as exc:  # pragma: no cover - defensive
-        raise ValueError(f"Invalid YAML in {path}") from exc
+    data = load_yaml_file(path, default={}) or {}
     if not isinstance(data, dict):
         raise ValueError("providers file must contain a mapping")
     # Each provider definition must itself be a mapping so callers do not end up
@@ -78,7 +78,7 @@ def save_providers(providers: Dict[str, Dict[str, Any]], path: Path | None = Non
     """Persist ``providers`` mapping to ``path``."""
 
     path = path or PROVIDERS_FILE
-    path.write_text(yaml.safe_dump(providers))
+    save_yaml_file(path, providers)
 
 
 def get_active_providers(path: Path | None = None) -> List[str]:

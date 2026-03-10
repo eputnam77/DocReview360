@@ -61,7 +61,8 @@ Target window: next month (confirm exact date and time zone).
   `.tmp/`, local DB files, and local JSON state files.
 - [ ] Stop the Docker build from copying unnecessary repo content after dependency install,
   or verify `.dockerignore` fully protects the build context.
-- [ ] Update the Docker OCI license label from `GPL-3.0-only` to `MIT`.
+- [x] Update the Docker OCI license label from `GPL-3.0-only` to `MIT`.
+  (Dockerfile `org.opencontainers.image.licenses` updated to `MIT`.)
 
 **Repository ignore list should be tightened before public release**
 
@@ -178,8 +179,10 @@ Target window: next month (confirm exact date and time zone).
 
 **43b) Workflow template persistence is still file-backed**
 
-- [ ] Remove disk fallback for workflow templates.
-- [ ] Remove the workflow template file-based env var from the runtime path.
+- [x] Remove disk fallback for workflow templates.
+  (DB-only persistence via `workflow_template_records`; disk load/save functions removed.)
+- [x] Remove the workflow template file-based env var from the runtime path.
+  (`WORKFLOW_TEMPLATES_FILE` and file-based path removed; `DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE` retained to toggle DB persistence.)
 
 **43c) Duplicate API registration remains**
 
@@ -194,8 +197,10 @@ Target window: next month (confirm exact date and time zone).
 
 **43e) `filelock` cleanup is not complete**
 
-- [ ] Remove remaining `filelock` runtime usage or update the checklist and docs to reflect the actual design.
-  (Still active in `email_templates.py`, `template_manager.py`, `workflows.py`.)
+- [x] Remove remaining `filelock` runtime usage.
+  (All three modules migrated to SQLite: `email_templates.py` → `email_template_records` table;
+  `template_manager.py` → `golden_template_records` table; `workflows.py` → disk fallback fully removed.
+  `filelock` dependency removed from `pyproject.toml`.)
 
 **43f) Plugin marketplace frontend/backend contract mismatch**
 
@@ -211,17 +216,18 @@ Target window: next month (confirm exact date and time zone).
 
 ### 30) Large modules needing decomposition
 
-- [ ] Decompose remaining large modules: `auth.py`, `search.py`, `workflows.py`, `doc_types.py`, `logs.py`, `reporting.py`, `documents.py`.
+- [x] Decompose remaining large modules: `logs.py` → `logs/` package (`_db.py`, `_dispatch.py`, `_query.py`, `__init__.py`); `reporting.py` → `reporting/` package (`_models.py`, `_metrics.py`, `_reports.py`, `__init__.py`). All public APIs preserved via `__init__.py` re-exports.
+- [ ] Decompose remaining large modules: `auth.py`, `search.py`, `workflows.py`, `doc_types.py`, `documents.py` (lower priority, defer to post-v0.2).
 
 ### 31) Frontend state management
 
-- [ ] Introduce centralized server-state handling or shared state management.
-- [ ] Reduce duplicate API calls and stale data across pages.
-- [ ] Consider React Query or a minimal shared state layer for auth and user state.
+- [x] Introduce centralized server-state handling: React Query (`@tanstack/react-query`) configured in `_app.tsx` with global `staleTime`, `gcTime`, retry, and `refetchOnWindowFocus` defaults.
+- [x] New hooks in `frontend/lib/`: `useProjects.ts`, `useDocuments.ts`, `useNotifications.ts`, `useSessions.ts` — all using `authenticatedFetch`, optimistic updates, and shared cache keys.
+- [ ] Migrate remaining pages from inline `fetch()` to the new hooks (ongoing integration work).
 
 ### 32) YAML configuration loaders
 
-- [ ] Consolidate the six independent YAML-loading modules behind a shared base or shared conventions.
+- [x] Consolidated: new `yaml_loader.py` with `load_yaml_file()`, `save_yaml_file()`, `YamlConfigLoader` base class. All six target modules (`config.py`, `environment.py`, `provider_store.py`, `rbac_editor.py`, `schedule_editor.py`, `settings_manager.py`) updated to use the shared loader. Atomic writes via `tempfile.mkstemp` + `os.replace`.
 
 ### 34) Federal Style Validator integration
 
@@ -295,19 +301,26 @@ the score source.
 
 ### 36) License migration follow-up
 
-- [ ] Audit transitive dependencies for GPL contamination.
-- [ ] Add `SPDX-License-Identifier: MIT` headers to key source files.
-- [ ] Generate and store a full dependency license report.
-- [ ] Verify vendored or copied code has compatible licenses.
+- [x] Audit transitive dependencies for GPL contamination. Findings: `psycopg` (LGPLv3) is optional `[postgres]` extra; `pyphen`/`cmudict` are transitive via `textstat` (data resources, dynamically linked); `semgrep` is dev-only; `govdocverify`/FedStyleValidator (GPL-3.0, same author) is optional `[fedstylevalidator]` extra. No mandatory GPL runtime dependencies.
+- [x] Add `SPDX-License-Identifier: MIT` headers to all 182 Python source files in `src/docreview360/`.
+- [x] Generated `docs/licenses-report.md` with full dependency license table and notes on non-MIT packages.
+- [x] Verified no vendored third-party code with incompatible licenses in `src/`.
 
 ### 37) Authentication and identity provider integration
 
 **Phase 1 — Core SSO and directory**
 
-- [ ] Full OIDC and OAuth 2.0 provider integration with Authorization Code + PKCE.
-- [ ] LDAP and Active Directory integration with LDAPS and group-to-role mapping.
-- [ ] SAML 2.0 SP support.
-- [ ] Session management hardening: idle timeout, absolute lifetime, concurrent session limits, server-side revocation.
+- [x] Full OIDC and OAuth 2.0 provider integration with Authorization Code + PKCE.
+  (New `oidc_client.py`: PKCE pair generation, provider discovery, state/nonce DB storage, code exchange, ID token validation.
+  New routes: `GET /oidc/authorize`, `GET /oidc/callback` with JIT user provisioning + DocReview360 JWT issuance.)
+- [x] LDAP and Active Directory integration with LDAPS and group-to-role mapping.
+  (`ldap_auth.py`: `authenticate_ldap()` with service-account search + user-bind; `get_ldap_groups()` with RFC 4515 escaping; `map_ldap_groups_to_roles()` from `LDAP_ROLE_MAP` JSON; `ldap_login()` integrated into `auth.py` `login_for_access_token` as fallback after local auth. All `ldap3` imports guarded with `try/except ImportError`.)
+- [x] SAML 2.0 SP support.
+  (`saml_auth.py`: `build_auth_request()`, `process_saml_response()`, `get_sp_metadata()`; `api/saml_router.py`: `GET /saml/login`, `POST /saml/acs` with JIT provisioning + JWT issuance, `GET /saml/metadata`, `POST /saml/sls`. Router registered in `api/__init__.py`. All `python3-saml` imports guarded.)
+- [x] Session management hardening: idle timeout, absolute lifetime, concurrent session limits, server-side revocation.
+  (`UserSessionRecord` SQLAlchemy model; `create_user_session()` enforces concurrent session limit (configurable via `OIDC_SESSION_MAX_CONCURRENT`);
+  `touch_session()` enforces idle timeout (`OIDC_IDLE_TIMEOUT_MINUTES`); revocation on logout via `revoke_user_session()`;
+  `GET /sessions`, `DELETE /sessions/{session_id}` endpoints for user self-service.)
 
 **Phase 2 — Federal and DoD authentication**
 
@@ -325,7 +338,10 @@ the score source.
 
 **Phase 1 — Tenant isolation**
 
-- [ ] Enforce organization-scoped data access across content tables.
+- [x] Enforce organization-scoped data access across content tables.
+  (`org_id` added to `ProjectModel`; `_enforce_project_access()` and `_enforce_project_manage_access()`
+  enforce org membership for projects with an `org_id`; auto-assigned from creator's org on creation.
+  `UserSessionRecord` and `OIDCStateRecord` models added to `models.py`.)
 - [ ] Add PostgreSQL row-level security as defense in depth.
 - [ ] Add schema-per-tenant option for customers that require physical isolation.
 - [ ] Adopt Alembic migration framework with rollback support.
@@ -347,10 +363,12 @@ the score source.
 
 **Phase 1 — Container and orchestration hardening**
 
-- [ ] Move to a multi-stage Dockerfile and run as non-root.
+- [x] Move to a multi-stage Dockerfile and run as non-root.
+  (3-stage build: frontend-builder → python-deps → runtime; non-root user `docreview:1001`; HEALTHCHECK via `/health/live`.)
 - [ ] Add a Helm chart.
 - [ ] Add Kubernetes manifests.
-- [ ] Split health endpoints into health, ready, and live.
+- [x] Split health endpoints into health, ready, and live.
+  (`GET /health` (existing), `GET /health/live` (liveness probe), `GET /health/ready` (readiness + DB check).)
 
 **Phase 2 — Enterprise operations**
 
@@ -413,7 +431,12 @@ the score source.
 
 - [ ] Add hierarchical configuration: system defaults, organization overrides, project overrides.
 - [ ] Add per-organization feature flags.
-- [ ] Expand the webhook event system with lifecycle events, signatures, and retries.
+- [x] Expand the webhook event system with lifecycle events, signatures, and retries.
+  (HMAC-SHA256 signing on outgoing deliveries (`X-DocReview360-Signature: sha256=<digest>`);
+  auto-generated signing secret returned once on subscription creation; delivery count + last status tracking;
+  `GET /webhooks/subscriptions`, `DELETE /webhooks/subscriptions/{id}` management endpoints;
+  `project.created` and `document.created` lifecycle events emitted from routers;
+  `emit_lifecycle_event()` API for any event type. Retry + backoff already in `event_dispatcher.py`.)
 - [ ] Allow organization-defined custom workflows without code changes.
 - [ ] Allow organization-defined custom fields without schema changes.
 - [ ] Add theme and white-label support.

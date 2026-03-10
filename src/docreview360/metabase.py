@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for loading and querying Metabase dashboards."""
 
 from __future__ import annotations

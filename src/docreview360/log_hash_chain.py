@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Hash chaining utilities for audit logs.
 
 This module batches audit log entries, computes a SHA-256 hash chain and

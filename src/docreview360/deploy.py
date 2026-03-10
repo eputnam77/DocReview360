@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Deployment helpers for containerised environments."""
 
 from __future__ import annotations

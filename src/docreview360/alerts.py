@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Log-based alert helpers with notification integration."""
 
 from __future__ import annotations

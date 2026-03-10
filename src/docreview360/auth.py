@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Authentication utilities for DocReview360."""
 
 from __future__ import annotations
@@ -1080,6 +1081,19 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
         jti: str | None = payload.get("jti")
         if jti and is_token_revoked(jti):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
+        # Check idle timeout — updates last_active_at and returns False if session timed out.
+        if jti:
+            try:
+                from .oidc_client import touch_session as _touch_session
+                if not _touch_session(jti):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Session expired due to inactivity — please log in again",
+                    )
+            except HTTPException:
+                raise
+            except Exception:  # pragma: no cover — best effort
+                pass
         # Validate token generation — allows instant invalidation of all sessions.
         token_gen: int = int(payload.get("gen", 0))
     except JWTError as exc:
@@ -1130,6 +1144,41 @@ async def login_for_access_token(
         user = authenticate_mfa(form_data.username, form_data.password, otp)
     else:
         user = authenticate_user(form_data.username, form_data.password)
+
+    # LDAP fallback: if local auth failed, try LDAP/AD (lazy import to avoid circular deps)
+    if not user:
+        try:
+            from . import ldap_auth as _ldap_auth  # noqa: PLC0415
+
+            if _ldap_auth.ldap_enabled():
+                ldap_result = _ldap_auth.ldap_login(
+                    form_data.username, form_data.password
+                )
+                if ldap_result:
+                    ldap_username, ldap_roles = ldap_result
+                    # JIT provision: create local account if absent
+                    repo = _get_user_repository()
+                    if repo.get_user(ldap_username) is None:
+                        import secrets as _sec
+
+                        repo._seed_user(
+                            ldap_username,
+                            _sec.token_hex(32),
+                            active=True,
+                        )
+                    # Assign any LDAP-derived roles (best-effort)
+                    if ldap_roles:
+                        try:
+                            from . import rbac as _rbac  # noqa: PLC0415
+
+                            for _role in ldap_roles:
+                                _rbac.add_role(ldap_username, _role)
+                        except Exception:  # pragma: no cover
+                            pass
+                    user = User(username=ldap_username, active=True)
+        except Exception:  # pragma: no cover — ldap3 may not be installed
+            pass
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

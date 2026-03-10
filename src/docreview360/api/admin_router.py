@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Admin sub-router: /users/*, /profile, /admin/*, /rbac/*, /config, /branding,
 /signature-provider, /environments/*, /plugins/*, /plugin-marketplace*."""
 from __future__ import annotations

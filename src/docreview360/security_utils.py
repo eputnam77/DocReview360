@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Helpers for digital signatures used in approvals."""
 
 from __future__ import annotations

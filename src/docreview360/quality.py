@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Predictive quality scoring, explanations and risk warnings."""
 
 from __future__ import annotations

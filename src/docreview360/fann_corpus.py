@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Corpus curation utilities for the ruv-FANN model (Task 106)."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Manage golden Markdown templates (Task 143)."""
 
 from __future__ import annotations
@@ -12,11 +13,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List
 
-from filelock import FileLock
+from sqlalchemy import text as _text
 
 
 TEMPLATES_DIR = Path(os.getenv("DOCREVIEW360_TEMPLATES_DIR", "templates/golden"))
-TEMPLATE_STORE_FILE = Path(os.getenv("DOCREVIEW360_TEMPLATE_STORE_FILE", "template_store.json"))
 
 
 def _env_flag_enabled(value: str | None) -> bool:
@@ -32,23 +32,13 @@ DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE = _env_flag_enabled(
     os.getenv("DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE")
 )
 
-_ACTIVE_TEMPLATES_FILE: Path = TEMPLATE_STORE_FILE
 _TEMPLATES_LOADED: bool = False
 # Guards the _TEMPLATES_LOADED flag to prevent duplicate loads under concurrent requests.
 _TEMPLATE_LOAD_LOCK = threading.Lock()
 
 
 def save_template(name: str, content: str, root: Path = TEMPLATES_DIR) -> Path:
-    """Save ``content`` under ``name`` in ``root`` and return the path.
-
-    ``name`` previously accepted arbitrary strings which allowed directory
-    traversal like ``"../evil"`` or subdirectory components such as
-    ``"foo/bar"``.  This could write files outside the intended template
-    directory.  Restrict names to simple file stems by validating with
-    :class:`pathlib.Path` and rejecting any values that resolve to multiple
-    parts or special references.  Names consisting solely of whitespace were
-    also inadvertently accepted, creating files that were awkward to manage.
-    """
+    """Save ``content`` under ``name`` in ``root`` and return the path."""
 
     if not isinstance(name, str) or not name.strip():
         raise ValueError("name is required")
@@ -93,26 +83,14 @@ _template_phase_locks: dict[tuple[str, str], bool] = {}
 
 
 def lock_template_for_phase(name: str, phase: str) -> None:
-    """Prevent modifications to *name* while the project is in *phase*.
-
-    Raises
-    ------
-    ValueError
-        If *name* or *phase* is empty.
-    """
+    """Prevent modifications to *name* while the project is in *phase*."""
     if not name or not phase:
         raise ValueError("name and phase are required")
     _template_phase_locks[(name, phase)] = True
 
 
 def unlock_template_for_phase(name: str, phase: str) -> None:
-    """Remove the phase lock for *name* in *phase*.
-
-    Raises
-    ------
-    ValueError
-        If *name* or *phase* is empty.
-    """
+    """Remove the phase lock for *name* in *phase*."""
     if not name or not phase:
         raise ValueError("name and phase are required")
     _template_phase_locks.pop((name, phase), None)
@@ -150,65 +128,114 @@ def _serialize_template_store() -> dict[str, list[dict[str, Any]]]:
     }
 
 
+def _deserialize_versions(versions_data: list[dict[str, Any]]) -> List[TemplateVersion]:
+    parsed = []
+    for entry in versions_data:
+        parsed.append(
+            TemplateVersion(
+                version=entry["version"],
+                content=b64decode(entry["content"]),
+                metadata=entry.get("metadata", {}),
+                approved=entry.get("approved", False),
+                retired=entry.get("retired", False),
+                change_summary=entry.get("change_summary", ""),
+            )
+        )
+    return parsed
+
+
+# ---------------------------------------------------------------------------
+# DB helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_db():  # type: ignore[return]
+    from .db_store import get_db
+    return get_db()
+
+
+def _load_from_db() -> bool:
+    """Load template versions from the database. Returns True if any loaded."""
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            rows = conn.execute(
+                _text("SELECT name, versions FROM golden_template_records")
+            ).fetchall()
+        if not rows:
+            return False
+        for row in rows:
+            name = row[0]
+            raw = row[1]
+            versions_data = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(versions_data, list):
+                _template_store[name] = _deserialize_versions(versions_data)
+        return bool(_template_store)
+    except Exception:  # pragma: no cover - DB not available
+        return False
+
+
+def _save_to_db() -> None:
+    """Upsert the entire in-memory template store into the database."""
+    if not DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE:
+        return
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            for name, versions in _template_store.items():
+                serialized = json.dumps(_serialize_template_store().get(name, []))
+                conn.execute(
+                    _text(
+                        "INSERT INTO golden_template_records (name, versions)"
+                        " VALUES (:name, :versions)"
+                        " ON CONFLICT(name) DO UPDATE SET versions=excluded.versions"
+                    ),
+                    {"name": name, "versions": serialized},
+                )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
+def _delete_from_db(name: str) -> None:
+    if not DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE:
+        return
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            conn.execute(
+                _text("DELETE FROM golden_template_records WHERE name = :name"),
+                {"name": name},
+            )
+    except Exception:  # pragma: no cover - best effort
+        pass
+
+
 def _load_template_store() -> None:
     with _TEMPLATE_LOAD_LOCK:
         global _TEMPLATES_LOADED
         if _TEMPLATES_LOADED or not DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE:
             return
-        if not _ACTIVE_TEMPLATES_FILE.exists():
-            _TEMPLATES_LOADED = True
-            return
-        lock = FileLock(f"{_ACTIVE_TEMPLATES_FILE}.lock")
-        with lock:
-            data = json.loads(_ACTIVE_TEMPLATES_FILE.read_text())
-        _template_store.clear()
-        for name, versions in data.items():
-            parsed_versions = []
-            for entry in versions:
-                parsed_versions.append(
-                    TemplateVersion(
-                        version=entry["version"],
-                        content=b64decode(entry["content"]),
-                        metadata=entry.get("metadata", {}),
-                        approved=entry.get("approved", False),
-                        retired=entry.get("retired", False),
-                        change_summary=entry.get("change_summary", ""),
-                    )
-                )
-            _template_store[name] = parsed_versions
+        _load_from_db()
         _TEMPLATES_LOADED = True
 
 
 def _save_template_store() -> None:
-    if not DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE:
-        return
-    _ACTIVE_TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    lock = FileLock(f"{_ACTIVE_TEMPLATES_FILE}.lock")
-    with lock:
-        _ACTIVE_TEMPLATES_FILE.write_text(json.dumps(_serialize_template_store(), indent=2))
+    _save_to_db()
 
 
-def reset_template_store(keep_file: bool = False, root: Path | None = None) -> None:
-    """Reset the in-memory store and optionally remove the persisted file."""
-    global _TEMPLATES_LOADED, _ACTIVE_TEMPLATES_FILE
+def reset_template_store(keep_file: bool = False, root: Any = None) -> None:  # noqa: ARG001
+    """Reset the in-memory store.
 
-    if root is not None:
-        _ACTIVE_TEMPLATES_FILE = root
+    ``keep_file`` and ``root`` are accepted for backwards compatibility but
+    have no effect: templates are persisted to the database only.
+    """
+    global _TEMPLATES_LOADED
     _template_store.clear()
     _TEMPLATES_LOADED = False
-    if not keep_file and _ACTIVE_TEMPLATES_FILE.exists():
-        _ACTIVE_TEMPLATES_FILE.unlink()
-    lock_path = Path(f"{_ACTIVE_TEMPLATES_FILE}.lock")
-    if lock_path.exists():
-        lock_path.unlink()
 
 
 def _compute_change_summary(old_content: bytes, new_content: bytes) -> str:
-    """Return a human-readable unified-diff summary between two content blobs.
-
-    Only the first 10 diff lines are included to keep the summary concise.
-    Returns an empty string when there is no previous content to compare against.
-    """
+    """Return a human-readable unified-diff summary between two content blobs."""
     old_lines = old_content.decode("utf-8", errors="replace").splitlines(keepends=True)
     new_lines = new_content.decode("utf-8", errors="replace").splitlines(keepends=True)
     diff = list(
@@ -226,17 +253,7 @@ def _compute_change_summary(old_content: bytes, new_content: bytes) -> str:
 def upload_template(
     name: str, data: bytes, metadata: Dict[str, Any] | None = None
 ) -> TemplateVersion:
-    """Store ``data`` and ``metadata`` as a new version for ``name``.
-
-    When a prior version exists a diff summary is computed automatically and
-    stored in :attr:`TemplateVersion.change_summary` so reviewers can see what
-    changed without diffing the raw bytes themselves.
-
-    Raises
-    ------
-    PermissionError
-        If the template is locked for the phase specified in ``metadata["phase"]``.
-    """
+    """Store ``data`` and ``metadata`` as a new version for ``name``."""
     _load_template_store()
     if not name:
         raise ValueError("name is required")
@@ -253,7 +270,6 @@ def upload_template(
     versions = _template_store.setdefault(name, [])
     version = len(versions) + 1
 
-    # Compute change summary from the previous version if available
     change_summary = ""
     if versions:
         change_summary = _compute_change_summary(versions[-1].content, data)
@@ -324,4 +340,4 @@ def delete_template(name: str) -> None:
     if name not in _template_store:
         raise KeyError(f"template '{name}' not found")
     _template_store.pop(name, None)
-    _save_template_store()
+    _delete_from_db(name)

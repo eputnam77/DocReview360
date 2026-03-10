@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simplified plugin installer and marketplace utilities."""
 
 from __future__ import annotations

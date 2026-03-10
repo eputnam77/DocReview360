@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Compatibility wrapper for Documenso provider.
 
 The actual implementation now lives in :mod:`docreview360.integrations.signature.documenso`.

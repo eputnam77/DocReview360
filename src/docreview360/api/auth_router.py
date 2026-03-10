@@ -1,4 +1,5 @@
-"""Auth sub-router: /token, /oidc/token, /me, /logout, /oidc/me, /login, /dashboard, /help, /."""
+# SPDX-License-Identifier: MIT
+"""Auth sub-router: /token, /oidc/*, /me, /logout, /login, /dashboard, /help, /."""
 from __future__ import annotations
 
 import hashlib
@@ -8,13 +9,14 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 
 from .. import auth
+from .. import oidc_client
 from ..logs import log_event
 from ..messages import render
 
@@ -100,6 +102,33 @@ async def token(
         user_id=form_data.username,
         message=render("login", user=form_data.username),
     )
+    # Record the session for concurrent-limit and idle-timeout enforcement
+    try:
+        from jose import jwt as _jwt
+        payload = _jwt.decode(
+            token_resp.access_token,
+            auth.SECRET_KEY,
+            algorithms=[auth.ALGORITHM],
+            audience=auth.TOKEN_AUDIENCE,
+            issuer=auth.TOKEN_ISSUER,
+        )
+        jti = payload.get("jti")
+        exp_ts = payload.get("exp")
+        if jti and exp_ts:
+            from datetime import datetime, timezone as _tz
+            expires_at = datetime.fromtimestamp(exp_ts, tz=_tz.utc)
+            ip = _request_source(request)
+            ua = request.headers.get("user-agent")
+            oidc_client.create_user_session(
+                username=form_data.username,
+                jti=jti,
+                expires_at=expires_at,
+                auth_method="mfa" if auth.REQUIRE_MFA else "password",
+                ip_address=ip,
+                user_agent=ua,
+            )
+    except Exception as _sess_exc:  # pragma: no cover - best effort
+        _logger.debug("Session record creation failed (non-fatal): %s", _sess_exc)
     return token_resp
 
 
@@ -143,6 +172,8 @@ async def logout(
 
                 expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
                 auth.revoke_token(jti, expires_at)
+                # Also mark the session inactive
+                oidc_client.revoke_user_session(jti)
         except Exception as exc:  # noqa: BLE001 — best-effort revocation
             _logger.warning("Token revocation failed during logout: %s", exc)
     response.delete_cookie("access_token")
@@ -214,3 +245,204 @@ async def help_page() -> HTMLResponse:
         raise HTTPException(status_code=500, detail="Unable to load documentation") from exc
     html = MarkdownIt().render(text)
     return HTMLResponse(html)
+
+
+# ---------------------------------------------------------------------------
+# OIDC Authorization Code + PKCE endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/oidc/authorize")
+async def oidc_authorize(
+    request: Request,
+    redirect_uri: str | None = Query(default=None),
+) -> RedirectResponse:
+    """Initiate an OIDC Authorization Code + PKCE flow.
+
+    Generates a ``state``, ``nonce``, and PKCE pair, stores them in the
+    database, then redirects the browser to the external identity provider.
+    Set ``OIDC_ENABLED=true`` and the provider vars to activate.
+    """
+    if not oidc_client.OIDC_ENABLED:
+        raise HTTPException(status_code=404, detail="OIDC login is not enabled on this server")
+    try:
+        auth_url, state, nonce, code_verifier = oidc_client.build_authorization_url(
+            redirect_uri=redirect_uri
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    oidc_client.store_oidc_state(
+        state=state,
+        nonce=nonce,
+        code_verifier=code_verifier,
+        redirect_uri=redirect_uri,
+    )
+    _logger.debug("OIDC authorize redirect → %s", auth_url[:80])
+    return RedirectResponse(auth_url, status_code=302)
+
+
+@router.get("/oidc/callback")
+async def oidc_callback(
+    request: Request,
+    response: Response,
+    code: str = Query(...),
+    state: str = Query(...),
+    error: str | None = Query(default=None),
+    error_description: str | None = Query(default=None),
+) -> Any:
+    """Handle the OIDC provider callback.
+
+    Validates ``state`` and ``nonce``, exchanges the authorization ``code``
+    for tokens, validates the ID token, then issues a DocReview360 JWT and
+    redirects the user to the dashboard.
+    """
+    if not oidc_client.OIDC_ENABLED:
+        raise HTTPException(status_code=404, detail="OIDC login is not enabled on this server")
+
+    if error:
+        _logger.warning("OIDC provider returned error: %s — %s", error, error_description)
+        raise HTTPException(
+            status_code=400,
+            detail=f"OIDC provider error: {error}. {error_description or ''}".strip(),
+        )
+
+    # Validate and consume state (prevents CSRF)
+    state_data = oidc_client.consume_oidc_state(state)
+    if state_data is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired OIDC state parameter")
+
+    nonce = state_data["nonce"]
+    code_verifier = state_data["code_verifier"]
+    stored_redirect_uri = state_data.get("redirect_uri") or None
+
+    # Exchange code for tokens
+    try:
+        token_response = oidc_client.exchange_code_for_tokens(
+            code=code,
+            code_verifier=code_verifier,
+            redirect_uri=stored_redirect_uri,
+        )
+    except RuntimeError as exc:
+        _logger.error("OIDC token exchange failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Failed to exchange code with identity provider")
+
+    id_token = token_response.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=502, detail="Identity provider did not return an ID token")
+
+    # Validate ID token and extract claims
+    try:
+        claims = oidc_client.validate_id_token(id_token, nonce)
+    except ValueError as exc:
+        _logger.warning("ID token validation failed: %s", exc)
+        raise HTTPException(status_code=401, detail="ID token validation failed")
+
+    # Extract username from claims (prefer ``preferred_username``, fall back to ``sub``)
+    username: str = (
+        claims.get("preferred_username")
+        or claims.get("email")
+        or claims.get("sub")
+        or ""
+    )
+    if not username:
+        raise HTTPException(status_code=400, detail="Identity provider did not supply a username")
+
+    # Ensure the user exists locally (JIT provisioning for OIDC users)
+    if not auth.is_active(username):
+        try:
+            from ..auth import UserRepository, _get_user_repository
+            repo = _get_user_repository()
+            if repo.get_user(username) is None:
+                import secrets as _sec
+                repo._seed_user(username, _sec.token_hex(32), active=True)
+                _logger.info("JIT-provisioned OIDC user %r", username)
+        except Exception as exc:
+            _logger.error("JIT user provisioning failed for %r: %s", username, exc)
+            raise HTTPException(status_code=500, detail="User provisioning failed")
+
+    # Issue a DocReview360 access JWT
+    from datetime import datetime, timedelta, timezone as _tz
+    from jose import jwt as _jwt
+    import uuid as _uuid
+    now = datetime.now(_tz.utc)
+    jti = str(_uuid.uuid4())
+    expire = now + timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "sub": username,
+        "jti": jti,
+        "iat": now,
+        "exp": expire,
+        "iss": auth.TOKEN_ISSUER,
+        "aud": auth.TOKEN_AUDIENCE,
+        "auth_method": "oidc",
+    }
+    access_token = _jwt.encode(payload, auth.SECRET_KEY, algorithm=auth.ALGORITHM)
+
+    # Record the session
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+    oidc_client.create_user_session(
+        username=username,
+        jti=jti,
+        expires_at=expire,
+        auth_method="oidc",
+        ip_address=ip,
+        user_agent=ua,
+    )
+
+    log_event("login", user_id=username, message=f"OIDC login from {ip or 'unknown'}")
+
+    # Set httpOnly cookie and redirect to dashboard
+    redirect_resp = RedirectResponse("/projects", status_code=303)
+    redirect_resp.set_cookie(
+        "access_token",
+        access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return redirect_resp
+
+
+# ---------------------------------------------------------------------------
+# Session management endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/sessions")
+async def list_sessions(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict]:
+    """Return all active sessions for the authenticated user."""
+    return oidc_client.list_user_sessions(current_user.username)
+
+
+@router.delete("/sessions/{session_id}")
+async def revoke_session(
+    session_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Revoke a specific session by its ``session_id``.
+
+    Only the session owner may revoke their own sessions.
+    """
+    from sqlalchemy import text as _text
+    db = oidc_client._get_db()
+    with db.session() as conn:
+        row = conn.execute(
+            _text("SELECT jti, username FROM user_sessions WHERE id = :sid"),
+            {"sid": session_id},
+        ).fetchone()
+        if row is None or row[1] != current_user.username:
+            raise HTTPException(status_code=404, detail="Session not found")
+        jti = row[0]
+        conn.execute(
+            _text("UPDATE user_sessions SET is_active = 0 WHERE id = :sid"),
+            {"sid": session_id},
+        )
+    # Also add jti to the revoked-token table
+    from datetime import datetime, timedelta, timezone as _tz
+    auth.revoke_token(jti, datetime.now(_tz.utc) + timedelta(days=7))
+    return {"detail": "Session revoked"}

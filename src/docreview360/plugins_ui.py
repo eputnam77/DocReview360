@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Minimal HTML rendering for plugin management (task 32)."""
 
 from __future__ import annotations

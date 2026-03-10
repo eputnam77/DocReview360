@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Feature adapters centralising heuristics for DocReview360 models."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Editor compliance helpers (Task 150)."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Semantic search auto-suggest utilities."""
 
 from __future__ import annotations

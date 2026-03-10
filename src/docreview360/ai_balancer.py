@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simple in-memory worker load balancer used by the AI writer assigner."""
 
 from __future__ import annotations

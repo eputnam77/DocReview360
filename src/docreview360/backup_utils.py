@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for creating and restoring DocReview360 backups."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Helm chart smoke test script."""
 
 from __future__ import annotations

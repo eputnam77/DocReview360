@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Keycloak SSO hardening utilities."""
 
 from __future__ import annotations

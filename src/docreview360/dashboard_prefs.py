@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Dashboard widget visibility helpers."""
 
 from __future__ import annotations

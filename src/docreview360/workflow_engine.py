@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Lightweight workflow engine for approval step progression."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Project phases management — database-backed.
 
 All phase state is stored in the ``phases`` and ``phase_workflow_links``

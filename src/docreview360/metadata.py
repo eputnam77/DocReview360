@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utility helpers for project metadata."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Machine learning focused API endpoints."""
 
 from __future__ import annotations

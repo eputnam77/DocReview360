@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Routing critic utilities implemented with NumPy."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Grammar-checker plug-in."""
 
 from __future__ import annotations

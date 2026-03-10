@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Microsoft SharePoint integration via Microsoft Graph API."""
 
 from __future__ import annotations

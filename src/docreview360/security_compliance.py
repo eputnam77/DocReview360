@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for encryption and data retention checks."""
 
 from __future__ import annotations

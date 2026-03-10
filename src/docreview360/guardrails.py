@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared guardrail policy helpers built around ONNX critic outputs."""
 
 from __future__ import annotations

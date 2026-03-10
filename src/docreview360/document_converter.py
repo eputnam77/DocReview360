@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Document conversion utilities.
 
 Supports converting document content between common formats used in the

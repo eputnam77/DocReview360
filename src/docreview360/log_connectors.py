@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Adapters for streaming or batching log entries to external services."""
 
 from __future__ import annotations

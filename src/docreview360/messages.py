@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Central message templates for audit logs."""
 
 from datetime import datetime, timezone

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simple in-memory comment system for collaborative editing."""
 
 from __future__ import annotations

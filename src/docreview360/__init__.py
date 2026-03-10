@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """DocReview360 core package."""
 
 __all__ = [

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Helpers for Records Keeper archival folder structure."""
 
 from __future__ import annotations

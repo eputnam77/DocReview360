@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """In-memory document storage and import helpers."""
 
 from __future__ import annotations

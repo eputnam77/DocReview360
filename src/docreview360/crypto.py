@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Envelope encryption utilities for encryption at rest."""
 
 from __future__ import annotations

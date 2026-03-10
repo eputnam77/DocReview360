@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Release notes generation helpers for release packaging workflows."""
 
 from __future__ import annotations

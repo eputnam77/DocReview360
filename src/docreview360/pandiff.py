@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Diff utilities using the Pandiff approach.
 
 This module exposes helpers to generate unified diffs and simple

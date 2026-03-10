@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Role-based access control helpers backed by a persistent store."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Core approval CRUD: ApprovalModel, in-memory store, DB persistence."""
 
 from __future__ import annotations

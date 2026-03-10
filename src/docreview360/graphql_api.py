@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simple GraphQL read layer for projects and documents."""
 
 from __future__ import annotations

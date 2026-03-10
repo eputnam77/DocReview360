@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Terraform module loader for optional infrastructure."""
 
 from __future__ import annotations

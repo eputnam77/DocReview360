@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for text rewriting and summarization via OpenAI."""
 
 from __future__ import annotations

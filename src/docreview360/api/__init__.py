@@ -1,4 +1,5 @@
-﻿"""FastAPI application exposing DocReview360 endpoints."""
+# SPDX-License-Identifier: MIT
+"""FastAPI application exposing DocReview360 endpoints."""
 
 # ruff: noqa: I001, E402
 from __future__ import annotations
@@ -242,6 +243,7 @@ from .tools_router import router as tools_router
 from .notifications_router import router as notifications_router
 from .comments_router import router as comments_router
 from .organizations_router import router as organizations_router
+from .saml_router import router as saml_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1066,6 +1068,7 @@ app.include_router(tools_router)
 app.include_router(notifications_router)
 app.include_router(comments_router)
 app.include_router(organizations_router)
+app.include_router(saml_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
@@ -1103,6 +1106,44 @@ async def health_check() -> Response:
         http_status = 503
 
     payload = _json.dumps({"status": "healthy" if http_status == 200 else "degraded", "db": db_status})
+    return Response(content=payload, status_code=http_status, media_type="application/json")
+
+
+@app.get("/health/live")
+async def health_live() -> Response:
+    """Liveness probe -- returns 200 when the process is running.
+
+    Does not check external dependencies; used by container orchestrators to
+    decide whether to restart the container.
+    """
+    import json as _json
+    payload = _json.dumps({"status": "live"})
+    return Response(content=payload, status_code=200, media_type="application/json")
+
+
+@app.get("/health/ready")
+async def health_ready() -> Response:
+    """Readiness probe -- returns 200 only when the app can serve traffic.
+
+    Checks the primary database connection.  Returns 503 when the database is
+    unavailable so load balancers stop routing requests until the dependency
+    recovers.
+    """
+    import json as _json
+    from sqlalchemy import text as _text
+
+    db_status = "ok"
+    http_status = 200
+    try:
+        db = _get_db()
+        with db.session() as conn:
+            conn.execute(_text("SELECT 1"))
+    except Exception as _db_exc:
+        _logger.warning("Readiness check DB connectivity failed: %s", _db_exc)
+        db_status = "unavailable"
+        http_status = 503
+
+    payload = _json.dumps({"status": "ready" if http_status == 200 else "not_ready", "db": db_status})
     return Response(content=payload, status_code=http_status, media_type="application/json")
 
 
@@ -4492,7 +4533,7 @@ async def sign_initials_endpoint(approval_id: str, body: SignInitialsBody) -> Ap
     if not re.fullmatch(r"[A-Z]{2,5}", body.initials):
         raise HTTPException(
             status_code=422,
-            detail="Initials must be 2–5 uppercase letters (A–Z) with no spaces or numbers.",
+            detail="Initials must be 2-5 uppercase letters (A-Z) with no spaces or numbers.",
         )
     approval = get_approval(approval_id)
     if approval is None:
@@ -4625,7 +4666,7 @@ async def logout(
 
                 expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
                 auth.revoke_token(jti, expires_at)
-        except Exception:  # noqa: BLE001 — best-effort revocation
+        except Exception:  # noqa: BLE001 -- best-effort revocation
             pass
     response.delete_cookie("access_token")
     response.delete_cookie("csrf_token")
@@ -5333,7 +5374,7 @@ async def switch_env_endpoint(name: str) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# API key management (item C — Enterprise Readiness)
+# API key management (item C -- Enterprise Readiness)
 # ---------------------------------------------------------------------------
 
 from docreview360 import api_keys as _api_keys_mod  # noqa: E402
@@ -5412,7 +5453,7 @@ async def revoke_api_key(
 
 
 # ---------------------------------------------------------------------------
-# Shareable project/document URL links (item 2 — Strategic Roadmap)
+# Shareable project/document URL links (item 2 -- Strategic Roadmap)
 # ---------------------------------------------------------------------------
 
 import secrets as _secrets_mod  # noqa: E402
@@ -5515,7 +5556,7 @@ async def revoke_share_link(
 async def resolve_share_link(token: str) -> Any:
     """Public endpoint: resolve a share token to the underlying resource.
 
-    No authentication required — the token itself grants read access.
+    No authentication required -- the token itself grants read access.
     """
     from datetime import datetime as _dt, timezone as _tz
 

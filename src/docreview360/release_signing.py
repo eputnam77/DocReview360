@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 ﻿"""Release tag signing and verification helpers."""
 
 from __future__ import annotations

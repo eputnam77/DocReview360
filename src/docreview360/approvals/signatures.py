@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Signature logic: send_for_signature, verify, build PDF, hash helpers."""
 
 from __future__ import annotations

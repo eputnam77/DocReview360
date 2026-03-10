@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Global settings persistence (Task 142)."""
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from typing import Any, Dict
 import yaml
 
 from .secrets import configure_vault, store_secret
+from .yaml_loader import load_yaml_file, save_yaml_file
 
 SETTINGS_FILE = Path(os.getenv("DOCREVIEW360_SETTINGS_FILE", "settings.yaml"))
 ENCRYPTED_PREFIX = "ENC("
@@ -61,10 +63,7 @@ def load_settings(path: Path = SETTINGS_FILE) -> Dict[str, Any]:
     """Return settings from ``path`` or an empty mapping."""
     if not path.exists():
         return {}
-    try:
-        data = yaml.safe_load(path.read_text()) or {}
-    except yaml.YAMLError as exc:
-        raise ValueError(f"Invalid YAML in {path}") from exc
+    data = load_yaml_file(path, default={}) or {}
     if not isinstance(data, dict):
         raise ValueError(f"Settings in {path} must be a mapping")
     vault_cfg = data.get("vault")
@@ -98,7 +97,7 @@ def load_settings(path: Path = SETTINGS_FILE) -> Dict[str, Any]:
                 store_secret(name, secret_value)
         if migrated:
             data["secrets"] = updated_secrets
-            path.write_text(yaml.safe_dump(data))
+            save_yaml_file(path, data)
     return data
 
 
@@ -106,7 +105,7 @@ def update_setting(key: str, value: Any, path: Path = SETTINGS_FILE) -> None:
     """Update a single setting and persist to ``path``."""
     settings = load_settings(path)
     settings[key] = value
-    path.write_text(yaml.safe_dump(settings))
+    save_yaml_file(path, settings)
     if key == "vault" and isinstance(value, dict):
         configure_vault(value)
 
@@ -133,7 +132,7 @@ def update_secret(provider: str, secret: str | None, path: Path = SETTINGS_FILE)
         else:
             secrets_cfg[provider] = secret_value
     settings["secrets"] = secrets_cfg
-    path.write_text(yaml.safe_dump(settings))
+    save_yaml_file(path, settings)
     try:
         from . import ai_assist
     except Exception:

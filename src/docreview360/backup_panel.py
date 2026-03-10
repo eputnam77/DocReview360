@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Backup and restore Celery tasks (Task 146)."""
 
 from __future__ import annotations

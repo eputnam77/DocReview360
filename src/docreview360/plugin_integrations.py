@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Plugin integration examples for DocReview360.
 
 This module shows how real PyPI packages can be integrated

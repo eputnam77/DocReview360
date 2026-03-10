@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Document pre-flight validation checks.
 
 Implements AI-assisted review helpers described in the release roadmap Section B:

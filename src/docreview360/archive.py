@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simple in-memory archive utilities."""
 
 from __future__ import annotations

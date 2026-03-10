@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Celery Flower monitoring utilities."""
 
 from __future__ import annotations

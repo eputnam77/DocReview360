@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utility to create a minimal stub wheel for PyO3 extensions (Task 108)."""
 
 from __future__ import annotations

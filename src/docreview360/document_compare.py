@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Document comparison utilities."""
 
 from __future__ import annotations

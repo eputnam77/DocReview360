@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """ONNX-exported anomaly detector for signature verification telemetry."""
 
 from __future__ import annotations

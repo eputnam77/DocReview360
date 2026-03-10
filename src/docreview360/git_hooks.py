@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Git hook utilities for validating patch emails.
 
 This module provides a basic validation helper for `git send-email`.

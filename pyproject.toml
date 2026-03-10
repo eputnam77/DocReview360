@@ -40,7 +40,6 @@ dependencies = [
   "fonttools==4.61.0",
   "Pillow==12.1.1",
   "click==8.1.8",
-  "filelock==3.20.3",
   "PyYAML==6.0.2",
   "zipp==3.19.1",
   "wikipedia==1.4.0",
@@ -98,6 +97,12 @@ tokenizer = ["tiktoken>=0.5.1"]
 
 # PostgreSQL support (LGPL-3.0 — kept optional so the core package is MIT-clean)
 postgres = ["psycopg[binary]==3.2.9"]
+
+# LDAP/Active Directory authentication (Item 37)
+ldap = ["ldap3>=2.9"]
+
+# SAML 2.0 Service Provider authentication (Item 37)
+saml = ["python3-saml>=1.16"]
 
 realtime = [
   "y-py>=0.6,<0.8",
@@ -169,6 +174,8 @@ dev = [
   "pip-audit>=2.7",
   "pre-commit>=3.7",
   "uvicorn>=0.38.0",
+  "ldap3>=2.9",
+  "python3-saml>=1.16",
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────

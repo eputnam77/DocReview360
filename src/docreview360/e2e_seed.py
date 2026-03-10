@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Deterministic E2E data seeding helpers."""
 
 from __future__ import annotations

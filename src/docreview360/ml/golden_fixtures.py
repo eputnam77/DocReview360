@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utilities for generating deterministic golden fixtures for ML critics."""
 
 from __future__ import annotations

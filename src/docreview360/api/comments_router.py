@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Comments sub-router: export endpoints for project-level comment collections."""
 from __future__ import annotations
 

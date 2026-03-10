@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Plugin loader orchestrator used by the editor (Task 102)."""
 
 from __future__ import annotations

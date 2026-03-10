@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Doc-type conversion helpers."""
 
 from __future__ import annotations

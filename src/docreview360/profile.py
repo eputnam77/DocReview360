@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """User profile preference helpers."""
 
 from __future__ import annotations

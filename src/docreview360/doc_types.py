@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Database-backed document type management.
 
 All document type state is stored in the ``document_types`` database table.

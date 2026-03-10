@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Export and import complete instance data for migrations."""
 
 from __future__ import annotations

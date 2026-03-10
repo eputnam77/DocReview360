@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """TipTap plugin wrappers: template linter and numbering helper."""
 
 from __future__ import annotations

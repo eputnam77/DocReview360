@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Lightweight file-based object storage plug-in."""
 
 from __future__ import annotations

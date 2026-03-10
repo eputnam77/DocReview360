@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """ONNX Runtime helpers with lazy session caching."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Contextual help and tutorial registry."""
 
 from __future__ import annotations

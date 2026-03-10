@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Helpers for synchronising metadata with Metabase."""
 
 from __future__ import annotations

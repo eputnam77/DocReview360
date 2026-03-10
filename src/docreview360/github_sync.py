@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Lightweight GitHub document sync utilities."""
 
 from __future__ import annotations

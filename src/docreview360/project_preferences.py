@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Project-level editor preference helpers."""
 
 from __future__ import annotations

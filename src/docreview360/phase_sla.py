@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Per-phase SLA (Service Level Agreement) tracking.
 
 Allows administrators to define maximum and warning durations for each workflow

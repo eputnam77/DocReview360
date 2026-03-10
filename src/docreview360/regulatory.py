@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Regulatory citation format checker.
 
 Extracts and validates regulatory citations from document text, checking whether

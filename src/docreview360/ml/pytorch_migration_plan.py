@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Structured migration plan for replacing FANN with PyTorch and ONNX Runtime.
 
 This module captures the actionable tasks, test coverage, and documentation

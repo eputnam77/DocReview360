@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """CycloneDX SBOM generation helpers for DocReview360."""
 
 from __future__ import annotations

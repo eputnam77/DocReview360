@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simplistic HR API sync utilities."""
 
 from __future__ import annotations

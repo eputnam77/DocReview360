@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Reviewer preference learning, consistency tracking and routing."""
 
 from __future__ import annotations

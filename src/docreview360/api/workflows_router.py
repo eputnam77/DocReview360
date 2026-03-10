@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Workflows sub-router: /workflow-templates/*, /workflows/*, /workflow_roles,
 /phases/*, /approvals/*, /templates/*, /email-templates/*."""
 from __future__ import annotations

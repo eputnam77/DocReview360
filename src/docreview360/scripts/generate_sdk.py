@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Generate SDK from the FastAPI schema."""
 
 from __future__ import annotations

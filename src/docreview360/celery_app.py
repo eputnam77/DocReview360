@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Celery application and example tasks."""
 
 from __future__ import annotations

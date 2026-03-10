@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Notifications sub-router: GET/PUT /notifications/settings."""
 from __future__ import annotations
 

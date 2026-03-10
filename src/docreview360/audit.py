@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Audit logging primitives."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simple heading numbering utilities (Task 101 and 104)."""
 
 from __future__ import annotations

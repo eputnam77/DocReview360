@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Environment switching utilities (Task 147)."""
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from typing import Dict, Optional
 
 import yaml
 
+from .yaml_loader import load_yaml_file, save_yaml_file
 
 ENV_FILE = Path(os.getenv("DOCREVIEW360_ENVIRONMENTS_FILE", "environments.yaml"))
 
@@ -17,10 +19,7 @@ def load_envs(path: Path | None = None) -> Dict[str, Dict[str, str]]:
     path = path or ENV_FILE
     if not path.exists():
         return {}
-    try:
-        data = yaml.safe_load(path.read_text()) or {}
-    except yaml.YAMLError as exc:
-        raise ValueError(f"Invalid YAML in {path}") from exc
+    data = load_yaml_file(path, default={}) or {}
     if not isinstance(data, dict):
         raise ValueError("Environment configuration must be a mapping")
     validated: Dict[str, Dict[str, str]] = {}
@@ -50,8 +49,7 @@ def add_environment(name: str, url: str, color: str, path: Path | None = None) -
     path = path or ENV_FILE
     data = load_envs(path)
     data[name.strip()] = {"url": url.strip(), "color": color.strip()}
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data))
+    save_yaml_file(path, data)
 
 
 def switch_environment(name: str, path: Path | None = None) -> str:

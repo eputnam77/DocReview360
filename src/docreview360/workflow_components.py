@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Workflow UI components bundle (Task 160)."""
 
 from __future__ import annotations

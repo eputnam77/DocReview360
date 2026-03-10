@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Lightweight caching layer with optional Redis backend."""
 
 from __future__ import annotations

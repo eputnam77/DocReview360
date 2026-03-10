@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """AI-validated project creation helpers (task 35)."""
 
 from __future__ import annotations

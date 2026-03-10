@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Tools sub-router: /tools/*, /api-keys/*, /share-links/*, /share/*, /search/*,
 /documents/preflight, /document-types/*, /watchlist/*, /ai/*, /chat."""
 from __future__ import annotations

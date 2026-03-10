@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Export documents to various formats."""
 
 from __future__ import annotations

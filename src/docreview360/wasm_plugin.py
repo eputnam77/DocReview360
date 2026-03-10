@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simplified WASM plugin lint wrapper (Task 109)."""
 
 from __future__ import annotations

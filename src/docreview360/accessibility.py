@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """WCAG 2.1 AA audit helpers."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Automate semantic version bump and changelog generation."""
 
 from __future__ import annotations

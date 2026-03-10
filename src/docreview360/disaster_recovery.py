@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Disaster recovery simulation for backup and restore validation."""
 
 from __future__ import annotations

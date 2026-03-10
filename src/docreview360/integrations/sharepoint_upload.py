@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Helpers for uploading finalized documents and metadata to SharePoint."""
 
 from __future__ import annotations

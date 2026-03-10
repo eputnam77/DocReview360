@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Simplified workflow tracking models."""
 
 from __future__ import annotations
@@ -6,14 +7,11 @@ import json
 import logging
 import os
 import sys
-import tempfile
 import threading
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
 
-from filelock import FileLock
 from pydantic import BaseModel, Field, field_validator
 
 from .db_store import get_db
@@ -141,9 +139,6 @@ def _env_flag_enabled(value: str | None) -> bool:
     return normalized not in {"0", "false", "no", "off"}
 
 
-WORKFLOW_TEMPLATES_FILE = Path(
-    os.getenv("DOCREVIEW360_WORKFLOW_TEMPLATES_FILE", "workflow_templates.json")
-)
 DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE = _env_flag_enabled(
     os.getenv("DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE")
 )
@@ -155,7 +150,6 @@ else:
     if _pkg is not None:
         setattr(_pkg, "_workflow_template_definitions_store", workflow_template_definitions)
 
-_ACTIVE_TEMPLATES_FILE: Path = WORKFLOW_TEMPLATES_FILE
 _TEMPLATES_LOADED: bool = False
 # Guards the _TEMPLATES_LOADED flag and template definition bootstrap to prevent
 # duplicate loading under multi-threaded Uvicorn workers.
@@ -432,20 +426,6 @@ def _build_default_template_definitions() -> Dict[str, WorkflowTemplateModel]:
     return defaults
 
 
-def _workflow_template_lock() -> FileLock:
-    return FileLock(str(WORKFLOW_TEMPLATES_FILE) + ".lock")
-
-
-def _atomic_write(path: Path, data: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        "w", encoding="utf-8", dir=path.parent, delete=False
-    ) as tmp_file:
-        tmp_file.write(data)
-        tmp_name = tmp_file.name
-    os.replace(tmp_name, path)
-
-
 def _coerce_template_payload(payload: object) -> list[dict]:
     if isinstance(payload, list):
         return payload
@@ -454,38 +434,6 @@ def _coerce_template_payload(payload: object) -> list[dict]:
         if isinstance(templates, list):
             return templates
     raise ValueError("Saved workflow templates must be a list or include 'templates'")
-
-
-def _load_templates_from_disk() -> None:
-    try:
-        payload = json.loads(WORKFLOW_TEMPLATES_FILE.read_text())
-    except FileNotFoundError:
-        return
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(
-            f"Failed to read workflow templates from {WORKFLOW_TEMPLATES_FILE}"
-        ) from exc
-
-    templates_payload = _coerce_template_payload(payload)
-    workflow_template_definitions.clear()
-    for item in templates_payload:
-        if not isinstance(item, dict):
-            raise ValueError("Workflow template entry must be a mapping")
-        name = str(item.get("name") or item.get("id") or "").strip()
-        if not name:
-            raise ValueError("Workflow template entry missing name")
-        steps_payload = item.get("steps") or []
-        if not isinstance(steps_payload, list):
-            raise ValueError("Workflow template steps must be a list")
-        steps = [WorkflowTemplateStep.model_validate(step) for step in steps_payload]
-        template = WorkflowTemplateModel(
-            id=name,
-            name=name,
-            description=item.get("description"),
-            steps=steps,
-            updated=item.get("updated"),
-        )
-        workflow_template_definitions[name] = template
 
 
 def _sync_workflow_templates_from_definitions() -> None:
@@ -498,11 +446,7 @@ def _sync_workflow_templates_from_definitions() -> None:
 
 def _ensure_templates_loaded() -> None:
     with _TEMPLATES_LOAD_LOCK:
-        global _ACTIVE_TEMPLATES_FILE, _TEMPLATES_LOADED
-
-        if _ACTIVE_TEMPLATES_FILE != WORKFLOW_TEMPLATES_FILE:
-            _ACTIVE_TEMPLATES_FILE = WORKFLOW_TEMPLATES_FILE
-            _TEMPLATES_LOADED = False
+        global _TEMPLATES_LOADED
 
         if _TEMPLATES_LOADED:
             return
@@ -511,12 +455,8 @@ def _ensure_templates_loaded() -> None:
         workflow_template_definitions.update(_build_default_template_definitions())
 
         if DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
-            # Prefer DB-backed storage; fall back to file if DB is empty
             loaded_from_db = _load_templates_from_db()
-            if not loaded_from_db and WORKFLOW_TEMPLATES_FILE.exists():
-                with _workflow_template_lock():
-                    _load_templates_from_disk()
-            if not workflow_template_definitions:
+            if not loaded_from_db or not workflow_template_definitions:
                 workflow_template_definitions.update(_build_default_template_definitions())
 
         _sync_workflow_templates_from_definitions()
@@ -574,16 +514,6 @@ def _load_templates_from_db() -> bool:
         return False
 
 
-def _save_templates_to_disk() -> None:
-    if not DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
-        return
-    payload = [template.model_dump() for template in workflow_template_definitions.values()]
-    serialized = json.dumps(payload, indent=2)
-    with _workflow_template_lock():
-        _atomic_write(WORKFLOW_TEMPLATES_FILE, serialized)
-    _save_templates_to_db()
-
-
 def list_workflow_templates() -> list[WorkflowTemplateModel]:
     _ensure_templates_loaded()
     return list(workflow_template_definitions.values())
@@ -610,7 +540,7 @@ def create_workflow_template(payload: WorkflowTemplatePayload) -> WorkflowTempla
     )
     workflow_template_definitions[name] = template
     _sync_workflow_templates_from_definitions()
-    _save_templates_to_disk()
+    _save_templates_to_db()
     return template
 
 
@@ -635,7 +565,7 @@ def update_workflow_template(
         workflow_template_definitions.pop(template_id, None)
     workflow_template_definitions[name] = template
     _sync_workflow_templates_from_definitions()
-    _save_templates_to_disk()
+    _save_templates_to_db()
     return template
 
 
@@ -646,21 +576,20 @@ def delete_workflow_template(template_id: str) -> None:
     workflow_template_definitions.pop(template_id)
     workflow_templates.pop(template_id, None)
     _sync_workflow_templates_from_definitions()
-    _save_templates_to_disk()
+    _save_templates_to_db()
 
 
-def reset_workflow_templates(*, keep_file: bool = False) -> None:
-    """Reset workflow templates to defaults for tests."""
+def reset_workflow_templates(*, keep_file: bool = False) -> None:  # noqa: ARG001
+    """Reset workflow templates to defaults.
+
+    ``keep_file`` is accepted for backwards compatibility but has no effect:
+    templates are persisted to the database only.
+    """
 
     global _TEMPLATES_LOADED
     _TEMPLATES_LOADED = False
     workflow_template_definitions.clear()
     workflow_templates.clear()
-    if not keep_file and DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE:
-        try:
-            WORKFLOW_TEMPLATES_FILE.unlink(missing_ok=True)
-        except OSError as exc:
-            _logger.warning("Failed to remove workflow templates file %s: %s", WORKFLOW_TEMPLATES_FILE, exc)
     _ensure_templates_loaded()
 
 

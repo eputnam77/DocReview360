@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """General AI chatbot for DocReview360 content and document writing questions."""
 
 from __future__ import annotations

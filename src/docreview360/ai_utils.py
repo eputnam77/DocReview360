@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utility helpers simulating AI integrations for scoring, validation, and workflow routing.
 
 This module contains:

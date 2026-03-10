@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Demo data seeding helpers."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Workload estimation, benchmarking and trends."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Basic observability helpers for DocReview360.
 
 The module exposes a minimal API to start a Prometheus metrics server and to

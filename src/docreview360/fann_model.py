@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Deprecated legacy module replaced by :mod:`docreview360.ml.torch_models`."""
 
 from __future__ import annotations

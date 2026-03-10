@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Workflow cloning utilities (Task 144)."""
 
 from __future__ import annotations

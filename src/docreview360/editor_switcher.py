@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Utility for switching between multiple editors."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """ONLYOFFICE connector."""
 
 from __future__ import annotations

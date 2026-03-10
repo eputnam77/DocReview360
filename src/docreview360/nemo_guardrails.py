@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Minimal NeMo-Guardrails style PII checker and middleware."""
 
 from __future__ import annotations

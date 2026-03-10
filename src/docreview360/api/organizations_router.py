@@ -1,16 +1,17 @@
+# SPDX-License-Identifier: MIT
 """Organizations sub-router: multi-tenant org management endpoints.
 
 Routes:
-    GET  /organizations                       — list all orgs (admin)
-    POST /organizations                       — create org (admin)
-    GET  /organizations/{org_id}              — get org (admin or member)
-    PUT  /organizations/{org_id}              — update org (admin)
-    DELETE /organizations/{org_id}            — delete org (admin)
-    GET  /organizations/{org_id}/settings     — get org settings (admin)
-    PUT  /organizations/{org_id}/settings     — update org settings (admin)
-    POST /organizations/{org_id}/users/{username}   — assign user to org (admin)
-    DELETE /organizations/{org_id}/users/{username} — remove user from org (admin)
-    GET  /organizations/{org_id}/users        — list org users (admin or member)
+    GET  /organizations                       -- list all orgs (admin)
+    POST /organizations                       -- create org (admin)
+    GET  /organizations/{org_id}              -- get org (admin or member)
+    PUT  /organizations/{org_id}              -- update org (admin)
+    DELETE /organizations/{org_id}            -- delete org (admin)
+    GET  /organizations/{org_id}/settings     -- get org settings (admin)
+    PUT  /organizations/{org_id}/settings     -- update org settings (admin)
+    POST /organizations/{org_id}/users/{username}   -- assign user to org (admin)
+    DELETE /organizations/{org_id}/users/{username} -- remove user from org (admin)
+    GET  /organizations/{org_id}/users        -- list org users (admin or member)
 """
 
 from __future__ import annotations
