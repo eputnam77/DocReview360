@@ -54,8 +54,8 @@ Target window: next month (confirm exact date and time zone).
 
 **Docker image and build context must exclude local junk**
 
-- [ ] Add a `.dockerignore`.
-- [ ] Exclude at least: `.git/`, `.github/`, `docs/`, `tests/`, `dist/`, `build/`,
+- [x] Add a `.dockerignore`.
+- [x] Exclude at least: `.git/`, `.github/`, `docs/`, `tests/`, `dist/`, `build/`,
   `.venv/`, `frontend/node_modules/`, `.coverage*`, `.pytest_cache/`, `.mypy_cache/`,
   `.ruff_cache/`, `.hypothesis/`, `.e2e-debug/`, `.e2e-debug-webpack/`, `.pytest_tmp/`,
   `.tmp/`, local DB files, and local JSON state files.
@@ -65,15 +65,16 @@ Target window: next month (confirm exact date and time zone).
 
 **Repository ignore list should be tightened before public release**
 
-- [ ] Add ignore rules for current local-only artifacts:
+- [x] Add ignore rules for current local-only artifacts:
   `.e2e-debug/`, `.e2e-debug-webpack/`, `.pytest_tmp/`, `worker_state.json`,
   `workflow_templates.json`, `workflow_templates.json.lock`, `email_templates.json`,
   `email_templates.json.lock`, `template_store.json`, `template_store.json.lock`,
   `docreview360.db`, `docreview360_roles.db`, `docreview360_users.db`, `search_state.db`,
   and `frontend/workflow_templates.json`.
-- [ ] Decide whether `frontend/document_types.json`, `frontend/phases.json`, and
+- [x] Decide whether `frontend/document_types.json`, `frontend/phases.json`, and
   `frontend/phase_workflow_links.json` are still needed. Remove or ignore them if not.
-- [ ] Remove or ignore `frontend/pages__backup_js_*` before release.
+  (Added to .gitignore as legacy files superseded by the database.)
+- [x] Remove or ignore `frontend/pages__backup_js_*` before release. (Added to .gitignore.)
 
 **Public GitHub repository readiness**
 
@@ -172,7 +173,8 @@ Target window: next month (confirm exact date and time zone).
 
 **43a) Token revocation is still process-local**
 
-- [ ] Move token revocation to a DB table or Redis-backed store.
+- [x] Move token revocation to a DB table or Redis-backed store.
+  (Implemented: `revoked_tokens` SQLite table in the auth DB via `UserRepository.revoke_token()` / `.is_token_revoked()`.)
 
 **43b) Workflow template persistence is still file-backed**
 
@@ -185,16 +187,21 @@ Target window: next month (confirm exact date and time zone).
 
 **43d) Frontend API migration is incomplete**
 
-- [ ] Replace remaining protected-page raw `fetch(...)` calls with `authenticatedFetch(...)`.
+- [x] Replace remaining protected-page raw `fetch(...)` calls with `authenticatedFetch(...)`.
+  (All 38 raw fetch calls in pages/ migrated; login.tsx intentionally kept as raw fetch.)
 - [ ] Broaden the frontend raw-fetch guard so it catches `fetch(`${API}/...`)`.
+  (Remaining: pages with `authenticatedFetch(\`${API}/...\`)` work correctly but could use relative paths.)
 
 **43e) `filelock` cleanup is not complete**
 
 - [ ] Remove remaining `filelock` runtime usage or update the checklist and docs to reflect the actual design.
+  (Still active in `email_templates.py`, `template_manager.py`, `workflows.py`.)
 
 **43f) Plugin marketplace frontend/backend contract mismatch**
 
-- [ ] Add the missing plugin marketplace routes or remove the frontend calls.
+- [x] Add the missing plugin marketplace routes or remove the frontend calls.
+  (Added `GET /plugin-marketplace/builtin-status` and `POST /plugin-marketplace/toggle` to `admin_router.py`;
+  added `get_builtin_status()` and `set_builtin_plugin_state()` to `plugin_marketplace.py`.)
 
 ## Product and architecture backlog
 
@@ -218,21 +225,71 @@ Target window: next month (confirm exact date and time zone).
 
 ### 34) Federal Style Validator integration
 
-**Phase 2**
+**Architecture decision (2026-03-10):** Federal Style Validator (FSV) is a separate,
+dedicated application that will be published as its own MIT-licensed package on PyPI
+(and other registries). DocReview360 is an integration host — it must not duplicate
+FSV's style, readability, quality, or regulatory logic internally.
 
-- [ ] Add a sidebar panel with live validation summary and overall score.
+**Integration contract:**
 
-**Phase 3**
+```
+FSV (separate MIT package on PyPI, authoritative for all style/quality work)
+  └── exposes: /validate, /quality, /readability, /regulatory-check (TBD by FSV)
 
-- [ ] Extract validation logic into a separate `federal-style-validator` package or repo.
-- [ ] Define the API contract between DocReview360 and Federal Style Validator.
-- [ ] Support both embedded mode and standalone mode.
-- [ ] Document integration points in `docs/federal-style-validator.md`.
+DocReview360 backend
+  └── thin proxy endpoints that forward to FSV and cache results in DB
+  └── config: FEDERAL_STYLE_VALIDATOR_URL (base URL of running FSV instance)
+
+DocReview360 editor integrations
+  └── TipTap: FSV-provided TipTap plugin/extension (client to FSV's API)
+  └── Other authoring tools: FSV-provided plugins (future)
+```
+
+**Internal implementations to remove once FSV integration is complete:**
+
+- `tiptapFederalStyleLint.ts` — local regex/rule validation; replace with FSV's TipTap plugin
+- `regulatory.py` — pattern-matching reimplementation; replace with proxy to FSV
+- `ml/onnx_infer.py` quality scoring — replace with FSV quality output (keep model infra if FSV uses it)
+- Inline preflight style checks in `checker.tsx` — replace with FSV API calls
+- Local readability/plain-language scoring — FSV is authoritative for this
+
+**What DocReview360 keeps:**
+
+- Integration layer (proxy endpoints calling FSV, returning results to the UI)
+- Result persistence (cache FSV scores in DB for history, sparklines, KPI cards)
+- UI rendering of FSV output (decorations in TipTap, result cards, quality score table)
+- Access control (authenticated users only for FSV calls)
+
+**Phase 1 — Integration layer (prerequisite: FSV API contract defined)**
+
+- [ ] Add `FEDERAL_STYLE_VALIDATOR_URL` config setting and document it.
+- [ ] Replace `POST /documents/preflight` style checks with proxy call to FSV.
+- [ ] Replace `POST /ai/regulatory-check` with proxy call to FSV regulatory endpoint.
+- [ ] Replace `POST /ml/quality` scoring with proxy call to FSV quality endpoint.
+- [ ] Remove `regulatory.py` duplicate pattern matching once FSV proxy is live.
+
+**Phase 2 — Editor integration (prerequisite: FSV TipTap plugin exists)**
+
+- [ ] Register FSV's TipTap plugin in `frontend/extensions/registry.ts`.
+- [ ] Remove `tiptapFederalStyleLint.ts` (local reimplementation) once FSV plugin is wired in.
+- [ ] Add sidebar panel showing live FSV validation summary and overall score.
+- [ ] Configure FSV endpoint URL in the editor plugin via DocReview360's settings API.
+
+**Phase 3 — Full cutover and documentation**
+
+- [ ] Confirm no remaining duplicate style/quality logic in DocReview360 source.
+- [ ] Document integration points, config, and FSV version requirements in `docs/federal-style-validator.md`.
+- [ ] Add FSV as an optional dependency in `pyproject.toml` with install instructions.
+- [ ] Define FSV version pinning and compatibility policy.
 
 ### 35) AI quality scores in project view
 
+**Note:** Once FSV integration (item 34) is complete, quality scores must come from FSV,
+not from internal scoring. The persistence and UI work below remains valid regardless of
+the score source.
+
 - [ ] Add `last_quality_score`, `last_quality_date`, and `plain_language_grade` persistence.
-- [ ] Compute and store scores on document changes or preflight runs.
+- [ ] Compute and store scores on document changes or preflight runs (via FSV proxy once available).
 - [ ] Add score history sparkline or trend indicator per document.
 - [ ] Include quality score summary in dashboard KPI cards.
 

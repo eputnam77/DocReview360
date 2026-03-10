@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import SeverityBadge, { SeverityLegend } from "@/components/SeverityBadge";
 
@@ -49,7 +49,7 @@ export default function AuditLogsPage() {
     });
     params.append("page", String(page));
     params.append("size", String(PAGE_SIZE));
-    fetch(`${API}/audit?${params.toString()}`, {
+    authenticatedFetch(`/audit?${params.toString()}`, {
       headers: { "X-User": username },
     })
       .then((r) => (r.ok ? r.json() : []))

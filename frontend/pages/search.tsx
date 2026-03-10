@@ -11,7 +11,7 @@ import {
   Input,
   Button,
 } from "@/components";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 
 interface Result {
@@ -28,7 +28,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!q) return;
-      fetch(`${API}/search?q=${encodeURIComponent(q)}`)
+      authenticatedFetch(`/search?q=${encodeURIComponent(q)}`)
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => setResults(Array.isArray(data) ? data : []))
         .catch(() => setResults([]));

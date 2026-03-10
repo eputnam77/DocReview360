@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, Label } from "@/components";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 type Config = {
@@ -32,7 +32,7 @@ export default function IntegrationsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/config`)
+    authenticatedFetch(`/config`)
       .then((r) => (r.ok ? r.json() : DEFAULTS))
       .then((data: Partial<Config>) => {
         setConfig({ ...DEFAULTS, ...data });
@@ -45,7 +45,7 @@ export default function IntegrationsPage() {
     setSaving(true);
     try {
       // PUT full config back, preserving other fields
-      await fetch(`${API}/config`, {
+      await authenticatedFetch(`/config`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),

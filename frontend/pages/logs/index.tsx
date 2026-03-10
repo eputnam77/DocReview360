@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { API, getStoredAccessToken } from "@/lib/api";
+import { authenticatedFetch, getStoredAccessToken } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import SeverityBadge, { SeverityLegend } from "@/components/SeverityBadge";
 
@@ -36,7 +36,7 @@ function EntityLink({
   const [exists, setExists] = useState<boolean | null>(null);
   useEffect(() => {
     if (!id || !type) return;
-    fetch(`${API}/${type}/${id}`, { method: "HEAD" })
+    authenticatedFetch(`/${type}/${id}`, { method: "HEAD" })
       .then((r) => setExists(r.ok))
       .catch(() => setExists(false));
   }, [id, type]);
@@ -85,7 +85,7 @@ export default function LiveLogsPage() {
     });
     params.append("page", String(page));
     params.append("size", String(PAGE_SIZE));
-    fetch(`${API}/audit?${params.toString()}`, {
+    authenticatedFetch(`/audit?${params.toString()}`, {
       headers: { "X-User": username },
     })
       .then((r) => (r.ok ? r.json() : []))

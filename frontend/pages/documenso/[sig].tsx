@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -29,7 +29,7 @@ export default function DocumensoSign() {
     console.log(`Completing signature ${sig} for approval ${approvalId}`);
 
     // Call the backend to complete the signature
-    fetch(`${API}/sign/${sig}/complete`, {
+    authenticatedFetch(`/sign/${sig}/complete`, {
       method: "POST",
       headers: {
         'Content-Type': 'application/json',
@@ -51,7 +51,7 @@ export default function DocumensoSign() {
           console.log(`Stored completion timestamp: ${timestamp}`);
 
           // Also sync with backend immediately
-          fetch(`${API}/approvals/${approvalId}`, {
+          authenticatedFetch(`/approvals/${approvalId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',

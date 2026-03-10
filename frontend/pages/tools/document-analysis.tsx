@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { FileInput } from "@/components/ui/file-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import {
     AlertCircle,
     BarChart3,
@@ -88,7 +88,7 @@ export default function DocumentAnalysisPage() {
   useEffect(() => {
     const loadEnabledTools = async () => {
       try {
-        const response = await fetch(`${API}/plugin-marketplace/builtin-status`);
+        const response = await authenticatedFetch(`/plugin-marketplace/builtin-status`);
         if (response.ok) {
           const data = await response.json();
           const enabled = ANALYSIS_TOOLS
@@ -135,11 +135,9 @@ export default function DocumentAnalysisPage() {
 
     const formData = new FormData(e.currentTarget);
     formData.append('tools', JSON.stringify(selectedTools));
-    const apiUrl = API || '/api';
 
     try {
-      console.log(`Submitting to: ${apiUrl}/tools/document-analysis`);
-      const res = await fetch(`${apiUrl}/tools/document-analysis`, {
+      const res = await authenticatedFetch(`/tools/document-analysis`, {
         method: "POST",
         body: formData
       });

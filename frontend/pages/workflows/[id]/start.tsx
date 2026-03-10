@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UploadDropzone } from "@/components/workflow";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 export default function StartWorkflowPage() {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function StartWorkflowPage() {
       if (file) {
         formData.append("file", file);
       }
-      const resp = await fetch(`${API}/workflows/${workflowId}/start`, {
+      const resp = await authenticatedFetch(`/workflows/${workflowId}/start`, {
         method: "POST",
         body: formData,
       });

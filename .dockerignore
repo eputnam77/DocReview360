@@ -1,0 +1,98 @@
+# Version control
+.git/
+.github/
+
+# Documentation (not needed in image)
+docs/
+*.md
+
+# Tests
+tests/
+.pytest_cache/
+.pytest_tmp/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.py[cod]
+*.pyd
+
+# Local tooling caches
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.nox/
+.tox/
+.pre-commit-cache/
+.cache/
+
+# Frontend dev artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/build/
+frontend/.cache/
+
+# E2E test artifacts
+.e2e-debug/
+.e2e-debug-webpack/
+.e2e-runs/
+test-results/
+playwright-report/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local dev state (DB files, runtime JSON stores)
+docreview360.db
+docreview360_roles.db
+docreview360_users.db
+search_state.db
+worker_state.json
+workflow_templates.json
+email_templates.json
+template_store.json
+*.lock
+
+# Legacy JSON persistence
+phases.json
+phase_workflow_links.json
+document_types.json
+frontend/document_types.json
+frontend/phases.json
+frontend/phase_workflow_links.json
+frontend/workflow_templates.json
+
+# Developer notes and internal tooling
+_debug_test.py
+ai-notes.md
+push-after-fix.ps1
+tatus
+.dev/
+.claude/
+CLAUDE.md
+CLAUDE_CODE_UPDATES.md
+
+# MkDocs build
+site/
+
+# Archive storage (generated content, not source)
+archive_store/
+
+# Temporary files
+.tmp/

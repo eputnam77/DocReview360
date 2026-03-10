@@ -15,7 +15,7 @@ import {
 import { PlusCircle, Trash, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "react-hot-toast";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 export default function NewWorkflowPage() {
   const [name, setName] = useState("");
@@ -30,7 +30,7 @@ export default function NewWorkflowPage() {
 
   useEffect(() => {
     // Load document types through API route
-    authenticatedFetch(`${API}/document-types`)
+    authenticatedFetch(`/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         setDocTypes(data.map((d) => (typeof d === "string" ? d : d.name)));
@@ -42,7 +42,7 @@ export default function NewWorkflowPage() {
 
   // fetch users for lookup
   useEffect(() => {
-    fetch(`${API}/users`)
+    authenticatedFetch(`/users`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         if (Array.isArray(data) && data.length) {
@@ -87,7 +87,7 @@ export default function NewWorkflowPage() {
     let createdTemplateId = "";
 
     try {
-      const res = await authenticatedFetch(`${API}/workflow-templates`, {
+      const res = await authenticatedFetch(`/workflow-templates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -105,13 +105,13 @@ export default function NewWorkflowPage() {
 
     for (const docType of docTypesSelected) {
       try {
-        const res = await authenticatedFetch(`${API}/document-types/${encodeURIComponent(docType)}`);
+        const res = await authenticatedFetch(`/document-types/${encodeURIComponent(docType)}`);
         if (!res.ok) {
           continue;
         }
 
         const doc = await res.json();
-        await authenticatedFetch(`${API}/document-types/${encodeURIComponent(docType)}`, {
+        await authenticatedFetch(`/document-types/${encodeURIComponent(docType)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

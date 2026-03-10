@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -108,8 +108,8 @@ export default function IntegrationsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/config`).then((r) => (r.ok ? r.json() : DEFAULT_CONFIG)),
-      fetch(`${API}/signature-provider`).then((r) =>
+      authenticatedFetch(`/config`).then((r) => (r.ok ? r.json() : DEFAULT_CONFIG)),
+      authenticatedFetch(`/signature-provider`).then((r) =>
         r.ok ? r.json() : { primary: "documenso", fallback: "local" },
       ),
     ])
@@ -129,7 +129,7 @@ export default function IntegrationsPage() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/ai/key`)
+    authenticatedFetch(`/ai/key`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
@@ -154,12 +154,12 @@ export default function IntegrationsPage() {
 
   const handleSave = async () => {
     try {
-      const resp = await fetch(`${API}/config`, {
+      const resp = await authenticatedFetch(`/config`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
-      const sigResp = await fetch(`${API}/signature-provider`, {
+      const sigResp = await authenticatedFetch(`/signature-provider`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ primary: primaryProvider, fallback: fallbackProvider }),
@@ -180,7 +180,7 @@ export default function IntegrationsPage() {
     const value = typeof keyOverride === "string" ? keyOverride : aiKey.trim();
     setAiKeySaving(true);
     try {
-      const resp = await fetch(`${API}/ai/key`, {
+      const resp = await authenticatedFetch(`/ai/key`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: value || null }),

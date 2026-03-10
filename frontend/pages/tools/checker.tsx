@@ -12,7 +12,7 @@ import {
 import { FileInput } from "@/components/ui/file-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import {
     AlertCircle,
     CheckCircle,
@@ -134,7 +134,7 @@ export default function CheckerPage() {
         setDocsLoading(true);
         setSysError(null);
         try {
-            const res = await authenticatedFetch(`${API}/documents`);
+            const res = await authenticatedFetch(`/documents`);
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
@@ -170,10 +170,9 @@ export default function CheckerPage() {
         setDownload(null);
 
         const formData = new FormData(e.currentTarget);
-        const apiUrl = API || "/api";
 
         try {
-            const res = await fetch(`${apiUrl}/tools/checker`, {
+            const res = await authenticatedFetch(`/tools/checker`, {
                 method: "POST",
                 body: formData,
             });
@@ -244,17 +243,17 @@ export default function CheckerPage() {
             // Run all three API calls in parallel
             const [preflightRes, regulatoryRes, qualityRes] =
                 await Promise.allSettled([
-                    authenticatedFetch(`${API}/documents/preflight`, {
+                    authenticatedFetch(`/documents/preflight`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ text }),
                     }),
-                    authenticatedFetch(`${API}/ai/regulatory-check`, {
+                    authenticatedFetch(`/ai/regulatory-check`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ text }),
                     }),
-                    authenticatedFetch(`${API}/ml/quality`, {
+                    authenticatedFetch(`/ml/quality`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ text }),

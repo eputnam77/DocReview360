@@ -452,6 +452,14 @@ class UserRepository:
                 )
             except Exception:  # column already exists
                 pass
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS revoked_tokens (
+                    jti TEXT PRIMARY KEY,
+                    expires_at TEXT NOT NULL
+                )
+                """
+            )
             conn.commit()
         if _allow_demo_seed():
             self._seed_defaults()
@@ -778,6 +786,32 @@ class UserRepository:
             return secrets.compare_digest(otp_secret, otp)
         return bool(totp.verify(otp, valid_window=1))
 
+    def revoke_token(self, jti: str, expires_at: datetime) -> None:
+        """Persist ``jti`` to the DB revocation table until it expires."""
+        expires_iso = expires_at.isoformat()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        with self._connection() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO revoked_tokens (jti, expires_at) VALUES (?, ?)",
+                (jti, expires_iso),
+            )
+            # Purge expired rows to keep the table bounded.
+            conn.execute("DELETE FROM revoked_tokens WHERE expires_at <= ?", (now_iso,))
+            conn.commit()
+
+    def is_token_revoked(self, jti: str) -> bool:
+        """Return ``True`` if ``jti`` is present in the DB revocation table and unexpired."""
+        now_iso = datetime.now(timezone.utc).isoformat()
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT expires_at FROM revoked_tokens WHERE jti = ?", (jti,)
+            ).fetchone()
+        if row is None:
+            return False
+        if row[0] <= now_iso:
+            return False
+        return True
+
 
 USER_REPOSITORY = UserRepository(USER_DB_PATH)
 _USER_REPOSITORY_LOCK = threading.Lock()
@@ -812,34 +846,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 oidc_scheme = OAuth2PasswordBearer(tokenUrl="oidc/token", auto_error=False)
 
 # ---------------------------------------------------------------------------
-# Token revocation blacklist — stores revoked JTI values with their expiry.
-# In-memory only; for production, back with Redis or a DB table.
+# Token revocation — DB-backed via UserRepository.revoked_tokens table.
 # ---------------------------------------------------------------------------
-_token_blacklist: dict[str, datetime] = {}
-_token_blacklist_lock = __import__("threading").Lock()
 
 
 def revoke_token(jti: str, expires_at: datetime) -> None:
-    """Add ``jti`` to the revocation blacklist until it expires."""
-    with _token_blacklist_lock:
-        _token_blacklist[jti] = expires_at
-        # Purge expired entries to bound memory usage.
-        now = datetime.now(timezone.utc)
-        expired = [k for k, exp in _token_blacklist.items() if exp <= now]
-        for k in expired:
-            del _token_blacklist[k]
+    """Persist ``jti`` to the SQLite revocation table until it expires."""
+    _get_user_repository().revoke_token(jti, expires_at)
 
 
 def is_token_revoked(jti: str) -> bool:
     """Return ``True`` if ``jti`` has been revoked and has not yet expired."""
-    with _token_blacklist_lock:
-        exp = _token_blacklist.get(jti)
-        if exp is None:
-            return False
-        if exp <= datetime.now(timezone.utc):
-            del _token_blacklist[jti]
-            return False
-        return True
+    return _get_user_repository().is_token_revoked(jti)
 
 
 class Token(BaseModel):

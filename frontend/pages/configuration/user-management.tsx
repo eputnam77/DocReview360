@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil, Trash } from "lucide-react";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 // --- System role choices, update as needed ---
 const ROLE_CHOICES = [
@@ -85,7 +85,7 @@ export default function UserManagementPage() {
 
   const loadUsers = async () => {
     try {
-      const resp = await fetch(`${API}/users`);
+      const resp = await authenticatedFetch(`/users`);
       const data = resp.ok ? await resp.json() : [];
       setUsers(Array.isArray(data) ? data.map(normalizeUser) : []);
     } catch (error) {
@@ -96,7 +96,7 @@ export default function UserManagementPage() {
 
   const loadRolePermissions = async () => {
     try {
-      const resp = await fetch(`${API}/rbac/role-permissions`);
+      const resp = await authenticatedFetch(`/rbac/role-permissions`);
       const data = resp.ok ? await resp.json() : [];
       setRolePermissions(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -113,7 +113,7 @@ export default function UserManagementPage() {
   const addUser = async () => {
     if (!newName.trim()) return;
     try {
-      const resp = await fetch(`${API}/users`, {
+      const resp = await authenticatedFetch(`/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -138,7 +138,7 @@ export default function UserManagementPage() {
     const target = users.find((u) => u.id === id);
     if (!target) return;
     try {
-      const resp = await fetch(`${API}/users/${encodeURIComponent(target.username)}`, {
+      const resp = await authenticatedFetch(`/users/${encodeURIComponent(target.username)}`, {
         method: "DELETE",
       });
       if (!resp.ok) {
@@ -162,7 +162,7 @@ export default function UserManagementPage() {
     const target = users.find((u) => u.id === id);
     if (!target) return;
     try {
-      const resp = await fetch(`${API}/users/${encodeURIComponent(target.username)}`, {
+      const resp = await authenticatedFetch(`/users/${encodeURIComponent(target.username)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -200,7 +200,7 @@ export default function UserManagementPage() {
     try {
       const formData = new FormData();
       formData.append("file", importFile);
-      const resp = await fetch(`${API}/users/import`, {
+      const resp = await authenticatedFetch(`/users/import`, {
         method: "POST",
         body: formData,
       });

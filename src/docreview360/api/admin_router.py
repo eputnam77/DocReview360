@@ -842,6 +842,36 @@ async def install_marketplace_plugin(
     return {"installed": body.name}
 
 
+@router.get("/plugin-marketplace/builtin-status")
+async def get_builtin_plugin_status(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, bool]:
+    """Return the enabled/disabled state of each built-in plugin."""
+    from ..plugin_marketplace import get_builtin_status
+    return get_builtin_status()
+
+
+class MarketplaceToggle(BaseModel):
+    """Request body for toggling a built-in plugin."""
+
+    pluginId: str
+    enabled: bool
+
+
+@router.post("/plugin-marketplace/toggle")
+async def toggle_builtin_plugin(
+    body: MarketplaceToggle,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Enable or disable a built-in plugin."""
+    from ..plugin_marketplace import set_builtin_plugin_state
+    try:
+        set_builtin_plugin_state(body.pluginId, body.enabled)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"pluginId": body.pluginId, "enabled": body.enabled}
+
+
 # ---------------------------------------------------------------------------
 # Config endpoint
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { Download, Info, PackagePlus, Settings, ToggleLeft, ToggleRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -28,11 +28,11 @@ export default function PluginMarketplace() {
     const loadPlugins = async () => {
       try {
         // First try to fetch marketplace plugins
-        const marketplaceResponse = await fetch(`${API}/plugin-marketplace`);
+        const marketplaceResponse = await authenticatedFetch(`/plugin-marketplace`);
         const marketplaceData = marketplaceResponse.ok ? await marketplaceResponse.json() : [];
 
         // Then fetch built-in plugin states
-        const builtInResponse = await fetch(`${API}/plugin-marketplace/builtin-status`);
+        const builtInResponse = await authenticatedFetch(`/plugin-marketplace/builtin-status`);
         const builtInData = builtInResponse.ok ? await builtInResponse.json() : {};
 
         // Built-in plugins that are always available
@@ -382,7 +382,7 @@ export default function PluginMarketplace() {
   const install = async (pluginId: string) => {
     setInstalling(pluginId);
     try {
-      await fetch(`${API}/plugin-marketplace/install`, {
+      await authenticatedFetch(`/plugin-marketplace/install`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: pluginId }),
@@ -398,7 +398,7 @@ export default function PluginMarketplace() {
   const togglePlugin = async (pluginId: string, currentState: boolean) => {
     setToggling(pluginId);
     try {
-      await fetch(`${API}/plugin-marketplace/toggle`, {
+      await authenticatedFetch(`/plugin-marketplace/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

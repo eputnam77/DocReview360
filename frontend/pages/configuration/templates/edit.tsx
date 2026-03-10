@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import {
   Select,
   SelectTrigger,
@@ -36,13 +36,13 @@ export default function EditTemplatePage() {
 
   // Load doc types and template data
   useEffect(() => {
-    authenticatedFetch(`${API}/document-types`)
+    authenticatedFetch(`/document-types`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => setDocTypes(data.map((d) => d.name)))
       .catch(() => setDocTypes([]));
 
     if (id) {
-      fetch(`${API}/templates/${id}`)
+      authenticatedFetch(`/templates/${id}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((tpl) => {
           if (!tpl) return;
@@ -101,12 +101,12 @@ export default function EditTemplatePage() {
     }
 
     if (formData) {
-      await fetch(`${API}/templates/${id}`, {
+      await authenticatedFetch(`/templates/${id}`, {
         method: "PUT",
         body: formData,
       });
     } else {
-      await fetch(`${API}/templates/${id}`, {
+      await authenticatedFetch(`/templates/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

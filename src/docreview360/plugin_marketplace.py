@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import subprocess
 import sys
+import threading
 from typing import Any
 
 
@@ -202,6 +203,33 @@ def list_plugins_with_info() -> list[dict[str, Any]]:
         {"id": plugin_id, **copy.deepcopy(plugin_info)}
         for plugin_id, plugin_info in PLUGIN_DATA.items()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Built-in plugin enable/disable state
+# ---------------------------------------------------------------------------
+
+BUILTIN_PLUGIN_IDS = {"fedstylevalidator", "scdocbuilder"}
+
+_builtin_states: dict[str, bool] = {pid: True for pid in BUILTIN_PLUGIN_IDS}
+_builtin_lock = threading.Lock()
+
+
+def get_builtin_status() -> dict[str, bool]:
+    """Return enabled/disabled state for all built-in plugins."""
+    with _builtin_lock:
+        return dict(_builtin_states)
+
+
+def set_builtin_plugin_state(plugin_id: str, enabled: bool) -> None:
+    """Enable or disable a built-in plugin by ID.
+
+    Raises ``ValueError`` if ``plugin_id`` is not a known built-in.
+    """
+    if plugin_id not in BUILTIN_PLUGIN_IDS:
+        raise ValueError(f"Unknown built-in plugin: {plugin_id!r}")
+    with _builtin_lock:
+        _builtin_states[plugin_id] = enabled
 
 
 def install_plugin(name: str) -> None:

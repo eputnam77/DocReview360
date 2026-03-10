@@ -14,7 +14,8 @@
       "Bash(DOCREVIEW360_ENV=dev .venv/bin/python:*)",
       "Bash(wc:*)",
       "Bash(npx:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(find /home/hoctar77/CodingProjects/DocReview360/DocReview360/frontend/pages -name \"*log*\" -type f 2>/dev/null | head -10)"
     ]
   }
 }

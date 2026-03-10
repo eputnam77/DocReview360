@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 const FALLBACK_FILE = "sample.pdf";
 
@@ -10,7 +10,7 @@ export default function ConverterPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     try {
-      const res = await fetch(`${API}/tools/convert`, {
+      const res = await authenticatedFetch(`/tools/convert`, {
         method: "POST",
         body: formData,
       });

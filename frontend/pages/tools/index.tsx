@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import {
     BarChart3, // Icon for "Document Analysis"
     FileCheck,
@@ -75,7 +75,7 @@ export default function ToolsPage() {
   useEffect(() => {
     const loadPluginStates = async () => {
       try {
-        const response = await fetch(`${API}/plugin-marketplace/builtin-status`);
+        const response = await authenticatedFetch(`/plugin-marketplace/builtin-status`);
         if (response.ok) {
           const data = await response.json();
           setEnabledPlugins(data);
