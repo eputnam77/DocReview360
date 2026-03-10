@@ -1,37 +1,52 @@
 # Latest Features
 
-This guide introduces the most recent additions to DocReview360 and walks you through common tasks. It assumes you have already followed the [Getting Started](getting_started.md) steps.
+This page tracks implemented product work that was moved out of
+`RELEASE_CHECKLIST.md` on 2026-03-10.
 
-## GraphQL Read Layer
+For open work, use `RELEASE_CHECKLIST.md`.
 
-DocReview360 now ships with a lightweight GraphQL API. You can query projects and documents using standard GraphQL syntax. The helper function `execute_query` lives in `docreview360.graphql_api` and provides read‑only access.
+## Authoring and templates
 
-Example:
+- TipTap-based structured template authoring is in place.
+- TipTap plugin safety and compatibility rules are documented in `docs/tiptap-plugins.md`.
+- Content schema validation and CMS-safe persistence are in place.
+- Template version history and phase-based locking are available.
 
-```python
-from docreview360.graphql_api import execute_query
+## Workflow and project review
 
-result = execute_query("{ projects { id name } }")
-```
+- Phase configuration now uses richer metadata and DB-backed APIs.
+- Document types can define their own ordered workflow phases.
+- Project review screens include workflow timeline, approvals grid, reviewer comments, and phase gating.
+- Share links, viewer-only access, and branding controls shipped.
 
-The API returns a dictionary with the requested fields.
+## Review and signature
 
-## Special Conditions Doc Builder
+- Documenso is available as the default e-signature provider.
+- DocuSign is available as an optional enterprise provider.
+- Signature activity is logged into the audit trail.
+- Approval-by-initials support shipped.
 
-The tools section now includes a **Special Conditions Doc Builder** interface.
-Click the card on the tools page to launch `/tools/sc_converter`. The
-implementation lives in a private repository and should be installed separately:
-<https://github.com/eputnam77/SCDocBuilder.git>.
+## Review experience
 
-## File Storage Plugin
+- Threaded comments, structured comment tags, and comment dispositions shipped.
+- Comment export to Word is available.
+- Document conversion supports Word, Markdown, and PDF flows.
+- Revision diff and version restore flows are available.
 
-A new object storage helper lets you store files on disk or in services like MinIO. Use `docreview360.object_storage.upload_file` to save data and receive a file path in return.
+## Dashboards and AI review
 
-```python
-from docreview360.object_storage import upload_file
+- User, manager, admin, executive, reviewer workload, SLA, and document aging views shipped.
+- The global footer now shows product and build metadata.
+- AI-assisted review shipped for style validation, acronyms, headings, plain language, regulatory citation checks, and pre-flight validation.
 
-path = upload_file("bucket", "example.txt", b"data")
-```
+## Enterprise readiness
 
-This can be plugged into your own workflows for persistent storage.
+- Organization support and per-organization settings shipped.
+- API key management shipped.
+- Notification integrations shipped for Slack, Teams, email, and webhooks.
+- Project bundle export/import and backup/restore support shipped.
 
+## Platform stability
+
+- Health checks, deterministic migrations, demo data, and the dev Docker Compose stack shipped.
+- Document version incrementing, history, restore, and freeze-at-approval shipped.

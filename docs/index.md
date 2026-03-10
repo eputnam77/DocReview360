@@ -14,6 +14,7 @@ Welcome to the DocReview360 project. This site collects guides and references fo
 - [Performance Baseline](performance_baseline.md)
 - [Test Determinism](test_determinism.md)
 - [Release Packaging](release_packaging.md)
+- [Release Completed Items](release-completed-items.md)
 - [Disaster Recovery Runbook](disaster_recovery.md)
 - [Data Retention and Deletion](data_retention_and_deletion.md)
 - [AI Workflow](ai_workflow.md)
@@ -36,8 +37,7 @@ Pull requests are welcome! Please run the unit tests with `pytest` and the E2E s
 
 ## License
 
-This project is released under the GNU General Public License v3.0. See the LICENSE file for details.
-
+This project is released under the MIT License. See the `LICENSE` file for details.
 
 
 
