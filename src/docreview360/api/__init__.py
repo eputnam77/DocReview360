@@ -245,6 +245,10 @@ from .comments_router import router as comments_router
 from .organizations_router import router as organizations_router
 from .saml_router import router as saml_router
 from .scim_router import router as scim_router
+from .branches_router import router as branches_router
+from .legal_router import router as legal_router
+from .config_router import router as config_router
+from .flags_router import router as flags_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1071,6 +1075,10 @@ app.include_router(comments_router)
 app.include_router(organizations_router)
 app.include_router(saml_router)
 app.include_router(scim_router)
+app.include_router(branches_router)
+app.include_router(legal_router)
+app.include_router(config_router)
+app.include_router(flags_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)

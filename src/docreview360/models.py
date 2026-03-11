@@ -6,7 +6,18 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, text as _sa_text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text as _sa_text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 try:  # pragma: no cover - pydantic optional
@@ -125,6 +136,9 @@ class Document(Base):
 
     project: Mapped[Project] = relationship(back_populates="documents")
     versions: Mapped[list["DocumentVersion"]] = relationship(back_populates="document")
+    branches: Mapped[list["DocumentBranch"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
 
 
 class DocumentVersion(Base):
@@ -354,3 +368,226 @@ class LogEntry(BaseModel):
 
 # ``AuditLogRecord`` retained for backward compatibility
 AuditLogRecord = LogEntry
+
+
+# ---------------------------------------------------------------------------
+# Document branches (parallel review tracks)
+# ---------------------------------------------------------------------------
+
+
+class DocumentBranch(Base):
+    """A named branch of a document for parallel review tracks."""
+
+    __tablename__ = "document_branches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True, nullable=False)
+    branch_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_by: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    source_revision_id: Mapped[int | None] = mapped_column(
+        ForeignKey("document_versions.id"), nullable=True
+    )
+    merged_revision_id: Mapped[int | None] = mapped_column(
+        ForeignKey("document_versions.id"), nullable=True
+    )
+    merged_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    content_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    document: Mapped["Document"] = relationship(back_populates="branches")
+
+
+# ---------------------------------------------------------------------------
+# NARA records management metadata
+# ---------------------------------------------------------------------------
+
+
+class NaraMetadata(Base):
+    """NARA records management metadata for a document."""
+
+    __tablename__ = "nara_metadata"
+    __table_args__ = (UniqueConstraint("document_id", name="uq_nara_document"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True, nullable=False)
+    schedule_number: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    disposition_authority: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    retention_period: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    disposition_instruction: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    record_series_title: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    record_creator: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    record_status: Mapped[str] = mapped_column(String(50), default="active", index=True)
+    vital_record: Mapped[bool] = mapped_column(Boolean, default=False)
+    classified: Mapped[bool] = mapped_column(Boolean, default=False)
+    classification_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Legal hold
+# ---------------------------------------------------------------------------
+
+
+class LegalHold(Base):
+    """A legal hold that prevents document disposal."""
+
+    __tablename__ = "legal_holds"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    hold_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    hold_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    released_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    documents: Mapped[list["LegalHoldDocument"]] = relationship(
+        back_populates="hold", cascade="all, delete-orphan"
+    )
+
+
+class LegalHoldDocument(Base):
+    """Join table: documents under a legal hold."""
+
+    __tablename__ = "legal_hold_documents"
+    __table_args__ = (UniqueConstraint("hold_id", "document_id", name="uq_hold_document"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    hold_id: Mapped[str] = mapped_column(ForeignKey("legal_holds.id"), nullable=False, index=True)
+    document_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    added_by: Mapped[str] = mapped_column(String, nullable=False)
+
+    hold: Mapped["LegalHold"] = relationship(back_populates="documents")
+
+
+# ---------------------------------------------------------------------------
+# Hierarchical configuration (system → org → project)
+# ---------------------------------------------------------------------------
+
+
+class OrgConfig(Base):
+    """Organization-level configuration overrides."""
+
+    __tablename__ = "org_configs"
+    __table_args__ = (UniqueConstraint("org_id", "config_key", name="uq_org_config_key"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    org_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    config_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    config_value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON-encoded
+    updated_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ProjectConfig(Base):
+    """Project-level configuration overrides."""
+
+    __tablename__ = "project_configs"
+    __table_args__ = (UniqueConstraint("project_id", "config_key", name="uq_project_config_key"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    config_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    config_value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON-encoded
+    updated_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Feature flags
+# ---------------------------------------------------------------------------
+
+
+class FeatureFlag(Base):
+    """Per-organization or system-wide feature flags."""
+
+    __tablename__ = "feature_flags"
+    __table_args__ = (UniqueConstraint("flag_name", "org_id", name="uq_flag_name_org"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    flag_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    org_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    rollout_percentage: Mapped[int] = mapped_column(Integer, default=100)
+    created_by: Mapped[str] = mapped_column(String, default="system")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Custom workflows (org-defined, no code changes)
+# ---------------------------------------------------------------------------
+
+
+class CustomWorkflowTemplate(Base):
+    """Organization-defined custom workflow template."""
+
+    __tablename__ = "custom_workflow_templates"
+    __table_args__ = (UniqueConstraint("org_id", "name", name="uq_custom_wf_org_name"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    org_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    steps: Mapped[str] = mapped_column(Text, nullable=False)  # JSON array
+    doc_types: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array or null
+    created_by: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+# ---------------------------------------------------------------------------
+# Custom fields (EAV — org-defined, no schema changes)
+# ---------------------------------------------------------------------------
+
+
+class CustomFieldDefinition(Base):
+    """Definition of a custom field for documents, projects, or users."""
+
+    __tablename__ = "custom_field_definitions"
+    __table_args__ = (
+        UniqueConstraint("org_id", "entity_type", "field_name", name="uq_custom_field_def"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    org_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String(20), nullable=False)  # document|project|user
+    field_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    field_label: Mapped[str] = mapped_column(String(200), nullable=False)
+    field_type: Mapped[str] = mapped_column(String(20), nullable=False)  # text|number|date|boolean|select
+    options: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array for select
+    required: Mapped[bool] = mapped_column(Boolean, default=False)
+    default_value: Mapped[str | None] = mapped_column(String, nullable=True)  # JSON-encoded
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    values: Mapped[list["CustomFieldValue"]] = relationship(
+        back_populates="field_definition", cascade="all, delete-orphan"
+    )
+
+
+class CustomFieldValue(Base):
+    """Actual value of a custom field for a specific entity (EAV)."""
+
+    __tablename__ = "custom_field_values"
+    __table_args__ = (UniqueConstraint("field_id", "entity_id", name="uq_field_value"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    field_id: Mapped[str] = mapped_column(
+        ForeignKey("custom_field_definitions.id"), nullable=False, index=True
+    )
+    entity_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON-encoded
+    updated_by: Mapped[str] = mapped_column(String, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    field_definition: Mapped["CustomFieldDefinition"] = relationship(back_populates="values")

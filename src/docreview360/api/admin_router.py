@@ -1005,3 +1005,169 @@ async def switch_env_endpoint(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"url": url}
+
+
+@router.get("/admin/audit/completeness")
+async def audit_completeness(
+    _user: auth.User = Depends(require_role("admin")),
+) -> dict:
+    """Verify the integrity of the audit log hash chain (admin only).
+
+    Returns ``{"ok": true}`` if the chain is intact, or ``{"ok": false, ...}``
+    with the ID of the first broken entry.
+    """
+    from ..logs import verify_audit_log_chain
+
+    result = verify_audit_log_chain()
+    if isinstance(result, dict):
+        return result
+    # If it returns a simple bool or tuple, normalise
+    if result is True:
+        return {"ok": True, "message": "Audit log chain is intact"}
+    return {"ok": False, "message": "Audit log chain verification failed", "detail": str(result)}
+
+
+# ---------------------------------------------------------------------------
+# Branding / white-label endpoints  (Item 40 Phase 3 / Item 42)
+# ---------------------------------------------------------------------------
+
+
+class BrandingPayload(BaseModel):
+    """Partial branding overrides — only provided keys are written."""
+
+    company_name: str | None = None
+    logo_url: str | None = None
+    logo_alt: str | None = None
+    primary_color: str | None = None
+    accent_color: str | None = None
+    favicon_url: str | None = None
+    support_url: str | None = None
+    docs_url: str | None = None
+    privacy_url: str | None = None
+    security_url: str | None = None
+    locale: str | None = None
+
+
+class TerminologyPayload(BaseModel):
+    """Partial terminology overrides — only provided keys are written."""
+
+    project: str | None = None
+    projects: str | None = None
+    document: str | None = None
+    documents: str | None = None
+    approval: str | None = None
+    reviewer: str | None = None
+
+
+@router.get("/orgs/{org_id}/branding")
+async def get_org_branding(
+    org_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return effective branding + terminology for *org_id*."""
+    from ..db_store import get_db
+    from ..branding import get_full_theme
+
+    with get_db().orm_session() as db:
+        return get_full_theme(db, org_id)
+
+
+@router.put("/orgs/{org_id}/branding")
+async def set_org_branding(
+    org_id: str,
+    payload: BrandingPayload,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Update branding overrides for *org_id* (admin only)."""
+    from ..db_store import get_db
+    from ..branding import set_branding
+
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=422, detail="No branding fields provided")
+    with get_db().orm_session() as db:
+        try:
+            result = set_branding(db, org_id, updated_by=current_user.username, **updates)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"org_id": org_id, "branding": result}
+
+
+@router.delete("/orgs/{org_id}/branding")
+async def reset_org_branding(
+    org_id: str,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Reset all branding overrides for *org_id* to system defaults."""
+    from ..db_store import get_db
+    from ..branding import reset_branding
+
+    with get_db().orm_session() as db:
+        result = reset_branding(db, org_id, updated_by=current_user.username)
+        return {"org_id": org_id, "branding": result, "reset": True}
+
+
+@router.put("/orgs/{org_id}/terminology")
+async def set_org_terminology(
+    org_id: str,
+    payload: TerminologyPayload,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Update terminology overrides for *org_id* (admin only)."""
+    from ..db_store import get_db
+    from ..branding import set_terminology
+
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=422, detail="No terminology fields provided")
+    with get_db().orm_session() as db:
+        try:
+            result = set_terminology(db, org_id, updated_by=current_user.username, **updates)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"org_id": org_id, "terminology": result}
+
+
+# ---------------------------------------------------------------------------
+# i18n / locale endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/i18n/locales")
+async def list_supported_locales(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict[str, Any]]:
+    """Return the list of supported UI locales."""
+    from ..i18n import list_locales
+
+    return list_locales()
+
+
+@router.get("/i18n/translations/{locale}")
+async def get_translations(
+    locale: str,
+    namespace: str | None = None,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return translation strings for *locale*, optionally filtered by *namespace*."""
+    from ..i18n import get_namespace, SUPPORTED_LOCALES, _normalise
+
+    # Check the raw base tag before normalisation so that unsupported locales
+    # (e.g. "zh") are rejected rather than silently mapped to the default.
+    raw_base = locale.strip().lower().split("-")[0].split("_")[0]
+    if raw_base not in SUPPORTED_LOCALES:
+        raise HTTPException(status_code=404, detail=f"Locale {locale!r} is not supported")
+    norm = _normalise(locale)
+
+    if namespace:
+        strings = get_namespace(namespace, norm)
+        return {"locale": norm, "namespace": namespace, "strings": strings}
+
+    # Return all namespaces
+    from ..i18n import _TRANSLATIONS
+
+    all_strings = {}
+    for key in _TRANSLATIONS:
+                from ..i18n import translate
+                all_strings[key] = translate(key, norm)
+    return {"locale": norm, "strings": all_strings}

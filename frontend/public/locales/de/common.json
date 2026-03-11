@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projekte",
+    "documents": "Dokumente",
+    "admin": "Administration",
+    "logout": "Abmelden"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "L\u00f6schen",
+    "edit": "Bearbeiten",
+    "submit": "Einreichen",
+    "loading": "Laden\u2026",
+    "error": "Ein Fehler ist aufgetreten.",
+    "success": "Erfolg",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "export": "Exportieren"
+  },
+  "doc": {
+    "status": {
+      "draft": "Entwurf",
+      "review": "In Pr\u00fcfung",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "archived": "Archiviert"
+    }
+  },
+  "approval": {
+    "approve": "Genehmigen",
+    "reject": "Ablehnen",
+    "pending": "Ausstehend"
+  },
+  "error": {
+    "not_found": "Nicht gefunden.",
+    "forbidden": "Zugriff verweigert.",
+    "server": "Serverfehler. Bitte erneut versuchen."
+  },
+  "date": {
+    "created_at": "Erstellt",
+    "updated_at": "Aktualisiert",
+    "due_date": "F\u00e4lligkeitsdatum"
+  }
+}

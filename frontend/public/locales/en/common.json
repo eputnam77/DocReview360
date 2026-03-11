@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "documents": "Documents",
+    "admin": "Admin",
+    "logout": "Log out"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit",
+    "loading": "Loading\u2026",
+    "error": "An error occurred.",
+    "success": "Success",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export"
+  },
+  "doc": {
+    "status": {
+      "draft": "Draft",
+      "review": "Under Review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "archived": "Archived"
+    }
+  },
+  "approval": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "pending": "Pending"
+  },
+  "error": {
+    "not_found": "Not found.",
+    "forbidden": "Access denied.",
+    "server": "Server error. Please try again."
+  },
+  "date": {
+    "created_at": "Created",
+    "updated_at": "Updated",
+    "due_date": "Due date"
+  }
+}

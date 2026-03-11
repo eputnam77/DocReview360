@@ -11,6 +11,7 @@ from typing import Any, Iterator
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session as _OrmSession, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from .models import Base
@@ -139,6 +140,23 @@ class Database:
         """Yield a connection context."""
         with self._engine.begin() as conn:
             yield conn
+
+    @contextmanager
+    def orm_session(self) -> Iterator[_OrmSession]:
+        """Yield an ORM Session for use with SQLAlchemy model queries.
+
+        Commits on success; rolls back on exception.
+        """
+        _SessionLocal = sessionmaker(bind=self._engine, expire_on_commit=False)
+        db = _SessionLocal()
+        try:
+            yield db
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     @contextmanager
     def tenant_session(self, tenant_schema: str) -> Iterator[Any]:

@@ -3,6 +3,11 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: { optimizeCss: true },
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  i18n: {
+    locales: ["en", "es", "fr", "de"],
+    defaultLocale: "en",
+    localeDetection: true,
+  },
   async headers() {
     return [
       {

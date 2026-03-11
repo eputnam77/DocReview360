@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "projects": "Proyectos",
+    "documents": "Documentos",
+    "admin": "Administraci\u00f3n",
+    "logout": "Cerrar sesi\u00f3n"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "submit": "Enviar",
+    "loading": "Cargando\u2026",
+    "error": "Se produjo un error.",
+    "success": "\u00c9xito",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar"
+  },
+  "doc": {
+    "status": {
+      "draft": "Borrador",
+      "review": "En revisi\u00f3n",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "archived": "Archivado"
+    }
+  },
+  "approval": {
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "pending": "Pendiente"
+  },
+  "error": {
+    "not_found": "No encontrado.",
+    "forbidden": "Acceso denegado.",
+    "server": "Error del servidor. Int\u00e9ntelo de nuevo."
+  },
+  "date": {
+    "created_at": "Creado",
+    "updated_at": "Actualizado",
+    "due_date": "Fecha de vencimiento"
+  }
+}

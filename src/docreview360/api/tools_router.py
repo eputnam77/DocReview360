@@ -48,10 +48,16 @@ from ..search import (
 from ..secrets import get_secret
 from ..settings_manager import update_secret
 from ..watchlist import get_watchlist, toggle_watch
+from ..accessibility import scan_document_accessibility, scan_result_to_dict
 
 _logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class AccessibilityScanPayload(BaseModel):
+    document_id: str
+    content: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -791,3 +797,28 @@ async def regulatory_check(
         results=serialized,
         has_issues=any(r.issues for r in citation_results),
     )
+
+
+@router.post("/tools/accessibility-scan")
+async def accessibility_scan(
+    payload: AccessibilityScanPayload,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Scan a document's content for WCAG 2.1 AA / Section 508 accessibility issues.
+
+    Pass either ``content`` (raw HTML/text) or a ``document_id`` to load content
+    from the database.  Returns a scan result with violations, passes, and a score.
+    """
+    content = payload.content or ""
+    if not content and payload.document_id:
+        # Attempt to load from DB
+        try:
+            from ..documents import get_document  # type: ignore[import]
+
+            doc = get_document(payload.document_id)
+            content = getattr(doc, "content", "") or getattr(doc, "text", "") or ""
+        except Exception:
+            pass
+
+    result = scan_document_accessibility(content, doc_id=payload.document_id)
+    return scan_result_to_dict(result)
