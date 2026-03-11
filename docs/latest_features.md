@@ -11,6 +11,9 @@ For open work, use `RELEASE_CHECKLIST.md`.
 - TipTap plugin safety and compatibility rules are documented in `docs/tiptap-plugins.md`.
 - Content schema validation and CMS-safe persistence are in place.
 - Template version history and phase-based locking are available.
+- Document type defaults now use workflow templates via `default_workflow_template_id`, and the admin configuration page now reads `GET /workflow-templates` for the Default Workflow selector.
+- The 10 built-in document types now seed curated starter HTML instead of the bare `<h1>{name}</h1>` placeholder.
+- `GET /document-types/{name}/starter-content` is available for editor bootstrapping with curated document-type HTML.
 
 ## Workflow and project review
 
@@ -18,6 +21,14 @@ For open work, use `RELEASE_CHECKLIST.md`.
 - Document types can define their own ordered workflow phases.
 - Project review screens include workflow timeline, approvals grid, reviewer comments, and phase gating.
 - Share links, viewer-only access, and branding controls shipped.
+- Reviewer assignments now persist with lifecycle state, due dates, replacement tracking, and auto-migration from legacy `reviewers` lists.
+- `/users/search` and the debounced `UserPicker` support reviewer assignment from the project view.
+- Review notifications now fire for assignment, reminder, question, concurrence, replacement, signature, and all-complete events, and each dispatch is written to the project notification log.
+- The feedback ledger now stores feedback type, assignment links, threaded replies, dispositions, progress counts, and phase archives.
+- Concurrence gates, non-concurrence, concur-with-comments, internal sign-off, and `review-summary` readiness checks shipped.
+- The project view now centers the lifecycle stepper plus Overview, Reviewers, Feedback, Signatures, Approvals, and History tabs, including reviewer-focused banner actions.
+- Project lifecycle close-out now covers `draft` through `closed`, published metadata, records-package download with integrity hash, and records status on the Overview tab.
+- Reviewer deadlines now support per-assignment due dates, SLA summaries, overdue status badges, reminder runs, and escalation.
 
 ## Review and signature
 
@@ -25,6 +36,7 @@ For open work, use `RELEASE_CHECKLIST.md`.
 - DocuSign is available as an optional enterprise provider.
 - Signature activity is logged into the audit trail.
 - Approval-by-initials support shipped.
+- Long-term signature validation shipped with RFC 3161 timestamping, OCSP and CRL evidence capture, archival timestamps, stored LTV packages, and `GET /signatures/{id}/ltv`.
 
 ## Review experience
 
