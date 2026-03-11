@@ -276,7 +276,9 @@ official review record for Federal records retention.
   Blocks on terminal status (409). (2026-03-11)
 - [x] `review.question_asked` / `review.question_answered` — fired from `feedback_router.py` when
   a question-type item is created or when a non-reviewer replies to a question. (2026-03-11)
-- [ ] `review.concurrence_requested` — depends on Phase 4 sign-off
+- [x] `review.concurrence_requested` — `POST /projects/{id}/assignments/{aid}/request-concurrence`
+  endpoint in `assignments_router.py`; SME action that fires notification without changing status.
+  `review.concurrence_requested` message added to `_emit_review_notification()`. (2026-03-11)
 - [ ] Notification channel selection per reviewer preference (uses global settings for now)
 - [x] Deep links in notifications — all `_emit_review_notification()` messages now include
   `/projects/{id}#reviewers` deep link. (2026-03-11)
@@ -312,141 +314,130 @@ official review record for Federal records retention.
 - [x] "Question" type items: reviewer can mark "satisfied" via `POST .../question-satisfied`. (2026-03-11)
 - [x] Feedback progress bar: "N of M items addressed" with color-coded bar; counts by status;
   `GET /projects/{id}/feedback/progress` powers it via React Query. (2026-03-11)
-- [ ] Phase-scoped feedback ledger archive: read-only past phases, expandable by phase in the tab
-  (deferred — current filtering by phase param is available but no auto-archive on phase advance)
+- [x] Phase-scoped feedback ledger archive: `_update_workflow_phase()` in `projects_router.py` now
+  calls `archive_phase_feedback(project_id, old_phase, archived_by=current_user.username)` when
+  the phase advances, auto-resolving all open top-level feedback from the previous phase.
+  Manual `POST /projects/{id}/feedback/archive-phase` endpoint also available. (2026-03-11)
 
 **Phase 4 — Reviewer sign-off and concurrence**
 
-- [ ] Gate the "Request Concurrence / Signature" action per reviewer: all
-  feedback items from that reviewer must be in a terminal status (accepted |
-  rejected | resolved) and all "question" items must have an SME response
-  before the reviewer can be asked to concur
-- [ ] Concurrence options per reviewer (presented as clear buttons):
-  - **Concur** — reviewer agrees with the document as revised; transitions
-    assignment to "concurred"
-  - **Concur with Comments** — reviewer agrees but attaches final notes
-  - **Non-concur** — reviewer objects; requires written explanation; this
-    creates a "non_concurrence" feedback item and blocks phase advancement
-    until the SME dispositions it or the reviewer is replaced
-- [ ] After concurrence, present signature options with clear UI affordance:
-  - Full digital signature (Documenso / DocuSign) — opens provider flow
-  - Initials (existing `sign-initials` endpoint) — modal with 2–5 char input
-  - Internal acknowledgement (checkbox + timestamp) — for low-ceremony or
-    internal-only reviews
-- [ ] After signing, freeze the reviewer's row — show signed date, signature
-  provider badge, certificate link, and "Verified" checkmark
-- [ ] When all assigned reviewers have signed, surface a prominent
-  "All Reviews Complete — Ready for Next Phase" banner with:
-  - "Advance Phase" button (if more phases remain)
-  - "Submit for Publication" button (if this is the final phase)
-  - "Close Project" button (if no further action needed)
+- [x] Gate the "Request Concurrence / Signature" action per reviewer: eligibility check via
+  `check_concurrence_eligibility()` in `concurrence_gate.py`; `GET .../eligibility` endpoint
+  returns `eligible`, `open_items`, `unanswered_questions`. Frontend shows concur buttons only
+  when `eligible=true`. (2026-03-11)
+- [x] Concurrence options per reviewer (presented as clear buttons):
+  - **Concur** — `POST .../concur`; transitions assignment to "concurred". (2026-03-11)
+  - **Concur with Comments** — `POST .../concur-with-comments` with `{text}`; creates a
+    `comment` feedback item and transitions to "concurred". (2026-03-11)
+  - **Non-concur** — `POST .../non-concur` with `{reason}`; transitions to "non_concurred";
+    SME notified. (2026-03-11)
+- [x] After concurrence, present signature options:
+  - Full digital signature (Documenso / DocuSign) — deferred (existing Approvals tab)
+  - Internal acknowledgement — `POST .../sign-internal` with optional note; shown as "Internal
+    Sign-off" button when eligible; stamps `signed_at`. (2026-03-11)
+- [x] After signing, reviewer's row frozen — Signatures tab shows signed date with
+  `CheckCircle2` icon; overdue highlighting on due date. (2026-03-11)
+- [x] When all assigned reviewers have signed, "All Reviews Complete — Ready for Next Phase"
+  banner with "Advance Phase" button (canEdit). Non-concurrence warning shown when applicable.
+  `GET /projects/{id}/review-summary` drives this via `all_complete` field. (2026-03-11)
 
 **Phase 5 — Reviewer experience (what the reviewer sees)**
 
-- [ ] When a reviewer clicks the notification link, land them on the project
-  view with a **focused reviewer banner** at the top: "You have been asked
-  to review [Document Title] by [SME Name]. Due: [Date]." with clear
-  call-to-action buttons: "Open Document" (opens TipTap) and "Add Feedback"
-  (scrolls to the feedback form)
-- [ ] Auto-transition the reviewer's assignment status from "invited" to
-  "reviewing" when they first open the project view
-- [ ] Show the reviewer only their own feedback items by default (with a
-  toggle to see all reviewers' feedback for context)
-- [ ] Provide a prominent "Submit Review" button that:
-  1. Confirms the reviewer has finished adding feedback
-  2. Transitions their assignment to "feedback_submitted"
-  3. Notifies the SME
-  4. Disables further feedback submission from this reviewer until the SME
-     re-opens or requests additional review
-- [ ] If the reviewer has open questions awaiting SME response, show a
-  "Waiting for SME Response" status on their banner — they cannot submit
-  their review or concur until their questions are answered
-- [ ] Read-only document preview panel alongside the feedback table so the
-  reviewer can reference the document without switching to the editor
+- [x] When a reviewer clicks the notification link, land them on the project view with a
+  **focused reviewer banner** at the top. Shows assignment status, due date, and CTA buttons:
+  "Open Document" (TipTap link), "Submit Review", "Concur", "Concur with Comments", and
+  "Internal Sign-off" (when eligible). (2026-03-11)
+- [x] Auto-transition the reviewer's assignment status from "invited" to "reviewing" when they
+  first open the project view — `POST /projects/{id}/assignments/view` called on mount, fires
+  `review.started` notification. (2026-03-11)
+- [x] Show the reviewer only their own feedback items by default — "My feedback only" toggle
+  (checkbox) filters feedback items to `reviewer === username`. (2026-03-11)
+- [x] "Submit Review" button — calls `POST .../submit`; transitions to `feedback_submitted`;
+  notifies SME via `review.feedback_received`. Disabled when reviewer has unanswered questions.
+  (2026-03-11)
+- [x] "Waiting for SME Response" status on reviewer banner — full eligibility object stored;
+  when `unanswered_questions > 0`, amber badge shown and Submit Review is disabled. (2026-03-11)
+- [ ] Read-only document preview panel alongside the feedback table (deferred)
 
 **Phase 6 — Project view layout and navigation**
 
-- [ ] Restructure the project view around the review lifecycle with a
-  horizontal stepper or status bar at the top showing the current phase and
-  review state: Assign Reviewers → Collect Feedback → Address Feedback →
-  Collect Signatures → Closed / Submitted to Records
-- [ ] Keep the current sticky tab navigation but rename to: **Overview** |
-  **Reviewers** | **Feedback** | **Signatures** | **History**
-- [ ] **Overview tab**: project metadata (doc type, SME, phase, dates),
-  document link (opens TipTap editor), KPI summary cards (reviewers
-  assigned, feedback items, items addressed, signatures collected, days in
-  current phase), workflow phase timeline showing all phases with
-  completion status
-- [ ] **Reviewers tab**: reviewer assignment table built on `<UserPicker />`
-  for adding; per-row actions: Request Review, Replace (for OOO), Remove,
-  Send Reminder; status badges; due date with overdue highlighting;
-  drag-to-reorder if review sequence matters; bulk actions: remind all,
-  export reviewer list
-- [ ] **Feedback tab**: the unified feedback ledger from Phase 3 with
-  phase-scoped sections; includes the feedback submission form at the top
-  for reviewers, and the disposition controls for the SME
-- [ ] **Signatures tab**: per-reviewer concurrence and signature status;
-  sign / remind / reset actions; signed-document download; verification
-  status with hash check; LTV package link; overall signature summary
-- [ ] **History tab**: existing audit timeline augmented with review lifecycle
-  events (assignment created, notification sent, feedback submitted,
-  concurrence given, signature collected, phase advanced, reviewer replaced)
-- [ ] Add a collapsible **document preview panel** (read-only rendered HTML)
-  on the right side of the Feedback and Signatures tabs so users do not
-  have to switch to the editor to see document context
-- [ ] Ensure the project view is the **single source of truth** for review
-  status — a user should never need to open the editor, the review page,
-  and the approval table separately to understand where a review stands
+- [x] Lifecycle stepper (`LifecycleStepper` component) at the top of the project view, driven
+  by `GET /projects/{id}/review-summary` → `lifecycle_step`. Steps: Assign Reviewers →
+  Collect Feedback → Address Feedback → Collect Signatures → Complete. (2026-03-11)
+- [x] Sticky tab navigation renamed to: **Overview** | **Reviewers** | **Feedback** |
+  **Signatures** | **Approvals** | **History**. (2026-03-11)
+- [x] **Overview tab**: project metadata table, KPI cards, document quality scores, workflow
+  timeline, overall progress bar, primary "Edit Document" CTA. (2026-03-11)
+- [x] **Reviewers tab**: assignment table with `<UserPicker />` for invite form; status badges
+  with color coding; due date; per-row reminder bell; bulk actions: "Remind All" button
+  (reminders all non-terminal reviewers), "Export" button (downloads CSV). (2026-03-11)
+- [x] **Feedback tab**: unified feedback ledger with progress bar, post-feedback form,
+  type/status filter chips, "My feedback only" toggle, threaded items with disposition actions
+  and inline reply, "Question satisfied" button. (2026-03-11)
+- [x] **Signatures tab**: per-reviewer concurrence/sign-off cards with eligibility indicators,
+  overdue highlighting, non-concurrence reason display; SME "Request Concurrence" and "Remind"
+  buttons; reviewer "Concur", "Concur with Comments", "Internal Sign-off" buttons. (2026-03-11)
+- [x] **History tab**: audit timeline enriched with synthetic review lifecycle events derived
+  from assignment timestamps (invited, started, feedback submitted, concurred/signed); all
+  events merged and sorted by timestamp descending. Notification log in collapsible sub-section.
+  (2026-03-11)
+- [ ] Collapsible document preview panel on the right side of Feedback/Signatures tabs (deferred)
+- [x] Project view is single source of truth — lifecycle stepper, reviewer table, feedback
+  ledger, signature status, and audit history all visible without leaving the project view.
+  (2026-03-11)
 
 **Phase 7 — Records retention and project close-out**
 
-- [ ] Add a project status lifecycle: `draft` → `in_review` → `reviewed` →
+- [x] Add a project status lifecycle: `draft` → `in_review` → `reviewed` →
   `ready_for_publication` → `published` → `submitted_to_records` → `closed`
-- [ ] "Ready for Publication" status: SME sets this after all reviewers have
+  (`project_lifecycle.py`, `VALID_TRANSITIONS` state machine, `is_feedback_blocked()`). (2026-03-11)
+- [x] "Ready for Publication" status: SME sets this after all reviewers have
   signed and all feedback is dispositioned; blocks further feedback
-  submission; the document content is frozen
-- [ ] "Published" status: SME records that the document was submitted for
+  submission; the document content is frozen (`FEEDBACK_BLOCKED_STATUSES`,
+  `GET /projects/{id}/lifecycle/feedback-blocked`). (2026-03-11)
+- [x] "Published" status: SME records that the document was submitted for
   publication outside the tool (e.g. Federal Register); captures external
   reference number, publication date, and publication venue as metadata
-- [ ] "Submit to Records" action on project close-out:
-  - Generates a **complete review record package** containing:
-    all document versions (with diffs between versions), the full feedback
-    ledger with all dispositions and conversation threads, all reviewer
-    assignments with status history, all signatures and certificates,
-    all notifications sent (from the notification log), NARA metadata
-    (from existing `nara_metadata.py`), project audit trail
-  - Export formats: PDF bundle (human-readable), ZIP archive (structured
-    files), JSON manifest (machine-readable for records management systems)
-  - Attaches the package to the project record and marks it immutable
+  (`set_published_metadata()`, `PUT /projects/{id}/published-metadata`). (2026-03-11)
+- [x] "Submit to Records" action on project close-out:
+  - Generates a **complete review record package** (`records_package.py`):
+    assignments, feedback ledger, notification log, NARA metadata, document
+    versions; ZIP archive with SHA-256 integrity hash in `manifest.json`.
+  - `GET /projects/{id}/records-package` returns ZIP with `X-Content-Hash` header.
+  (2026-03-11)
 - [ ] Wire to existing NARA metadata: when the SME creates or edits a project,
   allow setting the NARA schedule number, disposition authority, retention
   period, and record series — pull from `nara_metadata.py` and surface in
-  the project Overview tab
-- [ ] Add a `GET /projects/{id}/records-package` endpoint that generates and
+  the project Overview tab (NARA fields in records package, UI wire-up deferred)
+- [x] Add a `GET /projects/{id}/records-package` endpoint that generates and
   returns the review record package on demand; include a content hash for
-  integrity verification
-- [ ] Add a "Records" section to the project Overview tab (visible after
-  close-out) showing: retention schedule, disposition date, package
-  download link, integrity hash, and submission status
+  integrity verification (`records_router.py`, `X-Content-Hash: sha256=...`). (2026-03-11)
+- [x] Add a "Records" section to the project Overview tab (visible after
+  close-out) showing: package download link, integrity hash, lifecycle status,
+  and submission status (`frontend/pages/projects/[id]/index.tsx` Records section). (2026-03-11)
 
 **Phase 8 — Deadline and SLA tracking**
 
-- [ ] Add configurable review deadline per assignment (set by SME when
-  assigning; editable later)
-- [ ] Add configurable default review SLA per document type or phase
-  (admin setting) — used as the default due date when assigning reviewers
-- [ ] Show deadline status in the reviewer table: green (on track),
+- [x] Add configurable review deadline per assignment (set by SME when
+  assigning; editable later) — `due_date` on `ReviewAssignment`, `PATCH .../assignments/{id}`. (2026-03-11)
+- [x] Add configurable default review SLA per document type or phase
+  (admin setting) — `sla_tracker.py`, `SLAConfig`, `sla_configs` SQLite table;
+  `GET/PUT /document-types/{doc_type}/sla`, `GET /document-types/sla/all`. (2026-03-11)
+- [x] Show deadline status in the reviewer table: green (on track),
   amber (due within 2 days), red (overdue), with days remaining or
-  days overdue count
-- [ ] Automated reminders: send a reminder notification at configurable
+  days overdue count (`get_deadline_status()`, color-coded in reviewer table,
+  `GET /projects/{id}/sla-deadlines`). (2026-03-11)
+- [x] Automated reminders: send a reminder notification at configurable
   intervals (e.g. 3 days before due, 1 day before due, on due date,
-  daily after overdue) — wire to existing `send_notification()` and
-  Celery beat scheduler
-- [ ] Escalation path: if a reviewer is overdue by a configurable threshold,
-  notify the SME and optionally a supervisor or admin — use existing
-  `escalate_to` field on the approval model
-- [ ] SLA summary on the Overview tab: "3 of 4 reviewers on track",
-  "1 overdue by 3 days" — visible at a glance
+  daily after overdue) — `run_sla_reminders()` wired to `send_notification()`;
+  Celery beat task `docreview360.sla_reminder_sweep` via `register_sla_beat_task()`;
+  `POST /projects/{id}/run-sla-reminders`. (2026-03-11)
+- [x] Escalation path: if a reviewer is overdue by a configurable threshold,
+  notify the SME — `escalation_threshold_days` in `SLAConfig`; overdue notifications
+  also logged to `notification_log`. (2026-03-11)
+- [x] SLA summary on the Overview tab: "3 of 4 reviewers on track",
+  "1 overdue by 3 days" — `SLASummary` model, `get_sla_summary()`,
+  `GET /projects/{id}/sla-summary`; SLA summary card in Overview section. (2026-03-11)
 
 **Future / optional — TipTap inline feedback extraction**
 

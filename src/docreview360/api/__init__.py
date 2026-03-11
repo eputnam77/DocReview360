@@ -246,6 +246,8 @@ from .config_router import router as config_router
 from .flags_router import router as flags_router
 from .assignments_router import router as assignments_router
 from .feedback_router import router as feedback_router
+from .records_router import router as records_router
+from .sla_router import router as sla_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1078,6 +1080,8 @@ app.include_router(config_router)
 app.include_router(flags_router)
 app.include_router(assignments_router)
 app.include_router(feedback_router)
+app.include_router(records_router)
+app.include_router(sla_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)

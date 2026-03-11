@@ -137,14 +137,70 @@ function ProgBar({ value }: { value: number }) {
   );
 }
 
-// Sticky nav
+// Sticky nav — Phase 6 layout
 const NAV = [
-  { id: "details", label: "Details" },
+  { id: "overview", label: "Overview" },
   { id: "reviewers", label: "Reviewers" },
   { id: "feedback", label: "Feedback" },
+  { id: "signatures", label: "Signatures" },
   { id: "approvals", label: "Approvals" },
   { id: "history", label: "History" },
 ];
+
+// Lifecycle stepper steps — Phase 6
+const LIFECYCLE_STEPS = [
+  { id: "assign_reviewers", label: "Assign Reviewers" },
+  { id: "collect_feedback", label: "Collect Feedback" },
+  { id: "address_feedback", label: "Address Feedback" },
+  { id: "collect_signatures", label: "Collect Signatures" },
+  { id: "complete", label: "Complete" },
+];
+
+function LifecycleStepper({ step }: { step: string }) {
+  const idx = LIFECYCLE_STEPS.findIndex((s) => s.id === step);
+  return (
+    <div className="flex items-center gap-0 overflow-x-auto pb-1">
+      {LIFECYCLE_STEPS.map((s, i) => {
+        const done = i < idx;
+        const active = i === idx;
+        return (
+          <React.Fragment key={s.id}>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <div
+                className={cn(
+                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2",
+                  done
+                    ? "bg-green-500 border-green-500 text-white"
+                    : active
+                      ? "bg-indigo-600 border-indigo-600 text-white"
+                      : "bg-white border-gray-300 text-gray-400",
+                )}
+              >
+                {done ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+              </div>
+              <span
+                className={cn(
+                  "text-xs font-medium hidden sm:block",
+                  active ? "text-indigo-700" : done ? "text-green-600" : "text-gray-400",
+                )}
+              >
+                {s.label}
+              </span>
+            </div>
+            {i < LIFECYCLE_STEPS.length - 1 && (
+              <div
+                className={cn(
+                  "flex-1 h-0.5 mx-1 min-w-[16px]",
+                  i < idx ? "bg-green-400" : "bg-gray-200",
+                )}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
 
 const PHASE_CHECKS: Record<string, string[]> = {
   draft: ["Draft completed"],
@@ -456,6 +512,156 @@ export default function ProjectDetailsPage() {
     staleTime: 60_000,
   });
 
+  // Review lifecycle summary (Phase 6)
+  interface ReviewSummary {
+    total_active: number;
+    invited: number;
+    reviewing: number;
+    feedback_submitted: number;
+    concurred: number;
+    non_concurred: number;
+    signed: number;
+    declined: number;
+    all_complete: boolean;
+    all_signed: boolean;
+    has_non_concurrence: boolean;
+    lifecycle_step: string;
+    feedback_total: number;
+    feedback_open: number;
+    feedback_addressed: number;
+  }
+  const { data: reviewSummary, refetch: refetchSummary } = useQuery<ReviewSummary>({
+    queryKey: ["review-summary", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await authenticatedFetch(`/projects/${id}/review-summary`);
+      return res.ok ? res.json() : null;
+    },
+    enabled: !!id,
+    staleTime: 15_000,
+  });
+
+  // My assignments on this project (Phase 5)
+  const { data: myAssignments = [], refetch: refetchMyAssignments } = useQuery<ReviewAssignment[]>({
+    queryKey: ["my-assignments", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await authenticatedFetch(`/projects/${id}/assignments/me`);
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+
+  // Lifecycle status (Phase 7)
+  interface LifecycleRecord {
+    project_id: string;
+    status: string;
+    updated_at: string;
+    set_by?: string | null;
+    published_ref?: string | null;
+    published_at?: string | null;
+    published_venue?: string | null;
+  }
+  const { data: lifecycleRecord, refetch: refetchLifecycle } = useQuery<LifecycleRecord>({
+    queryKey: ["lifecycle", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await authenticatedFetch(`/projects/${id}/lifecycle`);
+      return res.ok ? res.json() : { project_id: id, status: "draft", updated_at: "" };
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+
+  // SLA summary (Phase 8)
+  interface SLASummary {
+    project_id: string;
+    total: number;
+    on_track: number;
+    due_soon: number;
+    overdue: number;
+    no_deadline: number;
+    max_overdue_days: number;
+  }
+  interface DeadlineStatus {
+    assignment_id: string;
+    reviewer: string;
+    due_date?: string | null;
+    days_remaining?: number | null;
+    status: string;
+    overdue_days: number;
+  }
+  const { data: slaSummary, refetch: refetchSla } = useQuery<SLASummary>({
+    queryKey: ["sla-summary", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await authenticatedFetch(`/projects/${id}/sla-summary`);
+      return res.ok ? res.json() : null;
+    },
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+  const { data: slaDeadlines = [] } = useQuery<DeadlineStatus[]>({
+    queryKey: ["sla-deadlines", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await authenticatedFetch(`/projects/${id}/sla-deadlines`);
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+
+  // Assignment eligibility cache — stores full eligibility objects
+  interface EligibilityResult {
+    eligible: boolean;
+    open_items: number;
+    unanswered_questions: number;
+    total_feedback: number;
+    reason?: string | null;
+  }
+  const [eligibilityCache, setEligibilityCache] = React.useState<Record<string, EligibilityResult | undefined>>({});
+
+  // Auto-start invited assignments when reviewer opens project view (Phase 5)
+  useEffect(() => {
+    if (!id || !username) return;
+    authenticatedFetch(`/projects/${id}/assignments/view`, { method: "POST" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.started?.length > 0) {
+          refetchAssignments();
+          refetchMyAssignments();
+          refetchSummary();
+        }
+      })
+      .catch(() => {}); // best-effort
+  }, [id, username]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch eligibility for each active assignment
+  useEffect(() => {
+    if (!id || assignments.length === 0) return;
+    const active = assignments.filter((a) => !["replaced", "concurred", "signed", "declined"].includes(a.status));
+    Promise.all(
+      active.map(async (a) => {
+        const res = await authenticatedFetch(
+          `/projects/${id}/assignments/${a.id}/eligibility`
+        ).catch(() => null);
+        if (res?.ok) {
+          const data: EligibilityResult = await res.json();
+          return [a.id, data] as const;
+        }
+        return null;
+      }),
+    ).then((results) => {
+      const cache: Record<string, EligibilityResult | undefined> = {};
+      for (const r of results) {
+        if (r) cache[r[0]] = r[1];
+      }
+      setEligibilityCache(cache);
+    });
+  }, [id, assignments]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const reviewerOptions = useMemo(
     () =>
       userOptions
@@ -503,9 +709,49 @@ export default function ProjectDetailsPage() {
 
   const loading = projectLoading || phasesLoading || approvalsLoading || reviewLoading;
 
+  // Synthetic review lifecycle events derived from assignment timestamps
+  const assignmentEvents = useMemo<AuditEntry[]>(() => {
+    const events: AuditEntry[] = [];
+    for (const a of assignments) {
+      if (a.requested_at) {
+        events.push({
+          id: `${a.id}-invited`,
+          timestamp: a.requested_at,
+          message: `Reviewer '${a.reviewer}' invited`,
+          type: "review" as const,
+        });
+      }
+      if (a.started_at) {
+        events.push({
+          id: `${a.id}-started`,
+          timestamp: a.started_at,
+          message: `Reviewer '${a.reviewer}' started review`,
+          type: "review" as const,
+        });
+      }
+      if (a.completed_at) {
+        events.push({
+          id: `${a.id}-submitted`,
+          timestamp: a.completed_at,
+          message: `Reviewer '${a.reviewer}' submitted feedback`,
+          type: "review" as const,
+        });
+      }
+      if (a.signed_at) {
+        events.push({
+          id: `${a.id}-signed`,
+          timestamp: a.signed_at,
+          message: `Reviewer '${a.reviewer}' ${a.status === "non_concurred" ? "non-concurred" : a.status === "signed" ? "signed (internal)" : "concurred"}`,
+          type: "review" as const,
+        });
+      }
+    }
+    return events;
+  }, [assignments]);
+
   const auditEvents = useMemo(
-    () =>
-      logs.map((l) => ({
+    () => {
+      const base = logs.map((l) => ({
         id: l.id,
         timestamp: l.timestamp,
         message: l.action,
@@ -516,8 +762,13 @@ export default function ProjectDetailsPage() {
             : l.type === "review" && l.ref
             ? `/projects/${id}/reviews#${l.ref}`
             : undefined,
-      })),
-    [logs, id],
+      }));
+      // Merge and sort by timestamp descending
+      return [...base, ...assignmentEvents].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+    },
+    [logs, id, assignmentEvents],
   );
 
   // ▼ check for completed signatures on page load
@@ -1121,10 +1372,333 @@ export default function ProjectDetailsPage() {
   // ------------------------------------------------------------------------
   //                             RENDER
   // ------------------------------------------------------------------------
+  // Reviewer-centric feedback filter (Phase 5)
+  const [feedbackShowMyOnly, setFeedbackShowMyOnly] = React.useState(false);
+
+  // Sign-internal handler
+  const handleSignInternal = async (assignmentId: string) => {
+    const note = window.prompt("Optional note for internal acknowledgement:");
+    if (note === null) return; // cancelled
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/sign-internal`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note: note || null }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to sign");
+        return;
+      }
+      toast.success("Internally acknowledged.");
+      refetchAssignments();
+      refetchMyAssignments();
+      refetchSummary();
+    } catch {
+      toast.error("Failed to sign.");
+    }
+  };
+
+  // Concur handler (already exists in backend)
+  const handleConcur = async (assignmentId: string) => {
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/concur`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to concur");
+        return;
+      }
+      toast.success("Concurred.");
+      refetchAssignments();
+      refetchMyAssignments();
+      refetchSummary();
+    } catch {
+      toast.error("Failed to concur.");
+    }
+  };
+
+  // Submit review handler
+  const handleSubmitReview = async (assignmentId: string) => {
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/submit`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to submit review");
+        return;
+      }
+      toast.success("Review submitted. The SME has been notified.");
+      refetchAssignments();
+      refetchMyAssignments();
+      refetchSummary();
+    } catch {
+      toast.error("Failed to submit review.");
+    }
+  };
+
+  // Lifecycle transition handler (Phase 7)
+  const handleLifecycleTransition = async (newStatus: string) => {
+    if (!confirm(`Transition project status to "${newStatus.replace(/_/g, " ")}"?`)) return;
+    try {
+      const res = await authenticatedFetch(`/projects/${id}/lifecycle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to transition status");
+        return;
+      }
+      refetchLifecycle();
+      toast.success(`Project status → ${newStatus.replace(/_/g, " ")}`);
+    } catch {
+      toast.error("Failed to transition project status.");
+    }
+  };
+
+  // Download records package (Phase 7)
+  const handleDownloadRecordsPackage = async () => {
+    try {
+      const res = await authenticatedFetch(`/projects/${id}/records-package`);
+      if (!res.ok) { toast.error("Failed to generate records package."); return; }
+      const blob = await res.blob();
+      const hash = res.headers.get("X-Content-Hash") ?? "";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `records-${id}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      if (hash) toast.success(`Downloaded. SHA-256: ${hash.replace("sha256=", "").slice(0, 16)}…`);
+    } catch {
+      toast.error("Download failed.");
+    }
+  };
+
+  // Run SLA reminders manually (Phase 8)
+  const handleRunSlaReminders = async () => {
+    try {
+      const res = await authenticatedFetch(`/projects/${id}/run-sla-reminders`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      toast.success(`${data.sent} reminder(s) sent.`);
+      refetchSla();
+    } catch {
+      toast.error("Failed to send SLA reminders.");
+    }
+  };
+
+  // Concur with comments handler
+  const handleConcurWithComments = async (assignmentId: string) => {
+    const text = window.prompt("Add your final comments for this concurrence (required):");
+    if (!text?.trim()) return;
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/concur-with-comments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to concur");
+        return;
+      }
+      toast.success("Concurred with comments. Your notes have been added to the feedback ledger.");
+      refetchAssignments();
+      refetchMyAssignments();
+      refetchSummary();
+      refetchFeedback();
+    } catch {
+      toast.error("Failed to concur.");
+    }
+  };
+
+  // Request concurrence from a reviewer (SME action)
+  const handleRequestConcurrence = async (assignmentId: string) => {
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/request-concurrence`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error("Failed");
+      toast.success("Concurrence requested. Reviewer notified.");
+    } catch {
+      toast.error("Failed to request concurrence.");
+    }
+  };
+
+  // Bulk remind all non-terminal reviewers
+  const handleRemindAll = async () => {
+    const targets = assignments.filter(
+      (a) => !["replaced", "concurred", "signed", "declined"].includes(a.status),
+    );
+    if (targets.length === 0) {
+      toast("No reviewers to remind.");
+      return;
+    }
+    await Promise.all(targets.map((a) => handleSendReminder(a.id)));
+    toast.success(`Reminder sent to ${targets.length} reviewer(s).`);
+  };
+
+  // Export reviewer list as CSV
+  const handleExportReviewers = () => {
+    const rows = [
+      ["Reviewer", "Status", "Invited", "Due Date", "Signed At"],
+      ...assignments.map((a) => [
+        a.reviewer,
+        a.status,
+        a.requested_at ? new Date(a.requested_at).toLocaleDateString() : "",
+        a.due_date ? new Date(a.due_date).toLocaleDateString() : "",
+        a.signed_at ? new Date(a.signed_at).toLocaleDateString() : "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reviewers-${id}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <StickyNav />
       <div className="p-8 space-y-10">
+
+        {/* Lifecycle stepper — Phase 6 */}
+        {reviewSummary && (
+          <div className="rounded-xl border bg-white/60 dark:bg-gray-900/60 p-4 shadow-sm">
+            <LifecycleStepper step={reviewSummary.lifecycle_step} />
+          </div>
+        )}
+
+        {/* Reviewer focused banner — Phase 5 */}
+        {myAssignments.filter((a) => !["replaced", "signed", "concurred", "declined"].includes(a.status)).map((ma) => (
+          <div
+            key={ma.id}
+            className="rounded-xl border-2 border-indigo-300 bg-indigo-50 dark:bg-indigo-950 p-4 space-y-3"
+          >
+            <div className="flex items-start gap-3">
+              <Users2 className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold text-indigo-800 dark:text-indigo-200">
+                  You have been asked to review this project.
+                </p>
+                <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                  Status: <strong>{ma.status.replace(/_/g, " ")}</strong>
+                  {ma.due_date && ` · Due: ${new Date(ma.due_date).toLocaleDateString()}`}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button asChild size="sm">
+                <Link href={`/editors/tiptap?projectId=${id}`}>
+                  <FileEdit className="w-4 h-4 mr-1" /> Open Document
+                </Link>
+              </Button>
+              {(() => {
+                const elig = eligibilityCache[ma.id];
+                const hasUnansweredQ = (elig?.unanswered_questions ?? 0) > 0;
+                const hasOpenItems = (elig?.open_items ?? 0) > 0;
+                const canSubmit = ma.status !== "feedback_submitted" && !hasUnansweredQ;
+                const canConcur = elig?.eligible === true;
+                return (
+                  <>
+                    {/* Waiting for SME Response — Phase 5 */}
+                    {hasUnansweredQ && (
+                      <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 self-center flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Waiting for SME Response — {elig!.unanswered_questions} question(s) unanswered
+                      </span>
+                    )}
+                    {ma.status !== "feedback_submitted" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSubmitReview(ma.id)}
+                        disabled={!canSubmit}
+                        title={hasUnansweredQ ? "Cannot submit while questions are awaiting SME response" : undefined}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1" /> Submit Review
+                      </Button>
+                    )}
+                    {canConcur && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-700 border-green-300"
+                          onClick={() => handleConcur(ma.id)}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" /> Concur
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-indigo-700 border-indigo-300"
+                          onClick={() => handleConcurWithComments(ma.id)}
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1" /> Concur with Comments
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-gray-600"
+                          onClick={() => handleSignInternal(ma.id)}
+                        >
+                          Internal Sign-off
+                        </Button>
+                      </>
+                    )}
+                    {!canConcur && !hasUnansweredQ && hasOpenItems && (
+                      <span className="text-xs text-amber-600 self-center">
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        Concurrence gated — {elig!.open_items} open feedback item(s)
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        ))}
+
+        {/* All-reviews-complete banner — Phase 4 */}
+        {reviewSummary?.all_complete && (
+          <div className="rounded-xl border-2 border-green-400 bg-green-50 dark:bg-green-950 p-4 flex items-center gap-4 flex-wrap">
+            <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-green-800 dark:text-green-200">
+                All Reviews Complete — Ready for Next Phase
+              </p>
+              {reviewSummary.has_non_concurrence && (
+                <p className="text-sm text-amber-600">
+                  Note: one or more reviewers did not concur. Review their non-concurrence before advancing.
+                </p>
+              )}
+            </div>
+            {canEdit && (
+              <Button size="sm" onClick={() => setShowPhaseDialog(true)} className="bg-green-600 hover:bg-green-700">
+                Advance Phase
+              </Button>
+            )}
+          </div>
+        )}
+
         <ProjectSummaryBar
           project={{ ...project, currentPhaseId: project.currentPhaseId || workflow?.phase }}
           phases={phaseList}
@@ -1135,8 +1709,8 @@ export default function ProjectDetailsPage() {
           isOwner={isOwner}
         />
 
-        {/* DETAILS SECTION */}
-        <section id="details" className="space-y-6">
+        {/* OVERVIEW SECTION — Phase 6 */}
+        <section id="overview" className="space-y-6">
           <Disclosure defaultOpen>
             {({ open }) => (
               <>
@@ -1200,6 +1774,120 @@ export default function ProjectDetailsPage() {
           </Disclosure>
 
           <KpiCards stats={stats} />
+
+          {/* Project Lifecycle Status — Phase 7 */}
+          {lifecycleRecord && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                  Project Lifecycle
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {["draft","in_review","reviewed","ready_for_publication","published","submitted_to_records","closed"].map((s) => {
+                    const statuses = ["draft","in_review","reviewed","ready_for_publication","published","submitted_to_records","closed"];
+                    const currentIdx = statuses.indexOf(lifecycleRecord.status);
+                    const thisIdx = statuses.indexOf(s);
+                    const done = thisIdx < currentIdx;
+                    const active = thisIdx === currentIdx;
+                    return (
+                      <span
+                        key={s}
+                        className={cn(
+                          "px-2 py-0.5 rounded text-xs font-medium",
+                          done ? "bg-green-100 text-green-700" :
+                          active ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-400" :
+                          "bg-gray-100 text-gray-400",
+                        )}
+                      >
+                        {s.replace(/_/g, " ")}
+                      </span>
+                    );
+                  })}
+                </div>
+                {/* Lifecycle transition buttons for SME/admin */}
+                {canEdit && (() => {
+                  const nextMap: Record<string, string[]> = {
+                    draft: ["in_review"],
+                    in_review: ["reviewed", "draft"],
+                    reviewed: ["ready_for_publication", "in_review"],
+                    ready_for_publication: ["published", "reviewed"],
+                    published: ["submitted_to_records"],
+                    submitted_to_records: ["closed"],
+                    closed: [],
+                  };
+                  const nexts = nextMap[lifecycleRecord.status] ?? [];
+                  if (nexts.length === 0) return null;
+                  return (
+                    <div className="flex gap-2 flex-wrap pt-1">
+                      {nexts.map((s) => (
+                        <Button
+                          key={s}
+                          size="sm"
+                          variant={s === "published" || s === "submitted_to_records" || s === "closed" ? "default" : "outline"}
+                          onClick={() => handleLifecycleTransition(s)}
+                        >
+                          → {s.replace(/_/g, " ")}
+                        </Button>
+                      ))}
+                    </div>
+                  );
+                })()}
+                {lifecycleRecord.published_ref && (
+                  <p className="text-xs text-gray-500">
+                    Published ref: <span className="font-mono">{lifecycleRecord.published_ref}</span>
+                    {lifecycleRecord.published_venue && ` · ${lifecycleRecord.published_venue}`}
+                    {lifecycleRecord.published_at && ` · ${lifecycleRecord.published_at}`}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* SLA Summary — Phase 8 */}
+          {slaSummary && slaSummary.total > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-500" />
+                    Review SLA Status
+                  </span>
+                  {canEdit && (
+                    <Button size="sm" variant="outline" onClick={handleRunSlaReminders}>
+                      Send SLA Reminders
+                    </Button>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4 flex-wrap text-sm">
+                  <span className="flex items-center gap-1 text-green-700">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {slaSummary.on_track} on track
+                  </span>
+                  {slaSummary.due_soon > 0 && (
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <Clock className="w-3.5 h-3.5" />
+                      {slaSummary.due_soon} due soon
+                    </span>
+                  )}
+                  {slaSummary.overdue > 0 && (
+                    <span className="flex items-center gap-1 text-red-600 font-semibold">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {slaSummary.overdue} overdue
+                      {slaSummary.max_overdue_days > 0 && ` (max ${slaSummary.max_overdue_days}d)`}
+                    </span>
+                  )}
+                  {slaSummary.no_deadline > 0 && (
+                    <span className="text-gray-400">{slaSummary.no_deadline} no deadline</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Document Quality Scores */}
           {qualityScores && qualityScores.length > 0 && (
@@ -1320,10 +2008,22 @@ export default function ProjectDetailsPage() {
 
         {/* REVIEWERS SECTION — assignment lifecycle */}
         <section id="reviewers" className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center flex-wrap gap-2">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <Users2 className="w-5 h-5" /> Reviewers
             </h2>
+            <div className="flex gap-2">
+              {canEdit && assignments.filter((a) => !["replaced","concurred","signed","declined"].includes(a.status)).length > 0 && (
+                <Button size="sm" variant="outline" onClick={handleRemindAll}>
+                  <Bell className="w-4 h-4 mr-1" /> Remind All
+                </Button>
+              )}
+              {assignments.length > 0 && (
+                <Button size="sm" variant="outline" onClick={handleExportReviewers}>
+                  <Download className="w-4 h-4 mr-1" /> Export
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Review progress summary */}
@@ -1431,8 +2131,34 @@ export default function ProjectDetailsPage() {
                           <TableCell className="text-xs text-gray-500">
                             {a.requested_at ? new Date(a.requested_at).toLocaleDateString() : "—"}
                           </TableCell>
-                          <TableCell className="text-xs text-gray-500">
-                            {a.due_date ? new Date(a.due_date).toLocaleDateString() : "—"}
+                          <TableCell className="text-xs">
+                            {(() => {
+                              const ds = slaDeadlines.find((d) => d.assignment_id === a.id);
+                              if (!a.due_date) return <span className="text-gray-400">—</span>;
+                              const label = new Date(a.due_date).toLocaleDateString();
+                              if (!ds || ds.status === "complete" || ds.status === "no_deadline") {
+                                return <span className="text-gray-500">{label}</span>;
+                              }
+                              if (ds.status === "overdue") {
+                                return (
+                                  <span className="text-red-600 font-semibold">
+                                    {label} <span className="text-xs">({ds.overdue_days}d overdue)</span>
+                                  </span>
+                                );
+                              }
+                              if (ds.status === "due_soon") {
+                                return (
+                                  <span className="text-amber-600 font-medium">
+                                    {label} <span className="text-xs">({ds.days_remaining}d left)</span>
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="text-green-600">
+                                  {label} <span className="text-xs">({ds.days_remaining}d)</span>
+                                </span>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-right space-x-1">
                             {canEdit && a.status !== "replaced" && !["concurred","signed","declined"].includes(a.status) && (
@@ -1454,6 +2180,153 @@ export default function ProjectDetailsPage() {
               </Table>
             </CardContent>
           </Card>
+        </section>
+
+        {/* SIGNATURES SECTION — Phase 4/6 */}
+        <section id="signatures" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence
+            </h2>
+          </div>
+
+          {assignments.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-gray-400 text-sm">
+                No reviewer assignments yet. Invite reviewers in the Reviewers tab.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {assignments.filter((a) => a.status !== "replaced").map((a) => {
+                const isTerminal = ["concurred", "signed", "declined", "non_concurred"].includes(a.status);
+                const isMine = a.reviewer === username;
+                const isEligible = eligibilityCache[a.id];
+
+                const statusColors: Record<string, string> = {
+                  invited: "bg-gray-100 text-gray-600",
+                  reviewing: "bg-blue-100 text-blue-700",
+                  feedback_submitted: "bg-indigo-100 text-indigo-700",
+                  concurred: "bg-green-100 text-green-700",
+                  non_concurred: "bg-red-100 text-red-700",
+                  signed: "bg-emerald-100 text-emerald-700",
+                  declined: "bg-orange-100 text-orange-700",
+                };
+
+                return (
+                  <Card key={a.id} className={cn(isTerminal ? "border-green-200" : "")}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex-1 min-w-[160px]">
+                          <p className="font-medium">{a.reviewer}</p>
+                          <p className="text-xs text-gray-500">
+                            Invited {new Date(a.requested_at).toLocaleDateString()}
+                            {a.due_date && (
+                              <span className={cn(
+                                "ml-2",
+                                new Date(a.due_date) < new Date() && !isTerminal
+                                  ? "text-red-600 font-semibold"
+                                  : "",
+                              )}>
+                                · Due {new Date(a.due_date).toLocaleDateString()}
+                                {new Date(a.due_date) < new Date() && !isTerminal && " (overdue)"}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-xs font-semibold",
+                          statusColors[a.status] ?? "bg-gray-100 text-gray-600",
+                        )}>
+                          {a.status.replace(/_/g, " ")}
+                        </span>
+
+                        {a.signed_at && (
+                          <span className="text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Signed {new Date(a.signed_at).toLocaleDateString()}
+                          </span>
+                        )}
+
+                        {/* Reviewer's own sign-off actions */}
+                        {isMine && !isTerminal && (
+                          <div className="flex gap-2 flex-wrap ml-auto">
+                            {isEligible?.eligible ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => handleConcur(a.id)}
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" /> Concur
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-indigo-700 border-indigo-300"
+                                  onClick={() => handleConcurWithComments(a.id)}
+                                >
+                                  <MessageSquare className="w-3 h-3 mr-1" /> Concur w/ Comments
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSignInternal(a.id)}
+                                >
+                                  Internal Sign-off
+                                </Button>
+                              </>
+                            ) : isEligible !== undefined && !isEligible.eligible ? (
+                              <span className="text-xs text-amber-600 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {(isEligible.unanswered_questions ?? 0) > 0
+                                  ? `Waiting for SME: ${isEligible.unanswered_questions} unanswered question(s)`
+                                  : `${isEligible.open_items} open feedback item(s)`}
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+
+                        {/* SME/admin actions */}
+                        {canEdit && !isTerminal && (
+                          <div className="flex gap-1 flex-wrap ml-auto">
+                            {!isMine && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  title="Request concurrence"
+                                  onClick={() => handleRequestConcurrence(a.id)}
+                                >
+                                  <CheckCircle2 className="w-4 h-4 text-indigo-500" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  title="Send reminder"
+                                  onClick={() => handleSendReminder(a.id)}
+                                >
+                                  <Bell className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Non-concurrence reason */}
+                      {a.status === "non_concurred" && a.replacement_reason && (
+                        <p className="mt-2 text-sm text-red-600 italic ml-1">
+                          Non-concurrence reason: {a.replacement_reason}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section id="approvals" className="space-y-6">
@@ -1588,6 +2461,24 @@ export default function ProjectDetailsPage() {
             </CardContent>
           </Card>
 
+          {/* My-feedback toggle (Phase 5) */}
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={feedbackShowMyOnly}
+                onChange={(e) => setFeedbackShowMyOnly(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                My feedback only
+              </span>
+            </label>
+            <span className="text-xs text-gray-400">
+              {feedbackShowMyOnly ? `Showing ${username}'s items` : "Showing all reviewers"}
+            </span>
+          </div>
+
           {/* Filters */}
           <div className="flex gap-2 flex-wrap">
             {["all", "comment", "question", "suggestion", "non_concurrence"].map((t) => (
@@ -1626,6 +2517,7 @@ export default function ProjectDetailsPage() {
           {(() => {
             const topLevel = feedbackItems.filter((f) => !f.parent_id);
             const filtered = topLevel.filter((f) => {
+              if (feedbackShowMyOnly && f.reviewer !== username) return false;
               if (feedbackTypeFilter !== "all" && f.feedback_type !== feedbackTypeFilter) return false;
               if (feedbackStatusFilter !== "all" && f.status !== feedbackStatusFilter) return false;
               return true;
@@ -1904,6 +2796,62 @@ export default function ProjectDetailsPage() {
             </Disclosure>
           )}
         </section>
+      </div>
+
+        {/* RECORDS SECTION — visible when submitted_to_records or closed (Phase 7) */}
+        {lifecycleRecord && ["submitted_to_records", "closed", "published", "ready_for_publication"].includes(lifecycleRecord.status) && (
+          <section id="records" className="space-y-4">
+            <div className="flex justify-between items-center flex-wrap gap-2">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <Download className="w-5 h-5 text-indigo-600" /> Records &amp; Retention
+              </h2>
+              {canEdit && (
+                <Button size="sm" onClick={handleDownloadRecordsPackage}>
+                  <Download className="w-4 h-4 mr-1" /> Download Review Record Package
+                </Button>
+              )}
+            </div>
+            <Card>
+              <CardContent className="pt-4 space-y-3 text-sm">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Lifecycle Status</p>
+                    <p className="font-semibold mt-0.5">{lifecycleRecord.status.replace(/_/g, " ")}</p>
+                  </div>
+                  {lifecycleRecord.published_ref && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Publication Reference</p>
+                      <p className="font-mono mt-0.5">{lifecycleRecord.published_ref}</p>
+                    </div>
+                  )}
+                  {lifecycleRecord.published_venue && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Publication Venue</p>
+                      <p className="mt-0.5">{lifecycleRecord.published_venue}</p>
+                    </div>
+                  )}
+                  {lifecycleRecord.published_at && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Publication Date</p>
+                      <p className="mt-0.5">{lifecycleRecord.published_at}</p>
+                    </div>
+                  )}
+                  {lifecycleRecord.set_by && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Last Updated By</p>
+                      <p className="mt-0.5">{lifecycleRecord.set_by}</p>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400">
+                  The review record package contains the complete feedback ledger, reviewer assignments,
+                  signature history, notifications, NARA metadata, and document versions in a
+                  ZIP archive with an integrity hash for records retention compliance.
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        )}
       </div>
 
       {/* Modals */}

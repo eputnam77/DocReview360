@@ -16,11 +16,13 @@ from ..feedback_ledger import (
     FEEDBACK_STATUSES,
     FEEDBACK_TYPES,
     TERMINAL_FEEDBACK_STATUSES,
+    archive_phase_feedback,
     create_feedback_item,
     dispose_feedback_item,
     get_feedback_item,
     get_feedback_progress,
     list_feedback_items,
+    list_feedback_phases,
     mark_question_satisfied,
     reply_to_feedback,
 )
@@ -52,6 +54,10 @@ class ReplyBody(BaseModel):
     text: str
 
 
+class ArchivePhaseBody(BaseModel):
+    phase: str
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -72,6 +78,14 @@ def _get_item_or_404(item_id: str) -> FeedbackItem:
 
 
 def _require_project_access(project, current_user: auth.User) -> None:
+    """Allow access if user passes standard project access OR is an assignment reviewer."""
+    from .projects_router import _is_admin_user
+    if _is_admin_user(current_user):
+        return
+    # Check if user is an assignment-based reviewer on this project
+    from ..review_assignments import list_assignments as _list_assignments
+    if any(a.reviewer == current_user.username for a in _list_assignments(project.id)):
+        return
     from .projects_router import _enforce_project_access
     _enforce_project_access(project, current_user)
 
@@ -236,3 +250,34 @@ async def get_project_feedback_progress(
     _require_project_access(project, current_user)
     progress = get_feedback_progress(project_id, phase=phase)
     return progress.model_dump()
+
+
+@router.get("/projects/{project_id}/feedback/phases")
+async def get_project_feedback_phases(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[str]:
+    """Return distinct phases that have feedback items for a project."""
+    project = _get_project_or_404(project_id)
+    _require_project_access(project, current_user)
+    return list_feedback_phases(project_id)
+
+
+@router.post("/projects/{project_id}/feedback/archive-phase")
+async def archive_project_phase_feedback(
+    project_id: str,
+    body: ArchivePhaseBody,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Archive (resolve) all open feedback items in a given phase.
+
+    Called automatically (or manually by the SME) when a phase advances.
+    Archived items become read-only (status=resolved with archive reason).
+    Returns the number of items archived.
+    """
+    project = _get_project_or_404(project_id)
+    _require_manage_access(project, current_user)
+    count = archive_phase_feedback(
+        project_id, body.phase, archived_by=current_user.username
+    )
+    return {"archived": count, "phase": body.phase}

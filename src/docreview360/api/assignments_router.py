@@ -7,6 +7,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from datetime import UTC, datetime as _datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
@@ -53,6 +55,14 @@ class NonConcurBody(BaseModel):
     reason: str
 
 
+class SignInternalBody(BaseModel):
+    note: str | None = None
+
+
+class ConcurWithCommentsBody(BaseModel):
+    text: str
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -73,6 +83,15 @@ def _get_assignment_or_404(assignment_id: str) -> ReviewAssignmentModel:
 
 
 def _require_project_access(project, current_user: auth.User) -> None:
+    """Allow access if user passes standard project access OR is an assignment reviewer."""
+    from .projects_router import _is_admin_user
+    if _is_admin_user(current_user):
+        return
+    # Check if user is an assignment-based reviewer on this project
+    assignments = list_assignments(project.id)
+    if any(a.reviewer == current_user.username for a in assignments):
+        return
+    # Fall back to standard project access check
     from .projects_router import _enforce_project_access
     _enforce_project_access(project, current_user)
 
@@ -120,6 +139,14 @@ def _emit_review_notification(
             "review.reminder": (
                 f"Reminder: your review of project '{project.name}' is "
                 f"due {assignment.due_date or 'soon'}. {deep_link}"
+            ),
+            "review.started": (
+                f"Reviewer '{assignment.reviewer}' has opened project '{project.name}'. "
+                f"{deep_link}"
+            ),
+            "review.concurrence_requested": (
+                f"Your concurrence has been requested on project '{project.name}'. "
+                f"Please review all feedback and concur or non-concur. {deep_link}"
             ),
         }
         message = messages.get(event, f"Review event '{event}' on project '{project.name}'.")
@@ -268,6 +295,59 @@ async def concur_assignment(
     return result.model_dump()
 
 
+@router.post("/projects/{project_id}/assignments/{assignment_id}/concur-with-comments")
+async def concur_assignment_with_comments(
+    project_id: str,
+    assignment_id: str,
+    body: ConcurWithCommentsBody,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Reviewer concurs and attaches final notes; transitions to 'concurred'.
+
+    Creates a 'comment' feedback item containing the reviewer's final notes
+    before transitioning the assignment to 'concurred'.
+    """
+    project = _get_project_or_404(project_id)
+    assignment = _get_assignment_or_404(assignment_id)
+    if assignment.reviewer != current_user.username:
+        raise HTTPException(status_code=403, detail="Only the assigned reviewer can concur")
+    # Persist the reviewer's closing comment
+    from ..feedback_ledger import create_feedback_item
+    create_feedback_item(
+        project_id,
+        current_user.username,
+        body.text,
+        assignment_id=assignment_id,
+        feedback_type="comment",
+    )
+    result = transition_status(assignment_id, "concurred", ts_field="signed_at")
+    _emit_review_notification("review.signed", result, project)
+    _check_all_complete(project_id, project)
+    return result.model_dump()
+
+
+@router.post("/projects/{project_id}/assignments/{assignment_id}/request-concurrence")
+async def request_concurrence(
+    project_id: str,
+    assignment_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """SME requests concurrence from a reviewer (fires review.concurrence_requested notification).
+
+    Does not change the assignment status — it only sends the notification.
+    """
+    project = _get_project_or_404(project_id)
+    _require_manage_access(project, current_user)
+    assignment = _get_assignment_or_404(assignment_id)
+    if assignment.status in TERMINAL_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot request concurrence from a reviewer in terminal status '{assignment.status}'",
+        )
+    _emit_review_notification("review.concurrence_requested", assignment, project)
+    return {"ok": True, "assignment_id": assignment_id}
+
+
 @router.post("/projects/{project_id}/assignments/{assignment_id}/non-concur")
 async def non_concur_assignment(
     project_id: str,
@@ -301,6 +381,103 @@ async def replace_project_assignment(
     _emit_review_notification("review.replaced", original, project)
     _emit_review_notification("review.assigned", new_assignment, project)
     return {"original": original.model_dump(), "replacement": new_assignment.model_dump()}
+
+
+@router.get("/projects/{project_id}/review-summary")
+async def get_project_review_summary(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Return aggregate review state for lifecycle stepper and all-complete banner."""
+    project = _get_project_or_404(project_id)
+    _require_project_access(project, current_user)
+    from ..concurrence_gate import get_review_summary
+    summary = get_review_summary(project_id)
+    return summary.model_dump()
+
+
+@router.get("/projects/{project_id}/assignments/me")
+async def get_my_assignments(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict]:
+    """Return the current user's assignments on this project.
+
+    Open to any authenticated user — each user sees only their own assignments,
+    so returning an empty list is safe for users without any assignments.
+    """
+    _get_project_or_404(project_id)  # 404 if project doesn't exist
+    all_assignments = list_assignments(project_id)
+    mine = [a for a in all_assignments if a.reviewer == current_user.username]
+    return [a.model_dump() for a in mine]
+
+
+@router.post("/projects/{project_id}/assignments/view")
+async def mark_assignments_viewed(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Auto-transition the current user's 'invited' assignments to 'reviewing'.
+
+    Called when a reviewer opens the project view for the first time.
+    Idempotent — safe to call on every page load.
+    Open to any authenticated user; only transitions assignments where reviewer == current_user.
+    """
+    project = _get_project_or_404(project_id)
+    all_assignments = list_assignments(project_id)
+    started: list[str] = []
+    for a in all_assignments:
+        if a.reviewer == current_user.username and a.status == "invited":
+            transition_status(a.id, "reviewing", ts_field="started_at")
+            started.append(a.id)
+            _emit_review_notification("review.started", a, project)
+    return {"started": started}
+
+
+@router.get("/projects/{project_id}/assignments/{assignment_id}/eligibility")
+async def get_assignment_eligibility(
+    project_id: str,
+    assignment_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Check whether a reviewer is eligible to concur (all feedback terminal)."""
+    project = _get_project_or_404(project_id)
+    _require_project_access(project, current_user)
+    _get_assignment_or_404(assignment_id)
+    from ..concurrence_gate import check_concurrence_eligibility
+    result = check_concurrence_eligibility(project_id, assignment_id)
+    return result.model_dump()
+
+
+@router.post("/projects/{project_id}/assignments/{assignment_id}/sign-internal")
+async def sign_assignment_internally(
+    project_id: str,
+    assignment_id: str,
+    body: SignInternalBody,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Internal acknowledgement sign-off (checkbox + timestamp) for low-ceremony reviews.
+
+    Transitions assignment to 'signed' and stamps signed_at.
+    """
+    project = _get_project_or_404(project_id)
+    assignment = _get_assignment_or_404(assignment_id)
+    if assignment.reviewer != current_user.username:
+        raise HTTPException(status_code=403, detail="Only the assigned reviewer can sign")
+    if assignment.status not in ("concurred", "feedback_submitted", "reviewing", "invited"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot sign from status '{assignment.status}'",
+        )
+    update_kwargs: dict[str, Any] = {"status": "signed"}
+    now = _datetime.now(UTC).isoformat()
+    update_kwargs["signed_at"] = now
+    if body.note:
+        update_kwargs["replacement_reason"] = f"[internal-ack] {body.note}"
+    result = _update_fields(assignment_id, **update_kwargs)
+    _emit_review_notification("review.signed", result, project)
+    _check_all_complete(project_id, project)
+    return result.model_dump()
 
 
 @router.get("/projects/{project_id}/notification-log")

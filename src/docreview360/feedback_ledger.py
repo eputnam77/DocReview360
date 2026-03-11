@@ -364,3 +364,51 @@ def get_feedback_progress(project_id: str, *, phase: Optional[str] = None) -> Fe
         by_type=by_type,
         addressed=addressed,
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase operations
+# ---------------------------------------------------------------------------
+
+
+def list_feedback_phases(project_id: str) -> list[str]:
+    """Return the distinct non-null phases that have feedback items for a project."""
+    _ensure_table()
+    db = get_db()
+    with db.session() as conn:
+        rows = conn.execute(
+            _text(
+                "SELECT DISTINCT phase FROM feedback_items "
+                "WHERE project_id = :project_id AND phase IS NOT NULL "
+                "ORDER BY phase"
+            ),
+            {"project_id": project_id},
+        ).fetchall()
+    return [row[0] for row in rows]
+
+
+def archive_phase_feedback(
+    project_id: str,
+    phase: str,
+    *,
+    archived_by: str,
+) -> int:
+    """Mark all open top-level feedback items in ``phase`` as resolved (archived).
+
+    Returns the number of items archived.
+    """
+    _ensure_table()
+    items = list_feedback_items(project_id, phase=phase, status="open")
+    top_level_open = [i for i in items if i.parent_id is None]
+    now = datetime.now(UTC).isoformat()
+    count = 0
+    for item in top_level_open:
+        _update_fields(
+            item.id,
+            status="resolved",
+            disposition_by=archived_by,
+            disposition_at=now,
+            disposition_reason=f"Phase '{phase}' archived by {archived_by}",
+        )
+        count += 1
+    return count

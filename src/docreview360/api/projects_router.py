@@ -335,9 +335,18 @@ def _resolve_workflow(
 
 
 def _update_workflow_phase(
-    request: Request, body: ProjectUpdate | None, updated_project: ProjectModel
+    request: Request,
+    body: ProjectUpdate | None,
+    updated_project: ProjectModel,
+    *,
+    project_id: str = "",
+    archived_by: str = "",
 ) -> None:
-    """Update an existing workflow's phase when only the phase is provided."""
+    """Update an existing workflow's phase when only the phase is provided.
+
+    When the phase advances, open feedback items from the previous phase are
+    automatically archived (resolved) so the ledger stays clean.
+    """
     if not body or body.phase is None:
         return
     is_json = request.headers.get("content-type", "").startswith("application/json")
@@ -350,9 +359,17 @@ def _update_workflow_phase(
         return
     wf_model = _get_wf(wf_id_to_update)
     if wf_model:
+        old_phase = wf_model.phase
         wf_model.phase = body.phase
         if body.phase not in wf_model.phases:
             wf_model.phases.append(body.phase)
+        # Auto-archive open feedback from the previous phase on phase advance
+        if old_phase and old_phase != body.phase and project_id and archived_by:
+            try:
+                from ..feedback_ledger import archive_phase_feedback
+                archive_phase_feedback(project_id, old_phase, archived_by=archived_by)
+            except Exception:
+                pass  # best-effort; never block phase advance
 
 
 async def _import_uploaded_file(
@@ -697,7 +714,11 @@ async def update_project_endpoint(  # noqa: C901
             if previous_workflow and previous_workflow.project == project_id:
                 previous_workflow.project = ""
 
-        _update_workflow_phase(request, body, updated_project)
+        _update_workflow_phase(
+            request, body, updated_project,
+            project_id=project_id,
+            archived_by=current_user.username,
+        )
 
         if file:
             await _import_uploaded_file(file, project_id, project_user)
