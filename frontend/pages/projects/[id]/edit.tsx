@@ -259,7 +259,7 @@ export default function EditProjectPage() {
             name?: unknown;
             phases?: unknown;
             workflow?: unknown;
-            default_template_id?: unknown;
+            default_workflow_template_id?: unknown;
           };
           const name = typeof value.name === "string" ? value.name : "";
           if (!name) return;
@@ -271,8 +271,9 @@ export default function EditProjectPage() {
               : [];
           phaseMap[name] = dtPhases;
           defaults[name] =
-            typeof value.default_template_id === "string" && value.default_template_id.trim()
-              ? value.default_template_id
+            typeof value.default_workflow_template_id === "string" &&
+            value.default_workflow_template_id.trim()
+              ? value.default_workflow_template_id
               : undefined;
         });
 

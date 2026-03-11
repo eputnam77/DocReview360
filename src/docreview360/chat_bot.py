@@ -181,7 +181,7 @@ def _template_question(lower: str) -> str | None:
     for doc_type_name, doc_type_obj in _current_document_types().items():
         name_lower = doc_type_name.lower()
         if doc_type in name_lower or name_lower in doc_type:
-            template_id = doc_type_obj.default_template_id or doc_type_obj.template
+            template_id = doc_type_obj.default_workflow_template_id or doc_type_obj.template
             return f"For {doc_type_name}, you should use the template with ID: {template_id}."
     return (
         f"I couldn't find a specific template for {doc_type}. You might want to use a "

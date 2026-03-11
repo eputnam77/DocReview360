@@ -63,6 +63,7 @@ export { default as PhaseAdvanceModal } from "./PhaseAdvanceModal";
 export { default as WorkflowTimeline } from "./WorkflowTimeline";
 export type { TimelineStep } from "./WorkflowTimeline";
 export { default as ReviewerComments } from "./ReviewerComments";
+export { default as UserPicker } from "./UserPicker";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";

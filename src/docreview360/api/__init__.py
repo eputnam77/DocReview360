@@ -244,6 +244,8 @@ from .branches_router import router as branches_router
 from .legal_router import router as legal_router
 from .config_router import router as config_router
 from .flags_router import router as flags_router
+from .assignments_router import router as assignments_router
+from .feedback_router import router as feedback_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -735,8 +737,8 @@ def _resolve_workflow_template(
 
     doc_type_obj = get_document_type(doc_type_name) if doc_type_name else None
     doc_default_template = (
-        doc_type_obj.default_template_id
-        if doc_type_obj and doc_type_obj.default_template_id
+        doc_type_obj.default_workflow_template_id
+        if doc_type_obj and doc_type_obj.default_workflow_template_id
         else None
     )
     if doc_default_template in workflow_templates:
@@ -1074,6 +1076,8 @@ app.include_router(branches_router)
 app.include_router(legal_router)
 app.include_router(config_router)
 app.include_router(flags_router)
+app.include_router(assignments_router)
+app.include_router(feedback_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)

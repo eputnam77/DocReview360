@@ -266,6 +266,23 @@ class _PhasesUpdateRequest(BaseModel):
     phases: list[str]
 
 
+@router.get("/document-types/{name}/starter-content")
+async def get_document_type_starter_content(
+    name: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Return the curated starter HTML template for a document type.
+
+    The frontend editor calls this endpoint when creating a new blank document
+    to pre-populate the TipTap editor with section headings and placeholder text
+    appropriate for the chosen document type.
+    """
+    doc_type = get_document_type(name)
+    if doc_type is None:
+        raise HTTPException(status_code=404, detail=f"Document type '{name}' not found")
+    return {"doc_type": name, "content": doc_type.template or f"<h1>{name}</h1>"}
+
+
 @router.get("/document-types/{name}/phases", response_model=list[str])
 async def get_document_type_phases(
     name: str,

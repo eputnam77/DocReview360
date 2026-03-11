@@ -116,7 +116,7 @@ export default function NewWorkflowPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...doc,
-            default_template_id: createdTemplateId,
+            default_workflow_template_id: createdTemplateId,
           }),
         });
       } catch {

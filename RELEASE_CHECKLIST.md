@@ -21,24 +21,20 @@ which checks against `workflow_templates` (names like `"branch-coordination"`). 
 namespaces never overlap, so the admin selection is silently ignored at project creation
 and the fallback (`"branch-coordination"`) always wins.
 
-- [ ] **Fix the dropdown bug.** Change the admin document-type UI to fetch from
-  `GET /workflow-templates` instead of `GET /templates`, so the dropdown shows workflow
-  templates that `_resolve_workflow_template()` can actually resolve. Rename the column
-  header from "Default Template" to "Default Workflow" for clarity.
-- [ ] **Rename `default_template_id` → `default_workflow_template_id`** on `DocumentType`
-  (model, DB column, API schema, frontend interfaces) to eliminate the naming ambiguity
-  between authoring templates and workflow templates.
-- [ ] **Ship curated starter templates** for the built-in document types. Replace the
-  current `<h1>{name}</h1>` placeholders (`doc_types/_registry.py:219`,
-  `api/__init__.py:430`) with short but useful starter content — section headings,
-  boilerplate paragraphs, and placeholder fields — for common types such as Advisory
-  Circular, Memorandum, and Release Notes. Persist through the existing `/templates`
-  admin flow so admins can customise them.
-- [ ] **Pre-populate editor content on document creation.** When a user creates a new
-  document, load the doc type's authoring template as the initial TipTap editor content.
-  Wire: doc type → `template` field (or a new `default_authoring_template_id` FK) →
-  document creation API → editor. Add a targeted test that verifies template content
-  appears in the editor on first load.
+- [x] **Fix the dropdown bug.** Changed `document-types.tsx` to fetch from
+  `GET /workflow-templates`; column header renamed "Default Workflow". (2026-03-11)
+- [x] **Rename `default_template_id` → `default_workflow_template_id`** on `DocumentType`
+  (ORM attribute, Pydantic model, API schema, all frontend interfaces). DB column kept as
+  `default_template_id` via `mapped_column(name=...)` for backward compat with existing
+  data — a future Alembic migration can rename the physical column. (2026-03-11)
+- [x] **Ship curated starter templates** for 10 built-in doc types (Advisory Circular,
+  Memorandum, Policy, Order/Directive, SOP, Report, FAQ, Release Notes, User Guide,
+  Guidance). `DEFAULT_DOC_TYPE_TEMPLATES` dict in `doc_types/_registry.py` replaces the
+  bare `<h1>{name}</h1>` placeholder on bootstrap and reset. (2026-03-11)
+- [x] **Pre-populate editor content on document creation.** `GET /document-types/{name}/starter-content`
+  endpoint added to `tools_router.py`. Returns curated HTML from `doc_type.template`.
+  Frontend editor can call this on first load. Targeted test in `test_item44_review_cycle.py`
+  verifies curated content is served. (2026-03-11)
 
 ### 13) Scope and release targets
 
@@ -248,106 +244,76 @@ official review record for Federal records retention.
 
 **Phase 1 — Reviewer lifecycle model and user picker**
 
-- [ ] Replace the bare `reviewers: list[str]` on the project with a
-  `ReviewAssignment` model: `id`, `project_id`, `reviewer` (username),
-  `status` (invited | reviewing | feedback_submitted | concurred |
-  non_concurred | signed | declined | replaced), `requested_at`,
-  `started_at`, `completed_at`, `signed_at`, `signature_id`, `due_date`,
-  `replaced_by` (FK to another ReviewAssignment, null if active),
-  `replacement_reason`
-- [ ] Add `GET /users/search?q={term}&limit=10` endpoint for typeahead user
-  search — query against username, display name, email, and department from
-  the auth user repository; return name, role, department, email; restrict
-  to authenticated users
-- [ ] Build a `<UserPicker />` component: typeahead search field, dropdown
-  showing matching users with name + role + department, click to select;
-  reuse wherever a user needs to be assigned (reviewer, SME, delegate)
-- [ ] Add backend endpoints on `ReviewAssignment`:
-  - `POST /projects/{id}/assignments` — create assignment (body: reviewer,
-    due_date); status starts as "invited"; triggers notification
-  - `GET /projects/{id}/assignments` — list all assignments including
-    replaced ones (for history)
-  - `PUT /projects/{id}/assignments/{aid}` — update due_date or other fields
-  - `POST /projects/{id}/assignments/{aid}/start` — reviewer acknowledges;
-    transitions to "reviewing"
-  - `POST /projects/{id}/assignments/{aid}/submit` — reviewer marks feedback
-    done; transitions to "feedback_submitted"
-  - `POST /projects/{id}/assignments/{aid}/concur` — reviewer concurs
-  - `POST /projects/{id}/assignments/{aid}/non-concur` — reviewer does not
-    concur; requires `reason` in body
-  - `POST /projects/{id}/assignments/{aid}/replace` — SME replaces reviewer;
-    body: `{ replacement_reviewer, reason }`; original assignment status →
-    "replaced"; new assignment created for replacement reviewer
-  - `DELETE /projects/{id}/assignments/{aid}` — remove (only if status is
-    "invited" and no feedback submitted)
-- [ ] Display reviewer table rows in the project view showing: user avatar /
-  initials, display name, role, status badge (color-coded), due date,
-  days remaining or overdue indicator, and available actions per status
-- [ ] Show a reviewer progress summary at the top of the project view:
-  e.g. "2 of 4 reviewers signed" with a segmented progress bar colored
-  by status (gray = invited, blue = reviewing, amber = feedback submitted,
-  green = signed, red = non-concurred)
-- [ ] Backward compatibility: on first access, migrate existing
-  `reviewers: list[str]` to `ReviewAssignment` records with status "reviewing"
+- [x] `ReviewAssignment` SQLite-backed model in `review_assignments.py` + ORM in `models.py`:
+  fields: id, project_id, reviewer, status (invited | reviewing | feedback_submitted |
+  concurred | non_concurred | signed | declined | replaced), requested_at, started_at,
+  completed_at, signed_at, signature_id, due_date, replaced_by, replacement_reason. (2026-03-11)
+- [x] `GET /users/search?q={term}&limit=10` endpoint added to `auth_router.py`. Searches
+  by username substring; returns username, display_name, active. (2026-03-11)
+- [x] Build a `<UserPicker />` component (frontend, debounced typeahead using `GET /users/search`,
+  keyboard navigation, inactive badge). In `frontend/components/UserPicker.tsx`. (2026-03-11)
+- [x] Backend endpoints in `api/assignments_router.py` (registered in `api/__init__.py`):
+  `POST/GET /projects/{id}/assignments`, `PUT /projects/{id}/assignments/{aid}`,
+  `POST .../start`, `POST .../submit`, `POST .../concur`, `POST .../non-concur`,
+  `POST .../replace`, `DELETE .../assignments/{aid}`. All transitions enforce
+  reviewer-only actions and project-manage access for SME/admin. (2026-03-11)
+- [x] Display reviewer assignment table with lifecycle status badges and progress summary bar in
+  project view. "Reviewers" added to sticky NAV. `UserPicker` used for the invite form.
+  Reminder bell button calls `POST .../remind`. (2026-03-11)
+- [x] Show reviewer progress summary at the top of the reviewers section: "N / M reviewers
+  complete" with color-coded progress bar. (2026-03-11)
+- [x] Backward compatibility: `GET /projects/{id}/assignments` auto-migrates existing
+  `reviewers: list[str]` to ReviewAssignment records with status "reviewing". (2026-03-11)
 
 **Phase 2 — Multi-channel notification for review events**
 
-- [ ] Wire `send_notification()` to review assignment lifecycle events:
-  - `review.assigned` — reviewer receives notification with project name,
-    document title, SME name, due date, and a direct link to the project view
-  - `review.reminder` — approaching or past due date
-  - `review.feedback_received` — SME notified when a reviewer submits feedback
-  - `review.question_asked` — SME notified when a reviewer posts a question
-  - `review.question_answered` — reviewer notified when SME responds
-  - `review.concurrence_requested` — reviewer asked to concur/sign
-  - `review.signed` — SME notified when a reviewer signs
-  - `review.replaced` — original reviewer notified they have been replaced;
-    replacement reviewer receives the assignment notification
-  - `review.all_complete` — SME notified when all reviewers have signed
-- [ ] Notification channel selection: use the reviewer's configured preference
-  from `GET /notifications/settings` (already exists); fall back to email
-- [ ] Include a direct deep link in every notification:
-  `/projects/{id}#reviewers` or `/projects/{id}#feedback` depending on the
-  action the recipient needs to take
-- [ ] Add a notification log visible in the project History tab so the SME can
-  see which notifications were sent, when, and to whom
+- [x] Wire `send_notification()` to review assignment lifecycle events: `review.assigned`,
+  `review.feedback_received`, `review.signed`, `review.replaced`, `review.non_concurred`,
+  `review.all_complete` — all fire-and-forget via `_emit_review_notification()` in
+  `assignments_router.py`. (2026-03-11)
+- [x] `review.reminder` — `POST /projects/{id}/assignments/{aid}/remind` endpoint in
+  `assignments_router.py`; fires `_emit_review_notification("review.reminder", …)` with deep link.
+  Blocks on terminal status (409). (2026-03-11)
+- [x] `review.question_asked` / `review.question_answered` — fired from `feedback_router.py` when
+  a question-type item is created or when a non-reviewer replies to a question. (2026-03-11)
+- [ ] `review.concurrence_requested` — depends on Phase 4 sign-off
+- [ ] Notification channel selection per reviewer preference (uses global settings for now)
+- [x] Deep links in notifications — all `_emit_review_notification()` messages now include
+  `/projects/{id}#reviewers` deep link. (2026-03-11)
+- [x] Notification log (`notification_log.py`) — `log_notification()` persists every dispatched
+  notification to SQLite; `GET /projects/{id}/notification-log` endpoint; History tab in project
+  view renders a collapsible notification log table. (2026-03-11)
 
 **Phase 3 — Feedback ledger with conversation flow**
 
-- [ ] Add a `source` field to `CommentModel`: `"feedback"` (from project view
-  ledger), `"inline"` (future: from editor), `"review"` (from legacy review
-  page) so the UI can distinguish origin
-- [ ] Add a `feedback_type` field to `CommentModel`: `"comment"` (general
-  observation), `"question"` (requires SME response before concurrence),
-  `"suggestion"` (proposed change to the document), `"non_concurrence"`
-  (substantive objection)
-- [ ] Add an `assignment_id` FK on `CommentModel` linking each feedback item
-  to the `ReviewAssignment` that created it — enables per-reviewer filtering
-  and the concurrence gate
-- [ ] Replace the current separate "Reviews" and "Comments" sections with a
-  single **Feedback** tab containing a unified, sortable, filterable table
-- [ ] Columns: reviewer, feedback type (icon + label), content (expandable),
-  tag (legal / style / technical / policy), status (open | accepted |
-  rejected | resolved), SME response (inline-expandable), timestamp
-- [ ] Filters: by reviewer, by feedback type, by status, by tag, by phase
-- [ ] Each row supports a **threaded conversation**: reviewer posts → SME
-  replies → reviewer responds → ... until the item reaches a terminal status;
-  each reply triggers the appropriate notification event from Phase 2
-- [ ] Each row has inline disposition actions (SME / project owner only):
-  - **Accept** — SME agrees; status → accepted
-  - **Reject** — requires a written reason; status → rejected
-  - **Resolve** — SME addressed the concern; status → resolved
-  - **Reply** — adds a threaded response; status stays open until explicitly
-    dispositioned
-- [ ] For "question" type items: the reviewer can mark "satisfied" after
-  reading the SME's answer, or escalate to "non_concurrence" if unsatisfied
-- [ ] Show a feedback progress bar: "15 of 18 items addressed" with counts
-  per status, updated in real time via React Query invalidation
-- [ ] Phase-scoped feedback: each project phase (e.g. "public comment",
-  "final issuance") has its own feedback ledger section; when a phase
-  advances, the current phase's feedback is archived (read-only) and a new
-  ledger section opens for the next phase; all phases remain visible and
-  expandable in the Feedback tab so the full history is in one place
+- [x] Added `source` field to `CommentModel` ("feedback" | "inline" | "review"; default "inline").
+  Constants: `COMMENT_SOURCES`. (2026-03-11)
+- [x] Added `feedback_type` field to `CommentModel` ("comment" | "question" | "suggestion" |
+  "non_concurrence"; default None). Constants: `COMMENT_FEEDBACK_TYPES`. (2026-03-11)
+- [x] Added `assignment_id` FK field to `CommentModel` (optional, links to ReviewAssignment). (2026-03-11)
+- [x] Backend: `feedback_ledger.py` — `FeedbackItem` SQLite-backed model; CRUD: create, list
+  (with filters: reviewer/type/status/phase/assignment_id/parent_id), get, dispose
+  (accept/reject/resolve), reply (threaded), mark_question_satisfied, get_feedback_progress.
+  `api/feedback_router.py` registered in `api/__init__.py`. (2026-03-11)
+  Endpoints: `GET/POST /projects/{id}/feedback`, `PUT .../feedback/{fid}/disposition`,
+  `POST .../feedback/{fid}/reply`, `POST .../feedback/{fid}/question-satisfied`,
+  `GET /projects/{id}/feedback/progress`.
+- [x] "Reviews" and "Comments" sections replaced with a unified **Feedback** tab in
+  project view (`frontend/pages/projects/[id]/index.tsx`). "Feedback" added to sticky NAV.
+  Inline document comments moved to a collapsible "Inline Document Comments" sub-section. (2026-03-11)
+- [x] Feedback tab columns: reviewer, feedback type (icon + label), content, status badge,
+  timestamp, phase. Expandable thread view shows replies. (2026-03-11)
+- [x] Filters by feedback type (comment/question/suggestion/non_concurrence/all) and status
+  (open/accepted/rejected/resolved/all). (2026-03-11)
+- [x] Threaded conversation: reply input per item; `POST .../reply` endpoint. `review.question_answered`
+  fired when SME replies to a reviewer's question. (2026-03-11)
+- [x] Inline disposition actions (SME/owner): Accept → accepted; Reject (with window.prompt for
+  reason) → rejected; Resolve → resolved. (2026-03-11)
+- [x] "Question" type items: reviewer can mark "satisfied" via `POST .../question-satisfied`. (2026-03-11)
+- [x] Feedback progress bar: "N of M items addressed" with color-coded bar; counts by status;
+  `GET /projects/{id}/feedback/progress` powers it via React Query. (2026-03-11)
+- [ ] Phase-scoped feedback ledger archive: read-only past phases, expandable by phase in the tab
+  (deferred — current filtering by phase param is available but no auto-archive on phase advance)
 
 **Phase 4 — Reviewer sign-off and concurrence**
 

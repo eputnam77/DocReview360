@@ -85,7 +85,7 @@ def _resolve_doc_type(preferred: str | None) -> tuple[str | None, list[str]]:
 
 def _resolve_workflow_template(doc_type_name: str | None) -> str:
     doc_type = get_document_type(doc_type_name) if doc_type_name else None
-    template = doc_type.default_template_id if doc_type else None
+    template = doc_type.default_workflow_template_id if doc_type else None
     if template and template in workflow_templates:
         return template
     return "branch-coordination"

@@ -180,8 +180,8 @@ def _resolve_workflow_template(
 
     doc_type_obj = get_document_type(doc_type_name) if doc_type_name else None
     doc_default_template = (
-        doc_type_obj.default_template_id
-        if doc_type_obj and doc_type_obj.default_template_id
+        doc_type_obj.default_workflow_template_id
+        if doc_type_obj and doc_type_obj.default_workflow_template_id
         else None
     )
     if doc_default_template in workflow_templates:

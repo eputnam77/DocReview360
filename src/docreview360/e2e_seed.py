@@ -123,7 +123,7 @@ def seed_e2e_data() -> Dict[str, Any]:
             name=doc_type_name,
             template=f"<h1>{doc_type_name} Template</h1>",
             workflow=E2E_PHASES,
-            default_template_id="branch-coordination",
+            default_workflow_template_id="branch-coordination",
         )
         add_document_type(doc_type)
 

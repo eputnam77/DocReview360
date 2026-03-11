@@ -81,7 +81,12 @@ class DocumentType(Base):
     template: Mapped[str] = mapped_column(String, server_default="")
     workflow: Mapped[list] = mapped_column(JSON, server_default="[]")
     display_order: Mapped[int] = mapped_column(Integer, server_default=_sa_text("0"))
-    default_template_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Python attribute renamed to `default_workflow_template_id`; DB column kept as
+    # `default_template_id` for backward compatibility with existing data.  A future
+    # Alembic migration can rename the physical column when ready.
+    default_workflow_template_id: Mapped[str | None] = mapped_column(
+        String(200), name="default_template_id", nullable=True
+    )
 
 
 class Phase(Base):
@@ -591,3 +596,29 @@ class CustomFieldValue(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     field_definition: Mapped["CustomFieldDefinition"] = relationship(back_populates="values")
+
+
+# ---------------------------------------------------------------------------
+# Review assignments (Item 44 — reviewer lifecycle model)
+# ---------------------------------------------------------------------------
+
+
+class ReviewAssignment(Base):
+    """Persistent reviewer assignment with full lifecycle tracking."""
+
+    __tablename__ = "review_assignments"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    reviewer: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # invited | reviewing | feedback_submitted | concurred | non_concurred | signed | declined | replaced
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="invited", index=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signature_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # FK to another ReviewAssignment.id when this reviewer was replaced
+    replaced_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    replacement_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

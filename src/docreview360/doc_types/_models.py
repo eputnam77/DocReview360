@@ -14,7 +14,7 @@ class DocumentTypeModel(BaseModel):
     name: str
     template: str
     workflow: List[str] = Field(default_factory=list)
-    default_template_id: str | None = None
+    default_workflow_template_id: str | None = None
 
     @computed_field(return_type=str)
     def id(self) -> str:  # noqa: A003

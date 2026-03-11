@@ -146,6 +146,35 @@ async def read_current_user(current_user: auth.User = Depends(auth.get_current_u
     return current_user
 
 
+@router.get("/users/search")
+async def search_users(
+    q: str = Query(default="", description="Search term (username prefix / substring)"),
+    limit: int = Query(default=10, ge=1, le=50, description="Maximum results to return"),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict]:
+    """Typeahead user search across username.
+
+    Returns up to *limit* matching users with username, display_name, and active flag.
+    Accessible to all authenticated users; used by the UserPicker component.
+    """
+    repo = auth._get_user_repository()
+    all_users = repo.list_users()
+    term = q.strip().lower()
+    results = []
+    for user in all_users:
+        if not term or term in user.username.lower():
+            results.append(
+                {
+                    "username": user.username,
+                    "display_name": user.username,
+                    "active": bool(user.active),
+                }
+            )
+        if len(results) >= limit:
+            break
+    return results
+
+
 @router.post("/logout")
 async def logout(
     request: Request,

@@ -146,8 +146,9 @@ export default function NewProjectPage() {
                 : [];
             map[name] = availablePhases;
             const defaultTemplate =
-              typeof d?.default_template_id === "string" && d.default_template_id.trim()
-                ? d.default_template_id
+              typeof d?.default_workflow_template_id === "string" &&
+              d.default_workflow_template_id.trim()
+                ? d.default_workflow_template_id
                 : undefined;
             defaults[name] = defaultTemplate;
           }

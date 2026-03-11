@@ -15,6 +15,10 @@ from pydantic import BaseModel, Field
 
 COMMENT_STATUSES = ("open", "resolved", "accepted", "rejected")
 COMMENT_TAGS = ("legal", "style", "technical", "policy")
+# Feedback sources: where in the UI / flow the comment originated.
+COMMENT_SOURCES = ("inline", "feedback", "review")
+# Feedback types for structured reviewer feedback.
+COMMENT_FEEDBACK_TYPES = ("comment", "question", "suggestion", "non_concurrence")
 
 
 class CommentModel(BaseModel):
@@ -30,6 +34,12 @@ class CommentModel(BaseModel):
     created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tags: list[str] = Field(default_factory=list)
     status: str = "open"
+    # Source distinguishes where the comment originated (inline editor, feedback ledger, review).
+    source: str = "inline"
+    # Structured feedback type for reviewer feedback items.
+    feedback_type: Optional[str] = None
+    # FK to the ReviewAssignment that created this feedback item.
+    assignment_id: Optional[str] = None
 
 
 _comments: Dict[str, List[CommentModel]] = {}

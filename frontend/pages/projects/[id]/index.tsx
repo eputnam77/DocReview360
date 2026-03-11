@@ -14,7 +14,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { authenticatedFetch } from "@/lib/api";
-import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments } from "@/components";
+import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments, UserPicker } from "@/components";
 import type { TimelineStep } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,17 @@ import {
     Users2,
     UserPlus,
     Pencil,
-    Trash2
+    Trash2,
+    CheckCircle2,
+    XCircle,
+    Clock,
+    MessageSquare,
+    HelpCircle,
+    Lightbulb,
+    AlertTriangle,
+    ChevronDown,
+    ChevronRight,
+    Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -130,8 +140,9 @@ function ProgBar({ value }: { value: number }) {
 // Sticky nav
 const NAV = [
   { id: "details", label: "Details" },
+  { id: "reviewers", label: "Reviewers" },
+  { id: "feedback", label: "Feedback" },
   { id: "approvals", label: "Approvals" },
-  { id: "reviews", label: "Reviews" },
   { id: "history", label: "History" },
 ];
 
@@ -264,6 +275,17 @@ export default function ProjectDetailsPage() {
   const [editingReviewer, setEditingReviewer] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
 
+  // Assignment-based reviewer state
+  const [assignmentReviewerInput, setAssignmentReviewerInput] = useState("");
+  const [assignmentDueDate, setAssignmentDueDate] = useState("");
+  const [addingAssignment, setAddingAssignment] = useState(false);
+  const [expandedFeedback, setExpandedFeedback] = useState<Set<string>>(new Set());
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [feedbackTypeFilter, setFeedbackTypeFilter] = useState("all");
+  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState("all");
+  const [newFeedbackText, setNewFeedbackText] = useState("");
+  const [newFeedbackType, setNewFeedbackType] = useState("comment");
+
   const approvalsForPhase = useMemo(
     () =>
       approvals.filter(
@@ -341,6 +363,97 @@ export default function ProjectDetailsPage() {
       if (!res.ok) return [];
       return res.json();
     },
+  });
+
+  // Reviewer assignments (lifecycle model)
+  interface ReviewAssignment {
+    id: string;
+    reviewer: string;
+    status: string;
+    requested_at: string;
+    due_date?: string | null;
+    started_at?: string | null;
+    completed_at?: string | null;
+    signed_at?: string | null;
+    replaced_by?: string | null;
+    replacement_reason?: string | null;
+  }
+  const { data: assignments = [], refetch: refetchAssignments } = useQuery<ReviewAssignment[]>({
+    queryKey: ["assignments", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await authenticatedFetch(`/projects/${id}/assignments`);
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+
+  // Feedback ledger
+  interface FeedbackItem {
+    id: string;
+    reviewer: string;
+    feedback_type: string;
+    text: string;
+    phase?: string | null;
+    status: string;
+    created_at: string;
+    disposition_by?: string | null;
+    disposition_at?: string | null;
+    disposition_reason?: string | null;
+    parent_id?: string | null;
+    tags: string[];
+    question_satisfied: boolean;
+    assignment_id?: string | null;
+  }
+  interface FeedbackProgress {
+    total: number;
+    open: number;
+    accepted: number;
+    rejected: number;
+    resolved: number;
+    addressed: number;
+    by_type: Record<string, number>;
+  }
+  const { data: feedbackItems = [], refetch: refetchFeedback } = useQuery<FeedbackItem[]>({
+    queryKey: ["feedback", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await authenticatedFetch(`/projects/${id}/feedback`);
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id,
+    staleTime: 15_000,
+  });
+  const { data: feedbackProgress, refetch: refetchProgress } = useQuery<FeedbackProgress>({
+    queryKey: ["feedback-progress", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const res = await authenticatedFetch(`/projects/${id}/feedback/progress`);
+      return res.ok ? res.json() : null;
+    },
+    enabled: !!id,
+    staleTime: 15_000,
+  });
+
+  // Notification log
+  interface NotifLogEntry {
+    id: string;
+    event: string;
+    message: string;
+    reviewer?: string | null;
+    sent_at: string;
+    channel: string;
+  }
+  const { data: notifLog = [] } = useQuery<NotifLogEntry[]>({
+    queryKey: ["notif-log", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await authenticatedFetch(`/projects/${id}/notification-log`);
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id,
+    staleTime: 60_000,
   });
 
   const reviewerOptions = useMemo(
@@ -703,6 +816,108 @@ export default function ProjectDetailsPage() {
     },
     [removeReviewer, refreshReviewerData],
   );
+
+  // Assignment management handlers
+  const handleAddAssignment = async () => {
+    const reviewer = assignmentReviewerInput.trim();
+    if (!reviewer) {
+      toast.error("Enter a reviewer username.");
+      return;
+    }
+    try {
+      setAddingAssignment(true);
+      const body: Record<string, unknown> = { reviewer };
+      if (assignmentDueDate) body.due_date = assignmentDueDate;
+      const res = await authenticatedFetch(`/projects/${id}/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.detail ?? "Failed to add reviewer");
+      }
+      setAssignmentReviewerInput("");
+      setAssignmentDueDate("");
+      refetchAssignments();
+      toast.success("Reviewer invited.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add reviewer");
+    } finally {
+      setAddingAssignment(false);
+    }
+  };
+
+  const handleSendReminder = async (assignmentId: string) => {
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/remind`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error("Failed");
+      toast.success("Reminder sent.");
+    } catch {
+      toast.error("Failed to send reminder.");
+    }
+  };
+
+  // Feedback handlers
+  const handlePostFeedback = async () => {
+    if (!newFeedbackText.trim()) return;
+    try {
+      const res = await authenticatedFetch(`/projects/${id}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: newFeedbackText, feedback_type: newFeedbackType }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNewFeedbackText("");
+      refetchFeedback();
+      refetchProgress();
+      toast.success("Feedback submitted.");
+    } catch {
+      toast.error("Failed to submit feedback.");
+    }
+  };
+
+  const handleDisposition = async (itemId: string, status: string, reason?: string) => {
+    try {
+      const body: Record<string, unknown> = { status };
+      if (reason) body.reason = reason;
+      const res = await authenticatedFetch(
+        `/projects/${id}/feedback/${itemId}/disposition`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!res.ok) throw new Error("Failed");
+      refetchFeedback();
+      refetchProgress();
+      toast.success(`Marked as ${status}.`);
+    } catch {
+      toast.error("Failed to update status.");
+    }
+  };
+
+  const handleReply = async (parentId: string) => {
+    const text = replyText[parentId]?.trim();
+    if (!text) return;
+    try {
+      const res = await authenticatedFetch(`/projects/${id}/feedback/${parentId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setReplyText((prev) => ({ ...prev, [parentId]: "" }));
+      refetchFeedback();
+      toast.success("Reply posted.");
+    } catch {
+      toast.error("Failed to post reply.");
+    }
+  };
 
   const sendReminder = (ids?: string[]) => {
     const targets = approvalsForPhase.filter(
@@ -1103,136 +1318,140 @@ export default function ProjectDetailsPage() {
           </div>
         </section>
 
-        {/* REVIEWERS SECTION */}
+        {/* REVIEWERS SECTION — assignment lifecycle */}
         <section id="reviewers" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <Users2 className="w-5 h-5" /> Reviewers
             </h2>
           </div>
+
+          {/* Review progress summary */}
+          {assignments.length > 0 && (() => {
+            const active = assignments.filter((a) => a.status !== "replaced");
+            const done = active.filter((a) => a.status === "concurred" || a.status === "signed");
+            const pct = active.length > 0 ? Math.round((done.length / active.length) * 100) : 0;
+            return (
+              <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 border">
+                <span className="text-sm font-medium text-gray-700">
+                  {done.length} / {active.length} reviewers complete
+                </span>
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div
+                    className={cn(
+                      "h-2 rounded-full transition-all",
+                      pct === 100 ? "bg-green-500" : pct >= 50 ? "bg-blue-500" : "bg-yellow-400",
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-gray-600">{pct}%</span>
+              </div>
+            );
+          })()}
+
           <Card>
             <CardContent className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Add reviewer
-                  </label>
-                  <Input
-                    list="reviewer-options"
-                    value={reviewerInput}
-                    onChange={(e) => setReviewerInput(e.target.value)}
-                    placeholder="Select reviewer"
-                    disabled={!canEdit}
-                  />
-                  <datalist id="reviewer-options">
-                    {reviewerOptions.map((name: string) => (
-                      <option key={name} value={name} />
-                    ))}
-                  </datalist>
+              {/* Add assignment form */}
+              {canEdit && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Invite reviewer
+                    </label>
+                    <UserPicker
+                      value={assignmentReviewerInput}
+                      onChange={setAssignmentReviewerInput}
+                      placeholder="Search for a user…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Due date (optional)
+                    </label>
+                    <input
+                      type="date"
+                      value={assignmentDueDate}
+                      onChange={(e) => setAssignmentDueDate(e.target.value)}
+                      className="block w-full rounded border px-2 py-2 text-sm"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleAddAssignment}
+                    disabled={!assignmentReviewerInput.trim() || addingAssignment}
+                  >
+                    <UserPlus className="w-4 h-4 mr-1" />
+                    {addingAssignment ? "Inviting…" : "Invite"}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={handleAddReviewer}
-                  disabled={!canEdit || !reviewerInput.trim() || addingReviewer}
-                >
-                  <UserPlus className="w-4 h-4 mr-1" /> {addingReviewer ? "Adding..." : "Add"}
-                </Button>
-              </div>
-              {reviewerActionError ? (
-                <p className="text-sm text-red-600 dark:text-red-400">{reviewerActionError}</p>
-              ) : null}
-              {!reviewersLoading && reviewerOptions.length === 0 ? (
-                <p className="text-xs text-amber-600 dark:text-amber-400">No reviewer users found in the system.</p>
-              ) : null}
+              )}
+
+              {/* Assignment table */}
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Reviewer</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Invited</TableHead>
+                    <TableHead>Due</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reviewersLoading ? (
+                  {assignments.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={2} className="text-sm text-gray-500">
-                        Loading reviewers...
-                      </TableCell>
-                    </TableRow>
-                  ) : reviewers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={2} className="text-sm text-gray-500">
+                      <TableCell colSpan={5} className="text-sm text-gray-500 text-center py-6">
                         No reviewers assigned yet.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    reviewers.map((reviewer) => (
-                      <TableRow key={reviewer}>
-                        <TableCell>
-                          {editingReviewer === reviewer ? (
-                            <Input
-                              value={editingValue}
-                              onChange={(e) => setEditingValue(e.target.value)}
-                              placeholder="Reviewer name"
-                              disabled={!canEdit}
-                            />
-                          ) : (
-                            <span className="font-medium">{reviewer}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          {editingReviewer === reviewer ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleUpdateReviewer}
-                                disabled={!canEdit || !editingValue.trim()}
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditingReviewer(null);
-                                  setEditingValue("");
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingReviewer(reviewer);
-                                  setEditingValue(reviewer);
-                                }}
-                                disabled={!canEdit}
-                              >
-                                <Pencil className="w-4 h-4 mr-1" /> Edit
-                              </Button>
+                    assignments.map((a) => {
+                      const statusColors: Record<string, string> = {
+                        invited: "bg-gray-100 text-gray-600",
+                        reviewing: "bg-blue-100 text-blue-700",
+                        feedback_submitted: "bg-indigo-100 text-indigo-700",
+                        concurred: "bg-green-100 text-green-700",
+                        non_concurred: "bg-red-100 text-red-700",
+                        signed: "bg-emerald-100 text-emerald-700",
+                        declined: "bg-orange-100 text-orange-700",
+                        replaced: "bg-gray-100 text-gray-400 line-through",
+                      };
+                      return (
+                        <TableRow key={a.id} className={a.status === "replaced" ? "opacity-50" : ""}>
+                          <TableCell className="font-medium">{a.reviewer}</TableCell>
+                          <TableCell>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-xs font-semibold",
+                              statusColors[a.status] ?? "bg-gray-100 text-gray-600",
+                            )}>
+                              {a.status.replace(/_/g, " ")}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-gray-500">
+                            {a.requested_at ? new Date(a.requested_at).toLocaleDateString() : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs text-gray-500">
+                            {a.due_date ? new Date(a.due_date).toLocaleDateString() : "—"}
+                          </TableCell>
+                          <TableCell className="text-right space-x-1">
+                            {canEdit && a.status !== "replaced" && !["concurred","signed","declined"].includes(a.status) && (
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleRemoveReviewer(reviewer)}
-                                disabled={!canEdit}
+                                title="Send reminder"
+                                onClick={() => handleSendReminder(a.id)}
                               >
-                                <Trash2 className="w-4 h-4 mr-1" /> Remove
+                                <Bell className="w-4 h-4" />
                               </Button>
-                            </>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
-              <p className="text-xs text-gray-500">
-                Reviewers are linked to this project and receive approval tasks.
-              </p>
             </CardContent>
           </Card>
         </section>
@@ -1299,35 +1518,286 @@ export default function ProjectDetailsPage() {
           </Card>
         </section>
 
-        {/* REVIEW SUMMARY SECTION */}
-        <section id="reviews" className="space-y-6">
+        {/* FEEDBACK SECTION — unified ledger */}
+        <section id="feedback" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <MessageSquare className="w-5 h-5" /> Feedback Ledger
+            </h2>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/projects/${id}/review`}>Open review workspace</Link>
+            </Button>
+          </div>
+
+          {/* Progress bar */}
+          {feedbackProgress && feedbackProgress.total > 0 && (
+            <div className="p-3 rounded-lg bg-gray-50 border space-y-1">
+              <div className="flex justify-between text-sm font-medium">
+                <span>{feedbackProgress.addressed} of {feedbackProgress.total} items addressed</span>
+                <span className="text-gray-500">
+                  {feedbackProgress.open} open · {feedbackProgress.accepted} accepted ·{" "}
+                  {feedbackProgress.rejected} rejected · {feedbackProgress.resolved} resolved
+                </span>
+              </div>
+              <ProgBar value={feedbackProgress.total > 0 ? Math.round((feedbackProgress.addressed / feedbackProgress.total) * 100) : 0} />
+            </div>
+          )}
+
+          {/* Post feedback */}
           <Card>
             <CardHeader>
-              <CardTitle>Review summary</CardTitle>
+              <CardTitle className="text-base">Post Feedback</CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">
-                {reviewCount} reviews in this phase
-              </span>
-              <Button asChild>
-                <Link href={`/projects/${id}/review`}>
-                  Open review workspace
-                </Link>
-              </Button>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                {(["comment", "question", "suggestion", "non_concurrence"] as const).map((t) => {
+                  const icons: Record<string, React.ReactNode> = {
+                    comment: <MessageSquare className="w-3 h-3" />,
+                    question: <HelpCircle className="w-3 h-3" />,
+                    suggestion: <Lightbulb className="w-3 h-3" />,
+                    non_concurrence: <AlertTriangle className="w-3 h-3" />,
+                  };
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setNewFeedbackType(t)}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border",
+                        newFeedbackType === t
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white text-gray-600 border-gray-300 hover:border-indigo-400",
+                      )}
+                    >
+                      {icons[t]} {t.replace(/_/g, " ")}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 rounded border px-3 py-2 text-sm"
+                  placeholder={`Add a ${newFeedbackType.replace(/_/g, " ")}…`}
+                  value={newFeedbackText}
+                  onChange={(e) => setNewFeedbackText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePostFeedback(); } }}
+                />
+                <Button size="sm" onClick={handlePostFeedback} disabled={!newFeedbackText.trim()}>
+                  Submit
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        </section>
 
-        {/* COMMENTS SECTION */}
-        <section id="comments" className="space-y-6">
+          {/* Filters */}
+          <div className="flex gap-2 flex-wrap">
+            {["all", "comment", "question", "suggestion", "non_concurrence"].map((t) => (
+              <button
+                key={t}
+                onClick={() => setFeedbackTypeFilter(t)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium border",
+                  feedbackTypeFilter === t
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300",
+                )}
+              >
+                {t === "all" ? "All types" : t.replace(/_/g, " ")}
+              </button>
+            ))}
+            <div className="ml-auto flex gap-2">
+              {["all", "open", "accepted", "rejected", "resolved"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setFeedbackStatusFilter(s)}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-xs font-medium border",
+                    feedbackStatusFilter === s
+                      ? "bg-gray-800 text-white border-gray-800"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-400",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Feedback items table */}
+          {(() => {
+            const topLevel = feedbackItems.filter((f) => !f.parent_id);
+            const filtered = topLevel.filter((f) => {
+              if (feedbackTypeFilter !== "all" && f.feedback_type !== feedbackTypeFilter) return false;
+              if (feedbackStatusFilter !== "all" && f.status !== feedbackStatusFilter) return false;
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <Card>
+                  <CardContent className="py-10 text-center text-gray-400 text-sm">
+                    No feedback items yet.
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            const typeIcon: Record<string, React.ReactNode> = {
+              comment: <MessageSquare className="w-4 h-4 text-blue-500" />,
+              question: <HelpCircle className="w-4 h-4 text-yellow-500" />,
+              suggestion: <Lightbulb className="w-4 h-4 text-purple-500" />,
+              non_concurrence: <AlertTriangle className="w-4 h-4 text-red-500" />,
+            };
+            const statusBadge: Record<string, string> = {
+              open: "bg-gray-100 text-gray-600",
+              accepted: "bg-green-100 text-green-700",
+              rejected: "bg-red-100 text-red-700",
+              resolved: "bg-blue-100 text-blue-700",
+            };
+
+            return (
+              <div className="space-y-3">
+                {filtered.map((item) => {
+                  const isExpanded = expandedFeedback.has(item.id);
+                  const replies = feedbackItems.filter((f) => f.parent_id === item.id);
+                  const isTerminal = ["accepted", "rejected", "resolved"].includes(item.status);
+                  return (
+                    <Card key={item.id} className={cn(isTerminal ? "opacity-80" : "")}>
+                      <CardContent className="pt-4 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5">{typeIcon[item.feedback_type] ?? <MessageSquare className="w-4 h-4" />}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{item.reviewer}</span>
+                              <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", statusBadge[item.status] ?? "bg-gray-100 text-gray-600")}>
+                                {item.status}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {item.feedback_type.replace(/_/g, " ")}
+                              </span>
+                              {item.phase && (
+                                <span className="text-xs text-gray-400 italic">{item.phase}</span>
+                              )}
+                              <span className="text-xs text-gray-400 ml-auto">
+                                {new Date(item.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-sm mt-1">{item.text}</p>
+                            {item.disposition_reason && (
+                              <p className="text-xs text-gray-500 mt-1 italic">
+                                Reason: {item.disposition_reason}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            className="ml-2 text-gray-400 hover:text-gray-600"
+                            onClick={() => setExpandedFeedback((prev) => {
+                              const next = new Set(prev);
+                              next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                              return next;
+                            })}
+                            title={isExpanded ? "Collapse" : "Expand thread"}
+                          >
+                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        </div>
+
+                        {/* Threaded replies */}
+                        {isExpanded && (
+                          <div className="ml-7 space-y-2 border-l-2 border-gray-100 pl-4">
+                            {replies.map((r) => (
+                              <div key={r.id} className="text-sm">
+                                <span className="font-medium">{r.reviewer}:</span>{" "}
+                                <span>{r.text}</span>
+                                <span className="text-xs text-gray-400 ml-2">
+                                  {new Date(r.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            ))}
+                            {/* Reply input */}
+                            <div className="flex gap-2 mt-2">
+                              <input
+                                className="flex-1 rounded border px-2 py-1 text-sm"
+                                placeholder="Reply…"
+                                value={replyText[item.id] ?? ""}
+                                onChange={(e) => setReplyText((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleReply(item.id); } }}
+                              />
+                              <Button size="sm" variant="outline" onClick={() => handleReply(item.id)}>
+                                Reply
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Disposition actions — SME/admin only */}
+                        {canEdit && !isTerminal && (
+                          <div className="flex gap-2 ml-7 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-700 border-green-300 hover:bg-green-50"
+                              onClick={() => handleDisposition(item.id, "accepted")}
+                            >
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                              onClick={() => handleDisposition(item.id, "resolved")}
+                            >
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Resolve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-700 border-red-300 hover:bg-red-50"
+                              onClick={() => {
+                                const reason = window.prompt("Reason for rejection:");
+                                if (reason !== null) handleDisposition(item.id, "rejected", reason);
+                              }}
+                            >
+                              <XCircle className="w-3 h-3 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Question satisfied button — reviewer only */}
+                        {item.feedback_type === "question" && item.reviewer === username && !item.question_satisfied && (
+                          <div className="ml-7">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                await authenticatedFetch(
+                                  `/projects/${id}/feedback/${item.id}/question-satisfied`,
+                                  { method: "POST" },
+                                );
+                                refetchFeedback();
+                                toast.success("Marked as satisfied.");
+                              }}
+                            >
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Mark satisfied
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* Inline reviewer comments (legacy) */}
           <Disclosure>
             {({ open }) => (
               <>
                 <Disclosure.Button className="w-full text-left">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold">
-                    <LayoutList className="w-5 h-5" /> Reviewer Comments{" "}
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+                    <LayoutList className="w-4 h-4" /> Inline Document Comments{" "}
                     {open ? "" : "(collapsed)"}
-                  </h2>
+                  </h3>
                 </Disclosure.Button>
                 <Transition
                   show={open}
@@ -1380,6 +1850,59 @@ export default function ProjectDetailsPage() {
               </>
             )}
           </Disclosure>
+
+          {/* Notification log */}
+          {notifLog.length > 0 && (
+            <Disclosure>
+              {({ open }) => (
+                <>
+                  <Disclosure.Button className="w-full text-left">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+                      <Bell className="w-4 h-4" /> Notification Log{" "}
+                      {open ? "" : `(${notifLog.length} events, collapsed)`}
+                    </h3>
+                  </Disclosure.Button>
+                  <Transition
+                    show={open}
+                    as={Fragment}
+                    enter="transition ease-out duration-100"
+                    enterFrom="transform opacity-0 scale-95"
+                    enterTo="transform opacity-100 scale-100"
+                    leave="transition ease-in duration-75"
+                    leaveFrom="transform opacity-100 scale-100"
+                    leaveTo="transform opacity-0 scale-95"
+                  >
+                    <Card>
+                      <CardContent className="pt-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Event</TableHead>
+                              <TableHead>Reviewer</TableHead>
+                              <TableHead>Message</TableHead>
+                              <TableHead>Sent</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {notifLog.map((n) => (
+                              <TableRow key={n.id}>
+                                <TableCell className="text-xs font-mono">{n.event}</TableCell>
+                                <TableCell className="text-xs">{n.reviewer ?? "—"}</TableCell>
+                                <TableCell className="text-xs max-w-xs truncate">{n.message}</TableCell>
+                                <TableCell className="text-xs text-gray-400">
+                                  {new Date(n.sent_at).toLocaleString()}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  </Transition>
+                </>
+              )}
+            </Disclosure>
+          )}
         </section>
       </div>
 

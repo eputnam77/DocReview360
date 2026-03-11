@@ -22,7 +22,7 @@ interface DocType {
   name: string;
   phases?: string[];
   template?: string;
-  default_template_id?: string;
+  default_workflow_template_id?: string;
 }
 
 interface TemplateOption {
@@ -96,9 +96,10 @@ const normalizeDocTypes = (items: unknown): DocType[] => {
         ? anyItem.template
         : "";
 
-    const default_template_id =
-      typeof (anyItem as any).default_template_id === "string" && (anyItem as any).default_template_id.trim()
-        ? (anyItem as any).default_template_id
+    const default_workflow_template_id =
+      typeof (anyItem as any).default_workflow_template_id === "string" &&
+      (anyItem as any).default_workflow_template_id.trim()
+        ? (anyItem as any).default_workflow_template_id
         : undefined;
 
     normalized.push({
@@ -106,7 +107,7 @@ const normalizeDocTypes = (items: unknown): DocType[] => {
       name,
       ...(phases.length > 0 ? { phases } : {}),
       ...(template ? { template } : {}),
-      ...(default_template_id ? { default_template_id } : {}),
+      ...(default_workflow_template_id ? { default_workflow_template_id } : {}),
     });
   }
 
@@ -208,8 +209,8 @@ export default function DocumentTypesPage() {
       .then((data: string[]) => setPhases(Array.isArray(data) ? data : []))
       .catch(() => setPhases([]));
 
-    // Fetch available templates for default template selector
-    authenticatedFetch('/templates')
+    // Fetch workflow templates for the "Default Workflow" selector
+    authenticatedFetch('/workflow-templates')
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) => {
         if (Array.isArray(data)) {
@@ -403,17 +404,19 @@ export default function DocumentTypesPage() {
           name: docType.name,
           template: docType.template || `<h1>${docType.name}</h1>`,
           workflow: docType.phases || [],
-          default_template_id: templateId || null,
+          default_workflow_template_id: templateId || null,
         }),
       });
-      if (!res.ok) throw new Error("Failed to update default template");
+      if (!res.ok) throw new Error("Failed to update default workflow");
       setTypes(
         types.map((t) =>
-          t.id === docTypeId ? { ...t, default_template_id: templateId || undefined } : t,
+          t.id === docTypeId
+            ? { ...t, default_workflow_template_id: templateId || undefined }
+            : t,
         ),
       );
     } catch {
-      toast.error("Failed to update default template");
+      toast.error("Failed to update default workflow");
     }
   };
 
@@ -470,7 +473,7 @@ export default function DocumentTypesPage() {
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
             <TableHead>Attached Phase</TableHead>
-            <TableHead>Default Template</TableHead>
+            <TableHead>Default Workflow</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -522,7 +525,7 @@ export default function DocumentTypesPage() {
               </TableCell>
               <TableCell className="min-w-[180px]">
                 <Select
-                  value={t.default_template_id || ""}
+                  value={t.default_workflow_template_id || ""}
                   onValueChange={(val) => changeDefaultTemplate(t.id, val)}
                 >
                   <SelectTrigger className="h-8 text-xs">
