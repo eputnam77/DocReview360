@@ -21,6 +21,14 @@ OIDC_ENABLED            Set to ``"true"`` to enable OIDC login.  Defaults to
                         ``"false"`` so existing local-auth flows are unchanged.
 OIDC_SESSION_MAX_CONCURRENT   Maximum simultaneous sessions per user (default: 5).
 OIDC_IDLE_TIMEOUT_MINUTES     Idle-timeout in minutes; 0 = disabled (default: 60).
+
+Keycloak-specific variables (see ``keycloak_auth.py`` for full documentation)
+------------------------------------------------------------------------------
+KEYCLOAK_REALM_ROLES_CLAIM    Top-level claim key for realm roles (default: ``"realm_access"``).
+KEYCLOAK_CLIENT_ID_FOR_ROLES  Client-id whose ``resource_access`` roles to map
+                              (defaults to ``OIDC_CLIENT_ID``).
+KEYCLOAK_ROLE_MAP             JSON object mapping Keycloak role names to DocReview360 roles.
+KEYCLOAK_DEFAULT_ROLE         Fallback role when no mapping matches (default: ``"reviewer"``).
 """
 
 from __future__ import annotations

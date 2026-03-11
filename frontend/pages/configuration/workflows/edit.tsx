@@ -10,7 +10,7 @@ import { GripVertical, PlusCircle, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 export default function EditWorkflowPage() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function EditWorkflowPage() {
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
-    authenticatedFetch(`${API}/workflows/roles`)
+    authenticatedFetch('/workflows/roles')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data)) {
@@ -38,7 +38,7 @@ export default function EditWorkflowPage() {
   useEffect(() => {
     if (!router.isReady || !id) return;
     const wfId = Array.isArray(id) ? id[0] : id;
-    authenticatedFetch(`${API}/workflow-templates/${wfId}`)
+    authenticatedFetch(`/workflow-templates/${wfId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((wf) => {
         if (wf) {
@@ -94,7 +94,7 @@ export default function EditWorkflowPage() {
     if (!id) return;
     const wfId = Array.isArray(id) ? id[0] : id;
     try {
-      const res = await authenticatedFetch(`${API}/workflow-templates/${wfId}`, {
+      const res = await authenticatedFetch(`/workflow-templates/${wfId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description, steps }),

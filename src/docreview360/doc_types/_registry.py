@@ -1,14 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Database-backed document type management.
-
-All document type state is stored in the ``document_types`` database table.
-The previous JSON-file / FileLock / optimistic-locking persistence layer has
-been removed (Tier 2c).
-
-The module-level ``document_types`` attribute is a :class:`_DocumentTypesView`
-that provides a dict-like interface backed directly by the database so that
-existing call-sites (tests, chat_bot, etc.) continue to work without changes.
-"""
+"""Document type registry — CRUD, import/export, default data, DB-backed view."""
 
 from __future__ import annotations
 
@@ -18,65 +9,14 @@ import threading
 from collections.abc import Iterator, MutableMapping
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator
-from sqlalchemy import delete, select, update
+from pydantic import ValidationError
+from sqlalchemy import delete, select
 
-from .db_store import get_db
-from .models import DocumentType as DocumentTypeORM
+from ..db_store import get_db
+from ..models import DocumentType as DocumentTypeORM
+from ._models import DocumentTypeModel, _validate_workflow
 
 _logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Pydantic schema (kept for API compatibility)
-# ---------------------------------------------------------------------------
-
-
-class DocumentTypeModel(BaseModel):
-    """Schema for document types with optional default template linkage."""
-
-    name: str
-    template: str
-    workflow: List[str] = Field(default_factory=list)
-    default_template_id: str | None = None
-
-    @computed_field(return_type=str)
-    def id(self) -> str:  # noqa: A003
-        """Expose ``name`` under an ``id`` field for frontend compatibility."""
-        return self.name
-
-    @computed_field(return_type=list[str])
-    def phases(self) -> list[str]:
-        """Surface ``workflow`` as ``phases`` for consumers expecting that key."""
-        return self.workflow
-
-
-class _WorkflowPayload(BaseModel):
-    """Validation shim to enforce valid workflow phase values."""
-
-    workflow: List[str]
-
-    @field_validator("workflow")
-    @classmethod
-    def ensure_non_empty(cls, value: List[str]) -> List[str]:
-        if not value:
-            raise ValueError("Workflow must include at least one phase")
-        for phase in value:
-            if not isinstance(phase, str) or not phase.strip():
-                raise ValueError("Workflow phases must be non-empty strings")
-        return value
-
-
-def _validate_workflow(doc_type: DocumentTypeModel) -> None:
-    """Raise :class:`ValidationError` if *doc_type* has invalid workflow phases."""
-
-    try:
-        _WorkflowPayload.model_validate({"workflow": doc_type.workflow})
-    except ValidationError as exc:  # pragma: no cover - defensive
-        raise ValidationError.from_exception_data(
-            DocumentTypeModel.__name__, exc.errors()
-        ) from exc
-
 
 # ---------------------------------------------------------------------------
 # Default data
@@ -241,26 +181,17 @@ DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
 
 DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-# Tracks whether an explicit reset with seed=False has been performed.  When
-# True the lazy-bootstrap in ``_bootstrap_if_empty`` is skipped so that code
-# which deliberately empties the table (e.g. tests) gets an actually empty
-# result from subsequent reads.
 _explicit_clear_active: bool = False
 _explicit_clear_lock = threading.Lock()
 """Guards reads and writes of ``_explicit_clear_active`` across threads."""
 
 
 def _bootstrap_if_empty() -> None:
-    """Seed default document types when the table is empty.
-
-    Skipped after an explicit ``reset_document_types(seed=False)`` call so that
-    test code can work with an intentionally empty registry.
-    """
+    """Seed default document types when the table is empty."""
     global _explicit_clear_active
 
     with _explicit_clear_lock:
@@ -274,7 +205,6 @@ def _bootstrap_if_empty() -> None:
         count = conn.execute(_text("SELECT COUNT(*) FROM document_types")).scalar()
         if count:
             return
-        # Fresh DB — seed defaults and clear the explicit-clear flag.
         with _explicit_clear_lock:
             _explicit_clear_active = False
         for order, (name, phases) in enumerate(DEFAULT_DOC_TYPE_PHASES.items(), start=1):
@@ -295,19 +225,21 @@ def _bootstrap_if_empty() -> None:
 
 def _row_to_model(row: Any) -> DocumentTypeModel:
     """Convert a DB row (or ORM object) to :class:`DocumentTypeModel`."""
-
     if isinstance(row, DocumentTypeORM):
-        workflow = row.workflow if isinstance(row.workflow, list) else json.loads(row.workflow or "[]")
+        workflow = row.workflow if isinstance(row.workflow, list) else json.loads(
+            row.workflow or "[]"
+        )
         return DocumentTypeModel(
             name=row.name,
             template=row.template or "",
             workflow=workflow,
             default_template_id=row.default_template_id,
         )
-    # SQLAlchemy Row / named tuple
     name = row.name if hasattr(row, "name") else row[0]
     template = row.template if hasattr(row, "template") else (row[1] if len(row) > 1 else "")
-    raw_workflow = row.workflow if hasattr(row, "workflow") else (row[2] if len(row) > 2 else "[]")
+    raw_workflow = (
+        row.workflow if hasattr(row, "workflow") else (row[2] if len(row) > 2 else "[]")
+    )
     workflow = raw_workflow if isinstance(raw_workflow, list) else json.loads(raw_workflow or "[]")
     default_template_id = (
         row.default_template_id
@@ -329,7 +261,6 @@ def _row_to_model(row: Any) -> DocumentTypeModel:
 
 def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentTypeModel:
     """Store a document type in the database."""
-
     if isinstance(doc_type, dict):
         doc_type = DocumentTypeModel(**doc_type)
     else:
@@ -375,7 +306,6 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
 
 def get_document_type(name: str) -> DocumentTypeModel | None:
     """Retrieve a document type by name."""
-
     _bootstrap_if_empty()
     db = get_db()
     with db.session() as conn:
@@ -394,7 +324,6 @@ def get_document_type(name: str) -> DocumentTypeModel | None:
 
 def list_document_types() -> list[DocumentTypeModel]:
     """Return all known document types sorted alphabetically by name."""
-
     _bootstrap_if_empty()
     db = get_db()
     with db.session() as conn:
@@ -411,7 +340,6 @@ def list_document_types() -> list[DocumentTypeModel]:
 
 def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentTypeModel:
     """Update an existing document type and persist changes."""
-
     existing = get_document_type(name)
     if existing is None:
         raise KeyError(f"Document type '{name}' not found")
@@ -425,9 +353,8 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
         if get_document_type(doc_type.name) is not None:
             raise ValueError(f"Document type '{doc_type.name}' already exists")
 
-        # Propagate rename to any in-memory project references.
         try:
-            from .search import projects
+            from ..search import projects
 
             for proj in projects.values():
                 if proj.doc_type == name:
@@ -455,7 +382,6 @@ def update_document_type(name: str, doc_type: DocumentTypeModel) -> DocumentType
 
 def delete_document_type(name: str) -> None:
     """Delete a document type by name."""
-
     db = get_db()
     with db.session() as conn:
         result = conn.execute(
@@ -472,8 +398,6 @@ def delete_document_type(name: str) -> None:
 
 def export_document_types(path: str) -> None:
     """Serialize document types to *path* as JSON."""
-
-    import os
     from pathlib import Path
 
     try:
@@ -489,7 +413,6 @@ def export_document_types(path: str) -> None:
 
 def import_document_types(path: str) -> None:
     """Load document types from a JSON file and persist to DB."""
-
     from pathlib import Path
 
     try:
@@ -511,7 +434,6 @@ def import_document_types(path: str) -> None:
             raise ValueError(f"Invalid document type entry: {item}") from exc
         temp[doc.name] = doc
 
-    # Atomic replacement: clear all then insert validated set.
     db = get_db()
     with db.session() as conn:
         from sqlalchemy import text as _text
@@ -534,14 +456,12 @@ def import_document_types(path: str) -> None:
 
 def export_document_types_json() -> str:
     """Return document types as a JSON string."""
-
     json_data = [doc.model_dump() for doc in list_document_types()]
     return json.dumps(json_data, indent=2)
 
 
 def import_document_types_json(data: str) -> None:
     """Load document types from a JSON string and persist to DB."""
-
     try:
         payload = json.loads(data)
     except json.JSONDecodeError as exc:
@@ -586,7 +506,6 @@ def import_document_types_json(data: str) -> None:
 
 def list_all_phases() -> list[str]:
     """Return a sorted list of all unique phases across all document types."""
-
     phases: set[str] = set()
     for doc in list_document_types():
         for phase in doc.workflow:
@@ -595,12 +514,7 @@ def list_all_phases() -> list[str]:
 
 
 def reset_document_types(seed: bool = True) -> None:
-    """Clear all document types and optionally re-seed defaults.
-
-    Intended primarily for test use to achieve a known-clean state.
-    When *seed* is ``True`` (the default) the 27 built-in document types are
-    re-inserted after clearing.
-    """
+    """Clear all document types and optionally re-seed defaults."""
     global _explicit_clear_active
 
     from sqlalchemy import text as _text
@@ -626,8 +540,6 @@ def reset_document_types(seed: bool = True) -> None:
                         },
                     )
             else:
-                # Signal that the table was intentionally emptied — suppress
-                # lazy-bootstrap on the next read so callers get an empty result.
                 _explicit_clear_active = True
 
 
@@ -637,14 +549,7 @@ def reset_document_types(seed: bool = True) -> None:
 
 
 class _DocumentTypesView(MutableMapping):
-    """A dict-like view over the database-backed document types.
-
-    Provides backward compatibility for code that accesses the module-level
-    ``document_types`` mapping directly (e.g. ``doc_types.document_types.clear()``
-    or ``doc_types.document_types[name]``).  All operations delegate to the DB
-    so there is no in-memory caching — changes made through one process are
-    immediately visible to another.
-    """
+    """A dict-like view over the database-backed document types."""
 
     def __getitem__(self, key: str) -> DocumentTypeModel:
         result = get_document_type(key)
@@ -665,7 +570,7 @@ class _DocumentTypesView(MutableMapping):
         return iter(dt.name for dt in list_document_types())
 
     def __len__(self) -> int:
-        from sqlalchemy import func, text as _text
+        from sqlalchemy import text as _text
 
         db = get_db()
         with db.session() as conn:
@@ -680,25 +585,14 @@ class _DocumentTypesView(MutableMapping):
 
 
 # Module-level dict-like object backed by the database.
-# Existing code can continue to do ``from .doc_types import document_types``
-# and use it as a mapping.
 document_types: MutableMapping[str, DocumentTypeModel] = _DocumentTypesView()
-
 
 # ---------------------------------------------------------------------------
 # Backward-compat stubs for old file-based symbols
 # ---------------------------------------------------------------------------
 
-# ``DATA_FILE`` was the path to the JSON persistence file in the old
-# file-based implementation.  Tests monkeypatch this attribute to isolate
-# state; we keep it as a sentinel so those monkeypatches don't raise
-# AttributeError.  The DB-backed module ignores its value.
 DATA_FILE: Any = None
 
 
 def save_state() -> None:  # pragma: no cover
-    """No-op kept for backward compatibility with tests.
-
-    The DB-backed implementation persists all changes immediately; there is
-    no separate save step required.
-    """
+    """No-op kept for backward compatibility with tests."""

@@ -10,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 const ROLE_CHOICES = [
@@ -46,7 +46,7 @@ export default function PermissionsPage() {
 
   const loadRoles = async () => {
     try {
-      const resp = await authenticatedFetch(`${API}/rbac/role-permissions`);
+      const resp = await authenticatedFetch('/rbac/role-permissions');
       const data = resp.ok ? await resp.json() : [];
       setRoles(Array.isArray(data) ? data : []);
     } catch {
@@ -60,7 +60,7 @@ export default function PermissionsPage() {
 
   const updateRole = async (role: string, permissions: string[]) => {
     const resp = await authenticatedFetch(
-      `${API}/rbac/role-permissions/${encodeURIComponent(role)}`,
+      `/rbac/role-permissions/${encodeURIComponent(role)}`,
       {
         method: "PUT",
         headers: {
@@ -80,7 +80,7 @@ export default function PermissionsPage() {
 
   const resetRole = async (role: string) => {
     const resp = await authenticatedFetch(
-      `${API}/rbac/role-permissions/${encodeURIComponent(role)}`,
+      `/rbac/role-permissions/${encodeURIComponent(role)}`,
       {
         method: "DELETE",
       },

@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
@@ -149,7 +149,7 @@ export default function EditProjectPage() {
     if (!id) return;
 
     setLoading(true);
-    authenticatedFetch(`${API}/projects/${id}`)
+    authenticatedFetch(`/projects/${id}`)
       .then((r) => {
         if (!r.ok) {
           throw new Error(`HTTP ${r.status}`);
@@ -166,7 +166,7 @@ export default function EditProjectPage() {
         setDescription(proj.description || proj.name || "");
 
         if (proj.workflow) {
-          const wfRes = await authenticatedFetch(`${API}/workflows/${proj.workflow}`);
+          const wfRes = await authenticatedFetch(`/workflows/${proj.workflow}`);
           if (wfRes.ok) {
             const wf = await wfRes.json();
             setSelectedWorkflow(wf.template ?? wf.id ?? "");
@@ -181,7 +181,7 @@ export default function EditProjectPage() {
         setLoading(false);
       });
 
-    authenticatedFetch(`${API}/workflow-templates`)
+    authenticatedFetch('/workflow-templates')
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {
@@ -208,7 +208,7 @@ export default function EditProjectPage() {
         setWorkflows([]);
       });
 
-    authenticatedFetch(`${API}/phases/config`)
+    authenticatedFetch('/phases/config')
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {
@@ -240,7 +240,7 @@ export default function EditProjectPage() {
         setPhaseWorkflowTemplates({});
       });
 
-    authenticatedFetch(`${API}/document-types`)
+    authenticatedFetch('/document-types')
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {
@@ -327,7 +327,7 @@ export default function EditProjectPage() {
     setLoading(true);
 
     try {
-      const res = await authenticatedFetch(`${API}/projects/${id}`, {
+      const res = await authenticatedFetch(`/projects/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(outcome.payload ?? {}),

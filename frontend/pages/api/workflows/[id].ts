@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,7 +11,7 @@ export default async function handler(
     return;
   }
   try {
-    const r = await authenticatedFetch(`${API}/workflows/${encodeURIComponent(id)}`);
+    const r = await authenticatedFetch(`/workflows/${encodeURIComponent(id)}`);
     if (!r.ok) {
       res.status(r.status).json({ error: "Workflow not found" });
       return;

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""In-memory document storage and import helpers."""
+"""Document storage — CRUD, ingestion pipelines, sanitization."""
 
 from __future__ import annotations
 
@@ -7,24 +7,31 @@ import hashlib
 import logging
 import mimetypes
 import re
-import threading
-from base64 import b64encode
-from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 from uuid import uuid4
+from datetime import datetime, timezone
 
 try:  # Optional dependency for HTML sanitization.
     import bleach
 except ModuleNotFoundError:  # pragma: no cover - minimal installs
     bleach = None  # type: ignore[assignment]
-from pydantic import BaseModel, Field, field_serializer
 
-from . import fts
-from .audit import log_audit_event
-from .logs import log_event
-from .settings_manager import load_settings
+from .. import fts
+from ..audit import log_audit_event
+from ..logs import log_event
+from ..settings_manager import load_settings
+from ._models import (
+    DocumentModel,
+    DocumentRevision,
+    FrozenDocumentError,
+    _next_document_number,
+    _project_document_numbers,
+    _re_review,
+    document_lock,
+    documents,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -40,9 +47,7 @@ DEFAULT_ALLOWED_MIME_TYPES: frozenset[str] = frozenset(
 )
 DEFAULT_MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MiB
 
-# Bleach's defaults omit headings which are common in Markdown content.  Extend the
-# whitelist so Markdown-style HTML headings survive sanitisation while still
-# removing unsafe elements such as ``<script>``.
+# Bleach's defaults omit headings which are common in Markdown content.
 if bleach is not None:
     _SANITIZE_TAGS: frozenset[str] = frozenset(
         set(bleach.sanitizer.ALLOWED_TAGS)
@@ -62,6 +67,8 @@ class IngestionRegistry:
 
     def __init__(self) -> None:
         self._pipelines: dict[str, IngestionPipeline] = {}
+        import threading
+
         self._lock = threading.Lock()
 
     def register(self, mime_type: str, pipeline: IngestionPipeline) -> None:
@@ -86,19 +93,16 @@ ingestion_registry = IngestionRegistry()
 
 def register_ingestion_pipeline(mime_type: str, pipeline: IngestionPipeline) -> None:
     """Register ``pipeline`` for ``mime_type``."""
-
     ingestion_registry.register(mime_type, pipeline)
 
 
 def unregister_ingestion_pipeline(mime_type: str) -> None:
     """Remove any registered pipeline for ``mime_type``."""
-
     ingestion_registry.unregister(mime_type)
 
 
 def get_ingestion_pipeline(mime_type: str) -> IngestionPipeline | None:
     """Return the pipeline registered for ``mime_type`` if any."""
-
     return ingestion_registry.get(mime_type)
 
 
@@ -108,7 +112,6 @@ _PDF_MIME_TYPE = "application/pdf"
 
 def _load_document_policy() -> tuple[int, frozenset[str], Mapping[str, Any]]:
     """Return upload policy from settings or sensible defaults."""
-
     settings = load_settings()
     doc_settings = settings.get("documents", {}) if isinstance(settings, dict) else {}
     max_size = doc_settings.get("max_upload_size", DEFAULT_MAX_UPLOAD_SIZE)
@@ -141,7 +144,6 @@ def _load_document_policy() -> tuple[int, frozenset[str], Mapping[str, Any]]:
 
 def sanitize_content(content: str) -> str:
     """Scrub HTML/Markdown content using Bleach."""
-
     stripped = _SCRIPT_RE.sub("", content)
     if bleach is None:
         return stripped
@@ -156,11 +158,9 @@ def sanitize_content(content: str) -> str:
 
 def _detect_mime_type(data: bytes, filename: str) -> str:
     """Best-effort MIME detection using ``python-magic`` with fallbacks."""
-
     mime: str | None = None
     try:  # pragma: no cover - dependency errors fall back to mimetypes
         import magic  # type: ignore[import-not-found]
-
     except Exception:  # pragma: no cover - optional dependency
         magic = None  # type: ignore[assignment]
 
@@ -180,8 +180,6 @@ def _detect_mime_type(data: bytes, filename: str) -> str:
 
     mime = mime or "application/octet-stream"
     if mime == "application/octet-stream":
-        # Windows mimetypes can miss modern Office extensions; fall back to
-        # filename-based detection for docx to avoid rejecting valid uploads.
         if filename.lower().endswith(".docx"):
             return _DOCX_MIME_TYPE
         try:
@@ -194,101 +192,8 @@ def _detect_mime_type(data: bytes, filename: str) -> str:
     return mime
 
 
-class DocumentRevision(BaseModel):
-    """Single revision of a document."""
-
-    id: str
-    timestamp: datetime
-    content: str
-    steps: list[Any] | None = None
-    author: str = ""
-    yjs_updates: list[bytes] | None = None
-
-    @field_serializer("yjs_updates", when_used="json")
-    def _ser_updates(self, updates: list[bytes] | None) -> list[str] | None:
-        """Return base64 strings for binary Yjs updates.
-
-        ``pydantic`` attempts to decode ``bytes`` as UTF-8 when serialising to
-        JSON which fails for arbitrary binary data.  The dashboard API
-        serialises full document models including revision history; any binary
-        ``yjs_updates`` therefore triggered ``UnicodeDecodeError`` during
-        ``model_dump``.  Encoding the updates as base64 preserves the data while
-        keeping the output JSON serialisable.
-        """
-
-        if updates is None:
-            return None
-        return [b64encode(u).decode("ascii") for u in updates]
-
-
-class DocumentModel(BaseModel):
-    """Simple representation of a document with revision history."""
-
-    id: str
-    content: str
-    history: List[DocumentRevision] = Field(default_factory=list)
-    editor: str = "tiptap"
-    number: int | None = None
-    project: Optional[str] = None
-    user: Optional[str] = None
-    date: Optional[datetime] = None
-    priority: Optional[int] = None
-    ingestion_hash: str | None = None  # SHA-256 of original upload
-    # Flag to mark public copies and track originating document
-    public_copy: bool = False
-    source_document_id: str | None = None
-    # ``approval_ids`` previously used a mutable list as the default value.
-    # In ``pydantic`` models this list is shared between instances which meant
-    # adding an approval to one document unexpectedly appeared on others.
-    # Using ``default_factory`` gives each model its own list.
-    approval_ids: List[str] = Field(default_factory=list)
-    # Version lineage fields
-    version_number: int = 1
-    """Monotonically increasing integer incremented on every successful update."""
-    frozen: bool = False
-    """When True, update_document() raises FrozenDocumentError instead of modifying content."""
-
-
-# Stored documents keyed by id
-documents: Dict[str, DocumentModel] = {}
-# Document ids that require a new review cycle
-_re_review: set[str] = set()
-# Track document numbers globally and per project
-_next_document_number = 1
-_project_document_numbers: Dict[str, int] = {}
-
-# Guard shared document state in multithreaded scenarios
-document_lock = threading.Lock()
-
-
-class FrozenDocumentError(RuntimeError):
-    """Raised when attempting to modify a document that has been frozen.
-
-    Documents are frozen at approval stage to preserve the exact content that
-    was reviewed and approved.  Call ``unfreeze_document()`` or revoke the
-    approval before making further edits.
-    """
-
-
-def next_document_number(project: Optional[str] = None) -> int:
-    """Return the next sequential document number for the project."""
-    with document_lock:
-        if project:
-            current = _project_document_numbers.get(project, 0) + 1
-            _project_document_numbers[project] = current
-            return current
-        global _next_document_number
-        num = _next_document_number
-        _next_document_number += 1
-        return num
-
-
 def _extract_docx_text(data: bytes) -> str:
-    """Extract text from a DOCX file using ``python-docx``.
-
-    Headings become Markdown ``#`` prefixes and tracked changes are represented
-    with ``[INS:...]`` and ``[DEL:...]`` markers.
-    """
+    """Extract text from a DOCX file using ``python-docx``."""
     from docx import Document
 
     doc = Document(BytesIO(data))
@@ -317,10 +222,6 @@ def _extract_docx_text(data: bytes) -> str:
                 text_piece += f"[DEL:{del_text}]"
         parts.append(prefix + text_piece)
 
-    # Join paragraphs using real newline characters.  The previous
-    # implementation mistakenly used the string ``"\\n"`` which produced a
-    # literal backslash followed by ``n`` in the output instead of an actual
-    # line break, yielding unreadable text when importing DOCX files.
     return "\n".join(parts)
 
 
@@ -333,7 +234,6 @@ register_ingestion_pipeline(_DOCX_MIME_TYPE, _default_docx_ingestion)
 
 def _extract_pdf_text(data: bytes) -> str:
     """Extract textual content from a PDF using optional dependencies."""
-
     try:
         from pdfminer.high_level import extract_text  # type: ignore[import-not-found]
     except Exception:  # pragma: no cover - optional dependency
@@ -366,7 +266,6 @@ def _default_pdf_ingestion(data: bytes, filename: str) -> str:
 
 def _ensure_default_pipelines(doc_settings: Mapping[str, Any]) -> None:
     """Register or remove built-in pipelines based on configuration."""
-
     if doc_settings.get("enable_pdf_ingestion"):
         if get_ingestion_pipeline(_PDF_MIME_TYPE) is None:
             register_ingestion_pipeline(_PDF_MIME_TYPE, _default_pdf_ingestion)
@@ -381,6 +280,19 @@ def _decode_text_payload(data: bytes) -> str:
         return data.decode()
     except UnicodeDecodeError as exc:
         raise ValueError("document bytes must be valid UTF-8") from exc
+
+
+def next_document_number(project: Optional[str] = None) -> int:
+    """Return the next sequential document number for the project."""
+    with document_lock:
+        if project:
+            current = _project_document_numbers.get(project, 0) + 1
+            _project_document_numbers[project] = current
+            return current
+        global _next_document_number
+        num = _next_document_number
+        _next_document_number += 1
+        return num
 
 
 def import_document(
@@ -449,7 +361,7 @@ def import_document(
     with document_lock:
         documents[doc_id] = document
     # Index the document for search without creating an import cycle
-    from . import search as search_module
+    from .. import search as search_module
 
     search_module.add_document(document)
     if content.strip():
@@ -480,12 +392,7 @@ def list_public_documents() -> list[DocumentModel]:
 
 
 def public_documents_report() -> list[dict[str, str | None]]:
-    """Return minimal metadata for public documents.
-
-    Each entry contains the public document id and the originating
-    ``source_document_id`` so external systems can trace back to the
-    internal record.
-    """
+    """Return minimal metadata for public documents."""
     return [
         {"id": d.id, "source_document_id": d.source_document_id}
         for d in documents.values()
@@ -532,11 +439,7 @@ def update_document(
     author: str | None = None,
     yjs_updates: list[bytes] | None = None,
 ) -> tuple[DocumentModel, str]:
-    """Replace document content and record a new revision.
-
-    Raises :class:`FrozenDocumentError` if the document has been frozen
-    (e.g., at approval stage).
-    """
+    """Replace document content and record a new revision."""
     document = documents.get(doc_id)
     if document is None:
         raise KeyError(f"Document '{doc_id}' not found")
@@ -545,8 +448,7 @@ def update_document(
             f"Document '{doc_id}' is frozen. Unfreeze it before making changes."
         )
     content = sanitize_content(content)
-    # Remove the old version from the search index before updating
-    from . import search as search_module
+    from .. import search as search_module
 
     search_module.search_index.remove_document(doc_id)
     fts.remove_document(doc_id)
@@ -580,7 +482,6 @@ def update_document(
         with document_lock:
             _re_review.add(doc_id)
 
-    # Re-index the updated document
     search_module.add_document(document)
     if document.content.strip():
         fts.index_document(doc_id, document.content)
@@ -607,7 +508,7 @@ def autosave_document(doc_id: str, content: str) -> tuple[DocumentModel, str]:
                 )
             )
         if document.content.strip():
-            from . import search as search_module
+            from .. import search as search_module
 
             search_module.add_document(document)
             fts.index_document(doc_id, document.content)
@@ -626,178 +527,6 @@ def clear_rereview(doc_id: str) -> None:
     """Remove the re-review flag for ``doc_id``."""
     with document_lock:
         _re_review.discard(doc_id)
-
-
-def get_document_versions(doc_id: str) -> list[str]:
-    """Return the list of all versions for ``doc_id``."""
-    document = documents.get(doc_id)
-    if document is None:
-        raise KeyError(f"Document '{doc_id}' not found")
-    return [rev.content for rev in document.history]
-
-
-def get_document_version(doc_id: str, index: int) -> str:
-    """Return a specific version for ``doc_id``."""
-    versions = get_document_versions(doc_id)
-    if index < 0 or index >= len(versions):
-        raise IndexError("version index out of range")
-    return versions[index]
-
-
-def get_version_history(doc_id: str) -> list[dict[str, Any]]:
-    """Return rich version history metadata for ``doc_id``.
-
-    Each entry includes ``revision_id``, ``version_number``, ``timestamp``,
-    ``author``, and a ``content_length`` so callers can render a timeline
-    without transferring full content for every entry.
-    """
-    document = documents.get(doc_id)
-    if document is None:
-        raise KeyError(f"Document '{doc_id}' not found")
-    history: list[dict[str, Any]] = []
-    # version_number started at 1 and incremented on each update; revision 0
-    # corresponds to version 1, revision N to version N+1.
-    base_version = document.version_number - len(document.history) + 1
-    for i, rev in enumerate(document.history):
-        history.append(
-            {
-                "revision_id": rev.id,
-                "version_number": max(1, base_version + i),
-                "timestamp": rev.timestamp.isoformat(),
-                "author": rev.author,
-                "content_length": len(rev.content),
-            }
-        )
-    return history
-
-
-def restore_document_version(doc_id: str, revision_id: str, author: str | None = None) -> DocumentModel:
-    """Restore ``doc_id`` content to the revision identified by ``revision_id``.
-
-    The current content is saved as a new revision before restoring so the
-    restore operation is itself reversible.  Raises :class:`KeyError` if the
-    document or revision is not found.  Raises :class:`FrozenDocumentError`
-    if the document is frozen.
-    """
-    document = documents.get(doc_id)
-    if document is None:
-        raise KeyError(f"Document '{doc_id}' not found")
-    if document.frozen:
-        raise FrozenDocumentError(
-            f"Document '{doc_id}' is frozen. Unfreeze it before restoring."
-        )
-    target = next((r for r in document.history if r.id == revision_id), None)
-    if target is None:
-        raise KeyError(f"Revision '{revision_id}' not found in document '{doc_id}'")
-    doc, _ = update_document(doc_id, target.content, author=author)
-    log_audit_event(doc_id, "version_restored", revision_id=revision_id, actor=author)
-    return doc
-
-
-def freeze_document(doc_id: str) -> DocumentModel:
-    """Freeze ``doc_id`` so its content can no longer be changed.
-
-    Call this at approval stage to lock the exact content that was reviewed.
-    Use :func:`unfreeze_document` to lift the freeze.
-    """
-    document = documents.get(doc_id)
-    if document is None:
-        raise KeyError(f"Document '{doc_id}' not found")
-    with document_lock:
-        document.frozen = True
-    log_audit_event(doc_id, "version_frozen")
-    return document
-
-
-def unfreeze_document(doc_id: str) -> DocumentModel:
-    """Lift the freeze on ``doc_id``, allowing content changes again."""
-    document = documents.get(doc_id)
-    if document is None:
-        raise KeyError(f"Document '{doc_id}' not found")
-    with document_lock:
-        document.frozen = False
-    log_audit_event(doc_id, "version_unfrozen")
-    return document
-
-
-def diff_document_revisions(
-    doc_id: str,
-    revision_id_a: str,
-    revision_id_b: str,
-) -> dict[str, Any]:
-    """Return a unified-diff and per-line change breakdown between two revisions.
-
-    ``revision_id_a`` is treated as the "before" (old) side and
-    ``revision_id_b`` as the "after" (new) side.  Either ID may be the
-    special sentinel ``"current"`` to refer to the live document content.
-
-    Returns a dict with:
-    - ``unified_diff``: list of unified-diff lines (strings, no trailing newline)
-    - ``lines_added``: count of added lines
-    - ``lines_removed``: count of removed lines
-    - ``similarity_ratio``: float 0–1 from :class:`difflib.SequenceMatcher`
-    - ``revision_a``: metadata dict (id, version_number, timestamp, author)
-    - ``revision_b``: metadata dict (id, version_number, timestamp, author)
-
-    Raises :class:`KeyError` if the document or either revision is not found.
-    """
-    import difflib as _difflib
-
-    document = documents.get(doc_id)
-    if document is None:
-        raise KeyError(f"Document '{doc_id}' not found")
-
-    base_version = document.version_number - len(document.history) + 1
-
-    def _find_revision(rev_id: str) -> tuple[str, dict[str, Any]]:
-        if rev_id == "current":
-            latest = document.history[-1] if document.history else None
-            meta: dict[str, Any] = {
-                "id": "current",
-                "version_number": document.version_number,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "author": latest.author if latest else None,
-            }
-            return document.content, meta
-        for i, rev in enumerate(document.history):
-            if rev.id == rev_id:
-                meta = {
-                    "id": rev.id,
-                    "version_number": max(1, base_version + i),
-                    "timestamp": rev.timestamp.isoformat(),
-                    "author": rev.author,
-                }
-                return rev.content, meta
-        raise KeyError(f"Revision '{rev_id}' not found in document '{doc_id}'")
-
-    content_a, meta_a = _find_revision(revision_id_a)
-    content_b, meta_b = _find_revision(revision_id_b)
-
-    lines_a = content_a.splitlines()
-    lines_b = content_b.splitlines()
-
-    unified = list(
-        _difflib.unified_diff(
-            lines_a,
-            lines_b,
-            fromfile=f"revision/{revision_id_a}",
-            tofile=f"revision/{revision_id_b}",
-            lineterm="",
-        )
-    )
-
-    added = sum(1 for ln in unified if ln.startswith("+") and not ln.startswith("+++"))
-    removed = sum(1 for ln in unified if ln.startswith("-") and not ln.startswith("---"))
-    ratio = SequenceMatcher(None, content_a, content_b).ratio()
-
-    return {
-        "unified_diff": unified,
-        "lines_added": added,
-        "lines_removed": removed,
-        "similarity_ratio": round(ratio, 4),
-        "revision_a": meta_a,
-        "revision_b": meta_b,
-    }
 
 
 def set_document_editor(doc_id: str, editor: str) -> DocumentModel:

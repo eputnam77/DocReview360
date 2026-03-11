@@ -13,7 +13,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 
 interface Review {
@@ -41,7 +41,7 @@ export default function ProjectReviewPage() {
   // Fetch project phase
   useEffect(() => {
     if (!id) return;
-    authenticatedFetch(`${API}/projects/${id}`)
+    authenticatedFetch(`/projects/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((p) => setCurrentPhaseId(p?.current_phase_id || p?.phase || null))
       .catch(() => setCurrentPhaseId(null));
@@ -55,7 +55,7 @@ export default function ProjectReviewPage() {
       ? `?phase=${encodeURIComponent(currentPhaseId)}`
       : "";
     setLoading(true);
-    authenticatedFetch(`${API}/projects/${id}/reviews${phaseQuery}`)
+    authenticatedFetch(`/projects/${id}/reviews${phaseQuery}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) =>
         setReviews(
@@ -82,7 +82,7 @@ export default function ProjectReviewPage() {
     }
     setLoading(true);
     try {
-      const res = await authenticatedFetch(`${API}/projects/${id}/reviews`, {
+      const res = await authenticatedFetch(`/projects/${id}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

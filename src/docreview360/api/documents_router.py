@@ -948,6 +948,27 @@ async def get_sign_status(
     return {"status": status}
 
 
+@router.get("/signatures/{signature_id}/ltv")
+async def get_ltv_package_endpoint(
+    signature_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Return the Long-Term Validation (LTV) package for a signature.
+
+    The LTV package bundles the RFC 3161 timestamp token, any cached OCSP
+    responses, and CRL metadata assembled at the time
+    ``attach_lts_package()`` was called.  Returns HTTP 404 when no LTV
+    package has been attached yet for the given ``signature_id``.
+    """
+    from ..approvals.signatures import get_ltv_package
+    from ..integrations.signature.lts import serialize_ltv_package
+
+    pkg = get_ltv_package(signature_id)
+    if pkg is None:
+        raise HTTPException(status_code=404, detail="LTV package not found for this signature")
+    return serialize_ltv_package(pkg)
+
+
 # ---------------------------------------------------------------------------
 # Document Version Lineage endpoints
 # ---------------------------------------------------------------------------

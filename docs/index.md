@@ -14,7 +14,7 @@ Welcome to the DocReview360 project. This site collects guides and references fo
 - [Performance Baseline](performance_baseline.md)
 - [Test Determinism](test_determinism.md)
 - [Release Packaging](release_packaging.md)
-- [Release Completed Items](release-completed-items.md)
+- [Latest Features](latest_features.md)
 - [Disaster Recovery Runbook](disaster_recovery.md)
 - [Data Retention and Deletion](data_retention_and_deletion.md)
 - [AI Workflow](ai_workflow.md)
@@ -33,12 +33,10 @@ DocReview360 implements a small slice of the functionality described in the prod
 Pull requests are welcome! Please run the unit tests with `pytest` and the E2E smoke suite with `E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke python scripts/run_e2e.py` before submitting changes.
 
 - [User Guide](user_guide.md)
-- [Latest Features](latest_features.md)
 
 ## License
 
 This project is released under the MIT License. See the `LICENSE` file for details.
-
 
 
 

@@ -13,7 +13,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments } from "@/components";
 import type { TimelineStep } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
@@ -337,7 +337,7 @@ export default function ProjectDetailsPage() {
   const { data: userOptions = [] } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/users`);
+      const res = await authenticatedFetch('/users');
       if (!res.ok) return [];
       return res.json();
     },
@@ -369,7 +369,7 @@ export default function ProjectDetailsPage() {
       setLogs([]);
       return;
     }
-    authenticatedFetch(`${API}/audit?entity_id=${id}`)
+    authenticatedFetch(`/audit?entity_id=${id}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setLogs(
@@ -461,7 +461,7 @@ export default function ProjectDetailsPage() {
   const { data: qualityScores } = useQuery<DocumentScore[]>({
     queryKey: ["project-doc-scores", id],
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/projects/${id}/documents/scores`);
+      const res = await authenticatedFetch(`/projects/${id}/documents/scores`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -508,7 +508,7 @@ export default function ProjectDetailsPage() {
   const confirmPhaseChange = useCallback(async () => {
     if (pendingPhase && project?.id) {
       try {
-        const res = await authenticatedFetch(`${API}/projects/${project.id}`, {
+        const res = await authenticatedFetch(`/projects/${project.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phase: pendingPhase }),
@@ -557,7 +557,7 @@ export default function ProjectDetailsPage() {
         return false;
       }
 
-      const response = await authenticatedFetch(`${API}/approvals`, {
+      const response = await authenticatedFetch('/approvals', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -714,7 +714,7 @@ export default function ProjectDetailsPage() {
   };
 
   const viewHistory = useCallback((aid: string) => {
-    authenticatedFetch(`${API}/approvals/${aid}/history`)
+    authenticatedFetch(`/approvals/${aid}/history`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setHistoryEvents(
@@ -771,7 +771,7 @@ export default function ProjectDetailsPage() {
 
   const signApprovalByInitials = async (aid: string, initials: string) => {
     try {
-      const res = await authenticatedFetch(`${API}/approvals/${aid}/sign-initials`, {
+      const res = await authenticatedFetch(`/approvals/${aid}/sign-initials`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ initials }),
@@ -802,7 +802,7 @@ export default function ProjectDetailsPage() {
 
   const removeApproval = async (aid: string) => {
     try {
-      const response = await authenticatedFetch(`${API}/approvals/${aid}`, {
+      const response = await authenticatedFetch(`/approvals/${aid}`, {
         method: "DELETE",
       });
       if (!response.ok) {
@@ -818,7 +818,7 @@ export default function ProjectDetailsPage() {
 
   const syncApprovalWithBackend = async (approvalId: string, signatureId: string) => {
     try {
-      const response = await authenticatedFetch(`${API}/approvals/${approvalId}`, {
+      const response = await authenticatedFetch(`/approvals/${approvalId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -862,7 +862,7 @@ export default function ProjectDetailsPage() {
   const downloadApprovalSummary = async () => {
     if (!project) return;
     try {
-      const res = await authenticatedFetch(`${API}/projects/${project.id}/approvals/pdf`);
+      const res = await authenticatedFetch(`/projects/${project.id}/approvals/pdf`);
       if (!res.ok) {
         toast.error("Failed to download summary");
         return;

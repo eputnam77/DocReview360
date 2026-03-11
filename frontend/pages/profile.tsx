@@ -10,7 +10,7 @@ import {
   Label,
 } from "@/components";
 import { Avatar } from "@/components/ui/avatar";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useUserStore } from "@/state/user";
 
@@ -98,7 +98,7 @@ export default function ProfilePage() {
   const [rolePermissions, setRolePermissions] = useState<RolePermissionSummary[]>([]);
 
   useEffect(() => {
-    authenticatedFetch(`${API}/profile`)
+    authenticatedFetch('/profile')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
@@ -124,7 +124,7 @@ export default function ProfilePage() {
   }, [setTheme]);
 
   useEffect(() => {
-    authenticatedFetch(`${API}/rbac/role-permissions`)
+    authenticatedFetch('/rbac/role-permissions')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (Array.isArray(data)) {
@@ -157,7 +157,7 @@ export default function ProfilePage() {
       toast.error("Passwords do not match");
       return;
     }
-    const resp = await authenticatedFetch(`${API}/profile`, {
+    const resp = await authenticatedFetch('/profile', {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

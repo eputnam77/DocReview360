@@ -338,20 +338,34 @@ async def oidc_callback(
         _logger.warning("ID token validation failed: %s", exc)
         raise HTTPException(status_code=401, detail="ID token validation failed")
 
-    # Extract username from claims (prefer ``preferred_username``, fall back to ``sub``)
-    username: str = (
-        claims.get("preferred_username")
-        or claims.get("email")
-        or claims.get("sub")
-        or ""
-    )
+    # Extract username and roles from claims.
+    # When the provider is Keycloak, use its specialised claim extractor which
+    # reads realm_access.roles / resource_access.<client>.roles and applies
+    # KEYCLOAK_ROLE_MAP / KEYCLOAK_DEFAULT_ROLE.
+    from .. import keycloak_auth as _kc
+
+    if _kc.is_keycloak_provider(oidc_client.OIDC_PROVIDER_URL):
+        _logger.debug("Keycloak provider detected — using Keycloak claim extractor")
+        user_info = _kc.get_user_info_from_keycloak_claims(claims)
+        username: str = user_info["username"]
+        _oidc_roles: list[str] = user_info["roles"]
+    else:
+        # Generic OIDC: prefer ``preferred_username``, fall back to ``sub``
+        username = (
+            claims.get("preferred_username")
+            or claims.get("email")
+            or claims.get("sub")
+            or ""
+        )
+        _oidc_roles = []
+
     if not username:
         raise HTTPException(status_code=400, detail="Identity provider did not supply a username")
 
     # Ensure the user exists locally (JIT provisioning for OIDC users)
     if not auth.is_active(username):
         try:
-            from ..auth import UserRepository, _get_user_repository
+            from ..auth import UserRepository, _get_user_repository  # noqa: F401
             repo = _get_user_repository()
             if repo.get_user(username) is None:
                 import secrets as _sec
@@ -360,6 +374,15 @@ async def oidc_callback(
         except Exception as exc:
             _logger.error("JIT user provisioning failed for %r: %s", username, exc)
             raise HTTPException(status_code=500, detail="User provisioning failed")
+
+    # Assign roles extracted from Keycloak claims (no-op for generic OIDC)
+    if _oidc_roles:
+        try:
+            from ..rbac import add_role as _add_role
+            for _role in _oidc_roles:
+                _add_role(username, _role)
+        except Exception as exc:
+            _logger.warning("Role sync for OIDC user %r failed: %s", username, exc)
 
     # Issue a DocReview360 access JWT
     from datetime import datetime, timedelta, timezone as _tz

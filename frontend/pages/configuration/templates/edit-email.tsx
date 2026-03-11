@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { authenticatedFetch, API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 
@@ -19,7 +19,7 @@ export default function EditEmailTemplatePage() {
 
   useEffect(() => {
     if (id) {
-      authenticatedFetch(`${API}/email-templates/${encodeURIComponent(String(id))}`)
+      authenticatedFetch(`/email-templates/${encodeURIComponent(String(id))}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((tpl) => {
           if (!tpl) return;
@@ -37,7 +37,7 @@ export default function EditEmailTemplatePage() {
   const handleSave = async () => {
     const payload = { name, subject, body, task: task || undefined };
     try {
-      await authenticatedFetch(`${API}/email-templates/${encodeURIComponent(name)}`, {
+      await authenticatedFetch(`/email-templates/${encodeURIComponent(name)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

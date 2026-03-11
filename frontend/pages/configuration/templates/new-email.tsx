@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 export default function NewEmailTemplatePage() {
@@ -14,7 +14,7 @@ export default function NewEmailTemplatePage() {
   const handleSave = async () => {
     const payload = { name, subject, body, task: task || undefined };
     try {
-      await authenticatedFetch(`${API}/email-templates`, {
+      await authenticatedFetch('/email-templates', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

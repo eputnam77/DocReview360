@@ -33,6 +33,46 @@ from ..provider_store import set_provider_health
 
 _logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# LTV package store (in-memory; keyed by signature_id)
+# ---------------------------------------------------------------------------
+
+_ltv_packages: dict[str, "Any"] = {}
+
+
+def get_ltv_package(signature_id: str) -> "Any | None":
+    """Return the LTV package stored for ``signature_id``, or ``None``."""
+    return _ltv_packages.get(signature_id)
+
+
+def attach_lts_package(
+    signature_id: str,
+    document_bytes: bytes,
+    certificate_pem: str | None = None,
+) -> "Any":
+    """Create and store a Long-Term Validation package for ``signature_id``.
+
+    Imports :mod:`~docreview360.integrations.signature.lts` to build the
+    package so the heavy dependency is only loaded when explicitly requested.
+
+    Returns the :class:`~docreview360.integrations.signature.lts.LTVPackage`.
+    """
+    from ..integrations.signature.lts import create_ltv_package
+
+    pkg = create_ltv_package(
+        signature_id=signature_id,
+        document_bytes=document_bytes,
+        certificate_pem=certificate_pem,
+    )
+    _ltv_packages[signature_id] = pkg
+    _logger.info(
+        "LTV package attached for signature_id=%r level=%r hash=%s",
+        signature_id,
+        pkg.ltv_level,
+        pkg.document_hash[:16],
+    )
+    return pkg
+
 
 class SignatureValidationError(ValueError):
     """Raised when a signature callback fails validation."""

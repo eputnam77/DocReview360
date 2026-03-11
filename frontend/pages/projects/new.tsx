@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import UploadDropzone from "@/components/workflow/UploadDropzone";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 import { useCreateProject } from "@/lib/useProjects";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
@@ -68,7 +68,7 @@ export default function NewProjectPage() {
   const createProject = useCreateProject();
 
   useEffect(() => {
-    authenticatedFetch(`${API}/phases/config`)
+    authenticatedFetch('/phases/config')
       .then((r) => (r.ok ? r.json() : []))
       .then((data: unknown) => {
         if (!Array.isArray(data)) {
@@ -98,7 +98,7 @@ export default function NewProjectPage() {
         setPhaseWorkflowTemplates(phaseDefaults);
       })
       .catch(() => {
-        authenticatedFetch(`${API}/phases`)
+        authenticatedFetch('/phases')
           .then((r) => (r.ok ? r.json() : []))
           .then((data) => {
             const phaseNames = Array.isArray(data)
@@ -124,7 +124,7 @@ export default function NewProjectPage() {
   }, []);
 
   useEffect(() => {
-    authenticatedFetch(`${API}/document-types`)
+    authenticatedFetch('/document-types')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (!Array.isArray(data)) {
