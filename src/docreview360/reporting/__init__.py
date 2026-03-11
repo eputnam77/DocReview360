@@ -26,6 +26,9 @@ from ._metrics import (
 )
 from ._reports import (
     admin_dashboard,
+    analytics_dashboard,
+    analytics_export,
+    avg_quality_score,
     compile_check_report,
     dashboard_data,
     doc_type_counts,
@@ -61,6 +64,9 @@ __all__ = [
     "reset_metrics_for_testing",
     # reports
     "admin_dashboard",
+    "analytics_dashboard",
+    "analytics_export",
+    "avg_quality_score",
     "compile_check_report",
     "dashboard_data",
     "doc_type_counts",

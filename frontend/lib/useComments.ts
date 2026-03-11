@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 import { toast } from "react-hot-toast";
 
 export interface Comment {
@@ -36,7 +36,7 @@ export function useComments(docId: string | undefined) {
     queryKey,
     enabled: !!docId,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/documents/${docId}/comments`);
+      const res = await authenticatedFetch(`/documents/${docId}/comments`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -44,7 +44,7 @@ export function useComments(docId: string | undefined) {
 
   const createMutation = useMutation({
     mutationFn: async (input: CreateCommentInput) => {
-      const res = await authenticatedFetch(`${API}/documents/${docId}/comments`, {
+      const res = await authenticatedFetch(`/documents/${docId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
@@ -66,7 +66,7 @@ export function useComments(docId: string | undefined) {
   const updateMutation = useMutation({
     mutationFn: async ({ commentId, input }: { commentId: string; input: UpdateCommentInput }) => {
       const res = await authenticatedFetch(
-        `${API}/documents/${docId}/comments/${commentId}`,
+        `/documents/${docId}/comments/${commentId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

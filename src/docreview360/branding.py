@@ -45,6 +45,8 @@ BRANDING_DEFAULTS: dict[str, Any] = {
     "logo_alt": "Organization logo",
     "primary_color": "#2563eb",
     "accent_color": "#16a34a",
+    "sidebar_bg": None,
+    "sidebar_text": None,
     "favicon_url": "/favicon.ico",
     "support_url": "/docs/",
     "docs_url": "/docs/",
@@ -195,7 +197,7 @@ def reset_terminology(db: Any, org_id: str, updated_by: str) -> dict[str, str]:
 
 
 def _validate_branding_payload(data: dict[str, Any]) -> None:
-    for color_key in ("primary_color", "accent_color"):
+    for color_key in ("primary_color", "accent_color", "sidebar_bg", "sidebar_text"):
         if color_key in data:
             data[color_key] = _validate_color(data[color_key])
 

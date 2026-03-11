@@ -12,6 +12,12 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from ._external import (
+    ExternalSearchClient,
+    get_external_url,
+    get_search_backend,
+    is_external_search_configured,
+)
 from ._indexing import (
     SearchIndex,
     SearchRepository,
@@ -140,6 +146,10 @@ def update_project(
     initial_phase: str | None = None,
     workflow: str | None = None,
     workflow_set: bool = False,
+    nara_schedule_number: str | None = None,
+    nara_disposition_authority: str | None = None,
+    nara_retention_period: str | None = None,
+    nara_record_series: str | None = None,
 ) -> ProjectModel:
     """Update basic fields of a project and return the updated model."""
     with project_lock:
@@ -160,6 +170,14 @@ def update_project(
         elif workflow is not None:
             project.workflow = workflow
             project.requested_workflow = workflow
+        if nara_schedule_number is not None:
+            project.nara_schedule_number = nara_schedule_number
+        if nara_disposition_authority is not None:
+            project.nara_disposition_authority = nara_disposition_authority
+        if nara_retention_period is not None:
+            project.nara_retention_period = nara_retention_period
+        if nara_record_series is not None:
+            project.nara_record_series = nara_record_series
         project.updated = datetime.now(UTC)
         _persist_project(project)
         return project
@@ -587,6 +605,11 @@ __all__ = [
     "save_search",
     "list_saved_searches",
     "search_stats",
+    # external search
+    "ExternalSearchClient",
+    "get_external_url",
+    "get_search_backend",
+    "is_external_search_configured",
     # internal helpers re-exported for backward compat
     "_repository",
     "_normalize",

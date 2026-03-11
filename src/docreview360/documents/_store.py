@@ -549,3 +549,69 @@ def get_document_editor(doc_id: str) -> str:
     if document is None:
         raise KeyError(f"document '{doc_id}' not found")
     return document.editor
+
+
+def update_document_quality_score(
+    doc_id: str,
+    score: float,
+    grade: str | None = None,
+    flesch: float | None = None,
+    flags: dict | None = None,
+) -> DocumentModel | None:
+    """Persist a quality-score result for ``doc_id`` (Item 35).
+
+    Updates ``last_quality_score``, ``last_quality_date``, and
+    ``plain_language_grade`` on the in-memory :class:`DocumentModel` and also
+    inserts a :class:`~docreview360.models.DocumentQualityScore` history row in
+    the SQLite database so callers can retrieve trend data later.
+
+    Returns the updated :class:`DocumentModel`, or ``None`` when ``doc_id`` is
+    not found.
+    """
+    from uuid import uuid4 as _uuid4
+    from datetime import timezone as _tz
+
+    document = documents.get(doc_id)
+    now = datetime.now(_tz.utc)
+
+    # Persist history row regardless of whether the in-memory document exists,
+    # so score runs on DB-only documents are still recorded.
+    try:
+        from ..db_store import get_db
+        from ..models import DocumentQualityScore as _OrmScore
+
+        db = get_db()
+        with db.orm_session() as session:
+            # Update the Document ORM row's summary columns if it exists.
+            from ..models import Document as _OrmDoc
+            from sqlalchemy import select as _select
+
+            orm_doc = session.get(_OrmDoc, doc_id)
+            if orm_doc is not None:
+                orm_doc.last_quality_score = score
+                orm_doc.last_quality_date = now
+                if grade is not None:
+                    orm_doc.plain_language_grade = grade
+
+            score_row = _OrmScore(
+                id=_uuid4().hex,
+                document_id=doc_id,
+                scored_at=now,
+                quality_score=score,
+                plain_language_grade=grade,
+                flesch_reading_ease=flesch,
+                quality_flags=flags,
+            )
+            session.add(score_row)
+    except Exception as exc:  # pragma: no cover - best-effort persistence
+        _logger.warning("update_document_quality_score DB write failed: %s", exc)
+
+    # Update in-memory document model.
+    if document is not None:
+        with document_lock:
+            document.last_quality_score = score
+            document.last_quality_date = now
+            if grade is not None:
+                document.plain_language_grade = grade
+
+    return document

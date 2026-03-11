@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 import { toast } from "react-hot-toast";
 
 export function useProjectReviewers(projectId?: string) {
@@ -11,7 +11,7 @@ export function useProjectReviewers(projectId?: string) {
     enabled: !!projectId,
     queryFn: async () => {
       if (!projectId) return [];
-      const res = await authenticatedFetch(`${API}/projects/${projectId}/reviewers`);
+      const res = await authenticatedFetch(`/projects/${projectId}/reviewers`);
       if (!res.ok) throw new Error("Failed to fetch reviewers");
       const data = await res.json();
       return Array.isArray(data) ? data : [];
@@ -20,7 +20,7 @@ export function useProjectReviewers(projectId?: string) {
 
   const addReviewerMutation = useMutation({
     mutationFn: async (reviewer: string) => {
-      const res = await authenticatedFetch(`${API}/projects/${projectId}/reviewers`, {
+      const res = await authenticatedFetch(`/projects/${projectId}/reviewers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviewer }),
@@ -66,7 +66,7 @@ export function useProjectReviewers(projectId?: string) {
       nextReviewer: string;
     }) => {
       const res = await authenticatedFetch(
-        `${API}/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`,
+        `/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -98,7 +98,7 @@ export function useProjectReviewers(projectId?: string) {
   const removeReviewerMutation = useMutation({
     mutationFn: async (reviewer: string) => {
       const res = await authenticatedFetch(
-        `${API}/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`,
+        `/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`,
         {
           method: "DELETE",
         },

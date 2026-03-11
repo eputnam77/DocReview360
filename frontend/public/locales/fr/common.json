@@ -42,5 +42,33 @@
     "created_at": "Cr\u00e9\u00e9 le",
     "updated_at": "Mis \u00e0 jour",
     "due_date": "Date d'\u00e9ch\u00e9ance"
+  },
+  "login": {
+    "title": "Se connecter \u00e0 DocReview360",
+    "username": "Nom d'utilisateur",
+    "password": "Mot de passe",
+    "submit": "Connexion",
+    "mfa_code": "Code MFA",
+    "error": "Identifiants invalides",
+    "loading": "Connexion en cours..."
+  },
+  "projects": {
+    "title": "Projets",
+    "new": "Nouveau projet",
+    "no_projects": "Aucun projet trouv\u00e9",
+    "search": "Rechercher des projets...",
+    "create_title": "Cr\u00e9er un projet",
+    "name": "Nom du projet",
+    "doc_type": "Type de document",
+    "cancel": "Annuler",
+    "create": "Cr\u00e9er"
+  },
+  "dashboard": {
+    "title": "Mon tableau de bord",
+    "customize": "Personnaliser le tableau de bord",
+    "assigned": "Assign\u00e9",
+    "in_progress": "En cours",
+    "completed": "Termin\u00e9",
+    "overdue": "En retard"
   }
 }

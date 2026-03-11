@@ -10,6 +10,9 @@ from .settings_manager import load_settings, update_setting
 VALID_THEMES = {"system", "light", "dark"}
 """Allowed theme values for appearance preferences."""
 
+VALID_LOCALES = {"en", "es", "fr", "de"}
+"""Allowed locale codes for user preference."""
+
 PROFILE_DEFAULTS: Dict[str, Any] = {
     "picture": "",
     "displayName": "",
@@ -115,6 +118,11 @@ def update_preferences(user: str, prefs: Dict[str, Any]) -> Dict[str, Any]:
                 cleaned[key] = val.strip().lower() in {"1", "true", "yes", "on"}
             else:
                 cleaned[key] = bool(val)
+        elif key == "locale":
+            if isinstance(val, str):
+                normalized = val.strip().lower()
+                if normalized in VALID_LOCALES:
+                    cleaned[key] = normalized
     current.update(cleaned)
     update_setting(f"prefs_{user}", current)
     return current

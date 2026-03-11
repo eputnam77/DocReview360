@@ -50,6 +50,13 @@ class DocumentModel(BaseModel):
     """Monotonically increasing integer incremented on every successful update."""
     frozen: bool = False
     """When True, update_document() raises FrozenDocumentError instead of modifying content."""
+    # Quality score persistence (Item 35)
+    last_quality_score: Optional[float] = None
+    """Most recent quality score computed for this document."""
+    last_quality_date: Optional[datetime] = None
+    """Timestamp when the last quality score was computed."""
+    plain_language_grade: Optional[str] = None
+    """Plain-language grade level from the most recent quality check."""
 
 
 class FrozenDocumentError(RuntimeError):

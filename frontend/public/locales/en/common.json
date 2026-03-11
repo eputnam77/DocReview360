@@ -42,5 +42,33 @@
     "created_at": "Created",
     "updated_at": "Updated",
     "due_date": "Due date"
+  },
+  "login": {
+    "title": "Sign in to DocReview360",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign In",
+    "mfa_code": "MFA Code",
+    "error": "Invalid credentials",
+    "loading": "Signing in..."
+  },
+  "projects": {
+    "title": "Projects",
+    "new": "New Project",
+    "no_projects": "No projects found",
+    "search": "Search projects...",
+    "create_title": "Create Project",
+    "name": "Project name",
+    "doc_type": "Document type",
+    "cancel": "Cancel",
+    "create": "Create"
+  },
+  "dashboard": {
+    "title": "My Dashboard",
+    "customize": "Customize Dashboard",
+    "assigned": "Assigned",
+    "in_progress": "In Progress",
+    "completed": "Completed",
+    "overdue": "Overdue"
   }
 }

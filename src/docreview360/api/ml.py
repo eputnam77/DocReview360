@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, conlist
 
 from .. import auth, reporting
 from ..audit import log_audit_event
+from ..fsv_proxy import fsv_quality, is_fsv_configured
 from ..logs import log_call, log_event
 from ..ml.compliance_classifier import compliance_model_metadata, evaluate_compliance
 from ..ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES
@@ -193,6 +194,7 @@ class QualityAssessmentResponse(BaseModel):
     flags: dict[str, float]
     high_risk_terms: list[str]
     model: dict[str, str] | None = None
+    source: str = "internal"  # "internal" or "fsv"
 
 
 class ComplianceEvaluationRequest(BaseModel):
@@ -267,8 +269,33 @@ async def quality_endpoint(
     payload: QualityAssessmentRequest,
     user: auth.User = Depends(_enforce_rate_limit),
 ) -> QualityAssessmentResponse:
-    """Return an approval quality assessment for the provided text."""
+    """Return an approval quality assessment for the provided text.
 
+    When ``FEDERAL_STYLE_VALIDATOR_URL`` is configured the request is proxied
+    to FSV's ``/quality`` endpoint and the result is returned with
+    ``"source": "fsv"``.  Otherwise the internal implementation is used and
+    the result includes ``"source": "internal"``.
+    """
+    # --- FSV proxy path ---
+    if is_fsv_configured():
+        try:
+            fsv_result = await fsv_quality(payload.text, document_id=payload.document_id)
+            return QualityAssessmentResponse(
+                score=float(fsv_result.get("score", 0.0)),
+                raw_score=float(fsv_result.get("raw_score", fsv_result.get("score", 0.0))),
+                flags={
+                    k: float(v)
+                    for k, v in fsv_result.get("flags", {}).items()
+                },
+                high_risk_terms=list(fsv_result.get("high_risk_terms", [])),
+                model=fsv_result.get("model") or None,
+                source="fsv",
+            )
+        except Exception as _exc:
+            logger.warning("FSV quality proxy failed, falling back to internal: %s", _exc)
+            # Fall through to internal implementation on proxy failure.
+
+    # --- Internal implementation path ---
     assessment = quality_assessment(payload.text, doc_type=payload.doc_type)
     warnings = high_risk_warnings(payload.text)
     flags = {name: float(value) for name, value in zip(QUALITY_FLAG_NAMES, assessment.flags)}
@@ -305,6 +332,7 @@ async def quality_endpoint(
         flags=flags,
         high_risk_terms=warnings,
         model=model_info,
+        source="internal",
     )
 
 

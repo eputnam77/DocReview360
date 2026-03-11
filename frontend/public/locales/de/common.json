@@ -42,5 +42,33 @@
     "created_at": "Erstellt",
     "updated_at": "Aktualisiert",
     "due_date": "F\u00e4lligkeitsdatum"
+  },
+  "login": {
+    "title": "Bei DocReview360 anmelden",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "mfa_code": "MFA-Code",
+    "error": "Ung\u00fcltige Anmeldedaten",
+    "loading": "Anmeldung l\u00e4uft..."
+  },
+  "projects": {
+    "title": "Projekte",
+    "new": "Neues Projekt",
+    "no_projects": "Keine Projekte gefunden",
+    "search": "Projekte suchen...",
+    "create_title": "Projekt erstellen",
+    "name": "Projektname",
+    "doc_type": "Dokumenttyp",
+    "cancel": "Abbrechen",
+    "create": "Erstellen"
+  },
+  "dashboard": {
+    "title": "Mein Dashboard",
+    "customize": "Dashboard anpassen",
+    "assigned": "Zugewiesen",
+    "in_progress": "In Bearbeitung",
+    "completed": "Abgeschlossen",
+    "overdue": "\u00dcberf\u00e4llig"
   }
 }

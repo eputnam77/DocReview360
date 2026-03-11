@@ -248,12 +248,74 @@ def send_webhook_notification(webhook_url: str, event: str, **context: str) -> D
         return {**body, "error": str(exc)}
 
 
-def send_notification(event: str, **context: str) -> Dict[str, List[Dict[str, Any]]]:
+def get_user_notification_preference(username: str) -> "Any | None":
+    """Return the ``UserNotificationPreference`` record for *username*, or ``None``."""
+    try:
+        from .database import Database
+        from .models import UserNotificationPreference
+        import os
+
+        db_url = os.environ.get("DOCREVIEW360_DB_URL", "sqlite:///docreview360.db")
+        db = Database(db_url)
+        db.migrate()
+        with db.orm_session() as session:
+            return session.get(UserNotificationPreference, username)
+    except Exception as exc:
+        _logger.debug("Could not fetch user notification preference for %s: %s", username, exc)
+        return None
+
+
+def save_user_notification_preference(
+    username: str,
+    preferred_channel: str,
+    webhook_url: str | None = None,
+    email_override: str | None = None,
+) -> "Any":
+    """Upsert a ``UserNotificationPreference`` record and return it."""
+    from .models import VALID_NOTIFICATION_CHANNELS, UserNotificationPreference
+
+    if preferred_channel not in VALID_NOTIFICATION_CHANNELS:
+        raise ValueError(
+            f"Invalid channel '{preferred_channel}'. "
+            f"Valid values: {sorted(VALID_NOTIFICATION_CHANNELS)}"
+        )
+    if webhook_url is not None and not webhook_url.startswith("https://"):
+        raise ValueError("webhook_url must be an https:// URL")
+
+    import os
+    from .database import Database
+
+    db_url = os.environ.get("DOCREVIEW360_DB_URL", "sqlite:///docreview360.db")
+    db = Database(db_url)
+    db.migrate()
+    with db.orm_session() as session:
+        pref = session.get(UserNotificationPreference, username)
+        if pref is None:
+            pref = UserNotificationPreference(username=username)
+            session.add(pref)
+        pref.preferred_channel = preferred_channel
+        pref.webhook_url = webhook_url
+        pref.email_override = email_override
+    # Re-fetch outside the session so it can be safely serialised by callers.
+    with db.orm_session() as session:
+        return session.get(UserNotificationPreference, username)
+
+
+def send_notification(
+    event: str,
+    recipient_username: str | None = None,
+    **context: str,
+) -> Dict[str, List[Dict[str, Any]]]:
     """Dispatch ``event`` to all enabled notification channels.
 
     Settings are read from ``settings_manager`` under the ``notifications``
     key.  Missing or malformed settings are silently ignored so this function
     is always safe to call even if the user has not configured notifications.
+
+    When *recipient_username* is provided the function first looks up that
+    user's ``UserNotificationPreference``.  If a preference exists the
+    preferred channel is used instead of the global defaults, so each reviewer
+    can receive notifications through their chosen channel.
 
     Returns a dict mapping channel name to the list of results produced by
     each delivery attempt.
@@ -269,6 +331,42 @@ def send_notification(event: str, **context: str) -> Dict[str, List[Dict[str, An
     results: Dict[str, List[Dict[str, Any]]] = {"slack": [], "teams": [], "email": [], "webhook": []}
     message = context.get("message") or f"DocReview360 event: {event}"
 
+    # ------------------------------------------------------------------
+    # Per-user channel override
+    # ------------------------------------------------------------------
+    pref = None
+    if recipient_username:
+        pref = get_user_notification_preference(recipient_username)
+
+    if pref is not None:
+        channel = pref.preferred_channel
+        if channel == "slack" and ns.get("slack_webhook_url"):
+            results["slack"].append(send_slack_notification(ns["slack_webhook_url"], message))
+        elif channel == "teams" and ns.get("teams_webhook_url"):
+            results["teams"].append(send_teams_notification(ns["teams_webhook_url"], message))
+        elif channel == "email":
+            recipient_email = pref.email_override or ns.get("email_recipient")
+            if recipient_email:
+                if "default" not in TEMPLATES:
+                    TEMPLATES["default"] = Template("{subject}", "{body}")
+                results["email"].append(
+                    send_email(
+                        "default",
+                        recipient_email,
+                        subject=f"[DocReview360] {event}",
+                        body=message,
+                    )
+                )
+        elif channel == "webhook":
+            webhook_url = pref.webhook_url or ns.get("webhook_url")
+            if webhook_url:
+                results["webhook"].append(send_webhook_notification(webhook_url, event, **context))
+        # "in_app" is stored but has no outbound delivery; silently accepted.
+        return results
+
+    # ------------------------------------------------------------------
+    # Global settings fallback (no per-user preference found)
+    # ------------------------------------------------------------------
     if ns.get("slack_enabled") and ns.get("slack_webhook_url"):
         results["slack"].append(send_slack_notification(ns["slack_webhook_url"], message))
 

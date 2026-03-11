@@ -47,6 +47,11 @@ class ProjectModel(BaseModel):
     reviewers: List[str] = Field(default_factory=list)
     # Store the initially requested phase even when no workflow is associated.
     initial_phase: str | None = None
+    # NARA records management fields
+    nara_schedule_number: str | None = None
+    nara_disposition_authority: str | None = None
+    nara_retention_period: str | None = None
+    nara_record_series: str | None = None
 
     @computed_field
     def created_at(self) -> datetime:

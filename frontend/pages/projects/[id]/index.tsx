@@ -14,7 +14,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { authenticatedFetch } from "@/lib/api";
-import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments, UserPicker } from "@/components";
+import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments, UserPicker, HelpTooltip } from "@/components";
 import type { TimelineStep } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
 import { cn } from "@/lib/utils";
@@ -353,6 +353,13 @@ export default function ProjectDetailsPage() {
   const [showVersions, setShowVersions] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  // NARA records retention fields (Phase 7)
+  const [naraScheduleNumber, setNaraScheduleNumber] = useState("");
+  const [naraDispositionAuthority, setNaraDispositionAuthority] = useState("");
+  const [naraRetentionPeriod, setNaraRetentionPeriod] = useState("");
+  const [naraRecordSeries, setNaraRecordSeries] = useState("");
+  const [savingNara, setSavingNara] = useState(false);
+
   // ▼ permission based on logged in user
   const username = useUserStore((s) => s.username);
   const isAdmin = useUserStore((s) => s.isAdmin);
@@ -672,6 +679,12 @@ export default function ProjectDetailsPage() {
 
   useEffect(() => {
     setProject(projectData ?? null);
+    if (projectData) {
+      setNaraScheduleNumber(projectData.nara_schedule_number ?? "");
+      setNaraDispositionAuthority(projectData.nara_disposition_authority ?? "");
+      setNaraRetentionPeriod(projectData.nara_retention_period ?? "");
+      setNaraRecordSeries(projectData.nara_record_series ?? "");
+    }
   }, [projectData, id]);
   useEffect(() => {
     setWorkflow(workflowData ?? null);
@@ -1552,6 +1565,31 @@ export default function ProjectDetailsPage() {
     toast.success(`Reminder sent to ${targets.length} reviewer(s).`);
   };
 
+  // Save NARA records retention metadata (Phase 7)
+  const handleSaveNara = async () => {
+    if (!id) return;
+    setSavingNara(true);
+    try {
+      const res = await authenticatedFetch(`/projects/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nara_schedule_number: naraScheduleNumber || null,
+          nara_disposition_authority: naraDispositionAuthority || null,
+          nara_retention_period: naraRetentionPeriod || null,
+          nara_record_series: naraRecordSeries || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save NARA metadata");
+      toast.success("NARA metadata saved.");
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+    } catch {
+      toast.error("Failed to save NARA metadata.");
+    } finally {
+      setSavingNara(false);
+    }
+  };
+
   // Export reviewer list as CSV
   const handleExportReviewers = () => {
     const rows = [
@@ -1692,9 +1730,15 @@ export default function ProjectDetailsPage() {
               )}
             </div>
             {canEdit && (
-              <Button size="sm" onClick={() => setShowPhaseDialog(true)} className="bg-green-600 hover:bg-green-700">
-                Advance Phase
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => setShowPhaseDialog(true)} className="bg-green-600 hover:bg-green-700">
+                  Advance Phase
+                </Button>
+                <HelpTooltip
+                  content="Advancing the phase moves the project to the next workflow stage. All reviewers must have submitted their feedback before you can advance. Non-concurrences should be addressed first."
+                  href="/help#phases"
+                />
+              </div>
             )}
           </div>
         )}
@@ -1994,6 +2038,101 @@ export default function ProjectDetailsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Records Retention (NARA) — Phase 7 */}
+          {canEdit && (
+            <Disclosure>
+              {({ open }) => (
+                <>
+                  <Disclosure.Button className="w-full text-left">
+                    <h2 className="flex items-center gap-2 text-base font-semibold text-gray-700 dark:text-gray-300">
+                      <LayoutList className="w-4 h-4 text-indigo-500" />
+                      Records Retention (NARA){" "}
+                      {open ? (
+                        <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
+                      )}
+                    </h2>
+                  </Disclosure.Button>
+                  <Transition
+                    show={open}
+                    as={Fragment}
+                    enter="transition ease-out duration-100"
+                    enterFrom="transform opacity-0 scale-95"
+                    enterTo="transform opacity-100 scale-100"
+                    leave="transition ease-in duration-75"
+                    leaveFrom="transform opacity-100 scale-100"
+                    leaveTo="transform opacity-0 scale-95"
+                  >
+                    <Card>
+                      <CardContent className="pt-4 space-y-4">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          NARA records management metadata for this project. Required when
+                          submitting to federal records systems.
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Schedule Number
+                            </label>
+                            <Input
+                              value={naraScheduleNumber}
+                              onChange={(e) => setNaraScheduleNumber(e.target.value)}
+                              placeholder="e.g. DAA-GRS-2017-0007"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Disposition Authority
+                            </label>
+                            <Input
+                              value={naraDispositionAuthority}
+                              onChange={(e) => setNaraDispositionAuthority(e.target.value)}
+                              placeholder="e.g. N1-AU-04-18"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Retention Period
+                            </label>
+                            <Input
+                              value={naraRetentionPeriod}
+                              onChange={(e) => setNaraRetentionPeriod(e.target.value)}
+                              placeholder="e.g. Permanent, 7 years after close"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                              Record Series
+                            </label>
+                            <Input
+                              value={naraRecordSeries}
+                              onChange={(e) => setNaraRecordSeries(e.target.value)}
+                              placeholder="e.g. Policy Documents"
+                              className="text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            onClick={handleSaveNara}
+                            disabled={savingNara}
+                          >
+                            {savingNara ? "Saving…" : "Save NARA Metadata"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Transition>
+                </>
+              )}
+            </Disclosure>
+          )}
 
           {/* Primary CTA */}
           <div className="flex justify-center">

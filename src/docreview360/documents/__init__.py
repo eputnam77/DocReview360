@@ -49,6 +49,7 @@ from ._store import (
     unlink_approval,
     unregister_ingestion_pipeline,
     update_document,
+    update_document_quality_score,
 )
 from ._versioning import (
     diff_document_revisions,
@@ -94,6 +95,7 @@ __all__ = [
     "next_document_number",
     "set_document_editor",
     "get_document_editor",
+    "update_document_quality_score",
     # versioning
     "get_document_versions",
     "get_document_version",

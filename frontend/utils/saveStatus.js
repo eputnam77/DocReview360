@@ -1,11 +1,11 @@
-import { API, authenticatedFetch } from "../lib/api";
+import { authenticatedFetch } from "../lib/api";
 /**
  * Log a failed save attempt and determine the resulting status.
  * Returns "offline" when the browser reports offline mode, otherwise "error".
  */
 export async function logSaveError(err) {
     try {
-        await authenticatedFetch(`${API}/logs`, {
+        await authenticatedFetch(`/logs`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

@@ -248,6 +248,7 @@ from .assignments_router import router as assignments_router
 from .feedback_router import router as feedback_router
 from .records_router import router as records_router
 from .sla_router import router as sla_router
+from .wopi_router import router as wopi_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -863,6 +864,10 @@ class BrandingPayload(BaseModel):
     branding_docs_url: str
     branding_security_url: str
     branding_privacy_url: str
+    branding_primary_color: str | None = None
+    branding_accent_color: str | None = None
+    branding_sidebar_bg: str | None = None
+    branding_sidebar_text: str | None = None
     release_version: str
     release_build_number: str
     release_build_date: str
@@ -1082,6 +1087,7 @@ app.include_router(assignments_router)
 app.include_router(feedback_router)
 app.include_router(records_router)
 app.include_router(sla_router)
+app.include_router(wopi_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
@@ -1188,6 +1194,24 @@ def _branding_payload_from_config(cfg: Config | None) -> BrandingPayload:
     release_commit = os.getenv("DOCREVIEW360_RELEASE_COMMIT")
     environment = os.getenv("DOCREVIEW360_ENV", "dev") or "dev"
 
+    # Load org-level theme colors from the default org ("system") when available.
+    _branding_primary_color: str | None = None
+    _branding_accent_color: str | None = None
+    _branding_sidebar_bg: str | None = None
+    _branding_sidebar_text: str | None = None
+    try:
+        from ..branding import get_branding as _get_branding
+        from ..db_store import get_db as _get_db
+
+        with _get_db().orm_session() as _db:
+            _org_branding = _get_branding(_db, "system")
+            _branding_primary_color = _org_branding.get("primary_color") or None
+            _branding_accent_color = _org_branding.get("accent_color") or None
+            _branding_sidebar_bg = _org_branding.get("sidebar_bg") or None
+            _branding_sidebar_text = _org_branding.get("sidebar_text") or None
+    except Exception:
+        pass
+
     return BrandingPayload(
         branding_company_name=(active_cfg.branding_company_name or "DocReview360").strip()
         or "DocReview360",
@@ -1198,6 +1222,10 @@ def _branding_payload_from_config(cfg: Config | None) -> BrandingPayload:
         branding_docs_url=_safe_link(active_cfg.branding_docs_url, "/docs/"),
         branding_security_url=_safe_link(active_cfg.branding_security_url, "/security"),
         branding_privacy_url=_safe_link(active_cfg.branding_privacy_url, "/privacy"),
+        branding_primary_color=_branding_primary_color,
+        branding_accent_color=_branding_accent_color,
+        branding_sidebar_bg=_branding_sidebar_bg,
+        branding_sidebar_text=_branding_sidebar_text,
         release_version=_load_release_version(),
         release_build_number=release_build_number,
         release_build_date=release_build_date,

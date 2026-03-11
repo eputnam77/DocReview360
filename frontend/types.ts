@@ -69,6 +69,11 @@ export interface Project {
   editor?: string;
   workflow?: string;
   currentPhaseId?: string | null;
+  // NARA records management fields
+  nara_schedule_number?: string | null;
+  nara_disposition_authority?: string | null;
+  nara_retention_period?: string | null;
+  nara_record_series?: string | null;
 }
 
 /** Approval information for workflow steps */

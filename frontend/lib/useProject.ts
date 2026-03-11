@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 import type { Project } from "@/types";
 
 export function useProject(id?: string) {
@@ -7,7 +7,7 @@ export function useProject(id?: string) {
     queryKey: ["project", id],
     enabled: !!id,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/projects/${id}`);
+      const res = await authenticatedFetch(`/projects/${id}`);
       if (!res.ok) {
         throw new Error("Failed to fetch project");
       }
@@ -24,6 +24,10 @@ export function useProject(id?: string) {
         editor: "tiptap",
         workflow: proj.workflow,
         currentPhaseId: proj.current_phase_id || proj.phase || null,
+        nara_schedule_number: proj.nara_schedule_number ?? null,
+        nara_disposition_authority: proj.nara_disposition_authority ?? null,
+        nara_retention_period: proj.nara_retention_period ?? null,
+        nara_record_series: proj.nara_record_series ?? null,
       } as Project;
     },
   });

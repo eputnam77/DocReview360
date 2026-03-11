@@ -6,7 +6,7 @@ import {
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from "@/components/ui/tabs";
 import {
-  LayoutDashboard, FolderOpen, FileText, Users2, Clock, BarChart2, ShieldCheck, CalendarClock, AlertTriangle, PieChart as PieChartIcon, TrendingUp, UserCheck, BookOpen, CheckCircle2,
+  LayoutDashboard, FolderOpen, FileText, Users2, Clock, BarChart2, ShieldCheck, CalendarClock, AlertTriangle, PieChart as PieChartIcon, TrendingUp, UserCheck, BookOpen, CheckCircle2, Settings, Award,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
@@ -45,6 +45,7 @@ type ErrorStat = { type: string; count: number };
 type Turnaround = { phase: string; avgDays: number };
 type DocType = { type: string; count: number };
 type ReviewStat = { reviewer: string; pending: number };
+type QualityMetrics = { avg_score: number; docs_with_scores: number; high_quality_count: number; needs_improvement_count: number };
 
 // --- Main Component ---
 export default function ManagerDashboardPage() {
@@ -62,29 +63,44 @@ export default function ManagerDashboardPage() {
   const [turnarounds, setTurnarounds] = useState<Turnaround[]>([]);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
   const [reviewStats, setReviewStats] = useState<ReviewStat[]>([]);
+  const [quality, setQuality] = useState<QualityMetrics | null>(null);
   const [showPicker, setShowPicker] = useState(false);
 
   // --- Customizable dashboard visibility state ---
   const DASHBOARD_KEYS = [
     "kpi", "status", "leaderboard", "activity", "deadlines", "reviews", "errors", "turnaround", "docTypes", "logs",
   ];
-  const DEFAULT_VISIBLE = ["kpi", "status", "leaderboard", "activity", "deadlines", "reviews", "logs"];
-  // Initialize with a stable value for SSR; hydrate from localStorage after mount
+  const DEFAULT_VISIBLE = ["kpi", "quality", "status", "leaderboard", "activity", "deadlines", "reviews", "logs"];
+  // Initialize with a stable value for SSR; hydrate from backend after mount
   const [visibleDashboards, setVisibleDashboards] = useState<string[]>(DEFAULT_VISIBLE);
+  const [visibilityLoaded, setVisibilityLoaded] = useState(false);
+
+  // Load visibility preferences from backend on mount
   useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const stored = localStorage.getItem("visibleDashboards");
-        if (stored) setVisibleDashboards(JSON.parse(stored));
-      }
-    } catch {
-      // ignore JSON/localStorage errors
-    }
+    authenticatedFetch("/dashboard/visibility")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((prefs: any) => {
+        if (prefs && Array.isArray(prefs.widgets) && prefs.widgets.length > 0) {
+          setVisibleDashboards(prefs.widgets);
+        }
+      })
+      .catch(() => {
+        // ignore — keep defaults
+      })
+      .finally(() => setVisibilityLoaded(true));
   }, []);
+
   const toggleDashboard = (key: string) => {
     setVisibleDashboards((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
-      localStorage.setItem("visibleDashboards", JSON.stringify(next));
+      // Persist to backend
+      authenticatedFetch("/dashboard/visibility", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ widgets: next }),
+      }).catch(() => {
+        // ignore persistence errors
+      });
       return next;
     });
   };
@@ -154,6 +170,9 @@ export default function ManagerDashboardPage() {
       setErrorStats([]);
       setTurnarounds([]);
       setReviewStats([]);
+      if (data.quality) {
+        setQuality(data.quality);
+      }
     } else if (isError) {
       setStats({
         projects: 0,
@@ -174,6 +193,7 @@ export default function ManagerDashboardPage() {
       setTurnarounds([]);
       setDocTypes([]);
       setReviewStats([]);
+      setQuality(null);
     }
   }, [data, isError]);
 
@@ -192,6 +212,14 @@ export default function ManagerDashboardPage() {
     </Card>
   );
 
+  // Quality score color helper
+  const qualityColor = (score: number) => {
+    const pct = score * 100;
+    if (pct >= 80) return "text-emerald-600";
+    if (pct >= 60) return "text-amber-500";
+    return "text-red-600";
+  };
+
   // --- Dashboard Widget Registry ---
   const DASHBOARDS = [
     {
@@ -206,6 +234,37 @@ export default function ManagerDashboardPage() {
           <StatCard icon={Clock} label="Active Workflows" value={stats.active} color="text-yellow-600" />
           <StatCard icon={AlertTriangle} label="Overdue Reviews" value={stats.overdue} color="text-red-600" />
         </div>
+      ),
+    },
+    {
+      key: "quality",
+      label: "Avg Quality Score",
+      icon: Award,
+      component: (
+        <Card>
+          <CardContent className="flex items-center gap-4 p-6">
+            <Award className={`w-10 h-10 ${quality ? qualityColor(quality.avg_score) : "text-gray-400"}`} />
+            <div className="flex-1">
+              <p className={`text-3xl font-bold leading-none ${quality ? qualityColor(quality.avg_score) : "text-gray-400"}`}>
+                {quality && quality.docs_with_scores > 0
+                  ? `${Math.round(quality.avg_score * 100)}%`
+                  : "—"}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Avg Quality Score</p>
+              {quality && quality.docs_with_scores > 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {quality.docs_with_scores} scored &nbsp;·&nbsp;
+                  <span className="text-emerald-600">{quality.high_quality_count} high</span>
+                  &nbsp;·&nbsp;
+                  <span className="text-red-500">{quality.needs_improvement_count} needs work</span>
+                </p>
+              )}
+              {(!quality || quality.docs_with_scores === 0) && (
+                <p className="text-xs text-gray-400 mt-1">No documents scored yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       ),
     },
     {
@@ -448,8 +507,14 @@ export default function ManagerDashboardPage() {
           <ShieldCheck className="w-7 h-7 text-purple-700" />
           Manager & Senior TW Dashboard
         </h1>
-        <Button variant="outline" size="sm" onClick={() => setShowPicker((v) => !v)}>
-          Customize Dashboards
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowPicker((v) => !v)}
+          title="Customize Dashboard"
+          aria-label="Customize Dashboard"
+        >
+          <Settings className="w-5 h-5 text-gray-500 hover:text-purple-700" />
         </Button>
       </div>
       {/* Picker Modal */}

@@ -64,6 +64,8 @@ export { default as WorkflowTimeline } from "./WorkflowTimeline";
 export type { TimelineStep } from "./WorkflowTimeline";
 export { default as ReviewerComments } from "./ReviewerComments";
 export { default as UserPicker } from "./UserPicker";
+export { default as LocaleSwitcher } from "./LocaleSwitcher";
+export { default as HelpTooltip } from "./HelpTooltip";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";

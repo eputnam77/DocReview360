@@ -15,7 +15,8 @@
       "Bash(wc:*)",
       "Bash(npx:*)",
       "Bash(cat:*)",
-      "Bash(find /home/hoctar77/CodingProjects/DocReview360/DocReview360/frontend/pages -name \"*log*\" -type f 2>/dev/null | head -10)"
+      "Bash(find /home/hoctar77/CodingProjects/DocReview360/DocReview360/frontend/pages -name \"*log*\" -type f 2>/dev/null | head -10)",
+      "Bash(node /home/hoctar77/CodingProjects/DocReview360/DocReview360/scripts/check-api-fetch-pattern.mjs 2>&1)"
     ]
   }
 }

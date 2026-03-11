@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 export function useProject(id) {
     return useQuery({
         queryKey: ["project", id],
         enabled: !!id,
         queryFn: async () => {
-            const res = await authenticatedFetch(`${API}/projects/${id}`);
+            const res = await authenticatedFetch(`/projects/${id}`);
             if (!res.ok) {
                 throw new Error("Failed to fetch project");
             }

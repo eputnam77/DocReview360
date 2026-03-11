@@ -42,5 +42,33 @@
     "created_at": "Creado",
     "updated_at": "Actualizado",
     "due_date": "Fecha de vencimiento"
+  },
+  "login": {
+    "title": "Iniciar sesi\u00f3n en DocReview360",
+    "username": "Nombre de usuario",
+    "password": "Contrase\u00f1a",
+    "submit": "Iniciar sesi\u00f3n",
+    "mfa_code": "C\u00f3digo MFA",
+    "error": "Credenciales inv\u00e1lidas",
+    "loading": "Iniciando sesi\u00f3n..."
+  },
+  "projects": {
+    "title": "Proyectos",
+    "new": "Nuevo proyecto",
+    "no_projects": "No se encontraron proyectos",
+    "search": "Buscar proyectos...",
+    "create_title": "Crear proyecto",
+    "name": "Nombre del proyecto",
+    "doc_type": "Tipo de documento",
+    "cancel": "Cancelar",
+    "create": "Crear"
+  },
+  "dashboard": {
+    "title": "Mi Panel",
+    "customize": "Personalizar panel",
+    "assigned": "Asignado",
+    "in_progress": "En progreso",
+    "completed": "Completado",
+    "overdue": "Vencido"
   }
 }

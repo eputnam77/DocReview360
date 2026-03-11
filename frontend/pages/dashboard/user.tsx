@@ -6,13 +6,15 @@ import {
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from "@/components/ui/tabs";
 import {
-  LayoutDashboard, FolderOpen, Clock, CheckCircle2, Users2, FileText, BarChart2, MessageCircle, BookOpen, CalendarClock, AlertTriangle, ThumbsUp, ShieldCheck,
+  LayoutDashboard, FolderOpen, Clock, CheckCircle2, Users2, FileText, BarChart2, MessageCircle, BookOpen, CalendarClock, AlertTriangle, ThumbsUp, ShieldCheck, Settings, Award,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar,
 } from "recharts";
 import { authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
+import { useTranslation } from "@/lib/useTranslation";
+import HelpTooltip from "@/components/HelpTooltip";
 
 // Chart color palette
 const COLORS = [
@@ -33,6 +35,7 @@ type Deadline = { id: string; doc: string; due: string; daysLeft: number };
 type DocType = { type: string; count: number };
 type ErrorStat = { type: string; count: number };
 type Collaborator = { name: string; role: string; projects: number };
+type QualityMetrics = { avg_score: number; docs_with_scores: number; high_quality_count: number; needs_improvement_count: number };
 
 export default function UserDashboardPage() {
   // Data State
@@ -44,6 +47,7 @@ export default function UserDashboardPage() {
     documents: 0,
     approvals: 0,
   });
+  const [quality, setQuality] = useState<QualityMetrics | null>(null);
   const [statusData, setStatusData] = useState<StatusData[]>([]);
   const [activityData, setActivityData] = useState<Activity[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -56,32 +60,39 @@ export default function UserDashboardPage() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const username = useUserStore((s) => s.username);
+  const { t } = useTranslation();
 
   // Dashboard Widget visibility state
-  const DASHBOARD_KEYS = [
-    "kpi", "status", "activity", "assignments", "reviews", "feedback", "comments", "deadlines", "docTypes", "errors", "collaborators",
-  ];
-  const DEFAULT_VISIBLE = ["kpi", "status", "activity", "assignments", "reviews", "deadlines", "feedback", "collaborators"];
+  const DEFAULT_VISIBLE = ["kpi", "quality", "status", "activity", "assignments", "reviews", "deadlines", "feedback", "collaborators"];
   const [visibleDashboards, setVisibleDashboards] = useState<string[]>(DEFAULT_VISIBLE);
+  const [visibilityLoaded, setVisibilityLoaded] = useState(false);
+
+  // Load visibility preferences from backend on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("visibleUserDashboards");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setVisibleDashboards(parsed);
-          }
-        } catch {
-          // ignore malformed localStorage
+    authenticatedFetch("/dashboard/visibility")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((prefs: any) => {
+        if (prefs && Array.isArray(prefs.widgets) && prefs.widgets.length > 0) {
+          setVisibleDashboards(prefs.widgets);
         }
-      }
-    }
+      })
+      .catch(() => {
+        // ignore — keep defaults
+      })
+      .finally(() => setVisibilityLoaded(true));
   }, []);
+
   const toggleDashboard = (key: string) => {
     setVisibleDashboards((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
-      localStorage.setItem("visibleUserDashboards", JSON.stringify(next));
+      // Persist to backend
+      authenticatedFetch("/dashboard/visibility", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ widgets: next }),
+      }).catch(() => {
+        // ignore persistence errors
+      });
       return next;
     });
   };
@@ -97,12 +108,16 @@ export default function UserDashboardPage() {
   });
 
   useEffect(() => {
-    if (Array.isArray(data)) {
-      const docs = data.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
-      const approvals = data.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
+    // Response is now { projects: [...], quality: {...} }
+    const projects = data && Array.isArray(data.projects) ? data.projects : (Array.isArray(data) ? data : []);
+    const qualityData = data && data.quality ? data.quality : null;
+
+    if (projects.length > 0 || qualityData) {
+      const docs = projects.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
+      const approvals = projects.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
       const statusCounts = new Map<string, number>();
       const docTypeCounts = new Map<string, number>();
-      data.forEach((p: any) => {
+      projects.forEach((p: any) => {
         const status = typeof p.status === "string" && p.status.trim()
           ? p.status
           : "Unknown";
@@ -117,7 +132,7 @@ export default function UserDashboardPage() {
         statusCounts.get("Complete") ?? statusCounts.get("Completed") ?? 0;
       const overdue = statusCounts.get("Overdue") ?? 0;
       setStats({
-        assigned: data.length,
+        assigned: projects.length,
         inProgress,
         completed,
         overdue,
@@ -144,6 +159,9 @@ export default function UserDashboardPage() {
       setDeadlines([]);
       setErrorStats([]);
       setCollaborators([]);
+      if (qualityData) {
+        setQuality(qualityData);
+      }
     } else if (isError) {
       setStats({
         assigned: 0,
@@ -153,6 +171,7 @@ export default function UserDashboardPage() {
         documents: 0,
         approvals: 0,
       });
+      setQuality(null);
       setStatusData([]);
       setActivityData([]);
       setAssignments([]);
@@ -181,24 +200,81 @@ export default function UserDashboardPage() {
     </Card>
   );
 
+  // Quality score color helper
+  const qualityColor = (score: number) => {
+    const pct = score * 100;
+    if (pct >= 80) return "text-emerald-600";
+    if (pct >= 60) return "text-amber-500";
+    return "text-red-600";
+  };
+
   // Dashboard Registry
   const DASHBOARDS = [
     {
       key: "kpi", label: "Key Metrics", icon: LayoutDashboard,
+      helpText: "Shows your assigned tasks, in-progress projects, completed work, and overdue items.",
       component: (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={Users2} label="Assigned" value={stats.assigned} color="text-indigo-600" />
-          <StatCard icon={Clock} label="In Progress" value={stats.inProgress} color="text-orange-600" />
-          <StatCard icon={CheckCircle2} label="Completed" value={stats.completed} color="text-emerald-600" />
-          <StatCard icon={BarChart2} label="Overdue" value={stats.overdue} color="text-red-600" />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Key Metrics</span>
+            <HelpTooltip content="Shows your assigned tasks, in-progress projects, completed work, and overdue items." href="/help#kpi" />
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard icon={Users2} label={t("dashboard.assigned")} value={stats.assigned} color="text-indigo-600" />
+            <StatCard icon={Clock} label={t("dashboard.in_progress")} value={stats.inProgress} color="text-orange-600" />
+            <StatCard icon={CheckCircle2} label={t("dashboard.completed")} value={stats.completed} color="text-emerald-600" />
+            <StatCard icon={BarChart2} label={t("dashboard.overdue")} value={stats.overdue} color="text-red-600" />
+          </div>
         </div>
       ),
     },
     {
-      key: "status", label: "My Project Status", icon: FolderOpen,
+      key: "quality", label: "Avg Quality Score", icon: Award,
+      helpText: "Average ML-computed quality score across all documents you have access to. Scores above 80% are high quality; below 60% need improvement.",
       component: (
         <Card>
-          <CardHeader><CardTitle>My Project Status</CardTitle></CardHeader>
+          <CardContent className="flex items-center gap-4 p-6">
+            <Award className={`w-10 h-10 ${quality ? qualityColor(quality.avg_score) : "text-gray-400"}`} />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className={`text-3xl font-bold leading-none ${quality ? qualityColor(quality.avg_score) : "text-gray-400"}`}>
+                  {quality && quality.docs_with_scores > 0
+                    ? `${Math.round(quality.avg_score * 100)}%`
+                    : "—"}
+                </p>
+                <HelpTooltip
+                  content="Average ML-computed quality score across all documents you have access to. Scores above 80% are high quality; below 60% need improvement."
+                  href="/help#quality"
+                />
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Avg Quality Score</p>
+              {quality && quality.docs_with_scores > 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {quality.docs_with_scores} scored &nbsp;·&nbsp;
+                  <span className="text-emerald-600">{quality.high_quality_count} high</span>
+                  &nbsp;·&nbsp;
+                  <span className="text-red-500">{quality.needs_improvement_count} needs work</span>
+                </p>
+              )}
+              {(!quality || quality.docs_with_scores === 0) && (
+                <p className="text-xs text-gray-400 mt-1">No documents scored yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ),
+    },
+    {
+      key: "status", label: "My Project Status", icon: FolderOpen,
+      helpText: "Breakdown of your projects by current status (In Progress, Complete, Overdue, etc.).",
+      component: (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              My Project Status
+              <HelpTooltip content="Breakdown of your projects by current status (In Progress, Complete, Overdue, etc.)." href="/help#status" />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
@@ -222,9 +298,15 @@ export default function UserDashboardPage() {
     },
     {
       key: "activity", label: "My Recent Activity", icon: Clock,
+      helpText: "Your document activity over the last 30 days — edits, uploads, approvals, and comments.",
       component: (
         <Card>
-          <CardHeader><CardTitle>My Recent Activity</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              My Recent Activity
+              <HelpTooltip content="Your document activity over the last 30 days — edits, uploads, approvals, and comments." href="/help#activity" />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={activityData}>
@@ -240,9 +322,15 @@ export default function UserDashboardPage() {
     },
     {
       key: "assignments", label: "My Assignments", icon: FileText,
+      helpText: "Documents and review tasks that have been explicitly assigned to you, along with their current status.",
       component: (
         <Card>
-          <CardHeader><CardTitle>My Assignments</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              My Assignments
+              <HelpTooltip content="Documents and review tasks that have been explicitly assigned to you, along with their current status." href="/help#assignments" />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ul className="space-y-2">
               {assignments.map((a) => (
@@ -275,9 +363,15 @@ export default function UserDashboardPage() {
     },
     {
       key: "reviews", label: "My Reviews", icon: CheckCircle2,
+      helpText: "Projects where you are listed as a reviewer, showing your review status and last update time.",
       component: (
         <Card>
-          <CardHeader><CardTitle>My Reviews</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              My Reviews
+              <HelpTooltip content="Projects where you are listed as a reviewer, showing your review status and last update time." href="/help#reviews" />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ul className="space-y-2">
               {reviews.map((r) => (
@@ -308,9 +402,15 @@ export default function UserDashboardPage() {
     },
     {
       key: "feedback", label: "My Feedback", icon: ThumbsUp,
+      helpText: "Feedback items and kudos submitted on documents you own or are assigned to.",
       component: (
         <Card>
-          <CardHeader><CardTitle>Feedback & Kudos</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Feedback &amp; Kudos
+              <HelpTooltip content="Feedback items and kudos submitted on documents you own or are assigned to." href="/help#feedback" />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ul className="space-y-2">
               {feedbacks.map((f) => (
@@ -353,9 +453,15 @@ export default function UserDashboardPage() {
     },
     {
       key: "deadlines", label: "Upcoming Deadlines", icon: CalendarClock,
+      helpText: "Documents with review deadlines approaching in the next 14 days, sorted by urgency.",
       component: (
         <Card>
-          <CardHeader><CardTitle>Upcoming Deadlines</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Upcoming Deadlines
+              <HelpTooltip content="Documents with review deadlines approaching in the next 14 days, sorted by urgency." href="/help#deadlines" />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ul className="space-y-2">
               {deadlines.map((d) => (
@@ -400,9 +506,15 @@ export default function UserDashboardPage() {
     },
     {
       key: "errors", label: "Doc Quality Stats", icon: ShieldCheck,
+      helpText: "Count of quality and formatting issues detected by the document checker across your documents.",
       component: (
         <Card>
-          <CardHeader><CardTitle>Quality/Formatting Issues</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Quality/Formatting Issues
+              <HelpTooltip content="Count of quality and formatting issues detected by the document checker across your documents." href="/help#quality-stats" />
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={errorStats}>
@@ -446,10 +558,16 @@ export default function UserDashboardPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold flex gap-2 items-center">
-          <LayoutDashboard className="w-7 h-7 text-indigo-600" /> My Dashboard
+          <LayoutDashboard className="w-7 h-7 text-indigo-600" /> {t("dashboard.title")}
         </h1>
-        <Button variant="outline" size="sm" onClick={() => setShowPicker((v) => !v)}>
-          Customize Dashboard
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowPicker((v) => !v)}
+          title={t("dashboard.customize")}
+          aria-label={t("dashboard.customize")}
+        >
+          <Settings className="w-5 h-5 text-gray-500 hover:text-indigo-600" />
         </Button>
       </div>
       {/* Picker Modal */}

@@ -18,6 +18,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { API, setStoredAccessToken } from "@/lib/api";
 import { useUserStore } from "@/state/user";
+import { useTranslation } from "@/lib/useTranslation";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const refreshUser = useUserStore((state) => state.refresh);
+  const { t } = useTranslation();
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -80,7 +82,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-1 text-center">
           <LogIn className="mx-auto h-10 w-10 text-indigo-600" />
           <CardTitle className="text-2xl font-bold">
-            Sign in to DocReview360
+            {t("login.title")}
           </CardTitle>
           <CardDescription>
             Welcome back! Enter your credentials.
@@ -90,7 +92,7 @@ export default function LoginPage() {
         <CardContent>
           <form className="space-y-4" onSubmit={handleLogin} autoComplete="on">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t("login.username")}</Label>
               <Input
                 id="username"
                 type="text"
@@ -104,7 +106,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("login.password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -118,7 +120,7 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full mt-2" disabled={loading}>
-              {loading ? "Signing in..." : "Continue"}
+              {loading ? t("login.loading") : t("login.submit")}
             </Button>
 
             <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">

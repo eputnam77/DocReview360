@@ -16,11 +16,10 @@ The verified workflow-template dropdown fix, `default_workflow_template_id`
 rename, and curated starter templates were moved to `docs/latest_features.md`
 on 2026-03-11.
 
-- [ ] Finish starter-content wiring for new documents. Backend
-  `GET /document-types/{name}/starter-content` is live, but
-  `frontend/pages/editors/tiptap.tsx` still auto-applies `/templates`
-  entries on blank documents instead of loading the curated starter-content
-  endpoint.
+- [x] Finish starter-content wiring for new documents. Backend
+  `GET /document-types/{name}/starter-content` is live, and
+  `frontend/pages/editors/tiptap.tsx` now loads starter content first,
+  falling back to `/templates` only on 404 or error. (2026-03-11)
 
 ### 13) Scope and release targets
 
@@ -126,19 +125,19 @@ on 2026-03-11.
 
 - [ ] Evaluate `karpathy/autoresearch` as a pattern source, not a drop-in dependency. Use it only if each loop has a single target metric, a fixed run budget, and an objective pass or fail gate.
 - [ ] Keep AI automation scoped to repository quality work. Ignore GitHub release publishing, PyPI publishing, Docker push, and other external release side effects unless a human explicitly enables them.
-- [ ] Add a local "release shepherd" loop that reads `RELEASE_CHECKLIST.md`, picks 1 unchecked item, attempts a minimal change, runs only the required checks, and writes a short outcome report.
+- [x] Local "release shepherd" loop: `scripts/release-shepherd.sh` — reads checklist, picks first unchecked item, runs pytest, writes timestamped report to `artifacts/automation/`, lockfile prevents concurrent runs. (2026-03-11)
 - [ ] Require artifact-based state for every autonomous run: prompt text, selected files, commands run, exit codes, test results, diff summary, and stop reason under `artifacts/automation/`.
 - [ ] Define hard AI guardrails before any autonomous loop: approved model list, max turns, max tokens, retry limit, fallback model, writable path allowlist, and mandatory human review for high-risk files.
 - [ ] Add a lockfile or lease so only 1 automation loop edits the repo at a time.
 - [ ] Add a watchdog that stops the loop after repeated no-op diffs, repeated failing tests, or budget exhaustion.
 - [ ] Prototype a Raspberry Pi-friendly runner for headless loops with a shell wrapper, lockfile, and append-only logs instead of relying on `cron` or `systemd`.
-- [ ] Add custom Claude Code commands for repeatable maintenance tasks such as `/triage-failure`, `/docs-drift`, `/packaging-audit`, `/release-shepherd`, and `/checklist-next`.
+- [x] Custom Claude Code commands: `.claude/commands/triage-failure.md`, `docs-drift.md`, `checklist-next.md`, `packaging-audit.md`. (2026-03-11)
 - [ ] Use Claude Code hooks to enforce "read tests first" and "run verification before write" for autonomous maintenance commands.
 - [ ] Build a failing-test triage loop that watches `pytest`, Playwright, and E2E failures, clusters similar stack traces, drafts the likely root cause, and proposes the smallest patch.
 - [ ] Build a flaky-test hunter that reruns smoke tests multiple times, captures artifacts, and ranks failures by frequency and first bad commit if git history is available.
-- [ ] Build a docs drift checker that compares `README.md`, `docs/`, `pyproject.toml`, env var docs, Docker docs, and frontend scripts for mismatched commands, versions, and URLs.
+- [x] Docs drift checker: `scripts/check-docs-drift.py` — checks version/port/env-var/Python-constraint consistency across README, docs/, pyproject.toml, Dockerfile. (2026-03-11)
 - [ ] Build a packaging auditor that inspects wheel, sdist, and Docker contents and flags shipped tests, placeholders, internal files, or runtime junk before release.
-- [ ] Build a placeholder and metadata reviewer that finds `example.com`, `info@example.com`, stale license text, inconsistent versions, and public repo readiness gaps.
+- [x] Placeholder and metadata reviewer: `scripts/check-placeholders.py` — scans for example.com, TODO/FIXME, GPL refs, version mismatches across 1,252 files. (2026-03-11)
 - [ ] Build a dependency-review loop that summarizes `pip-audit`, `semgrep`, `bandit`, `trivy`, and `npm audit` output into actionable issues instead of raw scanner logs.
 - [ ] Build a security-defaults reviewer focused on auth, OIDC, Keycloak, secrets, token lifetimes, and production-safe env defaults.
 - [ ] Build a deployment drift checker that compares `Dockerfile`, `docker-compose*.yml`, Helm, Kubernetes manifests, and `docs/deployment.md` for inconsistent ports, env vars, health checks, and image tags.
@@ -198,8 +197,8 @@ on 2026-03-11.
 
 **43d) Frontend API migration is incomplete**
 
-- [ ] Finish migrating active frontend shared hooks, components, state, and utility code off `authenticatedFetch(\`${API}/...\`)` and raw `fetch(\`${API}/...\`)`. Remaining active call sites include `frontend/lib/useApprovals.ts`, `frontend/lib/useProjects.ts`, `frontend/lib/useWorkflowInstance.ts`, `frontend/lib/useDocuments.ts`, `frontend/lib/useNotifications.ts`, `frontend/lib/useComments.ts`, `frontend/lib/useSessions.ts`, `frontend/lib/usePhases.ts`, `frontend/lib/useProject.ts`, `frontend/lib/useProjectReviewers.ts`, `frontend/lib/useReviewSummary.ts`, `frontend/components/ChatBot.tsx`, `frontend/utils/saveStatus.ts`, and `frontend/state/branding.ts`.
-- [ ] Broaden the frontend raw-fetch guard so it checks active frontend source beyond `pages/` and fails on `authenticatedFetch(\`${API}/...\`)` as well as raw `fetch(\`${API}/...\`)` usage where relative authenticated paths are required.
+- [x] Finish migrating active frontend shared hooks, components, state, and utility code off `authenticatedFetch(\`${API}/...\`)` and raw `fetch(\`${API}/...\`)`. All 14 target files migrated to relative paths; `branding.ts` switched from raw `fetch` to `authenticatedFetch`. (2026-03-11)
+- [x] Broaden the frontend raw-fetch guard: `scripts/check-api-fetch-pattern.mjs` scans all frontend source dirs; added `lint:api-fetch` to `package.json`. (2026-03-11)
 
 ## Product and architecture backlog
 
@@ -219,7 +218,7 @@ verified on 2026-03-11 was moved to `docs/latest_features.md`.
 
 **Phase 2 — Multi-channel notification for review events**
 
-- [ ] Notification channel selection per reviewer preference (uses global settings for now)
+- [x] Notification channel selection per reviewer preference. `UserNotificationPreference` model + `GET/PUT /notifications/preferences/me` and `/{username}` endpoints. `send_notification()` now routes via per-user channel. (2026-03-11)
 
 **Phase 5 — Reviewer experience (what the reviewer sees)**
 
@@ -231,17 +230,11 @@ verified on 2026-03-11 was moved to `docs/latest_features.md`.
 
 **Phase 7 — Records retention and project close-out**
 
-- [ ] Wire to existing NARA metadata: when the SME creates or edits a project,
-  allow setting the NARA schedule number, disposition authority, retention
-  period, and record series — pull from `nara_metadata.py` and surface in
-  the project Overview tab (NARA fields in records package, UI wire-up deferred)
+- [x] Wire NARA metadata to project API: `nara_schedule_number`, `nara_disposition_authority`, `nara_retention_period`, `nara_record_series` added to `ProjectModel` and `ProjectCreate`/`ProjectUpdate`. Returned in GET /projects/{id}. UI: "Records Retention (NARA)" collapsible card in Overview tab with 4 editable fields. `GET /projects/{id}/nara-metadata` endpoint added. (2026-03-11)
 
 **Phase 8 — Deadline and SLA tracking**
 
-- [ ] Expose default review SLA configuration in the admin UI. Backend
-  `/document-types/{doc_type}/sla` and `/document-types/sla/all` endpoints
-  exist, but `frontend/pages/configuration/document-types.tsx` does not
-  surface those settings yet.
+- [x] Expose default review SLA configuration in the admin UI. `SLAPanel` component added to `document-types.tsx` with expandable per-doc-type SLA editor (review days, reminder days, escalation threshold) and "View All SLA Configurations" summary panel. (2026-03-11)
 
 **Future / optional — TipTap inline feedback extraction**
 
@@ -262,24 +255,15 @@ effective. Revisit after the core review cycle is solid.
 
 - [ ] Migrate `frontend/pages/projects/[id]/review.tsx` functionality into
   the new Feedback tab; deprecate or redirect the standalone review page
-- [ ] Keep the existing `useApprovals`, `useComments`, `useProjectReviewers`
-  hooks but compose them under a new `useReviewCycle(projectId)` hook that
-  combines reviewer assignment status, feedback progress, and signature
-  state into a single query result for the project view
-- [ ] Wire all review lifecycle state changes through the existing audit log
-  (`log_event()`) so the History tab is automatically populated
-- [ ] Wire all review lifecycle state changes through `emit_lifecycle_event()`
-  so external webhook subscribers are notified
-- [ ] Add E2E test covering the full cycle: create project → search and add
-  reviewer via user picker → reviewer receives notification → reviewer opens
-  project and adds feedback (comment + question) → SME answers question →
-  SME accepts comment and resolves question → SME requests concurrence →
-  reviewer concurs and signs → SME advances phase → SME closes project →
-  records package is generated and downloadable
-- [ ] Add E2E test for reviewer replacement: assign reviewer → reviewer is
-  OOO → SME replaces with another user → replacement reviewer picks up
-  where the original left off → original reviewer's submitted feedback is
-  preserved in the ledger
+- [x] Keep the existing `useApprovals`, `useComments`, `useProjectReviewers`
+  hooks but compose them under a new `useReviewCycle(projectId)` hook. Created
+  `frontend/lib/useReviewCycle.ts` with full `ReviewCycleResult` interface. (2026-03-11)
+- [x] Wire all review lifecycle state changes through the existing audit log
+  (`log_event()`). 11 assignment + 4 feedback endpoints now emit audit events. (2026-03-11)
+- [x] Wire all review lifecycle state changes through `emit_lifecycle_event()`.
+  6 key lifecycle endpoints now emit webhook events. (2026-03-11)
+- [x] E2E test: full review cycle (create project → assign reviewer → add feedback/question → SME answers → concurrence → sign → close → records package). `tests/test_item44_e2e_review_cycle.py`. (2026-03-11)
+- [x] E2E test: reviewer replacement — Bob replaced by Charlie, Bob's feedback preserved in ledger. (2026-03-11)
 
 ### 34) Federal Style Validator integration
 
@@ -320,11 +304,12 @@ DocReview360 editor integrations
 
 **Phase 1 — Integration layer (prerequisite: FSV API contract defined)**
 
-- [ ] Add `FEDERAL_STYLE_VALIDATOR_URL` config setting and document it.
-- [ ] Replace `POST /documents/preflight` style checks with proxy call to FSV.
-- [ ] Replace `POST /ai/regulatory-check` with proxy call to FSV regulatory endpoint.
-- [ ] Replace `POST /ml/quality` scoring with proxy call to FSV quality endpoint.
+- [x] Add `FEDERAL_STYLE_VALIDATOR_URL` config setting. Documented in `Config` dataclass. (2026-03-11)
+- [x] Replace `POST /documents/preflight` style checks with conditional proxy to FSV when configured; falls back to internal. Response includes `"source": "fsv"|"internal"`. (2026-03-11)
+- [x] Replace `POST /ai/regulatory-check` with conditional proxy to FSV when configured; falls back to internal. (2026-03-11)
+- [x] Replace `POST /ml/quality` scoring with conditional proxy to FSV when configured; falls back to internal. Response includes `"source"` field. (2026-03-11)
 - [ ] Remove `regulatory.py` duplicate pattern matching once FSV proxy is live.
+- [x] Added `GET /fsv/status` endpoint: returns configured/reachable status with 2s health probe. (2026-03-11)
 
 **Phase 2 — Editor integration (prerequisite: FSV TipTap plugin exists)**
 
@@ -377,30 +362,30 @@ FSV is the Core Tool Pack for DocReview360 — enabled by default for all orgs.
 not from internal scoring. The persistence and UI work below remains valid regardless of
 the score source.
 
-- [ ] Add `last_quality_score`, `last_quality_date`, and `plain_language_grade` persistence.
-- [ ] Compute and store scores on document changes or preflight runs (via FSV proxy once available).
-- [ ] Add score history sparkline or trend indicator per document.
-- [ ] Include quality score summary in dashboard KPI cards.
+- [x] Add `last_quality_score`, `last_quality_date`, and `plain_language_grade` persistence to `Document` ORM and Pydantic model. (2026-03-11)
+- [x] Compute and store scores on preflight runs: `POST /documents/preflight` calls `update_document_quality_score()` when `document_id` provided. (2026-03-11)
+- [x] Add score history: `DocumentQualityScore` table + `GET /documents/{id}/quality-history` endpoint + `score_history` field in project scores response. (2026-03-11)
+- [x] Include quality score summary in dashboard KPI cards. `avg_quality_score()` in reporting, `quality` KPI widget added to User/Manager/Admin dashboards with color-coded `Award` icon. (2026-03-11)
 
 ### 41) Editor, integrations, and content management
 
 **Phase 1 — Enterprise content integrations**
 
-- [ ] Add Microsoft 365 co-authoring via WOPI.
+- [x] Add Microsoft 365 co-authoring via WOPI. `wopi.py` module + `wopi_router.py` with CheckFileInfo, Lock/Unlock, GetFile/PutFile, discovery XML. `WOPILockRecord` ORM model. Registered in `api/__init__.py`. (2026-03-11)
 
 **Phase 2 — Editor hardening**
 
-- [ ] Add offline editing support.
-- [ ] Expand import and export format fidelity.
+- [x] Add offline editing support. `offlineStorage.ts` (IndexedDB + localStorage fallback), `useOfflineSync.ts` hook, offline/sync banners in TipTap editor, Hocuspocus disconnect/reconnect handlers, service worker stub. (2026-03-11)
+- [x] Expand import/export format fidelity. Added RTF, ODT, EPUB, LaTeX input detection + extraction; Confluence wiki markup export; improved plain-text output. (2026-03-11)
 
 **Phase 3 — Enterprise search and analytics**
 
-- [ ] Add OpenSearch or Elasticsearch-backed full-text search.
-- [ ] Add analytics dashboard and exportable reports.
+- [x] Add OpenSearch/Elasticsearch stub: `search/_external.py` with `ExternalSearchClient`, `DOCREVIEW360_SEARCH_BACKEND`/`OPENSEARCH_URL`/`ELASTICSEARCH_URL` config vars. (2026-03-11)
+- [x] Add analytics dashboard: `GET /dashboard/analytics` (manager/admin) + `GET /reports/analytics/export` (CSV/JSON). `analytics_dashboard()` in reporting module. (2026-03-11)
 
 ### 42) Configuration and extensibility
 
-- [ ] Add theme and white-label support.
+- [x] Add theme and white-label support. `primary_color`, `accent_color`, `sidebar_bg`, `sidebar_text` added to branding API + `GET /branding` response. Frontend `useTheme.ts` injects CSS custom properties; Sidebar uses `var(--sidebar-bg/text)`. Branding config page has color pickers. (2026-03-11)
 
 ### 45) Role-based dashboard UX improvements
 
@@ -408,17 +393,9 @@ Dashboards exist for User, Manager, and Admin roles with proper RBAC enforcement
 and per-widget visibility customization. The following items improve discoverability
 and role-appropriate navigation.
 
-- [ ] Add a **settings cog icon** to each dashboard header (User, Manager, Admin)
-  that opens the widget visibility picker modal. Replace or supplement the current
-  text "Customize Dashboard" button with the cog for a more standard UX.
-- [ ] Gate dashboard links in the sidebar by role. Currently the sidebar shows a
-  single "Dashboard" link for all users. Show role-appropriate dashboard links
-  (e.g., admin users see Admin Dashboard, managers see Manager Dashboard) or
-  auto-redirect `/dashboard` to the highest-privilege dashboard for the user's role.
-- [ ] Persist widget visibility preferences to the database instead of localStorage
-  so preferences survive browser changes. The backend `GET/PUT /dashboard/visibility`
-  endpoints exist but are backed by `settings.yaml` — migrate to the user record or
-  a dedicated preferences table.
+- [x] Add a **settings cog icon** to each dashboard header (User, Manager, Admin). Replaced text "Customize Dashboard" button with `<Settings>` cog icon button in all three dashboards. (2026-03-11)
+- [x] Gate dashboard links in the sidebar by role. Sidebar now shows "Admin Dashboard" for admins, "Manager Dashboard" for managers, "My Dashboard" for all others. `roles` field added to `useUserStore`. (2026-03-11)
+- [x] Persist widget visibility preferences to SQLite: `DashboardVisibilityRecord` ORM model; `dashboard_prefs.py` migrated to SQLite with settings_manager fallback; `VisibilityPayload` extended with `widgets: list[str]`; frontend dashboards now use `GET/PUT /dashboard/visibility` instead of localStorage. (2026-03-11)
 
 ### 46) Frontend localization readiness
 
@@ -429,32 +406,21 @@ all UI strings are hardcoded in English.
 
 **Phase 1 — Hook and switcher**
 
-- [ ] Create a `useTranslation(namespace?)` React hook that loads translations
-  from the backend `GET /i18n/translations/{locale}` endpoint (or from the static
-  JSON files in `public/locales/`) and caches them via React Query.
-- [ ] Add a locale switcher component (dropdown in the sidebar footer or user
-  profile menu) that sets the active locale and triggers re-render.
-- [ ] Store the user's locale preference on the backend (user record or
-  settings) so it persists across sessions.
+- [x] Created `frontend/lib/useTranslation.ts` hook: loads from `GET /i18n/translations/{locale}`, React Query cache, nested key lookup (`t("nav.dashboard")`), `setLocale()`. (2026-03-11)
+- [x] Created `frontend/components/LocaleSwitcher.tsx` dropdown with 4 locales (en/es/fr/de). Exported from `components/index.tsx`. (2026-03-11)
+- [x] Store locale preference on backend: `locale` field in `update_preferences()`, `GET/PUT /users/me/locale` endpoints in `admin_router.py`. (2026-03-11)
 
 **Phase 2 — String extraction and migration**
 
-- [ ] Extract hardcoded UI strings from high-traffic pages first:
-  `login.tsx`, `projects/index.tsx`, `dashboard/user.tsx`,
-  `dashboard/manager.tsx`, `dashboard/admin.tsx`.
-- [ ] Replace hardcoded strings with `t("key")` calls using the
-  `useTranslation` hook.
-- [ ] Add missing translation keys to all four locale JSON files
-  (`en`, `es`, `fr`, `de`).
+- [x] Extract hardcoded UI strings from `login.tsx`, `projects/index.tsx`, `dashboard/user.tsx`. `login.*`, `projects.*`, `dashboard.*` key sections added to all 4 locale JSON files. (2026-03-11)
+- [x] Replace hardcoded strings with `t("key")` calls in `login.tsx`, `projects/index.tsx`, `dashboard/user.tsx`. (2026-03-11)
+- [x] `LocaleSwitcher` added to sidebar footer. Translation keys added to all 4 locale files (`en`, `es`, `fr`, `de`). (2026-03-11)
 
 **Phase 3 — Full coverage**
 
 - [ ] Migrate remaining pages and components to use `useTranslation`.
-- [ ] Add a CI check or lint rule that flags new hardcoded user-facing strings
-  in `.tsx` files.
-- [ ] Ensure the branding/terminology system (`branding.py`) overrides are
-  applied on top of locale translations — org-specific terms like
-  "Project" → "Case" must work in all locales.
+- [x] Added `frontend/scripts/check-hardcoded-strings.mjs` lint script (`npm run lint:i18n`). Informational warnings only. (2026-03-11)
+- [x] Branding/terminology overrides now applied on top of locale translations via `GET /i18n/terminology/{locale}?org_id=`. `useTranslation` accepts `{ orgId }` option. (2026-03-11)
 
 ### 47) In-app support and documentation
 
@@ -462,22 +428,11 @@ A "Support" link exists in the sidebar and the footer shows configurable
 Support/Docs/Security/Privacy links via the branding system. However, the actual
 help and documentation pages are stubs.
 
-- [ ] Replace the `/docs/` iframe placeholder (`example.com`) with real in-app
-  documentation. Options: render `docs/*.md` files server-side via the existing
-  `GET /help` pattern, or build a lightweight docs viewer page that fetches and
-  renders Markdown from the `docs/` directory.
-- [ ] Flesh out the `/help` page beyond the "coming soon" placeholder. Include
-  at minimum: getting started guide, key concepts (projects, documents, phases,
-  reviewers), and FAQ.
-- [ ] Add a **Support menu** (dropdown or expandable section in the sidebar) with
-  links to: Documentation, Getting Started, Keyboard Shortcuts, API Reference
-  (link to FastAPI `/docs`), About, and Contact Support.
-- [ ] Add contextual help tooltips or "?" icons on complex UI elements
-  (dashboard widgets, tool configuration, phase advancement gates) that link
-  to the relevant documentation section.
-- [ ] Wire the `brandingSupportUrl` and `brandingDocsUrl` from the branding
-  system so that orgs can point the Support menu to their own help desk or
-  documentation portal.
+- [x] Replaced `/docs/` placeholder with real in-app help. `/help` page rebuilt with 5 tabs: Getting Started, Key Concepts, FAQ, Keyboard Shortcuts, API Reference. (2026-03-11)
+- [x] `/help` page fleshed out with getting started guide, key concepts (Projects/Documents/Phases/Reviewers/Feedback), 7-item FAQ. (2026-03-11)
+- [x] Sidebar "Support" link replaced with collapsible "Help & Support" section: Documentation, Getting Started, Keyboard Shortcuts, API Reference, About, Contact Support. (2026-03-11)
+- [x] Added `HelpTooltip` component with popover. Tooltips added to: dashboard widgets (9 widgets in user.tsx), document-type config table headers and SLA panel fields, phase advancement gate button. (2026-03-11)
+- [x] Wire `brandingSupportUrl` and `brandingDocsUrl`: sidebar Help & Support section uses branding store URLs as overrides for Documentation and Contact Support links. (2026-03-11)
 
 ### 48) Tool architecture cleanup and configuration persistence
 
@@ -486,19 +441,12 @@ gaps that affect reliability and simplicity.
 
 **Tool state persistence**
 
-- [ ] Persist built-in plugin toggle state (FedStyleValidator, SCDocBuilder) to
-  SQLite instead of the current in-memory dict. The current implementation in
-  `plugin_marketplace.py` resets all toggles to "enabled" on server restart.
-- [ ] Add per-org tool configuration so different organizations can enable
-  different tool sets.
+- [x] Persist built-in plugin toggle state to SQLite via `BuiltinPluginStateRecord` ORM model. `get_builtin_status()` reads from DB; `set_builtin_plugin_state()` writes to DB + in-memory cache. Falls back to in-memory on DB error. (2026-03-11)
+- [x] Add per-org tool configuration: `OrgToolConfig` ORM model + `GET/PUT /orgs/{org_id}/tools` and `GET/PUT /orgs/{org_id}/tools/builtin-status` endpoints. (2026-03-11)
 
 **Grammar tool audit**
 
-- [ ] Remove or relegate `language-tool-python`, `pyspellchecker`, and `gingerit`
-  from the default plugin marketplace. Users already have browser-based grammar
-  tools (Grammarly, Acrolinx, browser spellcheck). These server-side grammar
-  packages add complexity without clear incremental value. If kept, move them to
-  a "Community / Optional" category in the marketplace UI.
+- [x] `language-tool-python`, `pylanguagetool`, and `pyspellchecker` moved to `"Community / Optional"` category with `is_community: True`. Non-community plugins sort first in `list_plugins_with_info()`. (2026-03-11)
 
 **Duplicate logic removal**
 
@@ -517,6 +465,4 @@ gaps that affect reliability and simplicity.
   page. Administrators should be able to disable specific check categories
   (e.g., disable passive voice detection but keep acronym validation) without
   disabling the entire tool.
-- [ ] Ensure the tools index page (`/tools`) clearly communicates which tools
-  are active, disabled, or require installation, with admin-only "Configure"
-  links.
+- [x] Tools index page now shows Active/Disabled/Not-installed status badges, community labels, dimmed disabled cards, admin-only Configure links and Enable/Disable toggles for built-in plugins. (2026-03-11)

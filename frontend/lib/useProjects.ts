@@ -7,7 +7,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 
 export interface ProjectSummary {
   id: string;
@@ -33,7 +33,7 @@ export function useProjects() {
   return useQuery<ProjectSummary[]>({
     queryKey: PROJECTS_KEY,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/projects`);
+      const res = await authenticatedFetch('/projects');
       if (!res.ok) throw new Error(`Failed to fetch projects (${res.status})`);
       return res.json();
     },
@@ -46,7 +46,7 @@ export function useUserProjects(username: string | undefined) {
     queryKey: ["projects", "assigned", username],
     enabled: !!username,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/projects/assigned/${username}`);
+      const res = await authenticatedFetch(`/projects/assigned/${username}`);
       if (!res.ok) throw new Error(`Failed to fetch user projects (${res.status})`);
       return res.json();
     },
@@ -71,7 +71,7 @@ export function useCreateProject() {
 
   return useMutation({
     mutationFn: async (payload: CreateProjectPayload) => {
-      const res = await authenticatedFetch(`${API}/projects`, {
+      const res = await authenticatedFetch('/projects', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -101,7 +101,7 @@ export function useDeleteProject() {
 
   return useMutation({
     mutationFn: async (projectId: string) => {
-      const res = await authenticatedFetch(`${API}/projects/${projectId}`, { method: "DELETE" });
+      const res = await authenticatedFetch(`/projects/${projectId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete project");
     },
     onSuccess: (_data, projectId) => {

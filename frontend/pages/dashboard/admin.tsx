@@ -6,7 +6,7 @@ import {
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from "@/components/ui/tabs";
 import {
-  LayoutDashboard, Users2, FileText, ShieldCheck, BarChart2, AlertTriangle, ActivitySquare, Server, Lock, Settings, KeySquare,
+  LayoutDashboard, Users2, FileText, ShieldCheck, BarChart2, AlertTriangle, ActivitySquare, Server, Lock, Settings, KeySquare, Award,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line,
@@ -30,6 +30,7 @@ type RoleStat = { role: string; count: number };
 interface RolePermissionSummary { role: string; permissions: string[]; count: number; default_permissions: string[]; default_count: number; is_default: boolean; }
 type SessionStat = { id: string; user: string; ip: string; active: boolean; started: string };
 type HealthStat = { name: string; value: string; status: "ok" | "warning" | "down" };
+type QualityMetrics = { avg_score: number; docs_with_scores: number; high_quality_count: number; needs_improvement_count: number };
 
 export default function AdminDashboardPage() {
   // --- State ---
@@ -45,32 +46,44 @@ export default function AdminDashboardPage() {
   const [sessionStats, setSessionStats] = useState<SessionStat[]>([]);
   const [healthStats, setHealthStats] = useState<HealthStat[]>([]);
   const [userCount, setUserCount] = useState(0);
+  const [quality, setQuality] = useState<QualityMetrics | null>(null);
   const [showPicker, setShowPicker] = useState(false);
 
   // Widget visibility state
   const DASHBOARD_KEYS = [
     "kpi", "roles", "sessions", "api", "health", "activity", "errors", "logs",
   ];
-  const DEFAULT_VISIBLE = ["kpi", "roles", "sessions", "api", "health", "activity", "errors", "logs"];
-  // Initialize with a stable value for SSR; hydrate from localStorage after mount
+  const DEFAULT_VISIBLE = ["kpi", "quality", "roles", "sessions", "api", "health", "activity", "errors", "logs"];
+  // Initialize with a stable value for SSR; hydrate from backend after mount
   const [visibleDashboards, setVisibleDashboards] = useState<string[]>(DEFAULT_VISIBLE);
+  const [visibilityLoaded, setVisibilityLoaded] = useState(false);
+
+  // Load visibility preferences from backend on mount
   useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const stored = localStorage.getItem("visibleAdminDashboards");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) setVisibleDashboards(parsed);
+    authenticatedFetch("/dashboard/visibility")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((prefs: any) => {
+        if (prefs && Array.isArray(prefs.widgets) && prefs.widgets.length > 0) {
+          setVisibleDashboards(prefs.widgets);
         }
-      }
-    } catch {
-      // ignore JSON/localStorage errors
-    }
+      })
+      .catch(() => {
+        // ignore — keep defaults
+      })
+      .finally(() => setVisibilityLoaded(true));
   }, []);
+
   const toggleDashboard = (key: string) => {
     setVisibleDashboards((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
-      localStorage.setItem("visibleAdminDashboards", JSON.stringify(next));
+      // Persist to backend
+      authenticatedFetch("/dashboard/visibility", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ widgets: next }),
+      }).catch(() => {
+        // ignore persistence errors
+      });
       return next;
     });
   };
@@ -142,6 +155,9 @@ export default function AdminDashboardPage() {
       setApiMetrics([]);
       setSessionStats([]);
       setHealthStats([]);
+      if (data.quality) {
+        setQuality(data.quality);
+      }
     } else if (isError) {
       setStats({
         users: 0,
@@ -157,6 +173,7 @@ export default function AdminDashboardPage() {
       setApiMetrics([]);
       setSessionStats([]);
       setHealthStats([]);
+      setQuality(null);
     }
   }, [data, isError, roleStats.length, userCount]);
 
@@ -175,6 +192,14 @@ export default function AdminDashboardPage() {
     </Card>
   );
 
+  // Quality score color helper
+  const qualityColor = (score: number) => {
+    const pct = score * 100;
+    if (pct >= 80) return "text-emerald-600";
+    if (pct >= 60) return "text-amber-500";
+    return "text-red-600";
+  };
+
   // Dashboard Registry
   const DASHBOARDS = [
     {
@@ -188,6 +213,35 @@ export default function AdminDashboardPage() {
           <StatCard icon={AlertTriangle} label="Failed Logins" value={stats.failedLogins} color="text-orange-600" />
           <StatCard icon={Lock} label="Roles/Permissions" value={stats.roles} color="text-purple-600" />
         </div>
+      ),
+    },
+    {
+      key: "quality", label: "Avg Quality Score", icon: Award,
+      component: (
+        <Card>
+          <CardContent className="flex items-center gap-4 p-6">
+            <Award className={`w-10 h-10 ${quality ? qualityColor(quality.avg_score) : "text-gray-400"}`} />
+            <div className="flex-1">
+              <p className={`text-3xl font-bold leading-none ${quality ? qualityColor(quality.avg_score) : "text-gray-400"}`}>
+                {quality && quality.docs_with_scores > 0
+                  ? `${Math.round(quality.avg_score * 100)}%`
+                  : "—"}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Avg Quality Score</p>
+              {quality && quality.docs_with_scores > 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {quality.docs_with_scores} scored &nbsp;·&nbsp;
+                  <span className="text-emerald-600">{quality.high_quality_count} high</span>
+                  &nbsp;·&nbsp;
+                  <span className="text-red-500">{quality.needs_improvement_count} needs work</span>
+                </p>
+              )}
+              {(!quality || quality.docs_with_scores === 0) && (
+                <p className="text-xs text-gray-400 mt-1">No documents scored yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       ),
     },
     {
@@ -382,8 +436,14 @@ export default function AdminDashboardPage() {
           <ShieldCheck className="w-7 h-7 text-purple-700" />
           Admin Dashboard
         </h1>
-        <Button variant="outline" size="sm" onClick={() => setShowPicker((v) => !v)}>
-          Customize Dashboard
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowPicker((v) => !v)}
+          title="Customize Dashboard"
+          aria-label="Customize Dashboard"
+        >
+          <Settings className="w-5 h-5 text-gray-500 hover:text-purple-700" />
         </Button>
       </div>
       {/* Picker Modal */}

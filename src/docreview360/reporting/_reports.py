@@ -319,22 +319,245 @@ def doc_type_counts() -> dict[str, int]:
     return counts
 
 
-def user_dashboard(user: str) -> list[DashboardEntry]:
+def avg_quality_score() -> dict[str, Any]:
+    """Return aggregate quality score metrics derived from in-memory documents.
+
+    Queries all documents with a non-null ``last_quality_score`` and returns:
+
+    * ``avg_score`` — average quality score across scored documents (0.0 when none).
+    * ``docs_with_scores`` — count of documents that have been scored.
+    * ``high_quality_count`` — documents with score >= 80 (i.e. >= 0.80 normalised).
+    * ``needs_improvement_count`` — documents with score < 60 (i.e. < 0.60 normalised).
+
+    Scores are stored in the range [0, 1]; the thresholds compare against those
+    fractional values (0.80 and 0.60 respectively) so that callers can multiply by
+    100 when displaying a percentage.
+    """
+    scored = [d.last_quality_score for d in documents.values() if d.last_quality_score is not None]
+    if not scored:
+        return {
+            "avg_score": 0.0,
+            "docs_with_scores": 0,
+            "high_quality_count": 0,
+            "needs_improvement_count": 0,
+        }
+    avg = sum(scored) / len(scored)
+    high = sum(1 for s in scored if s >= 0.80)
+    needs = sum(1 for s in scored if s < 0.60)
+    return {
+        "avg_score": round(avg, 4),
+        "docs_with_scores": len(scored),
+        "high_quality_count": high,
+        "needs_improvement_count": needs,
+    }
+
+
+def user_dashboard(user: str) -> dict[str, Any]:
     """Return dashboard data scoped to ``user`` projects."""
 
-    return dashboard_data(user)
+    return {"projects": dashboard_data(user), "quality": avg_quality_score()}
 
 
 def manager_dashboard() -> dict[str, Any]:
     """Return workload overview and project metrics for managers."""
 
-    return {"workload": workload_data(), "projects": dashboard_data()}
+    return {"workload": workload_data(), "projects": dashboard_data(), "quality": avg_quality_score()}
 
 
 def admin_dashboard() -> dict[str, Any]:
     """Return system health metrics and summary for administrators."""
 
-    return {"summary": generate_summary(), "status": internal_status()}
+    return {"summary": generate_summary(), "status": internal_status(), "quality": avg_quality_score()}
+
+
+def analytics_dashboard(
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> dict[str, Any]:
+    """Return comprehensive analytics data for the analytics dashboard.
+
+    Parameters
+    ----------
+    start_date:
+        Optional inclusive lower bound for date-filtered metrics.
+    end_date:
+        Optional inclusive upper bound for date-filtered metrics.
+    """
+    now = datetime.now(timezone.utc)
+    _start = start_date or (now - timedelta(days=30))
+    _end = end_date or now
+
+    # ---- document_stats ------------------------------------------------
+    total_docs = len(documents)
+    by_status: dict[str, int] = {}
+    by_type: dict[str, int] = {}
+    age_values: list[float] = []
+    for doc in documents.values():
+        status_key = getattr(doc, "status", None) or "unknown"
+        by_status[status_key] = by_status.get(status_key, 0) + 1
+        type_key = getattr(doc, "doc_type", None) or "unknown"
+        by_type[type_key] = by_type.get(type_key, 0) + 1
+        if doc.date is not None:
+            created = doc.date
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            age_values.append((now - created).total_seconds() / 86400)
+    avg_age = round(sum(age_values) / len(age_values), 1) if age_values else 0.0
+
+    # ---- review_stats --------------------------------------------------
+    total_reviews = len(approvals)
+    completion_days: list[float] = []
+    on_time_count = 0
+    for a in approvals.values():
+        if a.state == "approved" and a.signed_at:
+            signed_dt = (
+                datetime.fromisoformat(str(a.signed_at))
+                if isinstance(a.signed_at, str)
+                else a.signed_at
+            )
+            if signed_dt.tzinfo is None:
+                signed_dt = signed_dt.replace(tzinfo=timezone.utc)
+            if a.deadline:
+                deadline_dt = (
+                    datetime.fromisoformat(str(a.deadline))
+                    if isinstance(a.deadline, str)
+                    else a.deadline
+                )
+                if deadline_dt.tzinfo is None:
+                    deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
+                if signed_dt <= deadline_dt:
+                    on_time_count += 1
+            for wf in workflows.values():
+                if wf.id == a.workflow:
+                    for proj in projects.values():
+                        if proj.workflow == wf.id and proj.created:
+                            created_dt = proj.created
+                            if created_dt.tzinfo is None:
+                                created_dt = created_dt.replace(tzinfo=timezone.utc)
+                            delta = (signed_dt - created_dt).total_seconds() / 86400
+                            if delta >= 0:
+                                completion_days.append(delta)
+                            break
+                    break
+    approved_count = sum(1 for a in approvals.values() if a.state == "approved")
+    avg_completion = round(sum(completion_days) / len(completion_days), 1) if completion_days else 0.0
+    on_time_rate = round(on_time_count / approved_count, 3) if approved_count else 0.0
+
+    # ---- user_activity -------------------------------------------------
+    from ..logs import query_logs
+
+    thirty_days_ago = now - timedelta(days=30)
+    recent_logs = query_logs(start=thirty_days_ago, end=now)
+    active_users_set: set[str] = set()
+    for entry in recent_logs:
+        if entry.user_id:
+            active_users_set.add(entry.user_id)
+    total_actions_30d = len(recent_logs)
+
+    # ---- quality_trends ------------------------------------------------
+    quality_trends: list[dict[str, Any]] = []
+    metrics_global = _PROJECT_METRICS.get(None)
+    if metrics_global and metrics_global.quality.count:
+        avg_q = metrics_global.quality.average()
+        quality_trends.append({"date": now.date().isoformat(), "avg_score": round(avg_q or 0.0, 4)})
+
+    # ---- phase_throughput ----------------------------------------------
+    phase_throughput: list[dict[str, Any]] = []
+    phase_counts: dict[str, list[float]] = {}
+    for wf in workflows.values():
+        if wf.phase:
+            if wf.phase not in phase_counts:
+                phase_counts[wf.phase] = []
+            if wf.project:
+                proj = next((p for p in projects.values() if p.id == wf.project), None)
+                if proj and proj.created:
+                    created_dt = proj.created
+                    if created_dt.tzinfo is None:
+                        created_dt = created_dt.replace(tzinfo=timezone.utc)
+                    phase_counts[wf.phase].append((now - created_dt).total_seconds() / 86400)
+    for phase, days_list in sorted(phase_counts.items()):
+        avg_days = round(sum(days_list) / len(days_list), 1) if days_list else 0.0
+        phase_throughput.append({"phase": phase, "avg_days": avg_days, "count": len(days_list)})
+
+    return {
+        "generated_at": now.isoformat(),
+        "period": {"start": _start.isoformat(), "end": _end.isoformat()},
+        "document_stats": {
+            "total": total_docs,
+            "by_status": by_status,
+            "by_type": by_type,
+            "avg_age_days": avg_age,
+        },
+        "review_stats": {
+            "total_reviews": total_reviews,
+            "avg_completion_days": avg_completion,
+            "on_time_rate": on_time_rate,
+        },
+        "user_activity": {
+            "active_users": len(active_users_set),
+            "total_actions_30d": total_actions_30d,
+        },
+        "quality_trends": quality_trends,
+        "phase_throughput": phase_throughput,
+    }
+
+
+def analytics_export(
+    fmt: str = "json",
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> tuple[str | bytes, str]:
+    """Return analytics export data as (content, media_type).
+
+    Parameters
+    ----------
+    fmt:
+        ``"json"`` or ``"csv"``.
+    start_date:
+        Optional inclusive lower bound.
+    end_date:
+        Optional inclusive upper bound.
+    """
+    import csv
+    import io
+
+    data = analytics_dashboard(start_date=start_date, end_date=end_date)
+
+    if fmt == "json":
+        import json
+
+        return json.dumps(data), "application/json"
+
+    # CSV: flatten the top-level summary fields into rows
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["metric", "value"])
+
+    doc_stats = data["document_stats"]
+    writer.writerow(["total_documents", doc_stats["total"]])
+    writer.writerow(["avg_age_days", doc_stats["avg_age_days"]])
+    for status, count in doc_stats["by_status"].items():
+        writer.writerow([f"docs_by_status_{status}", count])
+    for doc_type, count in doc_stats["by_type"].items():
+        writer.writerow([f"docs_by_type_{doc_type}", count])
+
+    review_stats = data["review_stats"]
+    writer.writerow(["total_reviews", review_stats["total_reviews"]])
+    writer.writerow(["avg_completion_days", review_stats["avg_completion_days"]])
+    writer.writerow(["on_time_rate", review_stats["on_time_rate"]])
+
+    user_activity = data["user_activity"]
+    writer.writerow(["active_users", user_activity["active_users"]])
+    writer.writerow(["total_actions_30d", user_activity["total_actions_30d"]])
+
+    for entry in data["quality_trends"]:
+        writer.writerow([f"quality_trend_{entry['date']}", entry["avg_score"]])
+
+    for entry in data["phase_throughput"]:
+        writer.writerow([f"phase_{entry['phase']}_avg_days", entry["avg_days"]])
+        writer.writerow([f"phase_{entry['phase']}_count", entry["count"]])
+
+    return output.getvalue(), "text/csv"
 
 
 def executive_summary() -> dict[str, Any]:

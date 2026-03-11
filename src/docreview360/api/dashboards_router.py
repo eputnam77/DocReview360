@@ -21,6 +21,8 @@ from ..reporting import (
     ReviewerWorkload,
     SummaryReport,
     admin_dashboard,
+    analytics_dashboard,
+    analytics_export,
     dashboard_data,
     document_aging_metrics,
     executive_summary,
@@ -62,6 +64,8 @@ class VisibilityPayload(BaseModel):
     status: bool | None = None
     activity: bool | None = None
     logs: bool | None = None
+    # Generic list of widget IDs chosen by the user (Item 45 Phase 3)
+    widgets: list[str] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -307,12 +311,12 @@ async def document_aging_endpoint(
 # Dashboard routes
 # ---------------------------------------------------------------------------
 
-@router.get("/dashboard/user", response_model=list[DashboardEntry])
+@router.get("/dashboard/user")
 async def user_dashboard_endpoint(
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> list[DashboardEntry]:
-    """Return dashboard data for the authenticated user."""
+) -> dict[str, Any]:
+    """Return dashboard data for the authenticated user, including quality KPI."""
     effective_user = x_user or current_user.username
     return user_dashboard(effective_user)
 
@@ -338,8 +342,12 @@ async def doc_type_counts_endpoint(
 async def get_visibility_endpoint(
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> dict[str, bool]:
-    """Return saved visibility settings for the user."""
+) -> dict[str, Any]:
+    """Return saved visibility settings for the user.
+
+    The response includes legacy boolean fields (``stats``, ``status``,
+    ``activity``, ``logs``) plus a ``widgets`` list of visible widget IDs.
+    """
     effective_user = x_user or current_user.username
     return get_visibility(effective_user)
 
@@ -349,8 +357,13 @@ async def update_visibility_endpoint(
     body: VisibilityPayload,
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> dict[str, bool]:
-    """Persist user visibility preferences."""
+) -> dict[str, Any]:
+    """Persist user visibility preferences.
+
+    Accepts legacy boolean fields and/or a ``widgets`` list of widget IDs.
+    Returns the merged result including both the boolean flags and the
+    ``widgets`` list.
+    """
     effective_user = x_user or current_user.username
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     return set_visibility(effective_user, data)
@@ -386,6 +399,41 @@ async def reviewer_workload_endpoint(
 ) -> list[ReviewerWorkload]:
     """Return per-reviewer workload metrics."""
     return reviewer_workload_dashboard()
+
+
+@router.get("/dashboard/analytics")
+async def analytics_dashboard_endpoint(
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    user: auth.User = Depends(require_role("manager")),
+) -> dict[str, Any]:
+    """Return comprehensive analytics data.
+
+    Requires manager or admin role.  Returns document stats, review stats,
+    user activity, quality trends, and phase throughput.
+    """
+    return analytics_dashboard(start_date=start_date, end_date=end_date)
+
+
+@router.get("/reports/analytics/export")
+async def analytics_export_endpoint(
+    format: str = "json",
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    user: auth.User = Depends(require_role("admin")),
+) -> Response:
+    """Export analytics report as JSON or CSV.
+
+    Query params:
+      - ``format``: ``json`` (default) or ``csv``
+      - ``start_date``, ``end_date``: ISO-8601 date/time range filter
+    """
+    if format not in {"json", "csv"}:
+        raise HTTPException(status_code=400, detail="Unsupported format; use 'json' or 'csv'")
+    content, media_type = analytics_export(
+        fmt=format, start_date=start_date, end_date=end_date
+    )
+    return Response(content=content, media_type=media_type)
 
 
 # ---------------------------------------------------------------------------

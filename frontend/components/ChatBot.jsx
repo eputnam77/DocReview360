@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { API, authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 export default function ChatBot() {
     const [question, setQuestion] = useState("");
     const [answer, setAnswer] = useState(null);
     async function ask() {
         if (!question.trim())
             return;
-        const resp = await authenticatedFetch(`${API}/chat`, {
+        const resp = await authenticatedFetch(`/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text: question }),

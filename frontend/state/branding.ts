@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { API } from "@/lib/api";
+import { authenticatedFetch } from "@/lib/api";
 
 interface BrandingState {
   brandingCompanyName: string;
@@ -10,6 +10,10 @@ interface BrandingState {
   brandingDocsUrl: string;
   brandingSecurityUrl: string;
   brandingPrivacyUrl: string;
+  brandingPrimaryColor: string | null;
+  brandingAccentColor: string | null;
+  brandingSidebarBg: string | null;
+  brandingSidebarText: string | null;
   releaseVersion: string;
   releaseBuildNumber: string;
   releaseBuildDate: string;
@@ -27,6 +31,10 @@ const DEFAULTS = {
   brandingDocsUrl: "/docs/",
   brandingSecurityUrl: "/security",
   brandingPrivacyUrl: "/privacy",
+  brandingPrimaryColor: null as string | null,
+  brandingAccentColor: null as string | null,
+  brandingSidebarBg: null as string | null,
+  brandingSidebarText: null as string | null,
   releaseVersion: "0.0.0-dev",
   releaseBuildNumber: "dev",
   releaseBuildDate: "unknown",
@@ -43,7 +51,7 @@ export const useBrandingStore = create<BrandingState>((set, get) => ({
     }
 
     try {
-      const resp = await fetch(`${API}/branding`);
+      const resp = await authenticatedFetch('/branding');
       if (!resp.ok) {
         set({ ...DEFAULTS, initialized: true });
         return;
@@ -78,6 +86,22 @@ export const useBrandingStore = create<BrandingState>((set, get) => ({
           typeof data.branding_privacy_url === "string" && data.branding_privacy_url.trim()
             ? data.branding_privacy_url.trim()
             : DEFAULTS.brandingPrivacyUrl,
+        brandingPrimaryColor:
+          typeof data.branding_primary_color === "string" && data.branding_primary_color.trim()
+            ? data.branding_primary_color.trim()
+            : null,
+        brandingAccentColor:
+          typeof data.branding_accent_color === "string" && data.branding_accent_color.trim()
+            ? data.branding_accent_color.trim()
+            : null,
+        brandingSidebarBg:
+          typeof data.branding_sidebar_bg === "string" && data.branding_sidebar_bg.trim()
+            ? data.branding_sidebar_bg.trim()
+            : null,
+        brandingSidebarText:
+          typeof data.branding_sidebar_text === "string" && data.branding_sidebar_text.trim()
+            ? data.branding_sidebar_text.trim()
+            : null,
         releaseVersion:
           typeof data.release_version === "string" && data.release_version.trim()
             ? data.release_version.trim()

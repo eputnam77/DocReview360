@@ -3,7 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 
 export interface DocumentSummary {
   id: string;
@@ -31,7 +31,7 @@ export function useProjectDocuments(projectId: string | undefined) {
     queryKey: projectId ? documentKeys.byProject(projectId) : documentKeys.all,
     enabled: !!projectId,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/documents?project=${projectId}`);
+      const res = await authenticatedFetch(`/documents?project=${projectId}`);
       if (!res.ok) throw new Error(`Failed to fetch documents (${res.status})`);
       const data = await res.json();
       return Array.isArray(data) ? data : [];
@@ -45,7 +45,7 @@ export function useDocument(docId: string | undefined) {
     queryKey: docId ? documentKeys.byId(docId) : documentKeys.all,
     enabled: !!docId,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/documents/${docId}`);
+      const res = await authenticatedFetch(`/documents/${docId}`);
       if (!res.ok) throw new Error(`Failed to fetch document (${res.status})`);
       return res.json();
     },
@@ -58,7 +58,7 @@ export function useDocumentVersions(docId: string | undefined) {
     queryKey: docId ? documentKeys.versions(docId) : documentKeys.all,
     enabled: !!docId,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/documents/${docId}/versions`);
+      const res = await authenticatedFetch(`/documents/${docId}/versions`);
       if (!res.ok) throw new Error("Failed to fetch document versions");
       return res.json();
     },
@@ -71,7 +71,7 @@ export function useUpdateDocument(docId: string) {
 
   return useMutation({
     mutationFn: async (content: string) => {
-      const res = await authenticatedFetch(`${API}/documents/${docId}`, {
+      const res = await authenticatedFetch(`/documents/${docId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
@@ -103,7 +103,7 @@ export function useDeleteDocument(projectId?: string) {
 
   return useMutation({
     mutationFn: async (docId: string) => {
-      const res = await authenticatedFetch(`${API}/documents/${docId}`, { method: "DELETE" });
+      const res = await authenticatedFetch(`/documents/${docId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete document");
     },
     onSuccess: (_data, docId) => {

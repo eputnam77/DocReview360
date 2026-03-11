@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 
 export interface WorkflowStep {
   name: string;
@@ -17,7 +17,7 @@ export function usePhases(workflowId?: string) {
     queryKey: ["workflow", workflowId],
     enabled: !!workflowId,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/workflows/${workflowId}`);
+      const res = await authenticatedFetch(`/workflows/${workflowId}`);
       if (!res.ok) {
         throw new Error("Failed to fetch workflow");
       }

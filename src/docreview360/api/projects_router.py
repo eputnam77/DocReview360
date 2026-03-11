@@ -213,6 +213,11 @@ class ProjectCreate(BaseModel):
     workflow: str | None = None
     priority: int = 0
     description: str | None = None
+    # NARA records management fields
+    nara_schedule_number: str | None = None
+    nara_disposition_authority: str | None = None
+    nara_retention_period: str | None = None
+    nara_record_series: str | None = None
 
 
 class ProjectUpdate(BaseModel):
@@ -224,6 +229,11 @@ class ProjectUpdate(BaseModel):
     phase: str | None = None
     workflow: str | None = None
     description: str | None = None
+    # NARA records management fields
+    nara_schedule_number: str | None = None
+    nara_disposition_authority: str | None = None
+    nara_retention_period: str | None = None
+    nara_record_series: str | None = None
 
 
 class ProjectReviewerPayload(BaseModel):
@@ -657,6 +667,11 @@ async def update_project_endpoint(  # noqa: C901
         previous_workflow_id = existing_project.workflow
         body, workflow_provided = await _parse_update_body(request)
 
+        nara_schedule_number: str | None = None
+        nara_disposition_authority: str | None = None
+        nara_retention_period: str | None = None
+        nara_record_series: str | None = None
+
         if body:
             if body.name is not None:
                 name = body.name
@@ -668,6 +683,14 @@ async def update_project_endpoint(  # noqa: C901
                 workflow = body.workflow
             if body.description is not None:
                 description = body.description
+            if body.nara_schedule_number is not None:
+                nara_schedule_number = body.nara_schedule_number
+            if body.nara_disposition_authority is not None:
+                nara_disposition_authority = body.nara_disposition_authority
+            if body.nara_retention_period is not None:
+                nara_retention_period = body.nara_retention_period
+            if body.nara_record_series is not None:
+                nara_record_series = body.nara_record_series
 
         if isinstance(workflow, str) and not workflow.strip():
             workflow = None
@@ -703,6 +726,10 @@ async def update_project_endpoint(  # noqa: C901
             workflow_set=workflow_set,
             description=project_description,
             initial_phase=initial_phase,
+            nara_schedule_number=nara_schedule_number,
+            nara_disposition_authority=nara_disposition_authority,
+            nara_retention_period=nara_retention_period,
+            nara_record_series=nara_record_series,
         )
 
         if (
@@ -877,6 +904,7 @@ class DocumentScore(BaseModel):
     quality_flags: dict[str, float]
     high_risk_terms: list[str]
     doc_type_avg_score: float | None = None
+    score_history: list[dict] = []  # Item 35: last 5 historical scores
 
 
 @router.get(
@@ -917,6 +945,33 @@ async def get_project_document_scores(
 
     project_doc_type = project.doc_type
 
+    # Item 35: fetch score history for all project docs in one DB pass.
+    def _get_score_history(doc_id: str) -> list[dict]:
+        """Return last 5 quality score history entries for a document."""
+        try:
+            from ..db_store import get_db
+            from ..models import DocumentQualityScore as _OrmScore
+            from sqlalchemy import select as _select, desc as _desc
+
+            db = get_db()
+            with db.orm_session() as session:
+                rows = (
+                    session.execute(
+                        _select(_OrmScore)
+                        .where(_OrmScore.document_id == doc_id)
+                        .order_by(_desc(_OrmScore.scored_at))
+                        .limit(5)
+                    )
+                    .scalars()
+                    .all()
+                )
+                return [
+                    {"date": r.scored_at.isoformat(), "score": r.quality_score}
+                    for r in rows
+                ]
+        except Exception:
+            return []
+
     results: list[DocumentScore] = []
     for doc, qa in assessments:
         pl = score_plain_language(doc.content)
@@ -928,6 +983,8 @@ async def get_project_document_scores(
         if avg_scores:
             avg = round(sum(avg_scores) / len(avg_scores), 4)
 
+        history = _get_score_history(doc.id)
+
         results.append(
             DocumentScore(
                 document_id=doc.id,
@@ -937,7 +994,44 @@ async def get_project_document_scores(
                 quality_flags=flags,
                 high_risk_terms=risky,
                 doc_type_avg_score=avg,
+                score_history=history,
             )
         )
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# NARA metadata endpoint (Item 44 Phase 7)
+# ---------------------------------------------------------------------------
+
+class NaraMetadataResponse(BaseModel):
+    """NARA records management fields for a project."""
+
+    project_id: str
+    nara_schedule_number: str | None = None
+    nara_disposition_authority: str | None = None
+    nara_retention_period: str | None = None
+    nara_record_series: str | None = None
+
+
+@router.get(
+    "/projects/{project_id}/nara-metadata",
+    response_model=NaraMetadataResponse,
+)
+async def get_project_nara_metadata(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> NaraMetadataResponse:
+    """Return NARA records management metadata for a project."""
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
+    return NaraMetadataResponse(
+        project_id=project_id,
+        nara_schedule_number=project.nara_schedule_number,
+        nara_disposition_authority=project.nara_disposition_authority,
+        nara_retention_period=project.nara_retention_period,
+        nara_record_series=project.nara_record_series,
+    )

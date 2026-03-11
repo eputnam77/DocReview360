@@ -4,7 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 
 export interface UserSession {
   session_id: string;
@@ -24,7 +24,7 @@ export function useSessions() {
   return useQuery<UserSession[]>({
     queryKey: SESSIONS_KEY,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/sessions`);
+      const res = await authenticatedFetch('/sessions');
       if (!res.ok) {
         if (res.status === 404) return [];
         throw new Error("Failed to fetch sessions");
@@ -40,7 +40,7 @@ export function useRevokeSession() {
 
   return useMutation({
     mutationFn: async (sessionId: string) => {
-      const res = await authenticatedFetch(`${API}/sessions/${sessionId}`, { method: "DELETE" });
+      const res = await authenticatedFetch(`/sessions/${sessionId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to revoke session");
     },
     onMutate: async (sessionId) => {

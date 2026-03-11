@@ -733,6 +733,49 @@ async def update_profile(
     }
 
 
+# ---------------------------------------------------------------------------
+# User locale preference endpoints
+# ---------------------------------------------------------------------------
+
+
+class LocalePayload(BaseModel):
+    """Payload for updating the current user's locale preference."""
+
+    locale: str
+
+
+@router.get("/users/me/locale")
+async def get_user_locale(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Return the locale preference for the currently authenticated user."""
+    from ..profile import get_preferences, VALID_LOCALES
+
+    prefs = get_preferences(current_user.username)
+    locale = prefs.get("locale", "en")
+    if locale not in VALID_LOCALES:
+        locale = "en"
+    return {"locale": locale}
+
+
+@router.put("/users/me/locale")
+async def set_user_locale(
+    body: LocalePayload,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Persist the locale preference for the currently authenticated user."""
+    from ..profile import update_preferences, VALID_LOCALES
+
+    normalized = body.locale.strip().lower()
+    if normalized not in VALID_LOCALES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported locale {body.locale!r}. Must be one of: {sorted(VALID_LOCALES)}",
+        )
+    update_preferences(current_user.username, {"locale": normalized})
+    return {"locale": normalized}
+
+
 @router.post("/admin/users/{username}/status")
 async def set_user_status(
     username: str,
@@ -1040,6 +1083,8 @@ class BrandingPayload(BaseModel):
     logo_alt: str | None = None
     primary_color: str | None = None
     accent_color: str | None = None
+    sidebar_bg: str | None = None
+    sidebar_text: str | None = None
     favicon_url: str | None = None
     support_url: str | None = None
     docs_url: str | None = None
@@ -1129,6 +1174,110 @@ async def set_org_terminology(
 
 
 # ---------------------------------------------------------------------------
+# Per-org tool configuration endpoints
+# ---------------------------------------------------------------------------
+
+
+class OrgToolConfigPayload(BaseModel):
+    """Request body for updating per-org tool configuration."""
+
+    disabled_plugins: list[str] | None = None
+
+
+class OrgBuiltinStatusPayload(BaseModel):
+    """Request body for updating per-org builtin plugin overrides."""
+
+    pluginId: str
+    enabled: bool
+
+
+@router.get("/orgs/{org_id}/tools")
+async def get_org_tools(
+    org_id: str,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Return tool configuration and effective plugin list for *org_id*."""
+    from ..plugin_marketplace import get_org_tool_config, get_effective_plugins
+
+    config = get_org_tool_config(org_id)
+    plugins = get_effective_plugins(org_id)
+    return {
+        "org_id": org_id,
+        "config": config,
+        "plugins": plugins,
+    }
+
+
+@router.put("/orgs/{org_id}/tools")
+async def update_org_tools(
+    org_id: str,
+    payload: OrgToolConfigPayload,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Update tool configuration overrides for *org_id*."""
+    from ..plugin_marketplace import set_org_tool_config
+
+    try:
+        config = set_org_tool_config(
+            org_id,
+            disabled_plugins=payload.disabled_plugins,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"org_id": org_id, "config": config}
+
+
+@router.get("/orgs/{org_id}/tools/builtin-status")
+async def get_org_builtin_status(
+    org_id: str,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Return effective builtin plugin status for *org_id* (global + org overrides)."""
+    from ..plugin_marketplace import get_builtin_status, get_org_tool_config
+
+    global_status = get_builtin_status(org_id=org_id)
+    org_cfg = get_org_tool_config(org_id)
+    return {
+        "org_id": org_id,
+        "status": global_status,
+        "org_overrides": org_cfg.get("enabled_builtins", {}),
+    }
+
+
+@router.put("/orgs/{org_id}/tools/builtin-status")
+async def set_org_builtin_status(
+    org_id: str,
+    payload: OrgBuiltinStatusPayload,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    """Set a per-org builtin plugin override for *org_id*."""
+    from ..plugin_marketplace import set_org_tool_config, get_builtin_status, BUILTIN_PLUGIN_IDS
+
+    if payload.pluginId not in BUILTIN_PLUGIN_IDS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown built-in plugin: {payload.pluginId!r}",
+        )
+    try:
+        # Merge the new override into the existing org config.
+        from ..plugin_marketplace import get_org_tool_config
+        existing = get_org_tool_config(org_id)
+        overrides = dict(existing.get("enabled_builtins", {}))
+        overrides[payload.pluginId] = payload.enabled
+        config = set_org_tool_config(org_id, enabled_builtins=overrides)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    effective = get_builtin_status(org_id=org_id)
+    return {
+        "org_id": org_id,
+        "pluginId": payload.pluginId,
+        "enabled": payload.enabled,
+        "effective_status": effective,
+        "config": config,
+    }
+
+
+# ---------------------------------------------------------------------------
 # i18n / locale endpoints
 # ---------------------------------------------------------------------------
 
@@ -1171,3 +1320,89 @@ async def get_translations(
                 from ..i18n import translate
                 all_strings[key] = translate(key, norm)
     return {"locale": norm, "strings": all_strings}
+
+
+def _get_merged_translations(org_id: str, locale: str) -> dict[str, str]:
+    """Return all translation strings for *locale* with org terminology overrides applied.
+
+    Terminology overrides replace the corresponding nav/common keys so that e.g.
+    setting ``terminology.projects = "Cases"`` causes ``nav.projects`` → ``"Cases"``.
+
+    The mapping from branding terminology keys to translation string keys is:
+      - ``project``   → ``nav.project`` (singular, used in breadcrumbs etc.)
+      - ``projects``  → ``nav.projects`` (plural nav label)
+      - ``document``  → ``nav.document``
+      - ``documents`` → ``nav.documents``
+      - ``approval``  → ``approval.*`` keys are untouched; label stored in
+                        ``approval.label`` if present
+      - ``reviewer``  → no direct nav key; stored at ``terminology.reviewer``
+    """
+    from ..i18n import _TRANSLATIONS, translate, SUPPORTED_LOCALES, _normalise
+    from ..branding import get_terminology, TERMINOLOGY_DEFAULTS
+
+    raw_base = locale.strip().lower().split("-")[0].split("_")[0]
+    if raw_base not in SUPPORTED_LOCALES:
+        raise HTTPException(status_code=404, detail=f"Locale {locale!r} is not supported")
+    norm = _normalise(locale)
+
+    # Build base strings
+    all_strings: dict[str, str] = {key: translate(key, norm) for key in _TRANSLATIONS}
+
+    # Fetch org terminology overrides
+    from ..db_store import get_db
+
+    try:
+        with get_db().orm_session() as db:
+            terminology = get_terminology(db, org_id)
+    except Exception:
+        terminology = dict(TERMINOLOGY_DEFAULTS)
+
+    # Apply terminology overrides on top of translations.
+    # Each terminology key maps to one or more translation string keys.
+    _TERM_TO_TRANSLATION_KEYS: dict[str, list[str]] = {
+        "project": ["nav.project"],
+        "projects": ["nav.projects"],
+        "document": ["nav.document"],
+        "documents": ["nav.documents"],
+    }
+    for term_key, trans_keys in _TERM_TO_TRANSLATION_KEYS.items():
+        value = terminology.get(term_key)
+        default = TERMINOLOGY_DEFAULTS.get(term_key, "")
+        if value and value != default:
+            for trans_key in trans_keys:
+                all_strings[trans_key] = value
+
+    # Also expose raw terminology values under a ``terminology.*`` namespace
+    # so frontends can access them directly.
+    for term_key, value in terminology.items():
+        all_strings[f"terminology.{term_key}"] = value
+
+    return all_strings
+
+
+@router.get("/i18n/terminology/{locale}")
+async def get_terminology_translations(
+    locale: str,
+    org_id: str = "default",
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return merged translations for *locale* with org-specific terminology overrides.
+
+    Pass ``?org_id=<org>`` to apply that org's terminology overrides on top of
+    the base locale strings.  When the org has e.g. ``terminology.projects = "Cases"``,
+    the ``nav.projects`` string is replaced with ``"Cases"`` in the response.
+
+    Without an ``org_id`` (or when the org has no overrides) the response is
+    identical to ``GET /i18n/translations/{locale}``.
+    """
+    try:
+        strings = _get_merged_translations(org_id, locale)
+    except HTTPException:
+        raise
+    from ..i18n import _normalise, SUPPORTED_LOCALES
+
+    raw_base = locale.strip().lower().split("-")[0].split("_")[0]
+    if raw_base not in SUPPORTED_LOCALES:
+        raise HTTPException(status_code=404, detail=f"Locale {locale!r} is not supported")
+    norm = _normalise(locale)
+    return {"locale": norm, "org_id": org_id, "strings": strings}

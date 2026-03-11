@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 import { toast } from "react-hot-toast";
 export function useProjectReviewers(projectId) {
     const queryClient = useQueryClient();
@@ -10,7 +10,7 @@ export function useProjectReviewers(projectId) {
         queryFn: async () => {
             if (!projectId)
                 return [];
-            const res = await authenticatedFetch(`${API}/projects/${projectId}/reviewers`);
+            const res = await authenticatedFetch(`/projects/${projectId}/reviewers`);
             if (!res.ok)
                 throw new Error("Failed to fetch reviewers");
             const data = await res.json();
@@ -19,7 +19,7 @@ export function useProjectReviewers(projectId) {
     });
     const addReviewerMutation = useMutation({
         mutationFn: async (reviewer) => {
-            const res = await authenticatedFetch(`${API}/projects/${projectId}/reviewers`, {
+            const res = await authenticatedFetch(`/projects/${projectId}/reviewers`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ reviewer }),
@@ -47,7 +47,7 @@ export function useProjectReviewers(projectId) {
     });
     const updateReviewerMutation = useMutation({
         mutationFn: async ({ reviewer, nextReviewer, }) => {
-            const res = await authenticatedFetch(`${API}/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`, {
+            const res = await authenticatedFetch(`/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ reviewer: nextReviewer }),
@@ -74,7 +74,7 @@ export function useProjectReviewers(projectId) {
     });
     const removeReviewerMutation = useMutation({
         mutationFn: async (reviewer) => {
-            const res = await authenticatedFetch(`${API}/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`, {
+            const res = await authenticatedFetch(`/projects/${projectId}/reviewers/${encodeURIComponent(reviewer)}`, {
                 method: "DELETE",
             });
             if (!res.ok)

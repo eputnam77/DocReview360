@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "lint:no-raw-fetch": "bash scripts/check-raw-fetch.sh"
+    "lint:no-raw-fetch": "bash scripts/check-raw-fetch.sh",
+    "lint:api-fetch": "node ../scripts/check-api-fetch-pattern.mjs",
+    "lint:i18n": "node scripts/check-hardcoded-strings.mjs"
   },
   "dependencies": {
     "@editorjs/delimiter": "^1.4.2",

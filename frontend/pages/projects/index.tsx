@@ -14,6 +14,7 @@ import { Users2, CheckCircle2, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjects } from "@/lib/useProjects";
 import { useUserStore } from "@/state/user";
+import { useTranslation } from "@/lib/useTranslation";
 
 // The Project type: extend as needed
 interface Project {
@@ -85,6 +86,7 @@ export default function ProjectList() {
   const username = useUserStore((s) => s.username);
   const isAdmin = useUserStore((s) => s.isAdmin);
   const { data: fetchedProjects = [] } = useProjects();
+  const { t } = useTranslation();
 
   useEffect(() => {
     setViewMode(isAdmin ? "all" : "assigned");
@@ -176,7 +178,7 @@ export default function ProjectList() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           {isAdmin && viewMode === "all"
             ? "All Projects"
-            : "Projects Assigned to Me"}
+            : t("projects.title")}
         </h1>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           {isAdmin && (
@@ -196,7 +198,7 @@ export default function ProjectList() {
             </div>
           )}
           <Button asChild>
-            <Link href="/projects/new">Create New Project</Link>
+            <Link href="/projects/new">{t("projects.new")}</Link>
           </Button>
         </div>
       </div>
@@ -205,25 +207,25 @@ export default function ProjectList() {
       <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-4 max-w-4xl">
         <StatCard
           icon={Users2}
-          label="Assigned"
+          label={t("dashboard.assigned")}
           value={statAssigned}
           color="text-indigo-600"
         />
         <StatCard
           icon={Clock}
-          label="In Progress"
+          label={t("dashboard.in_progress")}
           value={statInProgress}
           color="text-orange-600"
         />
         <StatCard
           icon={CheckCircle2}
-          label="Completed"
+          label={t("dashboard.completed")}
           value={statCompleted}
           color="text-emerald-600"
         />
         <StatCard
           icon={BarChart2}
-          label="Overdue"
+          label={t("dashboard.overdue")}
           value={statOverdue}
           color="text-red-600"
         />
@@ -326,7 +328,7 @@ export default function ProjectList() {
           {sorted.length === 0 && (
             <TableRow>
               <TableCell colSpan={7} className="text-center text-gray-400 py-6">
-                No projects found.
+                {t("projects.no_projects")}
               </TableCell>
             </TableRow>
           )}

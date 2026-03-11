@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Notifications sub-router: GET/PUT /notifications/settings."""
+"""Notifications sub-router: GET/PUT /notifications/settings and per-user preferences."""
 from __future__ import annotations
 
 import logging
@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from .. import auth
+from ..models import VALID_NOTIFICATION_CHANNELS
 from ..rbac import require_role
 
 _logger = logging.getLogger(__name__)
@@ -99,3 +100,152 @@ async def test_notification(
         user=current_user.username,
     )
     return {"results": results}
+
+
+# ---------------------------------------------------------------------------
+# Per-user notification preferences (Item 44 Phase 2)
+# ---------------------------------------------------------------------------
+
+
+class UserNotificationPreferenceSchema(BaseModel):
+    """Pydantic schema for a user's notification channel preference."""
+
+    username: str
+    preferred_channel: str = "email"
+    webhook_url: str | None = None
+    email_override: str | None = None
+
+
+class UserNotificationPreferenceUpdate(BaseModel):
+    """Request body for updating a user's notification preference."""
+
+    preferred_channel: str = "email"
+    webhook_url: str | None = None
+    email_override: str | None = None
+
+
+def _pref_to_schema(pref: Any) -> UserNotificationPreferenceSchema:
+    return UserNotificationPreferenceSchema(
+        username=pref.username,
+        preferred_channel=pref.preferred_channel,
+        webhook_url=pref.webhook_url,
+        email_override=pref.email_override,
+    )
+
+
+def _default_pref(username: str) -> UserNotificationPreferenceSchema:
+    return UserNotificationPreferenceSchema(username=username)
+
+
+@router.get(
+    "/notifications/preferences/me",
+    response_model=UserNotificationPreferenceSchema,
+)
+async def get_my_notification_preference(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> UserNotificationPreferenceSchema:
+    """Return the current user's notification channel preference."""
+    from ..notifications import get_user_notification_preference
+
+    pref = get_user_notification_preference(current_user.username)
+    if pref is None:
+        return _default_pref(current_user.username)
+    return _pref_to_schema(pref)
+
+
+@router.put(
+    "/notifications/preferences/me",
+    response_model=UserNotificationPreferenceSchema,
+)
+async def update_my_notification_preference(
+    body: UserNotificationPreferenceUpdate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> UserNotificationPreferenceSchema:
+    """Update the current user's notification channel preference."""
+    if body.preferred_channel not in VALID_NOTIFICATION_CHANNELS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Invalid channel '{body.preferred_channel}'. "
+                f"Valid values: {sorted(VALID_NOTIFICATION_CHANNELS)}"
+            ),
+        )
+    if body.webhook_url is not None and not body.webhook_url.startswith("https://"):
+        raise HTTPException(status_code=422, detail="webhook_url must be an https:// URL")
+    from ..notifications import save_user_notification_preference
+
+    try:
+        pref = save_user_notification_preference(
+            current_user.username,
+            body.preferred_channel,
+            webhook_url=body.webhook_url,
+            email_override=body.email_override,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _pref_to_schema(pref)
+
+
+@router.get(
+    "/notifications/preferences/{username}",
+    response_model=UserNotificationPreferenceSchema,
+)
+async def get_user_pref(
+    username: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> UserNotificationPreferenceSchema:
+    """Return the notification preference for *username*.
+
+    A user may read their own preference; admins can read any user's preference.
+    """
+    from .. import rbac as _rbac
+    from ..notifications import get_user_notification_preference
+
+    is_admin = "admin" in _rbac.get_roles(current_user.username)
+    if username != current_user.username and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorised to view this preference")
+    pref = get_user_notification_preference(username)
+    if pref is None:
+        return _default_pref(username)
+    return _pref_to_schema(pref)
+
+
+@router.put(
+    "/notifications/preferences/{username}",
+    response_model=UserNotificationPreferenceSchema,
+)
+async def update_user_pref(
+    username: str,
+    body: UserNotificationPreferenceUpdate,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> UserNotificationPreferenceSchema:
+    """Update the notification preference for *username*.
+
+    A user may update their own preference; admins can update any user's preference.
+    """
+    from .. import rbac as _rbac
+    from ..notifications import save_user_notification_preference
+
+    is_admin = "admin" in _rbac.get_roles(current_user.username)
+    if username != current_user.username and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorised to update this preference")
+    if body.preferred_channel not in VALID_NOTIFICATION_CHANNELS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Invalid channel '{body.preferred_channel}'. "
+                f"Valid values: {sorted(VALID_NOTIFICATION_CHANNELS)}"
+            ),
+        )
+    if body.webhook_url is not None and not body.webhook_url.startswith("https://"):
+        raise HTTPException(status_code=422, detail="webhook_url must be an https:// URL")
+    try:
+        pref = save_user_notification_preference(
+            username,
+            body.preferred_channel,
+            webhook_url=body.webhook_url,
+            email_override=body.email_override,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _pref_to_schema(pref)

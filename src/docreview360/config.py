@@ -45,6 +45,10 @@ _ENV_OVERRIDES: dict[str, str] = {
     "inactivity_timeout_minutes": "DOCREVIEW360_INACTIVITY_TIMEOUT",
     "branding_company_name": "DOCREVIEW360_BRANDING_COMPANY_NAME",
     "branding_logo_url": "DOCREVIEW360_BRANDING_LOGO_URL",
+    "federal_style_validator_url": "FEDERAL_STYLE_VALIDATOR_URL",
+    "search_backend": "DOCREVIEW360_SEARCH_BACKEND",
+    "opensearch_url": "OPENSEARCH_URL",
+    "elasticsearch_url": "ELASTICSEARCH_URL",
 }
 SAFE_DEBUG_ENVS = {"", "dev", "development", "test", "testing"}
 
@@ -105,6 +109,23 @@ class Config:
     branding_docs_url: str = "/docs/"
     branding_security_url: str = "/security"
     branding_privacy_url: str = "/privacy"
+    # Base URL of a running Federal Style Validator (FSV) instance.
+    # When set, DocReview360 proxies style/quality/regulatory checks to FSV
+    # instead of running internal implementations.  Example:
+    #   FEDERAL_STYLE_VALIDATOR_URL=http://fsv-service:8080
+    # Leave unset (None) to continue using the built-in internal checks.
+    federal_style_validator_url: str | None = None
+    # Full-text search backend.
+    # "sqlite"       — built-in SQLite FTS (default, no external service needed)
+    # "opensearch"   — OpenSearch cluster (requires OPENSEARCH_URL)
+    # "elasticsearch"— Elasticsearch cluster (requires ELASTICSEARCH_URL)
+    search_backend: str = "sqlite"
+    # Base URL for OpenSearch, e.g. "https://localhost:9200".
+    # Only used when search_backend="opensearch".
+    opensearch_url: str | None = None
+    # Base URL for Elasticsearch, e.g. "https://localhost:9200".
+    # Only used when search_backend="elasticsearch".
+    elasticsearch_url: str | None = None
 
     @classmethod
     def load(cls, path: Path = CONFIG_FILE) -> "Config | None":

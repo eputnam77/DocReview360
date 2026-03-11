@@ -3,7 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 
 export interface Notification {
   id: string;
@@ -36,7 +36,7 @@ export function useNotifications() {
     // Poll every 60 seconds to catch new notifications
     refetchInterval: 60_000,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/notifications`);
+      const res = await authenticatedFetch('/notifications');
       if (!res.ok) {
         if (res.status === 404) return []; // endpoint may not be enabled
         throw new Error("Failed to fetch notifications");
@@ -59,7 +59,7 @@ export function useMarkNotificationRead() {
 
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      const res = await authenticatedFetch(`${API}/notifications/${notificationId}/read`, {
+      const res = await authenticatedFetch(`/notifications/${notificationId}/read`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to mark notification as read");
@@ -87,7 +87,7 @@ export function useMarkAllNotificationsRead() {
 
   return useMutation({
     mutationFn: async () => {
-      const res = await authenticatedFetch(`${API}/notifications/read-all`, { method: "POST" });
+      const res = await authenticatedFetch('/notifications/read-all', { method: "POST" });
       if (!res.ok && res.status !== 404) throw new Error("Failed to mark all as read");
     },
     onSuccess: () => {
@@ -103,7 +103,7 @@ export function useNotificationSettings() {
   return useQuery<NotificationSettings>({
     queryKey: NOTIFICATION_SETTINGS_KEY,
     queryFn: async () => {
-      const res = await authenticatedFetch(`${API}/notifications/settings`);
+      const res = await authenticatedFetch('/notifications/settings');
       if (!res.ok) throw new Error("Failed to fetch notification settings");
       return res.json();
     },
@@ -116,7 +116,7 @@ export function useUpdateNotificationSettings() {
 
   return useMutation({
     mutationFn: async (settings: Partial<NotificationSettings>) => {
-      const res = await authenticatedFetch(`${API}/notifications/settings`, {
+      const res = await authenticatedFetch('/notifications/settings', {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),

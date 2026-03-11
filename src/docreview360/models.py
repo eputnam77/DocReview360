@@ -10,6 +10,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -138,10 +139,17 @@ class Document(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
     content: Mapped[str] = mapped_column(String)
+    # Quality score persistence (Item 35)
+    last_quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    last_quality_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    plain_language_grade: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     project: Mapped[Project] = relationship(back_populates="documents")
     versions: Mapped[list["DocumentVersion"]] = relationship(back_populates="document")
     branches: Mapped[list["DocumentBranch"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
+    quality_scores: Mapped[list["DocumentQualityScore"]] = relationship(
         back_populates="document", cascade="all, delete-orphan"
     )
 
@@ -154,6 +162,24 @@ class DocumentVersion(Base):
     content: Mapped[str] = mapped_column(String)
 
     document: Mapped[Document] = relationship(back_populates="versions")
+
+
+class DocumentQualityScore(Base):
+    """Historical record of a single quality-score run for a document (Item 35)."""
+
+    __tablename__ = "document_quality_scores"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("documents.id"), index=True, nullable=False
+    )
+    scored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    quality_score: Mapped[float] = mapped_column(Float, nullable=False)
+    plain_language_grade: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    flesch_reading_ease: Mapped[float | None] = mapped_column(Float, nullable=True)
+    quality_flags: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    document: Mapped["Document"] = relationship(back_populates="quality_scores")
 
 
 class Workflow(Base):
@@ -285,6 +311,27 @@ class Plugin(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     type: Mapped[str] = mapped_column(String(20), index=True)
+
+
+class BuiltinPluginStateRecord(Base):
+    """Persistent toggle state for built-in plugins (replaces in-memory dict)."""
+
+    __tablename__ = "builtin_plugin_states"
+
+    plugin_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class OrgToolConfig(Base):
+    """Per-organization plugin/tool configuration overrides."""
+
+    __tablename__ = "org_tool_configs"
+
+    org_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    # List of marketplace plugin IDs that are disabled for this org.
+    disabled_plugins: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # Dict of builtin_id -> bool overrides (applied on top of global state).
+    enabled_builtins: Mapped[dict[str, bool]] = mapped_column(JSON, default=dict)
 
 
 class APIKey(Base):
@@ -599,6 +646,40 @@ class CustomFieldValue(Base):
 
 
 # ---------------------------------------------------------------------------
+# Per-user notification preferences (Item 44 Phase 2)
+# ---------------------------------------------------------------------------
+
+VALID_NOTIFICATION_CHANNELS = {"email", "slack", "teams", "webhook", "in_app"}
+
+
+class DashboardVisibilityRecord(Base):
+    """Per-user dashboard widget visibility preferences (Item 45 Phase 3)."""
+
+    __tablename__ = "dashboard_visibility"
+
+    username: Mapped[str] = mapped_column(String(255), primary_key=True)
+    widgets: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class UserNotificationPreference(Base):
+    """Per-user notification channel preference.
+
+    Overrides the global notification settings for a specific user so that
+    review lifecycle events reach them through their preferred channel.
+    """
+
+    __tablename__ = "user_notification_preferences"
+
+    username: Mapped[str] = mapped_column(String(100), primary_key=True)
+    # One of: email | slack | teams | webhook | in_app
+    preferred_channel: Mapped[str] = mapped_column(String(50), default="email")
+    # Optional per-user webhook URL (used when preferred_channel == "webhook")
+    webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Optional email override (different address from the account email)
+    email_override: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+# ---------------------------------------------------------------------------
 # Review assignments (Item 44 — reviewer lifecycle model)
 # ---------------------------------------------------------------------------
 
@@ -622,3 +703,19 @@ class ReviewAssignment(Base):
     # FK to another ReviewAssignment.id when this reviewer was replaced
     replaced_by: Mapped[str | None] = mapped_column(String, nullable=True)
     replacement_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# WOPI lock records (Item 41 — M365 co-authoring)
+# ---------------------------------------------------------------------------
+
+
+class WOPILockRecord(Base):
+    """Persistent WOPI lock for a file currently open in Office Online."""
+
+    __tablename__ = "wopi_lock_records"
+
+    file_id: Mapped[str] = mapped_column(String, primary_key=True)
+    lock_token: Mapped[str] = mapped_column(String, nullable=False)
+    locked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    locked_by: Mapped[str | None] = mapped_column(String, nullable=True)

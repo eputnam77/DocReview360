@@ -11,11 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil, Plus, Trash } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Pencil, Plus, Trash } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/api";
+import HelpTooltip from "@/components/HelpTooltip";
 
 interface DocType {
   id: string;
@@ -28,6 +29,14 @@ interface DocType {
 interface TemplateOption {
   id: string;
   name: string;
+}
+
+interface SLAConfig {
+  doc_type: string;
+  phase: string | null;
+  default_review_days: number;
+  reminder_days_before: number[];
+  escalation_threshold_days: number;
 }
 
 const GOVERNMENT_FIRST_STARTER_SET = [
@@ -181,6 +190,218 @@ function PhaseSelector({
   );
 }
 
+// ---------------------------------------------------------------------------
+// SLA panel — shown as an expanded sub-row beneath a document type row
+// ---------------------------------------------------------------------------
+
+function SLAPanel({
+  docTypeId,
+  onSaved,
+}: {
+  docTypeId: string;
+  onSaved?: (config: SLAConfig) => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [reviewDays, setReviewDays] = useState(14);
+  const [reminderDays, setReminderDays] = useState("3,1");
+  const [escalationDays, setEscalationDays] = useState(3);
+
+  useEffect(() => {
+    setLoading(true);
+    authenticatedFetch(`/document-types/${encodeURIComponent(docTypeId)}/sla`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: SLAConfig | null) => {
+        if (data) {
+          setReviewDays(data.default_review_days);
+          setReminderDays(
+            Array.isArray(data.reminder_days_before)
+              ? data.reminder_days_before.join(",")
+              : "3,1",
+          );
+          setEscalationDays(data.escalation_threshold_days);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [docTypeId]);
+
+  const handleSave = async () => {
+    // Parse reminder_days_before — accept comma-separated integers
+    const reminderParsed = reminderDays
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n) && n > 0);
+
+    if (reviewDays < 1) {
+      toast.error("Review days must be at least 1");
+      return;
+    }
+    if (escalationDays < 0) {
+      toast.error("Escalation threshold must be 0 or more");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await authenticatedFetch(
+        `/document-types/${encodeURIComponent(docTypeId)}/sla`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            default_review_days: reviewDays,
+            reminder_days_before: reminderParsed.length > 0 ? reminderParsed : [3, 1],
+            escalation_threshold_days: escalationDays,
+          }),
+        },
+      );
+      if (res.ok) {
+        const saved: SLAConfig = await res.json();
+        toast.success(`SLA saved for ${docTypeId}`);
+        onSaved?.(saved);
+      } else {
+        const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+        toast.error(`Failed to save SLA: ${err.detail ?? res.statusText}`);
+      }
+    } catch {
+      toast.error("Failed to save SLA");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="px-4 py-3 text-xs text-gray-500 animate-pulse">
+        Loading SLA configuration…
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-3 bg-blue-50 border-t border-blue-100 space-y-3">
+      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide flex items-center gap-1">
+        <Clock className="w-3 h-3" />
+        SLA Configuration — {docTypeId}
+      </p>
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            Default review days
+            <HelpTooltip
+              content="The number of calendar days allowed for completing a review of this document type. Reviewers are notified when this deadline is approaching."
+              href="/help#sla"
+              size="sm"
+            />
+          </label>
+          <Input
+            type="number"
+            min={1}
+            value={reviewDays}
+            onChange={(e) => setReviewDays(parseInt(e.target.value, 10) || 1)}
+            className="h-8 w-28 text-xs"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            Reminder days before (comma-separated)
+            <HelpTooltip
+              content="Comma-separated list of days before the deadline when automatic reminder notifications are sent (e.g. '3,1' sends reminders 3 days and 1 day before the due date)."
+              href="/help#sla"
+              size="sm"
+            />
+          </label>
+          <Input
+            type="text"
+            value={reminderDays}
+            onChange={(e) => setReminderDays(e.target.value)}
+            placeholder="3,1"
+            className="h-8 w-36 text-xs"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            Escalation threshold (days overdue)
+            <HelpTooltip
+              content="Number of days a review can remain overdue before an escalation notification is sent to administrators and project owners."
+              href="/help#sla"
+              size="sm"
+            />
+          </label>
+          <Input
+            type="number"
+            min={0}
+            value={escalationDays}
+            onChange={(e) => setEscalationDays(parseInt(e.target.value, 10) || 0)}
+            className="h-8 w-28 text-xs"
+          />
+        </div>
+        <Button size="sm" onClick={handleSave} disabled={saving} className="h-8">
+          {saving ? "Saving…" : "Save SLA"}
+        </Button>
+      </div>
+      <p className="text-xs text-gray-400">
+        Reminder days: e.g. <code className="bg-white px-1 rounded">3,1</code> sends a
+        reminder 3 days before and again 1 day before the due date.
+        Escalation threshold: days overdue before an escalation notification fires.
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// All-SLA summary panel
+// ---------------------------------------------------------------------------
+
+function AllSLAPanel({ allSLAConfigs }: { allSLAConfigs: SLAConfig[] }) {
+  if (allSLAConfigs.length === 0) {
+    return (
+      <p className="text-sm text-gray-400 italic py-2">
+        No SLA configurations have been saved yet. Expand a document type row above to
+        configure its SLA.
+      </p>
+    );
+  }
+
+  return (
+    <Table caption="All SLA configurations">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Document Type</TableHead>
+          <TableHead>Phase</TableHead>
+          <TableHead>Review Days</TableHead>
+          <TableHead>Reminder Days</TableHead>
+          <TableHead>Escalation Threshold</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {allSLAConfigs.map((cfg) => (
+          <TableRow key={`${cfg.doc_type}|${cfg.phase ?? ""}`}>
+            <TableCell className="font-medium">{cfg.doc_type}</TableCell>
+            <TableCell>
+              {cfg.phase ? (
+                <Badge variant="outline">{cfg.phase}</Badge>
+              ) : (
+                <span className="text-gray-400 text-xs italic">Default</span>
+              )}
+            </TableCell>
+            <TableCell>{cfg.default_review_days}d</TableCell>
+            <TableCell>
+              {cfg.reminder_days_before.map((d) => `${d}d`).join(", ")}
+            </TableCell>
+            <TableCell>{cfg.escalation_threshold_days}d</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function DocumentTypesPage() {
   const [types, setTypes] = useState<DocType[]>([]);
   const [newName, setNewName] = useState("");
@@ -192,6 +413,12 @@ export default function DocumentTypesPage() {
   const [replacementDocType, setReplacementDocType] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<any>(null);
   const [seedingStarterSet, setSeedingStarterSet] = useState(false);
+
+  // SLA state
+  const [expandedSLA, setExpandedSLA] = useState<string | null>(null);
+  const [allSLAConfigs, setAllSLAConfigs] = useState<SLAConfig[]>([]);
+  const [showAllSLA, setShowAllSLA] = useState(false);
+  const [loadingAllSLA, setLoadingAllSLA] = useState(false);
 
   useEffect(() => {
     // Fetch document types from backend
@@ -219,6 +446,54 @@ export default function DocumentTypesPage() {
       })
       .catch(() => setTemplates([]));
   }, []);
+
+  const toggleSLARow = (docTypeId: string) => {
+    setExpandedSLA((prev) => (prev === docTypeId ? null : docTypeId));
+  };
+
+  const loadAllSLA = async () => {
+    setLoadingAllSLA(true);
+    try {
+      const res = await authenticatedFetch('/document-types/sla/all');
+      if (res.ok) {
+        const data: SLAConfig[] = await res.json();
+        setAllSLAConfigs(Array.isArray(data) ? data : []);
+      } else {
+        toast.error("Failed to load SLA configurations");
+      }
+    } catch {
+      toast.error("Failed to load SLA configurations");
+    } finally {
+      setLoadingAllSLA(false);
+    }
+  };
+
+  const toggleAllSLA = () => {
+    if (!showAllSLA) {
+      loadAllSLA();
+    }
+    setShowAllSLA((prev) => !prev);
+  };
+
+  // Refresh the all-SLA panel when a single SLA is saved (if panel is open)
+  const handleSLASaved = (saved: SLAConfig) => {
+    if (showAllSLA) {
+      setAllSLAConfigs((prev) => {
+        const key = `${saved.doc_type}|${saved.phase ?? ""}`;
+        const existing = prev.findIndex(
+          (c) => `${c.doc_type}|${c.phase ?? ""}` === key,
+        );
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = saved;
+          return updated;
+        }
+        return [...prev, saved].sort((a, b) =>
+          a.doc_type.localeCompare(b.doc_type),
+        );
+      });
+    }
+  };
 
   const addType = async () => {
     if (!newName.trim()) return;
@@ -472,86 +747,186 @@ export default function DocumentTypesPage() {
             <TableHead>Document Type</TableHead>
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
-            <TableHead>Attached Phase</TableHead>
-            <TableHead>Default Workflow</TableHead>
+            <TableHead>
+              <span className="flex items-center gap-1">
+                Attached Phase
+                <HelpTooltip
+                  content="Workflow phases assigned to this document type. Phases define the ordered review stages a document must pass through (e.g. Draft → Review → Approval)."
+                  href="/help#phases"
+                />
+              </span>
+            </TableHead>
+            <TableHead>
+              <span className="flex items-center gap-1">
+                Default Workflow
+                <HelpTooltip
+                  content="The workflow template automatically applied when a new document of this type is created. Admins can override it per-project."
+                  href="/help#default-workflow"
+                />
+              </span>
+            </TableHead>
+            <TableHead>
+              <span className="flex items-center gap-1">
+                SLA
+                <HelpTooltip
+                  content="Service Level Agreement configuration — sets the maximum review days and automatic reminder schedule for this document type."
+                  href="/help#sla"
+                />
+              </span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {types.map((t) => (
-            <TableRow key={t.id}>
-              <TableCell className="min-w-[150px]">
-                {editingId === t.id ? (
-                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" />
-                ) : (
-                  t.name
-                )}
-              </TableCell>
-              <TableCell className="w-28">
-                {editingId === t.id ? (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => saveEdit(t.id)}>Save</Button>
-                    <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel</Button>
-                  </div>
-                ) : (
+            <Fragment key={t.id}>
+              <TableRow>
+                <TableCell className="min-w-[150px]">
+                  {editingId === t.id ? (
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" />
+                  ) : (
+                    t.name
+                  )}
+                </TableCell>
+                <TableCell className="w-28">
+                  {editingId === t.id ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => saveEdit(t.id)}>Save</Button>
+                      <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => startEdit(t)}
+                      title="Edit"
+                      aria-label="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )}
+                </TableCell>
+                <TableCell className="w-20">
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => startEdit(t)}
-                    title="Edit"
-                    aria-label="Edit"
+                    onClick={() => removeType(t.id)}
+                    title="Remove"
+                    aria-label="Remove"
                   >
-                    <Pencil className="w-4 h-4" />
+                    <Trash className="w-4 h-4 text-red-600" />
                   </Button>
-                )}
-              </TableCell>
-              <TableCell className="w-20">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeType(t.id)}
-                  title="Remove"
-                  aria-label="Remove"
-                >
-                  <Trash className="w-4 h-4 text-red-600" />
-                </Button>
-              </TableCell>
-              <TableCell>
-                <PhaseSelector
-                  docTypeId={t.id}
-                  phases={phases}
-                  selectedPhases={t.phases || []}
-                  changePhase={changePhase}
-                />
-              </TableCell>
-              <TableCell className="min-w-[180px]">
-                <Select
-                  value={t.default_workflow_template_id || ""}
-                  onValueChange={(val) => changeDefaultTemplate(t.id, val)}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    {templates.map((tpl) => (
-                      <SelectItem key={tpl.id} value={tpl.id}>
-                        {tpl.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </TableCell>
-            </TableRow>
+                </TableCell>
+                <TableCell>
+                  <PhaseSelector
+                    docTypeId={t.id}
+                    phases={phases}
+                    selectedPhases={t.phases || []}
+                    changePhase={changePhase}
+                  />
+                </TableCell>
+                <TableCell className="min-w-[180px]">
+                  <Select
+                    value={t.default_workflow_template_id || ""}
+                    onValueChange={(val) => changeDefaultTemplate(t.id, val)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {templates.map((tpl) => (
+                        <SelectItem key={tpl.id} value={tpl.id}>
+                          {tpl.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell className="w-24">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-800"
+                    onClick={() => toggleSLARow(t.id)}
+                    title="Configure SLA"
+                    aria-label={expandedSLA === t.id ? "Collapse SLA" : "Configure SLA"}
+                  >
+                    <Clock className="w-3 h-3" />
+                    {expandedSLA === t.id ? (
+                      <ChevronDown className="w-3 h-3" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3" />
+                    )}
+                  </Button>
+                </TableCell>
+              </TableRow>
+              {expandedSLA === t.id && (
+                <TableRow className="bg-blue-50 hover:bg-blue-50">
+                  <TableCell colSpan={6} className="p-0">
+                    <SLAPanel docTypeId={t.id} onSaved={handleSLASaved} />
+                  </TableCell>
+                </TableRow>
+              )}
+            </Fragment>
           ))}
           {types.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-gray-400 py-6">
+              <TableCell colSpan={6} className="text-center text-gray-400 py-6">
                 No document types defined.
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* View All SLA Configurations panel                                   */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="border rounded-lg overflow-hidden">
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-gray-700 transition-colors"
+          onClick={toggleAllSLA}
+          aria-expanded={showAllSLA}
+        >
+          <span className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" />
+            View All SLA Configurations
+          </span>
+          {showAllSLA ? (
+            <ChevronDown className="w-4 h-4 text-gray-500" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-500" />
+          )}
+        </button>
+        {showAllSLA && (
+          <div className="p-4">
+            {loadingAllSLA ? (
+              <p className="text-sm text-gray-400 animate-pulse py-2">
+                Loading SLA configurations…
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500 mb-3">
+                  All document types that have an explicit SLA configuration saved.
+                  Document types without a saved config use the system default (14-day review,
+                  reminders at 3 and 1 day before, 3-day escalation threshold).
+                </p>
+                <AllSLAPanel allSLAConfigs={allSLAConfigs} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3 text-xs"
+                  onClick={loadAllSLA}
+                  disabled={loadingAllSLA}
+                >
+                  Refresh
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {showDeleteDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

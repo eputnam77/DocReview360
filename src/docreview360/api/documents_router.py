@@ -1039,6 +1039,56 @@ async def unfreeze_doc(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.get("/documents/{doc_id}/quality-history")
+async def get_document_quality_history(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict]:
+    """Return the last 10 quality-score history entries for a document (Item 35).
+
+    Each entry contains ``id``, ``scored_at`` (ISO-8601), ``quality_score``,
+    ``plain_language_grade``, ``flesch_reading_ease``, and ``quality_flags``.
+    Results are ordered newest-first.  Returns an empty list for documents with
+    no recorded quality runs.
+    """
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+
+    try:
+        from ..db_store import get_db
+        from ..models import DocumentQualityScore as _OrmScore
+        from sqlalchemy import select as _select, desc as _desc
+
+        db = get_db()
+        with db.orm_session() as session:
+            rows = (
+                session.execute(
+                    _select(_OrmScore)
+                    .where(_OrmScore.document_id == doc_id)
+                    .order_by(_desc(_OrmScore.scored_at))
+                    .limit(10)
+                )
+                .scalars()
+                .all()
+            )
+            return [
+                {
+                    "id": r.id,
+                    "scored_at": r.scored_at.isoformat(),
+                    "quality_score": r.quality_score,
+                    "plain_language_grade": r.plain_language_grade,
+                    "flesch_reading_ease": r.flesch_reading_ease,
+                    "quality_flags": r.quality_flags,
+                }
+                for r in rows
+            ]
+    except Exception as exc:
+        _logger.warning("quality-history DB read failed for %s: %s", doc_id, exc)
+        return []
+
+
 @router.get("/documents/{doc_id}/diff/{revision_id_a}/{revision_id_b}")
 async def diff_revisions_endpoint(
     doc_id: str,

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { API, authenticatedFetch } from "./api";
+import { authenticatedFetch } from "./api";
 import type { StepInstance, StepKind, StepStatus, WorkflowInstance } from "@/types";
 
 interface BackendWorkflow {
@@ -80,20 +80,20 @@ export function useWorkflowInstance(id?: string) {
         return null;
       }
 
-      const workflowRes = await authenticatedFetch(`${API}/workflows/${id}`);
+      const workflowRes = await authenticatedFetch(`/workflows/${id}`);
       if (!workflowRes.ok) {
         throw new Error("Failed to fetch workflow");
       }
       const workflow = (await workflowRes.json()) as BackendWorkflow;
 
-      const approvalsRes = await authenticatedFetch(`${API}/approvals?workflow=${id}`);
+      const approvalsRes = await authenticatedFetch(`/approvals?workflow=${id}`);
       const approvals = approvalsRes.ok ? ((await approvalsRes.json()) as BackendApproval[]) : [];
 
       let requestedBy = defaultRequester;
       let startedAt = new Date().toISOString();
 
       if (workflow.project) {
-        const projectRes = await authenticatedFetch(`${API}/projects/${workflow.project}`);
+        const projectRes = await authenticatedFetch(`/projects/${workflow.project}`);
         if (projectRes.ok) {
           const project = await projectRes.json();
           requestedBy = {

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
 from .. import auth
+from ..logs import log_event
 from ..feedback_ledger import (
     FeedbackItem,
     FeedbackProgress,
@@ -30,6 +31,15 @@ from ..search import get_project
 
 _logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _emit_webhook(event: str, data: dict) -> None:
+    """Best-effort lifecycle webhook emission — never raises."""
+    try:
+        from .webhooks import emit_lifecycle_event
+        emit_lifecycle_event(event, data)  # type: ignore[arg-type]
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +180,21 @@ async def create_project_feedback(
     # Notify SME when a question is asked
     if body.feedback_type == "question":
         _emit_feedback_notification("review.question_asked", item, project)
+    log_event(
+        "feedback.submitted",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        feedback_id=item.id,
+        feedback_type=item.feedback_type,
+        assignment_id=item.assignment_id,
+    )
+    _emit_webhook("feedback.submitted", {
+        "project_id": project_id,
+        "feedback_id": item.id,
+        "feedback_type": item.feedback_type,
+        "reviewer": current_user.username,
+    })
     return item.model_dump()
 
 
@@ -197,6 +222,16 @@ async def disposition_feedback_item(
         disposition_by=current_user.username,
         disposition_reason=body.reason,
     )
+    log_event(
+        "feedback.dispositioned",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        feedback_id=item_id,
+        feedback_type=item.feedback_type,
+        disposition=body.status,
+        reason=body.reason,
+    )
     return updated.model_dump()
 
 
@@ -217,6 +252,14 @@ async def reply_to_project_feedback(
     # If SME answered a reviewer's question, notify the reviewer
     if parent.feedback_type == "question" and current_user.username != parent.reviewer:
         _emit_feedback_notification("review.question_answered", parent, project)
+    log_event(
+        "feedback.replied",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        feedback_id=item_id,
+        reply_id=reply.id,
+    )
     return reply.model_dump()
 
 
@@ -279,5 +322,13 @@ async def archive_project_phase_feedback(
     _require_manage_access(project, current_user)
     count = archive_phase_feedback(
         project_id, body.phase, archived_by=current_user.username
+    )
+    log_event(
+        "feedback.phase_archived",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        phase=body.phase,
+        archived_count=count,
     )
     return {"archived": count, "phase": body.phase}

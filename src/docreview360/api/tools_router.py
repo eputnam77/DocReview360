@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel
 
@@ -20,6 +22,7 @@ from ..rbac import has_role, require_role
 from ..ai_assist import rewrite_text, summarize_text
 from ..cache import cache_get, cache_set
 from ..config import CONFIG_FILE, Config
+from ..fsv_proxy import is_fsv_configured, get_fsv_url, fsv_validate, fsv_regulatory_check
 from ..doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -120,6 +123,7 @@ class _PreflightRequest(BaseModel):
     min_reading_ease: float = 0.0
     require_no_undefined_acronyms: bool = False
     require_valid_headings: bool = True
+    document_id: str | None = None  # Item 35: if provided, persists quality score
 
 
 # ---------------------------------------------------------------------------
@@ -565,14 +569,55 @@ async def document_preflight_endpoint(
     body: _PreflightRequest,
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
-    """Run pre-flight checks on document text before phase advancement."""
+    """Run pre-flight checks on document text before phase advancement.
+
+    When ``FEDERAL_STYLE_VALIDATOR_URL`` is configured the request is proxied
+    to FSV and the FSV result is returned with ``"source": "fsv"``.  Otherwise
+    the internal implementation is used and the result includes
+    ``"source": "internal"``.
+    """
+    # --- FSV proxy path ---
+    if is_fsv_configured():
+        try:
+            result_dict = await fsv_validate(body.text, doc_type=None)
+            result_dict["source"] = "fsv"
+            return result_dict
+        except Exception as _exc:
+            _logger.warning("FSV preflight proxy failed, falling back to internal: %s", _exc)
+            # Fall through to internal implementation on proxy failure.
+
+    # --- Internal implementation path ---
     result = _preflight_validate(
         body.text,
         min_reading_ease=body.min_reading_ease,
         require_no_undefined_acronyms=body.require_no_undefined_acronyms,
         require_valid_headings=body.require_valid_headings,
     )
-    return result.to_dict()
+    result_dict = result.to_dict()
+    result_dict["source"] = "internal"
+
+    # Item 35: persist quality score if a document_id was provided.
+    if body.document_id:
+        try:
+            from ..documents import update_document_quality_score
+            from ..quality import quality_assessment
+            from ..doc_validation import score_plain_language
+
+            qa = quality_assessment(body.text)
+            pl = score_plain_language(body.text)
+            from ..quality import QUALITY_FLAG_NAMES
+            flags = dict(zip(QUALITY_FLAG_NAMES, qa.flags))
+            update_document_quality_score(
+                body.document_id,
+                score=round(qa.score, 4),
+                grade=pl.grade_level,
+                flesch=pl.flesch_reading_ease,
+                flags=flags,
+            )
+        except Exception as _exc:  # pragma: no cover - best-effort
+            _logger.warning("preflight score persistence failed: %s", _exc)
+
+    return result_dict
 
 
 # ---------------------------------------------------------------------------
@@ -793,11 +838,33 @@ async def regulatory_check(
     Extracts citations matching known regulatory schemas (21 CFR, ISO, IEC, EU MDR/IVDR)
     and reports format validity, catalog membership, and any issues found.
     Returns HTTP 422 when ``text`` is empty.
-    """
-    from ..regulatory import check_regulatory_citations
 
+    When ``FEDERAL_STYLE_VALIDATOR_URL`` is configured the request is proxied
+    to FSV's ``/regulatory-check`` endpoint and the result is returned directly.
+    Otherwise the internal ``regulatory.py`` implementation is used.
+    """
     if not body.text.strip():
         raise HTTPException(status_code=422, detail="text is required")
+
+    # --- FSV proxy path ---
+    if is_fsv_configured():
+        try:
+            fsv_result = await fsv_regulatory_check(body.text)
+            # Normalise to _RegulatoryCheckResponse shape; FSV may return the
+            # same shape but we guard against missing keys defensively.
+            return _RegulatoryCheckResponse(
+                citations_found=int(fsv_result.get("citations_found", 0)),
+                results=list(fsv_result.get("results", [])),
+                has_issues=bool(fsv_result.get("has_issues", False)),
+            )
+        except Exception as _exc:
+            _logger.warning(
+                "FSV regulatory-check proxy failed, falling back to internal: %s", _exc
+            )
+            # Fall through to internal implementation on proxy failure.
+
+    # --- Internal implementation path ---
+    from ..regulatory import check_regulatory_citations
 
     citation_results = check_regulatory_citations(body.text)
     serialized: list[dict[str, object]] = [
@@ -814,6 +881,36 @@ async def regulatory_check(
         results=serialized,
         has_issues=any(r.issues for r in citation_results),
     )
+
+
+# ---------------------------------------------------------------------------
+# FSV status
+# ---------------------------------------------------------------------------
+
+
+@router.get("/fsv/status")
+async def fsv_status_endpoint(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Return whether the Federal Style Validator (FSV) integration is active.
+
+    Response fields:
+    - ``configured``: ``true`` when ``FEDERAL_STYLE_VALIDATOR_URL`` is set.
+    - ``url``: the configured base URL, or ``null``.
+    - ``reachable``: ``true`` when a ``GET {url}/health`` probe succeeds within
+      2 seconds.  Always ``false`` when not configured.
+    """
+    fsv_url = get_fsv_url()
+    configured = bool(fsv_url)
+    reachable = False
+    if configured and fsv_url:
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                resp = await client.get(f"{fsv_url.rstrip('/')}/health")
+                reachable = resp.is_success
+        except Exception:
+            reachable = False
+    return {"configured": configured, "url": fsv_url, "reachable": reachable}
 
 
 @router.post("/tools/accessibility-scan")

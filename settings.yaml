@@ -2,19 +2,93 @@ audit_log:
   purge_interval_minutes: 1440
   retention_days: 2555
 dash_alice:
-  activity: true
-  logs: true
-  stats: true
+  activity: false
+  logs: false
+  stats: false
   status: false
+  widgets:
+  - kpi
+  - status
 dash_bob:
   activity: true
   logs: true
   stats: false
   status: true
+  widgets:
+  - kpi
+  - reviews
+  - deadlines
+dash_testuser_bools_only_xyz:
+  activity: true
+  logs: false
+  stats: true
+  status: false
+dash_testuser_empty_widgets_xyz:
+  activity: true
+  logs: true
+  stats: true
+  status: true
+  widgets: []
+dash_testuser_overwrite_xyz:
+  activity: true
+  logs: true
+  stats: true
+  status: true
+  widgets:
+  - status
+  - activity
+  - errors
+dash_testuser_roundtrip_xyz:
+  activity: false
+  logs: true
+  stats: false
+  status: true
+  widgets:
+  - kpi
+  - logs
+dash_testuser_set_xyz:
+  activity: true
+  logs: true
+  stats: false
+  status: true
+  widgets:
+  - kpi
+  - activity
+dash_testuser_widgets_only_xyz:
+  activity: true
+  logs: true
+  stats: true
+  status: true
+  widgets:
+  - kpi
+  - status
+  - errors
+notifications:
+  email_enabled: false
+  slack_enabled: true
+  slack_webhook_url: https://hooks.slack.com/test123
+  teams_enabled: false
+  webhook_enabled: false
 prefs_alice:
+  locale: en
   theme: dark
 prefs_bob:
+  locale: fr
   theme: light
+prefs_locale_theme_user:
+  locale: fr
+  theme: dark
+prefs_locale_user_de:
+  locale: de
+prefs_locale_user_en:
+  locale: en
+prefs_locale_user_es:
+  locale: es
+prefs_locale_user_fr:
+  locale: fr
+prefs_test_profile_locale:
+  locale: es
+prefs_test_profile_locale2: {}
 prefs_u1:
   theme: dark
 profile_alice:

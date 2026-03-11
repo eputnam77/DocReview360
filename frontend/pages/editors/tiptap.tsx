@@ -6,6 +6,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "react-hot-toast";
 import { generateDiffHtml } from "../../utils/diff";
 import { logSaveError, isOffline } from "@/utils/saveStatus";
+import { useOfflineSync } from "@/lib/useOfflineSync";
+import { saveOfflineDraft } from "@/lib/offlineStorage";
 
 import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "../../components/ExtensionsPanel";
 import InsertMenu from "../../components/InsertMenu";
@@ -67,6 +69,8 @@ export function createTiptapApi(fetcher: typeof authenticatedFetch = authenticat
     fetchArchive: (archiveId: string) => fetcher(`${API}/archive/${archiveId}`),
     fetchTemplates: () => fetcher(`${API}/templates`),
     fetchTemplate: (filename: string) => fetcher(`${API}/templates/${filename}`),
+    fetchStarterContent: (docType: string) =>
+      fetcher(`/document-types/${encodeURIComponent(docType)}/starter-content`),
   } as const;
 }
 
@@ -567,6 +571,13 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const initialContentLoaded = useRef(false);
 
+  // Offline sync — monitors navigator.onLine and syncs pending drafts on reconnect.
+  const { isOnline, pendingCount, syncNow } = useOfflineSync();
+  // Stable ref so the HocuspocusProvider callbacks can call syncNow without
+  // being stale closures or causing the extensions memo to re-run.
+  const syncNowRef = useRef(syncNow);
+  useEffect(() => { syncNowRef.current = syncNow; }, [syncNow]);
+
   // Close template picker when clicking outside
   useEffect(() => {
     if (!showTemplatePicker) return;
@@ -693,6 +704,8 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         if (typeof window !== "undefined") {
           localStorage.setItem("draft", html);
         }
+        // Always persist a local draft so content survives connectivity loss.
+        saveOfflineDraft(docId, html);
         if (isOffline()) {
           setSaveStatus("offline");
           return;
@@ -812,6 +825,16 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           url: `${API.replace(/^http/, "ws")}/collab`,
           name: docId,
           document: doc,
+          onDisconnect() {
+            // Server disconnected — subsequent edits will be persisted locally
+            // by saveRevision() → saveOfflineDraft() until reconnected.
+            setSaveStatus("offline");
+          },
+          onConnect() {
+            // Server reconnected — push any locally pending drafts immediately.
+            setSaveStatus("saved");
+            syncNowRef.current();
+          },
         });
         const awareness = hocusProvider.awareness;
         if (awareness) {
@@ -1023,41 +1046,69 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
 
   useEffect(() => {
     if (!editor || defaultTemplateApplied.current) return;
-    if (!projectDocType || !templates.length) return;
+    if (!projectDocType) return;
     if (!isBlankContent(content)) return;
 
-    const docTypeKey = projectDocType.trim().toLowerCase();
-    const normalize = (value: unknown) =>
-      typeof value === "string" ? value.trim().toLowerCase() : "";
-    const findTemplate = (predicate: (t: any) => boolean) =>
-      templates.find((t) => {
-        try {
-          return predicate(t);
-        } catch {
-          return false;
+    // Try curated starter-content first; fall back to /templates on 404/error.
+    const applyStarterContent = async () => {
+      defaultTemplateApplied.current = true; // prevent double-fire while async
+
+      try {
+        const res = await api.fetchStarterContent(projectDocType);
+        if (res.ok) {
+          const data = await res.json();
+          const starterHtml = data?.content;
+          if (starterHtml && typeof starterHtml === "string" && starterHtml.trim().length > 0) {
+            const sanitized = sanitizeHtml(starterHtml);
+            if (sanitized && sanitized.trim().length > 0) {
+              editor.commands.setContent(sanitized);
+              setContent(sanitized);
+              setActiveTemplateLabel(projectDocType);
+              return; // done — no fallback needed
+            }
+          }
         }
-      });
+        // 404 or empty content: fall through to template fallback
+      } catch {
+        // network error: fall through to template fallback
+      }
 
-    const defaultTemplate =
-      findTemplate((t) => {
-        const docType = normalize(t.docType || t.doc_type || t.type);
-        const isDefault =
-          t.default === true ||
-          t.isDefault === true ||
-          t.defaultTemplate === true ||
-          t.default_template === true;
-        return !!(docType && docType === docTypeKey && isDefault);
-      }) ||
-      findTemplate((t) => {
-        const docType = normalize(t.docType || t.doc_type || t.type);
-        return !!(docType && docType === docTypeKey);
-      });
+      // Fallback: look for a matching entry in /templates
+      if (!templates.length) return;
+      const docTypeKey = projectDocType.trim().toLowerCase();
+      const normalize = (value: unknown) =>
+        typeof value === "string" ? value.trim().toLowerCase() : "";
+      const findTemplate = (predicate: (t: any) => boolean) =>
+        templates.find((t) => {
+          try {
+            return predicate(t);
+          } catch {
+            return false;
+          }
+        });
 
-    if (defaultTemplate) {
-      defaultTemplateApplied.current = true;
-      handleTemplateLoad(defaultTemplate.id || defaultTemplate.name);
-    }
-  }, [content, editor, handleTemplateLoad, isBlankContent, projectDocType, templates]);
+      const defaultTemplate =
+        findTemplate((t) => {
+          const docType = normalize(t.docType || t.doc_type || t.type);
+          const isDefault =
+            t.default === true ||
+            t.isDefault === true ||
+            t.defaultTemplate === true ||
+            t.default_template === true;
+          return !!(docType && docType === docTypeKey && isDefault);
+        }) ||
+        findTemplate((t) => {
+          const docType = normalize(t.docType || t.doc_type || t.type);
+          return !!(docType && docType === docTypeKey);
+        });
+
+      if (defaultTemplate) {
+        handleTemplateLoad(defaultTemplate.id || defaultTemplate.name);
+      }
+    };
+
+    applyStarterContent();
+  }, [api, content, editor, handleTemplateLoad, isBlankContent, projectDocType, templates]);
 
   function handleToggleLint() {
     if (lintEnabled) {
@@ -1244,9 +1295,16 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
 
   return (
     <div className="flex flex-col h-screen w-full bg-white">
-      {saveStatus === "offline" && (
-        <div className="bg-yellow-100 text-yellow-800 text-center py-2">
-          You are offline. Changes will sync when connection is restored.
+      {/* Offline banner — shown when the browser reports no network */}
+      {!isOnline && (
+        <div className="bg-yellow-100 text-yellow-800 text-center py-2 text-sm font-medium">
+          Offline mode — edits are saved locally and will sync when reconnected.
+        </div>
+      )}
+      {/* Syncing banner — shown briefly while pushing pending drafts */}
+      {isOnline && pendingCount > 0 && (
+        <div className="bg-blue-50 text-blue-700 text-center py-1 text-xs">
+          Syncing {pendingCount} pending draft{pendingCount > 1 ? "s" : ""}…
         </div>
       )}
       {/* Header Toolbar */}
@@ -1260,6 +1318,12 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           <MenuIcon className="w-5 h-5" />
         </button>
         <span className="text-xl font-bold">TipTap Editor</span>
+        {/* Offline badge in toolbar */}
+        {!isOnline && (
+          <span className="text-xs text-yellow-800 bg-yellow-200 px-2 py-1 rounded font-semibold">
+            Offline
+          </span>
+        )}
         {formattingLocked && (
           <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
             Template formatting locked
@@ -1415,7 +1479,9 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           Submit
         </button>
         <div className="ml-4 text-sm text-gray-600">
-          {saveStatus === "saving"
+          {isOnline && pendingCount > 0
+            ? "Syncing…"
+            : saveStatus === "saving"
             ? "Saving…"
             : saveStatus === "saved"
             ? "Saved"

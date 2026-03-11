@@ -18,6 +18,7 @@ interface UserState {
   isAdmin: boolean;
   isAuditor: boolean;
   username: string;
+  roles: string[];
   inactivityTimeoutMinutes: number;
   theme: "system" | "light" | "dark";
   initialized: boolean;
@@ -35,6 +36,7 @@ export const useUserStore = create<UserState>((set, get) => ({
   isAdmin: false,
   isAuditor: false,
   username: "",
+  roles: [],
   inactivityTimeoutMinutes: 30,
   theme: "system",
   initialized: false,
@@ -52,6 +54,7 @@ export const useUserStore = create<UserState>((set, get) => ({
         isAdmin: false,
         isAuditor: false,
         username: "",
+        roles: [],
         inactivityTimeoutMinutes: 30,
         theme: "system",
         initialized: true,
@@ -66,6 +69,7 @@ export const useUserStore = create<UserState>((set, get) => ({
           isAdmin: false,
           isAuditor: false,
           username: "",
+          roles: [],
           inactivityTimeoutMinutes: 30,
           theme: "system",
           initialized: true,
@@ -89,6 +93,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             : 30;
         set({
           username: data.username ?? "",
+          roles: Array.isArray(data.roles) ? data.roles : [],
           isAdmin: Array.isArray(data.roles) && data.roles.includes("admin"),
           isAuditor: Array.isArray(data.roles) && data.roles.includes("auditor"),
           inactivityTimeoutMinutes: timeoutMinutes,
@@ -127,6 +132,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       isAdmin: false,
       isAuditor: false,
       username: "",
+      roles: [],
       inactivityTimeoutMinutes: 30,
       theme: "system",
       initialized: false,

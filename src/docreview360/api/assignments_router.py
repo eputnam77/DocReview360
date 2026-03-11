@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
 from .. import auth
+from ..logs import log_event
 from ..review_assignments import (
     ReviewAssignmentModel,
     TERMINAL_STATUSES,
@@ -29,6 +30,15 @@ from ..search import get_project
 
 _logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _emit_webhook(event: str, data: dict) -> None:
+    """Best-effort lifecycle webhook emission — never raises."""
+    try:
+        from .webhooks import emit_lifecycle_event
+        emit_lifecycle_event(event, data)  # type: ignore[arg-type]
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +160,13 @@ def _emit_review_notification(
             ),
         }
         message = messages.get(event, f"Review event '{event}' on project '{project.name}'.")
-        send_notification(event, message=message, project_id=project.id, reviewer=assignment.reviewer)
+        send_notification(
+            event,
+            recipient_username=assignment.reviewer,
+            message=message,
+            project_id=project.id,
+            reviewer=assignment.reviewer,
+        )
 
         # Persist to notification log (best-effort)
         try:
@@ -216,6 +232,19 @@ async def create_project_assignment(
     _require_manage_access(project, current_user)
     assignment = create_assignment(project_id, body.reviewer, due_date=body.due_date)
     _emit_review_notification("review.assigned", assignment, project)
+    log_event(
+        "review.assigned",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        reviewer=assignment.reviewer,
+        assignment_id=assignment.id,
+    )
+    _emit_webhook("review.assigned", {
+        "project_id": project_id,
+        "assignment_id": assignment.id,
+        "reviewer": assignment.reviewer,
+    })
     return assignment.model_dump()
 
 
@@ -253,7 +282,17 @@ async def start_assignment(
         raise HTTPException(
             status_code=409, detail=f"Cannot start from status '{assignment.status}'"
         )
-    return transition_status(assignment_id, "reviewing", ts_field="started_at").model_dump()
+    result = transition_status(assignment_id, "reviewing", ts_field="started_at")
+    log_event(
+        "review.status_changed",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        old_status="invited",
+        new_status="reviewing",
+    )
+    return result.model_dump()
 
 
 @router.post("/projects/{project_id}/assignments/{assignment_id}/submit")
@@ -275,6 +314,19 @@ async def submit_assignment(
         )
     result = transition_status(assignment_id, "feedback_submitted", ts_field="completed_at")
     _emit_review_notification("review.feedback_received", result, project)
+    log_event(
+        "review.submitted",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        reviewer=assignment.reviewer,
+    )
+    _emit_webhook("review.submitted", {
+        "project_id": project_id,
+        "assignment_id": assignment_id,
+        "reviewer": assignment.reviewer,
+    })
     return result.model_dump()
 
 
@@ -292,6 +344,21 @@ async def concur_assignment(
     result = transition_status(assignment_id, "concurred", ts_field="signed_at")
     _emit_review_notification("review.signed", result, project)
     _check_all_complete(project_id, project)
+    log_event(
+        "review.completed",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        reviewer=assignment.reviewer,
+        outcome="concurred",
+    )
+    _emit_webhook("review.completed", {
+        "project_id": project_id,
+        "assignment_id": assignment_id,
+        "reviewer": assignment.reviewer,
+        "outcome": "concurred",
+    })
     return result.model_dump()
 
 
@@ -323,6 +390,21 @@ async def concur_assignment_with_comments(
     result = transition_status(assignment_id, "concurred", ts_field="signed_at")
     _emit_review_notification("review.signed", result, project)
     _check_all_complete(project_id, project)
+    log_event(
+        "review.completed",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        reviewer=assignment.reviewer,
+        outcome="concurred_with_comments",
+    )
+    _emit_webhook("review.completed", {
+        "project_id": project_id,
+        "assignment_id": assignment_id,
+        "reviewer": assignment.reviewer,
+        "outcome": "concurred_with_comments",
+    })
     return result.model_dump()
 
 
@@ -345,6 +427,14 @@ async def request_concurrence(
             detail=f"Cannot request concurrence from a reviewer in terminal status '{assignment.status}'",
         )
     _emit_review_notification("review.concurrence_requested", assignment, project)
+    log_event(
+        "review.concurrence_requested",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        reviewer=assignment.reviewer,
+    )
     return {"ok": True, "assignment_id": assignment_id}
 
 
@@ -362,6 +452,16 @@ async def non_concur_assignment(
         raise HTTPException(status_code=403, detail="Only the assigned reviewer can non-concur")
     result = _update_fields(assignment_id, status="non_concurred", replacement_reason=body.reason)
     _emit_review_notification("review.non_concurred", result, project)
+    log_event(
+        "review.status_changed",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        reviewer=assignment.reviewer,
+        new_status="non_concurred",
+        reason=body.reason,
+    )
     return result.model_dump()
 
 
@@ -380,6 +480,16 @@ async def replace_project_assignment(
     )
     _emit_review_notification("review.replaced", original, project)
     _emit_review_notification("review.assigned", new_assignment, project)
+    log_event(
+        "review.replaced",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        original_assignment_id=assignment_id,
+        original_reviewer=original.reviewer,
+        replacement_reviewer=body.replacement_reviewer,
+        reason=body.reason,
+    )
     return {"original": original.model_dump(), "replacement": new_assignment.model_dump()}
 
 
@@ -431,6 +541,16 @@ async def mark_assignments_viewed(
             transition_status(a.id, "reviewing", ts_field="started_at")
             started.append(a.id)
             _emit_review_notification("review.started", a, project)
+            log_event(
+                "review.status_changed",
+                user_id=current_user.username,
+                entity_id=project_id,
+                entity_type="project",
+                assignment_id=a.id,
+                old_status="invited",
+                new_status="reviewing",
+                trigger="view",
+            )
     return {"started": started}
 
 
@@ -477,6 +597,21 @@ async def sign_assignment_internally(
     result = _update_fields(assignment_id, **update_kwargs)
     _emit_review_notification("review.signed", result, project)
     _check_all_complete(project_id, project)
+    log_event(
+        "review.completed",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        reviewer=assignment.reviewer,
+        outcome="signed",
+    )
+    _emit_webhook("review.completed", {
+        "project_id": project_id,
+        "assignment_id": assignment_id,
+        "reviewer": assignment.reviewer,
+        "outcome": "signed",
+    })
     return result.model_dump()
 
 
@@ -532,5 +667,14 @@ async def delete_project_assignment(
             status_code=409,
             detail="Can only remove assignments in 'invited' status with no feedback submitted",
         )
+    reviewer = assignment.reviewer
     delete_assignment(assignment_id)
+    log_event(
+        "review.assignment_deleted",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        assignment_id=assignment_id,
+        reviewer=reviewer,
+    )
     return Response(status_code=204)

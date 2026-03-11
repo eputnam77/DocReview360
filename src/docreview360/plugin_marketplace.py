@@ -9,6 +9,9 @@ import sys
 import threading
 from typing import Any
 
+from .db_store import get_db
+from .models import BuiltinPluginStateRecord, OrgToolConfig
+
 
 # Real PyPI packages relevant to DocReview360's document review functionality
 PLUGIN_DATA = {
@@ -17,26 +20,44 @@ PLUGIN_DATA = {
         "description": (
             "Advanced grammar and style checking using LanguageTool. "
             "Detects grammar, spelling, and style issues in multiple languages. "
-            "Provides detailed suggestions and explanations for corrections."
+            "Provides detailed suggestions and explanations for corrections. "
+            "Note: most users already have browser-based grammar tools."
         ),
-        "category": "Document Quality",
+        "category": "Community / Optional",
         "version": "2.7.1",
         "author": "LanguageTool",
         "tags": ["grammar", "spelling", "style", "multilingual", "corrections"],
         "pypi_name": "language-tool-python",
+        "is_community": True,
     },
     "pylanguagetool": {
         "name": "PyLanguageTool",
         "description": (
             "Python wrapper for LanguageTool grammar checker. "
             "Offers comprehensive text analysis with support for 40+ languages "
-            "and extensive rule sets for professional writing."
+            "and extensive rule sets for professional writing. "
+            "Note: most users already have browser-based grammar tools."
         ),
-        "category": "Document Quality",
+        "category": "Community / Optional",
         "version": "1.0.0",
         "author": "Adrien Vergé",
         "tags": ["grammar", "language", "text-analysis", "writing"],
         "pypi_name": "pylanguagetool",
+        "is_community": True,
+    },
+    "pyspellchecker": {
+        "name": "PySpellChecker",
+        "description": (
+            "Pure Python spell checking library with no external dependencies. "
+            "Supports multiple languages and provides word frequency-based correction "
+            "suggestions. Note: most users already have browser-based spell checkers."
+        ),
+        "category": "Community / Optional",
+        "version": "0.7.2",
+        "author": "Peter Norvig / barrust",
+        "tags": ["spelling", "spell-check", "grammar", "corrections"],
+        "pypi_name": "pyspellchecker",
+        "is_community": True,
     },
     "textstat": {
         "name": "TextStat",
@@ -192,7 +213,11 @@ def get_plugin_info(name: str) -> dict[str, Any] | None:
 
 
 def list_plugins_with_info() -> list[dict[str, Any]]:
-    """Return detailed information about all available plugins."""
+    """Return detailed information about all available plugins.
+
+    Community / Optional plugins are sorted to the end of the list so that
+    first-party, actively maintained plugins appear first in the marketplace UI.
+    """
     # ``PLUGIN_DATA`` stores the canonical metadata for each plugin. Returning
     # the raw dictionaries leaks internal state to callers who might
     # accidentally mutate the module level constants.  Tests simulate such
@@ -200,10 +225,13 @@ def list_plugins_with_info() -> list[dict[str, Any]]:
     # changed ``PLUGIN_DATA`` itself.  To avoid these side effects we return
     # deep copies so callers can safely manipulate the result without affecting
     # the catalog.
-    return [
+    entries = [
         {"id": plugin_id, **copy.deepcopy(plugin_info)}
         for plugin_id, plugin_info in PLUGIN_DATA.items()
     ]
+    # Stable sort: non-community (is_community=False/absent) first.
+    entries.sort(key=lambda p: (1 if p.get("is_community") else 0))
+    return entries
 
 
 # ---------------------------------------------------------------------------
@@ -216,21 +244,157 @@ _builtin_states: dict[str, bool] = {pid: True for pid in BUILTIN_PLUGIN_IDS}
 _builtin_lock = threading.Lock()
 
 
-def get_builtin_status() -> dict[str, bool]:
-    """Return enabled/disabled state for all built-in plugins."""
+def get_builtin_status(org_id: str | None = None) -> dict[str, bool]:
+    """Return enabled/disabled state for all built-in plugins.
+
+    Reads persisted state from SQLite, falling back to the in-memory cache
+    (which defaults to ``True`` for all plugins) if the DB is unavailable.
+
+    If *org_id* is provided, per-org overrides from ``OrgToolConfig`` are
+    applied on top of the global state.
+    """
     with _builtin_lock:
-        return dict(_builtin_states)
+        try:
+            db = get_db()
+            with db.orm_session() as session:
+                records = session.query(BuiltinPluginStateRecord).all()
+                db_states = {r.plugin_id: r.enabled for r in records}
+            # Merge: DB values override in-memory defaults; unknown IDs keep default True.
+            result: dict[str, bool] = {}
+            for pid in BUILTIN_PLUGIN_IDS:
+                result[pid] = db_states.get(pid, _builtin_states[pid])
+            # Update in-memory cache to stay consistent with DB.
+            _builtin_states.update(result)
+        except Exception:
+            # DB unavailable — fall back to in-memory state.
+            result = dict(_builtin_states)
+
+    if org_id:
+        try:
+            org_cfg = get_org_tool_config(org_id)
+            org_overrides: dict[str, bool] = org_cfg.get("enabled_builtins", {})
+            for pid, state in org_overrides.items():
+                if pid in result:
+                    result[pid] = state
+        except Exception:
+            pass  # Org config unavailable — use global state.
+
+    return result
 
 
 def set_builtin_plugin_state(plugin_id: str, enabled: bool) -> None:
     """Enable or disable a built-in plugin by ID.
+
+    Persists the new state to SQLite and updates the in-memory cache.
+    Falls back to in-memory only if the DB is unavailable.
 
     Raises ``ValueError`` if ``plugin_id`` is not a known built-in.
     """
     if plugin_id not in BUILTIN_PLUGIN_IDS:
         raise ValueError(f"Unknown built-in plugin: {plugin_id!r}")
     with _builtin_lock:
+        try:
+            db = get_db()
+            with db.orm_session() as session:
+                record = session.get(BuiltinPluginStateRecord, plugin_id)
+                if record is None:
+                    record = BuiltinPluginStateRecord(plugin_id=plugin_id, enabled=enabled)
+                    session.add(record)
+                else:
+                    record.enabled = enabled
+        except Exception:
+            pass  # DB unavailable — state only updated in memory below.
         _builtin_states[plugin_id] = enabled
+
+
+# ---------------------------------------------------------------------------
+# Per-org tool configuration
+# ---------------------------------------------------------------------------
+
+
+def get_org_tool_config(org_id: str) -> dict[str, Any]:
+    """Return the tool configuration for *org_id*.
+
+    Returns a dict with keys:
+    - ``org_id``: the org identifier
+    - ``disabled_plugins``: list of marketplace plugin IDs disabled for this org
+    - ``enabled_builtins``: dict of builtin_id -> bool overrides for this org
+
+    If no config row exists yet the function returns an empty (default) config.
+    """
+    try:
+        db = get_db()
+        with db.orm_session() as session:
+            record = session.get(OrgToolConfig, org_id)
+            if record is None:
+                return {
+                    "org_id": org_id,
+                    "disabled_plugins": [],
+                    "enabled_builtins": {},
+                }
+            return {
+                "org_id": org_id,
+                "disabled_plugins": record.disabled_plugins or [],
+                "enabled_builtins": record.enabled_builtins or {},
+            }
+    except Exception:
+        return {
+            "org_id": org_id,
+            "disabled_plugins": [],
+            "enabled_builtins": {},
+        }
+
+
+def set_org_tool_config(
+    org_id: str,
+    *,
+    disabled_plugins: list[str] | None = None,
+    enabled_builtins: dict[str, bool] | None = None,
+) -> dict[str, Any]:
+    """Persist tool configuration overrides for *org_id*.
+
+    Only the keys that are explicitly passed are updated; omitted keys retain
+    their current values.  Returns the full config after the update.
+    """
+    db = get_db()
+    with db.orm_session() as session:
+        record = session.get(OrgToolConfig, org_id)
+        if record is None:
+            record = OrgToolConfig(
+                org_id=org_id,
+                disabled_plugins=[],
+                enabled_builtins={},
+            )
+            session.add(record)
+        if disabled_plugins is not None:
+            # Validate that supplied plugin IDs are known.
+            unknown = [pid for pid in disabled_plugins if pid not in PLUGIN_DATA]
+            if unknown:
+                raise ValueError(f"Unknown plugin IDs: {unknown}")
+            record.disabled_plugins = disabled_plugins
+        if enabled_builtins is not None:
+            unknown_builtins = [
+                bid for bid in enabled_builtins if bid not in BUILTIN_PLUGIN_IDS
+            ]
+            if unknown_builtins:
+                raise ValueError(f"Unknown built-in plugin IDs: {unknown_builtins}")
+            record.enabled_builtins = enabled_builtins
+
+    return {
+        "org_id": org_id,
+        "disabled_plugins": record.disabled_plugins or [],
+        "enabled_builtins": record.enabled_builtins or {},
+    }
+
+
+def get_effective_plugins(org_id: str) -> list[dict[str, Any]]:
+    """Return the marketplace plugin list for *org_id*, with disabled plugins filtered out."""
+    org_cfg = get_org_tool_config(org_id)
+    disabled = set(org_cfg.get("disabled_plugins", []))
+    all_plugins = list_plugins_with_info()
+    for plugin in all_plugins:
+        plugin["disabled_for_org"] = plugin["id"] in disabled
+    return all_plugins
 
 
 def install_plugin(name: str) -> None:
