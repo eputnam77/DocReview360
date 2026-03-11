@@ -1,8 +1,10 @@
 from datetime import timedelta
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
-from docreview360 import auth, workflows
+from docreview360 import auth, db_store, rbac, workflows
 from docreview360.api import app
 
 
@@ -30,9 +32,26 @@ def _custom_template_payload(name: str) -> dict:
     }
 
 
-def test_workflow_template_crud_and_persistence(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(workflows, "WORKFLOW_TEMPLATES_FILE", tmp_path / "workflow_templates.json")
+@pytest.fixture(autouse=True)
+def _isolated_state(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    user_db = tmp_path / "users.db"
+    roles_db = tmp_path / "roles.db"
+    app_db = tmp_path / "docreview360.db"
+
+    monkeypatch.setenv("DOCREVIEW360_USER_DB", str(user_db))
+    monkeypatch.setenv("DOCREVIEW360_RBAC_DB", str(roles_db))
+    auth.configure_user_repository(user_db)
+    rbac.configure_role_repository(roles_db)
+    rbac.reset_role_assignments(include_defaults=False)
+    db_store.reset_db(f"sqlite:///{app_db}")
+    monkeypatch.setattr(workflows, "DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE", True)
     workflows.reset_workflow_templates()
+    yield
+    db_store.reset_db(None)
+    workflows.reset_workflow_templates()
+
+
+def test_workflow_template_crud_and_persistence() -> None:
     client = TestClient(app)
     hdrs = _alice_headers()
 
@@ -42,7 +61,12 @@ def test_workflow_template_crud_and_persistence(tmp_path, monkeypatch) -> None:
     created = res.json()
     assert created["id"] == "Custom Flow"
     assert created["usage"] == 0
-    assert (tmp_path / "workflow_templates.json").exists()
+    with db_store.get_db().session() as conn:
+        row = conn.execute(
+            text("SELECT name FROM workflow_template_records WHERE id = :id"),
+            {"id": "Custom Flow"},
+        ).fetchone()
+    assert row is not None and row[0] == "Custom Flow"
 
     res = client.get("/workflow-templates", headers=hdrs)
     assert res.status_code == 200
@@ -69,9 +93,7 @@ def test_workflow_template_crud_and_persistence(tmp_path, monkeypatch) -> None:
     assert res.status_code == 404
 
 
-def test_custom_template_used_for_project_workflow(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(workflows, "WORKFLOW_TEMPLATES_FILE", tmp_path / "workflow_templates.json")
-    workflows.reset_workflow_templates()
+def test_custom_template_used_for_project_workflow() -> None:
     client = TestClient(app)
     hdrs = _alice_headers()
 

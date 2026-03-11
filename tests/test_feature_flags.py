@@ -1,32 +1,24 @@
 import pytest
 
-from docreview360 import feature_flags
+from docreview360 import db_store, feature_flags
 
 
-class DummyClient:
-    def __init__(self, url: str, app_name: str, custom_headers: dict[str, str]):
-        self.flags: set[str] = set()
-
-    def initialize_client(self) -> None:
-        pass
-
-    def is_enabled(self, name: str, context: dict[str, object] | None = None) -> bool:
-        return name in self.flags
+@pytest.fixture(autouse=True)
+def _isolated_db(tmp_path) -> None:
+    db_store.reset_db(f"sqlite:///{tmp_path / 'docreview360.db'}")
+    yield
+    db_store.reset_db(None)
 
 
-def test_feature_flag_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[int] = []
-    monkeypatch.setattr(feature_flags, "UnleashClient", DummyClient)
-    monkeypatch.setattr(feature_flags, "record_task_completion", lambda x: calls.append(x))
-
-    ff = feature_flags.FeatureFlags("u", "k")
-    ff.client.flags.add("flag1")
-    assert ff.is_enabled("flag1") is True
-    assert ff.is_enabled("flag2") is False
-    assert calls == [139]
+def test_feature_flag_enabled() -> None:
+    db = db_store.get_db()
+    with db.orm_session() as session:
+        feature_flags.set_flag(session, "beta_editor", enabled=True, org_id="org-1")
+        assert feature_flags.is_flag_enabled(session, "beta_editor", org_id="org-1") is True
+        assert feature_flags.is_flag_enabled(session, "beta_editor", org_id="org-2") is False
 
 
-def test_feature_flags_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(feature_flags, "UnleashClient", None)
-    with pytest.raises(RuntimeError):
-        feature_flags.FeatureFlags("u", "k")
+def test_feature_flags_missing() -> None:
+    db = db_store.get_db()
+    with db.orm_session() as session:
+        assert feature_flags.is_flag_enabled(session, "completely_unknown_flag_xyz") is False

@@ -234,7 +234,6 @@ $env:DOCREVIEW360_ENV="dev"
 | `DOCREVIEW360_ARCHIVE_BUCKET` | `archive_store` | Directory for archived artifacts. |
 | `DOCREVIEW360_SAMPLE_DIR` | `samples` | Directory for sample documents. |
 | `DOCREVIEW360_DATA_DIR` | unset | Base directory for data files (used by search). |
-| `DOCREVIEW360_WORKFLOW_TEMPLATES_FILE` | `workflow_templates.json` | Workflow templates JSON. |
 | `DOCREVIEW360_TEMPLATE_STORE_FILE` | `template_store.json` | Template metadata store. |
 | `DOCREVIEW360_TEMPLATES_DIR` | `templates/golden` | Template file directory. |
 | `DOCREVIEW360_SETTINGS_FILE` | `settings.yaml` | Settings file path. |
@@ -798,4 +797,3 @@ pytest -q   # verify baseline passes
 ## License
 
 DocReview360 is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the LICENSE file for full details.
-

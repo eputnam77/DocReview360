@@ -89,6 +89,39 @@ def test_marketplace_install_invalid_plugin(monkeypatch: MonkeyPatch) -> None:
     assert "Unknown plugin" in resp.json()["detail"]
 
 
+def test_marketplace_builtin_status() -> None:
+    client = TestClient(app)
+    resp = client.get("/plugin-marketplace/builtin-status", headers=_alice_headers())
+    assert resp.status_code == 200
+    assert resp.json() == {"fedstylevalidator": True, "scdocbuilder": True}
+
+
+def test_marketplace_toggle_builtin_plugin() -> None:
+    client = TestClient(app)
+    toggle_resp = client.post(
+        "/plugin-marketplace/toggle",
+        json={"pluginId": "fedstylevalidator", "enabled": False},
+        headers=_alice_headers(),
+    )
+    assert toggle_resp.status_code == 200
+    assert toggle_resp.json() == {"pluginId": "fedstylevalidator", "enabled": False}
+
+    status_resp = client.get("/plugin-marketplace/builtin-status", headers=_alice_headers())
+    assert status_resp.status_code == 200
+    assert status_resp.json()["fedstylevalidator"] is False
+
+
+def test_marketplace_toggle_rejects_unknown_builtin() -> None:
+    client = TestClient(app)
+    resp = client.post(
+        "/plugin-marketplace/toggle",
+        json={"pluginId": "unknown-plugin", "enabled": False},
+        headers=_alice_headers(),
+    )
+    assert resp.status_code == 400
+    assert "Unknown built-in plugin" in resp.json()["detail"]
+
+
 def test_marketplace_plugin_info() -> None:
     """Test that plugin information is correctly structured."""
     from docreview360.plugin_marketplace import list_plugins_with_info

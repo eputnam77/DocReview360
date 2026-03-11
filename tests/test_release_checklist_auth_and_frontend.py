@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from jose import jwt
 from sqlalchemy import text
 
 from docreview360 import auth, db_store, jit_provisioning, ldap_auth, oidc_client, rbac, sod
@@ -82,6 +83,43 @@ def test_project_pages_use_shared_react_query_hooks() -> None:
     assert 'authenticatedFetch("/projects")' not in dashboard
     assert "useCreateProject" in new_project
     assert 'authenticatedFetch(`${API}/projects`' not in new_project
+
+
+def test_revoked_tokens_are_persisted_in_auth_db() -> None:
+    repo = auth._get_user_repository()
+    active_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    expired_expiry = datetime.now(timezone.utc) - timedelta(minutes=1)
+
+    repo.revoke_token("active-jti", active_expiry)
+    repo.revoke_token("expired-jti", expired_expiry)
+
+    with repo._connection() as conn:
+        rows = conn.execute("SELECT jti FROM revoked_tokens ORDER BY jti").fetchall()
+    assert [row[0] for row in rows] == ["active-jti"]
+    assert repo.is_token_revoked("active-jti") is True
+    assert repo.is_token_revoked("expired-jti") is False
+
+
+def test_revoked_bearer_token_is_rejected() -> None:
+    _ensure_user("revoked-user")
+    token = auth.create_access_token({"sub": "revoked-user"}, timedelta(minutes=30))
+    payload = jwt.decode(
+        token,
+        auth.SECRET_KEY,
+        algorithms=[auth.ALGORITHM],
+        audience=auth.TOKEN_AUDIENCE,
+        issuer=auth.TOKEN_ISSUER,
+    )
+    auth.revoke_token(
+        payload["jti"],
+        datetime.fromtimestamp(int(payload["exp"]), timezone.utc),
+    )
+
+    client = TestClient(app)
+    response = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Token has been revoked"
 
 
 def test_oidc_authorize_redirects_with_pkce_state(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -229,9 +267,10 @@ def test_expired_sessions_are_not_listed_or_left_active() -> None:
 def test_concurrent_session_limit_revokes_oldest_session(monkeypatch: pytest.MonkeyPatch) -> None:
     revoked: list[str] = []
     now = datetime.now(timezone.utc)
+    current_auth_module = importlib.import_module("docreview360.auth")
 
     monkeypatch.setattr(oidc_client, "SESSION_MAX_CONCURRENT", 1)
-    monkeypatch.setattr(auth, "revoke_token", lambda jti, expires_at: revoked.append(jti))
+    monkeypatch.setattr(current_auth_module, "revoke_token", lambda jti, expires_at: revoked.append(jti))
 
     oidc_client.create_user_session("alice", "first-jti", now + timedelta(hours=1))
     oidc_client.create_user_session("alice", "second-jti", now + timedelta(hours=1))
