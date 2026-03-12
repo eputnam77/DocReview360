@@ -13,6 +13,46 @@ from .db_store import get_db
 from .models import BuiltinPluginStateRecord, OrgToolConfig
 
 
+# ---------------------------------------------------------------------------
+# Core Tool Pack — FSV is the primary integrated tool for DocReview360.
+# These entries appear first in the marketplace with a "Core" badge and are
+# enabled by default for all organisations.
+# ---------------------------------------------------------------------------
+CORE_PLUGIN_DATA: dict[str, Any] = {
+    "fedstylevalidator": {
+        "name": "Federal Style Validator",
+        "description": (
+            "Core tool for DocReview360. Validates federal-style documents for FAA/DoD "
+            "compliance: plain language, acronym definitions, heading structure, "
+            "passive voice, regulatory references (21 CFR, ISO, IEC, EU MDR/IVDR), "
+            "and Flesch–Kincaid readability. Enabled by default for all organisations."
+        ),
+        "category": "Core",
+        "version": "1.0.0",
+        "author": "DocReview360",
+        "tags": ["style", "compliance", "readability", "regulatory", "federal"],
+        "pypi_name": "govdocverify",
+        "is_core": True,
+        "is_builtin": True,
+    },
+    "scdocbuilder": {
+        "name": "Special Conditions Doc Builder",
+        "description": (
+            "Core tool for generating FAA Special Conditions documents. "
+            "Automates the structured formatting requirements for SC notices "
+            "and provides template-based document assembly. "
+            "Enabled by default for all organisations."
+        ),
+        "category": "Core",
+        "version": "1.0.0",
+        "author": "DocReview360",
+        "tags": ["faa", "special-conditions", "templates", "generation"],
+        "pypi_name": None,
+        "is_core": True,
+        "is_builtin": True,
+    },
+}
+
 # Real PyPI packages relevant to DocReview360's document review functionality
 PLUGIN_DATA = {
     "language-tool-python": {
@@ -215,23 +255,23 @@ def get_plugin_info(name: str) -> dict[str, Any] | None:
 def list_plugins_with_info() -> list[dict[str, Any]]:
     """Return detailed information about all available plugins.
 
-    Community / Optional plugins are sorted to the end of the list so that
-    first-party, actively maintained plugins appear first in the marketplace UI.
+    Core tools appear first (is_core=True), then non-community plugins, then
+    Community / Optional plugins last.  This ensures the most important tools
+    are always at the top of the marketplace UI.
     """
-    # ``PLUGIN_DATA`` stores the canonical metadata for each plugin. Returning
-    # the raw dictionaries leaks internal state to callers who might
-    # accidentally mutate the module level constants.  Tests simulate such
-    # modification and previously observed that updating a returned plugin dict
-    # changed ``PLUGIN_DATA`` itself.  To avoid these side effects we return
-    # deep copies so callers can safely manipulate the result without affecting
-    # the catalog.
-    entries = [
+    # Core tools come first, always.
+    core_entries = [
+        {"id": plugin_id, **copy.deepcopy(plugin_info)}
+        for plugin_id, plugin_info in CORE_PLUGIN_DATA.items()
+    ]
+    # Standard + community plugins follow.
+    standard_entries = [
         {"id": plugin_id, **copy.deepcopy(plugin_info)}
         for plugin_id, plugin_info in PLUGIN_DATA.items()
     ]
-    # Stable sort: non-community (is_community=False/absent) first.
-    entries.sort(key=lambda p: (1 if p.get("is_community") else 0))
-    return entries
+    # Stable sort standard entries: non-community first.
+    standard_entries.sort(key=lambda p: (1 if p.get("is_community") else 0))
+    return core_entries + standard_entries
 
 
 # ---------------------------------------------------------------------------

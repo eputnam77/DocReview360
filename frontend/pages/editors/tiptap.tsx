@@ -250,6 +250,7 @@ interface SidebarProps {
   history: any[];
   onRestore: (id: string) => void;
   onCompare: (id: string) => void;
+  validationSummary?: { score?: number; grade?: string; issue_count?: number; source?: string } | null;
 }
 
 function Sidebar(props: SidebarProps) {
@@ -292,6 +293,7 @@ function Sidebar(props: SidebarProps) {
     history,
     onRestore,
     onCompare,
+    validationSummary,
   } = props;
 
   const extensionItems: ExtensionItem[] = [
@@ -478,6 +480,54 @@ function Sidebar(props: SidebarProps) {
           </button>
         </section>
 
+        {/* Validation Summary */}
+        <section>
+          <div className="font-semibold mb-1">Validation Summary</div>
+          {validationSummary ? (
+            <div className="text-sm space-y-1">
+              {validationSummary.score != null && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Quality score:</span>
+                  <span
+                    className={`font-semibold ${
+                      validationSummary.score >= 0.8
+                        ? "text-green-600"
+                        : validationSummary.score >= 0.5
+                        ? "text-amber-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {Math.round(validationSummary.score * 100)}%
+                  </span>
+                </div>
+              )}
+              {validationSummary.grade && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Grade level:</span>
+                  <span className="font-semibold">{validationSummary.grade}</span>
+                </div>
+              )}
+              {validationSummary.issue_count != null && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Issues found:</span>
+                  <span
+                    className={`font-semibold ${
+                      validationSummary.issue_count === 0 ? "text-green-600" : "text-amber-600"
+                    }`}
+                  >
+                    {validationSummary.issue_count}
+                  </span>
+                </div>
+              )}
+              {validationSummary.source && (
+                <div className="text-xs text-gray-400">via {validationSummary.source}</div>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-400">Save the document to run validation.</div>
+          )}
+        </section>
+
         {/* History */}
         <section>
           <div className="font-semibold mb-1">History</div>
@@ -570,6 +620,22 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const initialContentLoaded = useRef(false);
+
+  // On-save validation (Item 34 Phase 3)
+  interface ValidationSummary {
+    score?: number;
+    grade?: string;
+    issue_count?: number;
+    source?: string;
+  }
+  const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null);
+  const autoValidationEnabled = useRef(true); // read from backend once on mount
+  useEffect(() => {
+    authenticatedFetch("/admin/settings/auto-validation")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) autoValidationEnabled.current = d.enabled ?? true; })
+      .catch(() => {}); // best-effort
+  }, []);
 
   // Offline sync — monitors navigator.onLine and syncs pending drafts on reconnect.
   const { isOnline, pendingCount, syncNow } = useOfflineSync();
@@ -732,6 +798,26 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           const resp = await api.fetchRevisions(docId, username);
           if (resp.ok) {
             setHistory(await resp.json());
+          }
+
+          // Item 34 Phase 3: on-save auto-validation (fire-and-forget, non-blocking)
+          if (autoValidationEnabled.current) {
+            authenticatedFetch("/documents/preflight", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: html, document_id: docId }),
+            })
+              .then((r) => r.ok ? r.json() : null)
+              .then((result) => {
+                if (!result) return;
+                setValidationSummary({
+                  score: result.quality_score ?? result.score,
+                  grade: result.plain_language_grade ?? result.grade,
+                  issue_count: (result.issues ?? result.errors ?? []).length,
+                  source: result.source,
+                });
+              })
+              .catch(() => {}); // best-effort — never block save
           }
         } catch (err) {
           const status = await logSaveError(err);
@@ -1496,6 +1582,26 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
             Archived • <a href={pdfUrl} className="underline" target="_blank" rel="noopener noreferrer">download PDF</a>
           </div>
         )}
+        {/* Item 34 Phase 3: on-save validation quality indicator */}
+        {validationSummary && (
+          <div
+            title={`Quality score: ${validationSummary.score != null ? Math.round(validationSummary.score * 100) : "N/A"}% | Grade: ${validationSummary.grade ?? "N/A"} | Issues: ${validationSummary.issue_count ?? 0}`}
+            className={`ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium cursor-default ${
+              (validationSummary.score ?? 0) >= 0.8
+                ? "bg-green-100 text-green-800"
+                : (validationSummary.score ?? 0) >= 0.5
+                ? "bg-amber-100 text-amber-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {validationSummary.score != null
+              ? `${Math.round(validationSummary.score * 100)}%`
+              : validationSummary.issue_count != null
+              ? `${validationSummary.issue_count} issues`
+              : "Validated"}
+          </div>
+        )}
         <AiSuggestButton
           editor={editor}
           aiSuggestEnabled={aiSuggestEnabled}
@@ -1560,6 +1666,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         history={history}
         onRestore={restoreRevision}
         onCompare={compareRevision}
+        validationSummary={validationSummary}
       />
       {diffHtml && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

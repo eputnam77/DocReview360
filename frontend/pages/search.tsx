@@ -12,6 +12,7 @@ import {
   Button,
 } from "@/components";
 import { authenticatedFetch } from "@/lib/api";
+import { useTranslation } from "@/lib/useTranslation";
 
 
 interface Result {
@@ -21,6 +22,7 @@ interface Result {
 }
 
 export default function SearchPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { q } = router.query as { q?: string };
   const [query, setQuery] = useState(q || "");
@@ -47,16 +49,16 @@ export default function SearchPage() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search all content..."
+          placeholder={t("search.placeholder", "Search all content...")}
         />
-        <Button type="submit">Search</Button>
+        <Button type="submit">{t("search.button", "Search")}</Button>
       </form>
       <Table caption="Search results" className="min-w-full text-sm rounded-lg overflow-hidden bg-white">
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Project</TableHead>
-            <TableHead>Preview</TableHead>
+            <TableHead>{t("search.col.id", "ID")}</TableHead>
+            <TableHead>{t("search.col.project", "Project")}</TableHead>
+            <TableHead>{t("search.col.preview", "Preview")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -72,7 +74,7 @@ export default function SearchPage() {
           {results.length === 0 && (
             <TableRow>
               <TableCell colSpan={3} className="text-center py-4 text-gray-400">
-                No results found.
+                {t("search.no_results", "No results found.")}
               </TableCell>
             </TableRow>
           )}

@@ -42,12 +42,21 @@ _FSV_TIMEOUT = float(os.getenv("FSV_PROXY_TIMEOUT", "10"))
 def get_fsv_url() -> str | None:
     """Return the configured FSV base URL, or ``None`` if not set.
 
-    Reads ``FEDERAL_STYLE_VALIDATOR_URL`` directly from the environment so
-    that it works both when a :class:`~docreview360.config.Config` object is
-    available and in lightweight contexts such as tests that set the env var
-    without loading the full config stack.
+    Priority order:
+    1. ``FEDERAL_STYLE_VALIDATOR_URL`` environment variable (highest priority)
+    2. ``fsv_url`` key in ``settings.yaml`` (admin-configured via API)
     """
-    return os.environ.get("FEDERAL_STYLE_VALIDATOR_URL") or None
+    env_url = os.environ.get("FEDERAL_STYLE_VALIDATOR_URL")
+    if env_url:
+        return env_url
+    # Lazy import to avoid circular imports; settings_manager is a thin helper.
+    try:
+        from . import settings_manager  # type: ignore[attr-defined]
+
+        stored: str | None = settings_manager.load_settings().get("fsv_url")
+        return stored or None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def is_fsv_configured() -> bool:

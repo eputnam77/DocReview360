@@ -182,7 +182,7 @@ export default function CheckerPage() {
                 setResult(data.results);
                 if (data.downloadToken) {
                     setDownload(
-                        `${apiUrl}/tools/checker?token=${encodeURIComponent(data.downloadToken)}`,
+                        `/tools/checker?token=${encodeURIComponent(data.downloadToken)}`,
                     );
                 } else if (data.filename) {
                     setDownload(`/downloads/${data.filename}`);
@@ -240,93 +240,57 @@ export default function CheckerPage() {
         };
 
         try {
-            // Run all three API calls in parallel
-            const [preflightRes, regulatoryRes, qualityRes] =
-                await Promise.allSettled([
-                    authenticatedFetch(`/documents/preflight`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text }),
-                    }),
-                    authenticatedFetch(`/ai/regulatory-check`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text }),
-                    }),
-                    authenticatedFetch(`/ml/quality`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text }),
-                    }),
-                ]);
+            // Single unified validation call (Item 48 — replaces three parallel requests)
+            const validateRes = await authenticatedFetch(`/documents/validate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text }),
+            });
 
-            // Parse preflight results (acronyms, headings, style, plain language)
-            if (
-                preflightRes.status === "fulfilled" &&
-                preflightRes.value.ok
-            ) {
-                const pf = await preflightRes.value.json();
-                results.acronyms = (pf.acronyms || pf.undefined_acronyms || []).map(
-                    (a: string | AcronymIssue) =>
-                        typeof a === "string" ? { acronym: a } : a,
-                );
-                results.headings = (pf.headings || pf.heading_issues || []).map(
-                    (h: string | HeadingIssue) =>
-                        typeof h === "string" ? { heading: h, issue: "Issue detected" } : h,
-                );
-                results.styleIssues = (pf.style || pf.style_issues || []).map(
-                    (s: string | StyleIssue) =>
-                        typeof s === "string"
-                            ? { issue: s, suggestion: "" }
-                            : s,
-                );
-                if (pf.plain_language || pf.readability) {
-                    const pl = pf.plain_language || pf.readability;
-                    results.plainLanguage = {
-                        flesch_score: pl.flesch_score ?? pl.flesch ?? 0,
-                        grade_level: pl.grade_level ?? pl.grade ?? 0,
-                        recommendation: pl.recommendation ?? pl.summary ?? "",
-                    };
-                }
-            } else {
-                const reason =
-                    preflightRes.status === "rejected"
-                        ? preflightRes.reason?.message
-                        : `HTTP ${preflightRes.value.status}`;
-                console.warn("Preflight check failed:", reason);
+            if (!validateRes.ok) {
+                throw new Error(`Validation failed: HTTP ${validateRes.status}`);
+            }
+            const unified = await validateRes.json();
+
+            // Parse preflight section
+            const pf = unified.preflight ?? {};
+            results.acronyms = (pf.acronyms || pf.undefined_acronyms || []).map(
+                (a: string | AcronymIssue) =>
+                    typeof a === "string" ? { acronym: a } : a,
+            );
+            results.headings = (pf.headings || pf.heading_issues || []).map(
+                (h: string | HeadingIssue) =>
+                    typeof h === "string" ? { heading: h, issue: "Issue detected" } : h,
+            );
+            results.styleIssues = (pf.style || pf.style_issues || []).map(
+                (s: string | StyleIssue) =>
+                    typeof s === "string" ? { issue: s, suggestion: "" } : s,
+            );
+            if (pf.plain_language || pf.readability) {
+                const pl = pf.plain_language || pf.readability;
+                results.plainLanguage = {
+                    flesch_score: pl.flesch_score ?? pl.flesch ?? 0,
+                    grade_level: pl.grade_level ?? pl.grade ?? 0,
+                    recommendation: pl.recommendation ?? pl.summary ?? "",
+                };
             }
 
-            // Parse regulatory results
-            if (
-                regulatoryRes.status === "fulfilled" &&
-                regulatoryRes.value.ok
-            ) {
-                const reg = await regulatoryRes.value.json();
+            // Parse regulatory section
+            const reg = unified.regulatory ?? {};
+            if (Object.keys(reg).length > 0) {
                 results.regulatory = {
                     citations: reg.citations || reg.results || [],
                     summary: reg.summary,
                 };
-            } else {
-                const reason =
-                    regulatoryRes.status === "rejected"
-                        ? regulatoryRes.reason?.message
-                        : `HTTP ${regulatoryRes.value.status}`;
-                console.warn("Regulatory check failed:", reason);
             }
 
-            // Parse quality results
-            if (qualityRes.status === "fulfilled" && qualityRes.value.ok) {
-                const q = await qualityRes.value.json();
+            // Parse quality section
+            const q = unified.quality ?? {};
+            if (q.score != null || q.quality_score != null) {
                 results.quality = {
                     score: q.score ?? q.quality_score ?? 0,
                     flags: q.flags || q.issues || [],
                 };
-            } else {
-                const reason =
-                    qualityRes.status === "rejected"
-                        ? qualityRes.reason?.message
-                        : `HTTP ${qualityRes.value.status}`;
-                console.warn("Quality check failed:", reason);
             }
 
             setUnifiedResults(results);

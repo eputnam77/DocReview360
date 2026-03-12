@@ -70,5 +70,93 @@
     "in_progress": "In Progress",
     "completed": "Completed",
     "overdue": "Overdue"
+  },
+  "search": {
+    "placeholder": "Search all content...",
+    "button": "Search",
+    "no_results": "No results found.",
+    "col": {
+      "id": "ID",
+      "project": "Project",
+      "preview": "Preview"
+    }
+  },
+  "profile": {
+    "title": "Profile Settings",
+    "intro": "Update your personal details, preferences, and security settings.",
+    "personal": "Personal Information",
+    "appearance": "Appearance",
+    "default_dashboard": "Default Dashboard",
+    "permissions": "System Permissions",
+    "security": "Security",
+    "notifications": "Notifications",
+    "save": "Save Changes",
+    "saved": "Profile saved",
+    "save_failed": "Failed to save profile",
+    "passwords_mismatch": "Passwords do not match",
+    "display_name": "Display Name",
+    "email": "Email",
+    "phone": "Phone",
+    "shorthand": "Shorthand",
+    "job_title": "Job Title",
+    "department": "Department",
+    "timezone": "Time Zone",
+    "picture_url": "Profile Picture URL",
+    "picture_upload": "Or Upload Picture",
+    "theme": "Theme",
+    "theme_system": "System",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "change_password": "Change Password",
+    "password_placeholder": "New password",
+    "password_confirm_placeholder": "Confirm new password",
+    "password_hint": "Leave blank if you do not want to change your password.",
+    "twofa": "Two-Factor Authentication",
+    "twofa_enabled": "Enabled",
+    "twofa_disabled": "Disabled",
+    "notify_email": "Email me about project updates and reviews",
+    "notify_sms": "Text me about urgent updates",
+    "no_dashboard": "No dashboard set",
+    "no_role": "No role assigned",
+    "no_permissions": "No permissions available",
+    "dashboard_hint": "Contact your administrator to change your dashboard access.",
+    "current_dashboard": "Your current default dashboard:",
+    "current_roles": "Your current system role(s):",
+    "effective_permissions": "Effective permissions"
+  },
+  "config": {
+    "title": "Configuration",
+    "intro": "Start with the required items to get your workspace operational. Preferred settings improve consistency and speed, while optional items can be added anytime.",
+    "status": {
+      "required": "Required",
+      "preferred": "Preferred",
+      "optional": "Optional"
+    },
+    "group": {
+      "required": {
+        "title": "Required",
+        "desc": "Suggested order: Permissions > Users > Workflows > Phases > Document Types. You can configure in any order, but this flow gets teams working fastest."
+      },
+      "preferred": {
+        "title": "Preferred",
+        "desc": "Recommended next to standardize content and speed up teams."
+      },
+      "optional": {
+        "title": "Optional",
+        "desc": "Nice to have. Configure now or come back later based on need."
+      }
+    },
+    "items": {
+      "user_management": { "label": "User Management", "desc": "Add, remove, and manage user accounts." },
+      "permissions": { "label": "Permissions", "desc": "Control access and roles for users." },
+      "workflows": { "label": "Workflows", "desc": "Set up and manage workflow templates." },
+      "phases": { "label": "Phases", "desc": "Customize workflow phases for document review." },
+      "document_types": { "label": "Document Types", "desc": "Define and edit document types used in projects." },
+      "templates": { "label": "Templates", "desc": "Maintain reusable content templates." },
+      "branding": { "label": "Branding", "desc": "Customize company logo, product name, and footer links." },
+      "audit_logs": { "label": "Audit Logs", "desc": "Review system activity and history." },
+      "integrations": { "label": "Integrations", "desc": "Connect with other tools and platforms." },
+      "plugin_marketplace": { "label": "Plugin Marketplace", "desc": "Browse and install optional plugins to extend functionality." }
+    }
   }
 }

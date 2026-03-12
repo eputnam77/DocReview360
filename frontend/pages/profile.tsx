@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { authenticatedFetch } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useUserStore } from "@/state/user";
+import { useTranslation } from "@/lib/useTranslation";
 
 // --- Types ---
 interface Profile {
@@ -90,6 +91,7 @@ const EMPTY_PROFILE: Profile = {
 };
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<Profile>({ ...EMPTY_PROFILE });
   const [password, setPassword] = useState("");
   const setTheme = useUserStore((s) => s.setTheme);
@@ -154,7 +156,7 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     if (password && password !== passwordConfirm) {
-      toast.error("Passwords do not match");
+      toast.error(t("profile.passwords_mismatch", "Passwords do not match"));
       return;
     }
     const resp = await authenticatedFetch('/profile', {
@@ -170,12 +172,12 @@ export default function ProfilePage() {
     }).catch(() => null);
 
     if (!resp || !resp.ok) {
-      toast.error("Failed to save profile");
+      toast.error(t("profile.save_failed", "Failed to save profile"));
       return;
     }
 
     setTheme(profile.theme);
-    toast.success("Profile saved");
+    toast.success(t("profile.saved", "Profile saved"));
     setPassword("");
     setPasswordConfirm("");
     setPictureFile(null);
@@ -207,20 +209,20 @@ export default function ProfilePage() {
 
   return (
     <div className="p-8 space-y-8 max-w-3xl">
-      <h1 className="text-2xl font-bold mb-2">Profile Settings</h1>
+      <h1 className="text-2xl font-bold mb-2">{t("profile.title", "Profile Settings")}</h1>
       <p className="text-gray-600 text-sm mb-4">
-        Update your personal details, preferences, and security settings.
+        {t("profile.intro", "Update your personal details, preferences, and security settings.")}
       </p>
 
       <Card>
         <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
+          <CardTitle>{t("profile.personal", "Personal Information")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <Avatar src={profile.picture} alt="Profile picture" size={64} />
             <div className="flex-1">
-              <Label className="block mb-1">Profile Picture URL</Label>
+              <Label className="block mb-1">{t("profile.picture_url", "Profile Picture URL")}</Label>
               <Input
                 placeholder="https://example.com/me.jpg"
                 value={profile.picture}
@@ -229,7 +231,7 @@ export default function ProfilePage() {
               <div className="text-xs text-gray-500 mt-1">
                 Paste a link to your photo or upload an image below.
               </div>
-              <Label className="block mb-1 mt-3">Or Upload Picture</Label>
+              <Label className="block mb-1 mt-3">{t("profile.picture_upload", "Or Upload Picture")}</Label>
               <FileInput accept="image/*" onChange={handlePictureFile} />
               <div className="text-xs text-gray-500 mt-1">
                 JPG, PNG or GIF up to a few MB.
@@ -237,7 +239,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div>
-            <Label>Display Name</Label>
+            <Label>{t("profile.display_name", "Display Name")}</Label>
             <Input
               placeholder="Full Name"
               value={profile.displayName}
@@ -248,7 +250,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div>
-            <Label>Email</Label>
+            <Label>{t("profile.email", "Email")}</Label>
             <Input
               type="email"
               value={profile.email}
@@ -256,14 +258,14 @@ export default function ProfilePage() {
             />
           </div>
           <div>
-            <Label>Phone</Label>
+            <Label>{t("profile.phone", "Phone")}</Label>
             <Input
               value={profile.phone}
               onChange={(e) => updateField("phone", e.target.value)}
             />
           </div>
           <div>
-            <Label>Shorthand</Label>
+            <Label>{t("profile.shorthand", "Shorthand")}</Label>
             <Input
               placeholder="e.g. JD"
               value={profile.shorthand}
@@ -274,7 +276,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div>
-            <Label>Job Title</Label>
+            <Label>{t("profile.job_title", "Job Title")}</Label>
             <Input
               placeholder="e.g. Project Analyst"
               value={profile.jobTitle}
@@ -282,7 +284,7 @@ export default function ProfilePage() {
             />
           </div>
           <div>
-            <Label>Department</Label>
+            <Label>{t("profile.department", "Department")}</Label>
             <Input
               placeholder="e.g. Regulatory Affairs"
               value={profile.department}
@@ -290,7 +292,7 @@ export default function ProfilePage() {
             />
           </div>
           <div>
-            <Label>Time Zone</Label>
+            <Label>{t("profile.timezone", "Time Zone")}</Label>
             <select
               className="w-full border rounded p-2 mt-1"
               value={profile.timeZone}
@@ -307,10 +309,10 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Appearance</CardTitle>
+          <CardTitle>{t("profile.appearance", "Appearance")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Label>Theme</Label>
+          <Label>{t("profile.theme", "Theme")}</Label>
           <select
             className="w-full border rounded p-2 mt-1"
             value={profile.theme}
@@ -320,46 +322,46 @@ export default function ProfilePage() {
               setTheme(nextTheme);
             }}
           >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
+            <option value="system">{t("profile.theme_system", "System")}</option>
+            <option value="light">{t("profile.theme_light", "Light")}</option>
+            <option value="dark">{t("profile.theme_dark", "Dark")}</option>
           </select>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Default Dashboard</CardTitle>
+          <CardTitle>{t("profile.default_dashboard", "Default Dashboard")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-2 text-gray-600 text-sm">
-            Your current default dashboard:
+            {t("profile.current_dashboard", "Your current default dashboard:")}
           </div>
           <div className="bg-gray-50 border rounded px-4 py-2 mb-2 font-semibold">
             {userDashboards.length === 0
-              ? <span className="text-gray-400">No dashboard set</span>
+              ? <span className="text-gray-400">{t("profile.no_dashboard", "No dashboard set")}</span>
               : DASHBOARD_CHOICES.filter(d => userDashboards.includes(d.id))
                   .map(d => d.label).join(", ")
             }
           </div>
           <div className="text-xs text-gray-500 mb-1">
-            Contact your administrator to change your dashboard access.
+            {t("profile.dashboard_hint", "Contact your administrator to change your dashboard access.")}
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>System Permissions</CardTitle>
+          <CardTitle>{t("profile.permissions", "System Permissions")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
             <div className="mb-2 text-gray-600 text-sm">
-              Your current system role(s):
+              {t("profile.current_roles", "Your current system role(s):")}
             </div>
             <div className="bg-gray-50 border rounded px-4 py-2 font-semibold">
               {userRoles.length === 0
-                ? <span className="text-gray-400">No role assigned</span>
+                ? <span className="text-gray-400">{t("profile.no_role", "No role assigned")}</span>
                 : userRoles
                     .map((role) => {
                       const summary = rolePermissionMap.get(role);
@@ -372,12 +374,12 @@ export default function ProfilePage() {
           </div>
           <div>
             <div className="mb-2 text-gray-600 text-sm">
-              Effective permissions ({effectivePermissions.length}):
+              {t("profile.effective_permissions", "Effective permissions")} ({effectivePermissions.length}):
             </div>
             <div className="text-xs text-gray-500">
               {effectivePermissions.length
                 ? <span className="font-mono">{effectivePermissions.join(", ")}</span>
-                : <span className="text-gray-400">No permissions available</span>
+                : <span className="text-gray-400">{t("profile.no_permissions", "No permissions available")}</span>
               }
             </div>
           </div>
@@ -389,34 +391,34 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Security</CardTitle>
+          <CardTitle>{t("profile.security", "Security")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Change Password</Label>
+            <Label>{t("profile.change_password", "Change Password")}</Label>
             <Input
               type="password"
-              placeholder="New password"
+              placeholder={t("profile.password_placeholder", "New password")}
               value={password}
               autoComplete="new-password"
               onChange={e => setPassword(e.target.value)}
             />
             <Input
               type="password"
-              placeholder="Confirm new password"
+              placeholder={t("profile.password_confirm_placeholder", "Confirm new password")}
               value={passwordConfirm}
               autoComplete="new-password"
               onChange={e => setPasswordConfirm(e.target.value)}
               className="mt-2"
             />
             <div className="text-xs text-gray-500 mt-1">
-              Leave blank if you do not want to change your password.
+              {t("profile.password_hint", "Leave blank if you do not want to change your password.")}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Label>Two-Factor Authentication</Label>
+            <Label>{t("profile.twofa", "Two-Factor Authentication")}</Label>
             <span className={profile.twoFA ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
-              {profile.twoFA ? "Enabled" : "Disabled"}
+              {profile.twoFA ? t("profile.twofa_enabled", "Enabled") : t("profile.twofa_disabled", "Disabled")}
             </span>
           </div>
         </CardContent>
@@ -424,7 +426,7 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Notifications</CardTitle>
+          <CardTitle>{t("profile.notifications", "Notifications")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 mb-3">
@@ -436,7 +438,7 @@ export default function ProfilePage() {
               className="mr-2"
             />
             <Label htmlFor="notify-email" className="font-normal">
-              Email me about project updates and reviews
+              {t("profile.notify_email", "Email me about project updates and reviews")}
             </Label>
           </div>
           <div className="flex items-center gap-4">
@@ -448,14 +450,14 @@ export default function ProfilePage() {
               className="mr-2"
             />
             <Label htmlFor="notify-sms" className="font-normal">
-              Text me about urgent updates
+              {t("profile.notify_sms", "Text me about urgent updates")}
             </Label>
           </div>
         </CardContent>
       </Card>
 
       <Button variant="primary" size="lg" onClick={handleSave}>
-        Save Changes
+        {t("profile.save", "Save Changes")}
       </Button>
     </div>
   );

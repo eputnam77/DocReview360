@@ -70,5 +70,93 @@
     "in_progress": "En progreso",
     "completed": "Completado",
     "overdue": "Vencido"
+  },
+  "search": {
+    "placeholder": "Buscar todo el contenido...",
+    "button": "Buscar",
+    "no_results": "No se encontraron resultados.",
+    "col": {
+      "id": "ID",
+      "project": "Proyecto",
+      "preview": "Vista previa"
+    }
+  },
+  "profile": {
+    "title": "Configuraci\u00f3n del perfil",
+    "intro": "Actualice sus datos personales, preferencias y configuraci\u00f3n de seguridad.",
+    "personal": "Informaci\u00f3n personal",
+    "appearance": "Apariencia",
+    "default_dashboard": "Panel predeterminado",
+    "permissions": "Permisos del sistema",
+    "security": "Seguridad",
+    "notifications": "Notificaciones",
+    "save": "Guardar cambios",
+    "saved": "Perfil guardado",
+    "save_failed": "Error al guardar el perfil",
+    "passwords_mismatch": "Las contrase\u00f1as no coinciden",
+    "display_name": "Nombre para mostrar",
+    "email": "Correo electr\u00f3nico",
+    "phone": "Tel\u00e9fono",
+    "shorthand": "Abreviatura",
+    "job_title": "T\u00edtulo del puesto",
+    "department": "Departamento",
+    "timezone": "Zona horaria",
+    "picture_url": "URL de foto de perfil",
+    "picture_upload": "O subir imagen",
+    "theme": "Tema",
+    "theme_system": "Sistema",
+    "theme_light": "Claro",
+    "theme_dark": "Oscuro",
+    "change_password": "Cambiar contrase\u00f1a",
+    "password_placeholder": "Nueva contrase\u00f1a",
+    "password_confirm_placeholder": "Confirmar nueva contrase\u00f1a",
+    "password_hint": "Dejar en blanco si no desea cambiar su contrase\u00f1a.",
+    "twofa": "Autenticaci\u00f3n de dos factores",
+    "twofa_enabled": "Habilitado",
+    "twofa_disabled": "Deshabilitado",
+    "notify_email": "Env\u00edame correos sobre actualizaciones de proyectos",
+    "notify_sms": "Env\u00edame mensajes sobre actualizaciones urgentes",
+    "no_dashboard": "Sin panel establecido",
+    "no_role": "Sin rol asignado",
+    "no_permissions": "Sin permisos disponibles",
+    "dashboard_hint": "Contacte a su administrador para cambiar el acceso al panel.",
+    "current_dashboard": "Su panel predeterminado actual:",
+    "current_roles": "Su(s) rol(es) actual(es):",
+    "effective_permissions": "Permisos efectivos"
+  },
+  "config": {
+    "title": "Configuración",
+    "intro": "Comience con los elementos requeridos para poner en marcha su espacio de trabajo. Los ajustes preferidos mejoran la consistencia y la velocidad, mientras que los opcionales se pueden agregar en cualquier momento.",
+    "status": {
+      "required": "Requerido",
+      "preferred": "Preferido",
+      "optional": "Opcional"
+    },
+    "group": {
+      "required": {
+        "title": "Requerido",
+        "desc": "Orden sugerido: Permisos > Usuarios > Flujos > Fases > Tipos de documento."
+      },
+      "preferred": {
+        "title": "Preferido",
+        "desc": "Recomendado para estandarizar el contenido y acelerar los equipos."
+      },
+      "optional": {
+        "title": "Opcional",
+        "desc": "Útil tener. Configure ahora o regrese más tarde según sea necesario."
+      }
+    },
+    "items": {
+      "user_management": { "label": "Gestión de usuarios", "desc": "Agregar, eliminar y gestionar cuentas de usuario." },
+      "permissions": { "label": "Permisos", "desc": "Controlar el acceso y los roles de los usuarios." },
+      "workflows": { "label": "Flujos de trabajo", "desc": "Configurar y gestionar plantillas de flujo de trabajo." },
+      "phases": { "label": "Fases", "desc": "Personalizar las fases del flujo de trabajo para la revisión de documentos." },
+      "document_types": { "label": "Tipos de documento", "desc": "Definir y editar tipos de documentos usados en proyectos." },
+      "templates": { "label": "Plantillas", "desc": "Mantener plantillas de contenido reutilizables." },
+      "branding": { "label": "Marca", "desc": "Personalizar logotipo, nombre del producto y enlaces del pie de página." },
+      "audit_logs": { "label": "Registros de auditoría", "desc": "Revisar la actividad del sistema e historial." },
+      "integrations": { "label": "Integraciones", "desc": "Conectar con otras herramientas y plataformas." },
+      "plugin_marketplace": { "label": "Mercado de plugins", "desc": "Explorar e instalar plugins opcionales para ampliar funcionalidades." }
+    }
   }
 }

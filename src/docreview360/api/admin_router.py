@@ -1406,3 +1406,119 @@ async def get_terminology_translations(
         raise HTTPException(status_code=404, detail=f"Locale {locale!r} is not supported")
     norm = _normalise(locale)
     return {"locale": norm, "org_id": org_id, "strings": strings}
+
+
+# ---------------------------------------------------------------------------
+# Item 34 Phase 3 — On-save auto-validation setting
+# ---------------------------------------------------------------------------
+
+class _AutoValidationRequest(BaseModel):
+    enabled: bool
+    """Whether to run document preflight validation automatically after each save."""
+
+
+@router.get("/admin/settings/auto-validation")
+async def get_auto_validation_setting(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, bool]:
+    """Return the global on-save auto-validation toggle (admin or authenticated user)."""
+    settings = settings_manager.load_settings()
+    return {"enabled": bool(settings.get("auto_save_validation", True))}
+
+
+@router.put("/admin/settings/auto-validation")
+async def set_auto_validation_setting(
+    body: _AutoValidationRequest,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, bool]:
+    """Enable or disable global on-save auto-validation. Requires admin role."""
+    settings_manager.update_setting("auto_save_validation", body.enabled)
+    return {"enabled": body.enabled}
+
+
+# ---------------------------------------------------------------------------
+# Item 48 — Per-check granularity for FSV rule categories
+# ---------------------------------------------------------------------------
+
+#: Canonical list of FSV check category IDs recognised by DocReview360.
+FSV_CHECK_CATEGORIES: list[str] = [
+    "passive_voice",
+    "acronym_validation",
+    "heading_structure",
+    "readability",
+    "regulatory",
+    "plain_language",
+]
+
+_DEFAULT_FSV_CHECKS: dict[str, bool] = {c: True for c in FSV_CHECK_CATEGORIES}
+
+
+class _FsvChecksRequest(BaseModel):
+    checks: dict[str, bool]
+    """Map of check-category ID → enabled. Unknown keys are ignored."""
+
+
+@router.get("/admin/settings/fsv-checks")
+async def get_fsv_check_settings(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, object]:
+    """Return per-category FSV check enable/disable state and the canonical category list."""
+    settings = settings_manager.load_settings()
+    stored: dict[str, bool] = settings.get("fsv_check_categories", {})
+    checks = {c: stored.get(c, True) for c in FSV_CHECK_CATEGORIES}
+    return {"checks": checks, "categories": FSV_CHECK_CATEGORIES}
+
+
+@router.put("/admin/settings/fsv-checks")
+async def set_fsv_check_settings(
+    body: _FsvChecksRequest,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, object]:
+    """Enable or disable individual FSV check categories. Requires admin role."""
+    settings = settings_manager.load_settings()
+    stored: dict[str, bool] = dict(settings.get("fsv_check_categories", {}))
+    for key, val in body.checks.items():
+        if key in FSV_CHECK_CATEGORIES:
+            stored[key] = bool(val)
+    settings_manager.update_setting("fsv_check_categories", stored)
+    checks = {c: stored.get(c, True) for c in FSV_CHECK_CATEGORIES}
+    return {"checks": checks}
+
+
+# ---------------------------------------------------------------------------
+# Item 34 Phase 2 — FSV URL configuration via settings API
+# ---------------------------------------------------------------------------
+
+
+class _FsvUrlRequest(BaseModel):
+    url: str | None = None
+    """Base URL of the FSV service (e.g. http://localhost:8080). Empty string clears."""
+
+
+@router.get("/admin/settings/fsv-url")
+async def get_fsv_url_setting(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, object]:
+    """Return the currently configured FSV base URL (admin or authenticated user)."""
+    from ..fsv_proxy import get_fsv_url, is_fsv_configured
+
+    return {
+        "url": get_fsv_url(),
+        "configured": is_fsv_configured(),
+        "source": "env" if __import__("os").environ.get("FEDERAL_STYLE_VALIDATOR_URL") else "settings",
+    }
+
+
+@router.put("/admin/settings/fsv-url")
+async def set_fsv_url_setting(
+    body: _FsvUrlRequest,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, object]:
+    """Set or clear the FSV base URL. Requires admin role.
+
+    Setting an empty string or null clears the persisted URL (env var still
+    takes precedence when present).
+    """
+    url = (body.url or "").strip() or None
+    settings_manager.update_setting("fsv_url", url)
+    return {"url": url, "configured": bool(url)}

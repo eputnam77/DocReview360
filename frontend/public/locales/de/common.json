@@ -70,5 +70,84 @@
     "in_progress": "In Bearbeitung",
     "completed": "Abgeschlossen",
     "overdue": "\u00dcberf\u00e4llig"
+  },
+  "search": {
+    "placeholder": "Gesamten Inhalt durchsuchen...",
+    "button": "Suchen",
+    "no_results": "Keine Ergebnisse gefunden.",
+    "col": {
+      "id": "ID",
+      "project": "Projekt",
+      "preview": "Vorschau"
+    }
+  },
+  "profile": {
+    "title": "Profileinstellungen",
+    "intro": "Aktualisieren Sie Ihre pers\u00f6nlichen Daten, Einstellungen und Sicherheitsoptionen.",
+    "personal": "Pers\u00f6nliche Informationen",
+    "appearance": "Erscheinungsbild",
+    "default_dashboard": "Standard-Dashboard",
+    "permissions": "Systemberechtigungen",
+    "security": "Sicherheit",
+    "notifications": "Benachrichtigungen",
+    "save": "\u00c4nderungen speichern",
+    "saved": "Profil gespeichert",
+    "save_failed": "Profil konnte nicht gespeichert werden",
+    "passwords_mismatch": "Passw\u00f6rter stimmen nicht \u00fcberein",
+    "display_name": "Anzeigename",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "shorthand": "K\u00fcrzel",
+    "job_title": "Berufsbezeichnung",
+    "department": "Abteilung",
+    "timezone": "Zeitzone",
+    "picture_url": "Profilbild-URL",
+    "picture_upload": "Oder Bild hochladen",
+    "theme": "Design",
+    "theme_system": "System",
+    "theme_light": "Hell",
+    "theme_dark": "Dunkel",
+    "change_password": "Passwort \u00e4ndern",
+    "password_placeholder": "Neues Passwort",
+    "password_confirm_placeholder": "Neues Passwort best\u00e4tigen",
+    "password_hint": "Leer lassen, wenn Sie Ihr Passwort nicht \u00e4ndern m\u00f6chten.",
+    "twofa": "Zwei-Faktor-Authentifizierung",
+    "twofa_enabled": "Aktiviert",
+    "twofa_disabled": "Deaktiviert",
+    "notify_email": "E-Mails \u00fcber Projektaktualisierungen erhalten",
+    "notify_sms": "SMS bei dringenden Aktualisierungen erhalten",
+    "no_dashboard": "Kein Dashboard eingestellt",
+    "no_role": "Keine Rolle zugewiesen",
+    "no_permissions": "Keine Berechtigungen verf\u00fcgbar",
+    "dashboard_hint": "Wenden Sie sich an Ihren Administrator, um den Dashboard-Zugang zu \u00e4ndern.",
+    "current_dashboard": "Ihr aktuelles Standard-Dashboard:",
+    "current_roles": "Ihre aktuelle(n) Rolle(n):",
+    "effective_permissions": "Effektive Berechtigungen"
+  },
+  "config": {
+    "title": "Konfiguration",
+    "intro": "Beginnen Sie mit den erforderlichen Elementen, um Ihren Arbeitsbereich betriebsbereit zu machen.",
+    "status": {
+      "required": "Erforderlich",
+      "preferred": "Bevorzugt",
+      "optional": "Optional"
+    },
+    "group": {
+      "required": { "title": "Erforderlich", "desc": "Empfohlene Reihenfolge: Berechtigungen > Benutzer > Workflows > Phasen > Dokumenttypen." },
+      "preferred": { "title": "Bevorzugt", "desc": "Empfohlen zur Standardisierung von Inhalten und zur Beschleunigung von Teams." },
+      "optional": { "title": "Optional", "desc": "Sch\u00f6n zu haben. Konfigurieren Sie jetzt oder sp\u00e4ter je nach Bedarf." }
+    },
+    "items": {
+      "user_management": { "label": "Benutzerverwaltung", "desc": "Benutzerkonten hinzuf\u00fcgen, entfernen und verwalten." },
+      "permissions": { "label": "Berechtigungen", "desc": "Zugang und Rollen f\u00fcr Benutzer steuern." },
+      "workflows": { "label": "Workflows", "desc": "Workflow-Vorlagen einrichten und verwalten." },
+      "phases": { "label": "Phasen", "desc": "Workflow-Phasen f\u00fcr die Dokumentenpr\u00fcfung anpassen." },
+      "document_types": { "label": "Dokumenttypen", "desc": "Dokumenttypen definieren und bearbeiten." },
+      "templates": { "label": "Vorlagen", "desc": "Wiederverwendbare Inhaltsvorlagen pflegen." },
+      "branding": { "label": "Markenauftritt", "desc": "Logo, Produktname und Fu\u00dfeilen-Links anpassen." },
+      "audit_logs": { "label": "Pr\u00fcfprotokolle", "desc": "Systemaktivit\u00e4t und Verlauf \u00fcberpr\u00fcfen." },
+      "integrations": { "label": "Integrationen", "desc": "Mit anderen Tools und Plattformen verbinden." },
+      "plugin_marketplace": { "label": "Plugin-Marktplatz", "desc": "Optionale Plugins durchsuchen und installieren." }
+    }
   }
 }

@@ -22,7 +22,7 @@ from ..rbac import has_role, require_role
 from ..ai_assist import rewrite_text, summarize_text
 from ..cache import cache_get, cache_set
 from ..config import CONFIG_FILE, Config
-from ..fsv_proxy import is_fsv_configured, get_fsv_url, fsv_validate, fsv_regulatory_check
+from ..fsv_proxy import is_fsv_configured, get_fsv_url, fsv_validate, fsv_regulatory_check, fsv_quality
 from ..doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -618,6 +618,151 @@ async def document_preflight_endpoint(
             _logger.warning("preflight score persistence failed: %s", _exc)
 
     return result_dict
+
+
+# ---------------------------------------------------------------------------
+# Item 48 — Unified validation endpoint
+# Consolidates /documents/preflight + /ai/regulatory-check + /ml/quality into
+# a single round-trip so the frontend only needs to make one request.
+# ---------------------------------------------------------------------------
+
+
+class _UnifiedValidateRequest(BaseModel):
+    text: str
+    document_id: str | None = None
+    min_reading_ease: float = 0.0
+    require_no_undefined_acronyms: bool = False
+    require_valid_headings: bool = False
+    checks: list[str] = []
+    """Optional subset of checks to run. Empty list = all checks.
+    Supported values: ``preflight``, ``regulatory``, ``quality``.
+    Use this to skip checks that don't apply to a given document type."""
+
+
+@router.post("/documents/validate")
+async def unified_validate_endpoint(
+    body: _UnifiedValidateRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Run all three validation passes in one request and return categorised results.
+
+    Replaces three separate parallel calls to ``/documents/preflight``,
+    ``/ai/regulatory-check``, and ``/ml/quality``.  The response shape is::
+
+        {
+          "preflight": { ...preflight result... },
+          "regulatory": { ...regulatory result... },
+          "quality": { ...quality result... },
+          "source": "fsv" | "internal",
+          "checks_run": ["preflight", "regulatory", "quality"]
+        }
+
+    Pass ``checks`` to run only a subset, e.g. ``["preflight"]`` for document
+    types where regulatory or quality checks don't apply.
+    """
+    import asyncio
+
+    run_all = not body.checks
+    run_preflight = run_all or "preflight" in body.checks
+    run_regulatory = run_all or "regulatory" in body.checks
+    run_quality = run_all or "quality" in body.checks
+
+    checks_run: list[str] = []
+
+    async def _run_preflight() -> dict[str, Any]:
+        if not run_preflight:
+            return {}
+        # Reuse existing logic by calling the same functions
+        if is_fsv_configured():
+            try:
+                result = await fsv_validate(body.text, doc_type=None)
+                result["source"] = "fsv"
+                checks_run.append("preflight")
+                return result
+            except Exception as _exc:
+                _logger.warning("FSV preflight failed in unified: %s", _exc)
+        result = _preflight_validate(
+            body.text,
+            min_reading_ease=body.min_reading_ease,
+            require_no_undefined_acronyms=body.require_no_undefined_acronyms,
+            require_valid_headings=body.require_valid_headings,
+        ).to_dict()
+        result["source"] = "internal"
+        checks_run.append("preflight")
+        if body.document_id:
+            try:
+                from ..documents import update_document_quality_score
+                from ..quality import quality_assessment, QUALITY_FLAG_NAMES
+                from ..doc_validation import score_plain_language
+                qa = quality_assessment(body.text)
+                pl = score_plain_language(body.text)
+                flags = dict(zip(QUALITY_FLAG_NAMES, qa.flags))
+                update_document_quality_score(
+                    body.document_id, score=round(qa.score, 4),
+                    grade=pl.grade_level, flesch=pl.flesch_reading_ease, flags=flags,
+                )
+            except Exception:  # pragma: no cover - best-effort
+                pass
+        return result
+
+    async def _run_regulatory() -> dict[str, Any]:
+        if not run_regulatory:
+            return {}
+        if is_fsv_configured():
+            try:
+                r = await fsv_regulatory_check(body.text)
+                checks_run.append("regulatory")
+                return r
+            except Exception as _exc:
+                _logger.warning("FSV regulatory failed in unified: %s", _exc)
+        from ..regulatory import check_regulatory_citations
+        citation_results = check_regulatory_citations(body.text)
+        checks_run.append("regulatory")
+        return {
+            "citations_found": len(citation_results),
+            "results": [
+                {"citation": r.citation, "valid_format": r.valid_format,
+                 "known": r.known, "issues": r.issues}
+                for r in citation_results
+            ],
+            "has_issues": any(r.issues for r in citation_results),
+        }
+
+    async def _run_quality() -> dict[str, Any]:
+        if not run_quality:
+            return {}
+        if is_fsv_configured():
+            try:
+                r = await fsv_quality(body.text, document_id=body.document_id)
+                checks_run.append("quality")
+                return r
+            except Exception as _exc:
+                _logger.warning("FSV quality failed in unified: %s", _exc)
+        from ..quality import quality_assessment
+        from ..doc_validation import score_plain_language
+        qa = quality_assessment(body.text)
+        pl = score_plain_language(body.text)
+        checks_run.append("quality")
+        return {
+            "score": round(qa.score, 4),
+            "raw_score": round(qa.score, 4),
+            "plain_language_grade": pl.grade_level,
+            "flesch_reading_ease": pl.flesch_reading_ease,
+            "source": "internal",
+        }
+
+    preflight_result, regulatory_result, quality_result = await asyncio.gather(
+        _run_preflight(), _run_regulatory(), _run_quality()
+    )
+
+    overall_source = "fsv" if is_fsv_configured() else "internal"
+    return {
+        "preflight": preflight_result,
+        "regulatory": regulatory_result,
+        "quality": quality_result,
+        "source": overall_source,
+        "checks_run": checks_run,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -116,7 +116,7 @@ function mergePhases(configuredPhases: string[], docTypePhases: string[]): strin
 
 export default function EditProjectPage() {
   const router = useRouter();
-  const { id } = router.query;
+  const id = router.isReady ? (router.query.id as string | undefined) : undefined;
   const username = useUserStore((s) => s.username);
   const isAdmin = useUserStore((s) => s.isAdmin);
   const [loading, setLoading] = useState(false);

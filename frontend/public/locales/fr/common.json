@@ -70,5 +70,84 @@
     "in_progress": "En cours",
     "completed": "Termin\u00e9",
     "overdue": "En retard"
+  },
+  "search": {
+    "placeholder": "Rechercher tout le contenu...",
+    "button": "Rechercher",
+    "no_results": "Aucun r\u00e9sultat trouv\u00e9.",
+    "col": {
+      "id": "ID",
+      "project": "Projet",
+      "preview": "Aper\u00e7u"
+    }
+  },
+  "profile": {
+    "title": "Param\u00e8tres du profil",
+    "intro": "Mettez \u00e0 jour vos informations personnelles, pr\u00e9f\u00e9rences et param\u00e8tres de s\u00e9curit\u00e9.",
+    "personal": "Informations personnelles",
+    "appearance": "Apparence",
+    "default_dashboard": "Tableau de bord par d\u00e9faut",
+    "permissions": "Permissions syst\u00e8me",
+    "security": "S\u00e9curit\u00e9",
+    "notifications": "Notifications",
+    "save": "Enregistrer les modifications",
+    "saved": "Profil enregistr\u00e9",
+    "save_failed": "\u00c9chec de l'enregistrement du profil",
+    "passwords_mismatch": "Les mots de passe ne correspondent pas",
+    "display_name": "Nom d'affichage",
+    "email": "Email",
+    "phone": "T\u00e9l\u00e9phone",
+    "shorthand": "Abréviation",
+    "job_title": "Intitul\u00e9 du poste",
+    "department": "D\u00e9partement",
+    "timezone": "Fuseau horaire",
+    "picture_url": "URL de la photo de profil",
+    "picture_upload": "Ou t\u00e9l\u00e9charger une image",
+    "theme": "Th\u00e8me",
+    "theme_system": "Syst\u00e8me",
+    "theme_light": "Clair",
+    "theme_dark": "Sombre",
+    "change_password": "Changer le mot de passe",
+    "password_placeholder": "Nouveau mot de passe",
+    "password_confirm_placeholder": "Confirmer le nouveau mot de passe",
+    "password_hint": "Laissez vide si vous ne souhaitez pas changer votre mot de passe.",
+    "twofa": "Authentification \u00e0 deux facteurs",
+    "twofa_enabled": "Activ\u00e9",
+    "twofa_disabled": "D\u00e9sactiv\u00e9",
+    "notify_email": "M'envoyer des emails sur les mises \u00e0 jour des projets",
+    "notify_sms": "M'envoyer des SMS pour les mises \u00e0 jour urgentes",
+    "no_dashboard": "Aucun tableau de bord d\u00e9fini",
+    "no_role": "Aucun r\u00f4le attribu\u00e9",
+    "no_permissions": "Aucune permission disponible",
+    "dashboard_hint": "Contactez votre administrateur pour modifier l'acc\u00e8s au tableau de bord.",
+    "current_dashboard": "Votre tableau de bord par d\u00e9faut\u00a0:",
+    "current_roles": "Votre/vos r\u00f4le(s) actuel(s)\u00a0:",
+    "effective_permissions": "Permissions effectives"
+  },
+  "config": {
+    "title": "Configuration",
+    "intro": "Commencez par les \u00e9l\u00e9ments requis pour rendre votre espace de travail op\u00e9rationnel.",
+    "status": {
+      "required": "Requis",
+      "preferred": "Pr\u00e9f\u00e9r\u00e9",
+      "optional": "Optionnel"
+    },
+    "group": {
+      "required": { "title": "Requis", "desc": "Ordre sugg\u00e9r\u00e9\u00a0: Permissions > Utilisateurs > Flux > Phases > Types de document." },
+      "preferred": { "title": "Pr\u00e9f\u00e9r\u00e9", "desc": "Recommand\u00e9 pour standardiser le contenu et acc\u00e9l\u00e9rer les \u00e9quipes." },
+      "optional": { "title": "Optionnel", "desc": "Agr\u00e9able \u00e0 avoir. Configurez maintenant ou plus tard selon les besoins." }
+    },
+    "items": {
+      "user_management": { "label": "Gestion des utilisateurs", "desc": "Ajouter, supprimer et g\u00e9rer les comptes utilisateurs." },
+      "permissions": { "label": "Permissions", "desc": "Contr\u00f4ler l'acc\u00e8s et les r\u00f4les des utilisateurs." },
+      "workflows": { "label": "Flux de travail", "desc": "Configurer et g\u00e9rer les mod\u00e8les de flux de travail." },
+      "phases": { "label": "Phases", "desc": "Personnaliser les phases de flux pour la r\u00e9vision de documents." },
+      "document_types": { "label": "Types de documents", "desc": "D\u00e9finir et \u00e9diter les types de documents." },
+      "templates": { "label": "Mod\u00e8les", "desc": "Maintenir des mod\u00e8les de contenu r\u00e9utilisables." },
+      "branding": { "label": "Marque", "desc": "Personnaliser le logo, le nom du produit et les liens." },
+      "audit_logs": { "label": "Journaux d'audit", "desc": "Examiner l'activit\u00e9 et l'historique du syst\u00e8me." },
+      "integrations": { "label": "Int\u00e9grations", "desc": "Se connecter avec d'autres outils et plateformes." },
+      "plugin_marketplace": { "label": "March\u00e9 de plugins", "desc": "Parcourir et installer des plugins optionnels." }
+    }
   }
 }

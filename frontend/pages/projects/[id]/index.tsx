@@ -310,7 +310,9 @@ function VersionDrawer({
 // ----------------------------------------------------------------------------
 export default function ProjectDetailsPage() {
   const router = useRouter();
-  const { id } = router.query;
+  // Guard against undefined id during Next.js router hydration. On the first
+  // render router.query is empty ({}); wait until router.isReady before using it.
+  const id = router.isReady ? (router.query.id as string | undefined) : undefined;
 
   // ▼ state
   const [project, setProject] = useState<Project | null>(null);
@@ -359,6 +361,9 @@ export default function ProjectDetailsPage() {
   const [naraRetentionPeriod, setNaraRetentionPeriod] = useState("");
   const [naraRecordSeries, setNaraRecordSeries] = useState("");
   const [savingNara, setSavingNara] = useState(false);
+
+  // Reviewer-centric feedback filter (Phase 5) — must be declared here (before any early returns)
+  const [feedbackShowMyOnly, setFeedbackShowMyOnly] = React.useState(false);
 
   // ▼ permission based on logged in user
   const username = useUserStore((s) => s.username);
@@ -643,11 +648,12 @@ export default function ProjectDetailsPage() {
         }
       })
       .catch(() => {}); // best-effort
-  }, [id, username]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, username, refetchAssignments, refetchMyAssignments, refetchSummary]);
 
   // Fetch eligibility for each active assignment
   useEffect(() => {
     if (!id || assignments.length === 0) return;
+    let cancelled = false;
     const active = assignments.filter((a) => !["replaced", "concurred", "signed", "declined"].includes(a.status));
     Promise.all(
       active.map(async (a) => {
@@ -661,13 +667,15 @@ export default function ProjectDetailsPage() {
         return null;
       }),
     ).then((results) => {
+      if (cancelled) return;
       const cache: Record<string, EligibilityResult | undefined> = {};
       for (const r of results) {
         if (r) cache[r[0]] = r[1];
       }
       setEligibilityCache(cache);
     });
-  }, [id, assignments]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { cancelled = true; };
+  }, [id, assignments, setEligibilityCache]);
 
   const reviewerOptions = useMemo(
     () =>
@@ -843,6 +851,18 @@ export default function ProjectDetailsPage() {
       return res.json();
     },
     enabled: !!id,
+    staleTime: 60_000,
+  });
+
+  // Item 34 Phase 4: gate FSV-specific UI on FSV plugin enabled state
+  const { data: fsvEnabled = true } = useQuery<boolean>({
+    queryKey: ["fsv-enabled"],
+    queryFn: async () => {
+      const res = await authenticatedFetch("/plugin-marketplace/builtin-status");
+      if (!res.ok) return true;
+      const status: Record<string, boolean> = await res.json();
+      return status["fedstylevalidator"] !== false;
+    },
     staleTime: 60_000,
   });
 
@@ -1385,8 +1405,6 @@ export default function ProjectDetailsPage() {
   // ------------------------------------------------------------------------
   //                             RENDER
   // ------------------------------------------------------------------------
-  // Reviewer-centric feedback filter (Phase 5)
-  const [feedbackShowMyOnly, setFeedbackShowMyOnly] = React.useState(false);
 
   // Sign-internal handler
   const handleSignInternal = async (assignmentId: string) => {
@@ -1933,8 +1951,8 @@ export default function ProjectDetailsPage() {
             </Card>
           )}
 
-          {/* Document Quality Scores */}
-          {qualityScores && qualityScores.length > 0 && (
+          {/* Document Quality Scores — only shown when FSV is enabled (Item 34 Phase 4) */}
+          {fsvEnabled && qualityScores && qualityScores.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-semibold">
@@ -2134,14 +2152,35 @@ export default function ProjectDetailsPage() {
             </Disclosure>
           )}
 
-          {/* Primary CTA */}
-          <div className="flex justify-center">
+          {/* Primary CTA + quality badge */}
+          <div className="flex flex-col items-center gap-2">
             <Button asChild className="text-lg px-6 py-3 rounded-lg shadow-lg">
               <Link href={editorURL}>
                 <FileEdit className="w-5 h-5 mr-2" />{" "}
                 {project.editor === "word" ? "View" : "Edit"} Document
               </Link>
             </Button>
+            {fsvEnabled && (() => {
+              // Show quality badge for the primary document if scores are loaded
+              const primaryScore = qualityScores?.find(
+                (s) => s.document_id === project.id,
+              );
+              if (!primaryScore) return null;
+              const pct = Math.round(primaryScore.quality_score * 100);
+              const color =
+                pct >= 80 ? "bg-green-100 text-green-800" :
+                pct >= 50 ? "bg-amber-100 text-amber-800" :
+                "bg-red-100 text-red-800";
+              return (
+                <span
+                  title={`Quality score: ${pct}% | Grade: ${primaryScore.plain_language_grade} | Flesch: ${primaryScore.flesch_reading_ease}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium cursor-default ${color}`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  Quality: {pct}% &nbsp;·&nbsp; Grade: {primaryScore.plain_language_grade}
+                </span>
+              );
+            })()}
           </div>
         </section>
 

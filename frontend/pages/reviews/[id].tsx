@@ -43,8 +43,8 @@ const providerLogos: Record<string, string> = {
 
 export default function ReviewDetailPage() {
   const router = useRouter();
-  const { id } = router.query;
-  const { approval, isLoading } = useApprovals({ id: id as string });
+  const id = router.isReady ? (router.query.id as string | undefined) : undefined;
+  const { approval, isLoading } = useApprovals({ id });
 
   if (isLoading)
     return (

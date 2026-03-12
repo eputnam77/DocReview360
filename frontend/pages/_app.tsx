@@ -2,7 +2,7 @@ import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 
 import AppFooter from "@/components/AppFooter";
 import Sidebar from "../components/workflow/Sidebar";
@@ -10,6 +10,58 @@ import ThemeProvider from "../components/ThemeProvider";
 import { useUserStore } from "../state/user";
 import "../styles/globals.css";
 import "../styles/tiptap.css";
+
+// ---------------------------------------------------------------------------
+// Error Boundary — catches render-time exceptions and shows a recovery UI
+// instead of a blank page. Wraps the page subtree so one crashing component
+// never tears down the sidebar or navigation shell.
+// ---------------------------------------------------------------------------
+interface ErrorBoundaryState { error: Error | null }
+
+class PageErrorBoundary extends React.Component<
+  React.PropsWithChildren<{ resetKey?: unknown }>,
+  ErrorBoundaryState
+> {
+  constructor(props: React.PropsWithChildren<{ resetKey?: unknown }>) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidUpdate(prevProps: React.PropsWithChildren<{ resetKey?: unknown }>) {
+    // Auto-reset when route changes (resetKey is the pathname)
+    if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+          <div className="max-w-md space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+              Something went wrong
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {this.state.error.message || "An unexpected error occurred on this page."}
+            </p>
+            <button
+              onClick={() => this.setState({ error: null })}
+              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -124,7 +176,9 @@ export default function App({ Component, pageProps }: AppProps) {
           <main className="flex flex-1 flex-col overflow-y-auto">
             <Toaster position="top-right" />
             <div className="flex-1">
-              <Component {...pageProps} />
+              <PageErrorBoundary resetKey={router.pathname}>
+                <Component {...pageProps} />
+              </PageErrorBoundary>
             </div>
             <AppFooter />
           </main>

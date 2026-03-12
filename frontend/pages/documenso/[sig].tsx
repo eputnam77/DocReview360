@@ -7,9 +7,10 @@ import { useState } from "react";
 
 export default function DocumensoSign() {
   const router = useRouter();
-  const { sig } = router.query as { sig: string };
-  const returnTo = (router.query.return as string) || "/";
+  const sig = router.isReady ? (router.query.sig as string | undefined) : undefined;
+  const returnTo = router.isReady ? ((router.query.return as string) || "/") : "/";
   const safeReturnTo = (() => {
+    if (typeof window === "undefined") return "/";
     try {
       const url = new URL(returnTo, window.location.origin);
       return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/';
@@ -17,7 +18,7 @@ export default function DocumensoSign() {
       return '/';
     }
   })();
-  const approvalId = router.query.approval as string | undefined;
+  const approvalId = router.isReady ? (router.query.approval as string | undefined) : undefined;
   const [signing, setSigning] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);

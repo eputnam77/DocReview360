@@ -108,6 +108,18 @@ For open work, use `RELEASE_CHECKLIST.md`.
 - Compliance work shipped for FIPS and FedRAMP/FISMA documentation, audit-log completeness checks, NARA metadata, legal holds, eDiscovery export, accessibility scanning, internationalization, and configurable branding and terminology overrides.
 - Enterprise integrations and extensibility shipped for SharePoint uploads, Confluence, Google Drive, WebSocket proxy guidance, plugin sandboxing, API versioning guidance, hierarchical configuration, per-organization feature flags, signed lifecycle webhooks, custom workflows, and custom fields.
 
+## Verified on 2026-03-12
+
+- Review lifecycle transitions now emit audit events and lifecycle webhooks across assignment and feedback flows.
+- Review-cycle regression coverage now includes the full create → assign → feedback → answer → concur → sign → close → records-package flow plus reviewer replacement preserving ledger history.
+- Federal Style Validator backend integration now runs behind `FEDERAL_STYLE_VALIDATOR_URL`; preflight, regulatory, and ML-quality endpoints proxy to FSV with internal fallback, and `GET /fsv/status` exposes config and health state.
+- Document quality scoring now persists last score/date/grade plus history, and dashboard KPI cards surface aggregate quality metrics.
+- Microsoft 365 co-authoring via WOPI shipped with lock persistence, WOPI host routes, and discovery XML.
+- Document conversion now covers RTF, ODT, EPUB, LaTeX, and Confluence wiki-markup export.
+- External search configuration now supports SQLite, OpenSearch, or Elasticsearch backends through the stub client, and analytics dashboard/export endpoints shipped.
+- Backend locale-preference endpoints (`GET/PUT /users/me/locale`) shipped.
+- Built-in plugin toggle state now persists in SQLite, per-organization tool configuration shipped, and grammar/spell plugins are classified under `Community / Optional`.
+
 ## Test and quality
 
 - API routes were brought back into coverage measurement.

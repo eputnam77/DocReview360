@@ -11,21 +11,40 @@ interface Options {
   id?: string;
 }
 
-const mapApproval = (approval: any): Approval => ({
+interface RawApproval {
+  id: string;
+  reviewer: string;
+  state: string;
+  due_at?: string | null;
+  signed_at?: string | null;
+  comments?: string | null;
+  signature?: string | null;
+  signature_id?: string | null;
+  description?: string | null;
+  phase_id?: string | null;
+  required?: boolean;
+  signature_provider?: string | null;
+  certificate_url?: string | null;
+}
+
+const mapApproval = (approval: RawApproval): Approval => ({
   id: approval.id,
   reviewer: approval.reviewer,
   email: approval.reviewer,
-  state: approval.state,
-  dueAt: approval.due_at || new Date().toISOString().split("T")[0],
-  signedAt: approval.signed_at,
-  comments: approval.comments || "",
-  documensoSigId: approval.signature || approval.signature_id,
-  description: approval.description,
-  phaseId: approval.phase_id,
+  // Cast API state string to the known union; unknown values fall back to "pending"
+  state: (["pending", "approved", "overdue", "rejected"].includes(approval.state)
+    ? approval.state
+    : "pending") as Approval["state"],
+  dueAt: approval.due_at ?? new Date().toISOString().split("T")[0],
+  signedAt: approval.signed_at ?? undefined,
+  comments: approval.comments ?? "",
+  documensoSigId: (approval.signature ?? approval.signature_id) ?? undefined,
+  description: approval.description ?? undefined,
+  phaseId: approval.phase_id ?? undefined,
   required: approval.required,
-  signature_provider: approval.signature_provider,
-  signature_id: approval.signature_id,
-  certificate_url: approval.certificate_url,
+  signature_provider: approval.signature_provider ?? undefined,
+  signature_id: approval.signature_id ?? undefined,
+  certificate_url: approval.certificate_url ?? undefined,
 });
 
 export function useApprovals({ workflow, phase, id }: Options) {
