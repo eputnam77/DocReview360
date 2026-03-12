@@ -92,6 +92,37 @@ compare accuracy before rolling out the optimized version.
 
 ---
 
+## Quick Start
+
+The fastest path to a running instance on any platform:
+
+**macOS / Linux**
+```bash
+git clone https://github.com/eputnam77/DocReview360.git && cd DocReview360
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,test]"
+DOCREVIEW360_ENV=dev uvicorn docreview360.api:app --reload
+```
+
+**Windows (PowerShell)**
+```powershell
+git clone https://github.com/eputnam77/DocReview360.git; cd DocReview360
+python -m venv .venv; .venv\Scripts\Activate.ps1
+pip install -e ".[dev,test]"
+$env:DOCREVIEW360_ENV="dev"; uvicorn docreview360.api:app --reload
+```
+
+Once the backend is running on `http://localhost:8000`, start the frontend:
+```bash
+cd frontend && npm install --legacy-peer-deps
+echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
+npm run dev   # http://localhost:3000
+```
+
+Log in with `alice` / `password` (admin) or `bob` / `password` (auditor).
+
+---
+
 ## Quick install (recommended)
 
 We use **pipx** for global tool shims, **uv** for ultrafast Python/venv work, and **Poetry1.8** for lockfile sync.
@@ -634,7 +665,7 @@ The system comes with two predefined test users for development and testing:
 1. **Alice** (`alice` / `password`) - Has admin privileges with full access to all features
 2. **Bob** (`bob` / `password`) - Has auditor role with limited access for testing role-based permissions
 
-Head over to the [documentation](https://example.com/docreview360) for a full tour of the API, CLI options and UI navigation tips. The
+See the [`docs/`](docs/) directory for a full tour of the API, CLI options, and UI navigation tips. The
 [architecture overview](docs/adr/0001-core-architecture.md) describes how the backend, frontend and future services fit together.
 
 ## Usage example
@@ -682,8 +713,8 @@ See `docs/deployment.md` for platform-specific notes about environment variables
 If you need to deploy on a remote host, tag the image with your registry name and push it:
 
 ```bash
-docker tag docreview360:latest registry.example.com/docreview360:1.0.0
-docker push registry.example.com/docreview360:1.0.0
+docker tag docreview360:latest <your-registry>/docreview360:1.0.0
+docker push <your-registry>/docreview360:1.0.0
 ```
 
 Update your server or container orchestration tool to pull the new image and your DocReview360 instance will be online.

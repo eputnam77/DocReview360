@@ -27,8 +27,9 @@ interface TranslationsResponse {
   strings: Record<string, string>;
 }
 
-/** Recursively get a nested value from an object using dot-notation key. */
-function _dotGet(obj: Record<string, unknown>, key: string): string | undefined {
+/** Recursively get a nested value from an object using dot-notation key.
+ * @internal exported for testing */
+export function _dotGet(obj: Record<string, unknown>, key: string): string | undefined {
   const parts = key.split(".");
   let current: unknown = obj;
   for (const part of parts) {
@@ -38,8 +39,9 @@ function _dotGet(obj: Record<string, unknown>, key: string): string | undefined 
   return typeof current === "string" ? current : undefined;
 }
 
-/** Build a nested object from flat dot-notation keys for deep lookup. */
-function _buildNested(flat: Record<string, string>): Record<string, unknown> {
+/** Build a nested object from flat dot-notation keys for deep lookup.
+ * @internal exported for testing */
+export function _buildNested(flat: Record<string, string>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(flat)) {
     const parts = key.split(".");

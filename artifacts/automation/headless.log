@@ -1,0 +1,20 @@
+
+========================================
+headless-loop.sh run at 2026-03-12T15:38:21Z
+PID: 3003693  MAX_RUNS: 1
+COMMAND: echo "test run"
+========================================
+  [run 1/1] starting...
+test run
+  [run 1] EXIT 0 — ok
+headless-loop finished: 1 run(s), exit 0
+
+========================================
+headless-loop.sh run at 2026-03-12T15:42:02Z
+PID: 3004892  MAX_RUNS: 1
+COMMAND: echo "test"
+========================================
+  [run 1/1] starting...
+test
+  [run 1] EXIT 0 — ok
+headless-loop finished: 1 run(s), exit 0

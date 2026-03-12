@@ -63,6 +63,11 @@ dash_testuser_widgets_only_xyz:
   - kpi
   - status
   - errors
+fsv_check_categories:
+  heading_structure: true
+  passive_voice: false
+  plain_language: true
+  readability: true
 notifications:
   email_enabled: false
   slack_enabled: true

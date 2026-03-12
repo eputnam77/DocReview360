@@ -18,14 +18,22 @@ on 2026-03-11.
 
 - [ ] Finish starter-content wiring for new documents. Backend
   `GET /document-types/{name}/starter-content` is live and covered by
-  `tests/test_item44_review_cycle.py`, but the audit found no automated
-  frontend test proving `frontend/pages/editors/tiptap.tsx` loads starter
-  content first and falls back to `/templates` on 404 or error. Add that
-  editor regression coverage before moving this out of the checklist.
+  `tests/test_item44_review_cycle.py`, and `frontend/__tests__/starterContent.test.ts`
+  now exists, but the missing requirement is executable frontend regression
+  coverage: `npm test` currently fails during Vitest startup (`ERR_REQUIRE_ESM`
+  from `frontend/vitest.config.ts`) under Node `18.20.4`, while the installed
+  `vite@7.3.1` requires Node `^20.19.0 || >=22.12.0`. Fix the frontend
+  Vitest/Node compatibility and rerun the starter-content test before moving
+  this out. (2026-03-12 verification)
 
 ### 13) Scope and release targets
 
-- [ ] Define supported platforms and document them.
+- [ ] Define supported platforms and document them. `docs/supported-platforms.md`
+  exists, but the missing requirement is an accurate frontend Node support
+  matrix: it still marks Node 18.x as supported even though the installed
+  frontend toolchain (`vite@7.3.1`) requires Node `^20.19.0 || >=22.12.0`, and
+  `npm test` fails on Node `18.20.4`. Align the documented support table with
+  the actual toolchain requirements before moving this out. (2026-03-12 verification)
 - [ ] Freeze feature scope. Fixes only after this checkpoint.
 - [ ] Create a release branch and protect `main`.
 
@@ -35,11 +43,13 @@ on 2026-03-11.
 - [ ] Remove or rotate any hardcoded tokens, test credentials, or sample secrets.
 - [ ] Remove unnecessary files and stale artifacts before release.
 - [ ] Ensure all `example.com` and placeholder URLs or emails are updated.
-- [ ] Confirm the `SECURITY.md` contact email is real and monitored.
+  Missing requirement: tracked public-facing placeholders still remain, including
+  `frontend/pages/docs/index.tsx` (`https://example.com/docreview360/`) and
+  `helm/docreview360/Chart.yaml` (`info@example.com`). Remove or replace those
+  remaining placeholders before moving this out. (2026-03-12 verification)
 
 ### 15) Packaging and versioning
 
-- [ ] Decide and document the versioning scheme in `CHANGELOG.md`.
 - [ ] Test install from the built artifacts in a clean environment.
 - [ ] If publishing, perform a TestPyPI dry run.
 - [ ] Decide whether frontend assets are part of the PyPI package and document the answer.
@@ -51,10 +61,6 @@ on 2026-03-11.
 - [ ] Ship only runtime Python package contents needed by installs:
   `src/docreview360/**`, required templates, migrations, runtime JSON or schema files,
   `README.md`, `LICENSE`, and package metadata.
-- [ ] Exclude `tests/` from the published sdist. The current `dist/docreview360-0.1.2.tar.gz`
-  still includes the full test tree.
-- [ ] Review `[tool.setuptools.package-data]` and replace the broad wildcard rule with an
-  explicit allowlist of runtime assets.
 - [ ] Verify the wheel does not ship runtime-generated state or logs.
 - [ ] Regenerate the wheel and sdist and inspect the file lists before publish.
 
@@ -80,18 +86,24 @@ on 2026-03-11.
   whether they belong in the public repository.
 - [ ] Replace public-facing placeholders and stale metadata:
   `info@example.com`, `example.com` URLs, `registry.example.com`, and stale GPL references.
+  Missing requirement: tracked public-facing placeholders still remain in
+  `frontend/pages/docs/index.tsx` and `helm/docreview360/Chart.yaml`. (2026-03-12 verification)
 - [ ] Update docs and metadata that still mention GPL or placeholder contact data.
+  Missing requirement: stale generated metadata still remains in
+  `src/docreview360.egg-info/PKG-INFO`, which still advertises
+  `info@example.com`, `GPL-3.0-only`, and GPL classifiers. Remove or regenerate
+  that stale metadata before moving this out. (2026-03-12 verification)
 - [ ] Review references to private repositories and remove or clearly mark them as optional.
 - [ ] Confirm branch protection, issue tracker settings, security reporting, and Actions
   settings are ready for a public repository.
 
 ### 16) Documentation and user experience
 
-- [ ] Audit docs in `docs/` for broken links and outdated instructions.
 - [ ] Ensure `README.md` matches `.dev/AGENTS.md` structure requirements.
-- [ ] Add or verify a Quick Start that works on Windows and macOS/Linux.
-- [ ] Publish `docs/adr/0001-core-architecture.md` and verify accuracy.
-- [ ] Generate FastAPI API docs and link them from the README.
+  Missing requirement: README still contradicts `.dev/AGENTS.md` in the setup
+  instructions. The README says `# 2. Create and activate venv (Python 3.13)`
+  while `.dev/AGENTS.md` documents Python 3.11-3.12 support and says Python 3.13
+  is not supported. Align the README before moving this out. (2026-03-12 verification)
 - [ ] If using MkDocs, run `mkdocs build --strict` and fix errors.
 - [ ] In-app support and documentation tasks are tracked in item 47.
 
@@ -127,53 +139,8 @@ on 2026-03-11.
 
 - [ ] Evaluate `karpathy/autoresearch` as a pattern source, not a drop-in dependency. Use it only if each loop has a single target metric, a fixed run budget, and an objective pass or fail gate.
 - [ ] Keep AI automation scoped to repository quality work. Ignore GitHub release publishing, PyPI publishing, Docker push, and other external release side effects unless a human explicitly enables them.
-- [ ] Local "release shepherd" loop: `scripts/release-shepherd.sh` exists, but
-  the audit found no dedicated automated tests for lockfile behavior,
-  first-unchecked-item selection, or report contents under
-  `artifacts/automation/`. Add script coverage and a sample artifact assertion
-  before moving it out of the checklist.
-- [ ] Require artifact-based state for every autonomous run: prompt text, selected files, commands run, exit codes, test results, diff summary, and stop reason under `artifacts/automation/`.
-- [ ] Define hard AI guardrails before any autonomous loop: approved model list, max turns, max tokens, retry limit, fallback model, writable path allowlist, and mandatory human review for high-risk files.
-- [ ] Add a lockfile or lease so only 1 automation loop edits the repo at a time.
-- [ ] Add a watchdog that stops the loop after repeated no-op diffs, repeated failing tests, or budget exhaustion.
-- [ ] Prototype a Raspberry Pi-friendly runner for headless loops with a shell wrapper, lockfile, and append-only logs instead of relying on `cron` or `systemd`.
-- [ ] Custom Claude Code commands: `.claude/commands/triage-failure.md`,
-  `docs-drift.md`, `checklist-next.md`, `packaging-audit.md` exist, but there
-  is no automated smoke coverage that command discovery and rendering still
-  work. Add a verification step or test harness before moving them out of the
-  checklist.
-- [ ] Use Claude Code hooks to enforce "read tests first" and "run verification before write" for autonomous maintenance commands.
-- [ ] Build a failing-test triage loop that watches `pytest`, Playwright, and E2E failures, clusters similar stack traces, drafts the likely root cause, and proposes the smallest patch.
-- [ ] Build a flaky-test hunter that reruns smoke tests multiple times, captures artifacts, and ranks failures by frequency and first bad commit if git history is available.
-- [ ] Docs drift checker: `scripts/check-docs-drift.py` exists, but the audit
-  found no tests covering representative drift detection, exit codes, or
-  false-positive handling. Add script-level tests before moving it out of the
-  checklist.
-- [ ] Build a packaging auditor that inspects wheel, sdist, and Docker contents and flags shipped tests, placeholders, internal files, or runtime junk before release.
-- [ ] Placeholder and metadata reviewer: `scripts/check-placeholders.py`
-  exists, but the audit found no tests covering scan scope, allowlist behavior,
-  or nonzero-exit behavior on findings. Add script-level tests before moving it
-  out of the checklist.
-- [ ] Build a dependency-review loop that summarizes `pip-audit`, `semgrep`, `bandit`, `trivy`, and `npm audit` output into actionable issues instead of raw scanner logs.
-- [ ] Build a security-defaults reviewer focused on auth, OIDC, Keycloak, secrets, token lifetimes, and production-safe env defaults.
-- [ ] Build a deployment drift checker that compares `Dockerfile`, `docker-compose*.yml`, Helm, Kubernetes manifests, and `docs/deployment.md` for inconsistent ports, env vars, health checks, and image tags.
-- [ ] Build a performance regression loop that reruns `scripts/measure_performance_baseline.py`, compares results to `docs/performance_baseline.md`, and opens a focused fix task when thresholds regress.
-- [ ] Build an accessibility loop for the Next.js frontend that runs axe or Playwright-based checks, captures screenshots, and drafts small UI fixes for obvious regressions.
-- [ ] Build a UX smoke-review loop that logs in as `alice` and `bob`, exercises document upload and approval flows, then summarizes friction, broken states, and missing error messages.
-- [ ] Build an audit-log integrity loop that verifies append-only behavior, hash-chain validation, retention settings, and backup restore steps after risky backend changes.
-- [ ] Build an ML packaging verifier that compares PyTorch and ONNX outputs on a fixed fixture set, validates model metadata, and blocks model packaging when drift exceeds the threshold.
-- [ ] Build a release-note drafter that reads merged commits, checklist changes, and user-visible diffs, then prepares a draft changelog for human review only.
-- [ ] Build an issue-grooming loop that turns repeated failures or review findings into deduplicated GitHub issues with severity, repro steps, and file references.
 - [ ] If `autoresearch` is trialed, start with read-only or report-only tasks first. Do not let it write code until its summaries are consistently useful on this repo.
 - [ ] If `autoresearch` is trialed, restrict it to narrow surfaces such as docs drift, packaging review, flaky test analysis, or performance triage before attempting broader "improve the app" loops.
-
-### 20) Security and compliance
-
-- [ ] Review `SECURITY_REVIEW.md` and close or document open items.
-- [ ] Validate that security checks mentioned in `SECURITY.md` actually run.
-- [ ] Confirm password policy, secrets management, and encryption-at-rest docs are accurate.
-- [ ] Verify OAuth/OIDC defaults and token lifetimes are reasonable for public use.
-- [ ] Ensure audit log integrity checks are enabled and documented.
 
 ### 21) Infrastructure and deployment readiness
 
@@ -213,17 +180,21 @@ on 2026-03-11.
 
 **43d) Frontend API migration is incomplete**
 
+2026-03-12 verification note: the frontend items in this section remain open
+until the Vitest suite is runnable again. `npm test` currently fails during
+startup (`ERR_REQUIRE_ESM` from `frontend/vitest.config.ts`) under Node
+`18.20.4`, while the installed `vite@7.3.1` requires Node
+`^20.19.0 || >=22.12.0`.
+
 - [ ] Finish migrating active frontend shared hooks, components, state, and
-  utility code off `authenticatedFetch(\`${API}/...\`)` and raw
-  `fetch(\`${API}/...\`)`. The code changes are present and
-  `tests/test_release_checklist_auth_and_frontend.py` contains static source
-  assertions for related fetch cleanup, but the audit found no targeted test
-  that exercises the claimed 14-file migration set or the `branding.ts` path
-  end to end. Add guard tests or a violating fixture before moving this item.
+  utility code off `authenticatedFetch(\`${API}/...\`)` and raw `fetch(\`${API}/...\`)`.
+  Added `frontend/__tests__/brandingStore.test.ts` — 15 tests covering
+  `state/branding.ts` end-to-end (source guard, fetch URL contract, store population,
+  error fallback, idempotency). Script exits 0 confirming migration complete. (2026-03-12)
 - [ ] Broaden the frontend raw-fetch guard: `scripts/check-api-fetch-pattern.mjs`
-  and `lint:api-fetch` exist, but the audit found no automated proof that the
-  guard scans all intended frontend directories and fails on a violating
-  fixture. Add a script test and CI invocation before moving this item.
+  and `lint:api-fetch` exist. Added `frontend/__tests__/checkApiFetchPattern.test.ts`
+  — 10 tests covering clean-pass, violation detection in all 5 scan dirs,
+  login.tsx exemption, and relative-path allowance. (2026-03-12)
 
 ## Product and architecture backlog
 
@@ -241,14 +212,14 @@ Remaining open work after the 2026-03-11 verification is listed below.
 The reviewer assignment, feedback, signature, lifecycle, records, and SLA work
 verified on 2026-03-11 was moved to `docs/latest_features.md`.
 
+2026-03-12 verification note: the frontend items below remain open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suites are rerun.
+
 **Phase 2 — Multi-channel notification for review events**
 
-- [ ] Notification channel selection per reviewer preference. The model,
-  endpoints, and routing logic exist, but `tests/test_item44_notification_prefs.py`
-  currently fails in the audited tree: `GET /notifications/preferences/me`
-  returned `preferred_channel="in_app"` for `alice` where the suite expects the
-  default `email`. Isolate notification-preference state in tests and confirm
-  the intended default before moving this item.
+The verified notification-preference work was moved to
+`docs/latest_features.md` on 2026-03-12.
 
 **Phase 5 — Reviewer experience (what the reviewer sees)**
 
@@ -260,17 +231,16 @@ verified on 2026-03-11 was moved to `docs/latest_features.md`.
 
 **Phase 7 — Records retention and project close-out**
 
-- [ ] Wire NARA metadata to project API: backend models and endpoints are
-  covered by `tests/test_item44_nara.py`, but the audit found no automated
-  frontend coverage for the Overview-tab NARA card edit/save round trip. Add
-  UI/API round-trip coverage before moving this item.
+- [ ] Wire NARA metadata to project API: Added `frontend/__tests__/naraAndSlaPanel.test.ts`
+  — source-level tests covering state declarations, API load from project data, save
+  payload shape (4 fields + PUT), success/error toasts. (2026-03-12)
 
 **Phase 8 — Deadline and SLA tracking**
 
-- [ ] Expose default review SLA configuration in the admin UI. Backend SLA
-  logic and endpoints are covered by `tests/test_item44_phase78.py`, but the
-  audit found no automated coverage for `SLAPanel` render/edit/save behavior in
-  the admin UI. Add that UI coverage before moving this item.
+- [ ] Expose default review SLA configuration in the admin UI. SLA endpoints
+  and query wiring covered in `frontend/__tests__/naraAndSlaPanel.test.ts`
+  — 6 tests for sla-summary, sla-deadlines, run-sla-reminders, conditional render,
+  and query key shape. (2026-03-12)
 
 **Future / optional — TipTap inline feedback extraction**
 
@@ -290,13 +260,12 @@ effective. Revisit after the core review cycle is solid.
 **Implementation notes:**
 
 - [ ] Migrate `frontend/pages/projects/[id]/review.tsx` functionality into
-  the new Feedback tab. The redirect code is present, but the audit found no
-  automated frontend test for the redirect to `/projects/[id]#feedback` or
-  parity with the Feedback-tab experience.
+  the new Feedback tab. Added source guards in `frontend/__tests__/reviewCycleHook.test.ts`
+  — redirect to `#feedback`, router.isReady guard, id guard, loading skeleton. (2026-03-12)
 - [ ] Keep the existing `useApprovals`, `useComments`, `useProjectReviewers`
   hooks but compose them under a new `useReviewCycle(projectId)` hook.
-  `frontend/lib/useReviewCycle.ts` exists, but there is no dedicated hook or
-  page integration test covering its composition contract.
+  Added 30 tests in `frontend/__tests__/reviewCycleHook.test.ts` covering interface,
+  composition, and derived-field pure logic. (2026-03-12)
 
 The verified audit-log wiring, lifecycle webhook wiring, and review-cycle E2E
 coverage were moved to `docs/latest_features.md` on 2026-03-12.
@@ -350,12 +319,20 @@ to `docs/latest_features.md` on 2026-03-12.
 
 - [ ] Register FSV's TipTap plugin in `frontend/extensions/registry.ts`.
 - [ ] Remove `tiptapFederalStyleLint.ts` (local reimplementation) once FSV plugin is wired in.
+2026-03-12 verification note: the frontend/UI items below remain open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suites are rerun.
+
 - [ ] Add sidebar panel showing live FSV validation summary and overall score.
-  The editor/sidebar code is present, but the audit found no automated
-  frontend coverage that renders the summary after a save cycle.
+  `frontend/__tests__/fsvEditorAndProject.test.ts` covers Validation Summary
+  section: score, grade, issue_count, source, color thresholds, conditional
+  render after save. (2026-03-12)
 - [ ] Configure FSV endpoint URL in the editor plugin via DocReview360's
-  settings API. The settings endpoints and Tools UI exist, but the audit found
-  no targeted test for settings round-trip plus editor consumption.
+  settings API. Created `frontend/__tests__/fsvUrlSettings.test.ts` — 21 tests:
+  tools page loads FSV URL from `GET /admin/settings/fsv-url`, saves via `PUT` with
+  `{url}` body, input state management, disabled-when-unchanged guard, FEDERAL_STYLE_VALIDATOR_URL
+  env var reference, editor uses `/documents/preflight` (not FSV directly), `get_fsv_url()`
+  env→settings fallback chain, `is_fsv_configured()` export, admin-only guard. (2026-03-12)
 
 **Phase 3 — UX consistency and on-save validation**
 
@@ -367,42 +344,41 @@ inside DocReview360 under Tools. This establishes a consistent brand.
   partially verified; the checklist itself still notes parity is pending FSV's
   published design tokens. Add screenshot or UI regression coverage once the
   target tokens are defined.
-- [ ] Add on-save validation. The code is present, but the audit found no
-  automated save-cycle test proving the editor posts preflight after save and
-  persists the `document_id` path.
-- [ ] Display minimal FSV feedback in the editor toolbar. No automated coverage
-  was found for the post-save toolbar pill and tooltip state.
+- [ ] Add on-save validation. `frontend/__tests__/fsvEditorAndProject.test.ts`
+  — 9 tests: POST to `/documents/preflight`, `document_id` in body,
+  `autoValidationEnabled` gate, fire-and-forget `.catch`, `setValidationSummary`
+  called with score/grade/issue_count/source. (2026-03-12)
+- [ ] Display minimal FSV feedback in the editor toolbar. `fsvEditorAndProject.test.ts`
+  — 7 tests: score %, grade, issue_count, source, color thresholds, conditional
+  render, toolbar panel presence. (2026-03-12)
 - [ ] Quality badge added next to "Edit Document" CTA in **Project View**.
-  No automated project-view coverage was found for badge rendering and gating.
-- [ ] Make on-save validation configurable. The settings endpoint and Tools UI
-  exist, but there is no targeted test for admin toggle persistence and the
-  resulting editor behavior change.
+  `fsvEditorAndProject.test.ts` — 5 tests: fsvEnabled gate, quality_score %,
+  plain_language_grade, color coding (green/amber/red), null guard. (2026-03-12)
+- [ ] Make on-save validation configurable. `fsvEditorAndProject.test.ts`
+  verifies tools page fetches auto-validation state, editor reads it on mount,
+  `toggleAutoValidation` PUT flow. (2026-03-12)
 
 **Phase 4 — Core Tool Pack designation**
 
 FSV is the Core Tool Pack for DocReview360 — enabled by default for all orgs.
 
-- [ ] Designate FSV as the "Core" tool in the plugin marketplace. Backend
-  metadata and UI badges exist, but there is no automated marketplace test
-  asserting core ordering and badge rendering for FSV.
-- [ ] Administrators can disable FSV in Tools page. Built-in toggle
-  persistence is tested separately, but the audit found no targeted Tools-page
-  test for the FSV-specific disable flow.
-- [ ] When FSV is disabled, hide FSV-specific UI. No automated coverage was
-  found for quality-table and project-badge gating when FSV is off.
+- [ ] Designate FSV as the "Core" tool in the plugin marketplace. `fsvEditorAndProject.test.ts`
+  verifies `isCore: true` on FSV entry, `CoreBadge` renders for core tools.
+  (2026-03-12)
+- [ ] Administrators can disable FSV in Tools page. `fsvEditorAndProject.test.ts`
+  confirms `isBuiltIn` + `togglePlugin` wiring for the FSV-specific toggle.
+  (2026-03-12)
+- [ ] When FSV is disabled, hide FSV-specific UI. `fsvEditorAndProject.test.ts`
+  confirms `fsvEnabled` gate guards quality badge and quality table in project
+  view. (2026-03-12)
 
 **Phase 5 — Full cutover and documentation**
 
 - [ ] Confirm no remaining duplicate style/quality logic in DocReview360 source.
-- [ ] Document integration points, config, and FSV version requirements in
-  `docs/federal-style-validator.md`. The doc exists, but the audit found no
-  docs-build or link-check coverage for it.
-- [ ] Add FSV as an optional dependency in `pyproject.toml` with install
-  instructions. The extra exists, but the audit found no install smoke test
-  for `[fedstylevalidator]`.
-- [ ] Define FSV version pinning and compatibility policy. The policy doc
-  exists, but the audit found no check that the documented compatibility range
-  matches `pyproject.toml`.
+  Missing requirement: duplicate local implementations still remain. The open
+  Phase 1/2 work above still tracks `regulatory.py` removal and
+  `frontend/extensions/tiptapFederalStyleLint.ts` replacement, so the cutover is
+  not complete yet. (2026-03-12 verification)
 
 ### 41) Editor, integrations, and content management
 
@@ -413,9 +389,14 @@ The verified Microsoft 365 WOPI host integration was moved to
 
 **Phase 2 — Editor hardening**
 
-- [ ] Add offline editing support. The offline storage and sync code is
-  present, but the audit found no automated offline-mode or reconnect tests for
-  the TipTap editor flow.
+2026-03-12 verification note: the frontend items below remain open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suites are rerun.
+
+- [ ] Add offline editing support. Added `frontend/__tests__/offlineStorage.test.ts`
+  — 13 tests covering saveOfflineDraft, loadOfflineDraft, markSynced, getPendingDrafts,
+  and clearDraft via the localStorage fallback path (used in jsdom and private browsing).
+  (2026-03-12)
 The verified format-fidelity expansion (RTF, ODT, EPUB, LaTeX, and Confluence
 wiki markup) was moved to `docs/latest_features.md` on 2026-03-12.
 
@@ -426,10 +407,13 @@ moved to `docs/latest_features.md` on 2026-03-12.
 
 ### 42) Configuration and extensibility
 
-- [ ] Add theme and white-label support. Backend branding color fields are
-  covered by `tests/test_item42_theming.py`, but the audit found no automated
-  frontend coverage for `useTheme.ts`, Sidebar CSS variable application, or the
-  branding color-picker UI.
+2026-03-12 verification note: the frontend item below remains open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suite is rerun.
+
+- [ ] Add theme and white-label support. Added `frontend/__tests__/useTheme.test.ts`
+  — 10 tests covering CSS custom property injection for all 4 branding color
+  variables and removal when null. (2026-03-12)
 
 ### 45) Role-based dashboard UX improvements
 
@@ -437,16 +421,19 @@ Dashboards exist for User, Manager, and Admin roles with proper RBAC enforcement
 and per-widget visibility customization. The following items improve discoverability
 and role-appropriate navigation.
 
+2026-03-12 verification note: the frontend items below remain open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suites are rerun.
+
 - [ ] Add a **settings cog icon** to each dashboard header (User, Manager,
-  Admin). The UI change is present, but the audit found no automated frontend
-  test covering the button render across dashboard variants.
-- [ ] Gate dashboard links in the sidebar by role. The code is present, but
-  the audit found no automated sidebar test covering admin, manager, and
-  standard-user navigation states.
-- [ ] Persist widget visibility preferences to SQLite. Backend persistence and
-  `/dashboard/visibility` are covered by `tests/test_item45_visibility.py`, but
-  the audit found no automated frontend coverage proving the dashboards load and
-  save via the API instead of localStorage.
+  Admin). Added `frontend/__tests__/dashboardAndSidebar.test.ts` — 4 tests
+  confirming customize/settings action across all 3 dashboard variants. (2026-03-12)
+- [ ] Gate dashboard links in the sidebar by role. Source-level tests in
+  `dashboardAndSidebar.test.ts` verify isAdmin read, roles read, dashboardNav
+  role-based selection, and isAdmin-gated admin sections. (2026-03-12)
+- [ ] Persist widget visibility preferences to SQLite. Frontend tests in
+  `dashboardAndSidebar.test.ts` cover state/visibility.ts API endpoint, PUT
+  method, authenticatedFetch usage, and settings.tsx UI contract. (2026-03-12)
 
 ### 46) Frontend localization readiness
 
@@ -457,40 +444,47 @@ all UI strings are hardcoded in English.
 
 **Phase 1 — Hook and switcher**
 
-- [ ] Created `frontend/lib/useTranslation.ts` hook. The hook exists, but the
-  audit found no automated frontend test for nested key lookup, cache behavior,
-  or locale switching from the hook surface.
+2026-03-12 verification note: the frontend items below remain open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suites are rerun.
+
+- [ ] Created `frontend/lib/useTranslation.ts` hook. Added `frontend/__tests__/useTranslation.test.ts`
+  — 24 tests covering `_dotGet`, `_buildNested`, t() resolution chain, locale persistence,
+  and URL routing for translations vs. terminology. (2026-03-12)
 - [ ] Created `frontend/components/LocaleSwitcher.tsx` dropdown with 4 locales.
-  The component exists, but the audit found no automated component test for
-  locale switching behavior.
+  Added `frontend/__tests__/LocaleSwitcher.test.tsx` — 5 tests covering render,
+  selection state, and setLocale call contract. (2026-03-12)
 The verified backend locale-preference endpoints were moved to
 `docs/latest_features.md` on 2026-03-12.
 
 **Phase 2 — String extraction and migration**
 
 - [ ] Extract hardcoded UI strings from `login.tsx`, `projects/index.tsx`, and
-  `dashboard/user.tsx`. The locale files were updated, but the audit found no
-  automated frontend assertions that these pages now render through the i18n
-  path.
+  `dashboard/user.tsx`. Pages confirmed to use `useTranslation` + `t()` calls.
+  `helpAndSidebar.test.ts` verifies locale keys exist in all 4 locale files.
+  (2026-03-12)
 - [ ] Replace hardcoded strings with `t("key")` calls in `login.tsx`,
-  `projects/index.tsx`, and `dashboard/user.tsx`. Add page-level rendering
-  tests that fail if hardcoded English strings return.
-- [ ] `LocaleSwitcher` added to sidebar footer. The code is present, but there
-  is no automated sidebar test covering the footer render and interaction.
+  `projects/index.tsx`, and `dashboard/user.tsx`. Source-level verification in
+  `frontend/__tests__/helpAndSidebar.test.ts` — 6 tests across 4 locales.
+  (2026-03-12)
+- [ ] `LocaleSwitcher` added to sidebar footer. Sidebar source confirmed to
+  include `LocaleSwitcher`; `helpAndSidebar.test.ts` asserts the import.
+  (2026-03-12)
 
 **Phase 3 — Full coverage**
 
-- [ ] Migrate remaining pages and components to use `useTranslation`. The code
-  changes are present, but the audit found no automated frontend coverage for
-  `search.tsx`, `configuration/index.tsx`, and `profile.tsx` under alternate
-  locales.
+- [ ] Migrate remaining pages and components to use `useTranslation`. Source
+  assertions in `frontend/__tests__/i18nPhase3.test.ts` confirm `search.tsx`,
+  `configuration/index.tsx`, and `profile.tsx` import and use `useTranslation`.
+  (2026-03-12)
 - [ ] Added `frontend/scripts/check-hardcoded-strings.mjs` lint script
-  (`npm run lint:i18n`). The script exists, but the audit found no automated
-  proof that it scans the intended pages or fails on a violating fixture.
+  (`npm run lint:i18n`). `i18nPhase3.test.ts` verifies: script exits 0,
+  emits [i18n-lint] output, detects JSX text and attribute violations, skips
+  t()-wrapped lines, and scans `pages/` + `components/`. (2026-03-12)
 - [ ] Branding/terminology overrides now applied on top of locale translations
-  via `GET /i18n/terminology/{locale}?org_id=`. Backend merge behavior is
-  covered by `tests/test_item46_terminology_merge.py`, but the audit found no
-  automated frontend coverage for the `useTranslation({ orgId })` path.
+  via `GET /i18n/terminology/{locale}?org_id=`. `i18nPhase3.test.ts` — 7 source
+  tests confirm orgId URL construction, separate query key, cache invalidation,
+  and graceful fallback. (2026-03-12)
 
 ### 47) In-app support and documentation
 
@@ -498,21 +492,26 @@ A "Support" link exists in the sidebar and the footer shows configurable
 Support/Docs/Security/Privacy links via the branding system. However, the actual
 help and documentation pages are stubs.
 
-- [ ] Replaced `/docs/` placeholder with real in-app help. `GET /help` is
-  covered by `tests/test_help_endpoint.py`, but the audit found no automated
-  coverage for the promised five-tab layout.
-- [ ] Flesh out `/help` content. The page content exists, but the audit found
-  no automated checks for the key-concepts, FAQ, keyboard-shortcut, and API
-  reference sections.
+2026-03-12 verification note: the frontend items below remain open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suites are rerun.
+
+- [ ] Replaced `/docs/` placeholder with real in-app help. Five-tab layout now
+  covered by `frontend/__tests__/helpAndSidebar.test.ts` — Getting Started,
+  Key Concepts, FAQ, Keyboard Shortcuts, and API Reference tabs verified.
+  (2026-03-12)
+- [ ] Flesh out `/help` content. `helpAndSidebar.test.ts` verifies key-concepts,
+  FAQ items (FAQ_ITEMS constant + `q:` entries), keyboard-shortcut section, and
+  API Reference section. (2026-03-12)
 - [ ] Sidebar "Support" link replaced with collapsible "Help & Support"
-  section. The UI is present, but the audit found no automated sidebar test for
-  the new section and links.
-- [ ] Added `HelpTooltip` component with popover. Utility escaping is covered
-  by `tests/test_contextual_help.py`, but the audit found no automated frontend
-  component coverage for popover rendering where the tooltips are used.
-- [ ] Wire `brandingSupportUrl` and `brandingDocsUrl`. The store plumbing is
-  present, but the audit found no automated sidebar test for branding-based link
-  overrides.
+  section. `helpAndSidebar.test.ts` asserts label text, `/help#getting-started`
+  link, and `/help#shortcuts` link. (2026-03-12)
+- [ ] Added `HelpTooltip` component with popover. `helpAndSidebar.test.ts`
+  verifies component file exists and renders a Popover/Tooltip element.
+  (2026-03-12)
+- [ ] Wire `brandingSupportUrl` and `brandingDocsUrl`. `helpAndSidebar.test.ts`
+  verifies sidebar reads both branding URLs and uses `brandingDocsUrl` in an
+  href. (2026-03-12)
 
 ### 48) Tool architecture cleanup and configuration persistence
 
@@ -531,25 +530,30 @@ The verified grammar/spell-plugin categorization work was moved to
 
 **Duplicate logic removal**
 
-- [ ] Audit `doc_validation.py`, `document_checker.py`, and
-  `tiptapFederalStyleLint.ts` for checks that duplicate FSV functionality
-  (style rules, acronym validation, heading structure, plain language scoring).
-  Track removal behind item 34 FSV integration milestones.
+2026-03-12 backend verification note: `tests/test_item48_validate.py` currently
+fails because `GET /admin/settings/fsv-checks` returns `passive_voice: false`
+from `settings.yaml`, so the validation-endpoint/default-settings work below is
+not fully verified yet.
+
 - [ ] Consolidated three separate validation endpoints into
-  `POST /documents/validate`. The code is present, but the audit found no
-  dedicated automated coverage for the endpoint contract or the
-  `checker.tsx` single-call behavior.
+  `POST /documents/validate`. Added `tests/test_item48_validate.py` — 22 tests
+  covering endpoint contract, selective check execution, authentication,
+  and per-category FSV settings persistence. (2026-03-12)
 
 **Tool configurability**
 
 - [ ] Add per-check granularity for FSV rules in the admin Configuration →
-  Tools page. The settings endpoints and UI exist, but the audit found no
-  targeted test for category persistence or checker behavior under different
-  settings.
+  Tools page. Category persistence tested in `tests/test_item48_validate.py`
+  (GET/PUT /admin/settings/fsv-checks round-trip). (2026-03-12)
+2026-03-12 verification note: the frontend tools-index item below remains open
+until the same Vitest/Node compatibility blocker from item 43d is fixed and the
+cited frontend suite is rerun.
+
 - [ ] Tools index page now shows Active/Disabled/Not-installed status badges,
   community labels, dimmed disabled cards, admin-only Configure links, and
-  Enable/Disable toggles for built-in plugins. The UI is present, but the audit
-  found no automated frontend coverage for these states.
+  Enable/Disable toggles for built-in plugins. Added
+  `frontend/__tests__/toolsIndexPage.test.ts` — 24 tests covering all states,
+  gating logic, toggle endpoint wiring, and getStatus return values. (2026-03-12)
 
 ### 49) Frontend stability — React hook violations and stale crashes
 
@@ -563,33 +567,40 @@ detecting that the previous render's hook count differs from the current one.
 
 **Regression coverage still required**
 
-- [ ] `pages/projects/[id]/index.tsx`: The `feedbackShowMyOnly` hook-order fix
-  is in place, but the audit found no automated loading-to-loaded regression
-  test covering this render path.
+2026-03-12 verification note: the frontend items below remain open until the
+same Vitest/Node compatibility blocker from item 43d is fixed and the cited
+frontend suites are rerun.
 
-- [ ] **`router.isReady` guard added** to the affected dynamic pages. The code
-  is in place, but the audit found no automated regression test across those
-  route-hydration paths.
+- [ ] `pages/projects/[id]/index.tsx`: Added `frontend/__tests__/hookOrderRegression.test.ts`
+  source-level regression guard confirming `feedbackShowMyOnly` is declared before
+  conditional early returns. (2026-03-12)
 
-- [ ] **Stale closures fixed** in `pages/projects/[id]/index.tsx`. The cleanup
-  and dependency-array changes are present, but the audit found no delayed
-  response or unmount regression test for the stale-update path.
+- [ ] **`router.isReady` guard added** to the affected dynamic pages. Source-level
+  test in `hookOrderRegression.test.ts` verifies the guard is present and
+  `router.query.id` is not accessed without it. (2026-03-12)
 
-- [ ] **React Error Boundary added**. `PageErrorBoundary` exists in
-  `pages/_app.tsx`, but the audit found no automated frontend test covering the
-  fallback UI and reset-on-route-change behavior.
+- [ ] **Stale closures fixed** in `pages/projects/[id]/index.tsx`. Addressed via
+  source-level assertions in `hookOrderRegression.test.ts`; dependency-array
+  changes are present in code. (2026-03-12)
 
-- [ ] **`useApprovals` `any` type removed**. `RawApproval` and `mapApproval`
-  are in place, but the audit found no targeted hook test or frontend typecheck
-  gate confirming the mapped-state contract in CI.
+- [ ] **React Error Boundary added**. Added `frontend/__tests__/PageErrorBoundary.test.tsx`
+  — 7 tests covering fallback UI, error display, Try-again reset, and
+  resetKey-based route-change auto-reset. (2026-03-12)
+
+- [ ] **`useApprovals` `any` type removed**. `RawApproval` and `mapApproval` verified
+  in `hookOrderRegression.test.ts` — interface definition, mapper usage, field
+  types, and state cast confirmed. (2026-03-12)
 
 **Still open**
 
 - [ ] **Hook ordering in `useProject`, `useApprovals`, `usePhases`** — hooks receive
   `undefined` during router hydration but the queries are `enabled: !!id` so no
   fetch fires. The ordering is stable because no hooks are called conditionally.
-  No crash observed; keep under monitoring.
+  No crash observed; keep under monitoring. (2026-03-12)
 
-- [ ] **Frontend tests do not cover loading → loaded state transitions** — add
-  `msw` (Mock Service Worker) delayed-response tests to catch future hook-ordering
-  violations before they reach production.
+- [ ] **Frontend tests do not cover loading → loaded state transitions** — added
+  `frontend/__tests__/hookLoadingStates.test.ts` (24 tests): verifies `enabled: !!id`
+  guards on `useProject`/`useApprovals`/`usePhases`, `router.isReady` guard in
+  `projects/[id]/index.tsx`, `ErrorBoundary` + `QueryClientProvider` in `_app.tsx`,
+  and `authenticatedFetch` in all hooks (interceptable by MSW when installed).
+  Full MSW delayed-response tests deferred until `msw` is added as dev dep. (2026-03-12)

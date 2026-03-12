@@ -1,0 +1,28 @@
+# MANIFEST.in — controls what goes into the source distribution (sdist)
+# ---------------------------------------------------------------------------
+# Include essential release artifacts
+include README.md
+include LICENSE
+include pyproject.toml
+
+# Include runtime source tree
+recursive-include src/docreview360 *.py *.yaml *.yml *.json *.html *.sql *.txt *.md *.tf
+
+# Explicitly exclude things that must NOT ship in sdist
+prune tests
+prune .dev
+prune frontend
+prune scripts
+prune docs
+prune artifacts
+prune .claude
+prune .git
+
+# Exclude individual junk files
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude *.log
+global-exclude *.lock
+global-exclude .env
+global-exclude .env.*
+global-exclude node_modules

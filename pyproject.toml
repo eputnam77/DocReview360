@@ -79,7 +79,7 @@ Changelog     = "https://github.com/eputnam77/DocReview360/blob/main/CHANGELOG.m
 
 [[project.authors]]
 name  = "Eric Putnam"
-email = "info@example.com"
+email = "eputnam77@users.noreply.github.com"
 
 [project.scripts]
 docreview360 = "docreview360.cli:cli"
@@ -210,9 +210,10 @@ exclude = ["tests*", ".dev*"]
 "docreview360.styles"        = ["*.md"]
 "docreview360.templates"     = ["*.html"]
 "docreview360.iac_templates" = ["*.tf"]
-"docreview360"              = ["py.typed"]
-"docreview360.migrations"   = ["*.sql"]
-"*"                          = ["*.txt", "*.md", "*.yaml", "*.yml", "*.json"]
+"docreview360"               = ["py.typed", "*.yaml", "*.yml", "*.json"]
+"docreview360.migrations"    = ["*.sql"]
+"docreview360.ml"            = ["*.json", "*.onnx"]
+"docreview360.ml.assets"     = ["*.onnx", "*.pt", "*.pkl"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]

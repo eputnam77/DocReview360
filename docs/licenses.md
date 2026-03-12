@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-DocReview360 is licensed under [GPL-3.0-only](../LICENSE).
+DocReview360 is licensed under the [MIT License](../LICENSE).
 
 This file documents the licenses of third-party dependencies bundled with or
 required by DocReview360. It is informational, not legally authoritative. Review
@@ -38,7 +38,6 @@ each package's official license for the full terms.
 | psycopg | LGPL-3.0 | PostgreSQL adapter |
 | pymysql | MIT | MySQL adapter |
 | python-dotenv | BSD-3-Clause | `.env` file loading |
-| filelock | Unlicense | Cross-platform file locking |
 | textstat | MIT | Readability scoring |
 | textblob | MIT | NLP utilities |
 | wikipedia | MIT | Wikipedia API client |
@@ -101,17 +100,23 @@ each package's official license for the full terms.
 ## Data and Asset Licenses
 
 - Sample documents in `samples/` are provided for demonstration only and carry
-  no additional license restrictions beyond the project's GPL-3.0.
+  no additional license restrictions beyond the project's MIT license.
 - Golden template files in `templates/golden/` are original works licensed
-  under GPL-3.0.
+  under the MIT License.
 
 ---
 
 ## License Compatibility
 
-DocReview360 uses GPL-3.0-only. LGPL-licensed dependencies (psycopg, semgrep)
-are used as independent libraries and are compatible with GPL distribution.
-MPL-2.0 (hypothesis) is compatible with GPL when distributed unmodified.
+DocReview360 uses the MIT License. All core runtime dependencies are MIT,
+BSD-compatible, or Apache-2.0, which are all compatible with MIT distribution.
 
-If you embed DocReview360 in a proprietary product, review GPL-3.0 obligations
-before distribution.
+Notable optional/dev-only exceptions:
+- **psycopg** (LGPL-3.0) — optional extra (`[postgres]`); not required for MIT-clean installs.
+- **semgrep** (LGPL-2.1) — dev/security tooling only; not a runtime dependency.
+- **hypothesis** (MPL-2.0) — test tooling only; not a runtime dependency.
+- **govdocverify / FedStyleValidator** (GPL-3.0, optional `[fedstylevalidator]` extra) — same
+  author; not installed by default; evaluate license terms when enabling this extra.
+
+The MIT License allows embedding DocReview360 in proprietary products without
+copyleft obligations, provided the MIT license notice is retained.

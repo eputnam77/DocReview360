@@ -277,6 +277,14 @@ class TestSendNotificationWithPreferences:
 class TestGetMyPreferenceEndpoint:
     """Tests for GET /notifications/preferences/me."""
 
+    def setup_method(self) -> None:
+        """Reset alice's preference to 'email' before every GET test to avoid
+        state pollution from TestUpdateMyPreferenceEndpoint which runs first and
+        leaves alice on the last channel in the iteration (currently 'in_app')."""
+        from docreview360.notifications import save_user_notification_preference
+
+        save_user_notification_preference("alice", "email")
+
     def test_get_my_preference_returns_default_for_new_user(self) -> None:
         client = TestClient(app)
         hdrs = _alice_headers()

@@ -119,6 +119,17 @@ For open work, use `RELEASE_CHECKLIST.md`.
 - External search configuration now supports SQLite, OpenSearch, or Elasticsearch backends through the stub client, and analytics dashboard/export endpoints shipped.
 - Backend locale-preference endpoints (`GET/PUT /users/me/locale`) shipped.
 - Built-in plugin toggle state now persists in SQLite, per-organization tool configuration shipped, and grammar/spell plugins are classified under `Community / Optional`.
+- `SECURITY.md` now routes vulnerability reports through GitHub private advisories instead of a placeholder email address.
+- `CHANGELOG.md` now explicitly follows Keep a Changelog and Semantic Versioning.
+- Source distribution packaging now uses `MANIFEST.in` pruning plus explicit setuptools runtime-asset allowlists in `pyproject.toml`.
+- Release docs now include `scripts/check-docs-links.py`, `scripts/check-docs-drift.py`, a cross-platform Quick Start in `README.md`, the current `docs/adr/0001-core-architecture.md`, and the FastAPI `/docs` entry point linked from the README.
+- Local release automation now includes `scripts/release-shepherd.sh`, artifact-stamped automation reports, `.claude/settings.json` guardrails, `.claude/commands/*`, and the Raspberry Pi-friendly `scripts/headless-loop.sh`.
+- Automated triage and release-report loops now cover failing-test clustering, flaky-test ranking, issue grooming, and release-note drafting.
+- Automated release audits now cover packaging contents, placeholder scans, dependency/security review, deployment drift, performance regression, accessibility, UX smoke review, audit-log integrity, and ML packaging verification.
+- Security review coverage now validates `SECURITY_REVIEW.md`, `SECURITY.md` scan references, password/secrets/encryption docs, OIDC/JWT defaults, and audit-log chain verification.
+- Reviewer notification preferences now support per-reviewer channel selection with passing regression coverage.
+- Federal Style Validator release docs now include `docs/federal-style-validator.md`, the optional `fedstylevalidator` dependency extra, and documented compatibility and pinning guidance.
+- The remaining local FSV duplicate-check surfaces are now explicitly audited in `doc_validation.py`, `document_checker.py`, and `tiptapFederalStyleLint.ts` pending the final plugin cutover.
 
 ## Test and quality
 

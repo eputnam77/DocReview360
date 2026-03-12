@@ -25,6 +25,7 @@ import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
 import SlashCommand from "../../extensions/tiptapSlashCommand";
 import sanitizeHtml from "../../utils/sanitize";
+import { resolveStarterContent } from "@/lib/starterContent";
 import { API, authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 
@@ -1139,57 +1140,19 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     const applyStarterContent = async () => {
       defaultTemplateApplied.current = true; // prevent double-fire while async
 
-      try {
-        const res = await api.fetchStarterContent(projectDocType);
-        if (res.ok) {
-          const data = await res.json();
-          const starterHtml = data?.content;
-          if (starterHtml && typeof starterHtml === "string" && starterHtml.trim().length > 0) {
-            const sanitized = sanitizeHtml(starterHtml);
-            if (sanitized && sanitized.trim().length > 0) {
-              editor.commands.setContent(sanitized);
-              setContent(sanitized);
-              setActiveTemplateLabel(projectDocType);
-              return; // done — no fallback needed
-            }
-          }
-        }
-        // 404 or empty content: fall through to template fallback
-      } catch {
-        // network error: fall through to template fallback
-      }
+      const result = await resolveStarterContent(
+        projectDocType,
+        (dt) => api.fetchStarterContent(dt),
+        sanitizeHtml,
+        templates,
+      );
 
-      // Fallback: look for a matching entry in /templates
-      if (!templates.length) return;
-      const docTypeKey = projectDocType.trim().toLowerCase();
-      const normalize = (value: unknown) =>
-        typeof value === "string" ? value.trim().toLowerCase() : "";
-      const findTemplate = (predicate: (t: any) => boolean) =>
-        templates.find((t) => {
-          try {
-            return predicate(t);
-          } catch {
-            return false;
-          }
-        });
-
-      const defaultTemplate =
-        findTemplate((t) => {
-          const docType = normalize(t.docType || t.doc_type || t.type);
-          const isDefault =
-            t.default === true ||
-            t.isDefault === true ||
-            t.defaultTemplate === true ||
-            t.default_template === true;
-          return !!(docType && docType === docTypeKey && isDefault);
-        }) ||
-        findTemplate((t) => {
-          const docType = normalize(t.docType || t.doc_type || t.type);
-          return !!(docType && docType === docTypeKey);
-        });
-
-      if (defaultTemplate) {
-        handleTemplateLoad(defaultTemplate.id || defaultTemplate.name);
+      if (result.source === "starter") {
+        editor.commands.setContent(result.html);
+        setContent(result.html);
+        setActiveTemplateLabel(projectDocType);
+      } else if (result.source === "template") {
+        handleTemplateLoad(result.templateId);
       }
     };
 

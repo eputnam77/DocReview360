@@ -91,6 +91,24 @@ describe("createTiptapApi", () => {
       "http://example.com/templates/template-1",
     );
   });
+
+  it("fetches starter content using the document-types route without API prefix", async () => {
+    const api = createTiptapApi();
+    await api.fetchStarterContent("Standard Operating Procedure");
+
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+      "/document-types/Standard%20Operating%20Procedure/starter-content",
+    );
+  });
+
+  it("URL-encodes special characters in the doc-type for starter-content", async () => {
+    const api = createTiptapApi();
+    await api.fetchStarterContent("21 CFR / ISO");
+
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+      "/document-types/21%20CFR%20%2F%20ISO/starter-content",
+    );
+  });
 });
 
 describe("createWordTemplateApi", () => {
