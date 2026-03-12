@@ -1,4 +1,4 @@
-# DocReview360 Release Checklist (Open Items Only)
+﻿# DocReview360 Release Checklist (Open Items Only)
 
 This file tracks unfinished work only.
 
@@ -604,3 +604,308 @@ frontend suites are rerun.
   `projects/[id]/index.tsx`, `ErrorBoundary` + `QueryClientProvider` in `_app.tsx`,
   and `authenticatedFetch` in all hooks (interceptable by MSW when installed).
   Full MSW delayed-response tests deferred until `msw` is added as dev dep. (2026-03-12)
+
+---
+
+ADDED BY USER
+
+- [] I logged in as Alice, created a project and assigned Bob to review. I logged off as Alice and logged in as Bob. I see the assigned project in Project view, but not Dashboard.
+- [] Separately, I logged in as Bob, went to Dashboard view and got this.
+
+1/2
+
+Next.js 16.1.5 (stale)
+Turbopack
+Runtime TypeError
+
+
+
+Failed to fetch
+lib/api.ts (66:18) @ authenticatedFetch
+
+
+  64 |
+  65 |   try {
+> 66 |     return await fetch(fullUrl, {
+     |                  ^
+  67 |       ...options,
+  68 |       headers,
+  69 |       credentials: "include",
+Call Stack
+27
+
+Show 25 ignore-listed frame(s)
+authenticatedFetch
+lib/api.ts (66:18)
+UserDashboardPage.useQuery
+pages/dashboard/user.tsx (103:41)
+
+- [] I logged in, went to a project, clicked Edit Document. Although the entire webpage contains TipTap, the authoring window itself (authoring area) is only a small portion of the page. If the TipTap environment fills the page, the authoring window should be roughly the same size.
+- [] In TipTap editor, I typed a few lines, clicked unordered (bulleted) and ordered (numbered) and while the lines indented, none showed the bullets or numbers.
+- [] In TipTap editor, I wasn't sure what Enable Indentation was, so I clicked it and got this:
+
+1/2
+
+Next.js 16.1.5 (stale)
+Turbopack
+Runtime TypeError
+
+
+
+editor.can(...).chain(...).focus(...).indent is not a function
+pages/editors/tiptap.tsx (1454:52) @ TipTapEditorPage
+
+
+  1452 |           formattingLocked ||
+  1453 |             !indentationEnabled ||
+> 1454 |             !(editor.can().chain() as any).focus().indent().run(),
+       |                                                    ^
+  1455 |         )}
+  1456 |         {toolbarButton(
+  1457 |           <IndentDecrease className="w-4 h-4" />,
+Call Stack
+15
+
+Show 14 ignore-listed frame(s)
+TipTapEditorPage
+pages/editors/tiptap.tsx (1454:52)
+
+- [] In TipTap editor, I added a heading 1, clicked Enable Heading Lock and nothing happened. I was still able to edit the heading.
+- [] In TipTap editor, I tried to open a template and got this.
+
+1/1
+
+Next.js 16.1.5 (stale)
+Turbopack
+Runtime Error
+
+
+
+{"detail":"Not Found"}
+pages/editors/tiptap.tsx (1101:26) @ TipTapEditorPage.useCallback[handleTemplateLoad]
+
+
+  1099 |     try {
+  1100 |       const res = await api.fetchTemplate(filename);
+> 1101 |       if (!res.ok) throw new Error(await res.text());
+       |                          ^
+  1102 |       const data = await res.json();
+  1103 |       const sanitized = sanitizeHtml(data.content || "");
+  1104 |       if (!sanitized || sanitized.trim().length === 0) {
+Call Stack
+1
+
+TipTapEditorPage.useCallback[handleTemplateLoad]
+pages/editors/tiptap.tsx (1101:26)
+
+- [] In TipTap editor, I tried to open API template and got this.
+
+Failed to load template: doc_type::API Manual / API Reference
+
+Error: {"detail":"Not Found"}
+
+- [] In TipTap Editor, I tried to open Briefing/Slide Deck template and got this.
+
+Failed to load template: doc_type::Briefing / Slide Deck
+
+Error: {"detail":"Not Found"}
+
+- [] In Help & Support, I clicked the About button > GitHub Repository, and got an error. This is the correct URL: https://github.com/eputnam77/DocReview360
+
+- [] This is from the audit log. There are many 404 errors.
+
+INFO:     127.0.0.1:58996 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58996 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54701 - "GET /projects/demo-bob/review-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58996 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54701 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54701 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54161 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55342 - "GET /projects/demo-bob/feedback HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50427 - "GET /projects/demo-bob HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/reviewers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59793 - "GET /projects/demo-bob/reviews?phase=draft HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50672 - "GET /projects/demo-bob/assignments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54859 - "GET /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59793 - "GET /projects/demo-bob/assignments/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/review-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55342 - "GET /projects/demo-bob/feedback/progress HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50672 - "GET /projects/demo-bob/lifecycle HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50427 - "GET /projects/demo-bob/notification-log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54859 - "GET /projects/demo-bob/sla-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50672 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50672 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59793 - "POST /projects/demo-bob/assignments/view HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/sla-deadlines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55342 - "POST /projects/demo-bob/assignments/view HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50427 - "GET /projects/demo-bob/documents/scores HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54859 - "GET /plugin-marketplace/builtin-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55342 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54859 - "GET /environments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50427 - "GET /i18n/translations/en HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:59793 - "GET /plugin-marketplace/builtin-status HTTP/1.1" 403 Forbidden        
+INFO:     127.0.0.1:55342 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /users HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:54859 - "GET /environments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50672 - "GET /projects/demo-bob HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50427 - "GET /projects/demo-bob/assignments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:59793 - "GET /projects/demo-bob/feedback HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:55342 - "GET /projects/demo-bob/feedback/progress HTTP/1.1" 403 Forbidden      
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/notification-log HTTP/1.1" 403 Forbidden       
+INFO:     127.0.0.1:54859 - "GET /projects/demo-bob/review-summary HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50672 - "GET /projects/demo-bob/assignments/me HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50427 - "GET /projects/demo-bob/lifecycle HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:59793 - "GET /projects/demo-bob/sla-summary HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:55342 - "GET /projects/demo-bob/sla-deadlines HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/documents/scores HTTP/1.1" 403 Forbidden       
+INFO:     127.0.0.1:54859 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /environments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /i18n/translations/en HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /users HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /plugin-marketplace/builtin-status HTTP/1.1" 403 Forbidden        
+INFO:     127.0.0.1:53395 - "GET /environments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/assignments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/feedback HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/feedback/progress HTTP/1.1" 403 Forbidden      
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/notification-log HTTP/1.1" 403 Forbidden       
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/review-summary HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/assignments/me HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/lifecycle HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/sla-summary HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/sla-deadlines HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob/documents/scores HTTP/1.1" 403 Forbidden       
+INFO:     127.0.0.1:53395 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects/demo-bob HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:53395 - "GET /projects HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:60904 - "POST /token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60904 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60904 - "GET /profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60904 - "GET /projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60904 - "GET /profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62661 - "GET /rbac/role-permissions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63619 - "GET /profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62661 - "GET /rbac/role-permissions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58889 - "OPTIONS /projects/demo-alice HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50809 - "OPTIONS /projects/demo-alice/feedback HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50362 - "OPTIONS /projects/demo-alice/feedback/progress HTTP/1.1" 200 OK       
+INFO:     127.0.0.1:62878 - "OPTIONS /projects/demo-alice/assignments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58308 - "OPTIONS /projects/demo-alice/review-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61061 - "OPTIONS /projects/demo-alice/notification-log HTTP/1.1" 200 OK        
+INFO:     127.0.0.1:50809 - "OPTIONS /projects/demo-alice/lifecycle HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58889 - "OPTIONS /projects/demo-alice/assignments/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50362 - "OPTIONS /projects/demo-alice/sla-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62878 - "OPTIONS /projects/demo-alice/sla-deadlines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61061 - "OPTIONS /audit?entity_id=demo-alice HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58308 - "OPTIONS /projects/demo-alice/assignments/view HTTP/1.1" 200 OK        
+INFO:     127.0.0.1:50809 - "OPTIONS /projects/demo-alice/documents/scores HTTP/1.1" 200 OK        
+INFO:     127.0.0.1:50362 - "OPTIONS /audit?entity_id=demo-alice HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58889 - "OPTIONS /projects/demo-alice/assignments/view HTTP/1.1" 200 OK        
+INFO:     127.0.0.1:50517 - "GET /projects/demo-alice HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/feedback HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58889 - "OPTIONS /projects/demo-alice/reviews?phase=draft HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50362 - "OPTIONS /projects/demo-alice/reviewers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "GET /projects/demo-alice/feedback/progress HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/assignments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50362 - "OPTIONS /projects/demo-alice/assignments/179e034e-0aed-45c0-b60e-bc291c64ae2e/eligibility HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "GET /projects/demo-alice/review-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/notification-log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "GET /projects/demo-alice/lifecycle HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/assignments/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/sla-deadlines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "GET /projects/demo-alice/sla-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /audit?entity_id=demo-alice HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50517 - "POST /projects/demo-alice/assignments/view HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/documents/scores HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/reviews?phase=draft HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "POST /projects/demo-alice/assignments/view HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "GET /projects/demo-alice/assignments/179e034e-0aed-45c0-b60e-bc291c64ae2e/eligibility HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /projects/demo-alice/reviewers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "GET /audit?entity_id=demo-alice HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50517 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50517 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63586 - "OPTIONS /ai/rewrite HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55202 - "POST /ai/rewrite HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58048 - "OPTIONS /templates/doc_type%3A%3AICR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "GET /templates/doc_type%3A%3AICR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58048 - "OPTIONS /templates/doc_type%3A%3AManual%20/%20Handbook HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "GET /templates/doc_type%3A%3AManual%20/%20Handbook HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61377 - "OPTIONS /templates/doc_type%3A%3AMemorandum HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65265 - "GET /templates/doc_type%3A%3AMemorandum HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61377 - "OPTIONS /templates/doc_type%3A%3AFinal%20Rule HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65265 - "GET /templates/doc_type%3A%3AFinal%20Rule HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61377 - "OPTIONS /templates/doc_type%3A%3AGuidance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65265 - "GET /templates/doc_type%3A%3AGuidance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61377 - "OPTIONS /templates/doc_type%3A%3ADesk%20Guide HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65265 - "GET /templates/doc_type%3A%3ADesk%20Guide HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61377 - "OPTIONS /templates/doc_type%3A%3AFAQ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65265 - "GET /templates/doc_type%3A%3AFAQ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61377 - "OPTIONS /templates/doc_type%3A%3AAPI%20Manual%20/%20API%20Reference HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65265 - "GET /templates/doc_type%3A%3AAPI%20Manual%20/%20API%20Reference HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55082 - "OPTIONS /templates/faa_ac HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53343 - "GET /templates/faa_ac HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55082 - "OPTIONS /templates/doc_type%3A%3AAdvisory%20Circular HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53343 - "GET /templates/doc_type%3A%3AAdvisory%20Circular HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55082 - "OPTIONS /templates/doc_type%3A%3AAfter-Action%20Report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53343 - "GET /templates/doc_type%3A%3AAfter-Action%20Report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55082 - "OPTIONS /templates/doc_type%3A%3AAudit%20Report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53343 - "GET /templates/doc_type%3A%3AAudit%20Report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53343 - "GET /templates/doc_type%3A%3AAudit%20Report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55082 - "OPTIONS /templates/doc_type%3A%3ABriefing%20/%20Slide%20Deck HTTP/1.1"
+ 200 OK
+INFO:     127.0.0.1:53343 - "GET /templates/doc_type%3A%3ABriefing%20/%20Slide%20Deck HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52649 - "GET /templates/doc_type%3A%3ADesk%20Guide HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57839 - "OPTIONS /templates/doc_type%3A%3AFederal%20Register%20Notice HTTP/1.1"
+ 200 OK
+INFO:     127.0.0.1:52649 - "GET /templates/doc_type%3A%3AFederal%20Register%20Notice HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57149 - "OPTIONS /i18n/translations/en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53001 - "GET /i18n/translations/en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53041 - "OPTIONS /plugin-marketplace/builtin-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50520 - "OPTIONS /plugin-marketplace/builtin-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /plugin-marketplace/builtin-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50520 - "OPTIONS /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /plugin-marketplace/builtin-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50520 - "OPTIONS /admin/settings/fsv-checks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/fsv-checks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50520 - "OPTIONS /admin/settings/fsv-url HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/fsv-checks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/fsv-url HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50520 - "OPTIONS /plugin-marketplace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/fsv-url HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /plugin-marketplace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /plugin-marketplace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /plugin-marketplace/builtin-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /plugin-marketplace/builtin-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52564 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/fsv-checks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52564 - "GET /admin/settings/auto-validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/fsv-checks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52564 - "GET /admin/settings/fsv-url HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52564 - "GET /plugin-marketplace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /admin/settings/fsv-url HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /plugin-marketplace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51931 - "OPTIONS /documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53284 - "GET /documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64148 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56351 - "GET /environments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:58898 - "GET /i18n/translations/en HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:64148 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56351 - "GET /environments HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:64148 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56351 - "GET /branding HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64901 - "GET /profile HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:64901 - "GET /rbac/role-permissions HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:64901 - "GET /profile HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:64901 - "GET /rbac/role-permissions HTTP/1.1" 403 Forbidden

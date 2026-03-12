@@ -92,6 +92,14 @@ describe("createTiptapApi", () => {
     );
   });
 
+  it("URL-encodes template names before fetching content", async () => {
+    const api = createTiptapApi();
+    await api.fetchTemplate("doc_type::API Manual / API Reference");
+
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+      "http://example.com/templates/doc_type%3A%3AAPI%20Manual%20%2F%20API%20Reference",
+    );
+  });
   it("fetches starter content using the document-types route without API prefix", async () => {
     const api = createTiptapApi();
     await api.fetchStarterContent("Standard Operating Procedure");
@@ -155,3 +163,4 @@ describe("createTemplateConfigApi", () => {
     );
   });
 });
+

@@ -69,7 +69,8 @@ export function createTiptapApi(fetcher: typeof authenticatedFetch = authenticat
       fetcher(`${API}/documents/${docId}/revisions/${revisionId}`),
     fetchArchive: (archiveId: string) => fetcher(`${API}/archive/${archiveId}`),
     fetchTemplates: () => fetcher(`${API}/templates`),
-    fetchTemplate: (filename: string) => fetcher(`${API}/templates/${filename}`),
+    fetchTemplate: (filename: string) =>
+      fetcher(`${API}/templates/${encodeURIComponent(filename)}`),
     fetchStarterContent: (docType: string) =>
       fetcher(`/document-types/${encodeURIComponent(docType)}/starter-content`),
   } as const;
@@ -1649,3 +1650,4 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     </div>
   );
 }
+

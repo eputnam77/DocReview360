@@ -63,6 +63,11 @@ describe("createTiptapApi", () => {
         expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(1, "http://example.com/archive/archive-1");
         expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2, "http://example.com/templates/template-1");
     });
+    it("URL-encodes template names before fetching content", async () => {
+        const api = createTiptapApi();
+        await api.fetchTemplate("doc_type::API Manual / API Reference");
+        expect(mockAuthenticatedFetch).toHaveBeenCalledWith("http://example.com/templates/doc_type%3A%3AAPI%20Manual%20%2F%20API%20Reference");
+    });
 });
 describe("createWordTemplateApi", () => {
     it("lists templates via authenticatedFetch", async () => {
