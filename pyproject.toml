@@ -9,7 +9,7 @@ version         = "0.1.2"
 description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
 requires-python = ">=3.11,<3.13"
-license         = { text = "MIT" }
+license         = "MIT"
 license-files   = ["LICENSE"]
 keywords        = [
   "document-review",
@@ -23,7 +23,6 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
@@ -105,7 +104,7 @@ ldap = ["ldap3>=2.9"]
 saml = ["python3-saml>=1.16"]
 
 # WebAuthn / FIDO2 authentication (Item 37 Phase 2)
-webauthn = ["py-webauthn>=2.0"]
+webauthn = ["webauthn>=2.0"]
 
 # Alembic schema migration framework (Item 38)
 alembic = ["alembic>=1.14"]
@@ -194,7 +193,7 @@ dev = [
   "uvicorn>=0.38.0",
   "ldap3>=2.9",
   "python3-saml>=1.16",
-  "py-webauthn>=2.0",
+  "webauthn>=2.0",
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────

@@ -115,7 +115,7 @@ def begin_registration(username: str, display_name: str) -> tuple[str, str]:
     Returns ``(options_json, challenge_b64url)``.
     """
     if not _WEBAUTHN_AVAILABLE:
-        raise RuntimeError("webauthn package not installed; pip install py-webauthn")
+        raise RuntimeError("webauthn package not installed; pip install webauthn")
 
     options = generate_registration_options(
         rp_id=_rp_id(),
@@ -156,7 +156,7 @@ def complete_registration(
 ) -> str:
     """Complete a WebAuthn registration ceremony. Returns the credential ID."""
     if not _WEBAUTHN_AVAILABLE:
-        raise RuntimeError("webauthn package not installed; pip install py-webauthn")
+        raise RuntimeError("webauthn package not installed; pip install webauthn")
 
     stored_challenge = _pending_registration_challenges.get(username)
     if not stored_challenge or stored_challenge != challenge_b64url:
@@ -211,7 +211,7 @@ def begin_authentication(username: str) -> tuple[str, str]:
     Returns ``(options_json, challenge_b64url)``.
     """
     if not _WEBAUTHN_AVAILABLE:
-        raise RuntimeError("webauthn package not installed; pip install py-webauthn")
+        raise RuntimeError("webauthn package not installed; pip install webauthn")
 
     # Load existing credentials for the user
     with _credential_conn() as conn:
@@ -252,7 +252,7 @@ def complete_authentication(
 ) -> bool:
     """Complete a WebAuthn authentication ceremony. Returns True on success."""
     if not _WEBAUTHN_AVAILABLE:
-        raise RuntimeError("webauthn package not installed; pip install py-webauthn")
+        raise RuntimeError("webauthn package not installed; pip install webauthn")
 
     stored_challenge = _pending_auth_challenges.get(username)
     if not stored_challenge or stored_challenge != challenge_b64url:

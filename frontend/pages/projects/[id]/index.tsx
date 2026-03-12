@@ -2935,7 +2935,6 @@ export default function ProjectDetailsPage() {
             </Disclosure>
           )}
         </section>
-      </div>
 
         {/* RECORDS SECTION — visible when submitted_to_records or closed (Phase 7) */}
         {lifecycleRecord && ["submitted_to_records", "closed", "published", "ready_for_publication"].includes(lifecycleRecord.status) && (
@@ -3019,4 +3018,3 @@ export default function ProjectDetailsPage() {
     </>
   );
 }
-
