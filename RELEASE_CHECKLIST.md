@@ -1009,3 +1009,649 @@ INFO:     127.0.0.1:64901 - "GET /profile HTTP/1.1" 403 Forbidden
 INFO:     127.0.0.1:64901 - "GET /rbac/role-permissions HTTP/1.1" 403 Forbidden
 INFO:     127.0.0.1:64901 - "GET /profile HTTP/1.1" 403 Forbidden
 INFO:     127.0.0.1:64901 - "GET /rbac/role-permissions HTTP/1.1" 403 Forbidden
+
+---
+
+## AI Reliability Architecture Implementation Plan
+
+**Date:** 2026-03-13
+**Scope:** Full reliability and stability assessment of DocReview360
+**Objective:** Eliminate instability risks from rapid AI-assisted development by
+introducing strict contracts, automated reliability gates, deterministic outputs,
+strong testing coverage, observability, and security validation.
+
+---
+
+### Reliability Findings
+
+**Overall assessment: Strong foundation with targeted gaps.**
+
+DocReview360 has mature infrastructure in many reliability areas: circuit breakers
+on signature providers, structured JSON logging, OpenTelemetry tracing, rate
+limiting with Redis/in-memory fallback, audit log integrity verification,
+AES-256-GCM column encryption, comprehensive RBAC, CORS hardening, security
+headers, and a CI pipeline with ruff/mypy/bandit/pytest/semgrep. The codebase
+demonstrates intentional engineering — not accidental stability.
+
+However, rapid feature development has introduced gaps in five areas:
+
+1. **Error response inconsistency** — no unified error envelope across 418 HTTPException raises
+2. **API router testing coverage** — 15+ routers (200+ endpoints) have zero dedicated test files
+3. **Input validation sparseness** — only 86 constraint annotations across 364 endpoints
+4. **Monolithic file risk** — 6 backend files exceed 1,000 lines; 1 frontend page is 3,059 lines
+5. **Missing service layer** — business logic scattered between routers and utility modules
+
+---
+
+### Stability Risks
+
+| Risk | Severity | Evidence |
+|------|----------|----------|
+| Inconsistent error responses break client parsing | Medium | Mix of `{"detail":...}`, `{"error":...}`, `{"ok":false,"message":...}` |
+| Untested admin/dashboard/org endpoints regress silently | High | 15+ routers with 0 test files; 200+ endpoints uncovered |
+| Large router files (1,000-1,500 lines) resist safe modification | Medium | `admin_router.py` (1,524), `workflows_router.py` (1,256), `tools_router.py` (1,083) |
+| `models.py` (721 lines, 42 models) single-point-of-change risk | Medium | Every module imports from it; changes risk cascade |
+| Frontend project page (3,059 lines) is fragile under change | Medium | Hook ordering bugs already documented (item 49) |
+| 56% of exception handlers have no logging | Low | Intentionally defensive in many cases, but silent failures in notifications and SoD |
+| Dependabot placeholder not configured | Low | `.github/dependabot.yml` exists but updates section is empty |
+| No global exception handler middleware | Medium | FastAPI defaults used; no structured error envelope enforced |
+| Test state pollution causes 49 failures in full suite | Medium | Tests pass in isolation; ordering-dependent failures in CI |
+| Missing string-length constraints on text inputs | Low | Names, descriptions, URLs lack min/max length validation |
+
+---
+
+### Missing Infrastructure
+
+| Category | What Exists | What's Missing |
+|----------|------------|----------------|
+| Error taxonomy | 12+ domain exceptions (`GoogleDriveError`, `SoDViolationError`, etc.) | Unified base `AppError` hierarchy; global exception handler middleware |
+| Error response contract | `HTTPException(detail=...)` | `ErrorResponse` Pydantic model enforced via `response_model` on error paths |
+| Input constraints | 86 constraint annotations | Systematic `min_length`/`max_length` on strings; `ge`/`le` on numerics |
+| Router tests | ML, approvals, auth routers tested | Admin (49 endpoints), dashboards (25), organizations (12), SCIM (16), SLA (9), legal (9), records (7), branches (7), config (21), feedback (14), assignments (25), WOPI (8+) |
+| Service layer | Direct router-to-utility calls | `ProjectService`, `DocumentService`, `WorkflowService` classes |
+| Configuration schema | `config.py` dataclass, `yaml_loader.py` safe loading | Startup validation that catches misconfiguration before first request |
+| Test isolation | Per-test SQLite reset via conftest | Fix for 49 ordering-dependent failures (env monkeypatch pollution) |
+| Dependabot | Placeholder YAML | Configured update rules for pip and npm ecosystems |
+| Retry standardization | Custom retry in `event_dispatcher.py` and `signatures.py` | Shared `RetryPolicy` utility or `tenacity` adoption |
+| Frontend component decomposition | Hooks extracted (`useProject`, `useDocuments`) | Project page split into `<ProjectPhases>`, `<ProjectReviewers>`, `<ProjectFeedback>` etc. |
+
+---
+
+### Implementation Roadmap
+
+---
+
+#### P0 — Critical Reliability Work
+
+These tasks address risks that can cause silent data loss, undetected regressions,
+or production failures. Implement before any release.
+
+---
+
+**R-01: Unified Error Response Contract**
+
+Problem:
+418 HTTPException raises across 29 routers use inconsistent response shapes.
+Clients cannot reliably parse errors. Some return `{"detail": "..."}`, others
+`{"error": "..."}`, others `{"ok": false, "message": "..."}`.
+
+Recommendation:
+Create a standard `ErrorResponse` model and a global exception handler that
+normalizes all errors into a single contract.
+
+Implementation:
+1. Create `src/docreview360/errors.py` with:
+   - `AppError(Exception)` base class with `code: str`, `detail: str`, `status_code: int`
+   - Subclasses: `NotFoundError`, `ForbiddenError`, `ValidationError`, `ProviderError`,
+     `ConfigError`, `RetryableError`
+   - `ErrorResponse(BaseModel)` with `error: str`, `detail: str`, `trace_id: str | None`
+2. Add `@app.exception_handler(AppError)` in `api/__init__.py` that returns
+   `JSONResponse(status_code=exc.status_code, content=ErrorResponse(...))`
+3. Add `@app.exception_handler(Exception)` as catch-all that logs full traceback
+   and returns 500 with trace_id (never leaking internals)
+4. Migrate routers incrementally — existing `HTTPException` continues to work
+
+Affected Files:
+- `src/docreview360/errors.py` (new)
+- `src/docreview360/api/__init__.py`
+- All router files (incremental migration)
+
+---
+
+**R-02: Fix Test Suite Ordering Failures**
+
+Problem:
+49 tests fail when run together but pass individually. Root cause: tests that
+monkeypatch `DOCREVIEW360_ENV` to `production` pollute global state for
+subsequent tests. This makes CI results unreliable.
+
+Recommendation:
+Fix the test isolation so the full suite passes deterministically.
+
+Implementation:
+1. Audit all tests that set `DOCREVIEW360_ENV=production` — ensure they restore
+   the original value (use `monkeypatch` fixture which auto-restores)
+2. Add `autouse=True` fixture in `conftest.py` that saves and restores all
+   `DOCREVIEW360_*` env vars around each test
+3. Identify any module-level caches that retain stale env values (e.g.,
+   `lru_cache` on config functions) and clear them in fixtures
+4. Run `pytest --forked` or `pytest -x` to verify ordering independence
+5. Add CI step: `pytest --randomly-seed=last` to catch future pollution
+
+Affected Files:
+- `tests/conftest.py`
+- `tests/test_coverage_gaps.py` (19 known failures)
+- `tests/test_role_403_mfa.py` (2 known failures)
+- Any test files using `monkeypatch.setenv("DOCREVIEW360_ENV", "production")`
+
+---
+
+**R-03: API Router Integration Tests for Untested Endpoints**
+
+Problem:
+15+ routers covering 200+ endpoints have zero dedicated test files. Regressions
+in admin settings, dashboard analytics, organization management, SCIM
+provisioning, SLA tracking, legal hold, records management, and WOPI integration
+will not be caught.
+
+Recommendation:
+Create integration test files for each untested router using the existing
+`TestClient` + `_alice_headers()` pattern from `conftest.py`.
+
+Implementation:
+Create the following test files, each exercising CRUD + auth + error paths:
+
+| Test File | Router | Min Tests |
+|-----------|--------|-----------|
+| `tests/api/test_admin_endpoints.py` | `admin_router.py` (49 endpoints) | 30 |
+| `tests/api/test_dashboard_endpoints.py` | `dashboards_router.py` (25 endpoints) | 15 |
+| `tests/api/test_org_endpoints.py` | `organizations_router.py` (12 endpoints) | 10 |
+| `tests/api/test_scim_endpoints.py` | `scim_router.py` (16 endpoints) | 12 |
+| `tests/api/test_sla_endpoints.py` | `sla_router.py` (9 endpoints) | 8 |
+| `tests/api/test_legal_endpoints.py` | `legal_router.py` (9 endpoints) | 8 |
+| `tests/api/test_records_endpoints.py` | `records_router.py` (7 endpoints) | 6 |
+| `tests/api/test_branches_endpoints.py` | `branches_router.py` (7 endpoints) | 6 |
+| `tests/api/test_config_endpoints.py` | `config_router.py` (21 endpoints) | 12 |
+| `tests/api/test_feedback_endpoints.py` | `feedback_router.py` (14 endpoints) | 10 |
+| `tests/api/test_assignments_endpoints.py` | `assignments_router.py` (25 endpoints) | 15 |
+| `tests/api/test_wopi_endpoints.py` | `wopi_router.py` (8+ endpoints) | 8 |
+
+Each test file should verify:
+- Authenticated access required (401 without token)
+- Admin-only endpoints reject non-admin users (403)
+- Valid requests return expected response shape
+- Not-found IDs return 404
+- Invalid inputs return 400 or 422
+
+Affected Files:
+- `tests/api/` (new directory, 12 new test files)
+
+---
+
+**R-04: Startup Configuration Validation**
+
+Problem:
+Misconfigured environment variables cause runtime failures on the first request
+rather than failing fast at startup. Examples: invalid `DOCREVIEW360_SECRET_KEY`
+length, malformed `DOCREVIEW360_ALLOW_ORIGINS`, unreachable Redis URL.
+
+Recommendation:
+Add a configuration validation step that runs during app startup and raises
+clear errors before the server accepts connections.
+
+Implementation:
+1. Create `src/docreview360/config_validator.py` with a Pydantic `Settings`
+   model using `pydantic-settings`:
+   - `secret_key: str` with `min_length=32` (prod only)
+   - `allow_origins: list[str]` (prod only, must be non-empty)
+   - `db_url: str` with URL validation
+   - `rate_limit_enabled: bool`
+   - All `DOCREVIEW360_*` env vars with types and constraints
+2. Call `validate_config()` in `api/__init__.py` at import time
+3. In dev mode: log warnings for missing optional config
+4. In prod mode: raise `ConfigError` for any invalid required config
+
+Affected Files:
+- `src/docreview360/config_validator.py` (new)
+- `src/docreview360/api/__init__.py`
+
+---
+
+**R-05: Global Exception Handler Middleware**
+
+Problem:
+Unhandled exceptions in request handlers return raw 500 responses with no
+trace_id, no structured format, and potentially leak internal details.
+
+Recommendation:
+Add a global exception handler that catches all unhandled exceptions, logs them
+with trace_id, and returns a safe structured error response.
+
+Implementation:
+1. In `api/__init__.py`, add exception handlers for:
+   - `AppError` subclasses — return structured `ErrorResponse` with appropriate status
+   - `RequestValidationError` — return 422 with field-level details in standard envelope
+   - `StarletteHTTPException` — wrap FastAPI default responses in standard envelope
+   - `Exception` catch-all — log with trace_id, return safe 500 with `internal_error` code
+2. All responses include `trace_id` from correlation ID middleware
+
+Affected Files:
+- `src/docreview360/api/__init__.py`
+
+---
+
+#### P1 — Stability Improvements
+
+These tasks reduce fragility and improve maintainability. Strongly recommended
+before release; can be done incrementally.
+
+---
+
+**R-06: Input Validation Hardening**
+
+Problem:
+Only 86 constraint annotations exist across 364 endpoints. String fields for
+names, descriptions, and URLs lack length limits. Numeric fields lack range
+constraints. Malformed or oversized inputs could cause unexpected behavior.
+
+Recommendation:
+Add systematic input constraints to Pydantic request models and FastAPI
+parameter declarations.
+
+Implementation:
+1. Audit all `Body()`, `Query()`, `Path()` parameters for missing constraints
+2. Add `min_length=1, max_length=255` to name/title fields
+3. Add `max_length=10000` to description/content fields
+4. Add `ge=0` to pagination parameters (`skip`, `limit`)
+5. Add `le=1000` to `limit` parameters to prevent unbounded queries
+6. Add URL validation (`HttpUrl`) to all URL input fields
+7. Add `constr(pattern=...)` for identifier fields (project IDs, usernames)
+
+Affected Files:
+- All router files in `src/docreview360/api/`
+- Pydantic models in `_models.py` files across packages
+
+---
+
+**R-07: Decompose Monolithic Router Files**
+
+Problem:
+Three router files exceed 1,000 lines each, mixing unrelated concerns. Changes
+to one endpoint risk breaking another. Code review is difficult.
+
+Recommendation:
+Split each oversized router into focused sub-routers by domain.
+
+Implementation:
+
+`admin_router.py` (1,524 lines, 49 routes) split into:
+- `api/system_admin_router.py` — health, cache, rebuild, seed, environments
+- `api/settings_router.py` — config, branding, terminology, FSV settings
+- `api/plugin_admin_router.py` — builtin status, toggle, marketplace config
+- `api/audit_admin_router.py` — audit log review, purge, integrity check
+
+`workflows_router.py` (1,256 lines, 48 routes) split into:
+- `api/workflow_templates_router.py` — template CRUD, starter content
+- `api/workflow_instances_router.py` — execution, status, listing
+- `api/phases_router.py` — phase definitions, SLA, advancement
+
+`tools_router.py` (1,083 lines, 37 routes) split into:
+- `api/validation_router.py` — preflight, regulatory, quality checks
+- `api/conversion_router.py` — document format conversion
+- `api/accessibility_router.py` — accessibility scanning
+
+Backward compatibility: Register split routers in `api/__init__.py` with the
+same prefix so URLs don't change.
+
+Affected Files:
+- `src/docreview360/api/admin_router.py` → 4 files
+- `src/docreview360/api/workflows_router.py` → 3 files
+- `src/docreview360/api/tools_router.py` → 3 files
+- `src/docreview360/api/__init__.py` (update imports)
+
+---
+
+**R-08: Decompose models.py into Domain Packages**
+
+Problem:
+`models.py` (721 lines, 42 SQLAlchemy models) is a single-point-of-change
+that every module imports from. Any model change risks cascading effects.
+
+Recommendation:
+Split into domain-specific model files with a backward-compatible `__init__.py`.
+
+Implementation:
+Create `src/docreview360/models/` package:
+- `auth_models.py` — User, APIKey, UserSessionRecord, OIDCStateRecord
+- `document_models.py` — Document, DocumentVersion, DocumentBranch, QualityScore
+- `workflow_models.py` — Workflow, WorkflowInstanceRecord, WorkflowTemplateRecord
+- `approval_models.py` — Approval, ApprovalRecord
+- `audit_models.py` — AuditLog, RevokedToken
+- `org_models.py` — Organization, OrgConfig, OrgToolConfig
+- `__init__.py` — re-export all models for backward compatibility
+
+Affected Files:
+- `src/docreview360/models.py` → `src/docreview360/models/` (6 files + init)
+
+---
+
+**R-09: Decompose Frontend Project Page**
+
+Problem:
+`pages/projects/[id]/index.tsx` is 3,059 lines containing project overview,
+phases, documents, reviewers, feedback, quality scores, and audit timeline.
+Hook ordering bugs were already documented in item 49.
+
+Recommendation:
+Extract each section into its own component file.
+
+Implementation:
+Create `frontend/components/project/`:
+- `ProjectPhases.tsx` — phase tabs, SLA, advancement
+- `ProjectDocuments.tsx` — document list, upload, quality scores
+- `ProjectReviewers.tsx` — reviewer section, assignments, reminders
+- `ProjectFeedback.tsx` — feedback ledger, comments, filter chips
+- `ProjectAudit.tsx` — audit timeline, notification log
+- `ProjectOverview.tsx` — title, description, owner, status
+
+Each component receives props or uses the shared `useProject` hook.
+
+Affected Files:
+- `frontend/pages/projects/[id]/index.tsx` (reduce to ~500 lines of composition)
+- `frontend/components/project/` (6 new files)
+
+---
+
+**R-10: Activate Dependabot**
+
+Problem:
+`.github/dependabot.yml` exists but has an empty updates section. Dependency
+vulnerabilities will not be surfaced automatically.
+
+Recommendation:
+Configure Dependabot for both pip and npm ecosystems.
+
+Implementation:
+Update `.github/dependabot.yml` with update rules for pip (root `/`),
+npm (`/frontend`), and github-actions (`/`), all on weekly schedule with
+10/10/5 open PR limits respectively.
+
+Affected Files:
+- `.github/dependabot.yml`
+
+---
+
+**R-11: Standardize Retry Policy**
+
+Problem:
+Retry logic is implemented manually in `event_dispatcher.py` and
+`approvals/signatures.py` with different patterns. No shared utility exists.
+
+Recommendation:
+Create a shared retry utility or adopt `tenacity` for consistent retry behavior.
+
+Implementation:
+1. Create `src/docreview360/retry.py` with:
+   - `RetryPolicy(max_attempts, base_delay, max_delay, jitter)`
+   - `retry_with_backoff(func, policy)` — sync wrapper
+   - `async_retry_with_backoff(func, policy)` — async wrapper
+   - Logging on each retry attempt with attempt number and delay
+2. Migrate `event_dispatcher.py` and `signatures.py` to use the shared utility
+3. Document retry behavior in error responses (`Retry-After` header)
+
+Affected Files:
+- `src/docreview360/retry.py` (new)
+- `src/docreview360/event_dispatcher.py`
+- `src/docreview360/approvals/signatures.py`
+
+---
+
+**R-12: Add Exception Logging to Silent Catch Blocks**
+
+Problem:
+56% of exception handlers (156 of 314) have no logging. While many are
+intentionally defensive, some in `notifications.py`, `sod.py`, and
+`event_dispatcher.py` should at least log at DEBUG or WARNING level.
+
+Recommendation:
+Add structured logging to all exception handlers that currently pass silently.
+
+Implementation:
+1. Grep for `except.*:\s*(pass|return|continue)` patterns
+2. For each, determine if it's:
+   - **Intentionally silent** (e.g., feature detection `try: import X`) — add comment
+   - **Defensively silent** (e.g., notification fallback) — add `logger.debug()`
+   - **Incorrectly silent** (e.g., data corruption risk) — add `logger.warning()`
+3. Never convert to `logger.error()` unless it represents a real failure
+
+Affected Files:
+- `src/docreview360/notifications.py`
+- `src/docreview360/sod.py`
+- `src/docreview360/event_dispatcher.py`
+- ~20 other modules with silent catches
+
+---
+
+**R-13: Typed Response Models for Admin Endpoints**
+
+Problem:
+20+ admin endpoints return `dict[str, Any]` without response models. Clients
+cannot validate response shapes; Swagger docs show no schema.
+
+Recommendation:
+Create Pydantic response models for all admin endpoints that currently return
+raw dicts.
+
+Implementation:
+1. Identify all endpoints returning `dict[str, Any]` or untyped dicts
+2. Create response models in `src/docreview360/api/schemas/admin_schemas.py`:
+   - `RBACMatrixResponse`, `EnvironmentListResponse`, `SettingsResponse`,
+     `AuditCheckResponse`, `BrandingResponse`, etc.
+3. Add `response_model=` to endpoint decorators
+4. FastAPI will enforce shape validation on all responses
+
+Affected Files:
+- `src/docreview360/api/schemas/` (new directory)
+- `src/docreview360/api/admin_router.py`
+- Other routers returning untyped dicts
+
+---
+
+#### P2 — Long-term Hardening
+
+These tasks are engineering improvements that reduce long-term maintenance burden
+and improve the developer experience.
+
+---
+
+**R-14: Service Layer Abstraction**
+
+Problem:
+Business logic is scattered across routers and utility functions with no
+intermediate service layer. Routers directly call `add_project()`,
+`list_projects()`, etc. This makes testing harder (must use full HTTP client)
+and business logic harder to find.
+
+Recommendation:
+Introduce service classes that encapsulate business logic between routers and
+data access.
+
+Implementation:
+Create `src/docreview360/services/`:
+- `project_service.py` — `ProjectService(create, list, update, delete, advance_phase)`
+- `document_service.py` — `DocumentService(create, upload, convert, version, freeze)`
+- `workflow_service.py` — `WorkflowService(create_template, execute, get_status)`
+- `review_service.py` — `ReviewService(assign, submit, concur, remind, export)`
+
+Routers call service methods instead of directly calling utility functions.
+Services are injected via FastAPI `Depends()`.
+
+Affected Files:
+- `src/docreview360/services/` (new package)
+- All router files (incremental migration)
+
+---
+
+**R-15: Property-Based Testing for Edge Cases**
+
+Problem:
+Only 8 parametrized tests exist. Edge cases (unicode, max-length strings,
+boundary values, malformed JSON) are not systematically tested.
+
+Recommendation:
+Add Hypothesis-based property tests for critical Pydantic models and utility
+functions.
+
+Implementation:
+1. Add `hypothesis` to `[test]` extras in `pyproject.toml`
+2. Create `tests/property/test_models_property.py`:
+   - Generate random `ProjectCreate`, `DocumentModel`, `WorkflowTemplatePayload`
+   - Verify serialization round-trips (`model.model_dump()` -> `Model(**data)`)
+   - Verify constraint enforcement (rejected inputs don't crash)
+3. Create `tests/property/test_crypto_property.py`:
+   - Encrypt/decrypt round-trip with random payloads
+   - Verify nonce uniqueness
+4. Create `tests/property/test_search_property.py`:
+   - Index random documents, verify they're findable
+
+Affected Files:
+- `pyproject.toml` (add hypothesis dep)
+- `tests/property/` (3 new test files)
+
+---
+
+**R-16: CI Coverage Enforcement per Module**
+
+Problem:
+The 90% branch coverage gate is global. Individual modules can have 0% coverage
+without failing CI if other modules compensate.
+
+Recommendation:
+Add per-module coverage tracking that flags modules below threshold.
+
+Implementation:
+1. Create `scripts/coverage-by-module.py`:
+   - Parse `coverage.json` output
+   - Report per-module branch coverage
+   - Flag modules below 80% with file paths
+   - Exit non-zero if any critical module is below threshold
+2. Add to CI pipeline as a reporting step (not blocking initially)
+3. Gradually raise thresholds as tests are added
+
+Affected Files:
+- `scripts/coverage-by-module.py` (new)
+- `.github/workflows/ci.yml`
+
+---
+
+**R-17: Frontend API Client Consolidation**
+
+Problem:
+Both `frontend/lib/api.ts` and `frontend/lib/apiProxy.ts` exist. `apiProxy.ts`
+is marked deprecated but still present, creating confusion about which client
+to use.
+
+Recommendation:
+Remove the deprecated `apiProxy.ts` and ensure all code uses `api.ts`.
+
+Implementation:
+1. Grep for imports of `apiProxy` across all frontend files
+2. Migrate any remaining usages to `api.ts`
+3. Delete `frontend/lib/apiProxy.ts`
+4. Add a lint rule preventing future imports from deprecated modules
+
+Affected Files:
+- `frontend/lib/apiProxy.ts` (delete)
+- Any files importing from `apiProxy`
+
+---
+
+**R-18: Metrics Endpoint for Prometheus Scraping**
+
+Problem:
+`monitoring.py` defines Prometheus counters and histograms but there is no
+`/metrics` endpoint in the app for Prometheus to scrape directly.
+
+Recommendation:
+Add a `/metrics` endpoint that Prometheus can scrape.
+
+Implementation:
+1. Expose metrics via `prometheus_client.generate_latest()` at `GET /metrics`
+2. Gate behind `DOCREVIEW360_METRICS_ENABLED` env var
+3. Exclude from auth requirements (or use a separate metrics token)
+4. Add default request duration, status code, and path labels
+
+Affected Files:
+- `src/docreview360/api/__init__.py`
+- `src/docreview360/monitoring.py`
+
+---
+
+**R-19: Database Migration Safety**
+
+Problem:
+Alembic is set up but migrations are a single baseline file. As the schema
+evolves, migration safety (reversibility, data preservation) becomes critical.
+
+Recommendation:
+Establish migration safety practices.
+
+Implementation:
+1. Add `scripts/check-migration-safety.py`:
+   - Verify all migrations have `downgrade()` functions
+   - Check for destructive operations (DROP TABLE, DROP COLUMN) and flag them
+   - Verify migration chain is linear (no forks)
+2. Add a CI step that runs `alembic check` to verify head is current
+3. Document migration testing process in `docs/migrations.md`
+
+Affected Files:
+- `scripts/check-migration-safety.py` (new)
+- `alembic/` (verify existing migrations)
+- `.github/workflows/ci.yml`
+
+---
+
+**R-20: WebSocket Authentication**
+
+Problem:
+The `/ws/dashboard` WebSocket endpoint accepts an unvalidated `?user=` query
+parameter. Any client can impersonate any user on the WebSocket connection.
+
+Recommendation:
+Validate JWT tokens on WebSocket connections before accepting them.
+
+Implementation:
+1. Change `/ws/dashboard` to accept `?token=<jwt>` instead of `?user=`
+2. Validate the JWT using the existing `auth.decode_token()` function
+3. Reject connections with invalid or expired tokens (close code 4001)
+4. Extract username from the validated token claims
+
+Affected Files:
+- `src/docreview360/api/__init__.py` (WebSocket endpoint)
+- Frontend WebSocket connection code
+
+---
+
+### Production Readiness Checklist
+
+Before any production deployment, verify:
+
+- [ ] All P0 tasks from this plan are implemented
+- [ ] `pytest -q` passes with 0 failures (not just "passes in isolation")
+- [ ] `pytest --cov=src --cov-branch --cov-fail-under=90` passes
+- [ ] `mypy --strict src` passes (excluding documented exclusions)
+- [ ] `ruff check src` passes with 0 errors
+- [ ] `bandit -r src -lll --skip B101` passes with 0 issues
+- [ ] `python scripts/run-pip-audit.py` reports 0 critical/high vulnerabilities
+- [ ] `npm audit --production` in `frontend/` reports 0 critical vulnerabilities
+- [ ] Configuration validation passes for production env vars
+- [ ] Health endpoints (`/health/live`, `/health/ready`) return 200
+- [ ] Error responses follow the unified `ErrorResponse` contract
+- [ ] All critical workflows have E2E test coverage:
+  - Login -> create project -> upload document -> assign reviewer -> submit review -> sign -> close
+- [ ] Rollback strategy documented (database migration down, container rollback)
+- [ ] Structured logging verified in production log output
+- [ ] Rate limiting verified with load test
+- [ ] CORS configuration verified against production frontend origin
+- [ ] Secret key rotation tested (previous key acceptance window)
+- [ ] Backup/restore tested (`scripts/db_backup.sh` round-trip)
