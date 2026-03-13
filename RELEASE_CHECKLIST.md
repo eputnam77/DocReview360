@@ -605,6 +605,106 @@ frontend suites are rerun.
   and `authenticatedFetch` in all hooks (interceptable by MSW when installed).
   Full MSW delayed-response tests deferred until `msw` is added as dev dep. (2026-03-12)
 
+### 50) iOS companion app — backend readiness
+
+An iOS companion app is under consideration with limited scope: comment review,
+approval workflows, markup viewer, and assigned projects. The backend API is
+already 100% JSON with Pydantic models and has API versioning (`/api/v1/`), CORS,
+and rate limiting in place. The items below address the gaps that would block or
+degrade a native mobile client.
+
+**What's already mobile-ready (no work needed):**
+
+- JSON-only API with Pydantic response models (OpenAPI schema at `/openapi.json`)
+- API versioning (URL-path `/api/v1/`, backward-compatible)
+- CORS configuration (native apps bypass CORS, but hybrid/WebView apps benefit)
+- Rate limiting with `Retry-After` header (Redis + in-memory fallback)
+- OIDC + PKCE authorization code flow (safe for native apps)
+- Session tracking per device (`UserSessionRecord`, idle timeout, concurrent limit)
+- Token revocation (`revoked_tokens` SQLite table, checked on every request)
+- Bearer token auth via `Authorization` header (no cookie dependency)
+- File upload with chunked streaming (`POST /documents/import`)
+
+**Phase 1 — Auth and token lifecycle (required before any mobile client)**
+
+- [ ] Add refresh token support. Current JWT access tokens expire after 30 minutes
+  with no way to renew without re-authenticating. Mobile apps need a
+  `POST /token/refresh` endpoint that accepts a long-lived refresh token (stored
+  securely in iOS Keychain) and returns a new short-lived access token.
+  Considerations: refresh token rotation (one-time use), revocation, family
+  detection (reuse = compromise → revoke family).
+- [ ] Add `expires_in` (seconds) to the `Token` response model. iOS clients need
+  this to schedule proactive token refresh (e.g., at 80% of lifetime). The current
+  response only includes `access_token` and `token_type`.
+- [ ] Ensure `POST /token` works with `application/json` body (not just form-encoded).
+  Native HTTP clients prefer JSON; FastAPI's `OAuth2PasswordRequestForm` expects
+  form data. Add a parallel JSON login endpoint or accept both content types.
+
+**Phase 2 — Pagination on list endpoints (required for mobile bandwidth)**
+
+- [ ] Add `skip` and `limit` query parameters to list endpoints. Mobile clients on
+  cellular connections cannot afford unbounded response sizes. Priority endpoints:
+  - `GET /projects` — returns all projects; needs pagination + total count
+  - `GET /projects/{id}/feedback` — can grow large; needs cursor or offset pagination
+  - `GET /projects/{id}/assignments` — moderate size but should be consistent
+  - `GET /projects/{id}/notification-log` — unbounded; needs pagination
+  - `GET /documents` — returns all documents; needs pagination
+  - `GET /comments/{project_id}` — can grow large with inline comments
+- [ ] Return pagination metadata in responses: `{ items: [...], total: N, skip: 0, limit: 20 }`.
+  Consider a shared `PaginatedResponse[T]` generic model.
+
+**Phase 3 — Push notifications (required for useful mobile experience)**
+
+- [ ] Add device token registration: `POST /devices/register` (accepts platform,
+  device token, optional device name) and `DELETE /devices/{token}`. Store in a
+  `device_tokens` SQLite table keyed by user + platform.
+- [ ] Integrate Apple Push Notification service (APNs). Use token-based auth
+  (`.p8` key) rather than certificate-based. Priority notification events for the
+  iOS app: `review.assigned`, `review.reminder`, `approval.requested`,
+  `approval.completed`, `comment.added`, `document.updated`.
+- [ ] Extend `send_notification()` in `notifications.py` to dispatch to APNs
+  alongside existing Slack/Teams/email/webhook channels. Respect per-user
+  notification preferences (already stored via settings API).
+- [ ] Add notification badge count endpoint: `GET /notifications/unread-count`
+  for iOS badge number updates.
+
+**Phase 4 — API ergonomics for mobile (nice-to-have, not blocking)**
+
+- [ ] Add a lightweight "my assignments" summary endpoint:
+  `GET /assignments/me/summary` — returns open assignments across all projects
+  with project name, document title, status, and due date. Avoids the mobile app
+  needing to fetch all projects then query each one for assignments.
+- [ ] Add `Content-Length` headers on file download responses for iOS progress
+  indicators (`URLSession` `countOfBytesExpectedToReceive`).
+- [ ] Secure WebSocket auth. The current `/ws/dashboard` accepts an unvalidated
+  `?user=` query param. Mobile clients should pass a JWT:
+  `?token=<jwt>` validated server-side before accepting the connection.
+- [ ] Consider a compact document-view endpoint that returns rendered HTML or
+  a lightweight markup summary suitable for a mobile read-only viewer, without
+  needing the full TipTap JSON structure.
+- [ ] Add `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers so
+  the iOS networking layer can throttle proactively.
+
+**Phase 5 — iOS-specific infrastructure (outside this codebase, listed for planning)**
+
+- [ ] Generate Swift API client from OpenAPI schema (`/openapi.json`). Tools:
+  `swift-openapi-generator` (Apple's official) or `CreateAPI`.
+- [ ] Design iOS Keychain storage strategy for refresh tokens and PKCE verifiers.
+- [ ] Plan offline-first architecture: local Core Data cache for assignments and
+  comments, background sync via `BGAppRefreshTask`.
+- [ ] Evaluate whether the markup viewer should use a `WKWebView` rendering the
+  existing HTML output or a native SwiftUI document renderer.
+- [ ] Set up TestFlight distribution and App Store Connect metadata.
+
+**Implementation notes:**
+
+Phases 1–2 benefit the web frontend too (refresh tokens prevent the current
+silent-logout-after-30-minutes UX issue; pagination improves dashboard load times
+on large deployments). Phase 3 is iOS-specific but the device registration
+endpoint and `send_notification()` extension are reusable for a future Android
+companion. Phase 4 items are quality-of-life improvements that can be done
+incrementally. Phase 5 is entirely outside this repository.
+
 ---
 
 ADDED BY USER
