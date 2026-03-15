@@ -30,9 +30,11 @@ from ._models import (
 from ._templates import (
     DEFAULT_WORKFLOW_TEMPLATES,
     DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE,
+    _TEMPLATES_LOAD_LOCK,
     _coerce_template_payload,
     _ensure_templates_loaded,
     _env_flag_enabled,
+    _load_templates_from_db,
     _log_template_issue,
     _raise_template_error,
     _sync_workflow_templates_from_definitions,
@@ -91,4 +93,6 @@ __all__ = [
     "_sync_workflow_templates_from_definitions",
     "_template_steps_from_definition",
     "_validate_template_orders",
+    "_TEMPLATES_LOAD_LOCK",
+    "_load_templates_from_db",
 ]

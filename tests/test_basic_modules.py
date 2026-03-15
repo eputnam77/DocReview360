@@ -6,7 +6,8 @@ from _pytest.monkeypatch import MonkeyPatch
 from docreview360 import archive, config, documents, logs, workflows
 
 
-def test_config_roundtrip(tmp_path: Path) -> None:
+def test_config_roundtrip(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.delenv("DOCREVIEW360_DATABASE_URL", raising=False)
     cfg = config.Config(database="sqlite", editor="tiptap", cms="md", auth="none")
     cfg.save(tmp_path / "cfg.yaml")
     loaded = config.Config.load(tmp_path / "cfg.yaml")

@@ -55,7 +55,8 @@ def test_project_lifecycle_persists_and_deletes() -> None:
 
     user_resp = client.get("/dashboard/user", headers=headers)
     assert user_resp.status_code == 200
-    user_projects = {item["id"] for item in user_resp.json()}
+    user_data = user_resp.json()
+    user_projects = {item["id"] for item in (user_data["projects"] if isinstance(user_data, dict) else user_data)}
     assert "proj-1" in user_projects
 
     update_resp = client.put(
@@ -90,7 +91,7 @@ def test_project_lifecycle_persists_and_deletes() -> None:
 
     user_after = client.get("/dashboard/user", headers=headers)
     assert user_after.status_code == 200
-    user_ids = {item["id"] for item in user_after.json()}
+    user_ids = {item["id"] for item in user_after.json()["projects"]}
     assert "proj-1" not in user_ids
 
     search_module._reload_state_from_repository()

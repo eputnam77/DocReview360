@@ -32,7 +32,8 @@ def test_user_dashboard_endpoint() -> None:
     )
     assert resp.status_code == 200
     data = resp.json()
-    ids = {e["id"] for e in data}
+    projects = data["projects"] if isinstance(data, dict) else data
+    ids = {e["id"] for e in projects}
     assert "u1" in ids
 
 

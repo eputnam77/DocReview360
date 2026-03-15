@@ -686,7 +686,7 @@ def test_phase_configuration_links_workflow_defaults_for_new_project(
     assert create_phase_resp.status == 201
 
     link_phase_resp = page.request.put(
-        f"{e2e_backend_url}/phases/{phase_name.replace(" ", "%20")}/workflow-template",
+        f"{e2e_backend_url}/phases/{phase_name.replace(' ', '%20')}/workflow-template",
         headers=headers,
         json={"workflow_template_id": template_id},
     )

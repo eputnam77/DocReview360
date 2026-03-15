@@ -24,6 +24,8 @@ def test_switch_environment_strips_name(tmp_path: Path, monkeypatch: pytest.Monk
     env_file = tmp_path / "envs.yaml"
     environment.add_environment("staging", "https://staging", "blue", env_file)
 
+    # Register the env var with monkeypatch so it is cleaned up after the test.
+    monkeypatch.delenv("DOCREVIEW360_ENV", raising=False)
     url = environment.switch_environment("  staging  ", env_file)
 
     assert url == "https://staging"

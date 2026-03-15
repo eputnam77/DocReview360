@@ -5,7 +5,8 @@ import pytest
 from docreview360.config import Config
 
 
-def test_config_roundtrip(tmp_path: Path) -> None:
+def test_config_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DOCREVIEW360_DATABASE_URL", raising=False)
     cfg = Config(
         database="sqlite",
         database_url="sqlite:///test.db",

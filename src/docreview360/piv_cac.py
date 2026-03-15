@@ -47,7 +47,15 @@ def validate_piv_certificate(cert_pem: str) -> bool:
         raise ValueError("certificate required")
     cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
     now = datetime.now(timezone.utc)
-    return cert.not_valid_before_utc <= now < cert.not_valid_after_utc
+    # not_valid_before_utc / not_valid_after_utc added in cryptography >= 42;
+    # fall back to the naive attributes and make them timezone-aware.
+    if hasattr(cert, "not_valid_before_utc"):
+        nbf = cert.not_valid_before_utc
+        naf = cert.not_valid_after_utc
+    else:
+        nbf = cert.not_valid_before.replace(tzinfo=timezone.utc)
+        naf = cert.not_valid_after.replace(tzinfo=timezone.utc)
+    return nbf <= now < naf
 
 
 # ---------------------------------------------------------------------------

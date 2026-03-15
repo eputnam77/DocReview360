@@ -22,8 +22,7 @@ def test_import_document_sanitizes_html_content():
 
 def test_import_document_respects_size_limit(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        doc_mod,
-        "load_settings",
+        "docreview360.documents._store.load_settings",
         lambda: {"documents": {"max_upload_size": 4}},
     )
     with pytest.raises(ValueError, match="size limit"):
@@ -31,7 +30,7 @@ def test_import_document_respects_size_limit(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_import_document_rejects_unsupported_mime(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(doc_mod, "load_settings", lambda: {})
+    monkeypatch.setattr("docreview360.documents._store.load_settings", lambda: {})
     png_bytes = b"\x89PNG\r\n\x1a\n" + b"0" * 10
     with pytest.raises(ValueError, match="unsupported MIME type"):
         import_document("image.png", png_bytes)

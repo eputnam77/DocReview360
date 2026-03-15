@@ -311,8 +311,6 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # noqa: C901
         annotations = get_type_hints(f)
         async_wrapper.__annotations__ = annotations
         sync_wrapper.__annotations__ = annotations
-        async_wrapper.__globals__.update(f.__globals__)  # type: ignore[attr-defined]
-        sync_wrapper.__globals__.update(f.__globals__)  # type: ignore[attr-defined]
         return cast(F, async_wrapper if is_coro else sync_wrapper)
 
     if func is None:

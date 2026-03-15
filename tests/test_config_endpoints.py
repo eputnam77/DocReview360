@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from uuid import uuid4
 
@@ -16,6 +17,9 @@ def test_get_and_update_config(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg_path = cfg_dir / "conf.yaml"
     monkeypatch.setattr(conf_mod, "CONFIG_FILE", cfg_path)
     monkeypatch.setattr(api_mod, "CONFIG_FILE", cfg_path)
+    _admin_router_mod = sys.modules.get("docreview360.api.admin_router")
+    if _admin_router_mod is not None:
+        monkeypatch.setattr(_admin_router_mod, "CONFIG_FILE", cfg_path)
 
     Config(
         database="sqlite",
@@ -59,6 +63,9 @@ def test_update_config_rejects_invalid_branding_payload(monkeypatch: pytest.Monk
     cfg_path = cfg_dir / "conf.yaml"
     monkeypatch.setattr(conf_mod, "CONFIG_FILE", cfg_path)
     monkeypatch.setattr(api_mod, "CONFIG_FILE", cfg_path)
+    _admin_router_mod = sys.modules.get("docreview360.api.admin_router")
+    if _admin_router_mod is not None:
+        monkeypatch.setattr(_admin_router_mod, "CONFIG_FILE", cfg_path)
 
     Config(database="sqlite", editor="tiptap", cms="none", auth="oidc").save(cfg_path)
     client = TestClient(api_mod.app)

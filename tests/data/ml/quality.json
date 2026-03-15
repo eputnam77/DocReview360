@@ -41,7 +41,7 @@
     "text": "Project Phoenix Overview\n\n# Introduction\nThis policy outlines the review timeline for the Phoenix expansion project.\n\n# Body\nTeams must submit updates weekly, include risk mitigations, and track decisions.\n- Provide change logs\n- Capture open questions\n\n# Conclusion\nThank you for keeping stakeholders informed.\n"
   },
   "model": {
-    "path": "/workspace/DocReview360/src/docreview360/models/quality_critic.onnx",
+    "path": "/home/user/DocReview360/src/docreview360/models/quality_critic.onnx",
     "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
   }
 }

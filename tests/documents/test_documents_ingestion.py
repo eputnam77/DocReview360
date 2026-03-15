@@ -32,8 +32,7 @@ def test_default_allows_pdf() -> None:
 
 def test_pdf_ingestion_sanitises_text(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        documents,
-        "load_settings",
+        "docreview360.documents._store.load_settings",
         lambda: {"documents": {"enable_pdf_ingestion": True}},
     )
 
@@ -43,7 +42,7 @@ def test_pdf_ingestion_sanitises_text(monkeypatch: pytest.MonkeyPatch) -> None:
         calls.append(data)
         return "Hello <script>alert(1)</script>"
 
-    monkeypatch.setattr(documents, "_extract_pdf_text", fake_extract)
+    monkeypatch.setattr("docreview360.documents._store._extract_pdf_text", fake_extract)
 
     doc = documents.import_document("sample.pdf", b"%PDF-1.4 fake content")
 
@@ -54,8 +53,7 @@ def test_pdf_ingestion_sanitises_text(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_custom_pdf_pipeline_is_invoked(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        documents,
-        "load_settings",
+        "docreview360.documents._store.load_settings",
         lambda: {"documents": {"enable_pdf_ingestion": True}},
     )
 
@@ -74,7 +72,7 @@ def test_custom_pdf_pipeline_is_invoked(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_pdf_ingestion_rejected_without_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(documents, "load_settings", lambda: {"documents": {}})
+    monkeypatch.setattr("docreview360.documents._store.load_settings", lambda: {"documents": {}})
 
     with pytest.raises(ValueError) as exc:
         documents.import_document("disabled.pdf", b"%PDF-no-pipeline")

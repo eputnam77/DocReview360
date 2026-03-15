@@ -14,7 +14,7 @@ from .. import auth, reporting
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..logs import LogEntry, log_event, query_logs
-from ..rbac import require_role, has_permission
+from ..rbac import require_any_role, require_role, has_permission
 from ..reporting import (
     DashboardEntry,
     DocumentAgingReport,
@@ -405,7 +405,7 @@ async def reviewer_workload_endpoint(
 async def analytics_dashboard_endpoint(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-    user: auth.User = Depends(require_role("manager")),
+    user: auth.User = Depends(require_any_role("manager", "admin")),
 ) -> dict[str, Any]:
     """Return comprehensive analytics data.
 

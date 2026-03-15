@@ -32,7 +32,7 @@ def test_cache_negative_ttl_raises() -> None:
 def test_cache_remote_client(monkeypatch: pytest.MonkeyPatch) -> None:
     dummy = DummyRedis()
     monkeypatch.setattr(cache, "_redis", types.SimpleNamespace(Redis=lambda *a, **k: dummy))
-    cache._client = None
+    monkeypatch.setattr(cache, "_client", None)
     cache.cache_set("a", "b", ttl=1)
     assert cache.cache_get("a") == "b"
     cache.clear_cache()
@@ -40,7 +40,7 @@ def test_cache_remote_client(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_cache_fallback_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
-    cache._client = None
+    monkeypatch.setattr(cache, "_client", None)
     monkeypatch.setattr(cache, "_redis", None)
     cache.clear_cache()
     fake_time = [0.0]
@@ -52,7 +52,7 @@ def test_cache_fallback_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_cache_ttl_zero_means_no_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
     """A TTL of zero should behave like no expiration."""
-    cache._client = None
+    monkeypatch.setattr(cache, "_client", None)
     monkeypatch.setattr(cache, "_redis", None)
     cache.clear_cache()
     fake_time = [0.0]
@@ -63,11 +63,16 @@ def test_cache_ttl_zero_means_no_expiry(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_cache_import_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "redis", None)
     import docreview360.cache as c
 
+    real_redis = sys.modules.get("redis")  # save real redis reference
+    monkeypatch.setitem(sys.modules, "redis", None)
     importlib.reload(c)
     assert c._redis is None
-    # restore original module for subsequent tests
-    sys.modules.pop("docreview360.cache", None)
-    import docreview360.cache  # noqa: F401
+
+    # Restore: reload the module in-place with the real redis available so that
+    # all existing references (held by other test modules) see the restored state.
+    if real_redis is not None:
+        sys.modules["redis"] = real_redis
+    importlib.reload(c)
+    monkeypatch.setattr(c, "_client", None)  # reset any stale client state

@@ -9,7 +9,18 @@ from the old flat module.
 from __future__ import annotations
 
 from ..models import LogEntry
-from ._db import LOG_RETENTION_DAYS, SENSITIVE_KEYS, ERROR_TAXONOMY, TRACE_ID, logs, alerts, _listeners, _get_db
+from ._db import (
+    LOG_RETENTION_DAYS,
+    SENSITIVE_KEYS,
+    ERROR_TAXONOMY,
+    TRACE_ID,
+    logs,
+    alerts,
+    _listeners,
+    _get_db,
+    _should_emit_structured_runtime_logs,
+    _emit_structured_runtime_log,
+)
 from ._dispatch import (
     log_event,
     log_verification_failure,

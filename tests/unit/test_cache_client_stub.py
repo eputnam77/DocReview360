@@ -28,9 +28,8 @@ class DummyRedis:
 def test_cache_uses_stub_without_from_url(monkeypatch: pytest.MonkeyPatch) -> None:
     dummy = DummyRedis()
     monkeypatch.setattr(cache, "_redis", types.SimpleNamespace(Redis=lambda url: dummy))
-    cache._client = None
+    monkeypatch.setattr(cache, "_client", None)
     cache.clear_cache()
     cache.cache_set("a", "b")
     assert dummy.store["a"][0] == "b"
     cache.clear_cache()
-    cache._client = None

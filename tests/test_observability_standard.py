@@ -40,7 +40,7 @@ def test_log_event_emits_structured_json_in_production(monkeypatch) -> None:
     def fake_emit(entry: object) -> None:
         emitted.append(entry)
 
-    monkeypatch.setattr(_logs_mod, "_emit_structured_runtime_log", fake_emit)
+    monkeypatch.setattr("docreview360.logs._dispatch._emit_structured_runtime_log", fake_emit)
     entry = log_event("structured_probe", user_id="alice", entity_id="doc-1")
 
     assert emitted, "Expected _emit_structured_runtime_log to be called"

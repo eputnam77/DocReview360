@@ -7,7 +7,13 @@ from docreview360.documents import DocumentModel, document_lock, documents
 from docreview360.search import add_document, search
 
 
-def test_search_drops_corrupted_cache_on_error():
+def test_search_drops_corrupted_cache_on_error(monkeypatch: pytest.MonkeyPatch):
+    # Ensure no leftover Redis stub from other tests so cache ops use _cache dict.
+    # Use string-form setattr so monkeypatch always patches the module currently
+    # registered in sys.modules (not a potentially stale local reference).
+    monkeypatch.setattr("docreview360.cache._client", None)
+    monkeypatch.setattr("docreview360.cache._redis", None)
+
     with document_lock:
         documents.clear()
         doc = DocumentModel(id="1", content="hello world")

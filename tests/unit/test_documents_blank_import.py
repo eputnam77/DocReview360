@@ -15,7 +15,7 @@ def test_import_document_allows_blank_content(monkeypatch: pytest.MonkeyPatch) -
 
     import sys
     monkeypatch.setattr(sys.modules["docreview360.documents._store"].fts, "index_document", _index)
-    monkeypatch.setattr(documents, "log_audit_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr("docreview360.documents._store.log_audit_event", lambda *args, **kwargs: None)
 
     doc = documents.import_document("empty.txt", b"   ")
     try:

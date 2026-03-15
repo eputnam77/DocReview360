@@ -33,9 +33,9 @@
   "model": {
     "docreview360:model": "signature-anomaly",
     "docreview360:version": "1.0.0",
-    "path": "/workspace/DocReview360/src/docreview360/ml/assets/signature_anomaly.onnx",
-    "sha256": "b7b33d48f4f48cbb523629e5b3c70d755b85b7326ee72fffcdb882232a5df6a4",
-    "version": "main_graph"
+    "path": "/home/user/DocReview360/src/docreview360/ml/assets/signature_anomaly.onnx",
+    "sha256": "6dbcd20cdf8ebbeb4168d7c6b0afeb01e82895631cc0d14d268632e7db5444ea",
+    "version": "signature_anomaly"
   },
   "score": 0.33403319120407104
 }
