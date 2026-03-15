@@ -227,15 +227,15 @@ class TestWebhookSubscriptionPersistence:
         # Add a subscription (as the route handler would do)
         event = "document.published"
         url = "https://example.com/hook"
-        _subscribers.setdefault(event, []).append(url)
-        _add_subscriber_to_db(event, url)
+        row_id = _add_subscriber_to_db(event, url, None)
+        _subscribers.setdefault(event, []).append((url, None, row_id))
 
         # Simulate restart: clear in-memory cache, reload from DB.
         _subscribers.clear()
         assert _subscribers.get(event) is None
 
         _load_subscribers_from_db()
-        assert url in _subscribers.get(event, [])
+        assert any(entry[0] == url for entry in _subscribers.get(event, []))
 
     def test_multiple_subscriptions_recovered(self):
         """Multiple subscriptions for different events are all recovered."""
@@ -252,8 +252,8 @@ class TestWebhookSubscriptionPersistence:
             ("workflow.advanced", "https://c.example.com/hook"),
         ]
         for event, url in entries:
-            _subscribers.setdefault(event, []).append(url)
-            _add_subscriber_to_db(event, url)
+            row_id = _add_subscriber_to_db(event, url, None)
+            _subscribers.setdefault(event, []).append((url, None, row_id))
 
         _subscribers.clear()
         _load_subscribers_from_db()

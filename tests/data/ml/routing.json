@@ -22,7 +22,7 @@
   },
   "model": {
     "docreview360:reviewers": "alice,bob,charlie",
-    "path": "/workspace/DocReview360/src/docreview360/ml/assets/routing_reviewer.onnx",
+    "path": "/home/user/DocReview360/src/docreview360/ml/assets/routing_reviewer.onnx",
     "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
   },
   "recommendation": {

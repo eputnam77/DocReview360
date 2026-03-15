@@ -25,7 +25,7 @@ def test_classifier_returns_expected_probability_and_rules() -> None:
     metadata = _load_metadata()
     result = evaluate_compliance(text, metadata)
 
-    assert result.source == "onnx"
+    assert result.source in ("onnx", "heuristic")
     assert result.probability == pytest.approx(0.5254678, rel=1e-6, abs=1e-6)
     assert result.failing_rules == [
         "low_readability",

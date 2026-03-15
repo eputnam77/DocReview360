@@ -33,6 +33,9 @@ def test_roles_persist_across_processes(tmp_path: Path) -> None:
     db_path = tmp_path / "roles.db"
     env = os.environ.copy()
     env["DOCREVIEW360_RBAC_DB"] = str(db_path)
+    # Ensure the subprocess runs in a safe (dev) environment regardless of
+    # what env vars previous tests may have left in os.environ.
+    env["DOCREVIEW360_ENV"] = "dev"
     project_root = Path(__file__).resolve().parents[2]
     src_path = project_root / "src"
     existing = env.get("PYTHONPATH")

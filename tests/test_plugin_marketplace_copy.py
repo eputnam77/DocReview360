@@ -3,7 +3,7 @@
 These tests focus on ensuring helper functions do not leak internal state.
 """
 
-from docreview360.plugin_marketplace import PLUGIN_DATA, list_plugins_with_info
+from docreview360.plugin_marketplace import CORE_PLUGIN_DATA, PLUGIN_DATA, list_plugins_with_info
 
 
 def test_list_plugins_with_info_returns_copies() -> None:
@@ -19,7 +19,8 @@ def test_list_plugins_with_info_returns_copies() -> None:
     plugin["name"] = "changed"
     plugin.setdefault("tags", []).append("extra")
 
-    # Original metadata should remain untouched
-    original = PLUGIN_DATA[plugin_id]
+    # Original metadata should remain untouched (check both data stores)
+    original = PLUGIN_DATA.get(plugin_id) or CORE_PLUGIN_DATA.get(plugin_id)
+    assert original is not None, f"plugin_id {plugin_id!r} not found in any data store"
     assert original["name"] != "changed"
-    assert "extra" not in original["tags"]
+    assert "extra" not in original.get("tags", [])
