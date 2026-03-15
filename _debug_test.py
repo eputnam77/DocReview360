@@ -41,7 +41,7 @@ client = TestClient(app)
 
 resp = client.post('/workflow-templates', json={'name': 'Phase Link Test Flow', 'description': 'test', 'steps': [{'role': 'Reviewer', 'required': True}]})
 print()
-print('POST status:', resp.status_code, resp.json() if resp.status_code \!= 201 else 'created')
+print('POST status:', resp.status_code, resp.json() if resp.status_code != 201 else 'created')
 print('After POST:')
 print('  Phase Link Test Flow in defs:', 'Phase Link Test Flow' in workflows_mod.workflow_template_definitions)
 print('  Phase Link Test Flow in wf_templates:', 'Phase Link Test Flow' in workflows_mod.workflow_templates)

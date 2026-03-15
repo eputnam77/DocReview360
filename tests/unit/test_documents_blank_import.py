@@ -13,7 +13,8 @@ def test_import_document_allows_blank_content(monkeypatch: pytest.MonkeyPatch) -
     def _index(doc_id: str, content: str) -> None:
         calls.append((doc_id, content))
 
-    monkeypatch.setattr(documents.fts, "index_document", _index)
+    import sys
+    monkeypatch.setattr(sys.modules["docreview360.documents._store"].fts, "index_document", _index)
     monkeypatch.setattr(documents, "log_audit_event", lambda *args, **kwargs: None)
 
     doc = documents.import_document("empty.txt", b"   ")

@@ -18,7 +18,7 @@ def test_import_document_accepts_case_insensitive_allowed_mime_types(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        doc_mod,
+        sys.modules["docreview360.documents._store"],
         "load_settings",
         lambda: {
             "documents": {
@@ -46,7 +46,7 @@ def test_import_document_strips_charset_from_magic_detection(
 
     monkeypatch.setitem(sys.modules, "magic", SimpleNamespace(Magic=FakeMagic))
     monkeypatch.setattr(
-        doc_mod,
+        sys.modules["docreview360.documents._store"],
         "load_settings",
         lambda: {"documents": {"allowed_mime_types": ["text/plain"]}},
     )

@@ -19,7 +19,7 @@ def test_search_drops_corrupted_cache_on_error():
     cache_set(cache_key, "not-json")
 
     # Force cache_set in search() to fail so corrupted entry would persist
-    with patch("docreview360.search.cache_set", side_effect=RuntimeError("boom")):
+    with patch("docreview360.cache.cache_set", side_effect=RuntimeError("boom")):
         with pytest.raises(RuntimeError):
             search("hello")
 

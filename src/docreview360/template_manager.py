@@ -35,6 +35,8 @@ DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE = _env_flag_enabled(
 _TEMPLATES_LOADED: bool = False
 # Guards the _TEMPLATES_LOADED flag to prevent duplicate loads under concurrent requests.
 _TEMPLATE_LOAD_LOCK = threading.Lock()
+# Optional file-based cache path; can be overridden in tests for isolation.
+_ACTIVE_TEMPLATES_FILE: Path | None = None
 
 
 def save_template(name: str, content: str, root: Path = TEMPLATES_DIR) -> Path:

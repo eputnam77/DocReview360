@@ -206,7 +206,7 @@ def testing_db():
 @pytest.fixture(autouse=True)
 def _reset_search(
     tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
-) -> None:
+) -> Generator[None, None, None]:
     """Provide an isolated persistent store for the search module per test."""
 
     try:
@@ -222,3 +222,5 @@ def _reset_search(
     import docreview360.search as search_module
 
     search_module._reset_state_for_testing(db_path=db_path)
+    yield
+    search_module._repository.close()

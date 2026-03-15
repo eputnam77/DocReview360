@@ -13,6 +13,7 @@ def test_sync_to_sharepoint_expands_home(monkeypatch: MonkeyPatch, tmp_path: Pat
     (src / "example.txt").write_text("data")
 
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.setenv("SHAREPOINT_ROOT", "~/records")
 
     copied = sync_to_sharepoint(src)

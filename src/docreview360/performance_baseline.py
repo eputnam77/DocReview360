@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-﻿"""Performance baseline measurement helpers for DocReview360 release readiness."""
+"""Performance baseline measurement helpers for DocReview360 release readiness."""
 
 from __future__ import annotations
 

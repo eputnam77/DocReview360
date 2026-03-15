@@ -15,8 +15,9 @@ def test_default_url_variants() -> None:
     assert default_url("sqlite") == "sqlite:///docreview360.db"
     assert default_url("PostgreSQL").startswith("postgresql+psycopg")
     assert default_url("mysql").startswith("mysql+pymysql")
+    assert default_url("oracle").startswith("oracle+oracledb")
     with pytest.raises(ValueError):
-        default_url("oracle")
+        default_url("unsupported_db_xyz")
 
 
 def test_parse_sql_statements_handles_triggers(tmp_path: Path) -> None:

@@ -5,8 +5,9 @@ import pytest
 
 
 def test_watchlist_file_expands_user(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Point HOME to our temp directory so ``~`` resolves inside it
+    # Point HOME / USERPROFILE to our temp directory so ``~`` resolves inside it
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.setenv("DOCREV_WATCHLIST_FILE", "~/custom_watch.json")
 
     # Import and reload module so it picks up env vars

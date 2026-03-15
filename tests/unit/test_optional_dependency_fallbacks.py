@@ -9,7 +9,8 @@ from docreview360.ml import onnx_infer, routing_critic, signature_anomaly
 
 
 def test_auth_hash_password_fallback_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(auth, "bcrypt", None)
+    import sys
+    monkeypatch.setattr(sys.modules["docreview360.auth._repository"], "bcrypt", None)
     password = "Valid-Pass123!"
     password_hash = auth.UserRepository.hash_password(password)
     assert password_hash.startswith("pbkdf2$")
@@ -20,7 +21,8 @@ def test_auth_hash_password_fallback_roundtrip(monkeypatch: pytest.MonkeyPatch) 
 def test_auth_verify_otp_fallback_when_pyotp_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(auth, "pyotp", None)
+    import sys
+    monkeypatch.setattr(sys.modules["docreview360.auth._repository"], "pyotp", None)
     assert auth.UserRepository.verify_otp("secret123", "secret123") is True
     assert auth.UserRepository.verify_otp("secret123", "000000") is False
     assert auth.UserRepository.verify_otp("123456", "123456") is True
@@ -28,7 +30,8 @@ def test_auth_verify_otp_fallback_when_pyotp_missing(
 
 
 def test_sanitize_content_without_bleach(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(documents, "bleach", None)
+    import sys
+    monkeypatch.setattr(sys.modules["docreview360.documents._store"], "bleach", None)
     content = "<h1>Title</h1><script>alert(1)</script><p>Body</p>"
     sanitized = documents.sanitize_content(content)
     assert "script" not in sanitized.lower()

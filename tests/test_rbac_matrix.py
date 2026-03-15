@@ -20,7 +20,7 @@ sys.modules.setdefault("docreview360", pkg)
 RBAC_DB_PATH = Path(tempfile.mkdtemp()) / "roles.db"
 os.environ["DOCREVIEW360_RBAC_DB"] = str(RBAC_DB_PATH)
 
-spec_auth = importlib.util.spec_from_file_location("docreview360.auth", PACKAGE_DIR / "auth.py")
+spec_auth = importlib.util.spec_from_file_location("docreview360.auth", PACKAGE_DIR / "auth" / "__init__.py")
 auth = importlib.util.module_from_spec(spec_auth)
 sys.modules["docreview360.auth"] = auth
 spec_auth.loader.exec_module(auth)

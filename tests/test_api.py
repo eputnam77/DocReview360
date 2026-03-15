@@ -86,9 +86,9 @@ def test_metrics_and_audit_endpoints() -> None:
     hdrs = _alice_headers()
 
     # metrics summary mirrors /reports/summary
-    resp1 = client.get("/metrics/summary")
+    resp1 = client.get("/metrics/summary", headers=hdrs)
     assert resp1.status_code == 200
-    resp2 = client.get("/reports/summary")
+    resp2 = client.get("/reports/summary", headers=hdrs)
     assert resp1.json() == resp2.json()
 
     # audit endpoint mirrors /logs
@@ -118,8 +118,9 @@ def test_audit_pagination() -> None:
 
 def test_start_workflow_endpoint() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
     wf = create_workflow("p194", ["draft", "review"])
-    resp = client.post(f"/workflows/{wf.id}/start", data={"title": "t"})
+    resp = client.post(f"/workflows/{wf.id}/start", data={"title": "t"}, headers=hdrs)
     assert resp.status_code == 200
     assert resp.json()["id"] == wf.id
     assert resp.json()["document"]
@@ -127,8 +128,9 @@ def test_start_workflow_endpoint() -> None:
 
 def test_start_workflow_defaults_title() -> None:
     client = TestClient(app)
+    hdrs = _alice_headers()
     wf = create_workflow("p195", ["draft", "review"])
-    resp = client.post(f"/workflows/{wf.id}/start", data={})
+    resp = client.post(f"/workflows/{wf.id}/start", data={}, headers=hdrs)
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["id"] == wf.id
@@ -237,8 +239,9 @@ def test_update_project_partial_fields() -> None:
 def test_environments_endpoint() -> None:
     """Test the environments endpoint that frontend is trying to access."""
     client = TestClient(app)
+    hdrs = _alice_headers()
 
-    resp = client.get("/environments")
+    resp = client.get("/environments", headers=hdrs)
     assert resp.status_code == 200
     data = resp.json()
     assert "current" in data

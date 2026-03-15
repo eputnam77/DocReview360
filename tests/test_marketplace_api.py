@@ -6,7 +6,9 @@ from pytest import MonkeyPatch
 
 from docreview360 import auth
 from docreview360.api import app
-from docreview360.plugin_marketplace import PLUGIN_DATA
+from docreview360.plugin_marketplace import CORE_PLUGIN_DATA, PLUGIN_DATA
+
+ALL_PLUGIN_DATA = {**CORE_PLUGIN_DATA, **PLUGIN_DATA}
 
 
 def _alice_headers() -> dict[str, str]:
@@ -32,7 +34,7 @@ def test_marketplace_list() -> None:
     assert isinstance(plugins, list)
 
     # Check that we get the expected number of plugins
-    expected_plugin_ids = set(PLUGIN_DATA.keys())
+    expected_plugin_ids = set(ALL_PLUGIN_DATA.keys())
     actual_plugin_ids = {plugin["id"] for plugin in plugins}
     assert actual_plugin_ids == expected_plugin_ids
 
@@ -129,15 +131,15 @@ def test_marketplace_plugin_info() -> None:
     plugins = list_plugins_with_info()
 
     # Check that we have the expected plugins
-    assert len(plugins) == len(PLUGIN_DATA)
+    assert len(plugins) == len(ALL_PLUGIN_DATA)
 
     # Check that each plugin has the correct structure
     for plugin in plugins:
         plugin_id = plugin["id"]
-        assert plugin_id in PLUGIN_DATA
+        assert plugin_id in ALL_PLUGIN_DATA
 
         # Check that all expected fields are present
         expected_fields = ["name", "description", "category", "version", "author", "tags"]
         for field in expected_fields:
             assert field in plugin
-            assert plugin[field] == PLUGIN_DATA[plugin_id][field]
+            assert plugin[field] == ALL_PLUGIN_DATA[plugin_id][field]

@@ -20,10 +20,14 @@ SEC_REVIEW = SCRIPTS_DIR / "security-defaults-review.py"
 
 
 def run_script() -> subprocess.CompletedProcess[str]:
+    import os
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     return subprocess.run(
         [sys.executable, str(SEC_REVIEW)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env=env,
         cwd=str(REPO_ROOT),
         timeout=60,
     )

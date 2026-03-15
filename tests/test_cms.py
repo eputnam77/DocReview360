@@ -5,10 +5,12 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import cast
 
+import sys
+
 import pytest
 
 from docreview360 import auth
-from docreview360.api import (
+from docreview360.api.documents_router import (
     CmsExportRequest,
     CmsImportRequest,
     RevisionCreate,
@@ -64,7 +66,7 @@ async def test_update_endpoint_calls_save(monkeypatch) -> None:
     # normalises the configuration before deciding whether to save.
     cfg = Config(database="sqlite", editor="tiptap", cms=" sharepoint ", auth="oidc")
 
-    monkeypatch.setattr("docreview360.api.Config.load", lambda path: cfg)
+    monkeypatch.setattr(Config, "load", lambda path: cfg)
 
     called: dict[str, DocumentModel] = {}
 
@@ -72,7 +74,7 @@ async def test_update_endpoint_calls_save(monkeypatch) -> None:
         called["doc"] = document
         return "id"
 
-    monkeypatch.setattr("docreview360.api.save_to_cms", fake_save)
+    monkeypatch.setattr(sys.modules["docreview360.api.documents_router"], "save_to_cms", fake_save)
 
     body = DocumentModel(id=doc.id, content="next")
     mock_user = auth.User(username="alice", active=True)
@@ -86,7 +88,7 @@ async def test_revision_endpoint_calls_save(monkeypatch) -> None:
     doc = import_document("doc.md", b"start")
     cfg = Config(database="sqlite", editor="tiptap", cms=" sharepoint ", auth="oidc")
 
-    monkeypatch.setattr("docreview360.api.Config.load", lambda path: cfg)
+    monkeypatch.setattr(Config, "load", lambda path: cfg)
 
     called: dict[str, DocumentModel] = {}
 
@@ -94,7 +96,7 @@ async def test_revision_endpoint_calls_save(monkeypatch) -> None:
         called["doc"] = document
         return "id"
 
-    monkeypatch.setattr("docreview360.api.save_to_cms", fake_save)
+    monkeypatch.setattr(sys.modules["docreview360.api.documents_router"], "save_to_cms", fake_save)
 
     body = RevisionCreate(content="next")
     mock_user = auth.User(username="alice", active=True)
@@ -123,19 +125,21 @@ def test_local_cms_saves_and_fetches(monkeypatch, tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_import_and_export_endpoints_with_local_cms(monkeypatch, tmp_path) -> None:
     cfg = Config(database="sqlite", editor="tiptap", cms="local", auth="oidc")
-    monkeypatch.setattr("docreview360.api.Config.load", lambda path: cfg)
+    monkeypatch.setattr(Config, "load", lambda path: cfg)
     monkeypatch.setattr(
         "docreview360.cms.load_settings",
         lambda: {"cms": {"local": {"bucket": str(tmp_path)}}},
     )
 
+    mock_user = auth.User(username="alice", active=True)
     doc = import_document("doc.md", b"seed")
     export_response = await export_document_to_cms(
-        doc.id, CmsExportRequest(fmt="markdown"), x_user=None
+        doc.id, CmsExportRequest(fmt="markdown"), current_user=mock_user
     )
     assert export_response.item_id == f"{doc.id}.md"
 
     import_response = await import_document_from_cms(
-        CmsImportRequest(item_id=export_response.item_id, filename="imported.md")
+        CmsImportRequest(item_id=export_response.item_id, filename="imported.md"),
+        current_user=mock_user,
     )
     assert import_response.content == "seed"

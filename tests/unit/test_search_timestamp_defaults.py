@@ -9,8 +9,9 @@ from docreview360 import search
 
 def test_project_model_created_timestamp_is_unique(monkeypatch) -> None:
     """Two projects created in succession should receive distinct timestamps."""
+    import sys
 
-    real_datetime = search.datetime
+    real_datetime = datetime
 
     class _StubDateTime:
         _counter = 0
@@ -25,7 +26,7 @@ def test_project_model_created_timestamp_is_unique(monkeypatch) -> None:
         def __getattr__(self, name: str):  # pragma: no cover - defensive
             return getattr(real_datetime, name)
 
-    monkeypatch.setattr(search, "datetime", _StubDateTime)
+    monkeypatch.setattr(sys.modules["docreview360.search._models"], "datetime", _StubDateTime)
 
     first = search.ProjectModel(id="p1", name="One")
     second = search.ProjectModel(id="p2", name="Two")
@@ -35,8 +36,9 @@ def test_project_model_created_timestamp_is_unique(monkeypatch) -> None:
 
 def test_saved_search_created_timestamp_is_unique(monkeypatch) -> None:
     """Each saved search should capture creation time independently."""
+    import sys
 
-    real_datetime = search.datetime
+    real_datetime = datetime
 
     class _StubDateTime:
         _counter = 0
@@ -51,7 +53,7 @@ def test_saved_search_created_timestamp_is_unique(monkeypatch) -> None:
         def __getattr__(self, name: str):  # pragma: no cover - defensive
             return getattr(real_datetime, name)
 
-    monkeypatch.setattr(search, "datetime", _StubDateTime)
+    monkeypatch.setattr(sys.modules["docreview360.search._models"], "datetime", _StubDateTime)
 
     first = search.SavedSearch(id="s1", query="foo", user="alice")
     second = search.SavedSearch(id="s2", query="bar", user="bob")

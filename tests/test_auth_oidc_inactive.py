@@ -1,6 +1,7 @@
 import pytest
+from fastapi import HTTPException
 
-from docreview360.auth import USER_REPOSITORY, HTTPException, create_id_token, get_current_user_oidc
+from docreview360.auth import USER_REPOSITORY, create_id_token, get_current_user_oidc
 
 
 class DummyRequest:

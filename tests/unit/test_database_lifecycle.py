@@ -21,5 +21,5 @@ def test_database_lifecycle(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         Database("")
     with pytest.raises(ValueError):
-        default_url("oracle")
+        default_url("unsupported_db_xyz")
     db.drop_all()

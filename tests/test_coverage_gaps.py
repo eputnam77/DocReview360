@@ -94,12 +94,12 @@ class TestPingAndPublicEndpoints:
         resp = client.get("/status/public")
         assert resp.status_code == 200
 
-    def test_status_internal_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/status/internal")
+    def test_status_internal_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/status/internal", headers=alice)
         assert resp.status_code == 200
 
-    def test_environments_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/environments")
+    def test_environments_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/environments", headers=alice)
         assert resp.status_code == 200
 
     def test_root_html(self, client: TestClient) -> None:
@@ -240,18 +240,18 @@ class TestDocuments:
 
 
 class TestDocumentTypes:
-    def test_list_document_types_no_auth(self, client: TestClient) -> None:
-        """Document types list is public."""
-        resp = client.get("/document-types")
+    def test_list_document_types_no_auth(self, client: TestClient, alice: dict) -> None:
+        """Document types list requires auth."""
+        resp = client.get("/document-types", headers=alice)
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_get_document_type_not_found(self, client: TestClient) -> None:
-        resp = client.get("/document-types/NoSuchTypeXYZ")
+    def test_get_document_type_not_found(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/document-types/NoSuchTypeXYZ", headers=alice)
         assert resp.status_code == 404
 
-    def test_export_document_types(self, client: TestClient) -> None:
-        resp = client.get("/document-types/export")
+    def test_export_document_types(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/document-types/export", headers=alice)
         assert resp.status_code == 200
 
     def test_create_document_type_unauthenticated(self, client: TestClient) -> None:
@@ -269,11 +269,11 @@ class TestDocumentTypes:
         # Create first, then retrieve
         payload = {"name": "_CovType2", "workflow": ["Draft"]}
         client.post("/document-types", json=payload, headers=alice)
-        resp = client.get("/document-types/_CovType2")
+        resp = client.get("/document-types/_CovType2", headers=alice)
         assert resp.status_code in (200, 404)
 
-    def test_document_type_usage(self, client: TestClient) -> None:
-        resp = client.get("/document-types/NoSuchTypeXYZ/usage")
+    def test_document_type_usage(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/document-types/NoSuchTypeXYZ/usage", headers=alice)
         assert resp.status_code == 404
 
     def test_delete_document_type_no_auth(self, client: TestClient) -> None:
@@ -522,40 +522,40 @@ class TestLogs:
 
 
 class TestReports:
-    def test_summary_report_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/reports/summary")
+    def test_summary_report_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/reports/summary", headers=alice)
         assert resp.status_code == 200
 
-    def test_metrics_summary_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/metrics/summary")
+    def test_metrics_summary_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/metrics/summary", headers=alice)
         assert resp.status_code == 200
 
-    def test_summary_csv_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/reports/summary.csv")
+    def test_summary_csv_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/reports/summary.csv", headers=alice)
         assert resp.status_code == 200
 
-    def test_throughput_report_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/reports/throughput")
+    def test_throughput_report_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/reports/throughput", headers=alice)
         assert resp.status_code == 200
 
-    def test_throughput_csv_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/reports/throughput.csv")
+    def test_throughput_csv_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/reports/throughput.csv", headers=alice)
         assert resp.status_code == 200
 
-    def test_workload_report_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/reports/workload")
+    def test_workload_report_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/reports/workload", headers=alice)
         assert resp.status_code == 200
 
-    def test_workload_csv_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/reports/workload.csv")
+    def test_workload_csv_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/reports/workload.csv", headers=alice)
         assert resp.status_code == 200
 
-    def test_dashboard_report_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/reports/dashboard")
+    def test_dashboard_report_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/reports/dashboard", headers=alice)
         assert resp.status_code == 200
 
-    def test_doc_type_counts_no_auth(self, client: TestClient) -> None:
-        resp = client.get("/dashboard/doc-types")
+    def test_doc_type_counts_no_auth(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/dashboard/doc-types", headers=alice)
         assert resp.status_code == 200
 
     def test_reviewer_workload_admin(self, client: TestClient, alice: dict) -> None:
@@ -577,19 +577,19 @@ class TestDashboardAndProfile:
         resp = client.get("/dashboard/visibility")
         assert resp.status_code == 401
 
-    def test_visibility_with_header(self, client: TestClient) -> None:
-        resp = client.get("/dashboard/visibility", headers={"X-User": "alice"})
+    def test_visibility_with_header(self, client: TestClient, alice: dict) -> None:
+        resp = client.get("/dashboard/visibility", headers={**alice, "X-User": "alice"})
         assert resp.status_code == 200
 
     def test_update_visibility_missing_user(self, client: TestClient) -> None:
         resp = client.put("/dashboard/visibility", json={"stats": True})
         assert resp.status_code == 401
 
-    def test_update_visibility_with_header(self, client: TestClient) -> None:
+    def test_update_visibility_with_header(self, client: TestClient, alice: dict) -> None:
         resp = client.put(
             "/dashboard/visibility",
             json={"stats": True, "status": False},
-            headers={"X-User": "alice"},
+            headers={**alice, "X-User": "alice"},
         )
         assert resp.status_code == 200
 
@@ -684,8 +684,8 @@ class TestConfigAndSignature:
         )
         assert resp.status_code == 200
 
-    def test_switch_environment_not_found(self, client: TestClient) -> None:
-        resp = client.post("/environments/no-such-env")
+    def test_switch_environment_not_found(self, client: TestClient, alice: dict) -> None:
+        resp = client.post("/environments/no-such-env", headers=alice)
         assert resp.status_code == 404
 
 

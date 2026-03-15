@@ -11,8 +11,9 @@ def clear_documents() -> None:
 
 
 def test_import_document_negative_size_limit_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
     monkeypatch.setattr(
-        documents,
+        sys.modules["docreview360.documents._store"],
         "load_settings",
         lambda: {"documents": {"max_upload_size": -10}},
     )
