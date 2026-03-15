@@ -709,8 +709,8 @@ incrementally. Phase 5 is entirely outside this repository.
 
 ADDED BY USER
 
-- [] I logged in as Alice, created a project and assigned Bob to review. I logged off as Alice and logged in as Bob. I see the assigned project in Project view, but not Dashboard.
-- [] Separately, I logged in as Bob, went to Dashboard view and got this.
+- [ ] I logged in as Alice, created a project and assigned Bob to review. I logged off as Alice and logged in as Bob. I see the assigned project in Project view, but not Dashboard.
+- [ ] Separately, I logged in as Bob, went to Dashboard view and got this.
 
 1/2
 
@@ -740,9 +740,9 @@ lib/api.ts (66:18)
 UserDashboardPage.useQuery
 pages/dashboard/user.tsx (103:41)
 
-- [] I logged in, went to a project, clicked Edit Document. Although the entire webpage contains TipTap, the authoring window itself (authoring area) is only a small portion of the page. If the TipTap environment fills the page, the authoring window should be roughly the same size.
-- [] In TipTap editor, I typed a few lines, clicked unordered (bulleted) and ordered (numbered) and while the lines indented, none showed the bullets or numbers.
-- [] In TipTap editor, I wasn't sure what Enable Indentation was, so I clicked it and got this:
+- [ ] I logged in, went to a project, clicked Edit Document. Although the entire webpage contains TipTap, the authoring window itself (authoring area) is only a small portion of the page. If the TipTap environment fills the page, the authoring window should be roughly the same size.
+- [ ] In TipTap editor, I typed a few lines, clicked unordered (bulleted) and ordered (numbered) and while the lines indented, none showed the bullets or numbers.
+- [ ] In TipTap editor, I wasn't sure what Enable Indentation was, so I clicked it and got this:
 
 1/2
 
@@ -770,8 +770,8 @@ Show 14 ignore-listed frame(s)
 TipTapEditorPage
 pages/editors/tiptap.tsx (1454:52)
 
-- [] In TipTap editor, I added a heading 1, clicked Enable Heading Lock and nothing happened. I was still able to edit the heading.
-- [] In TipTap editor, I tried to open a template and got this.
+- [ ] In TipTap editor, I added a heading 1, clicked Enable Heading Lock and nothing happened. I was still able to edit the heading.
+- [ ] In TipTap editor, I tried to open a template and got this.
 
 1/1
 
@@ -798,21 +798,21 @@ Call Stack
 TipTapEditorPage.useCallback[handleTemplateLoad]
 pages/editors/tiptap.tsx (1101:26)
 
-- [] In TipTap editor, I tried to open API template and got this.
+- [ ] In TipTap editor, I tried to open API template and got this.
 
 Failed to load template: doc_type::API Manual / API Reference
 
 Error: {"detail":"Not Found"}
 
-- [] In TipTap Editor, I tried to open Briefing/Slide Deck template and got this.
+- [ ] In TipTap Editor, I tried to open Briefing/Slide Deck template and got this.
 
 Failed to load template: doc_type::Briefing / Slide Deck
 
 Error: {"detail":"Not Found"}
 
-- [] In Help & Support, I clicked the About button > GitHub Repository, and got an error. This is the correct URL: https://github.com/eputnam77/DocReview360
+- [ ] In Help & Support, I clicked the About button > GitHub Repository, and got an error. This is the correct URL: https://github.com/eputnam77/DocReview360
 
-- [] This is from the audit log. There are many 404 errors.
+- [ ] This is from the audit log. There are many 404 errors.
 
 INFO:     127.0.0.1:58996 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:58996 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
@@ -1655,3 +1655,14 @@ Before any production deployment, verify:
 - [ ] CORS configuration verified against production frontend origin
 - [ ] Secret key rotation tested (previous key acceptance window)
 - [ ] Backup/restore tested (`scripts/db_backup.sh` round-trip)
+
+---
+
+- [ ] Confirm `docreview360 init` is updated with the latest software applications.
+- [ ] The login page shows "login.title", "login.username", "login.password", "login.submit". Why are all beginning with "login."?
+- [ ] In Projects, I see "projects.new", "dashboard.assigned", "dashboard.in_progress", "dashboard.completed", "dashboard.overdue". What do they have the prefix (projects. or dashboard.)?
+- [ ] In demo-project, i have bob assigned to review. however, the Assigned dashboard and Pending dashboard show 0 (zero). If we have someone/user in the reviewer sign-off & concurrence, shouldn't the dashboards identify the correct number?
+- [ ] In Admin Dashboard, in User Roles Breakdown, what is "3 perms", "7 perms", etc.? What's "perms"?
+- [ ] In Admin Dashboard, I added users to review and made other updates in prjects, but the audit log feed and active users are empty. Are these dashboard wired into the system?
+- [ ] I don't understand prject view. We invite a review (there's another window indicating reviewer signoff & concurrence, which appears to duplicate reviewer table), then there's the Approvals table. Is this saying that a reviewer might not be an approver? If so, that's fine. However, I added a reviewer and when i tried to add that same reviewer to the approvals table, I got "Reviewer must be assigned to the project first." I thought I did that. Maybe more onscreen text would help clarify the flow (ensure that it's ready for localization too)
+- [ ] In Document Checker, I tried to select a system document, but received Could not fetch documents: HTTP 401: Unauthorized. Why is this? Should any access level be able to do this? With this, we need to ensure that the document naming (for example if a TipTap document) is clear so that if we have a list of documents, we can find it easily
