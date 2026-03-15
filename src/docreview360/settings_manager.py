@@ -59,8 +59,10 @@ def _decrypt_secret_value(value: str, *, settings: Dict[str, Any]) -> str:
     return plaintext.decode("utf-8")
 
 
-def load_settings(path: Path = SETTINGS_FILE) -> Dict[str, Any]:
+def load_settings(path: Path | None = None) -> Dict[str, Any]:
     """Return settings from ``path`` or an empty mapping."""
+    if path is None:
+        path = SETTINGS_FILE
     if not path.exists():
         return {}
     data = load_yaml_file(path, default={}) or {}
@@ -101,8 +103,10 @@ def load_settings(path: Path = SETTINGS_FILE) -> Dict[str, Any]:
     return data
 
 
-def update_setting(key: str, value: Any, path: Path = SETTINGS_FILE) -> None:
+def update_setting(key: str, value: Any, path: Path | None = None) -> None:
     """Update a single setting and persist to ``path``."""
+    if path is None:
+        path = SETTINGS_FILE
     settings = load_settings(path)
     settings[key] = value
     save_yaml_file(path, settings)
@@ -110,8 +114,10 @@ def update_setting(key: str, value: Any, path: Path = SETTINGS_FILE) -> None:
         configure_vault(value)
 
 
-def update_secret(provider: str, secret: str | None, path: Path = SETTINGS_FILE) -> None:
+def update_secret(provider: str, secret: str | None, path: Path | None = None) -> None:
     """Persist a secret for ``provider`` inside ``settings.yaml``."""
+    if path is None:
+        path = SETTINGS_FILE
     if not isinstance(provider, str) or not provider.strip():
         raise ValueError("provider must be a non-empty string")
     settings = load_settings(path)

@@ -38,7 +38,7 @@ def push_document(doc: Path, repo: Path, branch: str = "main", remote: Path | No
     dest = repo / doc.name
     shutil.copy2(doc, dest)
     _run(["git", "add", dest.name], repo)
-    _run(["git", "commit", "-m", "Sync document"], repo)
+    _run(["git", "-c", "commit.gpgsign=false", "commit", "-m", "Sync document"], repo)
     if remote:
         _run(["git", "push", "-u", "origin", branch], repo)
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo).decode().strip()

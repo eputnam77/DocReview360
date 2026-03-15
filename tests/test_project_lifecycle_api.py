@@ -91,7 +91,7 @@ def test_project_lifecycle_persists_and_deletes() -> None:
 
     user_after = client.get("/dashboard/user", headers=headers)
     assert user_after.status_code == 200
-    user_ids = {item["id"] for item in user_after.json()}
+    user_ids = {item["id"] for item in user_after.json()["projects"]}
     assert "proj-1" not in user_ids
 
     search_module._reload_state_from_repository()

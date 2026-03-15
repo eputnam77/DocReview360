@@ -30,7 +30,21 @@ def test_enforce_mfa_login() -> None:
     assert isinstance(token, str)
 
 
-def test_enable_fedramp_backup(tmp_path: Path) -> None:
+def test_enable_fedramp_backup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import base64
+
+    import docreview360.settings_manager as _sm
+
+    # Provide a minimal encryption key so secure_backup(encrypt=True) can encrypt.
+    settings_path = tmp_path / "settings.yaml"
+    key_b64 = base64.b64encode(b"0" * 32).decode()
+    settings_path.write_text(
+        f"secrets:\n  test-key: {key_b64}\n"
+        "security:\n  encryption_at_rest:\n    enabled: true\n"
+        "    key_id: test-key\n    required_for:\n    - backup\n"
+    )
+    monkeypatch.setattr(_sm, "SETTINGS_FILE", settings_path)
+
     dest = tmp_path / "b.gz"
     enable_fedramp_backup(str(dest))
     schedule = app.conf.beat_schedule["fedramp_backup"]

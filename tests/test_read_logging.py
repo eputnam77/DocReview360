@@ -1,7 +1,12 @@
+import sys
+
 import pytest
 
 import docreview360.api as api
+import docreview360.api.documents_router  # ensure module is registered in sys.modules
 import docreview360.graphql_api as gql
+
+_docs_router = sys.modules["docreview360.api.documents_router"]
 from docreview360 import auth
 from docreview360.config import Config
 from docreview360.documents import documents, import_document
@@ -22,12 +27,12 @@ async def test_read_logging_toggle(monkeypatch):
 
     mock_user = auth.User(username="alice", active=True)
     monkeypatch.setattr(api.Config, "load", classmethod(load_true))
-    await api.get_document_endpoint(doc.id, current_user=mock_user)
+    await _docs_router.get_document_endpoint(doc.id, current_user=mock_user)
     assert any(e.action == "read" and e.entity_id == doc.id for e in logs)
 
     clear_logs()
     monkeypatch.setattr(api.Config, "load", classmethod(load_false))
-    await api.get_document_endpoint(doc.id, current_user=mock_user)
+    await _docs_router.get_document_endpoint(doc.id, current_user=mock_user)
     assert not any(e.action == "read" and e.entity_id == doc.id for e in logs)
 
 

@@ -188,6 +188,7 @@ _DEFAULT_ROLE_PERMISSIONS: Mapping[str, Set[str]] = {
     "user": {"read"},
     "auditor": {"view_audit_log"},
     "verifier": {"verification_override"},
+    "qa_role": {"read"},
 }
 
 ROLE_PERMISSIONS: dict[str, Set[str]] = {
@@ -514,6 +515,26 @@ def require_role(role: str) -> Callable[[auth.User], auth.User]:
     def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
         try:
             if not has_role(user.username, role):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden",
+                )
+        except RoleBackendError as exc:  # pragma: no cover - defensive
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Role store unavailable",
+            ) from exc
+        return user
+
+    return _dependency
+
+
+def require_any_role(*roles: str) -> Callable[[auth.User], auth.User]:
+    """Return a dependency that passes if the user has at least one of ``roles``."""
+
+    def _dependency(user: auth.User = Depends(auth.get_current_user)) -> auth.User:
+        try:
+            if not any(has_role(user.username, r) for r in roles):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",

@@ -1,44 +1,17 @@
 """RBAC permission tests."""
 
-import importlib.util
-import os
-import sys
-import tempfile
-import types
-from pathlib import Path
-
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-# Load auth and rbac modules without executing the heavy package __init__
-PACKAGE_DIR = Path(__file__).resolve().parents[1] / "src" / "docreview360"
-pkg = types.ModuleType("docreview360")
-pkg.__path__ = [str(PACKAGE_DIR)]
-sys.modules.setdefault("docreview360", pkg)
-
-RBAC_DB_PATH = Path(tempfile.mkdtemp()) / "roles.db"
-os.environ["DOCREVIEW360_RBAC_DB"] = str(RBAC_DB_PATH)
-
-spec_auth = importlib.util.spec_from_file_location("docreview360.auth", PACKAGE_DIR / "auth" / "__init__.py")
-auth = importlib.util.module_from_spec(spec_auth)
-sys.modules["docreview360.auth"] = auth
-spec_auth.loader.exec_module(auth)
-
-spec_rbac = importlib.util.spec_from_file_location("docreview360.rbac", PACKAGE_DIR / "rbac.py")
-rbac = importlib.util.module_from_spec(spec_rbac)
-sys.modules["docreview360.rbac"] = rbac
-spec_rbac.loader.exec_module(rbac)
-
-# Bind local aliases to avoid late imports (ruff E402)
-ROLE_PERMISSIONS = rbac.ROLE_PERMISSIONS
-require_permission = rbac.require_permission
-set_user_roles = rbac.set_user_roles
+from docreview360 import auth, rbac
+from docreview360.rbac import ROLE_PERMISSIONS, require_permission, set_user_roles
 
 
 @pytest.fixture(autouse=True)
-def reset_roles() -> None:
-    rbac.configure_role_repository(RBAC_DB_PATH)
+def reset_roles(tmp_path) -> None:
+    rbac_db_path = tmp_path / "roles.db"
+    rbac.configure_role_repository(rbac_db_path)
     rbac.reset_role_assignments()
 
 

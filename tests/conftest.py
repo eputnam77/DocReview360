@@ -75,11 +75,42 @@ os.environ.setdefault("DOCREVIEW360_REQUIRE_MFA", "0")
 os.environ.setdefault("DOCREVIEW360_MAX_FAILED_ATTEMPTS", "5")
 os.environ.setdefault("DOCREVIEW360_LOCKOUT_SECONDS", "300")
 os.environ.setdefault("DOCREVIEW360_USER_DB", str(Path("tests") / "docreview360_users.db"))
+os.environ.setdefault("DOCREVIEW360_RBAC_DB", str(Path("tests") / "docreview360_roles.db"))
 os.environ.setdefault("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
 os.environ.setdefault("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
 os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
 os.environ.setdefault("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
 os.environ.setdefault("DOCREVIEW360_SEED_DEMO_USERS", "0")
+
+
+@pytest.fixture(autouse=True)
+def _restore_auth_module() -> Generator[None, None, None]:
+    """Restore sys.modules['docreview360.auth'] after tests that pop/reimport it.
+
+    Some tests pop docreview360.auth from sys.modules and reimport it to test
+    import-time behaviour (e.g. reading env vars at startup).  This creates a
+    *new* module object in sys.modules while other test files still hold a
+    reference to the *original* module.  The mismatch breaks
+    ``_get_user_repository()`` which looks up the module via sys.modules to
+    locate USER_REPOSITORY.  This fixture saves the original module and restores
+    it after every test.
+    """
+    import sys
+
+    original = sys.modules.get("docreview360.auth")
+    yield
+    try:
+        if original is not None and sys.modules.get("docreview360.auth") is not original:
+            sys.modules["docreview360.auth"] = original
+            # Also patch back into the package namespace if needed
+            try:
+                import docreview360 as _pkg
+                if getattr(_pkg, "auth", None) is not original:
+                    _pkg.auth = original
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 @pytest.fixture(autouse=True)
@@ -101,6 +132,14 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
     monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_AUDIENCE", "test-oidc-audience")
     monkeypatch.setenv("DOCREVIEW360_SEED_DEMO_USERS", "0")
+    # Ensure a safe non-production environment for every test so that tests
+    # which temporarily set DOCREVIEW360_ENV=production/prod do not pollute
+    # subsequent tests via direct os.environ modifications.
+    monkeypatch.setenv("DOCREVIEW360_ENV", "dev")
+    # Prevent module-level os.environ.setdefault calls in some test files from
+    # leaking DOCREVIEW360_DATABASE_URL into Config.load() env override logic.
+    monkeypatch.delenv("DOCREVIEW360_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP", raising=False)
 
 
 @pytest.hookimpl
@@ -155,6 +194,42 @@ def _reset_document_types() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
+def _reset_role_permissions(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """Restore ROLE_PERMISSIONS and role assignments between tests.
+
+    Creates a fresh per-test role repository so that tests which call
+    ``rbac.reset_role_assignments()`` or ``rbac.configure_role_repository()``
+    do not leak role state into subsequent tests.
+    """
+    try:
+        from docreview360 import rbac
+
+        rbac_dir = tmp_path_factory.mktemp("rbac")
+        rbac_path = rbac_dir / "roles.db"
+        monkeypatch.setenv("DOCREVIEW360_RBAC_DB", str(rbac_path))
+        rbac.configure_role_repository(rbac_path)
+        rbac.reset_role_assignments()
+        rbac._ROLE_CACHE.invalidate()
+    except Exception:
+        pass
+    yield
+    try:
+        from docreview360 import rbac
+
+        rbac.ROLE_PERMISSIONS.clear()
+        rbac.ROLE_PERMISSIONS.update(
+            {role: set(perms) for role, perms in rbac._DEFAULT_ROLE_PERMISSIONS.items()}
+        )
+        rbac._ROLE_PERMISSIONS_LAST_CHECK = 0.0
+        rbac._ROLE_PERMISSIONS_MTIME = None
+        rbac._ROLE_CACHE.invalidate()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def _reset_approvals() -> Generator[None, None, None]:
     """Reset in-memory approval state between tests.
 
@@ -204,6 +279,30 @@ def testing_db():
 
 
 @pytest.fixture(autouse=True)
+def _isolate_settings(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """Redirect settings_manager.SETTINGS_FILE to an isolated per-test path.
+
+    Tests that call settings endpoints write to ``settings.yaml`` in the repo
+    root, polluting subsequent test runs.  This fixture points the module-level
+    ``SETTINGS_FILE`` at a fresh temp file so those writes don't persist.
+    """
+    try:
+        settings_dir = tmp_path_factory.mktemp("settings")
+    except PermissionError:
+        fallback_root = BASE_DIR / ".tmp" / "pytest"
+        fallback_root.mkdir(parents=True, exist_ok=True)
+        settings_dir = fallback_root / f"settings-{uuid4().hex}"
+        settings_dir.mkdir(parents=True, exist_ok=True)
+
+    import docreview360.settings_manager as _sm
+
+    monkeypatch.setattr(_sm, "SETTINGS_FILE", settings_dir / "settings.yaml")
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _reset_search(
     tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
 ) -> Generator[None, None, None]:
@@ -224,3 +323,21 @@ def _reset_search(
     search_module._reset_state_for_testing(db_path=db_path)
     yield
     search_module._repository.close()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiters() -> Generator[None, None, None]:
+    """Reset API rate limiter counters between tests to prevent state leakage."""
+    try:
+        from docreview360.api import reset_rate_limiters_for_testing
+
+        reset_rate_limiters_for_testing()
+    except Exception:
+        pass
+    yield
+    try:
+        from docreview360.api import reset_rate_limiters_for_testing
+
+        reset_rate_limiters_for_testing()
+    except Exception:
+        pass

@@ -302,7 +302,11 @@ class TestRateLimiter:
                 await dep(MockRequest())  # type: ignore[arg-type]
             assert exc_info.value.status_code == 429
 
-        asyncio.get_event_loop().run_until_complete(_run())
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(_run())
+        finally:
+            loop.close()
 
 
 # ══════════════════════════════════════════════════════════════════
