@@ -9,13 +9,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from docreview360 import auth, db_store, jit_provisioning, ldap_auth, oidc_client, rbac, sod
+from docreview360.api import app
 from fastapi.testclient import TestClient
 from jose import jwt
 from sqlalchemy import text
-
-from docreview360 import auth, db_store, jit_provisioning, ldap_auth, oidc_client, rbac, sod
-from docreview360.api import app
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 auth_router_module = importlib.import_module("docreview360.api.auth_router")
@@ -83,6 +81,33 @@ def test_project_pages_use_shared_react_query_hooks() -> None:
     assert 'authenticatedFetch("/projects")' not in dashboard
     assert "useCreateProject" in new_project
     assert 'authenticatedFetch(`${API}/projects`' not in new_project
+
+
+def test_translation_hook_has_public_locale_fallback_for_logged_out_pages() -> None:
+    hook_source = _project_file("frontend/lib/useTranslation.ts")
+    assert "/locales/" in hook_source
+    assert "common.json" in hook_source
+    assert "_loadPublicLocaleStrings" in hook_source
+
+
+def test_admin_dashboard_reads_audit_feed_and_uses_permissions_copy() -> None:
+    admin_dashboard = _project_file("frontend/pages/dashboard/admin.tsx")
+    assert "/api/audit" in admin_dashboard
+    assert "permissions" in admin_dashboard
+    assert "perms" not in admin_dashboard
+
+
+def test_project_approval_picker_accepts_invited_reviewers() -> None:
+    project_page = _project_file("frontend/pages/projects/[id]/index.tsx")
+    assert "approvalReviewerOptions" in project_page
+    assert "Invite the reviewer in the Reviewers section before adding a phase approval." in project_page
+
+
+def test_checker_uses_public_documents_fallback_and_descriptive_labels() -> None:
+    checker_page = _project_file("frontend/pages/tools/checker.tsx")
+    assert "/documents/public" in checker_page
+    assert "Showing public system documents only." in checker_page
+    assert "formatSystemDocumentLabel" in checker_page
 
 
 def test_revoked_tokens_are_persisted_in_auth_db() -> None:

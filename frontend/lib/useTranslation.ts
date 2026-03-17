@@ -27,6 +27,48 @@ interface TranslationsResponse {
   strings: Record<string, string>;
 }
 
+function _normaliseLocaleTag(locale: string): string {
+  const base = locale.trim().toLowerCase().split("-")[0]?.split("_")[0];
+  return base || DEFAULT_LOCALE;
+}
+
+export function _flattenNestedStrings(
+  input: Record<string, unknown>,
+  prefix = "",
+): Record<string, string> {
+  const flattened: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input)) {
+    const nextKey = prefix ? `${prefix}.${key}` : key;
+    if (typeof value === "string") {
+      flattened[nextKey] = value;
+      continue;
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      Object.assign(
+        flattened,
+        _flattenNestedStrings(value as Record<string, unknown>, nextKey),
+      );
+    }
+  }
+  return flattened;
+}
+
+async function _loadPublicLocaleStrings(locale: string): Promise<Record<string, string>> {
+  try {
+    const normalized = _normaliseLocaleTag(locale);
+    const res = await fetch(`/locales/${normalized}/common.json`, {
+      credentials: "same-origin",
+    });
+    if (!res.ok) {
+      return {};
+    }
+    const data = (await res.json()) as Record<string, unknown>;
+    return _flattenNestedStrings(data);
+  } catch {
+    return {};
+  }
+}
+
 /** Recursively get a nested value from an object using dot-notation key.
  * @internal exported for testing */
 export function _dotGet(obj: Record<string, unknown>, key: string): string | undefined {
@@ -96,12 +138,16 @@ export function useTranslation(options?: { orgId?: string }): UseTranslationResu
       const url = orgId
         ? `/i18n/terminology/${locale}?org_id=${encodeURIComponent(orgId)}`
         : `/i18n/translations/${locale}`;
-      const res = await authenticatedFetch(url);
-      if (!res.ok) {
-        // Gracefully fall back to empty strings rather than crashing the UI.
-        return { locale, strings: {} };
+      try {
+        const res = await authenticatedFetch(url);
+        if (res.ok) {
+          return res.json() as Promise<TranslationsResponse>;
+        }
+      } catch {
+        // Fall through to the public locale bundle for logged-out pages.
       }
-      return res.json() as Promise<TranslationsResponse>;
+      const publicStrings = await _loadPublicLocaleStrings(locale);
+      return { locale: _normaliseLocaleTag(locale), strings: publicStrings };
     },
     // Cache translations for 5 minutes; they rarely change during a session.
     staleTime: 5 * 60 * 1000,

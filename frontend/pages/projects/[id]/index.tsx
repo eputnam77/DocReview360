@@ -456,6 +456,14 @@ export default function ProjectDetailsPage() {
     enabled: !!id,
     staleTime: 30_000,
   });
+  const assignmentReviewers = useMemo(
+    () => Array.from(new Set(assignments.filter((a) => a.status !== "replaced").map((a) => a.reviewer))),
+    [assignments],
+  );
+  const approvalReviewerOptions = useMemo(
+    () => Array.from(new Set([...assignmentReviewers, ...reviewers])).sort((left, right) => left.localeCompare(right)),
+    [assignmentReviewers, reviewers],
+  );
 
   // Feedback ledger
   interface FeedbackItem {
@@ -1044,8 +1052,8 @@ export default function ProjectDetailsPage() {
       toast.error(message);
       return;
     }
-    if (!reviewers.includes(reviewer)) {
-      const message = "Reviewer must be assigned to the project first.";
+    if (!approvalReviewerOptions.includes(reviewer)) {
+      const message = "Invite the reviewer in the Reviewers section before adding a phase approval.";
       setApprovalActionError(message);
       toast.error(message);
       return;
@@ -1070,7 +1078,7 @@ export default function ProjectDetailsPage() {
     } finally {
       setAddingApproval(false);
     }
-  }, [approvalReviewerInput, createApprovalForReviewer, reviewers]);
+  }, [approvalReviewerInput, approvalReviewerOptions, createApprovalForReviewer]);
 
   const handleUpdateReviewer = useCallback(async () => {
     if (!editingReviewer) return;
@@ -2203,6 +2211,11 @@ export default function ProjectDetailsPage() {
               )}
             </div>
           </div>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Reviewer assignments control who is invited, who can submit feedback, and who can sign off.
+            Use this section first, then add a separate approval below only when the current phase also
+            requires a formal approval record.
+          </p>
 
           {/* Review progress summary */}
           {assignments.length > 0 && (() => {
@@ -2367,6 +2380,10 @@ export default function ProjectDetailsPage() {
               <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence
             </h2>
           </div>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            This section tracks each invited reviewer&apos;s review lifecycle after they have been assigned above.
+            It is separate from phase approvals.
+          </p>
 
           {assignments.length === 0 ? (
             <Card>
@@ -2523,6 +2540,10 @@ export default function ProjectDetailsPage() {
                 </div>
               )}
           </div>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Approvals are optional phase-specific signoffs. A reviewer can be invited to review without also
+            being added here. Add an approval only when the current phase requires one.
+          </p>
           <Card>
             <CardContent className="space-y-4 overflow-x-auto">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -2534,11 +2555,11 @@ export default function ProjectDetailsPage() {
                     list="approval-reviewer-options"
                     value={approvalReviewerInput}
                     onChange={(e) => setApprovalReviewerInput(e.target.value)}
-                    placeholder="Select assigned reviewer"
+                    placeholder="Select an invited reviewer"
                     disabled={!canEdit}
                   />
                   <datalist id="approval-reviewer-options">
-                    {reviewers.map((name: string) => (
+                    {approvalReviewerOptions.map((name: string) => (
                       <option key={name} value={name} />
                     ))}
                   </datalist>

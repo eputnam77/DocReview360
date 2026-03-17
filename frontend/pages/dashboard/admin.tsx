@@ -23,12 +23,19 @@ type Stats = {
   users: number; documents: number; activeSessions: number; apiErrors: number; failedLogins: number; roles: number;
 };
 type Activity = { date: string; actions: number };
-type Log = { timestamp: string; action: string; metadata?: { user?: string; ip?: string } };
+type Log = {
+  id: string;
+  timestamp: string;
+  action: string;
+  user_id?: string | null;
+  ip_address?: string | null;
+  severity?: "info" | "warning" | "error";
+};
 type ErrorStat = { type: string; count: number };
 type APIMetric = { endpoint: string; requests: number; errors: number };
 type RoleStat = { role: string; count: number };
 interface RolePermissionSummary { role: string; permissions: string[]; count: number; default_permissions: string[]; default_count: number; is_default: boolean; }
-type SessionStat = { id: string; user: string; ip: string; active: boolean; started: string };
+type SessionStat = { id: string; user: string; summary: string; active: boolean; lastSeen: string };
 type HealthStat = { name: string; value: string; status: "ok" | "warning" | "down" };
 type QualityMetrics = { avg_score: number; docs_with_scores: number; high_quality_count: number; needs_improvement_count: number };
 
@@ -107,13 +114,18 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     loadRolePermissions();
-    authenticatedFetch("/users")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((users: any[]) => {
-        const list = Array.isArray(users) ? users : [];
-        setUserCount(list.length);
+    Promise.all([
+      authenticatedFetch("/users").then((r) => (r.ok ? r.json() : [])),
+      authenticatedFetch("/api/audit?size=25&page=0").then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([usersData, logsData]) => {
+        const users = Array.isArray(usersData) ? usersData : [];
+        const auditLogs = Array.isArray(logsData) ? logsData : [];
+
+        setUserCount(users.length);
+
         const roleCounts = new Map<string, number>();
-        list.forEach((user) => {
+        users.forEach((user) => {
           const roles = Array.isArray(user.roles) ? user.roles : [];
           roles.forEach((role: string) => {
             if (!role) return;
@@ -126,10 +138,64 @@ export default function AdminDashboardPage() {
             count,
           })),
         );
+
+        setLogs(auditLogs);
+
+        const byDay = new Map<string, number>();
+        const severityCounts = new Map<string, number>();
+        const activeUsers = new Map<string, SessionStat>();
+        auditLogs.forEach((entry: Log) => {
+          const day = entry.timestamp.slice(0, 10);
+          byDay.set(day, (byDay.get(day) ?? 0) + 1);
+          const severity = entry.severity ?? "info";
+          severityCounts.set(severity, (severityCounts.get(severity) ?? 0) + 1);
+          if (entry.user_id && !activeUsers.has(entry.user_id)) {
+            activeUsers.set(entry.user_id, {
+              id: entry.user_id,
+              user: entry.user_id,
+              summary: entry.ip_address || "Recent activity",
+              active: true,
+              lastSeen: entry.timestamp,
+            });
+          }
+        });
+
+        setActivityData(
+          Array.from(byDay.entries())
+            .sort(([left], [right]) => left.localeCompare(right))
+            .slice(-5)
+            .map(([date, actions]) => ({ date, actions })),
+        );
+        setErrorStats(
+          Array.from(severityCounts.entries()).map(([type, count]) => ({
+            type,
+            count,
+          })),
+        );
+        setSessionStats(
+          activeUsers.size > 0
+            ? Array.from(activeUsers.values()).slice(0, 10)
+            : users
+                .filter((user) => user.active !== false)
+                .slice(0, 10)
+                .map((user) => ({
+                  id: user.username,
+                  user: user.username,
+                  summary: Array.isArray(user.roles) && user.roles.length > 0
+                    ? user.roles.join(", ")
+                    : "Active account",
+                  active: true,
+                  lastSeen: "",
+                })),
+        );
       })
       .catch(() => {
         setUserCount(0);
         setRoleStats([]);
+        setLogs([]);
+        setActivityData([]);
+        setErrorStats([]);
+        setSessionStats([]);
       });
   }, []);
 
@@ -141,20 +207,28 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (data) {
+      const health = Object.entries(data.status ?? {}).map(([name, value]) => {
+        const numeric = typeof value === "number" ? value : Number(value);
+        const status: HealthStat["status"] =
+          Number.isFinite(numeric) && numeric > 0 ? "ok" : "warning";
+        return {
+          name,
+          value: String(value),
+          status,
+        };
+      });
       setStats({
         users: userCount,
         documents: data.summary?.documents ?? 0,
-        activeSessions: data.status?.workflows ?? 0,
-        apiErrors: 0,
-        failedLogins: 0,
+        activeSessions: sessionStats.length,
+        apiErrors: errorStats
+          .filter((entry) => entry.type === "error")
+          .reduce((sum, entry) => sum + entry.count, 0),
+        failedLogins: logs.filter((entry) => entry.action === "login_failed").length,
         roles: roleStats.length,
       });
-      setLogs([]);
-      setActivityData([]);
-      setErrorStats([]);
       setApiMetrics([]);
-      setSessionStats([]);
-      setHealthStats([]);
+      setHealthStats(health);
       if (data.quality) {
         setQuality(data.quality);
       }
@@ -175,7 +249,7 @@ export default function AdminDashboardPage() {
       setHealthStats([]);
       setQuality(null);
     }
-  }, [data, isError, roleStats.length, userCount]);
+  }, [data, errorStats, isError, logs, roleStats.length, sessionStats.length, userCount]);
 
   // KPI Card
   const StatCard = ({
@@ -208,7 +282,7 @@ export default function AdminDashboardPage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard icon={Users2} label="Users" value={stats.users} color="text-indigo-600" />
           <StatCard icon={FileText} label="Documents" value={stats.documents} color="text-cyan-600" />
-          <StatCard icon={BarChart2} label="Active Sessions" value={stats.activeSessions} color="text-emerald-600" />
+          <StatCard icon={BarChart2} label="Active Users" value={stats.activeSessions} color="text-emerald-600" />
           <StatCard icon={AlertTriangle} label="API Errors" value={stats.apiErrors} color="text-red-600" />
           <StatCard icon={AlertTriangle} label="Failed Logins" value={stats.failedLogins} color="text-orange-600" />
           <StatCard icon={Lock} label="Roles/Permissions" value={stats.roles} color="text-purple-600" />
@@ -259,7 +333,7 @@ export default function AdminDashboardPage() {
                   cx="50%" cy="50%" outerRadius={80}
                   label={({ role, count }) => {
                     const permCount = rolePermissionMap.get(role)?.count ?? 0;
-                    return `${role} (${permCount} perms): ${count}`;
+                    return `${role} (${permCount} permissions): ${count}`;
                   }}
                 >
                   {roleStats.map((entry, idx) => (
@@ -274,22 +348,24 @@ export default function AdminDashboardPage() {
       ),
     },
     {
-      key: "sessions", label: "Active Sessions", icon: ActivitySquare,
+      key: "sessions", label: "Active Users", icon: ActivitySquare,
       component: (
         <Card>
-          <CardHeader><CardTitle>Active Sessions</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Recently Active Users</CardTitle></CardHeader>
           <CardContent>
             <ul className="space-y-2">
               {sessionStats.map((s) => (
                 <li key={s.id} className="flex gap-4 items-center border-b last:border-none pb-2">
                   <Users2 className="w-4 h-4 text-indigo-500" />
                   <span>{s.user}</span>
-                  <span className="text-xs text-gray-500">{s.ip}</span>
+                  <span className="text-xs text-gray-500">{s.summary}</span>
                   <span className="ml-auto text-xs">{s.active ? "Active" : "Inactive"}</span>
-                  <span className="ml-2 text-xs text-gray-400">{s.started.slice(0, 10)}</span>
+                  <span className="ml-2 text-xs text-gray-400">
+                    {s.lastSeen ? s.lastSeen.slice(0, 10) : "—"}
+                  </span>
                 </li>
               ))}
-              {sessionStats.length === 0 && <li>No active sessions.</li>}
+              {sessionStats.length === 0 && <li>No recent user activity.</li>}
             </ul>
           </CardContent>
         </Card>
@@ -397,8 +473,8 @@ export default function AdminDashboardPage() {
                     <li key={i} className="flex gap-2">
                       <span className="inline-block w-24 text-gray-400">{l.timestamp.slice(0, 10)}</span>
                       <span className="font-medium">{l.action}</span>
-                      {l.metadata?.user && <span className="ml-2 text-indigo-600">@{l.metadata.user}</span>}
-                      {l.metadata?.ip && <span className="ml-2 text-teal-600">{l.metadata.ip}</span>}
+                      {l.user_id && <span className="ml-2 text-indigo-600">@{l.user_id}</span>}
+                      {l.ip_address && <span className="ml-2 text-teal-600">{l.ip_address}</span>}
                     </li>
                   ))}
                   {logs.length === 0 && <li className="text-muted-foreground">No recent activity.</li>}
@@ -415,7 +491,7 @@ export default function AdminDashboardPage() {
                     <li key={s.id} className="flex items-center gap-2">
                       <span className="font-semibold">{idx + 1}.</span>
                       <span className="flex-1">{s.user}</span>
-                      <span className="text-indigo-700">{s.ip}</span>
+                      <span className="text-indigo-700">{s.summary}</span>
                     </li>
                   ))}
                 </ul>

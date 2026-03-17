@@ -1653,10 +1653,34 @@ Before any production deployment, verify:
 ---
 
 - [ ] Confirm `docreview360 init` is updated with the latest software applications.
-- [ ] The login page shows "login.title", "login.username", "login.password", "login.submit". Why are all beginning with "login."?
-- [ ] In Projects, I see "projects.new", "dashboard.assigned", "dashboard.in_progress", "dashboard.completed", "dashboard.overdue". What do they have the prefix (projects. or dashboard.)?
-- [ ] In demo-project, i have bob assigned to review. however, the Assigned dashboard and Pending dashboard show 0 (zero). If we have someone/user in the reviewer sign-off & concurrence, shouldn't the dashboards identify the correct number?
-- [ ] In Admin Dashboard, in User Roles Breakdown, what is "3 perms", "7 perms", etc.? What's "perms"?
-- [ ] In Admin Dashboard, I added users to review and made other updates in prjects, but the audit log feed and active users are empty. Are these dashboard wired into the system?
-- [ ] I don't understand prject view. We invite a review (there's another window indicating reviewer signoff & concurrence, which appears to duplicate reviewer table), then there's the Approvals table. Is this saying that a reviewer might not be an approver? If so, that's fine. However, I added a reviewer and when i tried to add that same reviewer to the approvals table, I got "Reviewer must be assigned to the project first." I thought I did that. Maybe more onscreen text would help clarify the flow (ensure that it's ready for localization too)
-- [ ] In Document Checker, I tried to select a system document, but received Could not fetch documents: HTTP 401: Unauthorized. Why is this? Should any access level be able to do this? With this, we need to ensure that the document naming (for example if a TipTap document) is clear so that if we have a list of documents, we can find it easily
+- [x] The login page shows "login.title", "login.username", "login.password", "login.submit". Why are all beginning with "login."?
+  Fixed by adding a public locale-bundle fallback in `frontend/lib/useTranslation.ts`
+  so logged-out pages no longer depend on the authenticated i18n API. Verified in
+  `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-17)
+- [x] In Projects, I see "projects.new", "dashboard.assigned", "dashboard.in_progress", "dashboard.completed", "dashboard.overdue". What do they have the prefix (projects. or dashboard.)?
+  Same root cause as the login-page issue above; fixed by the public locale fallback
+  for unauthenticated translation loading. Verified in
+  `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-17)
+- [x] In demo-project, i have bob assigned to review. however, the Assigned dashboard and Pending dashboard show 0 (zero). If we have someone/user in the reviewer sign-off & concurrence, shouldn't the dashboards identify the correct number?
+  Fixed backend project/dashboard scoping so active reviewer assignments now count
+  for project visibility and dashboard widget totals even before a workflow approval
+  record exists. Verified in `tests/test_release_checklist_user_fixes.py` and
+  `tests/test_user_scoped_dashboards.py`. (Completed 2026-03-17)
+- [x] In Admin Dashboard, in User Roles Breakdown, what is "3 perms", "7 perms", etc.? What's "perms"?
+  Updated the admin dashboard copy to spell out `permissions` instead of `perms`.
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-17)
+- [x] In Admin Dashboard, I added users to review and made other updates in prjects, but the audit log feed and active users are empty. Are these dashboard wired into the system?
+  Wired the admin dashboard to load recent audit activity and derive active-user data
+  from audit/user endpoints instead of leaving those panels hardcoded empty. Verified
+  by source-level guard in `tests/test_release_checklist_user_fixes.py`.
+  (Completed 2026-03-17)
+- [x] I don't understand prject view. We invite a review (there's another window indicating reviewer signoff & concurrence, which appears to duplicate reviewer table), then there's the Approvals table. Is this saying that a reviewer might not be an approver? If so, that's fine. However, I added a reviewer and when i tried to add that same reviewer to the approvals table, I got "Reviewer must be assigned to the project first." I thought I did that. Maybe more onscreen text would help clarify the flow (ensure that it's ready for localization too)
+  Added explanatory onscreen copy distinguishing reviewer assignments, reviewer
+  sign-off/concurrence, and phase approvals. Also changed approval creation to accept
+  invited reviewers from assignment data instead of only the legacy reviewer list.
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-17)
+- [x] In Document Checker, I tried to select a system document, but received Could not fetch documents: HTTP 401: Unauthorized. Why is this? Should any access level be able to do this? With this, we need to ensure that the document naming (for example if a TipTap document) is clear so that if we have a list of documents, we can find it easily
+  Added fallback to `GET /documents/public` when private document listing is not
+  authorized, with a note that sign-in is still required for private project
+  documents. Also improved document labels to show project/type/editor/status context.
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-17)

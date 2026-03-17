@@ -12,6 +12,7 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from ..workflows import get_workflow
 from ._external import (
     ExternalSearchClient,
     get_external_url,
@@ -32,12 +33,14 @@ from ._query import (
     TEMP_ASSIGN_MAX_DAYS,
     _match_all_terms,
     _normalize,
-    _persist_project as _persist_project_fn,
-    _reload_state_from_repository as _reload_state_fn,
     log_event,
 )
-
-from ..workflows import get_workflow
+from ._query import (
+    _persist_project as _persist_project_fn,
+)
+from ._query import (
+    _reload_state_from_repository as _reload_state_fn,
+)
 
 # ---------------------------------------------------------------------------
 # Module-level shared state (mirrors original search.py top-level globals)
@@ -379,6 +382,7 @@ def _expire_temp_assignment(project: ProjectModel, *, lock_held: bool = False) -
 def list_projects(user: str | None = None) -> list[ProjectModel]:
     """Return projects optionally filtered by assigned user."""
     from ..approvals import list_approvals
+    from ..review_assignments import TERMINAL_STATUSES, list_assignments
 
     with project_lock:
         result = []
@@ -399,6 +403,32 @@ def list_projects(user: str | None = None) -> list[ProjectModel]:
                     if approval.reviewer == user:
                         result.append(proj)
                         break
+                else:
+                    try:
+                        assignments = list_assignments(proj.id)
+                    except Exception:
+                        assignments = []
+                    if any(
+                        assignment.reviewer == user
+                        and assignment.status not in TERMINAL_STATUSES
+                        for assignment in assignments
+                    ):
+                        result.append(proj)
+                        continue
+
+            if user:
+                if any(existing.id == proj.id for existing in result):
+                    continue
+                try:
+                    assignments = list_assignments(proj.id)
+                except Exception:
+                    assignments = []
+                if any(
+                    assignment.reviewer == user
+                    and assignment.status not in TERMINAL_STATUSES
+                    for assignment in assignments
+                ):
+                    result.append(proj)
 
         return result
 
@@ -470,10 +500,11 @@ def search(
     before: datetime | None = None,
 ) -> List[Any]:
     """Return documents matching the query and optional filters."""
-    from ..cache import cache_delete, cache_get, cache_set
-    from ..documents import DocumentModel, documents as _documents
-
     import json as _json
+
+    from ..cache import cache_delete, cache_get, cache_set
+    from ..documents import DocumentModel
+    from ..documents import documents as _documents
 
     with counter_lock:
         search_counter[query] += 1

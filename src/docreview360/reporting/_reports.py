@@ -9,7 +9,7 @@ from typing import Any
 
 from ..approvals import approvals
 from ..documents import documents
-from ..search import ProjectModel, _expire_temp_assignment, add_project, projects
+from ..search import ProjectModel, _expire_temp_assignment, add_project, list_projects, projects
 from ..status import internal_status
 from ..workflows import workflows
 from ._metrics import (
@@ -47,6 +47,7 @@ def compile_check_report(results: dict[str, Any]) -> tuple[bytes, bytes]:
 
 def reviewer_workload_dashboard() -> list[ReviewerWorkload]:
     """Return per-reviewer workload metrics across all approvals."""
+    from ..review_assignments import TERMINAL_STATUSES, list_assignments
 
     stats: dict[str, dict[str, int]] = {}
     for approval in approvals.values():
@@ -67,6 +68,20 @@ def reviewer_workload_dashboard() -> list[ReviewerWorkload]:
     for proj in projects.values():
         if proj.user:
             project_counts[proj.user] = project_counts.get(proj.user, 0) + 1
+        try:
+            assignments = list_assignments(proj.id)
+        except Exception:
+            assignments = []
+        for assignment in assignments:
+            if assignment.status in TERMINAL_STATUSES:
+                continue
+            project_counts[assignment.reviewer] = project_counts.get(assignment.reviewer, 0) + 1
+
+    for reviewer in project_counts:
+        stats.setdefault(
+            reviewer,
+            {"pending": 0, "approved": 0, "overdue": 0, "rejected": 0},
+        )
 
     result: list[ReviewerWorkload] = []
     for reviewer, counts in stats.items():
@@ -152,9 +167,10 @@ def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
 
     data: list[DashboardEntry] = []
     routing_snapshot = _routing_latency_snapshot()
+    visible_project_ids = {project.id for project in list_projects(user)} if user else None
     for project in projects.values():
         _expire_temp_assignment(project)
-        if user and project.user != user and project.temp_user != user:
+        if visible_project_ids is not None and project.id not in visible_project_ids:
             continue
         doc_count = sum(1 for d in documents.values() if d.project == project.id)
         wf = next((w for w in workflows.values() if w.project == project.id), None)
@@ -193,22 +209,42 @@ def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
 
 def widget_counts(user: str | None = None) -> WidgetMetrics:
     """Return counts used by dashboard widgets."""
+    from ..review_assignments import TERMINAL_STATUSES, list_assignments
 
     for proj in projects.values():
         _expire_temp_assignment(proj)
 
+    def _active_assignment_count(project_ids: set[str], reviewer: str | None = None) -> int:
+        total = 0
+        for project_id in project_ids:
+            try:
+                assignments = list_assignments(project_id)
+            except Exception:
+                continue
+            for assignment in assignments:
+                if reviewer and assignment.reviewer != reviewer:
+                    continue
+                if assignment.status in TERMINAL_STATUSES:
+                    continue
+                total += 1
+        return total
+
     if user is None:
-        assigned = sum(1 for p in projects.values() if p.user or p.temp_user)
-        active = sum(1 for p in projects.values() if p.temp_user)
+        scoped_projects = list_projects()
+        project_ids = {project.id for project in scoped_projects}
+        assigned = len(scoped_projects)
+        active = sum(1 for p in scoped_projects if p.temp_user) + _active_assignment_count(project_ids)
         pending = sum(1 for a in approvals.values() if a.state == "pending")
         metrics = _PROJECT_METRICS.get(None)
     else:
-        assigned = sum(1 for p in projects.values() if p.user == user or p.temp_user == user)
-        active = sum(1 for p in projects.values() if p.temp_user == user)
+        scoped_projects = list_projects(user)
+        project_ids = {project.id for project in scoped_projects}
+        assigned = len(scoped_projects)
+        active = sum(1 for p in scoped_projects if p.temp_user == user) + _active_assignment_count(project_ids, user)
         pending = sum(
             1 for a in approvals.values() if a.state == "pending" and a.reviewer == user
         )
-        project_ids = [p.id for p in projects.values() if p.user == user or p.temp_user == user]
+        pending += _active_assignment_count(project_ids, user)
         metrics = _aggregate_for_projects(project_ids)
     return WidgetMetrics(
         assigned=assigned,
@@ -293,11 +329,20 @@ def throughput_csv(days: int = 7) -> str:
 
 def workload_data() -> dict[str, int]:
     """Return project counts per assigned user."""
+    from ..review_assignments import TERMINAL_STATUSES, list_assignments
 
     counts: dict[str, int] = {}
     for p in projects.values():
         if p.user:
             counts[p.user] = counts.get(p.user, 0) + 1
+        try:
+            assignments = list_assignments(p.id)
+        except Exception:
+            assignments = []
+        for assignment in assignments:
+            if assignment.status in TERMINAL_STATUSES:
+                continue
+            counts[assignment.reviewer] = counts.get(assignment.reviewer, 0) + 1
     return counts
 
 

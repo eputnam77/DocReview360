@@ -42,7 +42,11 @@ interface SystemDocument {
     content?: string;
     doc_type?: string;
     status?: string;
+    project?: string;
     project_id?: string;
+    editor?: string;
+    number?: number;
+    public_copy?: boolean;
 }
 
 interface QualityResult {
@@ -104,6 +108,18 @@ function scoreBg(score: number): string {
     return "bg-red-50 border-red-200";
 }
 
+function formatSystemDocumentLabel(doc: SystemDocument): string {
+    const primary = doc.number ? `Document ${doc.number}` : doc.id;
+    const details = [
+        doc.project || doc.project_id ? `Project ${doc.project || doc.project_id}` : null,
+        doc.doc_type || null,
+        doc.editor ? `${doc.editor.toUpperCase()} editor` : null,
+        doc.status || null,
+        doc.public_copy ? "Public copy" : null,
+    ].filter(Boolean);
+    return details.length > 0 ? `${primary} - ${details.join(" | ")}` : primary;
+}
+
 /* ---------- Component ---------- */
 
 export default function CheckerPage() {
@@ -125,6 +141,9 @@ export default function CheckerPage() {
         null,
     );
     const [sysError, setSysError] = useState<string | null>(null);
+    const [documentAccessNote, setDocumentAccessNote] = useState<string | null>(
+        null,
+    );
 
     // Active tab
     const [activeTab, setActiveTab] = useState<string>("upload");
@@ -133,9 +152,22 @@ export default function CheckerPage() {
     const fetchDocuments = useCallback(async () => {
         setDocsLoading(true);
         setSysError(null);
+        setDocumentAccessNote(null);
         try {
-            const res = await authenticatedFetch(`/documents`);
+            let res = await authenticatedFetch(`/documents`);
+            let note: string | null = null;
+            if (!res.ok && (res.status === 401 || res.status === 403)) {
+                const publicRes = await authenticatedFetch(`/documents/public`);
+                if (publicRes.ok) {
+                    res = publicRes;
+                    note =
+                        "Showing public system documents only. Sign in to browse private project documents.";
+                }
+            }
             if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error("Sign in to browse private system documents.");
+                }
                 throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
             const data = await res.json();
@@ -144,6 +176,7 @@ export default function CheckerPage() {
                 ? data
                 : data.documents ?? [];
             setDocuments(docs);
+            setDocumentAccessNote(note);
         } catch (err) {
             const msg =
                 err instanceof Error ? err.message : "Failed to load documents";
@@ -498,6 +531,11 @@ export default function CheckerPage() {
                                         >
                                             Document
                                         </label>
+                                        {documentAccessNote && (
+                                            <p className="text-xs text-amber-700">
+                                                {documentAccessNote}
+                                            </p>
+                                        )}
                                         <select
                                             id="doc-select"
                                             value={selectedDocId}
@@ -514,13 +552,7 @@ export default function CheckerPage() {
                                                     key={doc.id}
                                                     value={doc.id}
                                                 >
-                                                    {doc.id}
-                                                    {doc.doc_type
-                                                        ? ` (${doc.doc_type})`
-                                                        : ""}
-                                                    {doc.status
-                                                        ? ` [${doc.status}]`
-                                                        : ""}
+                                                    {formatSystemDocumentLabel(doc)}
                                                 </option>
                                             ))}
                                         </select>
