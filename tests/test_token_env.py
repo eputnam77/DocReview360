@@ -36,6 +36,7 @@ def test_defaults_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "DOCREVIEW360_ALGORITHM",
         "DOCREVIEW360_ACCESS_EXPIRE_MINUTES",
         "DOCREVIEW360_OIDC_SECRET_KEY",
+        "DOCREVIEW360_OIDC_SECRET_KEY_PREVIOUS",
         "DOCREVIEW360_OIDC_ALGORITHM",
         "DOCREVIEW360_OIDC_EXPIRE_MINUTES",
     ):
@@ -69,3 +70,20 @@ def test_defaults_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
         issuer=auth.TOKEN_ISSUER,
     )
     assert payload["sub"] == "alice"
+
+
+def test_oidc_previous_secret_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DOCREVIEW360_SECRET_KEY", "custom")
+    monkeypatch.setenv("DOCREVIEW360_OIDC_SECRET_KEY", "oidc-current")
+    monkeypatch.setenv("DOCREVIEW360_OIDC_SECRET_KEY_PREVIOUS", "oidc-previous")
+    monkeypatch.setenv("DOCREVIEW360_ENV", "dev")
+
+    module_name = "docreview360.auth"
+    sys.modules.pop(module_name, None)
+
+    src_root = Path(__file__).resolve().parents[1] / "src"
+    sys.path.insert(0, str(src_root))
+    auth = importlib.import_module(module_name)
+    sys.path.remove(str(src_root))
+
+    assert auth.OIDC_SECRET_KEY_PREVIOUS == "oidc-previous"

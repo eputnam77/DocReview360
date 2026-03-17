@@ -384,6 +384,7 @@ def get_current_user_oidc(
         DEMO_USER_DEFAULTS,
         OIDC_ALGORITHM,
         OIDC_SECRET_KEY,
+        OIDC_SECRET_KEY_PREVIOUS,
         OIDC_TOKEN_AUDIENCE,
         OIDC_TOKEN_ISSUER,
         _allow_demo_seed,
@@ -398,13 +399,17 @@ def get_current_user_oidc(
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     try:
-        payload = jwt.decode(
-            token,
-            OIDC_SECRET_KEY,
-            algorithms=[OIDC_ALGORITHM],
-            audience=OIDC_TOKEN_AUDIENCE,
-            issuer=OIDC_TOKEN_ISSUER,
-        )
+        decode_kwargs = {
+            "algorithms": [OIDC_ALGORITHM],
+            "audience": OIDC_TOKEN_AUDIENCE,
+            "issuer": OIDC_TOKEN_ISSUER,
+        }
+        try:
+            payload = jwt.decode(token, OIDC_SECRET_KEY, **decode_kwargs)
+        except JWTError:
+            if OIDC_SECRET_KEY_PREVIOUS is None:
+                raise
+            payload = jwt.decode(token, OIDC_SECRET_KEY_PREVIOUS, **decode_kwargs)
         username: str | None = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

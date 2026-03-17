@@ -82,6 +82,5 @@ If the old key is confirmed compromised and **all active sessions must be invali
   long-lived compromised keys.
 - Audit log entries for the rotation event should be created manually using
   `log_event("key_rotation", user_id="ops", reason="scheduled|emergency")`.
-- For OIDC tokens, use the analogous `DOCREVIEW360_OIDC_SECRET_KEY` and
-  `DOCREVIEW360_OIDC_SECRET_KEY_PREVIOUS` variables (not yet implemented; track
-  in the backlog).
+- OIDC token validation supports the analogous `DOCREVIEW360_OIDC_SECRET_KEY`
+  and `DOCREVIEW360_OIDC_SECRET_KEY_PREVIOUS` fallback rotation flow.
