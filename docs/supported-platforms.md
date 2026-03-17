@@ -33,8 +33,9 @@ This document defines the officially supported and tested platforms for DocRevie
 | Node.js Version | Status            |
 |-----------------|-------------------|
 | 20.x (LTS)      | **Recommended**   |
-| 18.x (LTS)      | Supported         |
-| < 18            | **Not supported** |
+| >=22.12.0        | **Supported**     | Matches `vite@7.x` engine requirement |
+| 20.19.x+ (LTS)  | **Supported**     | Minimum Node 20 release accepted by Vite |
+| < 20.19.0       | **Not supported** | Frontend test/build toolchain will fail |
 
 ## Database
 
@@ -58,7 +59,7 @@ This document defines the officially supported and tested platforms for DocRevie
 The following are explicitly **not supported** for v0.1.x:
 
 - Python 3.13+ (blocked on PyTorch/ONNX wheel availability)
-- Node.js < 18
+- Node.js < 20.19.0
 - 32-bit operating systems
 - Windows Subsystem for Linux v1 (WSL1) — WSL2 works fine
 - Alpine Linux with `musl` libc (ML/ONNX extensions require glibc)
