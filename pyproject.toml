@@ -130,7 +130,7 @@ realtime = [
 # PyTorch install matrix: https://pytorch.org/get-started/locally/
 ml = [
   "torch==2.8.0",
-  "onnx==1.17.0",
+  "onnx==1.21.0rc1",
 ]
 
 # Choose ONE runtime extra depending on target.

@@ -35,7 +35,7 @@ markdown-it-py==3.0.0
 bleach==6.2.0
 y-py==0.6.2
 ypy-websocket==0.12.4
-onnx==1.17.0
+onnx==1.21.0rc1
 onnxruntime==1.19.2
 torch==2.8.0
 
