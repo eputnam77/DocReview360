@@ -147,7 +147,7 @@ pipx install uv                 # fast resolver, venv mgr, lockfile, tool runner
 # 1. Clone project ---------------------------------------------------------------
 git clone https://github.com/eputnam77/DocReview360.git
 cd DocReview360
-# 2. Create and activate venv (Python 3.13) --------------------------------------
+# 2. Create and activate venv (Python 3.12 recommended) ----------------------------
 uv python install 3.12
 uv venv --python 3.12
 

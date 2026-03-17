@@ -28,12 +28,10 @@ on 2026-03-11.
 
 ### 13) Scope and release targets
 
-- [ ] Define supported platforms and document them. `docs/supported-platforms.md`
-  exists, but the missing requirement is an accurate frontend Node support
-  matrix: it still marks Node 18.x as supported even though the installed
-  frontend toolchain (`vite@7.3.1`) requires Node `^20.19.0 || >=22.12.0`, and
-  `npm test` fails on Node `18.20.4`. Align the documented support table with
-  the actual toolchain requirements before moving this out. (2026-03-12 verification)
+- [x] Define supported platforms and document them. `docs/supported-platforms.md`
+  now reflects the frontend Node toolchain requirement (`vite@7.x`: Node
+  `^20.19.0 || >=22.12.0`) and marks older Node versions unsupported.
+  (Completed 2026-03-17)
 - [ ] Freeze feature scope. Fixes only after this checkpoint.
 - [ ] Create a release branch and protect `main`.
 
@@ -42,11 +40,9 @@ on 2026-03-11.
 - [ ] Run a secret scan on the full history and working tree.
 - [ ] Remove or rotate any hardcoded tokens, test credentials, or sample secrets.
 - [ ] Remove unnecessary files and stale artifacts before release.
-- [ ] Ensure all `example.com` and placeholder URLs or emails are updated.
-  Missing requirement: tracked public-facing placeholders still remain, including
-  `frontend/pages/docs/index.tsx` (`https://example.com/docreview360/`) and
-  `helm/docreview360/Chart.yaml` (`info@example.com`). Remove or replace those
-  remaining placeholders before moving this out. (2026-03-12 verification)
+- [x] Ensure all `example.com` and placeholder URLs or emails are updated.
+  Replaced the docs iframe placeholder URL and Helm maintainer placeholder email.
+  (Completed 2026-03-17)
 
 ### 15) Packaging and versioning
 
@@ -86,8 +82,8 @@ on 2026-03-11.
   whether they belong in the public repository.
 - [ ] Replace public-facing placeholders and stale metadata:
   `info@example.com`, `example.com` URLs, `registry.example.com`, and stale GPL references.
-  Missing requirement: tracked public-facing placeholders still remain in
-  `frontend/pages/docs/index.tsx` and `helm/docreview360/Chart.yaml`. (2026-03-12 verification)
+  Frontend docs iframe and Helm maintainer placeholders were replaced on 2026-03-17;
+  continue scanning for any remaining placeholder values.
 - [ ] Update docs and metadata that still mention GPL or placeholder contact data.
   Missing requirement: stale generated metadata still remains in
   `src/docreview360.egg-info/PKG-INFO`, which still advertises
@@ -99,11 +95,9 @@ on 2026-03-11.
 
 ### 16) Documentation and user experience
 
-- [ ] Ensure `README.md` matches `.dev/AGENTS.md` structure requirements.
-  Missing requirement: README still contradicts `.dev/AGENTS.md` in the setup
-  instructions. The README says `# 2. Create and activate venv (Python 3.13)`
-  while `.dev/AGENTS.md` documents Python 3.11-3.12 support and says Python 3.13
-  is not supported. Align the README before moving this out. (2026-03-12 verification)
+- [x] Ensure `README.md` matches `.dev/AGENTS.md` structure requirements.
+  README setup instructions now align with Python 3.11-3.12 support and call
+  out Python 3.12 as the recommended venv target. (Completed 2026-03-17)
 - [ ] If using MkDocs, run `mkdocs build --strict` and fix errors.
 - [ ] In-app support and documentation tasks are tracked in item 47.
 
