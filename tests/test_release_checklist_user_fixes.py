@@ -86,3 +86,19 @@ def test_checker_uses_public_documents_fallback_and_descriptive_labels() -> None
     assert "/documents/public" in checker_page
     assert "Showing public system documents only." in checker_page
     assert "formatSystemDocumentLabel" in checker_page
+
+
+def test_tiptap_editor_uses_safe_indent_commands_and_larger_canvas() -> None:
+    tiptap_page = _project_file("frontend/pages/editors/tiptap.tsx")
+    assert 'runEditorCommand(editor, "indent")' in tiptap_page
+    assert 'canRunEditorCommand(editor, "indent")' in tiptap_page
+    assert 'max-w-[1200px]' in tiptap_page
+    assert 'min-h-[calc(100vh-12rem)]' in tiptap_page
+
+
+
+def test_tiptap_styles_restore_visible_list_markers_and_indentation() -> None:
+    tiptap_styles = _project_file("frontend/styles/tiptap.css")
+    assert 'list-style-type: disc' in tiptap_styles
+    assert 'list-style-type: decimal' in tiptap_styles
+    assert '[data-indent="1"]' in tiptap_styles

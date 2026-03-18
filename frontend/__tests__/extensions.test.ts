@@ -91,9 +91,9 @@ describe('yjs collaboration extension', () => {
 describe('heading lock extension', () => {
   it('provides backspace and delete handlers', () => {
     const ext = tiptapHeadingLock();
-    const shortcuts = ext.config.addKeyboardShortcuts?.call(ext);
-    expect(typeof shortcuts.Backspace).toBe('function');
-    expect(typeof shortcuts.Delete).toBe('function');
+    const shortcuts = ext.config.addKeyboardShortcuts?.call(ext as any);
+    expect(typeof shortcuts?.Backspace).toBe('function');
+    expect(typeof shortcuts?.Delete).toBe('function');
   });
 });
 

@@ -26,6 +26,7 @@ import StarterKit from "@tiptap/starter-kit";
 import SlashCommand from "../../extensions/tiptapSlashCommand";
 import sanitizeHtml from "../../utils/sanitize";
 import { resolveStarterContent } from "@/lib/starterContent";
+import { canRunEditorCommand, runEditorCommand } from "@/lib/tiptapCommandUtils";
 import { API, authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 
@@ -107,19 +108,19 @@ const keyboardShortcuts = Extension.create({
   addKeyboardShortcuts() {
     return {
       "Mod-]": () => {
-        (this.editor.chain() as any).indent?.().run();
+        runEditorCommand(this.editor, "indent");
         return true;
       },
       "Mod-[": () => {
-        (this.editor.chain() as any).outdent?.().run();
+        runEditorCommand(this.editor, "outdent");
         return true;
       },
       "Mod-Alt-m": () => {
-        (this.editor.chain() as any).focus().addComment?.().run();
+        (this.editor.chain() as any).focus().addComment?.().run?.();
         return true;
       },
       "Mod-Shift-e": () => {
-        (this.editor.chain() as any).focus().toggleTrackChanges?.().run();
+        (this.editor.chain() as any).focus().toggleTrackChanges?.().run?.();
         return true;
       },
     };
@@ -996,7 +997,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       editorProps: {
         attributes: {
           class:
-            "tiptap-content focus:outline-none w-full h-full min-h-[400px] max-w-[860px] mx-auto",
+            "tiptap-content focus:outline-none w-full min-h-[calc(100vh-12rem)]",
         },
       },
       onUpdate: ({ editor }) => {
@@ -1446,21 +1447,21 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         )}
         {toolbarButton(
           <IndentIncrease className="w-4 h-4" />,
-          () => (editor.chain() as any).focus().indent().run(),
+          () => runEditorCommand(editor, "indent"),
           false,
           "Indent",
           formattingLocked ||
             !indentationEnabled ||
-            !(editor.can().chain() as any).focus().indent().run(),
+            !canRunEditorCommand(editor, "indent"),
         )}
         {toolbarButton(
           <IndentDecrease className="w-4 h-4" />,
-          () => (editor.chain() as any).focus().outdent().run(),
+          () => runEditorCommand(editor, "outdent"),
           false,
           "Outdent",
           formattingLocked ||
             !indentationEnabled ||
-            !(editor.can().chain() as any).focus().outdent().run(),
+            !canRunEditorCommand(editor, "outdent"),
         )}
         {toolbarButton(
           <Undo2 className="w-4 h-4" />,
@@ -1584,8 +1585,8 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       )}
 
       {/* Main Editor */}
-      <main className="flex-1 overflow-auto flex justify-center items-start bg-white">
-        <div className="w-full max-w-[860px] p-8">
+      <main className="flex-1 overflow-auto bg-slate-50 px-4 py-6 lg:px-8">
+        <div className="mx-auto w-full max-w-[1200px]">
           <EditorContent editor={editor} />
         </div>
       </main>

@@ -6,6 +6,7 @@ Each test verifies at minimum:
 """
 
 from datetime import timedelta
+from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -99,6 +100,31 @@ def test_template_create_and_get(client: TestClient, alice_headers: dict) -> Non
 
     resp = client.get("/templates/_smoke_test_tmpl", headers=alice_headers)
     assert resp.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "template_name",
+    [
+        "doc_type::Manual / Handbook",
+        "doc_type::API Manual / API Reference",
+        "doc_type::Briefing / Slide Deck",
+    ],
+)
+def test_template_routes_support_names_with_slashes(
+    client: TestClient,
+    alice_headers: dict,
+    template_name: str,
+) -> None:
+    client.get("/templates", headers=alice_headers)
+    encoded_name = quote(template_name, safe="")
+
+    resp = client.get(f"/templates/{encoded_name}", headers=alice_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["name"] == template_name
+
+    download_resp = client.get(f"/templates/{encoded_name}/download", headers=alice_headers)
+    assert download_resp.status_code == 200, download_resp.text
+    assert download_resp.headers["content-disposition"].startswith("attachment;")
 
 
 def test_email_templates_list_unauthenticated(client: TestClient) -> None:

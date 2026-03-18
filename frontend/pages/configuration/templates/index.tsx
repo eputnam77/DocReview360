@@ -31,16 +31,16 @@ interface EmailTemplate {
 
 export function createTemplateConfigApi() {
   return {
-    listTemplates: () => authenticatedFetch('/templates'),
-    listEmailTemplates: () => authenticatedFetch('/email-templates'),
+    listTemplates: () => authenticatedFetch(`${API}/templates`),
+    listEmailTemplates: () => authenticatedFetch(`${API}/email-templates`),
     deleteTemplate: (id: string) =>
-      authenticatedFetch(`/templates/${encodeURIComponent(id)}`, { method: "DELETE" }),
+      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}`, { method: "DELETE" }),
     deleteEmailTemplate: (name: string) =>
-      authenticatedFetch(`/email-templates/${encodeURIComponent(name)}`, { method: "DELETE" }),
+      authenticatedFetch(`${API}/email-templates/${encodeURIComponent(name)}`, { method: "DELETE" }),
     approveTemplate: (id: string) =>
-      authenticatedFetch(`/templates/${encodeURIComponent(id)}/approve`, { method: "POST" }),
+      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}/approve`, { method: "POST" }),
     retireTemplate: (id: string) =>
-      authenticatedFetch(`/templates/${encodeURIComponent(id)}/retire`, { method: "POST" }),
+      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}/retire`, { method: "POST" }),
   } as const;
 }
 

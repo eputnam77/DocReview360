@@ -1,24 +1,22 @@
 /* TipTap Content Styling */
 
 .tiptap-content {
-  /* Editor area background and padding */
   background: #fff;
-  padding: 1.5rem;
-  min-height: 400px;
-  border-radius: 0.75rem;
-  border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+  padding: 2rem 2.5rem;
+  min-height: calc(100vh - 12rem);
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
   box-sizing: border-box;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
   font-family: inherit;
   font-size: 1rem;
   line-height: 1.7;
 }
 
-/* Paragraph spacing */
 .tiptap-content p {
   margin-bottom: 1em;
 }
 
-/* Headings: always bold and spaced */
 .tiptap-content h1,
 .tiptap-content h2,
 .tiptap-content h3,
@@ -38,18 +36,48 @@
 .tiptap-content h5 { font-size: 0.83rem; }
 .tiptap-content h6 { font-size: 0.67rem; }
 
-/* Lists */
 .tiptap-content ul,
 .tiptap-content ol {
   margin: 1em 0 1em 2em;
-  padding: 0 0 0 1.2em;
+  padding: 0 0 0 1.25em;
+}
+
+.tiptap-content ul {
+  list-style-type: disc;
+}
+
+.tiptap-content ul ul {
+  list-style-type: circle;
+}
+
+.tiptap-content ul ul ul {
+  list-style-type: square;
+}
+
+.tiptap-content ol {
+  list-style-type: decimal;
+}
+
+.tiptap-content ol ol {
+  list-style-type: lower-alpha;
+}
+
+.tiptap-content ol ol ol {
+  list-style-type: lower-roman;
 }
 
 .tiptap-content li {
+  display: list-item;
   margin-bottom: 0.5em;
 }
 
-/* Blockquote (Note, Caution) */
+.tiptap-content [data-indent="1"] { margin-left: 2rem; }
+.tiptap-content [data-indent="2"] { margin-left: 4rem; }
+.tiptap-content [data-indent="3"] { margin-left: 6rem; }
+.tiptap-content [data-indent="4"] { margin-left: 8rem; }
+.tiptap-content [data-indent="5"] { margin-left: 10rem; }
+.tiptap-content [data-indent="6"] { margin-left: 12rem; }
+
 .tiptap-content blockquote {
   border-left: 4px solid #a3a3a3;
   background: #f3f4f6;
@@ -59,14 +87,12 @@
   font-style: italic;
 }
 
-/* Horizontal rule */
 .tiptap-content hr {
   border: none;
   border-top: 2px solid #e5e7eb;
   margin: 2em 0;
 }
 
-/* Code blocks (optional) */
 .tiptap-content pre {
   background: #f3f4f6;
   border-radius: 0.5rem;
@@ -75,39 +101,36 @@
   overflow-x: auto;
 }
 
-/* Table styling (if used) */
 .tiptap-content table {
   border-collapse: collapse;
   margin: 1em 0;
   width: 100%;
 }
+
 .tiptap-content th,
 .tiptap-content td {
   border: 1px solid #e5e7eb;
   padding: 0.5em 1em;
 }
 
-/* Inline bold, italic, underline */
 .tiptap-content strong { font-weight: bold; }
 .tiptap-content em { font-style: italic; }
 .tiptap-content u { text-decoration: underline; }
 
-/* Images (if enabled) */
 .tiptap-content img {
   max-width: 100%;
   display: block;
   margin: 1em 0;
 }
 
-/* Federal Style Lint decorations */
 .federal-lint-style {
-  text-decoration: underline wavy #ca8a04; /* amber-600 */
+  text-decoration: underline wavy #ca8a04;
   text-decoration-skip-ink: none;
   cursor: help;
 }
 
 .federal-lint-acronym {
-  text-decoration: underline wavy #ea580c; /* orange-600 */
+  text-decoration: underline wavy #ea580c;
   text-decoration-skip-ink: none;
   cursor: help;
 }

@@ -1170,6 +1170,99 @@ async def list_template_versions_endpoint(
     ]
 
 
+@router.get("/templates/{name:path}/download", response_class=Response, include_in_schema=False)
+async def download_template_endpoint_path(
+    name: str,
+    user: auth.User = Depends(auth.get_current_user),
+) -> Response:
+    return await download_template_endpoint(name, user)
+
+
+@router.post("/templates/{name:path}/approve", include_in_schema=False)
+async def approve_template_endpoint_path(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    return await approve_template_endpoint(name, user)
+
+
+@router.post("/templates/{name:path}/retire", include_in_schema=False)
+async def retire_template_endpoint_path(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    return await retire_template_endpoint(name, user)
+
+
+@router.put("/templates/{name:path}/locks/{phase}", include_in_schema=False)
+async def lock_template_phase_endpoint_path(
+    name: str,
+    phase: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    return await lock_template_phase_endpoint(name, phase, user)
+
+
+@router.delete(
+    "/templates/{name:path}/locks/{phase}",
+    status_code=204,
+    response_class=Response,
+    include_in_schema=False,
+)
+async def unlock_template_phase_endpoint_path(
+    name: str,
+    phase: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> Response:
+    return await unlock_template_phase_endpoint(name, phase, user)
+
+
+@router.get("/templates/{name:path}/locks", include_in_schema=False)
+async def list_template_locks_endpoint_path(
+    name: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    return await list_template_locks_endpoint(name, current_user)
+
+
+@router.get("/templates/{name:path}/versions", include_in_schema=False)
+async def list_template_versions_endpoint_path(
+    name: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[dict[str, Any]]:
+    return await list_template_versions_endpoint(name, current_user)
+
+
+@router.get("/templates/{name:path}", include_in_schema=False)
+async def get_template_endpoint_path(
+    name: str,
+    user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    return await get_template_endpoint(name, user)
+
+
+@router.put("/templates/{name:path}", include_in_schema=False)
+async def update_template_endpoint_path(
+    name: str,
+    request: Request,
+    user: auth.User = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    return await update_template_endpoint(name, request, user)
+
+
+@router.delete(
+    "/templates/{name:path}",
+    status_code=204,
+    response_class=Response,
+    include_in_schema=False,
+)
+async def delete_template_endpoint_path(
+    name: str,
+    user: auth.User = Depends(require_role("admin")),
+) -> Response:
+    return await delete_template_endpoint(name, user)
+
+
 # ---------------------------------------------------------------------------
 # Email template routes
 # ---------------------------------------------------------------------------
