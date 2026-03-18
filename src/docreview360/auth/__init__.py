@@ -65,6 +65,7 @@ def _env_or_default(
 
 DEFAULT_ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
+DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 30
 DEFAULT_TOKEN_ISSUER = "docreview360.local"
 DEFAULT_TOKEN_AUDIENCE = "docreview360-users"
 _GENERATED_DEV_SECRET_KEY = secrets.token_urlsafe(48)
@@ -77,6 +78,11 @@ ALGORITHM = _env_or_default("DOCREVIEW360_ALGORITHM", default=DEFAULT_ALGORITHM)
 ACCESS_TOKEN_EXPIRE_MINUTES = _env_or_default(
     "DOCREVIEW360_ACCESS_EXPIRE_MINUTES",
     default=str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES),
+    cast=int,
+)
+REFRESH_TOKEN_EXPIRE_DAYS = _env_or_default(
+    "DOCREVIEW360_REFRESH_EXPIRE_DAYS",
+    default=str(DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS),
     cast=int,
 )
 TOKEN_ISSUER = _env_or_default("DOCREVIEW360_TOKEN_ISSUER", default=DEFAULT_TOKEN_ISSUER)
@@ -195,23 +201,6 @@ _KEYCLOAK_STUB_USERS: dict[str, dict[str, object]] = {
 # Sub-module imports — must come AFTER all module-level constants above
 # ---------------------------------------------------------------------------
 
-from ._models import (  # noqa: E402
-    CHARACTER_CLASS_CHECKS,
-    CHARACTER_CLASS_LABELS,
-    PasswordPolicy,
-    PasswordPolicyError,
-    Token,
-    User,
-    UserRecord,
-    _PBKDF2_ITERATIONS,
-    _has_digits,
-    _has_lowercase,
-    _has_symbols,
-    _has_uppercase,
-    _hash_password_fallback,
-    _verify_password_fallback,
-)
-from ._repository import UserRepository  # noqa: E402
 from ._core import (  # noqa: E402
     _extract_otp,
     _get_user_repository,
@@ -226,11 +215,31 @@ from ._core import (  # noqa: E402
     is_active,
     is_token_revoked,
     login_for_access_token,
+    login_for_credentials,
+    login_for_oidc_credentials,
     login_for_oidc_token,
-    oidc_scheme,
     oauth2_scheme,
+    oidc_scheme,
+    refresh_access_token,
     revoke_token,
 )
+from ._models import (  # noqa: E402
+    _PBKDF2_ITERATIONS,
+    CHARACTER_CLASS_CHECKS,
+    CHARACTER_CLASS_LABELS,
+    PasswordPolicy,
+    PasswordPolicyError,
+    Token,
+    User,
+    UserRecord,
+    _has_digits,
+    _has_lowercase,
+    _has_symbols,
+    _has_uppercase,
+    _hash_password_fallback,
+    _verify_password_fallback,
+)
+from ._repository import UserRepository  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Repository singleton
@@ -291,12 +300,14 @@ __all__ = [
     "SAFE_SEED_ENVS",
     "DEFAULT_ALGORITHM",
     "DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES",
+    "DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS",
     "DEFAULT_TOKEN_ISSUER",
     "DEFAULT_TOKEN_AUDIENCE",
     "SECRET_KEY",
     "SECRET_KEY_PREVIOUS",
     "ALGORITHM",
     "ACCESS_TOKEN_EXPIRE_MINUTES",
+    "REFRESH_TOKEN_EXPIRE_DAYS",
     "TOKEN_ISSUER",
     "TOKEN_AUDIENCE",
     "DEFAULT_OIDC_SECRET_KEY",
@@ -339,8 +350,11 @@ __all__ = [
     "create_id_token",
     "get_current_user",
     "get_current_user_oidc",
+    "login_for_credentials",
+    "login_for_oidc_credentials",
     "login_for_access_token",
     "login_for_oidc_token",
+    "refresh_access_token",
     "configure_user_repository",
     # keycloak stub
     "_authenticate_keycloak_stub",

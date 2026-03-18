@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import secrets
 import sqlite3
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
@@ -19,18 +22,28 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - minimal dev installs
     pyotp = None  # type: ignore[assignment]
 
-import secrets
-
 from ._models import UserRecord, _hash_password_fallback, _verify_password_fallback
+
+
+@dataclass(slots=True)
+class RefreshTokenRecord:
+    """Persistent representation of a refresh token family member."""
+
+    token_hash: str
+    username: str
+    family_id: str
+    parent_token_hash: str | None
+    expires_at: datetime
+    created_at: datetime
+    rotated_at: datetime | None
+    revoked_at: datetime | None
+    replaced_by_hash: str | None
 
 
 class UserRepository:
     """SQLite-backed repository storing user credentials and MFA secrets."""
 
     def __init__(self, db_path: str) -> None:
-        # Import here to avoid circular import at module level
-        from . import MAX_FAILED_ATTEMPTS, LOCKOUT_DURATION, DEMO_USER_DEFAULTS, _allow_demo_seed
-
         self._path = Path(db_path)
         if not self._path.parent.exists():
             self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -83,6 +96,21 @@ class UserRepository:
                     username TEXT NOT NULL,
                     password_hash TEXT NOT NULL,
                     changed_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS refresh_tokens (
+                    token_hash TEXT PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    family_id TEXT NOT NULL,
+                    parent_token_hash TEXT,
+                    expires_at TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    rotated_at TEXT,
+                    revoked_at TEXT,
+                    replaced_by_hash TEXT
                 )
                 """
             )
@@ -161,7 +189,7 @@ class UserRepository:
         active: bool = True,
     ) -> None:
         """Create or replace a user with a hashed password."""
-        from . import DEMO_USER_DEFAULTS, _allow_demo_seed, _password_policy
+        from . import DEMO_USER_DEFAULTS, _password_policy
 
         demo_defaults = DEMO_USER_DEFAULTS.get(username)
         if demo_defaults and password == demo_defaults.get("password"):
@@ -493,3 +521,114 @@ class UserRepository:
         if row[0] <= now_iso:
             return False
         return True
+
+    @staticmethod
+    def _hash_refresh_token(token: str) -> str:
+        """Return a stable hash for storing refresh tokens without plaintext."""
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _parse_dt(value: str | None) -> datetime | None:
+        """Parse an ISO8601 timestamp from SQLite storage."""
+        if not value:
+            return None
+        parsed = datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
+
+    def store_refresh_token(
+        self,
+        *,
+        username: str,
+        token: str,
+        family_id: str,
+        expires_at: datetime,
+        parent_token: str | None = None,
+    ) -> None:
+        """Persist a refresh token in the active family."""
+        created_at = datetime.now(timezone.utc).isoformat()
+        token_hash = self._hash_refresh_token(token)
+        parent_hash = self._hash_refresh_token(parent_token) if parent_token else None
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO refresh_tokens (
+                    token_hash,
+                    username,
+                    family_id,
+                    parent_token_hash,
+                    expires_at,
+                    created_at,
+                    rotated_at,
+                    revoked_at,
+                    replaced_by_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+                """,
+                (
+                    token_hash,
+                    username,
+                    family_id,
+                    parent_hash,
+                    expires_at.isoformat(),
+                    created_at,
+                ),
+            )
+            conn.commit()
+
+    def get_refresh_token(self, token: str) -> RefreshTokenRecord | None:
+        """Return the stored refresh token record for ``token`` if present."""
+        token_hash = self._hash_refresh_token(token)
+        with self._connection() as conn:
+            row = conn.execute(
+                """
+                SELECT token_hash, username, family_id, parent_token_hash, expires_at,
+                       created_at, rotated_at, revoked_at, replaced_by_hash
+                FROM refresh_tokens
+                WHERE token_hash = ?
+                """,
+                (token_hash,),
+            ).fetchone()
+        if row is None:
+            return None
+        return RefreshTokenRecord(
+            token_hash=row["token_hash"],
+            username=row["username"],
+            family_id=row["family_id"],
+            parent_token_hash=row["parent_token_hash"],
+            expires_at=self._parse_dt(row["expires_at"]) or datetime.now(timezone.utc),
+            created_at=self._parse_dt(row["created_at"]) or datetime.now(timezone.utc),
+            rotated_at=self._parse_dt(row["rotated_at"]),
+            revoked_at=self._parse_dt(row["revoked_at"]),
+            replaced_by_hash=row["replaced_by_hash"],
+        )
+
+    def rotate_refresh_token(self, *, token: str, replaced_by_token: str) -> None:
+        """Mark ``token`` as rotated and record its successor hash."""
+        token_hash = self._hash_refresh_token(token)
+        replaced_by_hash = self._hash_refresh_token(replaced_by_token)
+        rotated_at = datetime.now(timezone.utc).isoformat()
+        with self._connection() as conn:
+            conn.execute(
+                """
+                UPDATE refresh_tokens
+                SET rotated_at = ?, replaced_by_hash = ?
+                WHERE token_hash = ? AND rotated_at IS NULL AND revoked_at IS NULL
+                """,
+                (rotated_at, replaced_by_hash, token_hash),
+            )
+            conn.commit()
+
+    def revoke_refresh_token_family(self, family_id: str) -> None:
+        """Revoke every refresh token in the specified token family."""
+        revoked_at = datetime.now(timezone.utc).isoformat()
+        with self._connection() as conn:
+            conn.execute(
+                """
+                UPDATE refresh_tokens
+                SET revoked_at = COALESCE(revoked_at, ?)
+                WHERE family_id = ?
+                """,
+                (revoked_at, family_id),
+            )
+            conn.commit()

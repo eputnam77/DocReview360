@@ -6,9 +6,8 @@ from __future__ import annotations
 import hashlib
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from functools import lru_cache
-from typing import Any, Callable, Dict, TypeVar
+from datetime import datetime
+from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel
 
@@ -55,6 +54,8 @@ class Token(BaseModel):
 
     access_token: str
     token_type: str
+    expires_in: int = 0
+    refresh_token: str | None = None
 
 
 class User(BaseModel):

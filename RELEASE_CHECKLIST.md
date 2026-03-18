@@ -642,16 +642,16 @@ degrade a native mobile client.
 
 **Phase 1 — Auth and token lifecycle (required before any mobile client)**
 
-- [ ] Add refresh token support. Current JWT access tokens expire after 30 minutes
+- [x] Add refresh token support. Current JWT access tokens expire after 30 minutes
   with no way to renew without re-authenticating. Mobile apps need a
   `POST /token/refresh` endpoint that accepts a long-lived refresh token (stored
   securely in iOS Keychain) and returns a new short-lived access token.
   Considerations: refresh token rotation (one-time use), revocation, family
   detection (reuse = compromise → revoke family).
-- [ ] Add `expires_in` (seconds) to the `Token` response model. iOS clients need
+- [x] Add `expires_in` (seconds) to the `Token` response model. iOS clients need
   this to schedule proactive token refresh (e.g., at 80% of lifetime). The current
   response only includes `access_token` and `token_type`.
-- [ ] Ensure `POST /token` works with `application/json` body (not just form-encoded).
+- [x] Ensure `POST /token` works with `application/json` body (not just form-encoded).
   Native HTTP clients prefer JSON; FastAPI's `OAuth2PasswordRequestForm` expects
   form data. Add a parallel JSON login endpoint or accept both content types.
 

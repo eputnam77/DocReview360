@@ -9,14 +9,13 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
+from pydantic import BaseModel
 
-from .. import auth
-from .. import oidc_client
+from .. import auth, oidc_client
 from ..logs import log_event
 from ..messages import render
 
@@ -28,6 +27,16 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 
 _SESSION_COOKIE_MAX_AGE: int = auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+
+class _PasswordGrantBody(BaseModel):
+    username: str
+    password: str
+    otp: str | None = None
+
+
+class _RefreshGrantBody(BaseModel):
+    refresh_token: str
 
 
 def _request_source(request: Request) -> str:
@@ -80,15 +89,34 @@ def _get_rate_limiters() -> tuple[Any, Any]:
     return _api_mod._TOKEN_RATE_LIMITER, _api_mod._LOGIN_RATE_LIMITER
 
 
-@router.post("/token", response_model=auth.Token)
-async def token(
-    request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends()
-) -> auth.Token:
-    """Return a JWT access token for valid user credentials."""
-    token_limiter, _ = _get_rate_limiters()
-    token_key = f"token:{form_data.username.strip().lower()}:{_request_source(request)}"
-    token_limiter.enforce(token_key)
-    token_resp = await auth.login_for_access_token(form_data, request)
+async def _parse_password_grant(request: Request) -> _PasswordGrantBody:
+    """Parse login credentials from either JSON or form-encoded bodies."""
+    content_type = request.headers.get("content-type", "").lower()
+    if "application/json" in content_type:
+        try:
+            payload = _PasswordGrantBody.model_validate(await request.json())
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid JSON login payload",
+            ) from exc
+    else:
+        form = await request.form()
+        payload = _PasswordGrantBody(
+            username=str(form.get("username", "")).strip(),
+            password=str(form.get("password", "")),
+            otp=str(form.get("otp", "")) or None,
+        )
+    if not payload.username or not payload.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="username and password are required",
+        )
+    return payload
+
+
+def _set_access_cookie(response: Response, token_resp: auth.Token) -> None:
+    """Persist the current access token in the hardened cookie used by the UI."""
     response.set_cookie(
         "access_token",
         token_resp.access_token,
@@ -97,16 +125,15 @@ async def token(
         samesite="lax",
         max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
-    log_event(
-        "login",
-        user_id=form_data.username,
-        message=render("login", user=form_data.username),
-    )
-    # Record the session for concurrent-limit and idle-timeout enforcement
+
+
+def _record_access_session(username: str, access_token: str, request: Request) -> None:
+    """Create a tracked session row for a freshly-issued access token."""
     try:
         from jose import jwt as _jwt
+
         payload = _jwt.decode(
-            token_resp.access_token,
+            access_token,
             auth.SECRET_KEY,
             algorithms=[auth.ALGORITHM],
             audience=auth.TOKEN_AUDIENCE,
@@ -115,29 +142,81 @@ async def token(
         jti = payload.get("jti")
         exp_ts = payload.get("exp")
         if jti and exp_ts:
-            from datetime import datetime, timezone as _tz
+            from datetime import datetime
+            from datetime import timezone as _tz
+
             expires_at = datetime.fromtimestamp(exp_ts, tz=_tz.utc)
             ip = _request_source(request)
             ua = request.headers.get("user-agent")
             oidc_client.create_user_session(
-                username=form_data.username,
+                username=username,
                 jti=jti,
                 expires_at=expires_at,
                 auth_method="mfa" if auth.REQUIRE_MFA else "password",
                 ip_address=ip,
                 user_agent=ua,
             )
-    except Exception as _sess_exc:  # pragma: no cover - best effort
-        _logger.debug("Session record creation failed (non-fatal): %s", _sess_exc)
+    except Exception as exc:  # pragma: no cover - best effort
+        _logger.debug("Session record creation failed (non-fatal): %s", exc)
+
+
+@router.post("/token", response_model=auth.Token)
+async def token(
+    request: Request, response: Response
+) -> auth.Token:
+    """Return a JWT access token for valid user credentials."""
+    body = await _parse_password_grant(request)
+    token_limiter, _ = _get_rate_limiters()
+    token_key = f"token:{body.username.strip().lower()}:{_request_source(request)}"
+    token_limiter.enforce(token_key)
+    token_resp = auth.login_for_credentials(
+        username=body.username,
+        password=body.password,
+        otp=body.otp or "",
+    )
+    _set_access_cookie(response, token_resp)
+    log_event(
+        "login",
+        user_id=body.username,
+        message=render("login", user=body.username),
+    )
+    _record_access_session(body.username, token_resp.access_token, request)
     return token_resp
 
 
 @router.post("/oidc/token", response_model=auth.Token)
 async def oidc_token(
-    request: Request, form_data: OAuth2PasswordRequestForm = Depends()
+    request: Request,
 ) -> auth.Token:
     """Return an ID token using the OIDC flow."""
-    return await auth.login_for_oidc_token(form_data, request)
+    body = await _parse_password_grant(request)
+    return auth.login_for_oidc_credentials(
+        username=body.username,
+        password=body.password,
+        otp=body.otp or "",
+    )
+
+
+@router.post("/token/refresh", response_model=auth.Token)
+async def refresh_token(request: Request, response: Response) -> auth.Token:
+    """Rotate a refresh token and return a new short-lived access token."""
+    try:
+        body = _RefreshGrantBody.model_validate(await request.json())
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON refresh payload",
+        ) from exc
+    if not body.refresh_token.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="refresh_token is required",
+        )
+    token_resp = auth.refresh_access_token(body.refresh_token)
+    _set_access_cookie(response, token_resp)
+    username = auth.get_current_user(request, token=token_resp.access_token).username
+    _record_access_session(username, token_resp.access_token, request)
+    return token_resp
 
 
 @router.get("/me")
@@ -414,9 +493,11 @@ async def oidc_callback(
             _logger.warning("Role sync for OIDC user %r failed: %s", username, exc)
 
     # Issue a DocReview360 access JWT
-    from datetime import datetime, timedelta, timezone as _tz
-    from jose import jwt as _jwt
     import uuid as _uuid
+    from datetime import datetime, timedelta
+    from datetime import timezone as _tz
+
+    from jose import jwt as _jwt
     now = datetime.now(_tz.utc)
     jti = str(_uuid.uuid4())
     expire = now + timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -495,7 +576,8 @@ async def revoke_session(
             {"sid": session_id},
         )
     # Also add jti to the revoked-token table
-    from datetime import datetime, timedelta, timezone as _tz
+    from datetime import datetime, timedelta
+    from datetime import timezone as _tz
     auth.revoke_token(jti, datetime.now(_tz.utc) + timedelta(days=7))
     return {"detail": "Session revoked"}
 
@@ -547,9 +629,11 @@ async def piv_verify(request: Request, response: Response) -> auth.Token:
         _logger.debug("PIV role assignment failed (non-fatal): %s", _role_exc)
 
     # Issue JWT
-    from datetime import datetime, timedelta, timezone as _tz
-    from jose import jwt as _jwt
     import uuid as _uuid
+    from datetime import datetime, timedelta
+    from datetime import timezone as _tz
+
+    from jose import jwt as _jwt
 
     now = datetime.now(_tz.utc)
     jti = str(_uuid.uuid4())
@@ -702,9 +786,11 @@ async def webauthn_auth_complete(request: Request, response: Response) -> auth.T
         raise HTTPException(status_code=401, detail="WebAuthn authentication failed")
 
     # Issue JWT
-    from datetime import datetime, timedelta, timezone as _tz
-    from jose import jwt as _jwt
     import uuid as _uuid
+    from datetime import datetime, timedelta
+    from datetime import timezone as _tz
+
+    from jose import jwt as _jwt
 
     now = datetime.now(_tz.utc)
     jti = str(_uuid.uuid4())

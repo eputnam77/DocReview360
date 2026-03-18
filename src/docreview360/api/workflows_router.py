@@ -671,7 +671,7 @@ async def list_workflow_templates_endpoint(
 @router.post("/workflow-templates", status_code=201, response_model=WorkflowTemplateResponse)
 @log_call
 async def create_workflow_template_endpoint(
-    body: WorkflowTemplatePayload,
+    body: WorkflowTemplatePayload = Body(...),
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowTemplateResponse:
@@ -701,7 +701,7 @@ async def get_workflow_template_endpoint(
 @log_call
 async def update_workflow_template_endpoint(
     template_id: str,
-    body: WorkflowTemplatePayload,
+    body: WorkflowTemplatePayload = Body(...),
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowTemplateResponse:
@@ -737,7 +737,7 @@ async def delete_workflow_template_endpoint(
 @router.post("/workflows", status_code=201, response_model=WorkflowModel)
 @log_call
 async def create_workflow_endpoint(
-    workflow: WorkflowCreate,
+    workflow: WorkflowCreate = Body(...),
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowModel:
@@ -802,7 +802,7 @@ async def start_workflow_endpoint(
 @log_call
 async def assign_reviewer_endpoint(
     wf_id: str,
-    body: ReviewerAssign,
+    body: ReviewerAssign = Body(...),
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowModel:
@@ -834,7 +834,7 @@ async def advance_workflow_endpoint(
 @router.post("/approvals", status_code=201, response_model=ApprovalModel)
 @log_call
 async def create_approval_endpoint(
-    body: ApprovalCreate,
+    body: ApprovalCreate = Body(...),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> ApprovalModel:
     """Create an approval for a workflow."""
@@ -1320,7 +1320,7 @@ async def get_email_template_endpoint(
 
 @router.post("/email-templates", status_code=201)
 async def create_email_template_endpoint(
-    body: EmailTemplatePayload,
+    body: EmailTemplatePayload = Body(...),
     user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     try:
@@ -1338,7 +1338,7 @@ async def create_email_template_endpoint(
 @router.put("/email-templates/{name}")
 async def update_email_template_endpoint(
     name: str,
-    body: EmailTemplatePayload,
+    body: EmailTemplatePayload = Body(...),
     user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     if name != body.name:

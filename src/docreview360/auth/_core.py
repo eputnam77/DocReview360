@@ -77,7 +77,7 @@ def is_active(username: str) -> bool:
 
 def authenticate_user(username: str, password: str) -> User | None:
     """Return ``User`` if credentials match and user is active."""
-    from . import DEMO_USER_DEFAULTS, SEED_DEMO_USERS, _allow_demo_seed
+    from . import DEMO_USER_DEFAULTS, _allow_demo_seed
 
     if not username or not password:
         return None
@@ -125,7 +125,7 @@ def authenticate_user(username: str, password: str) -> User | None:
 
 def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
     """Return ``User`` if credentials, OTP match, and user is active."""
-    from . import DEMO_USER_DEFAULTS, SEED_DEMO_USERS, _allow_demo_seed
+    from . import DEMO_USER_DEFAULTS, SEED_DEMO_USERS
 
     if not username or not password or not otp:
         return None
@@ -176,6 +176,177 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
         }
     )
     return str(jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
+
+
+def _access_token_lifetime_seconds() -> int:
+    """Return the configured access-token lifetime in whole seconds."""
+    from . import ACCESS_TOKEN_EXPIRE_MINUTES
+
+    return max(1, int(ACCESS_TOKEN_EXPIRE_MINUTES) * 60)
+
+
+def _refresh_token_lifetime() -> timedelta:
+    """Return the configured refresh-token lifetime."""
+    from . import REFRESH_TOKEN_EXPIRE_DAYS
+
+    return timedelta(days=max(1, int(REFRESH_TOKEN_EXPIRE_DAYS)))
+
+
+def _build_access_token_response(
+    *,
+    username: str,
+    refresh_token: str | None = None,
+) -> Token:
+    """Build a token response with the current access-token lifetime."""
+    expires_in = _access_token_lifetime_seconds()
+    access_token = create_access_token({"sub": username}, timedelta(seconds=expires_in))
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        refresh_token=refresh_token,
+    )
+
+
+def _issue_refresh_token(*, username: str, family_id: str | None = None) -> tuple[str, str, datetime]:
+    """Create and persist a long-lived refresh token for ``username``."""
+    repo = _get_user_repository()
+    token = secrets.token_urlsafe(48)
+    resolved_family_id = family_id or secrets.token_hex(16)
+    expires_at = datetime.now(timezone.utc) + _refresh_token_lifetime()
+    repo.store_refresh_token(
+        username=username,
+        token=token,
+        family_id=resolved_family_id,
+        expires_at=expires_at,
+    )
+    return token, resolved_family_id, expires_at
+
+
+def _authenticate_login_user(
+    *,
+    username: str,
+    password: str,
+    otp: str = "",
+) -> User:
+    """Authenticate a username/password pair, including MFA and LDAP fallback."""
+    from . import REQUIRE_MFA
+
+    if REQUIRE_MFA:
+        user = authenticate_mfa(username, password, otp)
+    else:
+        user = authenticate_user(username, password)
+
+    if not user:
+        try:
+            from .. import ldap_auth as _ldap_auth  # noqa: PLC0415
+
+            if _ldap_auth.ldap_enabled():
+                ldap_result = _ldap_auth.ldap_login(username, password)
+                if ldap_result:
+                    ldap_username, ldap_roles = ldap_result
+                    repo = _get_user_repository()
+                    if repo.get_user(ldap_username) is None:
+                        import secrets as _sec
+
+                        repo._seed_user(ldap_username, _sec.token_hex(32), active=True)
+                    if ldap_roles:
+                        try:
+                            from .. import rbac as _rbac  # noqa: PLC0415
+
+                            for role_name in ldap_roles:
+                                _rbac.add_role(ldap_username, role_name)
+                        except Exception:  # pragma: no cover
+                            pass
+                    user = User(username=ldap_username, active=True)
+        except Exception:  # pragma: no cover — ldap3 may not be installed
+            pass
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username, password, or OTP",
+        )
+    return user
+
+
+def login_for_credentials(
+    *,
+    username: str,
+    password: str,
+    otp: str = "",
+) -> Token:
+    """Issue an access-token pair for explicit credential fields."""
+    user = _authenticate_login_user(username=username, password=password, otp=otp)
+    refresh_token, _, _ = _issue_refresh_token(username=user.username)
+    return _build_access_token_response(username=user.username, refresh_token=refresh_token)
+
+
+def login_for_oidc_credentials(
+    *,
+    username: str,
+    password: str,
+    otp: str = "",
+) -> Token:
+    """Issue an OIDC token for explicit credential fields."""
+    from . import OIDC_TOKEN_EXPIRE_MINUTES
+
+    user = _authenticate_login_user(username=username, password=password, otp=otp)
+    id_token = create_id_token(
+        {"sub": user.username},
+        timedelta(minutes=OIDC_TOKEN_EXPIRE_MINUTES),
+    )
+    return Token(
+        access_token=id_token,
+        token_type="bearer",
+        expires_in=max(1, int(OIDC_TOKEN_EXPIRE_MINUTES) * 60),
+    )
+
+
+def refresh_access_token(refresh_token: str) -> Token:
+    """Rotate a refresh token and return a fresh access-token pair."""
+    repo = _get_user_repository()
+    record = repo.get_refresh_token(refresh_token)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+    now = datetime.now(timezone.utc)
+    if record.expires_at <= now:
+        repo.revoke_refresh_token_family(record.family_id)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token expired",
+        )
+    if record.revoked_at is not None or record.rotated_at is not None:
+        repo.revoke_refresh_token_family(record.family_id)
+        repo.bump_token_generation(record.username)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token reuse detected; session revoked",
+        )
+    user = repo.get_user(record.username)
+    if user is None or not user.active:
+        repo.revoke_refresh_token_family(record.family_id)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+    next_refresh_token = secrets.token_urlsafe(48)
+    next_expires_at = now + _refresh_token_lifetime()
+    repo.rotate_refresh_token(token=refresh_token, replaced_by_token=next_refresh_token)
+    repo.store_refresh_token(
+        username=record.username,
+        token=next_refresh_token,
+        family_id=record.family_id,
+        expires_at=next_expires_at,
+        parent_token=refresh_token,
+    )
+    return _build_access_token_response(
+        username=record.username,
+        refresh_token=next_refresh_token,
+    )
 
 
 def create_id_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
@@ -311,47 +482,12 @@ async def login_for_access_token(
     request: Request | None = None,
 ) -> Token:
     """Issue a short-lived JWT bearer token."""
-    from . import ACCESS_TOKEN_EXPIRE_MINUTES, REQUIRE_MFA
-
-    if REQUIRE_MFA:
-        otp = await _extract_otp(request)
-        user = authenticate_mfa(form_data.username, form_data.password, otp)
-    else:
-        user = authenticate_user(form_data.username, form_data.password)
-
-    if not user:
-        try:
-            from .. import ldap_auth as _ldap_auth  # noqa: PLC0415
-
-            if _ldap_auth.ldap_enabled():
-                ldap_result = _ldap_auth.ldap_login(form_data.username, form_data.password)
-                if ldap_result:
-                    ldap_username, ldap_roles = ldap_result
-                    repo = _get_user_repository()
-                    if repo.get_user(ldap_username) is None:
-                        import secrets as _sec
-
-                        repo._seed_user(ldap_username, _sec.token_hex(32), active=True)
-                    if ldap_roles:
-                        try:
-                            from .. import rbac as _rbac  # noqa: PLC0415
-
-                            for _role in ldap_roles:
-                                _rbac.add_role(ldap_username, _role)
-                        except Exception:  # pragma: no cover
-                            pass
-                    user = User(username=ldap_username, active=True)
-        except Exception:  # pragma: no cover — ldap3 may not be installed
-            pass
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username, password, or OTP",
-        )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token({"sub": user.username}, access_token_expires)
-    return Token(access_token=access_token, token_type="bearer")
+    otp = await _extract_otp(request)
+    return login_for_credentials(
+        username=form_data.username,
+        password=form_data.password,
+        otp=otp,
+    )
 
 
 async def login_for_oidc_token(
@@ -359,21 +495,12 @@ async def login_for_oidc_token(
     request: Request | None = None,
 ) -> Token:
     """Return an ID token for valid credentials using a separate secret."""
-    from . import OIDC_TOKEN_EXPIRE_MINUTES, REQUIRE_MFA
-
-    if REQUIRE_MFA:
-        otp = await _extract_otp(request)
-        user = authenticate_mfa(form_data.username, form_data.password, otp)
-    else:
-        user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username, password, or OTP",
-        )
-    token_expires = timedelta(minutes=OIDC_TOKEN_EXPIRE_MINUTES)
-    id_token = create_id_token({"sub": user.username}, token_expires)
-    return Token(access_token=id_token, token_type="bearer")
+    otp = await _extract_otp(request)
+    return login_for_oidc_credentials(
+        username=form_data.username,
+        password=form_data.password,
+        otp=otp,
+    )
 
 
 def get_current_user_oidc(

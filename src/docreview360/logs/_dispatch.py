@@ -310,12 +310,25 @@ def log_call(func: F | None = None, *, enabled: bool = True) -> F:  # noqa: C901
                 )
                 raise
 
-        annotations = get_type_hints(f)
+        try:
+            annotations = get_type_hints(f, include_extras=True)
+        except Exception:
+            annotations = dict(getattr(f, "__annotations__", {}))
         async_wrapper.__annotations__ = annotations
         sync_wrapper.__annotations__ = annotations
         signature = inspect.signature(f)
-        async_wrapper.__signature__ = signature  # type: ignore[attr-defined]
-        sync_wrapper.__signature__ = signature  # type: ignore[attr-defined]
+        resolved_parameters = [
+            parameter.replace(
+                annotation=annotations.get(parameter.name, parameter.annotation),
+            )
+            for parameter in signature.parameters.values()
+        ]
+        resolved_signature = signature.replace(
+            parameters=resolved_parameters,
+            return_annotation=annotations.get("return", signature.return_annotation),
+        )
+        async_wrapper.__signature__ = resolved_signature  # type: ignore[attr-defined]
+        sync_wrapper.__signature__ = resolved_signature  # type: ignore[attr-defined]
         return cast(F, async_wrapper if is_coro else sync_wrapper)
 
     if func is None:
