@@ -8,7 +8,6 @@ import secrets
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from .. import auth, rbac
@@ -230,7 +229,7 @@ def scim_patch_user(
     return _user_to_scim(updated, _base_url(request))
 
 
-@router.delete("/Users/{user_id}", status_code=204)
+@router.delete("/Users/{user_id}", status_code=204, response_model=None)
 def scim_delete_user(
     user_id: str,
     _: None = Depends(_require_scim_auth),

@@ -12,13 +12,13 @@ import string
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Response, UploadFile
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .. import auth, rbac, settings_manager
-from ..rbac import require_role, get_roles, has_permission
 from ..config import CONFIG_FILE, Config
-from ..logs import log_event
+from ..environment import current_environment, load_envs, switch_environment
+from ..integrations.signature import get_default_providers
 from ..plugins import load_plugins
 from ..plugins import registry as plugin_registry
 from ..profile import (
@@ -27,9 +27,8 @@ from ..profile import (
     update_preferences,
     update_profile_data,
 )
-from ..integrations.signature import get_default_providers
-from ..settings_manager import update_setting, update_secret
-from ..environment import current_environment, load_envs, switch_environment
+from ..rbac import get_roles, require_role
+from ..settings_manager import update_setting
 
 _logger = logging.getLogger(__name__)
 
@@ -749,7 +748,7 @@ async def get_user_locale(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, str]:
     """Return the locale preference for the currently authenticated user."""
-    from ..profile import get_preferences, VALID_LOCALES
+    from ..profile import VALID_LOCALES, get_preferences
 
     prefs = get_preferences(current_user.username)
     locale = prefs.get("locale", "en")
@@ -764,7 +763,7 @@ async def set_user_locale(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, str]:
     """Persist the locale preference for the currently authenticated user."""
-    from ..profile import update_preferences, VALID_LOCALES
+    from ..profile import VALID_LOCALES, update_preferences
 
     normalized = body.locale.strip().lower()
     if normalized not in VALID_LOCALES:
@@ -846,7 +845,7 @@ async def disable_plugin(
     return {"disabled": name}
 
 
-@router.delete("/plugins/{name}", status_code=204, response_class=Response)
+@router.delete("/plugins/{name}", status_code=204, response_class=Response, response_model=None)
 async def unregister_plugin(
     name: str,
     user: auth.User = Depends(require_role("admin")),
@@ -1110,8 +1109,8 @@ async def get_org_branding(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Return effective branding + terminology for *org_id*."""
-    from ..db_store import get_db
     from ..branding import get_full_theme
+    from ..db_store import get_db
 
     with get_db().orm_session() as db:
         return get_full_theme(db, org_id)
@@ -1124,8 +1123,8 @@ async def set_org_branding(
     current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Update branding overrides for *org_id* (admin only)."""
-    from ..db_store import get_db
     from ..branding import set_branding
+    from ..db_store import get_db
 
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not updates:
@@ -1144,8 +1143,8 @@ async def reset_org_branding(
     current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Reset all branding overrides for *org_id* to system defaults."""
-    from ..db_store import get_db
     from ..branding import reset_branding
+    from ..db_store import get_db
 
     with get_db().orm_session() as db:
         result = reset_branding(db, org_id, updated_by=current_user.username)
@@ -1159,8 +1158,8 @@ async def set_org_terminology(
     current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Update terminology overrides for *org_id* (admin only)."""
-    from ..db_store import get_db
     from ..branding import set_terminology
+    from ..db_store import get_db
 
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not updates:
@@ -1197,7 +1196,7 @@ async def get_org_tools(
     current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Return tool configuration and effective plugin list for *org_id*."""
-    from ..plugin_marketplace import get_org_tool_config, get_effective_plugins
+    from ..plugin_marketplace import get_effective_plugins, get_org_tool_config
 
     config = get_org_tool_config(org_id)
     plugins = get_effective_plugins(org_id)
@@ -1251,7 +1250,7 @@ async def set_org_builtin_status(
     current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Set a per-org builtin plugin override for *org_id*."""
-    from ..plugin_marketplace import set_org_tool_config, get_builtin_status, BUILTIN_PLUGIN_IDS
+    from ..plugin_marketplace import BUILTIN_PLUGIN_IDS, get_builtin_status, set_org_tool_config
 
     if payload.pluginId not in BUILTIN_PLUGIN_IDS:
         raise HTTPException(
@@ -1299,7 +1298,7 @@ async def get_translations(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Return translation strings for *locale*, optionally filtered by *namespace*."""
-    from ..i18n import get_namespace, SUPPORTED_LOCALES, _normalise
+    from ..i18n import SUPPORTED_LOCALES, _normalise, get_namespace
 
     # Check the raw base tag before normalisation so that unsupported locales
     # (e.g. "zh") are rejected rather than silently mapped to the default.
@@ -1337,8 +1336,8 @@ def _get_merged_translations(org_id: str, locale: str) -> dict[str, str]:
                         ``approval.label`` if present
       - ``reviewer``  → no direct nav key; stored at ``terminology.reviewer``
     """
-    from ..i18n import _TRANSLATIONS, translate, SUPPORTED_LOCALES, _normalise
-    from ..branding import get_terminology, TERMINOLOGY_DEFAULTS
+    from ..branding import TERMINOLOGY_DEFAULTS, get_terminology
+    from ..i18n import _TRANSLATIONS, SUPPORTED_LOCALES, _normalise, translate
 
     raw_base = locale.strip().lower().split("-")[0].split("_")[0]
     if raw_base not in SUPPORTED_LOCALES:
@@ -1399,7 +1398,7 @@ async def get_terminology_translations(
         strings = _get_merged_translations(org_id, locale)
     except HTTPException:
         raise
-    from ..i18n import _normalise, SUPPORTED_LOCALES
+    from ..i18n import SUPPORTED_LOCALES, _normalise
 
     raw_base = locale.strip().lower().split("-")[0].split("_")[0]
     if raw_base not in SUPPORTED_LOCALES:

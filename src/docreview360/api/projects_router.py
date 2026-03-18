@@ -6,14 +6,23 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel
 
 from .. import auth
-from ..rbac import has_role
 from ..cache import cache_get, cache_set, clear_cache
+from ..rbac import has_role
 
 
 def _emit_webhook(event: str, data: dict) -> None:
@@ -25,12 +34,21 @@ def _emit_webhook(event: str, data: dict) -> None:
         pass
 from ..approvals import build_approvals_summary_pdf
 from ..audit import log_audit_event
+from ..doc_types import get_document_type
+from ..doc_validation import score_plain_language
+from ..documents import DocumentModel, import_document, list_documents
 from ..logs import log_event
 from ..messages import render
 from ..project_preferences import (
     ProjectPreferences,
     get_project_preferences,
     update_project_preferences,
+)
+from ..quality import (
+    QUALITY_FLAG_NAMES,
+    QualityAssessment,
+    high_risk_warnings,
+    quality_assessment,
 )
 from ..reviews import ReviewCreate, ReviewModel, add_review, list_reviews
 from ..search import (
@@ -40,28 +58,18 @@ from ..search import (
     assign_temporary,
     get_project,
     list_projects,
-    remove_project_reviewer,
     remove_project,
+    remove_project_reviewer,
     set_project_priority,
-    update_project_reviewer,
     update_project,
+    update_project_reviewer,
 )
 from ..workflows import (
     WorkflowModel,
     create_workflow,
     workflow_templates,
     workflows,
-    get_workflow_template,
 )
-from ..doc_types import get_document_type
-from ..documents import DocumentModel, import_document, list_documents
-from ..quality import (
-    QUALITY_FLAG_NAMES,
-    QualityAssessment,
-    high_risk_warnings,
-    quality_assessment,
-)
-from ..doc_validation import score_plain_language
 
 _logger = logging.getLogger(__name__)
 
@@ -655,7 +663,7 @@ async def update_project_endpoint(  # noqa: C901
     description: str | None = Form(None),
     sme: str | None = Form(None),
     docType: str | None = Form(None),
-    file: UploadFile | None = File(None),
+    file: UploadFile | None = File(default=None),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> ProjectModel:
     """Update project fields like name, user, doc_type, or workflow."""
@@ -949,9 +957,11 @@ async def get_project_document_scores(
     def _get_score_history(doc_id: str) -> list[dict]:
         """Return last 5 quality score history entries for a document."""
         try:
+            from sqlalchemy import desc as _desc
+            from sqlalchemy import select as _select
+
             from ..db_store import get_db
             from ..models import DocumentQualityScore as _OrmScore
-            from sqlalchemy import select as _select, desc as _desc
 
             db = get_db()
             with db.orm_session() as session:

@@ -10,11 +10,21 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel, ConfigDict, Field
 
 from .. import auth
-from ..rbac import require_role
 from ..approvals import (
     ApprovalModel,
     SignedApprovalImmutableError,
@@ -26,36 +36,48 @@ from ..approvals import (
     update_approval_state,
 )
 from ..audit import log_audit_event
-from ..logs import log_event, log_call
+from ..doc_types import list_document_types
+from ..email_templates import (
+    create_template as create_email_template,
+)
+from ..email_templates import (
+    delete_template as delete_email_template,
+)
+from ..email_templates import (
+    get_template as get_email_template,
+)
+from ..email_templates import (
+    list_templates as list_email_templates,
+)
+from ..email_templates import (
+    update_template as update_email_template,
+)
+from ..logs import log_call
 from ..phases import (
     add_phase,
     delete_phase,
     get_phase_workflow_template,
-    list_phase_workflow_links,
     list_phases,
     list_phases_detail,
     rename_phase,
     set_phase_workflow_template,
 )
+from ..rbac import has_role, require_role
 from ..template_manager import (
-    delete_template as delete_stored_template,
+    approve_template,
     get_latest_template,
     get_template_phase_locks,
-    is_template_locked_for_phase,
     list_stored_templates,
     list_template_versions,
     lock_template_for_phase,
-    approve_template,
     retire_template,
     unlock_template_for_phase,
-    upload_template as store_template,
 )
-from ..email_templates import (
-    create_template as create_email_template,
-    delete_template as delete_email_template,
-    get_template as get_email_template,
-    list_templates as list_email_templates,
-    update_template as update_email_template,
+from ..template_manager import (
+    delete_template as delete_stored_template,
+)
+from ..template_manager import (
+    upload_template as store_template,
 )
 from ..workflows import (
     WorkflowModel,
@@ -69,16 +91,13 @@ from ..workflows import (
     delete_workflow_template,
     get_workflow,
     get_workflow_template,
-    list_workflows,
+    list_roles,
     list_workflow_templates,
+    list_workflows,
     start_workflow,
     update_workflow_template,
-    workflow_templates,
     workflows,
-    list_roles,
 )
-from ..rbac import has_role
-from ..doc_types import get_document_type, list_document_types
 
 _logger = logging.getLogger(__name__)
 
@@ -387,7 +406,7 @@ def _phase_usage(name: str) -> tuple[list[Any], list[WorkflowModel]]:
     all_wfs = list_workflows()
     workflows_using_phase = [w for w in all_wfs if name in w.phases]
 
-    from ..search import list_projects, get_project as _get_project
+    from ..search import list_projects
     projects_using_phase: list[Any] = []
     for project in list_projects():
         if project.workflow:
@@ -532,7 +551,7 @@ async def check_phase_usage_endpoint(
     }
 
 
-@router.delete("/phases/{name}", status_code=204, response_class=Response)
+@router.delete("/phases/{name}", status_code=204, response_class=Response, response_model=None)
 async def delete_phase_endpoint(
     name: str,
     replacement: str | None = None,
@@ -610,7 +629,7 @@ async def set_phase_sla_endpoint(
     return cfg.model_dump()
 
 
-@router.delete("/phases/{name}/sla", status_code=204, response_class=Response)
+@router.delete("/phases/{name}/sla", status_code=204, response_class=Response, response_model=None)
 async def delete_phase_sla_endpoint(
     name: str,
     user: auth.User = Depends(require_role("admin")),
@@ -696,7 +715,7 @@ async def update_workflow_template_endpoint(
     return _serialize_workflow_template(template)
 
 
-@router.delete("/workflow-templates/{template_id}", status_code=204, response_class=Response)
+@router.delete("/workflow-templates/{template_id}", status_code=204, response_class=Response, response_model=None)
 @log_call
 async def delete_workflow_template_endpoint(
     template_id: str,
@@ -762,11 +781,10 @@ async def list_workflow_roles_endpoint(
 
 
 @router.post("/workflows/{wf_id}/start", response_model=WorkflowModel)
-@log_call
 async def start_workflow_endpoint(
     wf_id: str,
     title: str | None = Form(None),
-    file: UploadFile | None = File(None),
+    file: UploadFile | None = File(default=None),
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowModel:
@@ -1053,7 +1071,7 @@ async def update_template_endpoint(
     }
 
 
-@router.delete("/templates/{name}", status_code=204, response_class=Response)
+@router.delete("/templates/{name}", status_code=204, response_class=Response, response_model=None)
 async def delete_template_endpoint(
     name: str,
     user: auth.User = Depends(require_role("admin")),
@@ -1128,7 +1146,7 @@ async def lock_template_phase_endpoint(
     return {"template": name, "phase": phase, "locked": True}
 
 
-@router.delete("/templates/{name}/locks/{phase}", status_code=204, response_class=Response)
+@router.delete("/templates/{name}/locks/{phase}", status_code=204, response_class=Response, response_model=None)
 async def unlock_template_phase_endpoint(
     name: str,
     phase: str,
@@ -1337,7 +1355,7 @@ async def update_email_template_endpoint(
     }
 
 
-@router.delete("/email-templates/{name}", status_code=204, response_class=Response)
+@router.delete("/email-templates/{name}", status_code=204, response_class=Response, response_model=None)
 async def delete_email_template_endpoint(
     name: str,
     user: auth.User = Depends(require_role("admin")),

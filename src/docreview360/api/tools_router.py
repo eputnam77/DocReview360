@@ -6,23 +6,28 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import secrets as _secrets_mod
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import httpx
-
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel
 
 from .. import auth
-from ..rbac import has_role, require_role
+from ..accessibility import scan_document_accessibility, scan_result_to_dict
 from ..ai_assist import rewrite_text, summarize_text
 from ..cache import cache_get, cache_set
 from ..config import CONFIG_FILE, Config
-from ..fsv_proxy import is_fsv_configured, get_fsv_url, fsv_validate, fsv_regulatory_check, fsv_quality
 from ..doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -34,11 +39,18 @@ from ..doc_types import (
     update_document_type,
 )
 from ..doc_validation import preflight_validate as _preflight_validate
-from ..document_converter import convert_document, convert_document_content
+from ..document_converter import convert_document_content
 from ..documents import DocumentModel
+from ..fsv_proxy import (
+    fsv_quality,
+    fsv_regulatory_check,
+    fsv_validate,
+    get_fsv_url,
+    is_fsv_configured,
+)
 from ..logs import log_event
+from ..rbac import has_role, require_role
 from ..search import (
-    ProjectModel,
     get_project,
     list_projects,
     list_saved_searches,
@@ -51,7 +63,6 @@ from ..search import (
 from ..secrets import get_secret
 from ..settings_manager import update_secret
 from ..watchlist import get_watchlist, toggle_watch
-from ..accessibility import scan_document_accessibility, scan_result_to_dict
 
 _logger = logging.getLogger(__name__)
 
@@ -347,7 +358,7 @@ async def check_document_type_usage_endpoint(
     }
 
 
-@router.delete("/document-types/{name}", status_code=204, response_class=Response)
+@router.delete("/document-types/{name}", status_code=204, response_class=Response, response_model=None)
 async def delete_document_type_endpoint(
     name: str,
     replacement: str | None = None,
@@ -599,9 +610,9 @@ async def document_preflight_endpoint(
     # Item 35: persist quality score if a document_id was provided.
     if body.document_id:
         try:
+            from ..doc_validation import score_plain_language
             from ..documents import update_document_quality_score
             from ..quality import quality_assessment
-            from ..doc_validation import score_plain_language
 
             qa = quality_assessment(body.text)
             pl = score_plain_language(body.text)
@@ -691,9 +702,9 @@ async def unified_validate_endpoint(
         checks_run.append("preflight")
         if body.document_id:
             try:
-                from ..documents import update_document_quality_score
-                from ..quality import quality_assessment, QUALITY_FLAG_NAMES
                 from ..doc_validation import score_plain_language
+                from ..documents import update_document_quality_score
+                from ..quality import QUALITY_FLAG_NAMES, quality_assessment
                 qa = quality_assessment(body.text)
                 pl = score_plain_language(body.text)
                 flags = dict(zip(QUALITY_FLAG_NAMES, qa.flags))
@@ -738,8 +749,8 @@ async def unified_validate_endpoint(
                 return r
             except Exception as _exc:
                 _logger.warning("FSV quality failed in unified: %s", _exc)
-        from ..quality import quality_assessment
         from ..doc_validation import score_plain_language
+        from ..quality import quality_assessment
         qa = quality_assessment(body.text)
         pl = score_plain_language(body.text)
         checks_run.append("quality")
@@ -830,7 +841,7 @@ async def get_api_key(
     return record
 
 
-@router.delete("/api-keys/{key_id}", status_code=204, response_class=Response)
+@router.delete("/api-keys/{key_id}", status_code=204, response_class=Response, response_model=None)
 async def revoke_api_key(
     key_id: str,
     current_user: auth.User = Depends(auth.get_current_user),
@@ -926,7 +937,7 @@ async def get_share_link(
     raise HTTPException(status_code=404, detail="Share link not found")
 
 
-@router.delete("/share-links/{link_id}", status_code=204, response_class=Response)
+@router.delete("/share-links/{link_id}", status_code=204, response_class=Response, response_model=None)
 async def revoke_share_link(
     link_id: str,
     current_user: auth.User = Depends(auth.get_current_user),

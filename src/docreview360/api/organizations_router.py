@@ -23,7 +23,6 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from .. import auth
-from ..rbac import require_role, has_role
 from ..organizations import (
     OrganizationSettings,
     assign_user_to_org,
@@ -38,6 +37,7 @@ from ..organizations import (
     update_org_settings,
     update_organization,
 )
+from ..rbac import has_role, require_role
 
 _logger = logging.getLogger(__name__)
 
@@ -166,7 +166,7 @@ async def update_org_endpoint(
         raise HTTPException(status_code=500, detail="Failed to update organization") from exc
 
 
-@router.delete("/organizations/{org_id}", status_code=204, response_class=Response)
+@router.delete("/organizations/{org_id}", status_code=204, response_class=Response, response_model=None)
 async def delete_org_endpoint(
     org_id: int,
     current_user: auth.User = Depends(require_role("admin")),

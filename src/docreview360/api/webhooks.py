@@ -300,7 +300,7 @@ async def list_webhook_subscriptions(_=Depends(require_role("admin"))) -> list[d
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@router.delete("/webhooks/subscriptions/{sub_id}", status_code=204, response_class=Response)
+@router.delete("/webhooks/subscriptions/{sub_id}", status_code=204, response_class=Response, response_model=None)
 @log_call
 async def delete_webhook_subscription(
     sub_id: int, _=Depends(require_role("admin"))
@@ -322,7 +322,7 @@ async def delete_webhook_subscription(
     return Response(status_code=204)
 
 
-@router.post("/hooks", status_code=204, response_class=Response)
+@router.post("/hooks", status_code=204, response_class=Response, response_model=None)
 @log_call
 async def handle_webhook(
     request: Request,

@@ -69,6 +69,10 @@ async function _loadPublicLocaleStrings(locale: string): Promise<Record<string, 
   }
 }
 
+function _emptyTranslations(locale: string): TranslationsResponse {
+  return { locale: _normaliseLocaleTag(locale), strings: {} };
+}
+
 /** Recursively get a nested value from an object using dot-notation key.
  * @internal exported for testing */
 export function _dotGet(obj: Record<string, unknown>, key: string): string | undefined {
@@ -138,6 +142,7 @@ export function useTranslation(options?: { orgId?: string }): UseTranslationResu
       const url = orgId
         ? `/i18n/terminology/${locale}?org_id=${encodeURIComponent(orgId)}`
         : `/i18n/translations/${locale}`;
+      const empty = _emptyTranslations(locale);
       try {
         const res = await authenticatedFetch(url);
         if (res.ok) {
@@ -147,7 +152,10 @@ export function useTranslation(options?: { orgId?: string }): UseTranslationResu
         // Fall through to the public locale bundle for logged-out pages.
       }
       const publicStrings = await _loadPublicLocaleStrings(locale);
-      return { locale: _normaliseLocaleTag(locale), strings: publicStrings };
+      if (Object.keys(publicStrings).length === 0) {
+        return empty;
+      }
+      return { ...empty, strings: publicStrings };
     },
     // Cache translations for 5 minutes; they rarely change during a session.
     staleTime: 5 * 60 * 1000,

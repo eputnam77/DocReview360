@@ -4,10 +4,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
+from datetime import datetime as _datetime
 from typing import Any
-
-from datetime import UTC, datetime as _datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
@@ -15,8 +14,9 @@ from pydantic import BaseModel
 from .. import auth
 from ..logs import log_event
 from ..review_assignments import (
-    ReviewAssignmentModel,
     TERMINAL_STATUSES,
+    ReviewAssignmentModel,
+    _update_fields,
     create_assignment,
     delete_assignment,
     get_assignment,
@@ -24,7 +24,6 @@ from ..review_assignments import (
     migrate_reviewers_to_assignments,
     replace_assignment,
     transition_status,
-    _update_fields,
 )
 from ..search import get_project
 
@@ -652,7 +651,7 @@ async def remind_reviewer(
     return {"ok": True, "assignment_id": assignment_id}
 
 
-@router.delete("/projects/{project_id}/assignments/{assignment_id}", status_code=204)
+@router.delete("/projects/{project_id}/assignments/{assignment_id}", status_code=204, response_model=None)
 async def delete_project_assignment(
     project_id: str,
     assignment_id: str,
