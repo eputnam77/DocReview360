@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { buildTemplateUrlPath } from "@/lib/templatePath";
+
 const apiBase = (
   process.env.NEXT_PUBLIC_API_BASE ||
   process.env.DOCREVIEW360_API_BASE ||
@@ -18,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const resp = await fetch(`${apiBase}/templates/${encodeURIComponent(name)}`, {
+    const resp = await fetch(`${apiBase}${buildTemplateUrlPath(name)}`, {
       method: req.method,
       headers: {
         Authorization: req.headers.authorization || "",

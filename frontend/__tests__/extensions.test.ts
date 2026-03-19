@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+﻿import { describe, it, expect, vi } from 'vitest';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 
@@ -95,6 +95,21 @@ describe('heading lock extension', () => {
     expect(typeof shortcuts?.Backspace).toBe('function');
     expect(typeof shortcuts?.Delete).toBe('function');
   });
+
+  it('allows edits outside locked headings', () => {
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const editor = new Editor({
+      element,
+      extensions: [StarterKit, tiptapHeadingLock()],
+      content: '<h1>Locked</h1><p>Body</p>',
+    });
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    editor.commands.insertContent('!');
+    expect(editor.getHTML()).toContain('<p>Body!</p>');
+    editor.destroy();
+    element.remove();
+  });
 });
 
 describe('mark review extension', () => {
@@ -131,3 +146,5 @@ describe('watermark extension', () => {
     editor.destroy();
   });
 });
+
+

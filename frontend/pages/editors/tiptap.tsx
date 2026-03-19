@@ -28,6 +28,7 @@ import sanitizeHtml from "../../utils/sanitize";
 import { resolveStarterContent } from "@/lib/starterContent";
 import { canRunEditorCommand, runEditorCommand } from "@/lib/tiptapCommandUtils";
 import { API, authenticatedFetch } from "@/lib/api";
+import { buildTemplateUrlPath } from "@/lib/templatePath";
 import { useUserStore } from "@/state/user";
 
 // Custom TipTap extensions
@@ -71,7 +72,7 @@ export function createTiptapApi(fetcher: typeof authenticatedFetch = authenticat
     fetchArchive: (archiveId: string) => fetcher(`${API}/archive/${archiveId}`),
     fetchTemplates: () => fetcher(`${API}/templates`),
     fetchTemplate: (filename: string) =>
-      fetcher(`${API}/templates/${encodeURIComponent(filename)}`),
+      fetcher(`${API}${buildTemplateUrlPath(filename)}`),
     fetchStarterContent: (docType: string) =>
       fetcher(`/document-types/${encodeURIComponent(docType)}/starter-content`),
   } as const;

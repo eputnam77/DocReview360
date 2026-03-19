@@ -1,11 +1,12 @@
-/**
+﻿/**
  * TipTap extension enforcing locked heading levels.
  */
 import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
+import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode, ResolvedPos } from "@tiptap/pm/model";
 
 const HEADING_LOCK_PLUGIN_KEY = new PluginKey("heading-lock");
+const HEADING_LOCK_REVERT_META = "heading-lock-revert";
 const LOCKED_LEVELS = new Set([1, 2]);
 const BLOCKED_EDIT_KEYS = new Set(["Backspace", "Delete", "Enter", "Tab"]);
 const BLOCKED_SHORTCUT_KEYS = new Set(["x", "v", "z", "y"]);
@@ -16,6 +17,24 @@ function isLockedHeading(node: ProseMirrorNode | null | undefined): boolean {
       node.type.name === "heading" &&
       LOCKED_LEVELS.has(Number(node.attrs.level)),
   );
+}
+
+function serializeLockedHeadings(doc: ProseMirrorNode): string {
+  const lockedHeadings: unknown[] = [];
+  doc.descendants((node) => {
+    if (isLockedHeading(node)) {
+      lockedHeadings.push(node.toJSON());
+    }
+    return true;
+  });
+  return JSON.stringify(lockedHeadings);
+}
+
+function lockedHeadingsUnchanged(transaction: Transaction, state: EditorState): boolean {
+  if (!transaction.docChanged) {
+    return true;
+  }
+  return serializeLockedHeadings(state.doc) === serializeLockedHeadings(transaction.doc);
 }
 
 function isPositionInsideLockedHeading(position: ResolvedPos): boolean {
@@ -63,6 +82,28 @@ function shouldBlockBeforeInput(event: InputEvent): boolean {
 export function tiptapHeadingLock() {
   return Extension.create({
     name: "heading-lock",
+    addGlobalAttributes() {
+      return [
+        {
+          types: ["heading"],
+          attributes: {
+            lockedHeading: {
+              default: null,
+              parseHTML: () => null,
+              renderHTML: (attributes) => {
+                if (!LOCKED_LEVELS.has(Number(attributes.level))) {
+                  return {};
+                }
+                return {
+                  contenteditable: "false",
+                  class: "heading-locked",
+                };
+              },
+            },
+          },
+        },
+      ];
+    },
     addKeyboardShortcuts() {
       const isLocked = ({ editor }: { editor: { state: EditorState } }) =>
         selectionTouchesLockedHeading(editor.state);
@@ -75,6 +116,24 @@ export function tiptapHeadingLock() {
       return [
         new Plugin({
           key: HEADING_LOCK_PLUGIN_KEY,
+          filterTransaction(transaction, state) {
+            return lockedHeadingsUnchanged(transaction, state);
+          },
+          appendTransaction(transactions, oldState, newState) {
+            if (transactions.some((transaction) => transaction.getMeta(HEADING_LOCK_REVERT_META))) {
+              return null;
+            }
+            if (!transactions.some((transaction) => transaction.docChanged)) {
+              return null;
+            }
+            if (serializeLockedHeadings(oldState.doc) === serializeLockedHeadings(newState.doc)) {
+              return null;
+            }
+            const revert = newState.tr;
+            revert.setMeta(HEADING_LOCK_REVERT_META, true);
+            revert.replaceWith(0, newState.doc.content.size, oldState.doc.content);
+            return revert;
+          },
           props: {
             handleTextInput(view) {
               return selectionTouchesLockedHeading(view.state);

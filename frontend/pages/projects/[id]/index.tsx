@@ -717,7 +717,7 @@ export default function ProjectDetailsPage() {
       setLogs([]);
       return;
     }
-    authenticatedFetch(`/audit?entity_id=${id}`)
+    authenticatedFetch(`/api/audit?entity_id=${id}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setLogs(

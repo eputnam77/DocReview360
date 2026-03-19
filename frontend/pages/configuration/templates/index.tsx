@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash, Eye, Download, CheckCircle, Archive } from "lucide-react";
 import { API, authenticatedFetch } from "@/lib/api";
+import { buildTemplateUrlPath } from "@/lib/templatePath";
 import { toast } from "react-hot-toast";
 
 interface Template {
@@ -34,13 +35,13 @@ export function createTemplateConfigApi() {
     listTemplates: () => authenticatedFetch(`${API}/templates`),
     listEmailTemplates: () => authenticatedFetch(`${API}/email-templates`),
     deleteTemplate: (id: string) =>
-      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}`, { method: "DELETE" }),
+      authenticatedFetch(`${API}${buildTemplateUrlPath(id)}`, { method: "DELETE" }),
     deleteEmailTemplate: (name: string) =>
       authenticatedFetch(`${API}/email-templates/${encodeURIComponent(name)}`, { method: "DELETE" }),
     approveTemplate: (id: string) =>
-      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}/approve`, { method: "POST" }),
+      authenticatedFetch(`${API}${buildTemplateUrlPath(id, "/approve")}`, { method: "POST" }),
     retireTemplate: (id: string) =>
-      authenticatedFetch(`${API}/templates/${encodeURIComponent(id)}/retire`, { method: "POST" }),
+      authenticatedFetch(`${API}${buildTemplateUrlPath(id, "/retire")}`, { method: "POST" }),
   } as const;
 }
 
@@ -148,7 +149,7 @@ export default function TemplatesIndex() {
   };
 
     const handleDownload = (tpl: Template) => {
-      window.open(`${API}/templates/${tpl.id}/download`, "_blank");
+      window.open(`${API}${buildTemplateUrlPath(tpl.id, "/download")}`, "_blank");
     };
 
   return (

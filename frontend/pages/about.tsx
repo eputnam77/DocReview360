@@ -152,7 +152,7 @@ export default function AboutPage() {
         <CardContent className="space-y-2">
           <div className="flex flex-col gap-2">
             <a
-              href="https://github.com/docreview360/docreview360"
+              href="https://github.com/eputnam77/DocReview360"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:underline"

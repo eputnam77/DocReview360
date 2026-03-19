@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 from pathlib import Path
@@ -102,3 +102,37 @@ def test_tiptap_styles_restore_visible_list_markers_and_indentation() -> None:
     assert 'list-style-type: disc' in tiptap_styles
     assert 'list-style-type: decimal' in tiptap_styles
     assert '[data-indent="1"]' in tiptap_styles
+
+
+def test_about_page_uses_public_github_repository_link() -> None:
+    about_page = _project_file("frontend/pages/about.tsx")
+    assert "https://github.com/eputnam77/DocReview360" in about_page
+
+
+def test_frontend_audit_views_use_api_audit_route() -> None:
+    project_page = _project_file("frontend/pages/projects/[id]/index.tsx")
+    logs_page = _project_file("frontend/pages/logs/index.tsx")
+    config_audit_page = _project_file("frontend/pages/configuration/audit-logs.tsx")
+    assert "/api/audit?entity_id=${id}" in project_page
+    assert "/api/audit?${params.toString()}" in logs_page
+    assert "/api/audit?${params.toString()}" in config_audit_page
+
+
+def test_tiptap_heading_lock_filters_locked_heading_transactions() -> None:
+    heading_lock = _project_file("frontend/extensions/tiptapHeadingLock.ts")
+    assert "addGlobalAttributes()" in heading_lock
+    assert "filterTransaction(transaction, state)" in heading_lock
+    assert "serializeLockedHeadings" in heading_lock
+    assert "handleTextInput(view)" in heading_lock
+    assert "handleDOMEvents" in heading_lock
+    assert 'contenteditable: "false"' in heading_lock
+
+def test_template_routes_use_slash_safe_builder() -> None:
+    template_path_helper = _project_file("frontend/lib/templatePath.ts")
+    tiptap_page = _project_file("frontend/pages/editors/tiptap.tsx")
+    template_index = _project_file("frontend/pages/configuration/templates/index.tsx")
+    template_edit = _project_file("frontend/pages/configuration/templates/edit.tsx")
+    assert 'split("/")' in template_path_helper
+    assert 'buildTemplateUrlPath(filename)' in tiptap_page
+    assert 'buildTemplateUrlPath(id, "/approve")' in template_index
+    assert 'buildTemplateUrlPath(String(id))' in template_edit

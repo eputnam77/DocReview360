@@ -49,7 +49,7 @@ export default function AuditLogsPage() {
     });
     params.append("page", String(page));
     params.append("size", String(PAGE_SIZE));
-    authenticatedFetch(`/audit?${params.toString()}`, {
+    authenticatedFetch(`/api/audit?${params.toString()}`, {
       headers: { "X-User": username },
     })
       .then((r) => (r.ok ? r.json() : []))

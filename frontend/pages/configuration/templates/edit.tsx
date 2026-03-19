@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { authenticatedFetch } from "@/lib/api";
+import { buildTemplateUrlPath } from "@/lib/templatePath";
 import {
   Select,
   SelectTrigger,
@@ -42,7 +43,7 @@ export default function EditTemplatePage() {
       .catch(() => setDocTypes([]));
 
     if (id) {
-      authenticatedFetch(`/templates/${id}`)
+      authenticatedFetch(buildTemplateUrlPath(String(id)))
         .then((r) => (r.ok ? r.json() : null))
         .then((tpl) => {
           if (!tpl) return;
@@ -101,12 +102,12 @@ export default function EditTemplatePage() {
     }
 
     if (formData) {
-      await authenticatedFetch(`/templates/${id}`, {
+      await authenticatedFetch(buildTemplateUrlPath(String(id)), {
         method: "PUT",
         body: formData,
       });
     } else {
-      await authenticatedFetch(`/templates/${id}`, {
+      await authenticatedFetch(buildTemplateUrlPath(String(id)), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

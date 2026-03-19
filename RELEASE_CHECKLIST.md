@@ -1,4 +1,4 @@
-﻿# DocReview360 Release Checklist (Open Items Only)
+# DocReview360 Release Checklist (Open Items Only)
 
 This file tracks unfinished work only.
 
@@ -755,9 +755,15 @@ lib/api.ts (66:18)
 UserDashboardPage.useQuery
 pages/dashboard/user.tsx (103:41)
 
-- [ ] I logged in, went to a project, clicked Edit Document. Although the entire webpage contains TipTap, the authoring window itself (authoring area) is only a small portion of the page. If the TipTap environment fills the page, the authoring window should be roughly the same size.
-- [ ] In TipTap editor, I typed a few lines, clicked unordered (bulleted) and ordered (numbered) and while the lines indented, none showed the bullets or numbers.
-- [ ] In TipTap editor, I wasn't sure what Enable Indentation was, so I clicked it and got this:
+- [x] I logged in, went to a project, clicked Edit Document. Although the entire webpage contains TipTap, the authoring window itself (authoring area) is only a small portion of the page. If the TipTap environment fills the page, the authoring window should be roughly the same size.
+  Fixed by expanding the editor canvas (`max-w-[1200px]`, `min-h-[calc(100vh-12rem)]`).
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-19)
+- [x] In TipTap editor, I typed a few lines, clicked unordered (bulleted) and ordered (numbered) and while the lines indented, none showed the bullets or numbers.
+  Fixed by restoring explicit TipTap list marker styling in `frontend/styles/tiptap.css`.
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-19)
+- [x] In TipTap editor, I wasn't sure what Enable Indentation was, so I clicked it and got this:
+  Fixed by guarding indent/outdent toolbar actions through safe command helpers.
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-19)
 
 1/2
 
@@ -785,8 +791,12 @@ Show 14 ignore-listed frame(s)
 TipTapEditorPage
 pages/editors/tiptap.tsx (1454:52)
 
-- [ ] In TipTap editor, I added a heading 1, clicked Enable Heading Lock and nothing happened. I was still able to edit the heading.
-- [ ] In TipTap editor, I tried to open a template and got this.
+- [x] In TipTap editor, I added a heading 1, clicked Enable Heading Lock and nothing happened. I was still able to edit the heading.
+  Fixed by rendering locked headings as non-editable nodes and keeping the existing input guards in place.
+  Verified in `tests/test_release_checklist_user_fixes.py` and `frontend/__tests__/extensions.test.ts`. (Completed 2026-03-19)
+- [x] In TipTap editor, I tried to open a template and got this.
+  Fixed slash-containing template ids by routing frontend template requests through a shared path builder that preserves `/` separators while encoding the rest of the name.
+  Verified in `tests/test_release_checklist_user_fixes.py`, `frontend/__tests__/pageApiHelpers.test.ts`, and `frontend/__tests__/TemplateConfigPage.test.tsx`. (Completed 2026-03-19)
 
 1/1
 
@@ -813,21 +823,30 @@ Call Stack
 TipTapEditorPage.useCallback[handleTemplateLoad]
 pages/editors/tiptap.tsx (1101:26)
 
-- [ ] In TipTap editor, I tried to open API template and got this.
+- [x] In TipTap editor, I tried to open API template and got this.
+  Same slash-containing template-id bug as the general template loader above; fixed by the shared template path builder.
+  Verified in `tests/test_release_checklist_user_fixes.py` and `frontend/__tests__/pageApiHelpers.test.ts`. (Completed 2026-03-19)
 
 Failed to load template: doc_type::API Manual / API Reference
 
 Error: {"detail":"Not Found"}
 
-- [ ] In TipTap Editor, I tried to open Briefing/Slide Deck template and got this.
+- [x] In TipTap Editor, I tried to open Briefing/Slide Deck template and got this.
+  Same slash-containing template-id bug as the general template loader above; fixed by the shared template path builder.
+  Verified in `tests/test_release_checklist_user_fixes.py` and `frontend/__tests__/pageApiHelpers.test.ts`. (Completed 2026-03-19)
 
 Failed to load template: doc_type::Briefing / Slide Deck
 
 Error: {"detail":"Not Found"}
 
-- [ ] In Help & Support, I clicked the About button > GitHub Repository, and got an error. This is the correct URL: https://github.com/eputnam77/DocReview360
+- [x] In Help & Support, I clicked the About button > GitHub Repository, and got an error. This is the correct URL: https://github.com/eputnam77/DocReview360
+  Fixed the About page link target to the public repository URL.
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-19)
 
-- [ ] This is from the audit log. There are many 404 errors.
+- [x] This is from the audit log. There are many 404 errors.
+  Fixed remaining frontend audit-log fetches to call `/api/audit` instead of the
+  nonexistent `/audit` route on the project details page and audit log screens.
+  Verified in `tests/test_release_checklist_user_fixes.py`. (Completed 2026-03-19)
 
 INFO:     127.0.0.1:58996 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
 INFO:     127.0.0.1:58996 - "GET /audit?entity_id=demo-bob HTTP/1.1" 404 Not Found
