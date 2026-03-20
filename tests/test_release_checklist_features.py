@@ -15,8 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
+from docreview360 import audit as audit_module
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.audit import clear_audit_log, log_audit_event
@@ -31,6 +30,7 @@ from docreview360.phase_sla import (
     set_phase_sla,
 )
 from docreview360.reporting import executive_summary
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:
@@ -189,6 +189,18 @@ def test_get_phase_snapshots_sorted_chronologically() -> None:
     snaps = get_phase_snapshots("doc-order-chk")
     times = [s.verified_at for s in snaps]
     assert times == sorted(times)
+
+
+def test_get_phase_snapshots_uses_runtime_audit_log_path(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(audit_module, "_AUDIT_LOG_PATH", tmp_path / "audit.log")
+    clear_audit_log()
+
+    capture_phase_snapshot("doc-runtime-path", "Review", actor="alice")
+
+    snaps = get_phase_snapshots("doc-runtime-path")
+
+    assert len(snaps) == 1
+    assert snaps[0].event == "phase_snapshot"
 
 
 def test_capture_phase_snapshot_with_extra_context() -> None:
@@ -553,8 +565,16 @@ def test_api_set_phase_sla_invalid_warning_days() -> None:
 
 def test_api_sla_list_includes_all_set_phases() -> None:
     client = TestClient(app)
-    client.put("/phases/Alpha/sla", json={"max_days": 5, "warning_days": 1}, headers=_alice_headers())
-    client.put("/phases/Beta/sla", json={"max_days": 10, "warning_days": 2}, headers=_alice_headers())
+    client.put(
+        "/phases/Alpha/sla",
+        json={"max_days": 5, "warning_days": 1},
+        headers=_alice_headers(),
+    )
+    client.put(
+        "/phases/Beta/sla",
+        json={"max_days": 10, "warning_days": 2},
+        headers=_alice_headers(),
+    )
     resp = client.get("/phases/sla", headers=_alice_headers())
     assert resp.status_code == 200
     slas = resp.json()["slas"]

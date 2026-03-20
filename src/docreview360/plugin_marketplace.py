@@ -12,7 +12,6 @@ from typing import Any
 from .db_store import get_db
 from .models import BuiltinPluginStateRecord, OrgToolConfig
 
-
 # ---------------------------------------------------------------------------
 # Core Tool Pack — FSV is the primary integrated tool for DocReview360.
 # These entries appear first in the marketplace with a "Core" badge and are
@@ -279,8 +278,9 @@ def list_plugins_with_info() -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 BUILTIN_PLUGIN_IDS = {"fedstylevalidator", "scdocbuilder"}
+_DEFAULT_BUILTIN_STATES: dict[str, bool] = {pid: True for pid in BUILTIN_PLUGIN_IDS}
 
-_builtin_states: dict[str, bool] = {pid: True for pid in BUILTIN_PLUGIN_IDS}
+_builtin_states: dict[str, bool] = dict(_DEFAULT_BUILTIN_STATES)
 _builtin_lock = threading.Lock()
 
 
@@ -299,10 +299,11 @@ def get_builtin_status(org_id: str | None = None) -> dict[str, bool]:
             with db.orm_session() as session:
                 records = session.query(BuiltinPluginStateRecord).all()
                 db_states = {r.plugin_id: r.enabled for r in records}
-            # Merge: DB values override in-memory defaults; unknown IDs keep default True.
+            # Merge: DB values override the documented defaults; stale in-memory
+            # fallback state must not leak into a healthy empty database.
             result: dict[str, bool] = {}
             for pid in BUILTIN_PLUGIN_IDS:
-                result[pid] = db_states.get(pid, _builtin_states[pid])
+                result[pid] = db_states.get(pid, _DEFAULT_BUILTIN_STATES[pid])
             # Update in-memory cache to stay consistent with DB.
             _builtin_states.update(result)
         except Exception:

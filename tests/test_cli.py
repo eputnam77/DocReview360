@@ -1,10 +1,21 @@
 import csv
+import importlib.util
 from pathlib import Path
 
+import docreview360.cli as cli_module
+import pytest
 from click.testing import CliRunner
-
 from docreview360.cli import cli
 from docreview360.config import CONFIG_FILE
+
+_HAS_ONNX_STACK = (
+    importlib.util.find_spec("onnx") is not None
+    and importlib.util.find_spec("onnxruntime") is not None
+)
+_REQUIRES_ONNX_STACK = pytest.mark.skipif(
+    not _HAS_ONNX_STACK,
+    reason="onnx and onnxruntime are required for ML CLI artifact tests",
+)
 
 
 def test_init_writes_config() -> None:
@@ -102,6 +113,7 @@ def _write_corpus(path: Path, rows: list[tuple[str, int]]) -> None:
             writer.writerow({"text": text, "label": label})
 
 
+@_REQUIRES_ONNX_STACK
 def test_ml_train_creates_artifacts() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -139,6 +151,7 @@ def test_ml_train_creates_artifacts() -> None:
         assert "Validation accuracy:" in result.output
 
 
+@_REQUIRES_ONNX_STACK
 def test_ml_benchmark_and_validate_commands() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -191,6 +204,23 @@ def test_ml_benchmark_and_validate_commands() -> None:
         assert validate_result.exit_code == 0, validate_result.output
         assert str(Path("critic.onnx").resolve()) in validate_result.output
         assert "sha256:" in validate_result.output
+
+
+def test_ml_train_reports_missing_onnx_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        corpus = Path("train.csv")
+        _write_corpus(corpus, [("clear skies improve readability", 1)])
+
+        def _raise_missing_onnx(*args, **kwargs):
+            raise RuntimeError("onnx is not installed")
+
+        monkeypatch.setattr(cli_module.ml, "train_critic_from_csv", _raise_missing_onnx)
+
+        result = runner.invoke(cli, ["ml", "train", str(corpus), "critic"])
+
+        assert result.exit_code == 1
+        assert "onnx is not installed" in result.output
 
 
 def test_migrate_roundtrip(tmp_path: Path) -> None:

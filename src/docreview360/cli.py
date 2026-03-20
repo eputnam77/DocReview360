@@ -211,7 +211,7 @@ def ml_train(
             metadata=extra_metadata,
             validation_path=validation,
         )
-    except ValueError as exc:
+    except (RuntimeError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
 
     click.echo(f"Saved torch weights to {result.weights_path}")

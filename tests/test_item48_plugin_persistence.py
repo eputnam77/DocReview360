@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import pytest
-
 from docreview360 import db_store, plugin_marketplace
 from docreview360.models import BuiltinPluginStateRecord
 
@@ -13,11 +12,14 @@ from docreview360.models import BuiltinPluginStateRecord
 def _isolated_db(tmp_path):
     """Each test gets a fresh SQLite DB; in-memory cache is reset between tests."""
     db_store.reset_db(f"sqlite:///{tmp_path / 'test_item48.db'}")
-    # Reset in-memory cache to defaults (all True) before each test.
+    # Reset in-memory cache to defaults before each test.
     with plugin_marketplace._builtin_lock:
-        for pid in plugin_marketplace.BUILTIN_PLUGIN_IDS:
-            plugin_marketplace._builtin_states[pid] = True
+        plugin_marketplace._builtin_states.clear()
+        plugin_marketplace._builtin_states.update(plugin_marketplace._DEFAULT_BUILTIN_STATES)
     yield
+    with plugin_marketplace._builtin_lock:
+        plugin_marketplace._builtin_states.clear()
+        plugin_marketplace._builtin_states.update(plugin_marketplace._DEFAULT_BUILTIN_STATES)
     db_store.reset_db(None)
 
 
@@ -36,6 +38,16 @@ def test_get_builtin_status_returns_both_plugins() -> None:
     """get_builtin_status always returns an entry for every BUILTIN_PLUGIN_ID."""
     status = plugin_marketplace.get_builtin_status()
     assert set(status.keys()) == plugin_marketplace.BUILTIN_PLUGIN_IDS
+
+
+def test_get_builtin_status_ignores_stale_memory_when_db_has_no_records() -> None:
+    """A healthy empty DB should use builtin defaults, not stale in-memory fallback state."""
+    with plugin_marketplace._builtin_lock:
+        plugin_marketplace._builtin_states["scdocbuilder"] = False
+
+    status = plugin_marketplace.get_builtin_status()
+
+    assert status == {"fedstylevalidator": True, "scdocbuilder": True}
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +135,11 @@ def test_get_builtin_status_falls_back_to_memory_on_db_error(monkeypatch) -> Non
         plugin_marketplace._builtin_states["fedstylevalidator"] = False
 
     # Make get_db raise so the DB path is unavailable.
-    monkeypatch.setattr(plugin_marketplace, "get_db", lambda: (_ for _ in ()).throw(RuntimeError("db down")))
+    monkeypatch.setattr(
+        plugin_marketplace,
+        "get_db",
+        lambda: (_ for _ in ()).throw(RuntimeError("db down")),
+    )
 
     status = plugin_marketplace.get_builtin_status()
     assert status["fedstylevalidator"] is False  # in-memory fallback value
@@ -131,7 +147,11 @@ def test_get_builtin_status_falls_back_to_memory_on_db_error(monkeypatch) -> Non
 
 def test_set_builtin_plugin_state_falls_back_to_memory_on_db_error(monkeypatch) -> None:
     """set_builtin_plugin_state still updates in-memory state when DB is unavailable."""
-    monkeypatch.setattr(plugin_marketplace, "get_db", lambda: (_ for _ in ()).throw(RuntimeError("db down")))
+    monkeypatch.setattr(
+        plugin_marketplace,
+        "get_db",
+        lambda: (_ for _ in ()).throw(RuntimeError("db down")),
+    )
 
     plugin_marketplace.set_builtin_plugin_state("scdocbuilder", False)
     # In-memory cache must reflect the change even though DB write failed.

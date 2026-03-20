@@ -12,7 +12,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from .audit import AuditLogEntry, _AUDIT_LOG_PATH, log_audit_event
+from . import audit as audit_module
+from .audit import AuditLogEntry, log_audit_event
 
 SNAPSHOT_EVENT = "phase_snapshot"
 
@@ -71,11 +72,12 @@ def get_phase_snapshots(document_id: str) -> list[AuditLogEntry]:
     returned, sorted chronologically.
     """
 
-    if not _AUDIT_LOG_PATH.exists():
+    audit_log_path = audit_module._AUDIT_LOG_PATH
+    if not audit_log_path.exists():
         return []
 
     snapshots: list[AuditLogEntry] = []
-    with _AUDIT_LOG_PATH.open("r", encoding="utf-8") as fh:
+    with audit_log_path.open("r", encoding="utf-8") as fh:
         for line in fh:
             try:
                 data = json.loads(line)
