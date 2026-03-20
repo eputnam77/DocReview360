@@ -691,9 +691,12 @@ degrade a native mobile client.
   needing to fetch all projects then query each one for assignments.
 - [ ] Add `Content-Length` headers on file download responses for iOS progress
   indicators (`URLSession` `countOfBytesExpectedToReceive`).
-- [ ] Secure WebSocket auth. The current `/ws/dashboard` accepts an unvalidated
+- [x] Secure WebSocket auth. The current `/ws/dashboard` accepts an unvalidated
   `?user=` query param. Mobile clients should pass a JWT:
   `?token=<jwt>` validated server-side before accepting the connection.
+  Fixed `/ws/dashboard` to require a valid JWT, derive the effective user from
+  the token subject, and reject mismatched `user` query params. Verified in
+  `tests/test_dashboard.py`. (Completed 2026-03-20)
 - [ ] Consider a compact document-view endpoint that returns rendered HTML or
   a lightweight markup summary suitable for a mobile read-only viewer, without
   needing the full TipTap JSON structure.
@@ -724,8 +727,15 @@ incrementally. Phase 5 is entirely outside this repository.
 
 ADDED BY USER
 
-- [ ] I logged in as Alice, created a project and assigned Bob to review. I logged off as Alice and logged in as Bob. I see the assigned project in Project view, but not Dashboard.
-- [ ] Separately, I logged in as Bob, went to Dashboard view and got this.
+- [x] I logged in as Alice, created a project and assigned Bob to review. I logged off as Alice and logged in as Bob. I see the assigned project in Project view, but not Dashboard.
+  Fixed the main dashboard assignment calculation to count reviewer-visible
+  projects, not just owner / assignee fields. Verified in
+  `frontend/__tests__/DashboardPage.test.tsx`. (Completed 2026-03-20)
+- [x] Separately, I logged in as Bob, went to Dashboard view and got this.
+  Fixed `frontend/lib/api.ts` so `authenticatedFetch` resolves the runtime API
+  base at call time instead of freezing the import-time fallback URL, which was
+  causing dashboard requests to target the wrong backend in browser sessions.
+  Verified in `frontend/__tests__/apiBase.test.ts`. (Completed 2026-03-20)
 
 1/2
 

@@ -25,6 +25,24 @@ from .onnx_infer import metadata_to_context
 from .signature_anomaly import score_signature_anomaly
 
 DEFAULT_FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "data" / "ml"
+_PLACEHOLDER_REPO_ROOT = Path("/home/user/DocReview360")
+
+
+def _canonicalize_model_context(meta: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(meta)
+    raw_path = normalized.get("path")
+    if not isinstance(raw_path, str) or not raw_path:
+        return normalized
+
+    repo_root = DEFAULT_FIXTURE_DIR.parents[2].resolve()
+    model_path = Path(raw_path)
+    try:
+        relative = model_path.resolve().relative_to(repo_root)
+    except Exception:
+        return normalized
+
+    normalized["path"] = str((_PLACEHOLDER_REPO_ROOT / relative).as_posix())
+    return normalized
 
 _SAMPLE_TEXT = """\
 Project Phoenix Overview
@@ -60,7 +78,7 @@ def _dump_json(data: Mapping[str, Any]) -> str:
 def _quality_fixture() -> dict[str, Any]:
     payload = quality_features(_SAMPLE_TEXT, _SAMPLE_METADATA)
     assessment = quality_assessment(_SAMPLE_TEXT)
-    meta = metadata_to_context(quality_model_metadata()) or {}
+    meta = _canonicalize_model_context(metadata_to_context(quality_model_metadata()) or {})
     return {
         "input": {"text": _SAMPLE_TEXT, "metadata": _SAMPLE_METADATA},
         "features": payload,
@@ -76,7 +94,7 @@ def _quality_fixture() -> dict[str, Any]:
 def _compliance_fixture() -> dict[str, Any]:
     payload = compliance_features(_SAMPLE_TEXT, _SAMPLE_METADATA)
     result = evaluate_compliance(_SAMPLE_TEXT, _SAMPLE_METADATA)
-    meta = metadata_to_context(compliance_model_metadata()) or {}
+    meta = _canonicalize_model_context(metadata_to_context(compliance_model_metadata()) or {})
     return {
         "input": {"text": _SAMPLE_TEXT, "metadata": _SAMPLE_METADATA},
         "features": payload,
@@ -91,7 +109,7 @@ def _routing_fixture() -> dict[str, Any]:
     payload = routing_features(_SAMPLE_TEXT, _SAMPLE_METADATA)
     model = ReviewerModel()
     recommendation = model.recommend(_SAMPLE_TEXT, k=3)
-    meta = metadata_to_context(model.model_metadata) or {}
+    meta = _canonicalize_model_context(metadata_to_context(model.model_metadata) or {})
     return {
         "input": {"text": _SAMPLE_TEXT, "metadata": _SAMPLE_METADATA},
         "features": payload,
@@ -116,7 +134,7 @@ def _signature_fixture() -> dict[str, Any]:
     )
     feature_vector = [float(payload["features"][name]) for name in SIGNATURE_ANOMALY_FEATURE_NAMES]
     score, metadata = score_signature_anomaly(feature_vector)
-    meta = metadata_to_context(metadata) or {}
+    meta = _canonicalize_model_context(metadata_to_context(metadata) or {})
     return {
         "input": {
             "text": _SAMPLE_TEXT,

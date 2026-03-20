@@ -62,12 +62,21 @@ function isAssignedToUser(project: ProjectRecord, normalizedUser: string): boole
     }
   }
 
-  const listKeys = ["assignees", "assigned_users", "assignedTo"] as const;
+  const listKeys = ["assignees", "assigned_users", "assignedTo", "reviewers"] as const;
   for (const key of listKeys) {
     const value = project[key];
     if (
       Array.isArray(value) &&
-      value.some((item) => typeof item === "string" && item.toLowerCase() === normalizedUser)
+      value.some((item) => {
+        if (typeof item === "string") {
+          return item.toLowerCase() === normalizedUser;
+        }
+        if (item && typeof item === "object") {
+          const candidate = (item as Record<string, unknown>).reviewer;
+          return typeof candidate === "string" && candidate.toLowerCase() === normalizedUser;
+        }
+        return false;
+      })
     ) {
       return true;
     }

@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MainDashboardPage from "../pages/dashboard";
 
 const { fetchMock } = vi.hoisted(() => ({ fetchMock: vi.fn() }));
@@ -86,6 +87,13 @@ vi.mock("lucide-react", () => {
   };
 });
 
+const renderWithClient = (ui: React.ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+};
+
 vi.mock("recharts", () => {
   const React = require("react");
   const container = ({ children }: React.PropsWithChildren) => <div>{children}</div>;
@@ -126,7 +134,7 @@ describe("DashboardPage", () => {
       ]),
     });
 
-    render(<MainDashboardPage />);
+    renderWithClient(<MainDashboardPage />);
 
     await screen.findByText("Review completed");
 
@@ -153,5 +161,26 @@ describe("DashboardPage", () => {
     if (feed) {
       expect(within(feed).getAllByRole("listitem")).toHaveLength(2);
     }
+  });
+  it("counts reviewer-visible projects as assigned work for the active reviewer", async () => {
+    useUserStoreMock.setState({ username: "bob" });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue([
+        { id: "review-1", status: "In Progress", reviewers: ["bob"], updated: "2024-01-03T08:00:00Z" },
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue([]),
+    });
+
+    renderWithClient(<MainDashboardPage />);
+
+    await screen.findByText("Assigned to Me");
+
+    const assignedValue = screen.getByText("Assigned to Me").parentElement?.querySelector("p:first-child");
+    expect(assignedValue?.textContent).toBe("1");
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/projects");
   });
 });

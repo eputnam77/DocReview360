@@ -10,10 +10,17 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
+from fastapi.testclient import TestClient
+
+
+def _otp_for_secret(secret: str) -> str:
+    try:
+        import pyotp  # type: ignore
+    except ModuleNotFoundError:
+        return secret
+    return pyotp.TOTP(secret).now()
 
 
 # ---------------------------------------------------------------------------
@@ -185,9 +192,7 @@ class TestAuthenticateMfa:
             auth.USER_REPOSITORY.create_user("mfa_user", "Password!1Secure", otp_secret="JBSWY3DPEHPK3PXP")
         except Exception:
             pass
-        import pyotp
-        totp = pyotp.TOTP("JBSWY3DPEHPK3PXP")
-        result = auth.authenticate_mfa("mfa_user", "Password!1Secure", totp.now())
+        result = auth.authenticate_mfa("mfa_user", "Password!1Secure", _otp_for_secret("JBSWY3DPEHPK3PXP"))
         assert result is not None
         assert result.username == "mfa_user"
 
@@ -218,9 +223,7 @@ class TestAuthenticateMfa:
         except Exception:
             pass
         auth.USER_REPOSITORY.set_active("mfa_inactive", False)
-        import pyotp
-        totp = pyotp.TOTP("JBSWY3DPEHPK3PXP")
-        result = auth.authenticate_mfa("mfa_inactive", "Password!1Secure", totp.now())
+        result = auth.authenticate_mfa("mfa_inactive", "Password!1Secure", _otp_for_secret("JBSWY3DPEHPK3PXP"))
         assert result is None
 
 

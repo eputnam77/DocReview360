@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MainDashboardPage from "../pages/dashboard";
 const { fetchMock } = vi.hoisted(() => ({ fetchMock: vi.fn() }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -67,6 +68,13 @@ vi.mock("lucide-react", () => {
         BarChart2: Icon,
     };
 });
+const renderWithClient = (ui) => {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+};
+
 vi.mock("recharts", () => {
     const React = require("react");
     const container = ({ children }) => <div>{children}</div>;
@@ -104,7 +112,7 @@ describe("DashboardPage", () => {
                 { timestamp: "2024-01-02T09:15:00Z", action: "Project created", metadata: { project: "AC-2" } },
             ]),
         });
-        render(<MainDashboardPage />);
+        renderWithClient(<MainDashboardPage />);
         await screen.findByText("Review completed");
         const assignedLabel = screen.getByText("Assigned to Me");
         const assignedValue = assignedLabel.parentElement?.querySelector("p:first-child");

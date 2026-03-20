@@ -2,9 +2,23 @@ import importlib
 import sys
 from datetime import datetime, timezone
 
-import pyotp
-
 import docreview360
+
+
+def _new_otp_secret() -> str:
+    try:
+        import pyotp  # type: ignore
+    except ModuleNotFoundError:
+        return "JBSWY3DPEHPK3PXP"
+    return pyotp.random_base32()
+
+
+def _otp_for_secret(secret: str) -> str:
+    try:
+        import pyotp  # type: ignore
+    except ModuleNotFoundError:
+        return secret
+    return pyotp.TOTP(secret).now()
 
 
 def _reload_auth(monkeypatch, tmp_path, **env):
@@ -19,7 +33,7 @@ def _reload_auth(monkeypatch, tmp_path, **env):
 def test_hashed_credentials_authenticate(tmp_path, monkeypatch):
     db_path = tmp_path / "users.db"
     auth = _reload_auth(monkeypatch, tmp_path, DOCREVIEW360_USER_DB=str(db_path))
-    secret = pyotp.random_base32()
+    secret = _new_otp_secret()
     auth.USER_REPOSITORY.create_user("carol", "S3cr3t-Pass!", otp_secret=secret)
 
     user = auth.authenticate_user("carol", "S3cr3t-Pass!")
@@ -56,12 +70,12 @@ def test_invalid_password_triggers_lockout(tmp_path, monkeypatch):
 def test_invalid_otp_is_rejected(tmp_path, monkeypatch):
     db_path = tmp_path / "users.db"
     auth = _reload_auth(monkeypatch, tmp_path, DOCREVIEW360_USER_DB=str(db_path))
-    secret = pyotp.random_base32()
+    secret = _new_otp_secret()
     auth.USER_REPOSITORY.create_user("erin", "Otp-Pass456!", otp_secret=secret)
 
     assert auth.authenticate_mfa("erin", "Otp-Pass456!", "000000") is None
 
-    valid = pyotp.TOTP(secret).now()
+    valid = _otp_for_secret(secret)
     assert auth.authenticate_mfa("erin", "Otp-Pass456!", valid) is not None
 
 

@@ -18,6 +18,13 @@ export const API = _runtimeBase() ?? (envBase && envBase.length > 0
     : typeof window !== "undefined"
         ? `${window.location.protocol}//${window.location.hostname}:8000`
         : "http://localhost:8000");
+function _resolveApiBase() {
+    return _runtimeBase() ?? (envBase && envBase.length > 0
+        ? envBase
+        : typeof window !== "undefined"
+            ? `${window.location.protocol}//${window.location.hostname}:8000`
+            : "http://localhost:8000");
+}
 const ACCESS_TOKEN_STORAGE_KEY = "access_token";
 export function getStoredAccessToken() {
     if (typeof window === "undefined") {
@@ -48,7 +55,8 @@ export async function authenticatedFetch(url, options = {}) {
     let fullUrl = url;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
         // Ensure the API base URL doesn't have a trailing slash and the path starts with a slash
-        const baseUrl = API.endsWith('/') ? API.slice(0, -1) : API;
+        const base = _resolveApiBase();
+        const baseUrl = base.endsWith('/') ? base.slice(0, -1) : base;
         const path = url.startsWith('/') ? url : `/${url}`;
         fullUrl = `${baseUrl}${path}`;
     }

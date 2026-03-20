@@ -1783,12 +1783,78 @@ def _enforce_document_access(document: DocumentModel, current_user: auth.User) -
 #   GET /templates/{name}/locks
 #   GET /templates/{name}/versions
 
+def _authenticate_websocket_token(raw_token: str) -> str:
+    """Validate a websocket bearer token and return the authenticated username."""
+
+    from jose import JWTError, jwt as _jwt
+
+    decode_kwargs = {
+        "algorithms": [auth.ALGORITHM],
+        "audience": auth.TOKEN_AUDIENCE,
+        "issuer": auth.TOKEN_ISSUER,
+    }
+    try:
+        try:
+            payload = _jwt.decode(raw_token, auth.SECRET_KEY, **decode_kwargs)
+        except JWTError:
+            if auth.SECRET_KEY_PREVIOUS is None:
+                raise
+            payload = _jwt.decode(raw_token, auth.SECRET_KEY_PREVIOUS, **decode_kwargs)
+        username = payload.get("sub")
+        if not isinstance(username, str) or not username:
+            raise JWTError("missing subject")
+        jti = payload.get("jti")
+        if isinstance(jti, str) and jti and auth.is_token_revoked(jti):
+            raise JWTError("revoked token")
+        token_gen = int(payload.get("gen", 0))
+    except (JWTError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=401, detail="Invalid token") from exc
+
+    repo = auth._get_user_repository()
+    record = repo.get_user(username)
+    if record is None:
+        demo_defaults = auth.DEMO_USER_DEFAULTS.get(username)
+        if demo_defaults and auth._allow_demo_seed():
+            repo._seed_user(
+                username,
+                demo_defaults["password"],
+                otp_secret=demo_defaults.get("otp_secret"),
+                active=True,
+            )
+            record = repo.get_user(username)
+    if not record or not record.active:
+        raise HTTPException(status_code=401, detail="Invalid user")
+    if token_gen < record.token_generation:
+        raise HTTPException(status_code=401, detail="Session invalidated — please log in again")
+
+    policy = auth._password_policy()
+    if policy.max_age_days > 0 and repo.is_password_expired(username, policy.max_age_days):
+        raise HTTPException(status_code=403, detail="password_expired")
+
+    return username
+
+
 @app.websocket("/ws/dashboard")
 async def dashboard_stream(websocket: WebSocket) -> None:
     """Send dashboard data periodically over a websocket."""
 
+    raw_token = websocket.query_params.get("token")
+    if not raw_token:
+        await websocket.close(code=1008)
+        return
+
+    try:
+        user = _authenticate_websocket_token(raw_token)
+    except HTTPException:
+        await websocket.close(code=1008)
+        return
+
+    requested_user = websocket.query_params.get("user")
+    if requested_user and requested_user != user:
+        await websocket.close(code=1008)
+        return
+
     await websocket.accept()
-    user = websocket.query_params.get("user")
     previous: list[dict[str, Any]] | None = None
     try:
         while True:

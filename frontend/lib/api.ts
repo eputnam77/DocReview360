@@ -23,6 +23,17 @@ export const API =
       ? `${window.location.protocol}//${window.location.hostname}:8000`
       : "http://localhost:8000");
 
+function _resolveApiBase(): string {
+  return (
+    _runtimeBase() ??
+    (envBase && envBase.length > 0
+      ? envBase
+      : typeof window !== "undefined"
+        ? `${window.location.protocol}//${window.location.hostname}:8000`
+        : "http://localhost:8000")
+  );
+}
+
 // JWT is stored in memory only — never in localStorage or sessionStorage.
 // This prevents XSS-based token theft: a cross-site script injected into the
 // page cannot exfiltrate a token it cannot reach via the DOM or Storage APIs.
@@ -57,7 +68,8 @@ export async function authenticatedFetch(
   let fullUrl = url;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     // Ensure the API base URL doesn't have a trailing slash and the path starts with a slash
-    const baseUrl = API.endsWith('/') ? API.slice(0, -1) : API;
+    const base = _resolveApiBase();
+    const baseUrl = base.endsWith('/') ? base.slice(0, -1) : base;
     const path = url.startsWith('/') ? url : `/${url}`;
     fullUrl = `${baseUrl}${path}`;
   }

@@ -17,6 +17,8 @@ describe('API base URL resolution', () => {
   });
 
   afterEach(() => {
+    delete (window as typeof window & { __DOCREVIEW360_API_BASE?: string }).__DOCREVIEW360_API_BASE;
+    window.localStorage.removeItem('docreview360_api_base');
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
@@ -67,6 +69,28 @@ describe('API base URL resolution', () => {
 
     // Trailing slash on base should be stripped so we don't get double-slash.
     expect(capturedUrl).toBe(`${CUSTOM_BASE}/projects`);
+  });
+
+  it('authenticatedFetch resolves runtime API base at call time after module import', async () => {
+    let capturedUrl: string | undefined;
+    vi.stubGlobal('fetch', (url: string) => {
+      capturedUrl = url;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+        headers: new Headers(),
+      } as Response);
+    });
+
+    const { authenticatedFetch } = await import('../lib/api');
+
+    (window as typeof window & { __DOCREVIEW360_API_BASE?: string }).__DOCREVIEW360_API_BASE =
+      'https://runtime.example.com';
+
+    await authenticatedFetch('/dashboard/user');
+
+    expect(capturedUrl).toBe('https://runtime.example.com/dashboard/user');
   });
 
   it('authenticatedFetch does not modify already-absolute URLs', async () => {
