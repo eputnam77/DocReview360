@@ -1,6 +1,9 @@
 import numpy as np
 import pytest
 
+pytest.importorskip("onnx")
+pytest.importorskip("onnxruntime")
+
 from docreview360.ml.onnx_infer import (
     clear_session_cache,
     get_model_metadata,

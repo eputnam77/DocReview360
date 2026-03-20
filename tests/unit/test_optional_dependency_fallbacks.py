@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from docreview360 import auth, documents
-from docreview360.ml import onnx_infer, routing_critic, signature_anomaly
+from docreview360.ml import onnx_infer, routing_critic, signature_anomaly, torch_models
 
 
 def test_auth_hash_password_fallback_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -51,6 +51,15 @@ def test_routing_critic_export_requires_onnx(monkeypatch: pytest.MonkeyPatch) ->
     critic = routing_critic.RoutingCritic(["alice"])
     with pytest.raises(RuntimeError, match="onnx is not installed"):
         routing_critic.export_routing_critic_to_onnx(critic, "routing.onnx")
+
+
+def test_torch_models_export_requires_onnx(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(torch_models, "onnx", None)
+    monkeypatch.setattr(torch_models, "onnx_helper", None)
+    monkeypatch.setattr(torch_models, "onnx_numpy_helper", None)
+    critic = torch_models.build_clarity_critic()
+    with pytest.raises(RuntimeError, match="onnx is not installed"):
+        torch_models.export_critic_to_onnx(critic, "critic.onnx")
 
 
 def test_signature_anomaly_metadata_fallback_when_onnx_missing(

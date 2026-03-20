@@ -17,6 +17,14 @@ except Exception:
     Tensor = None  # type: ignore[assignment]
     nn = None  # type: ignore[assignment]
 
+try:
+    import onnx
+    from onnx import helper as onnx_helper, numpy_helper as onnx_numpy_helper
+except Exception:
+    onnx = None  # type: ignore[assignment]
+    onnx_helper = None  # type: ignore[assignment]
+    onnx_numpy_helper = None  # type: ignore[assignment]
+
 from .features import FANN_FEATURE_NAMES, quality_features
 
 __all__ = [
@@ -373,7 +381,8 @@ def load_critic(path: str | Path) -> TinyCritic:
 
 
 def _attach_metadata(model_path: Path, metadata: Mapping[str, str]) -> None:
-    import onnx
+    if onnx is None:
+        raise RuntimeError('onnx is not installed')
 
     model = onnx.load_model(model_path)
     props: MutableMapping[str, str] = {item.key: item.value for item in model.metadata_props}
@@ -408,35 +417,35 @@ def export_critic_to_onnx(
     path_obj.parent.mkdir(parents=True, exist_ok=True)
     critic.eval()
 
-    if torch is None:
-        import onnx
-        from onnx import helper, numpy_helper
+    if onnx is None or onnx_helper is None or onnx_numpy_helper is None:
+        raise RuntimeError('onnx is not installed')
 
-        input_tensor = helper.make_tensor_value_info(
+    if torch is None:
+        input_tensor = onnx_helper.make_tensor_value_info(
             "input", onnx.TensorProto.FLOAT, ["batch", critic.input_dim]
         )
-        output_tensor = helper.make_tensor_value_info("output", onnx.TensorProto.FLOAT, ["batch", 1])
-        w1 = numpy_helper.from_array(critic._weights["w1"], name="w1")
-        b1 = numpy_helper.from_array(critic._weights["b1"], name="b1")
-        w2 = numpy_helper.from_array(critic._weights["w2"], name="w2")
-        b2 = numpy_helper.from_array(critic._weights["b2"], name="b2")
+        output_tensor = onnx_helper.make_tensor_value_info("output", onnx.TensorProto.FLOAT, ["batch", 1])
+        w1 = onnx_numpy_helper.from_array(critic._weights["w1"], name="w1")
+        b1 = onnx_numpy_helper.from_array(critic._weights["b1"], name="b1")
+        w2 = onnx_numpy_helper.from_array(critic._weights["w2"], name="w2")
+        b2 = onnx_numpy_helper.from_array(critic._weights["b2"], name="b2")
 
         nodes = [
-            helper.make_node("MatMul", ["input", "w1"], ["hidden_linear"]),
-            helper.make_node("Add", ["hidden_linear", "b1"], ["hidden_bias"]),
-            helper.make_node("Tanh", ["hidden_bias"], ["hidden"]),
-            helper.make_node("MatMul", ["hidden", "w2"], ["logits_linear"]),
-            helper.make_node("Add", ["logits_linear", "b2"], ["logits"]),
-            helper.make_node("Sigmoid", ["logits"], ["output"]),
+            onnx_helper.make_node("MatMul", ["input", "w1"], ["hidden_linear"]),
+            onnx_helper.make_node("Add", ["hidden_linear", "b1"], ["hidden_bias"]),
+            onnx_helper.make_node("Tanh", ["hidden_bias"], ["hidden"]),
+            onnx_helper.make_node("MatMul", ["hidden", "w2"], ["logits_linear"]),
+            onnx_helper.make_node("Add", ["logits_linear", "b2"], ["logits"]),
+            onnx_helper.make_node("Sigmoid", ["logits"], ["output"]),
         ]
-        graph = helper.make_graph(
+        graph = onnx_helper.make_graph(
             nodes,
             "docreview360_critic",
             [input_tensor],
             [output_tensor],
             initializer=[w1, b1, w2, b2],
         )
-        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", opset)])
+        model = onnx_helper.make_model(graph, opset_imports=[onnx_helper.make_opsetid("", opset)])
         onnx.save_model(model, path_obj)
     else:
         dummy_input = torch.zeros(1, critic.input_dim, dtype=torch.float32)
