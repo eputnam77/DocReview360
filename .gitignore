@@ -87,6 +87,8 @@ template_store.json.lock
 docreview360_roles.db
 docreview360_users.db
 search_state.db
+search_state.db-shm
+search_state.db-wal
 
 # Frontend runtime JSON stores
 frontend/workflow_templates.json
