@@ -89,6 +89,7 @@ docreview360_users.db
 search_state.db
 search_state.db-shm
 search_state.db-wal
+src/docreview360/audit.log
 
 # Frontend runtime JSON stores
 frontend/workflow_templates.json
