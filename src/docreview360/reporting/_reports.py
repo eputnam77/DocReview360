@@ -232,7 +232,7 @@ def widget_counts(user: str | None = None) -> WidgetMetrics:
     if user is None:
         scoped_projects = list_projects()
         project_ids = {project.id for project in scoped_projects}
-        assigned = len(scoped_projects)
+        assigned = sum(1 for p in scoped_projects if p.user or p.temp_user)
         active = sum(1 for p in scoped_projects if p.temp_user) + _active_assignment_count(project_ids)
         pending = sum(1 for a in approvals.values() if a.state == "pending")
         metrics = _PROJECT_METRICS.get(None)

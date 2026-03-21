@@ -8,10 +8,10 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git status:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(git push:*)"
     ],
     "deny": [
-      "Bash(git push:*)",
       "Bash(git reset --hard:*)",
       "Bash(rm -rf:*)"
     ]
