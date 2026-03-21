@@ -101,7 +101,7 @@ on 2026-03-11.
 
 ### 17) Backend quality gates
 
-- [ ] Run `pytest -q`.
+- [x] Run `pytest -q`. 3237 tests pass, 0 failures after fixing widget_counts assigned-count bug and regenerating stale ML golden fixtures. (2026-03-21)
 - [ ] Run `pytest -q --cov=src --cov-branch --cov-report=term --cov-fail-under=90`.
 - [ ] Run `mypy --strict src tests` if type coverage is ready.
 - [ ] Run `mutmut run`.
@@ -1681,7 +1681,7 @@ Affected Files:
 Before any production deployment, verify:
 
 - [ ] All P0 tasks from this plan are implemented
-- [ ] `pytest -q` passes with 0 failures (not just "passes in isolation")
+- [x] `pytest -q` passes with 0 failures (not just "passes in isolation") (2026-03-21)
 - [ ] `pytest --cov=src --cov-branch --cov-fail-under=90` passes
 - [ ] `mypy --strict src` passes (excluding documented exclusions)
 - [ ] `ruff check src` passes with 0 errors
