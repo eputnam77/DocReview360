@@ -1,6 +1,7 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProjectList from "../pages/projects";
 const { fetchSpy } = vi.hoisted(() => ({ fetchSpy: vi.fn() }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -77,10 +78,11 @@ describe("ProjectList API selection", () => {
             json: vi.fn().mockResolvedValue([]),
         });
         useUserStoreMock.setState({ username: "admin", isAdmin: true });
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         const container = document.createElement("div");
         const root = createRoot(container);
         await act(async () => {
-            root.render(<ProjectList />);
+            root.render(<QueryClientProvider client={queryClient}><ProjectList /></QueryClientProvider>);
         });
         await act(async () => {
             await Promise.resolve();
@@ -90,21 +92,22 @@ describe("ProjectList API selection", () => {
             root.unmount();
         });
     });
-    it("requests user-specific projects for standard users", async () => {
+    it("requests all projects for standard users via centralized hook", async () => {
         fetchSpy.mockResolvedValue({
             ok: true,
             json: vi.fn().mockResolvedValue([]),
         });
         useUserStoreMock.setState({ username: "bob", isAdmin: false });
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         const container = document.createElement("div");
         const root = createRoot(container);
         await act(async () => {
-            root.render(<ProjectList />);
+            root.render(<QueryClientProvider client={queryClient}><ProjectList /></QueryClientProvider>);
         });
         await act(async () => {
             await Promise.resolve();
         });
-        expect(fetchSpy).toHaveBeenCalledWith("/projects?user=bob");
+        expect(fetchSpy).toHaveBeenCalledWith("/projects");
         await act(async () => {
             root.unmount();
         });

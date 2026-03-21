@@ -1,8 +1,5 @@
 export function encodeTemplateNameForPath(name: string): string {
-  return name
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
+  return encodeURIComponent(name);
 }
 
 export function buildTemplateUrlPath(name: string, suffix = ""): string {

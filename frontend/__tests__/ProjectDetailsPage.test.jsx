@@ -86,6 +86,16 @@ vi.mock("lucide-react", () => {
         UserPlus: Icon,
         Pencil: Icon,
         Trash2: Icon,
+        CheckCircle2: Icon,
+        XCircle: Icon,
+        Clock: Icon,
+        MessageSquare: Icon,
+        HelpCircle: Icon,
+        Lightbulb: Icon,
+        AlertTriangle: Icon,
+        ChevronDown: Icon,
+        ChevronRight: Icon,
+        Bell: Icon,
     };
 });
 function primitiveStub(tag) {
@@ -105,6 +115,8 @@ vi.mock("@/components", async () => {
         PhaseAdvanceModal: () => React.createElement("div", null),
         WorkflowTimeline: () => React.createElement("div", { "data-testid": "workflow-timeline" }),
         ReviewerComments: () => React.createElement("div", { "data-testid": "reviewer-comments" }),
+        UserPicker: () => React.createElement("div", { "data-testid": "user-picker" }),
+        HelpTooltip: ({ children }) => React.createElement("span", null, children),
     };
 });
 vi.mock("@/components/ui/button", () => ({

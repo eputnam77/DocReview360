@@ -81,14 +81,14 @@ describe("createTemplateConfigApi", () => {
         const api = createTemplateConfigApi();
         await api.listTemplates();
         await api.listEmailTemplates();
-        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(1, "http://example.com/templates");
-        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2, "http://example.com/email-templates");
+        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(1, "/templates");
+        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2, "/email-templates");
     });
     it("sends DELETE requests for template removals", async () => {
         const api = createTemplateConfigApi();
         await api.deleteTemplate("tpl-1");
         await api.deleteEmailTemplate("welcome");
-        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(1, "http://example.com/templates/tpl-1", { method: "DELETE" });
-        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2, "http://example.com/email-templates/welcome", { method: "DELETE" });
+        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(1, "/templates/tpl-1", { method: "DELETE" });
+        expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2, "/email-templates/welcome", { method: "DELETE" });
     });
 });

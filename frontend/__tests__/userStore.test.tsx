@@ -1,6 +1,7 @@
 import React, { act } from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUserStore } from "@/state/user";
 import LoginPage from "@/pages/login";
 import { authenticatedFetch } from "@/lib/api";
@@ -165,12 +166,13 @@ describe("login page", () => {
     } as unknown as Response);
     global.fetch = fetchMock;
 
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(<LoginPage />);
+      root.render(<QueryClientProvider client={queryClient}><LoginPage /></QueryClientProvider>);
     });
 
     const usernameInput = container.querySelector(
