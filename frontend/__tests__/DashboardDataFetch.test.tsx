@@ -82,6 +82,8 @@ vi.mock("lucide-react", () => {
     PieChart: Icon,
     TrendingUp: Icon,
     UserCheck: Icon,
+    Award: Icon,
+    Settings: Icon,
   };
 });
 
@@ -118,7 +120,7 @@ describe("Dashboard data fetches", () => {
   });
 
   it("requests user dashboard data with the acting username", async () => {
-    fetchMock.mockResolvedValueOnce({
+    fetchMock.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue([]),
     });
@@ -133,7 +135,7 @@ describe("Dashboard data fetches", () => {
   });
 
   it("uses authenticated fetches for manager dashboard widgets", async () => {
-    fetchMock.mockResolvedValueOnce({
+    fetchMock.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ projects: [], workload: {} }),
     });

@@ -101,7 +101,7 @@ on 2026-03-11.
 
 ### 17) Backend quality gates
 
-- [x] Run `pytest -q`. 3237 tests pass, 0 failures after fixing widget_counts assigned-count bug and regenerating stale ML golden fixtures. (2026-03-21)
+- [x] Run `pytest -q`. 3242 tests pass, 0 failures after fixing golden fixture idempotency, template URL-encoding, and frontend test regressions. (2026-03-21)
 - [ ] Run `pytest -q --cov=src --cov-branch --cov-report=term --cov-fail-under=90`.
 - [ ] Run `mypy --strict src tests` if type coverage is ready.
 - [ ] Run `mutmut run`.
@@ -117,8 +117,14 @@ on 2026-03-11.
 - [ ] Verify document upload, view, and edit from the UI.
 - [ ] Verify approval request flow updates status in the UI.
 - [ ] Verify PDF and Markdown export from UI or CLI.
-- [ ] Verify `NEXT_PUBLIC_API_BASE` against the deployed backend URL.
-- [ ] Verify CORS allows the frontend origin.
+- [x] Verify `NEXT_PUBLIC_API_BASE` against the deployed backend URL.
+  `authenticatedFetch` prepends the API base URL to relative paths, and all
+  shared frontend code now uses relative paths. `NEXT_PUBLIC_API_BASE` resolves
+  correctly via env, runtime override, or localhost fallback. (Completed 2026-03-21)
+- [x] Verify CORS allows the frontend origin. `_resolve_cors_origins` returns
+  `localhost:3000` in dev/test; production requires explicit allowlist.
+  4 CORS policy tests and 8 frontend-backend integration tests pass.
+  (Completed 2026-03-21)
 - [ ] Verify UI error handling when the backend is unavailable.
 
 ### 19) CI/CD and automation

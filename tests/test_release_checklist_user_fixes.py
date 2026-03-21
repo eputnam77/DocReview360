@@ -132,7 +132,7 @@ def test_template_routes_use_slash_safe_builder() -> None:
     tiptap_page = _project_file("frontend/pages/editors/tiptap.tsx")
     template_index = _project_file("frontend/pages/configuration/templates/index.tsx")
     template_edit = _project_file("frontend/pages/configuration/templates/edit.tsx")
-    assert 'split("/")' in template_path_helper
+    assert 'encodeURIComponent(name)' in template_path_helper
     assert 'buildTemplateUrlPath(filename)' in tiptap_page
     assert 'buildTemplateUrlPath(id, "/approve")' in template_index
     assert 'buildTemplateUrlPath(String(id))' in template_edit

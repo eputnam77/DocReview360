@@ -97,7 +97,7 @@ describe("createTiptapApi", () => {
     await api.fetchTemplate("doc_type::API Manual / API Reference");
 
     expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
-      "http://example.com/templates/doc_type%3A%3AAPI%20Manual%20/%20API%20Reference",
+      "http://example.com/templates/doc_type%3A%3AAPI%20Manual%20%2F%20API%20Reference",
     );
   });
   it("fetches starter content using the document-types route without API prefix", async () => {
@@ -138,11 +138,11 @@ describe("createTemplateConfigApi", () => {
 
     expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(
       1,
-      "http://example.com/templates",
+      "/templates",
     );
     expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(
       2,
-      "http://example.com/email-templates",
+      "/email-templates",
     );
   });
 
@@ -153,12 +153,12 @@ describe("createTemplateConfigApi", () => {
 
     expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(
       1,
-      "http://example.com/templates/tpl-1",
+      "/templates/tpl-1",
       { method: "DELETE" },
     );
     expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(
       2,
-      "http://example.com/email-templates/welcome",
+      "/email-templates/welcome",
       { method: "DELETE" },
     );
   });

@@ -148,13 +148,13 @@ describe("createTemplateConfigApi", () => {
     expect(typeof api.retireTemplate).toBe("function");
   });
 
-  it("preserves slash separators in slash-named template actions", async () => {
+  it("fully encodes template names in template actions", async () => {
     mockFetch.mockResolvedValueOnce(makeOkResponse());
     const api = createTemplateConfigApi();
     await api.approveTemplate("doc_type::API Manual / API Reference");
 
     expect(mockFetch).toHaveBeenCalledWith(
-      "http://localhost:8000/templates/doc_type%3A%3AAPI%20Manual%20/%20API%20Reference/approve",
+      "/templates/doc_type%3A%3AAPI%20Manual%20%2F%20API%20Reference/approve",
       expect.objectContaining({ method: "POST" }),
     );
   });
