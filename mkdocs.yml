@@ -4,21 +4,16 @@ nav:
   - Home: index.md
   - Getting Started: getting_started.md
   - CLI Reference: cli.md
-  - UI Guide: ui.md
   - API Overview: api_overview.md
-  - TipTap Content: tiptap-supported-content.md
   - Usage Scenarios: scenarios.md
   - Developer Guide: developer.md
-  - High Risk Terms: high_risk_terms.md
   - Deployment: deployment.md
-  - ML Operations: ml/operations.md
-  - User Guide: user_guide.md
-  - Latest Features: latest_features.md
-  - Performance: performance/analysis.md
+  - Security:
+      - Key Rotation: security/key-rotation.md
+      - Patch Flow: security/patch-flow.md
+  - Compliance: compliance/index.md
   - Architecture Decisions:
       - Core: adr/0001-core-architecture.md
-      - Repository Layout: adr/0002-repo-structure.md
-      - Runtime Configuration: adr/0003-runtime-configuration.md
 docs_dir: docs
 theme:
   name: material
