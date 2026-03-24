@@ -1,54 +1,37 @@
-﻿# DocReview360 Documentation
+# DocReview360 Documentation
 
-Welcome to the DocReview360 project. This site collects guides and references for running the prototype and exploring its features.
+This documentation set is primarily for **administrators, deployers, and developers** who run and maintain DocReview360.
 
-- [Getting Started](getting_started.md)
+If you are an end user (reviewer/author) using the web app, use the in-app help page at `/help` from the sidebar (**Help & Support**).
+
+## Start here (admin/operator path)
+
+1. [Getting Started](getting_started.md) — local setup and first run.
+2. [Deployment](deployment.md) — production deployment options.
+3. [Security key rotation](security/key-rotation.md) and [security patch flow](security/patch-flow.md).
+4. [Disaster Recovery](disaster_recovery.md) — backup and restore runbook.
+5. [RBAC Configuration](rbac_configuration.md) — role and permission controls.
+6. [Observability](observability.md) — metrics, logging, and monitoring.
+
+## Technical references
+
 - [CLI Reference](cli.md)
-- [UI Guide](ui.md)
 - [API Overview](api_overview.md)
-- [Usage Scenarios](scenarios.md)
 - [Developer Guide](developer.md)
-- [Deployment](deployment.md)
 - [Migration Policy](migration_policy.md)
-- [Observability Standard](observability.md)
-- [Performance Baseline](performance_baseline.md)
-- [Test Determinism](test_determinism.md)
-- [Release Packaging](release_packaging.md)
-- [Latest Features](latest_features.md)
-- [Disaster Recovery Runbook](disaster_recovery.md)
 - [Data Retention and Deletion](data_retention_and_deletion.md)
-- [AI Workflow](ai_workflow.md)
+- [Supported Platforms](supported-platforms.md)
+- [Architecture Decision Records](adr/0001-core-architecture.md)
 
-## Project features
+## Product/release notes
 
-DocReview360 implements a small slice of the functionality described in the product requirements. The prototype shows:
+- [CHANGELOG](../CHANGELOG.md) is the source of truth for shipped versions and release history.
 
-- In-memory project and document storage with sequential numbering
-- Import and export of Markdown and DOCX files
-- Basic search with saved queries
-- Plugin registry for editors, exporters and validators
-- Minimal authentication flow with login, projects page and project creation page
-- Built-in observability helpers exposing Prometheus metrics and optional Sentry reporting
+## About documentation ownership
 
-Pull requests are welcome! Please run the unit tests with `pytest` and the E2E smoke suite with `E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke python scripts/run_e2e.py` before submitting changes.
-
-- [User Guide](user_guide.md)
+- `docs/` is focused on administrator and operational guidance.
+- End-user how-to content should live in the frontend help experience (`frontend/pages/help.tsx`) so it ships with the product UI.
 
 ## License
 
-This project is released under the MIT License. See the `LICENSE` file for details.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+This project is released under the MIT License. See `LICENSE` for details.
