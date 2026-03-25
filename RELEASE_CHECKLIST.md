@@ -11,15 +11,15 @@ Target window: next month (confirm exact date and time zone).
 
 ### Review blockers found on 2026-03-25
 
-- [ ] Fix the `/token` login regression. `tests/test_token.py::test_jwt_token_flow`
+- [x] Fix the `/token` login regression. `tests/test_token.py::test_jwt_token_flow`
   currently returns `401` for `POST /token`.
   Touch: `src/docreview360/api/auth_router.py`, `src/docreview360/auth/_core.py`,
-  `src/docreview360/auth/_repository.py`, `tests/test_token.py`.
-- [ ] Fix pytest temp-directory setup so targeted suites can run reliably in this
+  `src/docreview360/auth/_repository.py`, `tests/test_token.py`. (2026-03-25)
+- [x] Fix pytest temp-directory setup so targeted suites can run reliably in this
   workspace.
   Touch: `tests/conftest.py`, `.tmp/`, local temp-dir handling.
   Blocked suites during this review: `tests/test_release_checklist_user_fixes.py`,
-  `tests/test_dashboard.py`.
+  `tests/test_dashboard.py`. (2026-03-25)
 
 ### Scope and branch control
 
@@ -354,11 +354,11 @@ place and was removed from this file.
 
 ### P0: Must finish before release
 
-- [ ] R-01. Introduce a unified error response contract.
+- [x] R-01. Introduce a unified error response contract.
   Touch: `src/docreview360/errors.py` (new),
   `src/docreview360/api/__init__.py`, routers incrementally.
   Exit criteria: shared `AppError` hierarchy, `ErrorResponse` model, stable
-  4xx or 5xx envelope, `trace_id` included.
+  4xx or 5xx envelope, `trace_id` included. (2026-03-25)
 - [ ] R-02. Fix test-suite ordering and environment leakage.
   Touch: `tests/conftest.py`, env-mutating tests, module-level caches.
   Exit criteria: full suite is order-independent and CI can catch pollution
@@ -367,13 +367,13 @@ place and was removed from this file.
   Add coverage for: admin, dashboards, organizations, SCIM, SLA, legal,
   records, branches, config, feedback, assignments, and WOPI.
   Touch: `tests/api/` new files.
-- [ ] R-04. Add startup configuration validation.
+- [x] R-04. Add startup configuration validation.
   Touch: `src/docreview360/config_validator.py` (new),
-  `src/docreview360/api/__init__.py`.
-- [ ] R-05. Add global exception handling for unhandled errors and validation
+  `src/docreview360/api/__init__.py`. (2026-03-25)
+- [x] R-05. Add global exception handling for unhandled errors and validation
   failures.
   Touch: `src/docreview360/api/__init__.py`.
-  Note: implement this together with R-01 so the error envelope does not fork.
+  Note: implement this together with R-01 so the error envelope does not fork. (2026-03-25)
 
 ### P1: Strongly recommended before release
 

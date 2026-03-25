@@ -67,7 +67,9 @@ def test_refresh_token_rotates_and_reuse_revokes_family() -> None:
         json={"refresh_token": first_payload["refresh_token"]},
     )
     assert reuse_resp.status_code == 401
-    assert "reuse" in reuse_resp.json()["detail"].lower()
+    body = reuse_resp.json()
+    detail_text = (body.get("detail") or body.get("message") or "").lower()
+    assert "reuse" in detail_text
 
     protected = client.get(
         "/me",

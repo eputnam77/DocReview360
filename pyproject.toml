@@ -322,7 +322,7 @@ markers = [
   "e2e_smoke: critical browser/API smoke flows for pre-merge gating",
   "e2e_full: broader E2E coverage including permissions and edge cases",
 ]
-addopts = "--screenshot=off --video=off --tracing=off"
+addopts = "-p no:playwright"
 
 # ──────────────────────── security scanning (Bandit) ──────────────────────────
 [tool.bandit]

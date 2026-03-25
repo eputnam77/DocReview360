@@ -893,6 +893,16 @@ async def _lifespan(app: FastAPI):
         _logger.critical("Configuration validation failed at startup: %s", _cfg_err)
         raise
 
+    # Additional security/environment checks via the dedicated validator module.
+    try:
+        from ..config_validator import ConfigValidationError, validate_startup_config
+        validate_startup_config()
+    except ConfigValidationError as _cv_err:
+        _logger.critical("Startup config validation error: %s", _cv_err)
+        raise ValueError(str(_cv_err)) from _cv_err
+    except Exception as _cv_misc:  # pragma: no cover — best effort
+        _logger.warning("Startup config validator raised unexpected error: %s", _cv_misc)
+
     # Restore persisted state from DB
     load_approvals_from_db()
     load_workflows_from_db()
@@ -914,6 +924,107 @@ async def _lifespan(app: FastAPI):
 
 
 app = FastAPI(title="DocReview360", lifespan=_lifespan)
+
+# ---------------------------------------------------------------------------
+# Global exception handlers (R-01 / R-05)
+# ---------------------------------------------------------------------------
+# All handlers return the ErrorResponse envelope so clients always have a
+# predictable shape to parse regardless of which router raised the error.
+
+from fastapi.exception_handlers import http_exception_handler as _default_http_handler
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from ..errors import AppError, ErrorResponse
+
+
+@app.exception_handler(AppError)
+async def _app_error_handler(request: Request, exc: AppError) -> Response:
+    """Convert any :class:`~docreview360.errors.AppError` to an ``ErrorResponse``."""
+    trace_id = getattr(request.state, "trace_id", None) or exc.trace_id
+    payload = ErrorResponse(
+        error=exc.error,
+        message=exc.message,
+        trace_id=trace_id,
+        status_code=exc.status_code,
+        details=exc.details,
+    )
+    return Response(
+        content=payload.model_dump_json(),
+        status_code=exc.status_code,
+        media_type="application/json",
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> Response:
+    """Normalise HTTPException into the shared ``ErrorResponse`` envelope."""
+    from ..errors import _default_code
+
+    trace_id = getattr(request.state, "trace_id", None) or uuid.uuid4().hex
+    # If the detail is already an ErrorResponse dict (raised via raise_http()),
+    # preserve it; otherwise convert the raw string detail.
+    if isinstance(exc.detail, dict) and "error" in exc.detail and "trace_id" in exc.detail:
+        payload = exc.detail
+        payload.setdefault("trace_id", trace_id)
+    else:
+        message = str(exc.detail) if exc.detail else _default_code(exc.status_code)
+        payload = ErrorResponse(
+            error=_default_code(exc.status_code),
+            message=message,
+            trace_id=trace_id,
+            status_code=exc.status_code,
+        ).model_dump()
+    return Response(
+        content=json.dumps(payload),
+        status_code=exc.status_code,
+        media_type="application/json",
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> Response:
+    """Return a structured 422 for Pydantic/FastAPI request validation failures."""
+    trace_id = getattr(request.state, "trace_id", None) or uuid.uuid4().hex
+    details = {"validation_errors": exc.errors()}
+    payload = ErrorResponse(
+        error="validation_error",
+        message="Request validation failed",
+        trace_id=trace_id,
+        status_code=422,
+        details=details,
+    )
+    return Response(
+        content=payload.model_dump_json(),
+        status_code=422,
+        media_type="application/json",
+    )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> Response:
+    """Catch-all for unhandled exceptions — log and return a 500."""
+    trace_id = getattr(request.state, "trace_id", None) or uuid.uuid4().hex
+    _logger.exception(
+        "Unhandled exception trace_id=%s path=%s: %s",
+        trace_id,
+        request.url.path,
+        exc,
+    )
+    payload = ErrorResponse(
+        error="internal_error",
+        message="An unexpected error occurred",
+        trace_id=trace_id,
+        status_code=500,
+    )
+    return Response(
+        content=payload.model_dump_json(),
+        status_code=500,
+        media_type="application/json",
+    )
+
 
 _CORRELATION_HEADER = "X-Correlation-ID"
 _FALLBACK_CORRELATION_HEADER = "X-Request-ID"
