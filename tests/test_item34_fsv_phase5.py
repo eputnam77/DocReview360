@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: MIT
-"""Item 34 Phase 5 — FSV documentation, dependency, and policy checks.
+"""Item 34 Phase 5 — FSV dependency, policy, and pending-item checks.
 
 Tests:
-  - docs/federal-style-validator.md exists and has required sections
-  - pyproject.toml has fedstylevalidator optional extra
-  - FSV version pinning policy is documented
+  - docs/federal-style-validator.md exists and tracks the two remaining pending items
+  - pyproject.toml has fedstylevalidator optional extra with version specifier
   - No remaining duplicate style/quality logic (doc_validation.py, document_checker.py)
   - tiptapFederalStyleLint.ts flagged for removal in checklist
+
+Note: Reference content (architecture, configuration, check categories, version
+compatibility table) was removed from the doc once those items were implemented
+and verified by integration tests (test_item34_fsv_proxy.py).
 """
 from __future__ import annotations
 
@@ -26,46 +29,37 @@ FRONTEND = REPO_ROOT / "frontend"
 # ---------------------------------------------------------------------------
 
 class TestFsvDocumentation:
+    """The doc now tracks only pending (not-yet-implemented) items."""
+
     def test_fsv_doc_exists(self) -> None:
         assert FSV_DOC.exists(), f"docs/federal-style-validator.md not found at {FSV_DOC}"
 
-    def test_doc_has_architecture_section(self) -> None:
+    def test_doc_tracks_duplicate_removal_pending_item(self) -> None:
+        """Removing internal duplicates is a pending item — must stay in the doc."""
         text = FSV_DOC.read_text(encoding="utf-8")
-        assert "## Architecture" in text or "Architecture" in text
+        assert "Removing internal duplicates" in text or "regulatory.py" in text
 
-    def test_doc_has_configuration_section(self) -> None:
+    def test_doc_tracks_tiptap_plugin_pending_item(self) -> None:
+        """TipTap plugin integration is a pending item — must stay in the doc."""
         text = FSV_DOC.read_text(encoding="utf-8")
-        assert "config" in text.lower() or "Config" in text
+        assert "TipTap plugin" in text or "tiptap" in text.lower()
 
-    def test_doc_has_check_categories(self) -> None:
+    def test_doc_references_regulatory_py_for_removal(self) -> None:
         text = FSV_DOC.read_text(encoding="utf-8")
-        # Should document what check categories FSV provides
-        assert (
-            "categor" in text.lower()
-            or "check" in text.lower()
-        )
+        assert "regulatory.py" in text
 
-    def test_doc_has_version_compatibility_section(self) -> None:
+    def test_doc_references_tiptap_lint_extension_for_removal(self) -> None:
         text = FSV_DOC.read_text(encoding="utf-8")
-        assert "Version compatibility" in text or "version compatibility" in text.lower()
+        assert "tiptapFederalStyleLint.ts" in text
 
-    def test_doc_has_govdocverify_package_name(self) -> None:
-        """govdocverify is the published PyPI package name for FSV."""
+    def test_doc_references_registry_ts(self) -> None:
         text = FSV_DOC.read_text(encoding="utf-8")
-        assert "govdocverify" in text
+        assert "registry.ts" in text
 
-    def test_doc_has_install_instructions(self) -> None:
+    def test_doc_mentions_phase5(self) -> None:
+        """Removal is tracked behind Item 34 Phase 5."""
         text = FSV_DOC.read_text(encoding="utf-8")
-        assert "install" in text.lower()
-
-    def test_doc_has_integration_points(self) -> None:
-        text = FSV_DOC.read_text(encoding="utf-8")
-        # Should describe the proxy endpoints
-        assert "/documents/validate" in text or "/validate" in text
-
-    def test_doc_mentions_mit_license(self) -> None:
-        text = FSV_DOC.read_text(encoding="utf-8")
-        assert "MIT" in text
+        assert "Phase 5" in text or "phase 5" in text.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -101,16 +95,6 @@ class TestFsvOptionalDep:
 # ---------------------------------------------------------------------------
 
 class TestFsvVersionPolicy:
-    def test_compatibility_table_in_docs(self) -> None:
-        text = FSV_DOC.read_text(encoding="utf-8")
-        # Table with DocReview360 and FSV version columns
-        assert "DocReview360" in text
-        assert "govdocverify" in text or "FSV" in text
-
-    def test_pinning_guidance_documented(self) -> None:
-        text = FSV_DOC.read_text(encoding="utf-8")
-        assert "pin" in text.lower() or ">=0.1" in text or "version" in text.lower()
-
     def test_pyproject_fsv_dep_has_version_specifier(self) -> None:
         text = PYPROJECT.read_text(encoding="utf-8")
         # Should have >= or == version specifier for govdocverify
