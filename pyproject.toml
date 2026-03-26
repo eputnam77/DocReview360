@@ -95,7 +95,7 @@ fedstylevalidator = ["FedStyleValidator @ git+https://github.com/eputnam77/FedSt
 tokenizer = ["tiktoken>=0.5.1"]
 
 # PostgreSQL support (LGPL-3.0 — kept optional so the core package is MIT-clean)
-postgres = ["psycopg[binary]==3.2.9"]
+postgres = ["psycopg[binary]==3.3.3"]
 
 # LDAP/Active Directory authentication (Item 37)
 ldap = ["ldap3>=2.9"]
