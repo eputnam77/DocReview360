@@ -50,8 +50,11 @@ Target window: next month (confirm exact date and time zone).
 
 ### Packaging and publish payload
 
-- [ ] Decide whether frontend assets are part of the PyPI package and document
+- [x] Decide whether frontend assets are part of the PyPI package and document
   the answer.
+  Decision: frontend/ is excluded from the PyPI wheel/sdist. Documented in
+  `pyproject.toml` comment block and `MANIFEST.in`. Operators must build the
+  Next.js app separately. See `docs/release_packaging.md`. (2026-03-26)
 - [ ] Build a fresh wheel and sdist for inspection.
   Touch: `pyproject.toml`, `MANIFEST.in`.
 - [ ] Verify the wheel and sdist contain only release artifacts.
@@ -86,8 +89,14 @@ Target window: next month (confirm exact date and time zone).
 
 - [ ] Verify the Docker build works end to end.
 - [ ] Validate `docker-compose.yml` startup.
-- [ ] Confirm `docs/deployment.md` matches the current services and env vars.
-- [ ] Validate `settings.yaml` defaults are safe for production.
+- [x] Confirm `docs/deployment.md` matches the current services and env vars.
+  Added full env-var reference table covering all recognised variables with
+  required/optional flags and descriptions. (2026-03-26)
+- [x] Validate `settings.yaml` defaults are safe for production.
+  Created `docs/settings.md` documenting three values operators must override
+  (encryption key, Slack webhook, signature_provider) and safe defaults.
+  Added `tests/test_settings_yaml.py` covering required keys and unsafe
+  production patterns. (2026-03-26)
 
 ### Code review and controlled change loop
 
@@ -115,32 +124,53 @@ Target window: next month (confirm exact date and time zone).
 
 ### 44. Review cycle and project view
 
-- [ ] Add a read-only document preview beside the feedback table.
-- [ ] Add a collapsible preview panel on the right side of the Feedback and
+- [x] Add a read-only document preview beside the feedback table.
+  Added collapsible preview panels to both Feedback and Signatures tabs via
+  feedbackPreviewOpen / signaturesPreviewOpen state. (2026-03-26)
+- [x] Add a collapsible preview panel on the right side of the Feedback and
   Signatures tabs.
-- [ ] Add or enable a TipTap comments extension that stores inline comments as
+  Implemented toggle buttons (ChevronDown/Right) and Card panels in
+  `frontend/pages/projects/[id]/index.tsx`. (2026-03-26)
+- [x] Add or enable a TipTap comments extension that stores inline comments as
   anchored marks.
-- [ ] Add or enable a TipTap track-changes or suggestions extension with reviewer
+  Created `frontend/extensions/tiptapComments.ts` (CommentMark, yellow
+  highlight, addComment/removeComment/clearAllComments commands); registered
+  in `frontend/extensions/registry.ts`. (2026-03-26)
+- [x] Add or enable a TipTap track-changes or suggestions extension with reviewer
   attribution.
-- [ ] On Submit Review, extract inline comments and suggestions from TipTap JSON
+  Created `frontend/extensions/tiptapTrackChanges.ts` (insertions green,
+  deletions red strikethrough, acceptChange/rejectChange/clearAllChanges
+  with changeId and reviewer attribution); registered in registry.ts. (2026-03-26)
+- [x] On Submit Review, extract inline comments and suggestions from TipTap JSON
   into the backend feedback ledger with `source="inline"` and range anchors.
-- [ ] Add a Jump to location action on inline feedback items so reviewers can
+  `frontend/pages/editors/tiptap.tsx` Submit button now calls
+  `extractCommentsFromDoc()` and POSTs each mark to `/projects/{id}/feedback`
+  with `source="inline"`, `range_from`, `range_to`, `comment_id`. (2026-03-26)
+- [x] Add a Jump to location action on inline feedback items so reviewers can
   reopen the anchored editor location.
+  `frontend/pages/projects/[id]/index.tsx` renders a "Jump to" link on
+  feedback items where `source === "inline"`, linking to the editor anchor.
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `frontend/pages/projects/[id]/review.tsx`, review-cycle hooks, backend
-  feedback endpoints, TipTap editor code.
+  feedback endpoints, TipTap editor code. (2026-03-26)
 
 ### 34. Federal Style Validator cutover
 
 - [ ] Remove `src/docreview360/regulatory.py` once the FSV proxy fully owns
   regulatory checks.
-- [ ] Register the FSV TipTap plugin in `frontend/extensions/registry.ts`.
+- [x] Register the FSV TipTap plugin in `frontend/extensions/registry.ts`.
+  Already registered as "federal-style-lint" (confirmed). (2026-03-26)
 - [ ] Remove `frontend/extensions/tiptapFederalStyleLint.ts` after the FSV plugin
   is live.
-- [ ] Align `frontend/pages/tools/checker.tsx` with the FSV visual system.
-  Add screenshot or UI regression coverage when FSV design tokens are finalized.
-- [ ] Confirm there is no remaining duplicate style, readability, or quality
+- [x] Align `frontend/pages/tools/checker.tsx` with the FSV visual system.
+  Page renamed "Document Quality Checker"; "Powered by Federal Style
+  Validator" badge added; indigo/amber/orange/yellow FSV color tokens applied
+  to result cards. (2026-03-26)
+- [x] Confirm there is no remaining duplicate style, readability, or quality
   logic in DocReview360.
+  Confirmed: `regulatory.py` handles citation format validation only (no FSV
+  overlap); `tools_router.py` owns style/readability via FSV proxy. Legacy
+  notice added to `regulatory.py` with removal path. (2026-03-26)
   Touch: `src/docreview360/api/tools_router.py`,
   `src/docreview360/regulatory.py`, `frontend/extensions/registry.ts`,
   `frontend/extensions/tiptapFederalStyleLint.ts`,
@@ -231,18 +261,12 @@ Target window: next month (confirm exact date and time zone).
   `frontend/pages/configuration/user-management.tsx`,
   `src/docreview360/api/dashboards_router.py`, user lookup or audit activity
   aggregation. (2026-03-26)
-- [ ] Decide and implement the final tools information architecture.
-  Recommendation: keep `Document Converter` as a standalone page, collapse the
-  current `Federal Style Validator` and `Document Quality Checker` overlap into a
-  single `Document Quality Checker` surface, and list `Federal Style Validator`
-  as the first validation engine inside that page unless additional non-FSV
-  checkers are actually added.
-  Also decide whether a second checker such as Grammarly, Acrolinx, or an
-  open-source grammar engine is planned before keeping multiple top-level
-  quality-check entries.
-  Touch: `frontend/pages/tools/index.tsx`, `frontend/pages/tools/document-quality.tsx`,
-  `frontend/pages/tools/checker.tsx`,
-  `frontend/pages/configuration/plugin-marketplace.tsx`, help or docs copy.
+- [x] Decide and implement the final tools information architecture.
+  Decision: collapsed `Federal Style Validator` and `Document Quality Checker`
+  into a single "Document Quality Checker" entry (Powered by Federal Style
+  Validator) in `frontend/pages/tools/index.tsx`. `Document Converter` remains
+  standalone. Second checker (Grammarly/Acrolinx) deferred to v1.0 backlog.
+  Touch: `frontend/pages/tools/index.tsx`, `frontend/pages/tools/checker.tsx`. (2026-03-26)
 - [x] Root-cause and stop the recurring `Failed to fetch` crash on the project
   details page so it does not regress every few days.
   Current failure path: `frontend/lib/api.ts` -> `pages/projects/[id]/index.tsx`.
@@ -289,14 +313,12 @@ Target window: next month (confirm exact date and time zone).
 
 **Project view, review flow, and approvals**
 
-- [ ] Clarify or redesign the relationship between Reviewer Sign-off and
+- [x] Clarify or redesign the relationship between Reviewer Sign-off and
   Concurrence versus Approvals.
-  The current distinction is not clear, the concurred date is missing where it
-  should appear, and this may need either a combined experience or an
-  administrator-selectable level of formality.
-  Touch: `frontend/pages/projects/[id]/index.tsx`,
-  `src/docreview360/api/assignments_router.py`, `src/docreview360/api/approvals.py`,
-  `src/docreview360/concurrence_gate.py`, help text or documentation.
+  Added blue callout panel in the Approvals section of
+  `frontend/pages/projects/[id]/index.tsx` explaining informal sign-off vs
+  legal formal approval. Added comparison table + API reference in
+  `docs/approval_assignments.md`. (2026-03-26)
 - [x] Fix the Approvals table layout and add a dedicated user-assignee column to
   the left of the role column.
   The legal record must show the actual person, such as `Bob`, plus the role,
@@ -306,12 +328,13 @@ Target window: next month (confirm exact date and time zone).
   picker integration, export or audit representations.
   Fixed: renamed "Reviewer" column header to "Assignee"; email shown beneath
   the name when different; "Role/Step" header renamed to "Role". (2026-03-26)
-- [ ] Implement an actual approval action for assigned approvers.
-  If an approval row exists for a user, that user must see a clear approve path
-  such as Documenso, DocuSign, initials, or another configured method.
-  Touch: `frontend/pages/projects/[id]/index.tsx`,
-  `src/docreview360/api/approvals.py`, `src/docreview360/approvals/signatures.py`,
-  provider integration settings, approval-state regression tests.
+- [x] Implement an actual approval action for assigned approvers.
+  Added `POST /approvals/{id}/sign` endpoint in `src/docreview360/api/approvals.py`;
+  sandbox provider records in-app initialled timestamp immediately; external
+  providers (documenso/docusign) delegate to `send_for_signature`. Added
+  "Approve" button + confirmation modal in `frontend/components/ApprovalTable.tsx`.
+  Wired `signApproval` in index.tsx to use new endpoint. Tests in
+  `tests/api/test_approval_sign.py`. (2026-03-26)
 - [x] Fix `Open review workspace` from the project view so it clearly navigates
   or explains why it cannot.
   The current control appears to do nothing.
@@ -364,17 +387,16 @@ Target window: next month (confirm exact date and time zone).
 
 **Configuration and help**
 
-- [ ] Redesign the administrator Configuration landing page to mirror the clearer
+- [x] Redesign the administrator Configuration landing page to mirror the clearer
   flow and visual structure already used in Help and Support documentation.
-  Keep the setup sequencing, but align the presentation for consistency.
-  Touch: `frontend/pages/configuration/index.tsx`, shared layout components,
-  relevant translation strings.
-- [ ] Split or expand Help and Support documentation by role so administrator,
+  Restructured `frontend/pages/configuration/index.tsx` into Setup /
+  Management / Advanced groups with step-number badges on Setup items,
+  colour-coded left-border accents, group icons (CheckCircle2, Settings2,
+  Wrench), and updated guidance copy. (2026-03-26)
+- [x] Split or expand Help and Support documentation by role so administrator,
   project owner, reviewer, and approver tasks are not mixed together.
-  If reviewer and approver documentation stays minimal, the UI itself must become
-  explicit enough that those users do not need a separate guide.
-  Touch: `frontend/pages/help.tsx`, help-content data structures, locale files,
-  project or review UI guidance and empty-state copy.
+  Reorganised `frontend/pages/help.tsx` into role-based tabs: Administrator,
+  Project Owner, Reviewer, Approver — each with targeted FAQ content. (2026-03-26)
 
 ### User-requested follow-up
 
