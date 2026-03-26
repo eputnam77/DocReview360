@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.ai_utils import add_feedback_template, apply_feedback_template
 
 

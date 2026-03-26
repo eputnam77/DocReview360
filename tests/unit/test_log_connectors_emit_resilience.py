@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-
 from docreview360.log_connectors import LogConnector, clear_connectors, emit, register_connector
 from docreview360.models import LogEntry
 

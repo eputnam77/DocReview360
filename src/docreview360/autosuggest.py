@@ -7,7 +7,6 @@ import httpx
 from pydantic import BaseModel, HttpUrl
 
 
-
 class Suggestion(BaseModel):
     """Represents a single suggestion result."""
 

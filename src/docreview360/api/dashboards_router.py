@@ -15,12 +15,13 @@ from ..audit import humanize_audit_action
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..logs import LogEntry, log_event, query_logs
-from ..rbac import require_any_role, require_role, has_permission
+from ..rbac import has_permission, require_any_role, require_role
 from ..reporting import (
     DashboardEntry,
     DocumentAgingReport,
     ReviewerWorkload,
     SummaryReport,
+    WidgetMetrics,
     admin_dashboard,
     analytics_dashboard,
     analytics_export,
@@ -31,7 +32,6 @@ from ..reporting import (
     manager_dashboard,
     reviewer_workload_dashboard,
     user_dashboard,
-    WidgetMetrics,
     widget_counts,
 )
 from ..status import internal_status, public_status
@@ -311,8 +311,8 @@ async def recently_active_users(
     ranked = sorted(activity.items(), key=lambda kv: kv[1]["count"], reverse=True)[:limit]
 
     try:
-        from ..rbac import get_roles
         from ..profile import get_profile_data
+        from ..rbac import get_roles
     except ImportError:
         get_roles = lambda u: []  # noqa: E731
         get_profile_data = lambda u: {}  # noqa: E731

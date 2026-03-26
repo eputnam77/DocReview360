@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pytest import MonkeyPatch
-
 from docreview360.records import sync_to_sharepoint
+from pytest import MonkeyPatch
 
 
 def test_sync_to_sharepoint_expands_home(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:

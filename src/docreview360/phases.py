@@ -216,7 +216,7 @@ def rename_phase(old: str, new: str) -> None:
         raise ValueError("new phase name cannot be empty")
     old = old.strip()
 
-    from sqlalchemy import text as _text, update
+    from sqlalchemy import update
 
     db = get_db()
     with db.session() as conn:

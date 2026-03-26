@@ -18,16 +18,13 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -804,7 +801,6 @@ class TestPhaseArchiveFeedback:
         from docreview360.feedback_ledger import (
             archive_phase_feedback,
             create_feedback_item,
-            get_feedback_progress,
             list_feedback_items,
         )
 

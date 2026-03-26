@@ -1,9 +1,9 @@
 from datetime import timedelta
 
 import pytest
+from docreview360.celery_app import app
 
 import services.signature_verifier as signature_verifier
-from docreview360.celery_app import app
 from services.signature_verifier import schedule_signature_verification
 
 

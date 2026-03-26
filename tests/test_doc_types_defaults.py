@@ -1,4 +1,4 @@
-from docreview360.doc_types import DEFAULT_DOC_TYPE_NAMES, list_document_types
+from docreview360.doc_types import DEFAULT_DOC_TYPE_NAMES
 
 
 def test_default_document_types() -> None:

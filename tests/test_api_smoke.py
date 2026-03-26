@@ -9,10 +9,9 @@ from datetime import timedelta
 from urllib.parse import quote
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

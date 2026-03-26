@@ -1,10 +1,9 @@
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.archive import archive_document
 from docreview360.documents import DocumentModel, documents
+from fastapi.testclient import TestClient
 
 
 def test_public_copy_listing_and_archive(tmp_path, monkeypatch) -> None:

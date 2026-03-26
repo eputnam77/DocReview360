@@ -1,7 +1,6 @@
 from datetime import datetime
 
 import pytest
-
 from docreview360 import sharepoint
 from docreview360.integrations import sharepoint_upload as su
 

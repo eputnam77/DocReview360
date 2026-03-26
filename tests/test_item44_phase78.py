@@ -18,10 +18,9 @@ import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -119,7 +118,7 @@ class TestProjectLifecycleUnit:
             set_lifecycle(pid, "draft")
 
     def test_backward_transition_in_review_to_draft(self):
-        from docreview360.project_lifecycle import set_lifecycle, get_lifecycle
+        from docreview360.project_lifecycle import get_lifecycle, set_lifecycle
         pid = "lc-unit-test-004"
         set_lifecycle(pid, "in_review")
         set_lifecycle(pid, "draft")
@@ -138,7 +137,7 @@ class TestProjectLifecycleUnit:
         assert is_feedback_blocked(pid)
 
     def test_published_metadata_upsert(self):
-        from docreview360.project_lifecycle import set_published_metadata, get_lifecycle
+        from docreview360.project_lifecycle import get_lifecycle, set_published_metadata
         pid = "lc-unit-pub-001"
         set_published_metadata(
             pid,
@@ -153,7 +152,9 @@ class TestProjectLifecycleUnit:
 
     def test_published_metadata_preserves_status(self):
         from docreview360.project_lifecycle import (
-            set_lifecycle, set_published_metadata, get_lifecycle
+            get_lifecycle,
+            set_lifecycle,
+            set_published_metadata,
         )
         pid = "lc-unit-pub-002"
         for s in ["in_review", "reviewed", "ready_for_publication", "published"]:

@@ -166,7 +166,12 @@ export default function ApprovalTable({
             onChange={() => toggleSelect(a.id)}
           />
         </TableCell>
-        <TableCell className="whitespace-nowrap">{a.reviewer}</TableCell>
+        <TableCell className="whitespace-nowrap">
+          <span className="font-medium">{a.reviewer}</span>
+          {a.email && a.email !== a.reviewer && (
+            <span className="block text-xs text-gray-500">{a.email}</span>
+          )}
+        </TableCell>
         <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
           {a.description || "—"}
         </TableCell>
@@ -392,8 +397,8 @@ export default function ApprovalTable({
                 onChange={(e) => toggleSelectAll(e.target.checked)}
               />
             </TableHead>
-            <TableHead>Reviewer</TableHead>
-            <TableHead>Role/Step</TableHead>
+            <TableHead>Assignee</TableHead>
+            <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Due</TableHead>
             <TableHead>Signed</TableHead>
@@ -415,8 +420,7 @@ export default function ApprovalTable({
             <TableFooter>
               <TableRow>
                 <TableCell />
-                <TableCell className="font-medium">Total: {totals.total}</TableCell>
-                <TableCell />
+                <TableCell className="font-medium" colSpan={2}>Total: {totals.total}</TableCell>
                 <TableCell className="text-xs">
                   Pending {totals.pending} · Approved {totals.approved} · Overdue {totals.overdue} · Rejected {totals.rejected}
                 </TableCell>

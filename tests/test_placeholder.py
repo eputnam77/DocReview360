@@ -1,9 +1,8 @@
 import importlib
 import sys
 
-import pytest
-
 import docreview360 as dr
+import pytest
 
 
 def test_placeholder_basic() -> None:

@@ -1,8 +1,6 @@
 import hashlib
 from datetime import timedelta
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.audit import clear_audit_log
@@ -13,6 +11,7 @@ from docreview360.documents import (
     get_document_versions,
     import_document,
 )
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

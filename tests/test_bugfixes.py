@@ -2,7 +2,6 @@ import gzip
 from pathlib import Path
 
 import pytest
-
 from docreview360 import backup_utils, email_templates, event_dispatcher
 
 

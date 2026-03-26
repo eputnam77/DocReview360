@@ -11,8 +11,6 @@ from importlib import import_module, metadata
 from pathlib import Path
 from typing import Any, Dict
 
-import yaml
-
 from .secrets import configure_vault, store_secret
 from .yaml_loader import load_yaml_file, save_yaml_file
 

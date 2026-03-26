@@ -6,12 +6,12 @@ from click.testing import CliRunner
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-
 from docreview360.approvals import ApprovalModel, approvals
 from docreview360.audit import clear_audit_log, get_audit_log
 from docreview360.cli import cli
 from docreview360.documents import import_document
 from docreview360.integrations.signature import documenso
+
 from services import signature_verifier
 
 

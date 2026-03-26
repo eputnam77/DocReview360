@@ -17,11 +17,9 @@ from datetime import timedelta
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers

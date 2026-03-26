@@ -7,11 +7,13 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Integer,
-    JSON,
     String,
+)
+from sqlalchemy import (
     text as _sa_text,
 )
 from sqlalchemy.orm import Mapped, mapped_column

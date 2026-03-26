@@ -226,7 +226,6 @@ class TestConnectionPooling:
 
     def test_pool_env_vars_are_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """The non-SQLite branch must read pool settings from environment."""
-        import importlib
 
         monkeypatch.setenv("DOCREVIEW360_DB_POOL_SIZE", "3")
         monkeypatch.setenv("DOCREVIEW360_DB_MAX_OVERFLOW", "7")
@@ -374,10 +373,9 @@ class TestDataRetention:
     @pytest.fixture(autouse=True)
     def _fresh_db(self, monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
         """Reset the shared log DB to an isolated in-memory instance."""
-        from docreview360.logs import _db as logs_db_mod
-
         # Use a fresh in-memory DB for each retention test.
         from docreview360.database import Database
+        from docreview360.logs import _db as logs_db_mod
 
         db = Database("sqlite+pysqlite:///:memory:")
         db.migrate()
@@ -386,9 +384,8 @@ class TestDataRetention:
         monkeypatch.setattr(logs_db_mod, "_db", None)
 
     def _insert_session(self, db: object, expires_at: datetime) -> None:
-        from sqlalchemy import text
-
         from docreview360.logs._db import _get_db
+        from sqlalchemy import text
 
         db_ = _get_db()
         with db_.session() as conn:  # type: ignore[union-attr]
@@ -491,8 +488,8 @@ class TestAuditLogChain:
     @pytest.fixture(autouse=True)
     def _fresh_logs_db(self, monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
         """Isolate the logs module DB to a fresh in-memory instance."""
-        from docreview360.logs import _db as logs_db_mod
         from docreview360.database import Database
+        from docreview360.logs import _db as logs_db_mod
 
         db = Database("sqlite+pysqlite:///:memory:")
         db.migrate()
@@ -541,10 +538,10 @@ class TestAuditLogChain:
         import json
         import uuid
         from datetime import datetime, timezone
-        from sqlalchemy import text
 
         from docreview360.logs import log_event, verify_audit_log_chain
         from docreview360.logs._db import _get_db
+        from sqlalchemy import text
 
         log_event("first_action", user_id="tester")
 

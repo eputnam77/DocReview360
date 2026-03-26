@@ -2,7 +2,6 @@ from typing import Any, Dict, Optional
 
 import httpx
 import pytest
-
 from docreview360.metabase import fetch_card_csv, fetch_dashboards
 
 

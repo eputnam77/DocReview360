@@ -2,7 +2,6 @@
 from pathlib import Path
 
 import pytest
-
 from docreview360.release_signing import create_signed_git_tag, verify_git_tag_signature
 
 

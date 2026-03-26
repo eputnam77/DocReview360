@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from docreview360.metabase import MetabaseClient, load_dashboards
 
 

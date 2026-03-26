@@ -4,7 +4,6 @@ import os
 import tempfile
 
 import pytest
-
 from docreview360.backup_utils import restore_backup
 
 

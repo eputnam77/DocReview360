@@ -20,14 +20,11 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
-import pytest
-
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
-
-from fastapi.testclient import TestClient
 
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -295,14 +292,14 @@ class TestUserLocaleEndpoints:
 
 class TestProfileLocalePreference:
     def test_update_preferences_saves_valid_locale(self):
-        from docreview360.profile import update_preferences, get_preferences
+        from docreview360.profile import get_preferences, update_preferences
 
         update_preferences("test_profile_locale", {"locale": "es"})
         prefs = get_preferences("test_profile_locale")
         assert prefs.get("locale") == "es"
 
     def test_update_preferences_rejects_invalid_locale(self):
-        from docreview360.profile import update_preferences, get_preferences
+        from docreview360.profile import get_preferences, update_preferences
 
         # Invalid locale should be silently ignored (not saved)
         update_preferences("test_profile_locale2", {"locale": "xx"})
@@ -310,7 +307,7 @@ class TestProfileLocalePreference:
         assert prefs.get("locale") != "xx"
 
     def test_update_preferences_saves_all_supported_locales(self):
-        from docreview360.profile import update_preferences, get_preferences
+        from docreview360.profile import get_preferences, update_preferences
 
         for locale in ("en", "es", "fr", "de"):
             update_preferences(f"locale_user_{locale}", {"locale": locale})
@@ -318,7 +315,7 @@ class TestProfileLocalePreference:
             assert prefs.get("locale") == locale, f"Failed to save locale {locale}"
 
     def test_update_preferences_locale_does_not_affect_theme(self):
-        from docreview360.profile import update_preferences, get_preferences
+        from docreview360.profile import get_preferences, update_preferences
 
         update_preferences("locale_theme_user", {"theme": "dark", "locale": "fr"})
         prefs = get_preferences("locale_theme_user")

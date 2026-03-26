@@ -3,32 +3,8 @@
 
 from __future__ import annotations
 
-from ._base import Base, BaseModel
-from ._core import DocumentType, Organization, Phase, PhaseWorkflowLink, Template, User
-from ._project import Document, DocumentQualityScore, DocumentVersion, Project
-from ._workflow import (
-    Approval,
-    ApprovalRecord,
-    Workflow,
-    WorkflowInstanceRecord,
-    WorkflowTemplateRecord,
-)
-from ._session import OIDCStateRecord, UserSessionRecord
-from ._notifications import (
-    VALID_NOTIFICATION_CHANNELS,
-    DashboardVisibilityRecord,
-    UserNotificationPreference,
-)
 from ._audit import AuditLog, AuditLogRecord, LogEntry
-from ._integration import (
-    APIKey,
-    BuiltinPluginStateRecord,
-    OrgToolConfig,
-    Plugin,
-    ShareLink,
-    WebhookSubscriptionRecord,
-)
-from ._records import DocumentBranch, LegalHold, LegalHoldDocument, NaraMetadata
+from ._base import Base, BaseModel
 from ._config import (
     CustomFieldDefinition,
     CustomFieldValue,
@@ -40,6 +16,30 @@ from ._config import (
     ProjectConfig,
     ReviewAssignment,
     WOPILockRecord,
+)
+from ._core import DocumentType, Organization, Phase, PhaseWorkflowLink, Template, User
+from ._integration import (
+    APIKey,
+    BuiltinPluginStateRecord,
+    OrgToolConfig,
+    Plugin,
+    ShareLink,
+    WebhookSubscriptionRecord,
+)
+from ._notifications import (
+    VALID_NOTIFICATION_CHANNELS,
+    DashboardVisibilityRecord,
+    UserNotificationPreference,
+)
+from ._project import Document, DocumentQualityScore, DocumentVersion, Project
+from ._records import DocumentBranch, LegalHold, LegalHoldDocument, NaraMetadata
+from ._session import OIDCStateRecord, UserSessionRecord
+from ._workflow import (
+    Approval,
+    ApprovalRecord,
+    Workflow,
+    WorkflowInstanceRecord,
+    WorkflowTemplateRecord,
 )
 
 __all__ = [

@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360 import rbac
 from docreview360.logs import (
     clear_logs,

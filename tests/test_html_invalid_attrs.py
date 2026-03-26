@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-
 from docreview360.accessibility import audit_html
+
 from services.document_checker import detect_anomalies, run_checks
 
 

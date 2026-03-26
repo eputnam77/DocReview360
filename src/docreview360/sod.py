@@ -147,8 +147,8 @@ def _check_no_workflow_creator_approval(
     if not workflow_id:
         return
     try:
-        from .workflows import workflows
         from .approvals import approvals
+        from .workflows import workflows
         wf = workflows.get(workflow_id)
     except Exception as exc:
         _logger.debug(

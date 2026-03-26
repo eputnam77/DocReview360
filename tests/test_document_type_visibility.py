@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, doc_types, rbac
 from docreview360.api import app
 from docreview360.search import projects
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

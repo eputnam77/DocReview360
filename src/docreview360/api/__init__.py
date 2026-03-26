@@ -987,10 +987,12 @@ async def _http_exception_handler(request: Request, exc: StarletteHTTPException)
             trace_id=trace_id,
             status_code=exc.status_code,
         ).model_dump()
+    extra_headers = dict(exc.headers) if exc.headers else {}
     return Response(
         content=json.dumps(payload),
         status_code=exc.status_code,
         media_type="application/json",
+        headers=extra_headers,
     )
 
 

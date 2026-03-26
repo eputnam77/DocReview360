@@ -10,17 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from .. import auth
-from ..db_store import get_db
-from ..rbac import require_role
-from ..hierarchical_config import (
-    SYSTEM_DEFAULTS,
-    delete_org_config,
-    delete_project_config,
-    get_config,
-    get_org_config_all,
-    get_project_config_all,
-    set_org_config,
-    set_project_config,
+from ..custom_fields import (
+    create_field_definition,
+    delete_field_definition,
+    get_field_values,
+    list_field_definitions,
+    set_field_value,
+    validate_field_value,
 )
 from ..custom_workflows import (
     create_custom_workflow,
@@ -29,15 +25,17 @@ from ..custom_workflows import (
     list_custom_workflows,
     update_custom_workflow,
 )
-from ..custom_fields import (
-    create_field_definition,
-    delete_field_definition,
-    get_field_values,
-    list_field_definitions,
-    set_field_value,
-    validate_field_value,
-    get_field_definition,
+from ..db_store import get_db
+from ..hierarchical_config import (
+    SYSTEM_DEFAULTS,
+    delete_org_config,
+    delete_project_config,
+    get_org_config_all,
+    get_project_config_all,
+    set_org_config,
+    set_project_config,
 )
+from ..rbac import require_role
 
 router = APIRouter(tags=["configuration"])
 

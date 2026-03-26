@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from .. import auth
 from ..db_store import get_db
-from ..rbac import require_role
 from ..feature_flags import BUILT_IN_FLAGS, delete_flag, is_flag_enabled, list_flags, set_flag
+from ..rbac import require_role
 
 router = APIRouter(tags=["feature-flags"])
 

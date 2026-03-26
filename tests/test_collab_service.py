@@ -1,8 +1,7 @@
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
 from docreview360.documents import DocumentModel, documents
+from fastapi.testclient import TestClient
 
 pytest.importorskip("y_py")
 from y_py import YDoc, apply_update, encode_state_as_update

@@ -1,9 +1,8 @@
 from pathlib import Path
 
 import pytest
-from sqlalchemy import text
-
 from docreview360.database import Database, default_url
+from sqlalchemy import text
 
 
 def test_database_lifecycle(tmp_path: Path) -> None:

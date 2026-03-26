@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
@@ -21,18 +20,18 @@ _TRUE_VALUES = {"1", "true", "yes", "on"}
 try:
     import webauthn as _webauthn_lib
     from webauthn import (
-        generate_registration_options,
-        verify_registration_response,
         generate_authentication_options,
+        generate_registration_options,
         verify_authentication_response,
+        verify_registration_response,
     )
+    from webauthn.helpers import base64url_to_bytes, bytes_to_base64url
     from webauthn.helpers.structs import (
         AuthenticatorSelectionCriteria,
-        UserVerificationRequirement,
-        ResidentKeyRequirement,
         PublicKeyCredentialDescriptor,
+        ResidentKeyRequirement,
+        UserVerificationRequirement,
     )
-    from webauthn.helpers import bytes_to_base64url, base64url_to_bytes
     _WEBAUTHN_AVAILABLE = True
 except ImportError:
     _WEBAUTHN_AVAILABLE = False
@@ -130,7 +129,6 @@ def begin_registration(username: str, display_name: str) -> tuple[str, str]:
     challenge_b64 = bytes_to_base64url(options.challenge)
     _pending_registration_challenges[username] = challenge_b64
 
-    import webauthn.helpers.cbor as _cbor
     options_dict = {
         "rp": {"id": options.rp.id, "name": options.rp.name},
         "user": {

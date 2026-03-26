@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, cast
 
-from cryptography.fernet import Fernet
 from celery.schedules import crontab
+from cryptography.fernet import Fernet
 
 from .auth import keycloak_mfa_login
 from .backup_utils import create_backup

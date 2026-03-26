@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360 import email_templates
 from docreview360.notifications import TEMPLATES, add_template, send_email, sent_emails
 

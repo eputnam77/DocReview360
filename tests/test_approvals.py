@@ -8,8 +8,6 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import (
@@ -24,6 +22,7 @@ from docreview360.audit import clear_audit_log, get_audit_log
 from docreview360.documents import import_document
 from docreview360.integrations.signature import documenso
 from docreview360.logs import clear_logs, logs
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

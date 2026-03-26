@@ -4,7 +4,6 @@ import json
 from datetime import datetime, timezone
 
 import pytest
-
 from docreview360 import backup_utils as bu
 from docreview360.documents import DocumentModel, documents
 from docreview360.logs import LogEntry, logs

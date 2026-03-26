@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from docreview360.log_hash_chain import batch_hash_logs, verify_hash_chain
 from docreview360.logs import clear_logs, log_event
 

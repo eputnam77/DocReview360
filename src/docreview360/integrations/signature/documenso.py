@@ -10,6 +10,7 @@ rest of the codebase can operate without an external service during tests.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 from base64 import b64encode
 from collections import deque
@@ -17,8 +18,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Tuple
 from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
-
-import logging
 
 import httpx
 from cryptography import x509

@@ -2,7 +2,6 @@ from io import BytesIO
 
 import docx
 import pytest
-
 from docreview360 import documents
 
 

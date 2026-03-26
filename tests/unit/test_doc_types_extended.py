@@ -1,12 +1,11 @@
 """Tests for document type export/import and validation (DB-backed)."""
 
 import json
-import pytest
 
+import pytest
 from docreview360.doc_types import (
     DocumentTypeModel,
     add_document_type,
-    delete_document_type,
     export_document_types,
     import_document_types,
     list_document_types,

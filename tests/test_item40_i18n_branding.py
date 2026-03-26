@@ -100,6 +100,7 @@ class TestI18n:
 
     def test_format_date(self):
         from datetime import datetime
+
         from docreview360.i18n import format_date
 
         dt = datetime(2026, 3, 15)
@@ -120,8 +121,8 @@ class TestBranding:
         return f"test-org-brand-{suffix}"
 
     def test_default_branding(self):
+        from docreview360.branding import BRANDING_DEFAULTS, get_branding
         from docreview360.db_store import get_db
-        from docreview360.branding import get_branding, BRANDING_DEFAULTS
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "default")
@@ -130,8 +131,8 @@ class TestBranding:
             assert result["primary_color"] == BRANDING_DEFAULTS["primary_color"]
 
     def test_set_branding_company_name(self):
-        from docreview360.db_store import get_db
         from docreview360.branding import get_branding, set_branding
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "company")
@@ -140,8 +141,8 @@ class TestBranding:
             assert result["company_name"] == "Acme Corp"
 
     def test_set_branding_colors(self):
-        from docreview360.db_store import get_db
         from docreview360.branding import get_branding, set_branding
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "colors")
@@ -151,8 +152,8 @@ class TestBranding:
             assert result["accent_color"] == "#003366"
 
     def test_invalid_color_raises(self):
-        from docreview360.db_store import get_db
         from docreview360.branding import set_branding
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "bad-color")
@@ -160,8 +161,13 @@ class TestBranding:
                 set_branding(db, org_id, updated_by="alice", primary_color="red")
 
     def test_set_and_reset_branding(self):
+        from docreview360.branding import (
+            BRANDING_DEFAULTS,
+            get_branding,
+            reset_branding,
+            set_branding,
+        )
         from docreview360.db_store import get_db
-        from docreview360.branding import get_branding, reset_branding, set_branding, BRANDING_DEFAULTS
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "reset")
@@ -171,8 +177,8 @@ class TestBranding:
             assert get_branding(db, org_id)["company_name"] == BRANDING_DEFAULTS["company_name"]
 
     def test_terminology_defaults(self):
+        from docreview360.branding import TERMINOLOGY_DEFAULTS, get_terminology
         from docreview360.db_store import get_db
-        from docreview360.branding import get_terminology, TERMINOLOGY_DEFAULTS
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "terms-default")
@@ -181,8 +187,8 @@ class TestBranding:
             assert result["document"] == TERMINOLOGY_DEFAULTS["document"]
 
     def test_set_terminology(self):
-        from docreview360.db_store import get_db
         from docreview360.branding import get_terminology, set_terminology
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "terms-set")
@@ -192,8 +198,8 @@ class TestBranding:
             assert result["projects"] == "Cases"
 
     def test_get_full_theme(self):
-        from docreview360.db_store import get_db
         from docreview360.branding import get_full_theme
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             org_id = self._setup_org(db, "theme")
@@ -222,8 +228,8 @@ class TestBrandingAPI:
         return {"Authorization": f"Bearer {token}"}
 
     def test_get_org_branding_endpoint(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -234,8 +240,8 @@ class TestBrandingAPI:
         assert "terminology" in data
 
     def test_set_org_branding_endpoint(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -248,8 +254,8 @@ class TestBrandingAPI:
         assert resp.json()["branding"]["company_name"] == "Test Corp"
 
     def test_list_locales_endpoint(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -260,8 +266,8 @@ class TestBrandingAPI:
         assert "fr" in codes
 
     def test_get_translations_endpoint(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -272,8 +278,8 @@ class TestBrandingAPI:
         assert data["strings"]["dashboard"] == "Tableau de bord"
 
     def test_get_translations_unsupported_locale(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)

@@ -3,16 +3,11 @@
 
 from __future__ import annotations
 
-import json
 import re
 from collections import Counter
-from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, List, Optional
 
-from ..cache import cache_delete, cache_get, cache_set
-from ..logs import log_event
-from ._indexing import SearchIndex, SearchRepository, _default_project
-from ._models import ProjectModel, SavedSearch
+from ._indexing import SearchIndex, SearchRepository
+from ._models import ProjectModel
 
 # Module-level shared state — initialized in __init__.py
 # We declare them here as references that __init__.py populates.

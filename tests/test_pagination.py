@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 def test_paginated_response_basic() -> None:
     from docreview360.pagination import PaginatedResponse

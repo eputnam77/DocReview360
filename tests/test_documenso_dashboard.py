@@ -7,11 +7,10 @@ from datetime import datetime, timedelta
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.integrations.signature import documenso
+from fastapi.testclient import TestClient
 
 
 def _auth_headers() -> dict[str, str]:

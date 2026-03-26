@@ -3,11 +3,7 @@
 
 from __future__ import annotations
 
-import json
-
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360.errors import (
     AppError,
     AuthenticationError,
@@ -21,7 +17,7 @@ from docreview360.errors import (
     _default_code,
     raise_http,
 )
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # ErrorResponse model
@@ -198,8 +194,8 @@ def test_raise_http_with_details() -> None:
 
 def test_app_error_handler_returns_error_envelope() -> None:
     """AppErrors raised inside route handlers should produce ErrorResponse JSON."""
-    from fastapi import FastAPI
     from docreview360.errors import NotFoundError
+    from fastapi import FastAPI
 
     mini = FastAPI()
 

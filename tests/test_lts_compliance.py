@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import hashlib
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
@@ -106,8 +104,8 @@ class TestTimestampAuthoritySandbox:
 
 class TestTimestampAuthorityLive:
     def test_falls_back_to_sandbox_on_http_error(self):
-        from docreview360.integrations.signature.lts import TimestampAuthority
         import httpx
+        from docreview360.integrations.signature.lts import TimestampAuthority
 
         tsa = TimestampAuthority(tsa_url="https://tsa.example.com/ts", timeout_seconds=5)
         assert tsa._sandbox is False
@@ -197,7 +195,6 @@ class TestCreateLTVPackageBaseline:
 class TestCreateLTVPackageExtended:
     def test_extended_level_with_cert(self, monkeypatch):
         monkeypatch.setenv("LTS_DEFAULT_LEVEL", "extended")
-        from docreview360 import integrations  # ensure fresh env read
 
         with patch(
             "docreview360.integrations.signature.lts.fetch_ocsp_status"
@@ -263,8 +260,8 @@ class TestLTVSerializationRoundTrip:
 
     def test_roundtrip_signature_id(self):
         from docreview360.integrations.signature.lts import (
-            serialize_ltv_package,
             deserialize_ltv_package,
+            serialize_ltv_package,
         )
 
         pkg = self._make_package("sig-rt-002")
@@ -274,8 +271,8 @@ class TestLTVSerializationRoundTrip:
 
     def test_roundtrip_document_hash(self):
         from docreview360.integrations.signature.lts import (
-            serialize_ltv_package,
             deserialize_ltv_package,
+            serialize_ltv_package,
         )
 
         pkg = self._make_package("sig-rt-003")
@@ -285,8 +282,8 @@ class TestLTVSerializationRoundTrip:
 
     def test_roundtrip_ltv_level(self):
         from docreview360.integrations.signature.lts import (
-            serialize_ltv_package,
             deserialize_ltv_package,
+            serialize_ltv_package,
         )
 
         pkg = self._make_package("sig-rt-004")
@@ -296,8 +293,8 @@ class TestLTVSerializationRoundTrip:
 
     def test_roundtrip_timestamp_token(self):
         from docreview360.integrations.signature.lts import (
-            serialize_ltv_package,
             deserialize_ltv_package,
+            serialize_ltv_package,
         )
 
         pkg = self._make_package("sig-rt-005")
@@ -310,8 +307,8 @@ class TestLTVSerializationRoundTrip:
 
     def test_roundtrip_created_at_preserves_tz(self):
         from docreview360.integrations.signature.lts import (
-            serialize_ltv_package,
             deserialize_ltv_package,
+            serialize_ltv_package,
         )
 
         pkg = self._make_package("sig-rt-006")
@@ -323,6 +320,7 @@ class TestLTVSerializationRoundTrip:
 
     def test_serialized_dict_is_json_serializable(self):
         import json
+
         from docreview360.integrations.signature.lts import (
             create_ltv_package,
             serialize_ltv_package,
@@ -337,8 +335,8 @@ class TestLTVSerializationRoundTrip:
     def test_roundtrip_with_no_timestamp(self):
         from docreview360.integrations.signature.lts import (
             LTVPackage,
-            serialize_ltv_package,
             deserialize_ltv_package,
+            serialize_ltv_package,
         )
 
         pkg = LTVPackage(
@@ -360,8 +358,8 @@ class TestLTVSerializationRoundTrip:
             LTVPackage,
             OCSPStatus,
             TimestampToken,
-            serialize_ltv_package,
             deserialize_ltv_package,
+            serialize_ltv_package,
         )
 
         now = datetime.now(timezone.utc)
@@ -459,9 +457,9 @@ class TestOCSPCache:
 
     def test_cache_and_retrieve(self):
         from docreview360.integrations.signature.lts import (
+            _ocsp_cache,
             cache_ocsp_response,
             get_cached_ocsp_status,
-            _ocsp_cache,
         )
 
         serial = "test-cache-serial-001"
@@ -481,10 +479,10 @@ class TestOCSPCache:
 
     def test_expired_entry_returns_none(self):
         from docreview360.integrations.signature.lts import (
-            cache_ocsp_response,
-            get_cached_ocsp_status,
             OCSPStatus,
             _ocsp_cache,
+            cache_ocsp_response,
+            get_cached_ocsp_status,
         )
 
         serial = "expired-serial-999"
@@ -503,10 +501,10 @@ class TestOCSPCache:
 
     def test_no_next_update_cached_indefinitely(self):
         from docreview360.integrations.signature.lts import (
-            cache_ocsp_response,
-            get_cached_ocsp_status,
             OCSPStatus,
             _ocsp_cache,
+            cache_ocsp_response,
+            get_cached_ocsp_status,
         )
 
         serial = "no-next-update-serial"
@@ -524,9 +522,9 @@ class TestOCSPCache:
 
     def test_overwrite_cached_entry(self):
         from docreview360.integrations.signature.lts import (
+            _ocsp_cache,
             cache_ocsp_response,
             get_cached_ocsp_status,
-            _ocsp_cache,
         )
 
         serial = "overwrite-serial-001"
@@ -630,19 +628,20 @@ class TestGetLTVEndpoint:
         sig_mod._ltv_packages.clear()
 
     def test_returns_404_when_no_package(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
         resp = client.get("/signatures/nonexistent-sig-abc/ltv", headers=headers)
         assert resp.status_code == 404
-        assert "LTV package not found" in resp.json()["detail"]
+        body = resp.json()
+        assert "LTV package not found" in (body.get("detail") or body.get("message", ""))
 
     def test_returns_ltv_package_json(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
         from docreview360.approvals.signatures import attach_lts_package
+        from fastapi.testclient import TestClient
 
         attach_lts_package("sig-endpoint-001", b"endpoint test document")
 
@@ -658,9 +657,9 @@ class TestGetLTVEndpoint:
         assert "created_at" in data
 
     def test_ltv_level_in_response(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
         from docreview360.approvals.signatures import attach_lts_package
+        from fastapi.testclient import TestClient
 
         attach_lts_package("sig-endpoint-level", b"level check")
 
@@ -672,9 +671,9 @@ class TestGetLTVEndpoint:
         assert data["ltv_level"] in ("baseline", "extended", "archival")
 
     def test_document_hash_matches_content(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
         from docreview360.approvals.signatures import attach_lts_package
+        from fastapi.testclient import TestClient
 
         content = b"hash verification content"
         attach_lts_package("sig-endpoint-hash", content)
@@ -687,17 +686,17 @@ class TestGetLTVEndpoint:
         assert resp.json()["document_hash"] == expected_hash
 
     def test_requires_authentication(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         resp = client.get("/signatures/some-sig/ltv")
         assert resp.status_code in (401, 403)
 
     def test_timestamp_token_present_in_response(self):
-        from fastapi.testclient import TestClient
         from docreview360.api import app
         from docreview360.approvals.signatures import attach_lts_package
+        from fastapi.testclient import TestClient
 
         attach_lts_package("sig-ts-check", b"timestamp content")
 
@@ -720,9 +719,8 @@ class TestGetLTVEndpoint:
 class TestCreateArchiveTimestamp:
     def test_archive_timestamp_covers_package(self):
         from docreview360.integrations.signature.lts import (
-            create_ltv_package,
             create_archive_timestamp,
-            TimestampAuthority,
+            create_ltv_package,
         )
 
         pkg = create_ltv_package("sig-archive-001", b"archive document")
@@ -733,9 +731,10 @@ class TestCreateArchiveTimestamp:
     def test_archive_timestamp_imprint_differs_from_document(self):
         """The archive timestamp covers the LTV package, not the raw document."""
         import json
+
         from docreview360.integrations.signature.lts import (
-            create_ltv_package,
             create_archive_timestamp,
+            create_ltv_package,
             serialize_ltv_package,
         )
 

@@ -253,9 +253,10 @@ def send_webhook_notification(webhook_url: str, event: str, **context: str) -> D
 def get_user_notification_preference(username: str) -> "Any | None":
     """Return the ``UserNotificationPreference`` record for *username*, or ``None``."""
     try:
+        import os
+
         from .database import Database
         from .models import UserNotificationPreference
-        import os
 
         db_url = os.environ.get("DOCREVIEW360_DB_URL", "sqlite:///docreview360.db")
         db = Database(db_url)
@@ -285,6 +286,7 @@ def save_user_notification_preference(
         raise ValueError("webhook_url must be an https:// URL")
 
     import os
+
     from .database import Database
 
     db_url = os.environ.get("DOCREVIEW360_DB_URL", "sqlite:///docreview360.db")
@@ -390,8 +392,8 @@ def send_notification(
     # ------------------------------------------------------------------
     apns_results: list[dict[str, Any]] = []
     try:
-        from .integrations.apns import send_apns_notification
         from .api.notifications_router import _device_tokens
+        from .integrations.apns import send_apns_notification
 
         title = f"[DocReview360] {event}"
         body_text = context.get("message") or message

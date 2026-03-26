@@ -13,18 +13,16 @@ the changes propagate correctly to all parts of the system including:
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Generator
 
 import pytest
-from fastapi.testclient import TestClient
-
-from datetime import timedelta
-
 from docreview360 import auth, doc_types, rbac
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase
 from docreview360.workflows import workflows
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

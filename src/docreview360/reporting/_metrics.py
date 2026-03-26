@@ -9,7 +9,7 @@ from typing import Iterable, Mapping
 from ..approvals import approvals
 from ..documents import documents
 from ..workflows import workflows
-from ._models import AggregateStats, CriticAggregate
+from ._models import CriticAggregate
 
 _DEFAULT_LATENCY_BUCKETS: tuple[str, ...] = ("<10ms", "10-50ms", "50-100ms", "100ms+")
 _SANITIZE_RE = re.compile(r"[^a-z0-9]+")

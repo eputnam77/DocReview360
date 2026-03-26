@@ -7,6 +7,12 @@ available here for backward compatibility.
 
 from __future__ import annotations
 
+from ._metrics import (
+    record_compliance_score,
+    record_quality_score,
+    record_routing_snapshot,
+    reset_metrics_for_testing,
+)
 from ._models import (
     AggregateStats,
     CriticAggregate,
@@ -17,12 +23,6 @@ from ._models import (
     SummaryReport,
     ThroughputEntry,
     WidgetMetrics,
-)
-from ._metrics import (
-    record_quality_score,
-    record_compliance_score,
-    record_routing_snapshot,
-    reset_metrics_for_testing,
 )
 from ._reports import (
     admin_dashboard,

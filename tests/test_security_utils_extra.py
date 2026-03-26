@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from docreview360.security_utils import create_signature, verify_signature
 
 

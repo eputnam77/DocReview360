@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from docreview360.cache import cache_get, cache_set, clear_cache
 from docreview360.documents import DocumentModel, document_lock, documents
 from docreview360.search import add_document, search

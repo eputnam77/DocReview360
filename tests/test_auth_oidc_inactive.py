@@ -1,9 +1,8 @@
-from jose import jwt
 import pytest
-from fastapi import HTTPException
-
 from docreview360 import auth
 from docreview360.auth import USER_REPOSITORY, create_id_token, get_current_user_oidc
+from fastapi import HTTPException
+from jose import jwt
 
 
 class DummyRequest:

@@ -2,7 +2,6 @@ import threading
 from collections import Counter
 
 import pytest
-
 from docreview360 import ai_balancer
 from docreview360.ai_writer_assign import (
     assign_technical_writer,

@@ -2,9 +2,8 @@
 
 from pathlib import Path
 
-import pytest
-
 import docreview360.watchlist as wl
+import pytest
 
 
 def test_load_invalid_json_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

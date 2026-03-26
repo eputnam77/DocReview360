@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES
 from docreview360.ml.signature_anomaly import score_signature_anomaly
 

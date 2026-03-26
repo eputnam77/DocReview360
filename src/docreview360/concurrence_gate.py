@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .review_assignments import (
     TERMINAL_STATUSES,
@@ -13,7 +13,6 @@ from .review_assignments import (
     get_assignment,
     list_assignments,
 )
-
 
 # ---------------------------------------------------------------------------
 # Models

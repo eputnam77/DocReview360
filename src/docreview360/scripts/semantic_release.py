@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 
 
-
 def run() -> None:
     """Generate changelog from git commits."""
     output = subprocess.check_output(["git", "log", "--pretty=%s", "HEAD~20..HEAD"]).decode()

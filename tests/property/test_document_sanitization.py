@@ -7,10 +7,9 @@ text inputs, not just the handful of hand-crafted examples in unit tests.
 
 from __future__ import annotations
 
+from docreview360.documents._store import sanitize_content
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-from docreview360.documents._store import sanitize_content
 
 # Hypothesis strategy for arbitrary printable text
 _text = st.text(min_size=0, max_size=2000)

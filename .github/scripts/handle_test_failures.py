@@ -12,14 +12,14 @@ This script:
 Adapted for DocReview360 from BlogScriptCLI.
 """
 
-import os
-import sys
 import hashlib
-import re
 import json
+import os
+import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any, Optional
 
 try:
     from github import Github

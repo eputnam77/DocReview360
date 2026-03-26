@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.contextual_help import get_help, register_help, tooltip_html
 
 

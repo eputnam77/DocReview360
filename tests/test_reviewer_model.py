@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from docreview360.ml.routing_critic import ROUTING_FEATURE_NAMES
 from docreview360.reviewer_model import ReviewerModel
 

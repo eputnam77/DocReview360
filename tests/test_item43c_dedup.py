@@ -8,6 +8,7 @@ registrations that would cause silent request-routing surprises.
 from __future__ import annotations
 
 import os
+
 import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")

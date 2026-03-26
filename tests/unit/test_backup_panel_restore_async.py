@@ -1,8 +1,7 @@
 from pathlib import Path
 
-import pytest
-
 import docreview360.backup_panel as panel
+import pytest
 
 
 def test_restore_backup_async_invokes_dependencies(

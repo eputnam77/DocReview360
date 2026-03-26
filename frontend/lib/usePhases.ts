@@ -14,7 +14,7 @@ export interface Workflow {
 
 export function usePhases(workflowId?: string) {
   return useQuery<Workflow | null>({
-    queryKey: ["workflow", workflowId],
+    queryKey: ["phases", workflowId],
     enabled: !!workflowId,
     queryFn: async () => {
       const res = await authenticatedFetch(`/workflows/${workflowId}`);

@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 
 
-
 def generate(output: str = "packages/sdk-ts") -> None:
     """Generate the client SDK using openapi-python-client."""
     schema_path = Path("openapi.json")

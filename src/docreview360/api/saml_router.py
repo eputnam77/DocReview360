@@ -17,8 +17,9 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Form, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse, Response as _Response
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import RedirectResponse
+from fastapi.responses import Response as _Response
 
 from .. import auth, saml_auth
 from ..logs import log_event
@@ -42,7 +43,9 @@ def _issue_jwt_and_redirect(
     redirect_to: str = "/projects",
 ) -> RedirectResponse:
     """Create a DocReview360 access token and redirect with an httpOnly cookie."""
-    from datetime import datetime, timezone as _tz
+    from datetime import datetime
+    from datetime import timezone as _tz
+
     from jose import jwt as _jwt
 
     now = datetime.now(_tz.utc)
@@ -221,7 +224,8 @@ async def saml_sls(
             username = claims.get("sub", "unknown")
             jti = claims.get("jti")
             if jti:
-                from datetime import datetime, timezone as _tz
+                from datetime import datetime
+                from datetime import timezone as _tz
 
                 auth.revoke_token(jti, datetime.now(_tz.utc))
         except Exception:  # noqa: BLE001 -- token may already be invalid

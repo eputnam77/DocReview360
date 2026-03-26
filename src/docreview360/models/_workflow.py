@@ -6,8 +6,8 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import (
-    ForeignKey,
     JSON,
+    ForeignKey,
     String,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship

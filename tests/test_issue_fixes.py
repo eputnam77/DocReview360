@@ -4,7 +4,6 @@ import json
 from types import SimpleNamespace
 
 import pytest
-
 from docreview360 import (
     audit,
     backup_utils,

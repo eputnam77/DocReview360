@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.secrets import get_secret, store_secret
 
 

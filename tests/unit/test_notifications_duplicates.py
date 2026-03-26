@@ -1,9 +1,8 @@
 """Tests for notification template management edge cases."""
 
-import pytest
-
 import docreview360.email_templates as et
 import docreview360.notifications as n
+import pytest
 
 
 def test_add_template_refuses_overwrite(tmp_path) -> None:

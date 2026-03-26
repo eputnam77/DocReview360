@@ -10,12 +10,10 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360 import rbac as _rbac
 from docreview360.api import app
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Fixtures

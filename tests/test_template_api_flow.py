@@ -1,10 +1,9 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, email_templates, template_manager
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def _token(client: TestClient, username: str) -> str:

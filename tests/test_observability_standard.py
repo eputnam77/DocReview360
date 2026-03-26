@@ -1,10 +1,7 @@
-﻿import json
-import logging
-
-from fastapi.testclient import TestClient
-
+﻿
 from docreview360.api import app, reset_rate_limiters_for_testing
 from docreview360.logs import TRACE_ID, clear_logs, log_event, query_logs
+from fastapi.testclient import TestClient
 
 
 def test_log_event_redacts_sensitive_fields() -> None:

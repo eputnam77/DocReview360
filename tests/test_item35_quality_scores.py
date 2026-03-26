@@ -9,14 +9,11 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
-import pytest
-
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
-
-from fastapi.testclient import TestClient
 
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -83,8 +80,8 @@ class TestUpdateDocumentQualityScore:
         headers = _alice_headers()
         project_id, doc_id = _make_project_and_document(headers)
 
-        from docreview360.documents import update_document_quality_score
         from docreview360.db_store import get_db
+        from docreview360.documents import update_document_quality_score
         from docreview360.models import DocumentQualityScore as OrmScore
         from sqlalchemy import select
 
@@ -108,7 +105,7 @@ class TestUpdateDocumentQualityScore:
         headers = _alice_headers()
         _project_id, doc_id = _make_project_and_document(headers)
 
-        from docreview360.documents import update_document_quality_score, get_document
+        from docreview360.documents import get_document, update_document_quality_score
 
         result = update_document_quality_score(doc_id, score=0.72, grade="10th")
         assert result is not None
@@ -126,8 +123,9 @@ class TestUpdateDocumentQualityScore:
         headers = _alice_headers()
         _project_id, doc_id = _make_project_and_document(headers)
 
-        from docreview360.documents import update_document_quality_score, get_document
         from datetime import datetime
+
+        from docreview360.documents import get_document, update_document_quality_score
 
         update_document_quality_score(doc_id, score=0.60)
         doc = get_document(doc_id)
@@ -146,8 +144,8 @@ class TestUpdateDocumentQualityScore:
         headers = _alice_headers()
         _project_id, doc_id = _make_project_and_document(headers)
 
-        from docreview360.documents import update_document_quality_score
         from docreview360.db_store import get_db
+        from docreview360.documents import update_document_quality_score
         from docreview360.models import DocumentQualityScore as OrmScore
         from sqlalchemy import select
 
@@ -202,8 +200,9 @@ class TestQualityHistoryEndpoint:
         headers = _alice_headers()
         _project_id, doc_id = _make_project_and_document(headers)
 
-        from docreview360.documents import update_document_quality_score
         import time
+
+        from docreview360.documents import update_document_quality_score
 
         update_document_quality_score(doc_id, score=0.50)
         time.sleep(0.01)

@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.db_store import get_db
@@ -25,7 +22,7 @@ from docreview360.organizations import (
     update_org_settings,
     update_organization,
 )
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Fixtures

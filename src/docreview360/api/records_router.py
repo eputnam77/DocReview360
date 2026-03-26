@@ -13,7 +13,6 @@ from pydantic import BaseModel
 from .. import auth
 from ..project_lifecycle import (
     PROJECT_LIFECYCLE_STATUSES,
-    VALID_TRANSITIONS,
     get_lifecycle,
     is_feedback_blocked,
     set_lifecycle,

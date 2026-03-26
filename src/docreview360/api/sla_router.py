@@ -13,7 +13,6 @@ from pydantic import BaseModel
 from .. import auth
 from ..search import get_project
 from ..sla_tracker import (
-    SLAConfig,
     get_deadline_status,
     get_sla_config,
     get_sla_summary,

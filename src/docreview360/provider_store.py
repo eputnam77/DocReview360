@@ -4,8 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
-import yaml
-
 from .yaml_loader import load_yaml_file, save_yaml_file
 
 # Default location for provider configuration

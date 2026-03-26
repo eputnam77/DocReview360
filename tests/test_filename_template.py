@@ -1,7 +1,6 @@
 """Tests for configurable export filename templates."""
 
 import pytest
-
 from docreview360.documents import DocumentModel
 from docreview360.exporter import export_document
 

@@ -2,11 +2,10 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.environment import add_environment
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

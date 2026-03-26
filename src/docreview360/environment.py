@@ -7,8 +7,6 @@ import os
 from pathlib import Path
 from typing import Dict, Optional
 
-import yaml
-
 from .yaml_loader import load_yaml_file, save_yaml_file
 
 ENV_FILE = Path(os.getenv("DOCREVIEW360_ENVIRONMENTS_FILE", "environments.yaml"))

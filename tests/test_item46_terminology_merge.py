@@ -20,14 +20,11 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
-import pytest
-
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
-
-from fastapi.testclient import TestClient
 
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -127,15 +124,15 @@ class TestTerminologyMergeWithOverrides:
     """These tests set org terminology and verify merged translations reflect the override."""
 
     def _set_terminology(self, org_id: str, **kwargs: str) -> None:
-        from docreview360.db_store import get_db
         from docreview360.branding import set_terminology
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             set_terminology(db, org_id, updated_by="alice", **kwargs)
 
     def _reset_terminology(self, org_id: str) -> None:
-        from docreview360.db_store import get_db
         from docreview360.branding import reset_terminology
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             reset_terminology(db, org_id, updated_by="alice")

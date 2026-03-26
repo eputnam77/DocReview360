@@ -6,17 +6,15 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from .. import auth
-from ..logs import log_event
 from ..feedback_ledger import (
-    FeedbackItem,
-    FeedbackProgress,
     FEEDBACK_STATUSES,
     FEEDBACK_TYPES,
     TERMINAL_FEEDBACK_STATUSES,
+    FeedbackItem,
     archive_phase_feedback,
     create_feedback_item,
     dispose_feedback_item,
@@ -27,6 +25,7 @@ from ..feedback_ledger import (
     mark_question_satisfied,
     reply_to_feedback,
 )
+from ..logs import log_event
 from ..search import get_project
 
 _logger = logging.getLogger(__name__)

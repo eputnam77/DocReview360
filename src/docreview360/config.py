@@ -24,8 +24,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from .yaml_loader import load_yaml_file, save_yaml_file
 
 _logger = logging.getLogger(__name__)

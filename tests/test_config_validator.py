@@ -3,10 +3,7 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
-
 from docreview360.config_validator import (
     ConfigValidationError,
     _check_cors_origins,
@@ -14,7 +11,6 @@ from docreview360.config_validator import (
     _check_secret_key,
     validate_startup_config,
 )
-
 
 # ---------------------------------------------------------------------------
 # _check_secret_key

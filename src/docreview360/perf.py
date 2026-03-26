@@ -6,7 +6,6 @@ from __future__ import annotations
 import time
 
 
-
 def measure_typing_time(char_count: int = 100) -> float:
     """Simulate typing ``char_count`` characters and return elapsed seconds."""
     if char_count <= 0:

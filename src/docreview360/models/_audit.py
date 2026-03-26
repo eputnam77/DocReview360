@@ -7,9 +7,8 @@ from datetime import datetime
 from typing import Any, Literal
 
 from sqlalchemy import (
-    DateTime,
-    ForeignKey,
     JSON,
+    DateTime,
     String,
 )
 from sqlalchemy.orm import Mapped, mapped_column

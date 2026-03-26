@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     ForeignKey,
     Integer,
-    JSON,
     String,
+)
+from sqlalchemy import (
     text as _sa_text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship

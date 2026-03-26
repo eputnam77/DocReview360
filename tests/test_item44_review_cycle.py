@@ -10,14 +10,11 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
-import pytest
-
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
-
-from fastapi.testclient import TestClient
 
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -238,14 +235,18 @@ class TestReviewAssignmentModule:
         assert new_a.status == "invited"
 
     def test_delete_assignment(self) -> None:
-        from docreview360.review_assignments import create_assignment, delete_assignment, get_assignment
+        from docreview360.review_assignments import (
+            create_assignment,
+            delete_assignment,
+            get_assignment,
+        )
         a = create_assignment("proj-del", "alice", status="invited")
         delete_assignment(a.id)
         assert get_assignment(a.id) is None
 
     def test_migrate_reviewers_to_assignments(self) -> None:
         from docreview360.review_assignments import (
-            migrate_reviewers_to_assignments, list_assignments
+            migrate_reviewers_to_assignments,
         )
         created = migrate_reviewers_to_assignments("proj-migrate", ["alice", "bob"])
         assert len(created) == 2
@@ -522,8 +523,9 @@ class TestCommentModelNewFields:
     """Verify CommentModel now has source, feedback_type, and assignment_id fields."""
 
     def test_comment_model_has_source_field(self) -> None:
-        from docreview360.comments import CommentModel
         from datetime import datetime, timezone
+
+        from docreview360.comments import CommentModel
         c = CommentModel(
             id="test-1",
             document="doc-1",
@@ -536,8 +538,9 @@ class TestCommentModelNewFields:
         assert c.source == "inline"  # default
 
     def test_comment_model_accepts_feedback_source(self) -> None:
-        from docreview360.comments import CommentModel
         from datetime import datetime, timezone
+
+        from docreview360.comments import CommentModel
         c = CommentModel(
             id="test-2",
             document="doc-1",
@@ -554,8 +557,9 @@ class TestCommentModelNewFields:
         assert c.assignment_id == "assign-123"
 
     def test_comment_model_feedback_type_default_none(self) -> None:
-        from docreview360.comments import CommentModel
         from datetime import datetime, timezone
+
+        from docreview360.comments import CommentModel
         c = CommentModel(
             id="test-3",
             document="doc-1",
@@ -568,7 +572,7 @@ class TestCommentModelNewFields:
         assert c.assignment_id is None
 
     def test_comment_sources_constants(self) -> None:
-        from docreview360.comments import COMMENT_SOURCES, COMMENT_FEEDBACK_TYPES
+        from docreview360.comments import COMMENT_FEEDBACK_TYPES, COMMENT_SOURCES
         assert "feedback" in COMMENT_SOURCES
         assert "inline" in COMMENT_SOURCES
         assert "review" in COMMENT_SOURCES

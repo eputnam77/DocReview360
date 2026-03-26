@@ -4,10 +4,9 @@ from types import TracebackType
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import ai_assist, ai_utils, auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

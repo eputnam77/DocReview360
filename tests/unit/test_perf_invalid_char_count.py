@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.perf import measure_typing_time
 
 

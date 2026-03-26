@@ -1,6 +1,5 @@
-from fastapi.testclient import TestClient
-
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def test_oidc_token_flow() -> None:

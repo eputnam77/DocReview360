@@ -1,11 +1,10 @@
 """RBAC permission tests."""
 
 import pytest
-from fastapi import Depends, FastAPI
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.rbac import ROLE_PERMISSIONS, require_permission, set_user_roles
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)

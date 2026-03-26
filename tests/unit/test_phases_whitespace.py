@@ -1,6 +1,5 @@
-import pytest
-
 import docreview360.phases as phases
+import pytest
 
 
 def test_delete_and_rename_trim_input(monkeypatch: pytest.MonkeyPatch) -> None:

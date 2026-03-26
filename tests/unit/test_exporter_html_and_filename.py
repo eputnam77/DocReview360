@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from docreview360.exporter import export_document
 
 

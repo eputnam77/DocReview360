@@ -351,12 +351,12 @@ function Sidebar(props: SidebarProps) {
   ];
   return (
     <aside
-      className={`fixed top-0 right-0 h-full w-80 bg-gray-100 border-l z-50 shadow-lg transform transition-transform duration-200 ${
+      className={`fixed top-0 right-0 h-full w-80 bg-gray-100 border-l z-50 shadow-lg transform transition-transform duration-200 flex flex-col ${
         show ? "translate-x-0" : "translate-x-full"
       }`}
       style={{ minWidth: "18rem" }}
     >
-      <div className="flex justify-between items-center px-4 py-3 border-b bg-white">
+      <div className="flex-shrink-0 flex justify-between items-center px-4 py-3 border-b bg-white">
         <span className="font-bold text-lg">Tools & Extensions</span>
         <button
           onClick={onClose}
@@ -367,7 +367,7 @@ function Sidebar(props: SidebarProps) {
         </button>
       </div>
 
-      <div className="px-4 py-2 space-y-5">
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-5">
         {/* Templates */}
         <section>
           <div className="font-semibold mb-1">Templates</div>
@@ -594,6 +594,10 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [watermarkExtension, setWatermarkExtension] = useState<any>(null);
   const [watermarkStatus, setWatermarkStatus] = useState<ExtensionStatus>("idle");
   const [watermarkText, setWatermarkText] = useState("Sample");
+
+  // Submit confirmation modal
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitDone, setSubmitDone] = useState(false);
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1071,12 +1075,14 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   }
   function setBlock(editor: any, val: string) {
     if (val === "p") editor.chain().focus().setParagraph().run();
+    // Use setHeading (not toggleHeading) so selecting the same level is a
+    // no-op rather than toggling back to a paragraph node.
     else if (val === "h1")
-      editor.chain().focus().toggleHeading({ level: 1 }).run();
+      editor.chain().focus().setHeading({ level: 1 }).run();
     else if (val === "h2")
-      editor.chain().focus().toggleHeading({ level: 2 }).run();
+      editor.chain().focus().setHeading({ level: 2 }).run();
     else if (val === "h3")
-      editor.chain().focus().toggleHeading({ level: 3 }).run();
+      editor.chain().focus().setHeading({ level: 3 }).run();
   }
 
   function handleStartBlank() {
@@ -1448,21 +1454,32 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
         )}
         {toolbarButton(
           <IndentIncrease className="w-4 h-4" />,
-          () => runEditorCommand(editor, "indent"),
+          () => {
+            // Try the indentation extension first, then fall back to
+            // sinkListItem for list contexts so the button always works
+            // on eligible content even when the extension is not loaded.
+            if (indentationEnabled && canRunEditorCommand(editor, "indent")) {
+              runEditorCommand(editor, "indent");
+            } else {
+              editor.chain().focus().sinkListItem("listItem").run();
+            }
+          },
           false,
           "Indent",
-          formattingLocked ||
-            !indentationEnabled ||
-            !canRunEditorCommand(editor, "indent"),
+          formattingLocked,
         )}
         {toolbarButton(
           <IndentDecrease className="w-4 h-4" />,
-          () => runEditorCommand(editor, "outdent"),
+          () => {
+            if (indentationEnabled && canRunEditorCommand(editor, "outdent")) {
+              runEditorCommand(editor, "outdent");
+            } else {
+              editor.chain().focus().liftListItem("listItem").run();
+            }
+          },
           false,
           "Outdent",
-          formattingLocked ||
-            !indentationEnabled ||
-            !canRunEditorCommand(editor, "outdent"),
+          formattingLocked,
         )}
         {toolbarButton(
           <Undo2 className="w-4 h-4" />,
@@ -1525,11 +1542,77 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
           )}
         </div>
         <button
-          onClick={() => saveRevision(editor.getHTML(), true, true)}
-          className="ml-4 px-2 py-1 border rounded"
+          onClick={() => setShowSubmitModal(true)}
+          className="ml-4 px-2 py-1 border rounded bg-indigo-600 text-white hover:bg-indigo-700"
+          title="Save a final revision and mark as submitted for review"
         >
           Submit
         </button>
+        {/* Submit confirmation modal */}
+        {showSubmitModal && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Submit document for review"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
+          >
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-96 space-y-4">
+              {submitDone ? (
+                <>
+                  <h2 className="text-base font-semibold text-green-700">Submitted!</h2>
+                  <p className="text-sm text-gray-600">
+                    Your document has been saved as a new revision and submitted for review.
+                    {projectId ? ` Return to the project to track reviewer progress.` : ""}
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    {projectId && (
+                      <a
+                        href={`/projects/${projectId}`}
+                        className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+                      >
+                        Go to Project
+                      </a>
+                    )}
+                    <button
+                      className="px-3 py-1.5 border rounded text-sm"
+                      onClick={() => { setShowSubmitModal(false); setSubmitDone(false); }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Submit for Review
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    This will save a final revision of the document and mark it as submitted.
+                    Assigned reviewers will be notified.
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="px-3 py-1.5 border rounded text-sm"
+                      onClick={() => setShowSubmitModal(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+                      onClick={async () => {
+                        await saveRevision(editor.getHTML(), true, true);
+                        setSubmitDone(true);
+                        toast.success("Document submitted for review.");
+                      }}
+                    >
+                      Confirm Submit
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         <div className="ml-4 text-sm text-gray-600">
           {isOnline && pendingCount > 0
             ? "Syncing…"

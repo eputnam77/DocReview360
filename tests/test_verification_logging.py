@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-
 from docreview360.approvals import (
     approvals,
     create_approval,

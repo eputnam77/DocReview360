@@ -1,7 +1,6 @@
 """Workflow state machine tests."""
 
 import pytest
-
 from docreview360.workflows import advance_workflow, create_workflow
 
 

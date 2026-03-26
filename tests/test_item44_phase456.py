@@ -13,10 +13,9 @@ import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -80,8 +79,8 @@ class TestConcurrenceGate:
 
     def test_eligible_with_no_feedback(self) -> None:
         """No feedback items ⟹ eligible to concur."""
-        from docreview360.review_assignments import create_assignment
         from docreview360.concurrence_gate import check_concurrence_eligibility
+        from docreview360.review_assignments import create_assignment
         a = create_assignment("proj-gate-noitems", "bob")
         result = check_concurrence_eligibility("proj-gate-noitems", a.id)
         assert result.eligible is True
@@ -90,9 +89,9 @@ class TestConcurrenceGate:
 
     def test_not_eligible_with_open_items(self) -> None:
         """Open feedback items block concurrence."""
-        from docreview360.review_assignments import create_assignment
-        from docreview360.feedback_ledger import create_feedback_item
         from docreview360.concurrence_gate import check_concurrence_eligibility
+        from docreview360.feedback_ledger import create_feedback_item
+        from docreview360.review_assignments import create_assignment
         a = create_assignment("proj-gate-open", "bob")
         create_feedback_item("proj-gate-open", "bob", "Needs fixing", feedback_type="comment")
         result = check_concurrence_eligibility("proj-gate-open", a.id)
@@ -102,9 +101,9 @@ class TestConcurrenceGate:
 
     def test_eligible_after_all_items_addressed(self) -> None:
         """All items addressed ⟹ eligible."""
-        from docreview360.review_assignments import create_assignment
-        from docreview360.feedback_ledger import create_feedback_item, dispose_feedback_item
         from docreview360.concurrence_gate import check_concurrence_eligibility
+        from docreview360.feedback_ledger import create_feedback_item, dispose_feedback_item
+        from docreview360.review_assignments import create_assignment
         a = create_assignment("proj-gate-addressed", "bob")
         item = create_feedback_item(
             "proj-gate-addressed", "bob", "Style nit", feedback_type="comment"
@@ -115,9 +114,9 @@ class TestConcurrenceGate:
 
     def test_unanswered_question_blocks_concurrence(self) -> None:
         """Question with no SME reply blocks concurrence."""
-        from docreview360.review_assignments import create_assignment
-        from docreview360.feedback_ledger import create_feedback_item
         from docreview360.concurrence_gate import check_concurrence_eligibility
+        from docreview360.feedback_ledger import create_feedback_item
+        from docreview360.review_assignments import create_assignment
         a = create_assignment("proj-gate-question", "bob")
         create_feedback_item("proj-gate-question", "bob", "What does this mean?", feedback_type="question")
         result = check_concurrence_eligibility("proj-gate-question", a.id)
@@ -126,9 +125,9 @@ class TestConcurrenceGate:
 
     def test_question_with_sme_reply_is_eligible(self) -> None:
         """Question answered by SME (different reviewer) allows concurrence."""
-        from docreview360.review_assignments import create_assignment
-        from docreview360.feedback_ledger import create_feedback_item, reply_to_feedback
         from docreview360.concurrence_gate import check_concurrence_eligibility
+        from docreview360.feedback_ledger import create_feedback_item, reply_to_feedback
+        from docreview360.review_assignments import create_assignment
         a = create_assignment("proj-gate-answered", "bob")
         q = create_feedback_item(
             "proj-gate-answered", "bob", "Question?", feedback_type="question"
@@ -592,8 +591,8 @@ class TestGetReviewSummary:
         assert summary.all_complete is False
 
     def test_summary_with_assignments(self) -> None:
-        from docreview360.review_assignments import create_assignment
         from docreview360.concurrence_gate import get_review_summary
+        from docreview360.review_assignments import create_assignment
         create_assignment("proj-summary-active", "bob")
         create_assignment("proj-summary-active", "alice")
         summary = get_review_summary("proj-summary-active")
@@ -601,8 +600,8 @@ class TestGetReviewSummary:
         assert summary.invited == 2
 
     def test_summary_has_non_concurrence_flag(self) -> None:
-        from docreview360.review_assignments import create_assignment, _update_fields
         from docreview360.concurrence_gate import get_review_summary
+        from docreview360.review_assignments import _update_fields, create_assignment
         a = create_assignment("proj-summary-nonconcur", "bob")
         _update_fields(a.id, status="non_concurred", replacement_reason="Disagree")
         summary = get_review_summary("proj-summary-nonconcur")
@@ -744,6 +743,7 @@ class TestPhaseAutoArchive:
 
     def test_auto_archive_calls_archive_on_phase_change(self) -> None:
         from unittest.mock import MagicMock, patch
+
         from docreview360.api.projects_router import _update_workflow_phase
 
         mock_request = MagicMock()
@@ -771,6 +771,7 @@ class TestPhaseAutoArchive:
 
     def test_auto_archive_skipped_when_same_phase(self) -> None:
         from unittest.mock import MagicMock, patch
+
         from docreview360.api.projects_router import _update_workflow_phase
 
         mock_request = MagicMock()

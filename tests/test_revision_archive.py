@@ -1,10 +1,9 @@
 from datetime import timedelta
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.archive import archives
+from fastapi.testclient import TestClient
 
 
 def _auth_headers() -> dict[str, str]:

@@ -1,11 +1,10 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
-
 from docreview360 import api as api_mod
 from docreview360 import config as conf_mod
 from docreview360.config import Config
+from fastapi.testclient import TestClient
 
 
 def test_branding_endpoint_defaults(monkeypatch) -> None:

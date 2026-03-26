@@ -86,7 +86,7 @@ def check_version() -> None:
         else:
             ok(f"README.md references version {pkg_version}")
     else:
-        note(f"README.md contains no version references matching v<N>.<N>")
+        note("README.md contains no version references matching v<N>.<N>")
 
     # Check CHANGELOG if it exists
     changelog = REPO_ROOT / "CHANGELOG.md"

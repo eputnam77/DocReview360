@@ -2,7 +2,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-
 from docreview360.ml.signature_anomaly import export_signature_anomaly_model
 
 onnx = pytest.importorskip("onnx")

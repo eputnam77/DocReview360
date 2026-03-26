@@ -29,11 +29,11 @@ from ._models import (
     ProjectModel,
     SavedSearch,
 )
+from ..logs import log_event
 from ._query import (
     TEMP_ASSIGN_MAX_DAYS,
     _match_all_terms,
     _normalize,
-    log_event,
 )
 from ._query import (
     _persist_project as _persist_project_fn,

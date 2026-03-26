@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from docreview360.ml.compliance_classifier import (
     compliance_model_metadata,
     evaluate_compliance,

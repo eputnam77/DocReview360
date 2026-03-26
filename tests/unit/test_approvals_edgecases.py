@@ -2,13 +2,11 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pytest
-
 from docreview360 import approvals
 from docreview360.approvals import routing as approvals_routing
-from docreview360.reviewer_model import ReviewerModel
 from docreview360.ml.routing_critic import ROUTING_FEATURE_NAMES
 from docreview360.ml.torch_models import build_clarity_critic
-from docreview360.reviewer_model import Recommendation
+from docreview360.reviewer_model import Recommendation, ReviewerModel
 
 
 class DummyModel(ReviewerModel):

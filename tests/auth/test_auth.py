@@ -7,12 +7,11 @@ import sys
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
+import docreview360.auth as auth
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from jose import jwt
-
-import docreview360.auth as auth
 
 
 @pytest.fixture

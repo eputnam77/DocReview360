@@ -9,12 +9,11 @@ import os
 import threading
 from base64 import b64decode, b64encode
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
 from sqlalchemy import text as _text
-
 
 TEMPLATES_DIR = Path(os.getenv("DOCREVIEW360_TEMPLATES_DIR", "templates/golden"))
 

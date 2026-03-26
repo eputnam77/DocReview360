@@ -3,7 +3,6 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-
 from docreview360.plugins import load_plugins, registry
 
 

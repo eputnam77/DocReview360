@@ -21,7 +21,6 @@ from ..integrations.registry import get_provider
 from ..integrations.signature import get_default_providers
 from ..logs import log_event, log_verification_failure
 from ..ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES, signature_features
-from ..ml.onnx_infer import metadata_to_context
 from ..ml.signature_anomaly import score_signature_anomaly
 from ..monitoring import (
     APPROVAL_UPLOAD_RETRIES,
@@ -335,8 +334,8 @@ async def update_approval_state(  # noqa: C901
     due_at: datetime | None = None,
     document: bytes | None = None,
 ) -> Any:
-    from .core import approvals, _persist_approval
     from ..workflows import workflows
+    from .core import _persist_approval, approvals
 
     approval = approvals[approval_id]
     if approval.state == "approved":
@@ -476,7 +475,7 @@ def send_for_signature(  # noqa: C901
     user: str,
     return_url: str | None = None,
 ) -> str:
-    from .core import approvals, _persist_approval
+    from .core import _persist_approval, approvals
 
     approval = approvals[approval_id]
     if approval.state == "approved":
@@ -682,8 +681,8 @@ def _fallback_summary_pdf(items: list[Any]) -> bytes:
 
 def build_approvals_summary_pdf(project_id: str, actor: str | None = None) -> bytes:
     """Return a merged PDF of all approvals for ``project_id``."""
-    from .core import approvals
     from ..workflows import workflows
+    from .core import approvals
 
     relevant = [
         a

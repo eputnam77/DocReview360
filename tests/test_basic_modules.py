@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-
 from docreview360 import archive, config, documents, logs, workflows
 
 

@@ -144,7 +144,8 @@ def test_revoked_bearer_token_is_rejected() -> None:
     response = client.get("/me", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 401
-    assert response.json()["detail"] == "Token has been revoked"
+    body = response.json()
+    assert (body.get("detail") or body.get("message", "")) == "Token has been revoked"
 
 
 def test_oidc_authorize_redirects_with_pkce_state(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -446,7 +447,8 @@ def test_password_expiry_path_blocks_authenticated_requests(monkeypatch: pytest.
     response = client.get("/me", headers=_bearer_headers("expired-user"))
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "password_expired"
+    body = response.json()
+    assert (body.get("detail") or body.get("message", "")) == "password_expired"
 
 
 def test_jit_provisioning_creates_user_and_syncs_roles(monkeypatch: pytest.MonkeyPatch) -> None:

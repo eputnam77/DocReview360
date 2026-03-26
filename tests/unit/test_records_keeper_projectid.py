@@ -1,7 +1,6 @@
 import tempfile
 
 import pytest
-
 from docreview360.records_keeper import create_archival_folder
 
 

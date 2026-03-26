@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib
 
 import pytest
-
 from docreview360 import event_dispatcher
 
 

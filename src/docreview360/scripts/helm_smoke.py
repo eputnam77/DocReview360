@@ -9,7 +9,6 @@ from pathlib import Path
 import httpx
 
 
-
 async def run() -> None:
     """Install the chart in KIND and run health checks."""
     chart_path = Path("helm")
