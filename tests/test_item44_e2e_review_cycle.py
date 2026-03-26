@@ -236,7 +236,7 @@ class TestFullReviewCycle:
         # ------------------------------------------------------------------
         list_resp = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs)
         assert list_resp.status_code == 200
-        all_feedback = list_resp.json()
+        all_feedback = list_resp.json()["items"]
         feedback_ids = {f["id"] for f in all_feedback}
         assert comment_fid in feedback_ids, "Comment feedback not in list"
         assert question_fid in feedback_ids, "Question feedback not in list"
@@ -246,13 +246,13 @@ class TestFullReviewCycle:
             f"/projects/{pid}/feedback?feedback_type=comment", headers=alice_hdrs
         )
         assert comment_list.status_code == 200
-        assert all(f["feedback_type"] == "comment" for f in comment_list.json())
+        assert all(f["feedback_type"] == "comment" for f in comment_list.json()["items"])
 
         question_list = client.get(
             f"/projects/{pid}/feedback?feedback_type=question", headers=alice_hdrs
         )
         assert question_list.status_code == 200
-        assert all(f["feedback_type"] == "question" for f in question_list.json())
+        assert all(f["feedback_type"] == "question" for f in question_list.json()["items"])
 
         # ------------------------------------------------------------------
         # Step 8: Alice replies to the question (answers it)
@@ -361,7 +361,7 @@ class TestFullReviewCycle:
         # Verify final assignment state
         assignments_resp = client.get(f"/projects/{pid}/assignments", headers=alice_hdrs)
         assert assignments_resp.status_code == 200
-        assignments = assignments_resp.json()
+        assignments = assignments_resp.json()["items"]
         bob_assignment = next((a for a in assignments if a["reviewer"] == "bob"), None)
         assert bob_assignment is not None
         assert bob_assignment["status"] == "concurred"
@@ -483,7 +483,7 @@ class TestReviewerReplacement:
         fb2_id = fb2_resp.json()["id"]
 
         # Confirm both feedback items exist
-        fb_list = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()
+        fb_list = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()["items"]
         fb_ids = {f["id"] for f in fb_list}
         assert fb1_id in fb_ids
         assert fb2_id in fb_ids
@@ -531,7 +531,7 @@ class TestReviewerReplacement:
         # ------------------------------------------------------------------
         # Step 5: Verify bob's original feedback is preserved in the ledger
         # ------------------------------------------------------------------
-        fb_after = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()
+        fb_after = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()["items"]
         fb_after_ids = {f["id"] for f in fb_after}
         assert fb1_id in fb_after_ids, "Bob's comment was lost after replacement"
         assert fb2_id in fb_after_ids, "Bob's question was lost after replacement"
@@ -543,7 +543,7 @@ class TestReviewerReplacement:
         # ------------------------------------------------------------------
         # Step 6: Check assignments — both bob (replaced) and charlie (invited) present
         # ------------------------------------------------------------------
-        all_assignments = client.get(f"/projects/{pid}/assignments", headers=alice_hdrs).json()
+        all_assignments = client.get(f"/projects/{pid}/assignments", headers=alice_hdrs).json()["items"]
         statuses = {a["reviewer"]: a["status"] for a in all_assignments}
         assert statuses.get("bob") == "replaced", f"bob status: {statuses.get('bob')}"
         assert statuses.get("charlie") == "invited", f"charlie status: {statuses.get('charlie')}"
@@ -587,7 +587,7 @@ class TestReviewerReplacement:
         # ------------------------------------------------------------------
         # Step 8: Final ledger audit — all items from both reviewers present
         # ------------------------------------------------------------------
-        final_fb = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()
+        final_fb = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()["items"]
         final_fb_ids = {f["id"] for f in final_fb}
         # Bob's pre-replacement items
         assert fb1_id in final_fb_ids, "Bob's original comment was removed"
@@ -662,13 +662,13 @@ class TestConcurWithComments:
         assert cwc_resp.json()["status"] == "concurred"
 
         # Verify a feedback item was created containing the final note
-        fb_list = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()
+        fb_list = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()["items"]
         assert any(
             "minor typo" in f["text"] for f in fb_list
         ), "Concur-with-comments text not persisted as feedback"
 
         # Verify assignment is in terminal 'concurred' state
-        assignments = client.get(f"/projects/{pid}/assignments", headers=alice_hdrs).json()
+        assignments = client.get(f"/projects/{pid}/assignments", headers=alice_hdrs).json()["items"]
         bob_a = next(a for a in assignments if a["reviewer"] == "bob")
         assert bob_a["status"] == "concurred"
 
@@ -774,7 +774,7 @@ class TestPhaseArchiveFeedback:
         fb2_id = fb2_resp.json()["id"]
 
         # Verify both are open
-        fb_list = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()
+        fb_list = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()["items"]
         open_ids = {f["id"] for f in fb_list if f["status"] == "open"}
         assert fb1_id in open_ids
         assert fb2_id in open_ids
@@ -791,7 +791,7 @@ class TestPhaseArchiveFeedback:
         assert archive_data["archived"] >= 2
 
         # After archiving, both items should be resolved
-        fb_list_after = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()
+        fb_list_after = client.get(f"/projects/{pid}/feedback", headers=alice_hdrs).json()["items"]
         fb1_after = next((f for f in fb_list_after if f["id"] == fb1_id), None)
         fb2_after = next((f for f in fb_list_after if f["id"] == fb2_id), None)
         assert fb1_after is not None

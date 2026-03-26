@@ -172,7 +172,7 @@ class TestFeedbackAPI:
         pid = _create_project(client, hdrs)
         resp = client.get(f"/projects/{pid}/feedback", headers=hdrs)
         assert resp.status_code == 200
-        assert resp.json() == []
+        assert resp.json()["items"] == []
 
     def test_create_feedback_requires_auth(self) -> None:
         client = TestClient(app)
@@ -222,7 +222,7 @@ class TestFeedbackAPI:
         )
         resp = client.get(f"/projects/{pid}/feedback?feedback_type=question", headers=hdrs)
         assert resp.status_code == 200
-        items = resp.json()
+        items = resp.json()["items"]
         assert all(i["feedback_type"] == "question" for i in items)
 
     def test_disposition_feedback_item(self) -> None:
@@ -389,7 +389,7 @@ class TestNotificationLog:
         )
         resp = client.get(f"/projects/{pid}/notification-log", headers=hdrs)
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        assert isinstance(resp.json()["items"], list)
 
     def test_notification_log_requires_auth(self) -> None:
         client = TestClient(app)

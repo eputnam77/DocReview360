@@ -362,7 +362,7 @@ class TestWorkflowDisplayIntegration:
         # Verify project appears in workflow's project list
         projects_resp = client.get("/projects", headers=headers)
         assert projects_resp.status_code == 200
-        projects_list = projects_resp.json()
+        projects_list = projects_resp.json()["items"]
         project_in_list = next((p for p in projects_list if p["id"] == project["id"]), None)
         assert project_in_list is not None
         assert project_in_list["workflow"] == workflow_id

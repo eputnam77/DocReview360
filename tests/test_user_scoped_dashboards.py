@@ -86,7 +86,7 @@ def test_assignment_only_reviewer_sees_project_and_dashboard_counts() -> None:
 
     projects_resp = client.get("/projects", headers=bob_hdrs)
     assert projects_resp.status_code == 200
-    assert [project["id"] for project in projects_resp.json()] == ["p-review"]
+    assert [project["id"] for project in projects_resp.json()["items"]] == ["p-review"]
 
     dashboard_resp = client.get("/dashboard/user", headers=bob_hdrs)
     assert dashboard_resp.status_code == 200

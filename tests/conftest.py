@@ -343,3 +343,55 @@ def _reset_rate_limiters() -> Generator[None, None, None]:
         reset_rate_limiters_for_testing()
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def _reset_event_dispatcher() -> Generator[None, None, None]:
+    """Clear the dead-letter queue in event_dispatcher between tests.
+
+    The dead_letter_queue list is module-level and accumulates failed webhook
+    events across tests.  Tests that check the queue contents would otherwise
+    see entries from earlier tests.
+    """
+    try:
+        from docreview360.event_dispatcher import dead_letter_queue
+
+        dead_letter_queue.clear()
+    except Exception:
+        pass
+    yield
+    try:
+        from docreview360.event_dispatcher import dead_letter_queue
+
+        dead_letter_queue.clear()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _reset_notification_state() -> Generator[None, None, None]:
+    """Clear in-memory notification state between tests.
+
+    Clears:
+    - notifications.sent_emails — list of sent email records used in tests.
+    - notifications_router._device_tokens — in-memory push notification token store.
+    """
+    try:
+        from docreview360.notifications import sent_emails
+
+        sent_emails.clear()
+    except Exception:
+        pass
+    yield
+    try:
+        from docreview360.notifications import sent_emails
+
+        sent_emails.clear()
+    except Exception:
+        pass
+    try:
+        from docreview360.api.notifications_router import _device_tokens
+
+        _device_tokens.clear()
+    except Exception:
+        pass

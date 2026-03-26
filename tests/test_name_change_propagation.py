@@ -535,7 +535,7 @@ class TestNameChangePropagation:
         # Verify all related projects are updated
         resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
-        all_projects = resp.json()
+        all_projects = resp.json()["items"]
 
         # Check that projects using the renamed document type are updated
         updated_projects = [p for p in all_projects if p["doc_type"] == new_name]

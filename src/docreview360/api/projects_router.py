@@ -14,6 +14,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -407,13 +408,20 @@ async def _import_uploaded_file(
 # Routes
 # ---------------------------------------------------------------------------
 
-@router.get("/projects", response_model=list[ProjectModel])
+@router.get("/projects")
 async def list_projects_endpoint(
     user: str | None = None,
     x_user: str | None = Header(None),
+    skip: int = Query(0, ge=0, description="Number of projects to skip"),
+    limit: int = Query(20, ge=1, le=200, description="Maximum projects to return"),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> list[ProjectModel]:
-    """Return projects optionally filtered by user with simple caching."""
+) -> dict:
+    """Return projects optionally filtered by user, with pagination.
+
+    Response shape: ``{ items: [...], total: N, skip: 0, limit: 20 }``
+    """
+    from ..pagination import PaginatedResponse
+
     requested_user = (user or x_user) or None
     if requested_user:
         effective_user = _resolve_requested_user(requested_user, current_user)
@@ -421,21 +429,30 @@ async def list_projects_endpoint(
         effective_user = None if _is_admin_user(current_user) else current_user.username
     cache_key = f"projects-{effective_user or 'all'}"
     cached = cache_get(cache_key)
+    projects_list: list[ProjectModel]
     if cached:
         try:
             if isinstance(cached, bytes):
                 cached = cached.decode()
             data = json.loads(cached)
-            return [ProjectModel.model_validate(p) for p in data]
+            projects_list = [ProjectModel.model_validate(p) for p in data]
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             log_event("cache_decode_failed", key=cache_key, message=str(exc))
-    projects_list = list_projects(effective_user)
-    cache_set(
-        cache_key,
-        json.dumps([p.model_dump(mode="json") for p in projects_list]),
-        ttl=30,
-    )
-    return projects_list
+            projects_list = list_projects(effective_user)
+    else:
+        projects_list = list_projects(effective_user)
+        cache_set(
+            cache_key,
+            json.dumps([p.model_dump(mode="json") for p in projects_list]),
+            ttl=30,
+        )
+    page = PaginatedResponse.from_sequence(projects_list, skip=skip, limit=limit)
+    return {
+        "items": [p.model_dump(mode="json") if hasattr(p, "model_dump") else p for p in page.items],
+        "total": page.total,
+        "skip": page.skip,
+        "limit": page.limit,
+    }
 
 
 @router.get("/projects/assigned/{username}", response_model=list[ProjectModel])

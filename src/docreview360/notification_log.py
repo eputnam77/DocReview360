@@ -111,6 +111,25 @@ def log_notification(
     return entry
 
 
+def list_all_notification_log_for_user(
+    reviewer: str,
+    *,
+    limit: int = 200,
+) -> list[NotificationLogEntry]:
+    """Return notification log entries for a specific reviewer across all projects."""
+    _ensure_table()
+    db = get_db()
+    with db.session() as conn:
+        rows = conn.execute(
+            _text(
+                f"{_SELECT_ALL} WHERE reviewer = :reviewer "
+                "ORDER BY sent_at DESC LIMIT :limit"
+            ),
+            {"reviewer": reviewer, "limit": limit},
+        ).fetchall()
+    return [_row_to_entry(row) for row in rows]
+
+
 def list_notification_log(
     project_id: str,
     *,
