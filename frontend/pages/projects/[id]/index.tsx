@@ -46,6 +46,9 @@ import {
     ChevronDown,
     ChevronRight,
     Bell,
+    MapPin,
+    PanelRightOpen,
+    PanelRightClose,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -268,6 +271,10 @@ export default function ProjectDetailsPage() {
     tags: string[];
     question_satisfied: boolean;
     assignment_id?: string | null;
+    /** "inline" for TipTap-extracted marks, undefined for manual entries */
+    source?: string | null;
+    /** Position range anchor "from:to" for inline feedback */
+    range_anchor?: string | null;
   }
   interface FeedbackProgress {
     total: number;
@@ -2221,7 +2228,45 @@ export default function ProjectDetailsPage() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence
             </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSignaturesPreviewOpen((v) => !v)}
+              title={signaturesPreviewOpen ? "Hide document preview" : "Show document preview"}
+              data-testid="signatures-preview-toggle"
+            >
+              {signaturesPreviewOpen ? (
+                <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
+              ) : (
+                <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
+              )}
+            </Button>
           </div>
+
+          {/* Collapsible document preview panel */}
+          {signaturesPreviewOpen && (
+            <aside
+              data-testid="signatures-preview-panel"
+              className="border rounded-lg bg-gray-50 overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-2 bg-white border-b">
+                <span className="text-sm font-medium text-gray-700">Document Preview (read-only)</span>
+                <button
+                  onClick={() => setSignaturesPreviewOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-xs"
+                  aria-label="Close preview"
+                >
+                  Close
+                </button>
+              </div>
+              <iframe
+                src={`/editors/tiptap?projectId=${id}&readonly=1`}
+                title="Document preview"
+                className="w-full h-80 border-0 bg-white"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </aside>
+          )}
           <p className="text-sm text-gray-600 dark:text-gray-300">
             This section tracks each invited reviewer&apos;s review lifecycle after they have been assigned above.
             It is separate from phase approvals.
@@ -2453,15 +2498,55 @@ export default function ProjectDetailsPage() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <MessageSquare className="w-5 h-5" /> Feedback Ledger
             </h2>
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={`/projects/${id}#feedback`}
-                title="Jump to the Feedback tab for this project"
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFeedbackPreviewOpen((v) => !v)}
+                title={feedbackPreviewOpen ? "Hide document preview" : "Show document preview"}
+                data-testid="feedback-preview-toggle"
               >
-                Open review workspace
-              </Link>
-            </Button>
+                {feedbackPreviewOpen ? (
+                  <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
+                ) : (
+                  <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
+                )}
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  href={`/projects/${id}#feedback`}
+                  title="Jump to the Feedback tab for this project"
+                >
+                  Open review workspace
+                </Link>
+              </Button>
+            </div>
           </div>
+
+          {/* Collapsible document preview panel */}
+          {feedbackPreviewOpen && (
+            <aside
+              data-testid="feedback-preview-panel"
+              className="border rounded-lg bg-gray-50 overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-2 bg-white border-b">
+                <span className="text-sm font-medium text-gray-700">Document Preview (read-only)</span>
+                <button
+                  onClick={() => setFeedbackPreviewOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-xs"
+                  aria-label="Close preview"
+                >
+                  Close
+                </button>
+              </div>
+              <iframe
+                src={`/editors/tiptap?projectId=${id}&readonly=1`}
+                title="Document preview"
+                className="w-full h-80 border-0 bg-white"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </aside>
+          )}
 
           {/* Progress bar */}
           {feedbackProgress && feedbackProgress.total > 0 && (
@@ -2635,6 +2720,17 @@ export default function ProjectDetailsPage() {
                               </span>
                             </div>
                             <p className="text-sm mt-1">{item.text}</p>
+                            {/* Jump-to-location for inline feedback */}
+                            {item.source === "inline" && item.range_anchor && (
+                              <Link
+                                href={`/editors/tiptap?projectId=${id}&anchor=${item.range_anchor}`}
+                                className="inline-flex items-center gap-1 mt-1 text-xs text-indigo-600 hover:underline"
+                                title="Jump to this location in the editor"
+                                data-testid="jump-to-location"
+                              >
+                                <MapPin className="w-3 h-3" /> Jump to location
+                              </Link>
+                            )}
                             {item.disposition_reason && (
                               <p className="text-xs text-gray-500 mt-1 italic">
                                 Reason: {item.disposition_reason}
@@ -2742,13 +2838,13 @@ export default function ProjectDetailsPage() {
             );
           })()}
 
-          {/* Inline reviewer comments (legacy) */}
+          {/* Anchored Comments */}
           <Disclosure>
             {({ open }) => (
               <>
                 <Disclosure.Button className="w-full text-left">
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-600">
-                    <LayoutList className="w-4 h-4" /> Inline Document Comments{" "}
+                    <LayoutList className="w-4 h-4" /> Anchored Comments{" "}
                     {open ? "" : "(collapsed)"}
                   </h3>
                 </Disclosure.Button>
@@ -2763,7 +2859,21 @@ export default function ProjectDetailsPage() {
                   leaveTo="transform opacity-0 scale-95"
                 >
                   <Card>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-4 space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Comments are anchored to document locations. Use the TipTap editor to add
+                        them.{" "}
+                        <span className="inline-flex items-center gap-1">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                            Anchored
+                          </span>{" "}
+                          = location-pinned;{" "}
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                            Feedback
+                          </span>{" "}
+                          = general reviewer input (see Feedback Ledger above).
+                        </span>
+                      </p>
                       <ReviewerComments
                         docId={project.id}
                         currentUser={username ?? ""}

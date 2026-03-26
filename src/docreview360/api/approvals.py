@@ -41,6 +41,13 @@ class ReminderRequest(BaseModel):
     ids: list[str]
 
 
+class ApproveActionRequest(BaseModel):
+    """Request body for the approve action endpoint."""
+
+    method: str = "initials"  # "initials" | "signature"
+    note: str = ""
+
+
 def _safe_redirect_path(target: str) -> str | None:
     """Return ``target`` when it is a safe local redirect path."""
 
@@ -327,3 +334,76 @@ async def verify_signature_stream(
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+
+@router.post(
+    "/projects/{project_id}/approvals/{approval_id}/approve",
+    response_model=ApprovalModel,
+)
+@log_call
+async def project_approval_approve_endpoint(
+    project_id: str,
+    approval_id: str,
+    body: ApproveActionRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ApprovalModel:
+    """Approve an approval row as the assigned approver.
+
+    Only the user assigned to the approval may call this endpoint.  The
+    ``method`` field selects the approval mechanism: ``"initials"`` records an
+    in-app initialled timestamp; ``"signature"`` delegates to the configured
+    external signature provider.
+
+    Returns 403 if the caller is not the assigned approver.
+    Returns 409 if the approval is already approved.
+    """
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+
+    # Verify the project exists (approval is associated via workflow/document).
+    from ..search import get_project
+
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if approval.reviewer != current_user.username:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not the assigned approver for this approval.",
+        )
+
+    if approval.state == "approved":
+        raise HTTPException(status_code=409, detail="Approval is already completed.")
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+    sig_id = f"[in-app:{body.method}:{current_user.username}:{timestamp}]"
+    try:
+        updated = await update_approval_state(
+            approval_id,
+            "approved",
+            signature_id=sig_id,
+        )
+    except SignedApprovalImmutableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    log_event(
+        "approval_approved",
+        approval_id=approval_id,
+        user=current_user.username,
+        method=body.method,
+        project_id=project_id,
+        note=body.note,
+    )
+    log_audit_event(
+        approval.document_id,
+        "approval_approved",
+        actor=current_user.username,
+        approval_id=approval_id,
+        method=body.method,
+        project_id=project_id,
+        note=body.note,
+    )
+    return updated

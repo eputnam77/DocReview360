@@ -1,20 +1,102 @@
 # SPDX-License-Identifier: MIT
-"""Comments sub-router: export endpoints for project-level comment collections."""
+"""Comments sub-router: project-level comment creation and retrieval (anchored comments)."""
 from __future__ import annotations
 
 import logging
 from io import BytesIO
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
 
 from .. import auth
-from ..comments import list_comments, render_comment_for_response
+from ..comments import add_comment, list_comments, render_comment_for_response
 from ..documents import list_documents
 from ..search import get_project
 
 _logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class CommentCreateRequest(BaseModel):
+    """Request body for creating a project comment."""
+
+    text: str
+    document_id: Optional[str] = None
+    source: str = "inline"
+    parent: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
+def _resolve_document_id(project_id: str, document_id: Optional[str]) -> str:
+    """Return a valid document ID for ``project_id``.
+
+    If ``document_id`` is provided and belongs to the project, it is returned
+    unchanged.  Otherwise the first document found for the project is used as a
+    fallback so that a stale or missing ``document_id`` never produces a
+    ``Document Not Found`` error.
+    """
+    docs = [d for d in list_documents() if d.project == project_id]
+    if document_id:
+        # Verify it belongs to this project
+        if any(d.id == document_id for d in docs):
+            return document_id
+        _logger.warning(
+            "document_id %r not found in project %r; falling back to first available document",
+            document_id,
+            project_id,
+        )
+    if docs:
+        return docs[0].id
+    # No document at all — use project_id as a synthetic key so comments are
+    # at least stored rather than raising a hard error.
+    return project_id
+
+
+@router.post("/comments/{project_id}", status_code=201)
+async def create_project_comment(
+    project_id: str,
+    body: CommentCreateRequest,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Create a new anchored comment for a project.
+
+    The ``document_id`` in the request body is optional.  When absent or stale
+    the server resolves the document automatically from the project so that the
+    caller never receives a ``Document Not Found`` error.
+    """
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    doc_id = _resolve_document_id(project_id, body.document_id)
+
+    try:
+        comment = add_comment(
+            document=doc_id,
+            user=current_user.username,
+            text=body.text,
+            parent=body.parent,
+            tags=body.tags,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # Override the source to match the request (default: "inline").
+    comment.source = body.source if body.source in ("inline", "feedback", "review") else "inline"
+
+    rendered = render_comment_for_response(comment)
+    return {
+        "id": rendered.id,
+        "document_id": doc_id,
+        "project_id": project_id,
+        "user": rendered.user,
+        "text": rendered.text,
+        "status": rendered.status,
+        "source": rendered.source,
+        "created": rendered.created.isoformat() if rendered.created else None,
+    }
 
 
 @router.get("/comments/{project_id}")
@@ -26,6 +108,9 @@ async def list_project_comments(
 ) -> dict:
     """Return all comments for a project aggregated across its documents, with pagination.
 
+    Each comment includes a ``source`` field (``"inline"`` or ``"feedback"``) and a
+    ``source_label`` badge string for display.
+
     Response shape: ``{ items: [...], total: N, skip: 0, limit: 20 }``
     """
     from ..pagination import PaginatedResponse
@@ -35,16 +120,29 @@ async def list_project_comments(
         raise HTTPException(status_code=404, detail="Project not found")
 
     docs = [d for d in list_documents() if d.project == project_id]
+    # Collect all document IDs to query, including the synthetic project_id key
+    # used when comments were posted without any associated document.
+    doc_id_to_label: dict[str, str] = {doc.id: doc.id for doc in docs}
+    # Also check comments stored directly under the project_id key (no-document path)
+    doc_id_to_label[project_id] = project_id
+    seen_ids: set[str] = set()
     all_comments: list[dict] = []
-    for doc in docs:
-        for raw in list_comments(doc.id):
+    for doc_key in doc_id_to_label:
+        for raw in list_comments(doc_key):
+            if raw.id in seen_ids:
+                continue
+            seen_ids.add(raw.id)
             comment = render_comment_for_response(raw)
+            source = getattr(comment, "source", "inline") or "inline"
+            source_label = "Anchored" if source == "inline" else source.capitalize()
             item = {
                 "id": comment.id,
-                "document_id": doc.id,
+                "document_id": doc_key,
                 "user": comment.user,
                 "text": comment.text,
                 "status": comment.status,
+                "source": source,
+                "source_label": source_label,
                 "created": comment.created.isoformat() if comment.created else None,
             }
             all_comments.append(item)

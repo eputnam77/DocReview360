@@ -16,6 +16,10 @@ import {
   ChevronUp,
   ExternalLink,
   Keyboard,
+  ShieldCheck,
+  UserCog,
+  Eye,
+  CheckSquare,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -211,6 +215,83 @@ const QUICK_START_STEPS = [
 ];
 
 // ---------------------------------------------------------------------------
+// Role-based guidance data
+// ---------------------------------------------------------------------------
+
+const ROLE_SECTIONS: Array<{
+  value: string;
+  label: string;
+  icon: React.ReactNode;
+  subtitle: string;
+  tasks: string[];
+}> = [
+  {
+    value: "administrator",
+    label: "Administrator",
+    icon: <ShieldCheck className="w-4 h-4 mr-1.5" />,
+    subtitle:
+      "Administrators configure the workspace, manage users, and maintain the system.",
+    tasks: [
+      "Configure role-based permissions under Configuration → Permissions.",
+      "Create and manage user accounts via Configuration → User Management.",
+      "Define workflow templates and phases that projects will follow.",
+      "Set up document types to control which workflow applies to each project.",
+      "Connect external integrations such as Documenso or DocuSign for electronic signatures.",
+      "Review audit logs and system activity from Configuration → Audit Logs.",
+      "Customize branding (logo, product name) under Configuration → Branding.",
+    ],
+  },
+  {
+    value: "project-owner",
+    label: "Project Owner",
+    icon: <UserCog className="w-4 h-4 mr-1.5" />,
+    subtitle:
+      "Project owners create projects, invite team members, and drive the review process forward.",
+    tasks: [
+      "Create a project from Projects → New Project; select a document type and workflow template.",
+      "Upload or create documents in the project's Documents tab.",
+      "Invite reviewers using the Reviewers section and set optional due dates.",
+      "Add formal approval rows in the Approvals section for phases that require sign-off.",
+      "Monitor the Feedback Ledger to track reviewer input and disposition comments.",
+      "Advance the project phase once all required approvals and feedback are addressed.",
+      "Download approval summaries and send reminder notifications to pending approvers.",
+    ],
+  },
+  {
+    value: "reviewer",
+    label: "Reviewer",
+    icon: <Eye className="w-4 h-4 mr-1.5" />,
+    subtitle:
+      "Reviewers examine documents and provide structured feedback for the project owner to address.",
+    tasks: [
+      "Access your assigned projects from the Projects list or the dashboard.",
+      "Open a document and read it in the viewer or TipTap editor.",
+      "Submit feedback items (comment, question, suggestion, non-concurrence) from the Feedback tab.",
+      "Add anchored comments directly in the TipTap editor to pin notes to specific locations.",
+      "Mark a question as satisfied once the project owner has answered it.",
+      "Concur with the document — optionally with comments — to record your sign-off.",
+      "Respond to disposition decisions made by the project owner on your feedback items.",
+    ],
+  },
+  {
+    value: "approver",
+    label: "Approver",
+    icon: <CheckSquare className="w-4 h-4 mr-1.5" />,
+    subtitle:
+      "Approvers provide formal sign-off using a configured signature method, creating a legal record.",
+    tasks: [
+      "You receive a notification when you are added to the Approvals table for a project.",
+      "Open the project and navigate to the Approvals section.",
+      "Click the Approve button next to your approval row.",
+      "Select your signature method: in-app initials, Documenso, or DocuSign (as configured).",
+      "Confirm your approval — this creates a cryptographically linked audit record.",
+      "Contact the project owner if you need the approval reset due to a document change.",
+      "Download your signed approval PDF from the Approvals section for your own records.",
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
@@ -267,11 +348,17 @@ export default function HelpPage() {
       </div>
 
       <Tabs defaultValue="getting-started">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="getting-started">
             <Rocket className="w-4 h-4 mr-1.5" />
             Getting Started
           </TabsTrigger>
+          {ROLE_SECTIONS.map((role) => (
+            <TabsTrigger key={role.value} value={role.value}>
+              {role.icon}
+              {role.label}
+            </TabsTrigger>
+          ))}
           <TabsTrigger value="concepts">
             <BookOpen className="w-4 h-4 mr-1.5" />
             Key Concepts
@@ -340,6 +427,27 @@ export default function HelpPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ---- Role-based sections -------------------------------------- */}
+        {ROLE_SECTIONS.map((role) => (
+          <TabsContent key={role.value} value={role.value} className="mt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">{role.subtitle}</p>
+            <Card>
+              <CardContent className="pt-4">
+                <ul className="space-y-2">
+                  {role.tasks.map((task, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <span className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span>{task}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
 
         {/* ---- Key Concepts --------------------------------------------- */}
         <TabsContent value="concepts" className="mt-6 space-y-4">

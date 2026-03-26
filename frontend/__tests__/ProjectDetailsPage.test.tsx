@@ -103,6 +103,9 @@ vi.mock("lucide-react", () => {
     ChevronDown: Icon,
     ChevronRight: Icon,
     Bell: Icon,
+    MapPin: Icon,
+    PanelRightOpen: Icon,
+    PanelRightClose: Icon,
   };
 });
 

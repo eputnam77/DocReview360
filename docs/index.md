@@ -25,7 +25,7 @@ If you are an end user (reviewer/author) using the web app, use the in-app help 
 
 ## Product/release notes
 
-- [CHANGELOG](../CHANGELOG.md) is the source of truth for shipped versions and release history.
+- [CHANGELOG](changelog.md) is the source of truth for shipped versions and release history.
 
 ## About documentation ownership
 

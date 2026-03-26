@@ -29,3 +29,6 @@ global-exclude *.lock
 global-exclude .env
 global-exclude .env.*
 global-exclude node_modules
+global-exclude *.db
+global-exclude *.sqlite
+global-exclude *.tmp
