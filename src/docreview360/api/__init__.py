@@ -1240,6 +1240,14 @@ if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     set_guardrails(contains_pii)
     app.add_middleware(GuardrailsMiddleware, checker=contains_pii)
 
+# Mount Prometheus scrape endpoint at /metrics.
+# Disabled when DOCREVIEW360_METRICS_DISABLED=1 (e.g. for test environments
+# that do not want the prometheus_client global registry polluted).
+if os.environ.get("DOCREVIEW360_METRICS_DISABLED", "").lower() not in {"1", "true", "yes"}:
+    from prometheus_client import make_asgi_app as _make_prom_asgi_app
+
+    _metrics_app = _make_prom_asgi_app()
+    app.mount("/metrics", _metrics_app)
 
 
 # Startup/shutdown now handled via lifespan

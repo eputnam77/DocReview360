@@ -78,7 +78,8 @@ Target window: next month (confirm exact date and time zone).
   document upload or view or edit, approval request flow, PDF or Markdown export,
   backend-unavailable UI handling.
 - [ ] Verify GitHub Actions CI passes on a clean run.
-- [ ] Ensure the CI coverage threshold matches the release gate.
+- [x] Ensure the CI coverage threshold matches the release gate.
+  Touch: `.github/workflows/ci.yml` (80% → 90%). (2026-03-26)
 - [ ] Decide whether PyPI publish should be automated on tag.
 
 ### Deployment readiness
@@ -386,8 +387,9 @@ place and was removed from this file.
   `src/docreview360/api/tools_router.py`. (2026-03-26)
 - [x] R-08. Split `src/docreview360/models.py` into domain packages with
   backward-compatible re-exports. (2026-03-26)
-- [ ] R-09. Break up `frontend/pages/projects/[id]/index.tsx` into smaller
+- [x] R-09. Break up `frontend/pages/projects/[id]/index.tsx` into smaller
   project components.
+  Touch: `frontend/components/project/` (new), `frontend/pages/projects/[id]/index.tsx`. (2026-03-26)
 - [x] R-10. Replace the placeholder Dependabot config with real update rules for
   `pip`, `npm`, and `github-actions`.
   Touch: `.github/dependabot.yml`. (2026-03-25)
@@ -406,24 +408,19 @@ place and was removed from this file.
 
 ### P2: Longer-term hardening
 
-- [ ] R-14. Introduce a service layer for core business logic.
-  Touch: `src/docreview360/services/` (new), routers incrementally.
-- [ ] R-15. Add property-based tests for models, crypto, and search behavior.
-  Touch: `pyproject.toml`, `tests/property/`.
+- [x] R-14. Introduce a service layer for core business logic.
+  Touch: `src/docreview360/services/` (new), routers incrementally. (2026-03-26)
+- [x] R-15. Add property-based tests for models, crypto, and search behavior.
+  Touch: `pyproject.toml`, `tests/property/`. (2026-03-26)
 - [x] R-16. Add per-module coverage reporting.
   Touch: `scripts/coverage-by-module.py` (new), `.github/workflows/ci.yml`. (2026-03-25)
-- [ ] R-17. Remove the deprecated frontend API proxy once all consumers are
+- [x] R-17. Remove the deprecated frontend API proxy once all consumers are
   migrated.
-  Current remaining imports:
-  `frontend/pages/api/document-types/[...slug].ts`,
-  `frontend/pages/api/document-types/index.ts`,
-  `frontend/pages/api/profile.ts`,
-  `frontend/pages/api/phases.ts`,
-  `frontend/pages/api/phases/[...slug].ts`.
-  Touch: `frontend/lib/apiProxy.ts`, those API route files, and a lint guard to
-  prevent reintroduction.
-- [ ] R-18. Expose a Prometheus scrape endpoint.
-  Touch: `src/docreview360/api/__init__.py`, `src/docreview360/monitoring.py`.
+  Touch: `frontend/lib/apiProxy.ts` (deleted), proxy route files (deleted),
+  `frontend/scripts/check-no-api-proxy.sh` (lint guard added),
+  `frontend/package.json` (lint:no-api-proxy script added). (2026-03-26)
+- [x] R-18. Expose a Prometheus scrape endpoint.
+  Touch: `src/docreview360/api/__init__.py`, `tests/api/test_metrics_endpoint.py`. (2026-03-26)
 - [x] R-19. Add migration safety tooling and docs.
   Touch: `scripts/check-migration-safety.py` (new), `alembic/`,
   `.github/workflows/ci.yml`, `docs/migrations.md`. (2026-03-25)

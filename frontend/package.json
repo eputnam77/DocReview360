@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "vitest run --configLoader runner",
     "lint:no-raw-fetch": "bash scripts/check-raw-fetch.sh",
+    "lint:no-api-proxy": "bash scripts/check-no-api-proxy.sh",
     "lint:api-fetch": "node ../scripts/check-api-fetch-pattern.mjs",
     "lint:i18n": "node scripts/check-hardcoded-strings.mjs"
   },
