@@ -95,8 +95,11 @@ Target window: next month (confirm exact date and time zone).
 
 **Phase 4: API ergonomics**
 
-- [ ] Decide whether to add a compact rendered document-view endpoint for
-  read-only mobile viewing.
+- [x] Decide whether to add a compact rendered document-view endpoint for
+  read-only mobile viewing. (2026-03-26)
+  Decision: YES. Added `GET /documents/{doc_id}/compact` to `documents_router.py`;
+  returns plain_text, word_count, version_number, frozen, and quality fields.
+  Covered by `tests/test_item50_item51_backlog.py::TestCompactDocumentView`.
 
 **Phase 5: iOS planning outside this repo**
 
@@ -110,14 +113,15 @@ Target window: next month (confirm exact date and time zone).
 
 **Project view, review flow, and approvals**
 
-- [ ] Clarify or redesign the relationship between Reviewer Sign-off and
-  Concurrence versus Approvals.
-  The current distinction is not clear, the concurred date is missing where it
-  should appear, and this may need either a combined experience or an
-  administrator-selectable level of formality.
-  Touch: `frontend/pages/projects/[id]/index.tsx`,
-  `src/docreview360/api/assignments_router.py`, `src/docreview360/api/approvals.py`,
-  `src/docreview360/concurrence_gate.py`, help text or documentation.
+- [x] Clarify or redesign the relationship between Reviewer Sign-off and
+  Concurrence versus Approvals. (2026-03-26)
+  Added `ReviewerSignOff` model and `reviewer_sign_offs` list to `ReviewSummary`
+  in `concurrence_gate.py` — each entry exposes the reviewer, outcome, and
+  `concurred_at` timestamp (fixing the missing concurred-date gap).
+  Added `GET /projects/{project_id}/sign-off-map` to `assignments_router.py` that
+  returns a side-by-side breakdown of lightweight concurrences vs. formal approvals
+  with a `formality_note` explaining when each is appropriate.
+  Covered by `tests/test_item50_item51_backlog.py`.
 
 ## 3. Reliability hardening plan
 

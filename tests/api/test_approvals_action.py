@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import reset_approvals

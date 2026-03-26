@@ -29,6 +29,19 @@ class ConcurrenceEligibility(BaseModel):
     reason: Optional[str] = None  # human-readable explanation when not eligible
 
 
+class ReviewerSignOff(BaseModel):
+    """Sign-off record for a single reviewer (used in ReviewSummary).
+
+    Exposes the concurred/signed timestamp so UIs can display when each
+    reviewer completed their sign-off, addressing the missing concurred-date
+    issue described in Item 51.
+    """
+
+    reviewer: str
+    outcome: str  # concurred | non_concurred | signed | declined | in_progress
+    concurred_at: Optional[str] = None  # ISO-8601 timestamp from signed_at field
+
+
 class ReviewSummary(BaseModel):
     """Aggregate review state for a project — drives lifecycle stepper + banner."""
 
@@ -40,13 +53,15 @@ class ReviewSummary(BaseModel):
     non_concurred: int
     signed: int
     declined: int
-    all_complete: bool     # every active assignment is in a terminal status
-    all_signed: bool       # all active assignments are concurred or signed
+    all_complete: bool  # every active assignment is in a terminal status
+    all_signed: bool  # all active assignments are concurred or signed
     has_non_concurrence: bool
-    lifecycle_step: str    # assign_reviewers | collect_feedback | address_feedback | collect_signatures | complete
+    lifecycle_step: str  # assign_reviewers | collect_feedback | address_feedback | collect_signatures | complete
     feedback_total: int
     feedback_open: int
     feedback_addressed: int
+    reviewer_sign_offs: list[ReviewerSignOff] = []
+    """Per-reviewer sign-off records with concurred date.  Empty when no active assignments."""
 
 
 # ---------------------------------------------------------------------------
@@ -54,9 +69,7 @@ class ReviewSummary(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def check_concurrence_eligibility(
-    project_id: str, assignment_id: str
-) -> ConcurrenceEligibility:
+def check_concurrence_eligibility(project_id: str, assignment_id: str) -> ConcurrenceEligibility:
     """Return whether a reviewer may concur.
 
     Rules:
@@ -169,6 +182,22 @@ def get_review_summary(project_id: str) -> ReviewSummary:
 
     step = _compute_lifecycle_step(assignments, fb_total, fb_open)
 
+    sign_offs: list[ReviewerSignOff] = []
+    for a in active:
+        if a.status in ("concurred", "signed"):
+            outcome = a.status
+            ts = a.signed_at.isoformat() if a.signed_at else None
+        elif a.status == "non_concurred":
+            outcome = "non_concurred"
+            ts = a.signed_at.isoformat() if a.signed_at else None
+        elif a.status == "declined":
+            outcome = "declined"
+            ts = None
+        else:
+            outcome = "in_progress"
+            ts = None
+        sign_offs.append(ReviewerSignOff(reviewer=a.reviewer, outcome=outcome, concurred_at=ts))
+
     return ReviewSummary(
         total_active=len(active),
         invited=_cnt("invited"),
@@ -185,4 +214,5 @@ def get_review_summary(project_id: str) -> ReviewSummary:
         feedback_total=fb_total,
         feedback_open=fb_open,
         feedback_addressed=fb_addressed,
+        reviewer_sign_offs=sign_offs,
     )

@@ -12,6 +12,7 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from ..logs import log_event
 from ..workflows import get_workflow
 from ._external import (
     ExternalSearchClient,
@@ -29,7 +30,6 @@ from ._models import (
     ProjectModel,
     SavedSearch,
 )
-from ..logs import log_event
 from ._query import (
     TEMP_ASSIGN_MAX_DAYS,
     _match_all_terms,
