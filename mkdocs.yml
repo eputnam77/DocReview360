@@ -8,6 +8,7 @@ nav:
   - Usage Scenarios: scenarios.md
   - Developer Guide: developer.md
   - Deployment: deployment.md
+  - Settings Reference: settings.md
   - Security:
       - Key Rotation: security/key-rotation.md
       - Patch Flow: security/patch-flow.md
