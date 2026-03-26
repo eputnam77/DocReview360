@@ -519,6 +519,85 @@ def hash_new_log_segments(
     return count
 
 
+_ACTION_TEMPLATES: dict[str, str] = {
+    # Auth
+    "login": "{user} logged in",
+    "logout": "{user} logged out",
+    "login_failed": "Login failed for {user}",
+    "token_refresh": "{user} refreshed their session token",
+    "mfa_verified": "{user} completed MFA verification",
+    # Project lifecycle
+    "create_project": "{user} created project {project_id}",
+    "update_project": "{user} updated project {project_id}",
+    "delete_project": "{user} deleted project {project_id}",
+    "read": "{user} viewed {entity_id}",
+    "archive_project": "{user} archived project {project_id}",
+    # Document
+    "upload_document": "{user} uploaded document {entity_id}",
+    "delete_document": "{user} deleted document {entity_id}",
+    "export_document": "{user} exported document {entity_id}",
+    "sign_document": "{user} signed document {entity_id}",
+    # Feedback
+    "feedback.submitted": "{user} submitted feedback on {entity_id}",
+    "feedback.replied": "{user} replied to feedback on {entity_id}",
+    "feedback.disposed": "{user} resolved feedback on {entity_id}",
+    # Approval
+    "approval_created": "{user} created an approval for {entity_id}",
+    "approval_updated": "{user} updated approval {entity_id}",
+    "approval_signed": "{user} signed approval {entity_id}",
+    # Assignments
+    "assignment_created": "{user} assigned {entity_id} as reviewer",
+    "assignment_updated": "{user} updated assignment {entity_id}",
+    "assignment_concurred": "{user} concurred on {entity_id}",
+    "assignment_non_concurred": "{user} non-concurred on {entity_id}",
+    # Admin
+    "user_created": "{user} created user account {entity_id}",
+    "user_updated": "{user} updated user account {entity_id}",
+    "user_deleted": "{user} deleted user account {entity_id}",
+    "role_updated": "{user} updated roles for {entity_id}",
+    # Workflow
+    "workflow_started": "{user} started workflow {entity_id}",
+    "workflow_advanced": "{user} advanced workflow {entity_id}",
+    # Audit
+    "audit_log_access": "{user} accessed audit logs",
+    # Generic fallback keys that were previously raw endpoint names
+    "list_workflows_endpoint": "{user} listed workflows",
+    "list_projects_endpoint": "{user} listed projects",
+    "list_documents_endpoint": "{user} listed documents",
+    "get_project_endpoint": "{user} viewed project {entity_id}",
+    "get_document_endpoint": "{user} viewed document {entity_id}",
+}
+
+
+def humanize_audit_action(
+    action: str,
+    user_id: str | None = None,
+    entity_id: str | None = None,
+    details: dict[str, Any] | None = None,
+) -> str:
+    """Return a human-readable description of an audit event.
+
+    Falls back to a title-cased version of the action name when no template
+    matches, so unknown events are still somewhat readable.
+    """
+    details = details or {}
+    user = user_id or details.get("user_id") or "Unknown user"
+    entity = entity_id or details.get("entity_id") or details.get("project_id") or ""
+    project = details.get("project_id") or entity
+
+    template = _ACTION_TEMPLATES.get(action)
+    if template is None:
+        # Normalise raw endpoint names like "list_workflows_endpoint"
+        label = action.replace("_endpoint", "").replace("_", " ").title()
+        return f"{user}: {label}" + (f" ({entity})" if entity else "")
+
+    return template.format(
+        user=user,
+        entity_id=entity,
+        project_id=project,
+    )
+
+
 def schedule_audit_log_purge() -> None:
     """Configure periodic purging of expired audit log entries."""
     from .celery_app import app

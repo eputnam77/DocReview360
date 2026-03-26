@@ -816,10 +816,14 @@ async def export_document_endpoint(
         data, media, filename = export_document(document, fmt, name_template=template)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    content_bytes = data if isinstance(data, bytes) else data.encode()
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}",
+        "Content-Length": str(len(content_bytes)),
+    }
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id=doc_id, format=fmt)
-    return Response(content=data, media_type=media, headers=headers)
+    return Response(content=content_bytes, media_type=media, headers=headers)
 
 
 # ---------------------------------------------------------------------------
@@ -900,9 +904,11 @@ async def download_report(
         raise HTTPException(status_code=404, detail="Document not found")
     _enforce_document_access(document, current_user)
     if fmt == "html" and record.report_html is not None:
-        return Response(record.report_html, media_type="text/html")
+        body = record.report_html.encode() if isinstance(record.report_html, str) else record.report_html
+        return Response(body, media_type="text/html", headers={"Content-Length": str(len(body))})
     if fmt == "pdf" and record.report_pdf is not None:
-        return Response(record.report_pdf, media_type="application/pdf")
+        body = record.report_pdf if isinstance(record.report_pdf, bytes) else record.report_pdf.encode()
+        return Response(body, media_type="application/pdf", headers={"Content-Length": str(len(body))})
     raise HTTPException(status_code=404, detail="Report not found")
 
 

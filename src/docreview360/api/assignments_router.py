@@ -9,7 +9,7 @@ from datetime import datetime as _datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .. import auth
 from ..logs import log_event
@@ -46,7 +46,7 @@ def _emit_webhook(event: str, data: dict) -> None:
 
 
 class AssignmentCreate(BaseModel):
-    reviewer: str
+    reviewer: str = Field(min_length=1, max_length=150)
     due_date: datetime | None = None
 
 
@@ -55,21 +55,21 @@ class AssignmentUpdate(BaseModel):
 
 
 class ReplaceBody(BaseModel):
-    replacement_reviewer: str
-    reason: str
+    replacement_reviewer: str = Field(min_length=1, max_length=150)
+    reason: str = Field(min_length=1, max_length=1000)
     due_date: datetime | None = None
 
 
 class NonConcurBody(BaseModel):
-    reason: str
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 class SignInternalBody(BaseModel):
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=1000)
 
 
 class ConcurWithCommentsBody(BaseModel):
-    text: str
+    text: str = Field(min_length=1, max_length=10_000)
 
 
 # ---------------------------------------------------------------------------
