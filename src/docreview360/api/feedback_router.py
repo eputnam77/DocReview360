@@ -76,7 +76,7 @@ class DispositionBody(BaseModel):
     @field_validator("status")
     @classmethod
     def status_must_be_valid(cls, v: str) -> str:
-        valid = FEEDBACK_STATUSES - {"open"}
+        valid = set(FEEDBACK_STATUSES) - {"open"}
         if v not in valid:
             raise ValueError(f"status must be one of {sorted(valid)}")
         return v
