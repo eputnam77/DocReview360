@@ -33,6 +33,8 @@ import { useUserStore } from "@/state/user";
 
 // Custom TipTap extensions
 import { tiptapStructure } from "../../extensions/tiptapStructure";
+import { CommentMark } from "../../extensions/tiptapComments";
+import { TrackChanges } from "../../extensions/tiptapTrackChanges";
 
 // Hocuspocus provider for server-backed collaboration
 import { HocuspocusProvider } from "@hocuspocus/provider";
@@ -595,6 +597,10 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   const [watermarkStatus, setWatermarkStatus] = useState<ExtensionStatus>("idle");
   const [watermarkText, setWatermarkText] = useState("Sample");
 
+  // Inline comments and track-changes extensions (always enabled when loaded)
+  const [commentMarkEnabled, setCommentMarkEnabled] = useState(true);
+  const [trackChangesEnabled, setTrackChangesEnabled] = useState(true);
+
   // Submit confirmation modal
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
@@ -968,6 +974,13 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     if (watermarkEnabled && watermarkExtension) {
       base.push(watermarkExtension(watermarkText));
     }
+    // Inline comments and track-changes (always-on when enabled)
+    if (commentMarkEnabled) {
+      base.push(CommentMark as any);
+    }
+    if (trackChangesEnabled) {
+      base.push(TrackChanges as any);
+    }
     base.push(tiptapStructure());
     return base;
 
@@ -989,6 +1002,8 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     watermarkEnabled,
     watermarkExtension,
     watermarkText,
+    commentMarkEnabled,
+    trackChangesEnabled,
   ]);
 
   // TipTap Editor
@@ -1024,6 +1039,53 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       editor.commands.setContent(content);
     }
   }, [editor, content]);
+
+  /**
+   * Extract inline comment and track-change marks from the TipTap document and
+   * POST each as a feedback item with source="inline" and a range anchor.
+   * Called during Submit Review before saving the final revision.
+   */
+  const extractAndPostInlineMarks = useCallback(async () => {
+    if (!editor || !projectId) return;
+    const state = editor.state;
+    const doc = state.doc;
+    const inlineItems: Array<{ text: string; feedback_type: string; range: string }> = [];
+
+    doc.descendants((node, pos) => {
+      for (const mark of node.marks) {
+        if (mark.type.name === "commentMark") {
+          const meta = mark.attrs.metadata ? JSON.parse(mark.attrs.metadata as string) : {};
+          inlineItems.push({
+            text: meta.text ?? node.textContent ?? "(inline comment)",
+            feedback_type: "comment",
+            range: `${pos}:${pos + node.nodeSize}`,
+          });
+        } else if (mark.type.name === "trackInsertion" || mark.type.name === "trackDeletion") {
+          const changeType = mark.type.name === "trackInsertion" ? "insertion" : "deletion";
+          inlineItems.push({
+            text: `Track-change (${changeType}): "${node.textContent}"`,
+            feedback_type: "suggestion",
+            range: `${pos}:${pos + node.nodeSize}`,
+          });
+        }
+      }
+    });
+
+    await Promise.allSettled(
+      inlineItems.map((item) =>
+        authenticatedFetch(`${API}/projects/${projectId}/feedback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: item.text,
+            feedback_type: item.feedback_type,
+            source: "inline",
+            range_anchor: item.range,
+          }),
+        }),
+      ),
+    );
+  }, [editor, projectId]);
 
   const restoreRevision = useCallback(
     async (id: string) => {
@@ -1600,6 +1662,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
                     <button
                       className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
                       onClick={async () => {
+                        await extractAndPostInlineMarks();
                         await saveRevision(editor.getHTML(), true, true);
                         setSubmitDone(true);
                         toast.success("Document submitted for review.");

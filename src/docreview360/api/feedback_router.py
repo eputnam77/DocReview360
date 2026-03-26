@@ -52,6 +52,8 @@ class FeedbackCreate(BaseModel):
     assignment_id: Optional[str] = Field(default=None, max_length=100)
     phase: Optional[str] = Field(default=None, max_length=100)
     tags: list[str] = Field(default_factory=list, max_length=20)
+    source: Optional[str] = Field(default=None, max_length=50)
+    range_anchor: Optional[str] = Field(default=None, max_length=100)
 
     @field_validator("feedback_type")
     @classmethod
@@ -210,6 +212,8 @@ async def create_project_feedback(
         feedback_type=body.feedback_type,
         phase=body.phase,
         tags=body.tags,
+        source=body.source,
+        range_anchor=body.range_anchor,
     )
     # Notify SME when a question is asked
     if body.feedback_type == "question":

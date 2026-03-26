@@ -46,6 +46,10 @@ class FeedbackItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
     # Reviewer can mark a "question" as satisfied after SME answers
     question_satisfied: bool = False
+    # Inline comment source: "inline" for TipTap-extracted marks, None for manual
+    source: Optional[str] = None
+    # Range anchor from TipTap document position: "from:to" e.g. "42:57"
+    range_anchor: Optional[str] = None
 
 
 class FeedbackProgress(BaseModel):
@@ -67,7 +71,7 @@ class FeedbackProgress(BaseModel):
 _SELECT_ALL = (
     "SELECT id, project_id, assignment_id, reviewer, feedback_type, text, phase, status, "
     "created_at, disposition_by, disposition_at, disposition_reason, parent_id, tags, "
-    "question_satisfied "
+    "question_satisfied, source, range_anchor "
     "FROM feedback_items"
 )
 
@@ -92,7 +96,9 @@ def _ensure_table() -> None:
                 disposition_reason TEXT,
                 parent_id TEXT,
                 tags TEXT NOT NULL DEFAULT '',
-                question_satisfied INTEGER NOT NULL DEFAULT 0
+                question_satisfied INTEGER NOT NULL DEFAULT 0,
+                source TEXT,
+                range_anchor TEXT
             )
         """))
         conn.execute(_text(
@@ -136,6 +142,8 @@ def _row_to_model(row: Any) -> FeedbackItem:
         parent_id=row[12],
         tags=tags,
         question_satisfied=bool(row[14]),
+        source=row[15] if len(row) > 15 else None,
+        range_anchor=row[16] if len(row) > 16 else None,
     )
 
 
@@ -154,6 +162,8 @@ def create_feedback_item(
     phase: Optional[str] = None,
     parent_id: Optional[str] = None,
     tags: Optional[list[str]] = None,
+    source: Optional[str] = None,
+    range_anchor: Optional[str] = None,
 ) -> FeedbackItem:
     """Create and persist a new feedback item."""
     _ensure_table()
@@ -170,6 +180,8 @@ def create_feedback_item(
         created_at=now,
         parent_id=parent_id,
         tags=tags or [],
+        source=source,
+        range_anchor=range_anchor,
     )
     db = get_db()
     with db.session() as conn:
@@ -178,11 +190,11 @@ def create_feedback_item(
                 INSERT INTO feedback_items
                     (id, project_id, assignment_id, reviewer, feedback_type, text, phase,
                      status, created_at, disposition_by, disposition_at, disposition_reason,
-                     parent_id, tags, question_satisfied)
+                     parent_id, tags, question_satisfied, source, range_anchor)
                 VALUES
                     (:id, :project_id, :assignment_id, :reviewer, :feedback_type, :text, :phase,
                      :status, :created_at, :disposition_by, :disposition_at, :disposition_reason,
-                     :parent_id, :tags, :question_satisfied)
+                     :parent_id, :tags, :question_satisfied, :source, :range_anchor)
             """),
             {
                 "id": item.id,
@@ -200,6 +212,8 @@ def create_feedback_item(
                 "parent_id": item.parent_id,
                 "tags": ",".join(item.tags),
                 "question_satisfied": 0,
+                "source": item.source,
+                "range_anchor": item.range_anchor,
             },
         )
     return item
