@@ -15,21 +15,15 @@ Covers:
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import approvals, create_approval
 from docreview360.doc_validation import (
-    AcronymIssue,
-    HeadingIssue,
     PreflightResult,
-    StyleIssue,
     is_ai_style_enabled,
     preflight_validate,
     score_plain_language,
@@ -46,11 +40,10 @@ from docreview360.template_manager import (
     list_template_versions,
     lock_template_for_phase,
     reset_template_phase_locks,
-    reset_template_store,
     unlock_template_for_phase,
     upload_template,
 )
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers

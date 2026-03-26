@@ -360,6 +360,7 @@ def create_user_session(
     active sessions the oldest one is revoked to make room.
     """
     from sqlalchemy import text as _text
+
     from . import auth as _auth
 
     db = _get_db()

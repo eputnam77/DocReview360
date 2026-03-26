@@ -4,7 +4,6 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-
 from docreview360 import certs
 from docreview360.integrations.signature import documenso
 

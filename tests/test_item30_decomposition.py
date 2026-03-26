@@ -11,9 +11,6 @@ Item 30: Decompose remaining large modules into packages.
 
 from __future__ import annotations
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # workflows package
 # ---------------------------------------------------------------------------
@@ -345,7 +342,7 @@ class TestDocumentsPackage:
         assert callable(register_ingestion_pipeline)
 
     def test_import_ingestion_registry(self) -> None:
-        from docreview360.documents import ingestion_registry, IngestionRegistry
+        from docreview360.documents import IngestionRegistry, ingestion_registry
 
         assert isinstance(ingestion_registry, IngestionRegistry)
 
@@ -465,17 +462,16 @@ class TestSearchPackage:
         assert isinstance(projects, dict)
 
     def test_import_search_index_instance(self) -> None:
-        from docreview360.search import search_index, SearchIndex
+        from docreview360.search import SearchIndex, search_index
 
         assert isinstance(search_index, SearchIndex)
 
     def test_import_locks(self) -> None:
         import threading
+
         from docreview360.search import (
-            counter_lock,
             index_lock,
             project_lock,
-            saved_search_lock,
         )
 
         assert isinstance(project_lock, type(threading.Lock()))
@@ -615,18 +611,8 @@ class TestAuthPackage:
 
     def test_import_constants(self) -> None:
         from docreview360.auth import (
-            ALGORITHM,
             DEMO_USER_DEFAULTS,
-            LOCKOUT_DURATION,
-            LOCKOUT_SECONDS,
-            MAX_FAILED_ATTEMPTS,
-            OIDC_ALGORITHM,
-            REQUIRE_MFA,
             SAFE_DEFAULT_ENVS,
-            SEED_DEMO_USERS,
-            TOKEN_AUDIENCE,
-            TOKEN_ISSUER,
-            USER_DB_PATH,
             USER_REPOSITORY,
         )
 
@@ -642,7 +628,6 @@ class TestAuthPackage:
 
     def test_import_keycloak_helpers(self) -> None:
         from docreview360.auth import (
-            _authenticate_keycloak_stub,
             authenticate_keycloak,
             has_role,
             keycloak_mfa_login,
@@ -691,7 +676,6 @@ class TestCrossModuleImports:
 
     def test_search_imports_from_documents(self) -> None:
         """search imports DocumentModel from documents."""
-        from docreview360.documents import DocumentModel
         from docreview360.search import search_index
 
         assert search_index is not None
@@ -699,7 +683,6 @@ class TestCrossModuleImports:
     def test_search_imports_from_workflows(self) -> None:
         """search.ProjectModel uses get_workflow from workflows."""
         from docreview360.search import ProjectModel
-        from docreview360.workflows import get_workflow
 
         pm = ProjectModel(id="test", name="test", workflow=None)
         # phase is None when no workflow assigned

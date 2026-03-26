@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from docreview360 import doc_types
 from docreview360.doc_types import DocumentTypeModel, import_document_types_json
 

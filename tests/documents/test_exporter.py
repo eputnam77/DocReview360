@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360 import exporter
 from docreview360.documents import DocumentModel
 

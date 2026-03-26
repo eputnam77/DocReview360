@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 import docreview360.event_dispatcher as ed_module
+import pytest
 from docreview360.event_dispatcher import EventDispatcher, dead_letter_queue
 
 

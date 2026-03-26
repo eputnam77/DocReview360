@@ -1,6 +1,5 @@
-import pytest
-
 import docreview360.phases as phases
+import pytest
 
 
 def test_delete_phase_missing_raises(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.plugin_marketplace import install_plugin
 
 

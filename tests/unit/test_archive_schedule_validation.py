@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 import pytest
-
 from docreview360 import archive
 from docreview360.celery_app import app
 

@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.ml.routing_critic import RoutingExample, train_routing_critic
 
 

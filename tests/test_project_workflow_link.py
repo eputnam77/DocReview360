@@ -1,8 +1,7 @@
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.workflows import workflows
+from fastapi.testclient import TestClient
 
 
 def _admin_headers() -> dict[str, str]:

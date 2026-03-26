@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+
 import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
@@ -11,11 +12,11 @@ os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 @pytest.fixture()
 def client_with_doc():
     """Return a TestClient and create a minimal project + document for branch tests."""
-    from fastapi.testclient import TestClient
-    from docreview360.api import app
     from docreview360 import auth, rbac
+    from docreview360.api import app
     from docreview360.db_store import get_db
     from docreview360.models import Document, Project
+    from fastapi.testclient import TestClient
 
     client = TestClient(app, raise_server_exceptions=True)
 

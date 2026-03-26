@@ -11,18 +11,17 @@ from pydantic import BaseModel
 
 from .. import auth
 from ..db_store import get_db
-from ..rbac import require_role
+from ..ediscovery import export_ediscovery
 from ..legal_hold import (
     add_document_to_hold,
     create_legal_hold,
     get_document_holds,
     get_legal_hold,
-    is_document_on_hold,
     list_legal_holds,
     release_hold,
     remove_document_from_hold,
 )
-from ..ediscovery import export_ediscovery
+from ..rbac import require_role
 
 router = APIRouter(tags=["legal"])
 

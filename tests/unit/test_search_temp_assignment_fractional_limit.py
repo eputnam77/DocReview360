@@ -1,7 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from docreview360.search import (
     TEMP_ASSIGN_MAX_DAYS,
     ProjectModel,

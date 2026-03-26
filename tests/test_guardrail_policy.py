@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.celery_app import quality_gate
 from docreview360.documents import DocumentModel
 from docreview360.exporter import (

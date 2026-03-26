@@ -9,10 +9,9 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def _make_admin_headers() -> dict[str, str]:

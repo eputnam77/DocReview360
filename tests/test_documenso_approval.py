@@ -1,7 +1,6 @@
 """Documenso approval and delegation tests."""
 
 import pytest
-
 from docreview360 import documenso
 from docreview360.logs import clear_logs, log_event, query_logs
 from docreview360.security_utils import create_signature

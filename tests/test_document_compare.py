@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.document_compare import influence_map, track_changes, version_similarity
 
 

@@ -9,14 +9,11 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
-import pytest
-
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
-
-from fastapi.testclient import TestClient
 
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -138,8 +135,8 @@ class TestDashboardPrefsUnit:
 
     def test_visibility_record_in_db(self) -> None:
         """Confirm a DashboardVisibilityRecord row is created in the DB."""
-        from docreview360.logs._db import _get_db
         from docreview360.dashboard_prefs import set_visibility
+        from docreview360.logs._db import _get_db
         from docreview360.models import DashboardVisibilityRecord
 
         user = "testuser_db_check_xyz"

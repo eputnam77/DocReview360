@@ -148,11 +148,7 @@ def _check_revocation(cert_pem: str) -> bool:
         return True
 
     try:
-        import urllib.request
 
-        from cryptography.x509 import ocsp as _ocsp
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.hashes import SHA1
 
         cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
 

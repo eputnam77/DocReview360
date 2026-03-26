@@ -2,7 +2,6 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-
 from docreview360.release_notes import generate_release_notes, read_project_version
 
 

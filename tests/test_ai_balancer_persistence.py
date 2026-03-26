@@ -3,8 +3,6 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from docreview360.ai_balancer import (
     _workers,
     assign_job,
@@ -13,6 +11,7 @@ from docreview360.ai_balancer import (
     reset,
     save_state,
 )
+from fastapi.testclient import TestClient
 
 
 def test_save_and_load_workers(tmp_path: Path) -> None:

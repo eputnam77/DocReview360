@@ -4,17 +4,16 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..audit import log_audit_event
 from ..db_store import get_db
-from ..documents import DocumentModel, documents, get_document, link_approval, unlink_approval
+from ..documents import DocumentModel, get_document, link_approval, unlink_approval
 from ..integrations.signature import get_default_provider
 from ..logs import log_event
-from ..workflows import workflows
 
 _logger = logging.getLogger(__name__)
 
@@ -193,6 +192,7 @@ def create_approval(
 ) -> ApprovalModel:
     """Create a pending approval for the given workflow and reviewer."""
     from uuid import uuid4
+
     from ..celery_app import app
     from .signatures import _hash_document_bytes
 
@@ -370,8 +370,8 @@ def get_approval_by_signature(signature_id: str) -> ApprovalModel | None:
 
 def approval_dashboard() -> List[Dict[str, Any]]:
     """Return approval data including provider configuration and audit trail."""
-    from .signatures import _hash_document_model as _hash_doc_model
     from ..audit import get_audit_log
+    from .signatures import _hash_document_model as _hash_doc_model
 
     data: List[Dict[str, Any]] = []
     for approval in approvals.values():

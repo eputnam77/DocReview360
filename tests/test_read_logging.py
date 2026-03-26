@@ -1,10 +1,8 @@
 import sys
 
-import pytest
-
 import docreview360.api as api
-import docreview360.api.documents_router  # ensure module is registered in sys.modules
 import docreview360.graphql_api as gql
+import pytest
 
 _docs_router = sys.modules["docreview360.api.documents_router"]
 from docreview360 import auth

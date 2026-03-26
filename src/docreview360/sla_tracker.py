@@ -308,8 +308,8 @@ def run_sla_reminders(project_id: str, *, project_name: str = "") -> int:
     Returns number of notifications sent.
     """
     try:
-        from .review_assignments import list_assignments
         from .notifications import send_notification
+        from .review_assignments import list_assignments
     except Exception as exc:
         _logger.debug("sla_reminders: import failed: %s", exc)
         return 0

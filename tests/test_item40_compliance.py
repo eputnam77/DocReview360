@@ -6,8 +6,6 @@ import json
 import os
 import tempfile
 
-import pytest
-
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
 
@@ -18,8 +16,8 @@ os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
 class TestNaraMetadata:
     def _setup_doc(self, db, suffix=""):
-        from docreview360.models import Document, Project
         from docreview360.doc_types import list_document_types
+        from docreview360.models import Document, Project
 
         dt_id = list_document_types()[0].id
         proj = Project(name=f"NaraProject{suffix}", document_type_id=dt_id)
@@ -64,7 +62,11 @@ class TestNaraMetadata:
 
     def test_delete_nara_metadata(self):
         from docreview360.db_store import get_db
-        from docreview360.nara_metadata import delete_nara_metadata, get_nara_metadata, set_nara_metadata
+        from docreview360.nara_metadata import (
+            delete_nara_metadata,
+            get_nara_metadata,
+            set_nara_metadata,
+        )
 
         with get_db().orm_session() as db:
             doc_id = self._setup_doc(db, "003")
@@ -75,8 +77,8 @@ class TestNaraMetadata:
 
     def test_list_vital_records(self):
         from docreview360.db_store import get_db
-        from docreview360.models import Document, Project
         from docreview360.doc_types import list_document_types
+        from docreview360.models import Document, Project
         from docreview360.nara_metadata import list_vital_records, set_nara_metadata
 
         with get_db().orm_session() as db:
@@ -106,8 +108,8 @@ class TestNaraMetadata:
 
 class TestLegalHold:
     def _setup_doc(self, db, suffix=""):
-        from docreview360.models import Document, Project
         from docreview360.doc_types import list_document_types
+        from docreview360.models import Document, Project
 
         dt_id = list_document_types()[0].id
         proj = Project(name=f"LegalProject{suffix}", document_type_id=dt_id)
@@ -135,8 +137,8 @@ class TestLegalHold:
         from docreview360.legal_hold import (
             add_document_to_hold,
             create_legal_hold,
-            remove_document_from_hold,
             is_document_on_hold,
+            remove_document_from_hold,
         )
 
         with get_db().orm_session() as db:
@@ -188,9 +190,10 @@ class TestLegalHold:
 
 class TestEDiscovery:
     def test_export_creates_zip(self):
+        import zipfile
+
         from docreview360.db_store import get_db
         from docreview360.ediscovery import export_ediscovery
-        import zipfile
 
         with get_db().orm_session() as db:
             with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
@@ -216,9 +219,10 @@ class TestEDiscovery:
         os.unlink(tmp_path)
 
     def test_export_manifest_content(self):
+        import zipfile
+
         from docreview360.db_store import get_db
         from docreview360.ediscovery import export_ediscovery
-        import zipfile
 
         with get_db().orm_session() as db:
             with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
@@ -297,10 +301,10 @@ class TestAccessibilityScan:
 
 class TestAuditCompletenessEndpoint:
     def test_audit_completeness_returns_ok(self, monkeypatch):
-        from fastapi.testclient import TestClient
-        from docreview360.api import app
-        from docreview360 import auth, rbac
         import docreview360.logs as logs_mod
+        from docreview360 import auth, rbac
+        from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         monkeypatch.setattr(
             logs_mod,

@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Generator
 
 import pytest
-from fastapi.testclient import TestClient
-
-from datetime import timedelta
-
 from docreview360 import auth, doc_types, rbac
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase, reset_phases
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:
@@ -327,4 +325,4 @@ class TestFrontendBackendIntegration:
             error_data = resp.json()
             assert isinstance(error_data, dict)
             # Should include validation details
-            assert "detail" in error_data
+            assert "detail" in error_data or "message" in error_data

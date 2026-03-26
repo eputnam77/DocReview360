@@ -5,15 +5,15 @@ from __future__ import annotations
 
 from ._models import (
     DocumentTypeModel,
-    _WorkflowPayload,
     _validate_workflow,
+    _WorkflowPayload,
 )
 from ._registry import (
     DATA_FILE,
     DEFAULT_DOC_TYPE_NAMES,
     DEFAULT_DOC_TYPE_PHASES,
-    _DocumentTypesView,
     _bootstrap_if_empty,
+    _DocumentTypesView,
     _explicit_clear_active,
     _explicit_clear_lock,
     _row_to_model,

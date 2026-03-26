@@ -186,7 +186,7 @@ export default function ProjectDetailsPage() {
   );
 
   // ▼ data hooks
-  const { data: projectData, isLoading: projectLoading } = useProject(id as string);
+  const { data: projectData, isLoading: projectLoading, isError: projectError } = useProject(id as string);
   const { data: workflowData, isLoading: phasesLoading } = usePhases(projectData?.workflow);
   const {
     approvals: approvalsData,
@@ -279,7 +279,13 @@ export default function ProjectDetailsPage() {
     queryFn: async () => {
       if (!id) return [];
       const res = await authenticatedFetch(`/projects/${id}/feedback`);
-      return res.ok ? res.json() : [];
+      if (!res.ok) return [];
+      const data = await res.json();
+      // The endpoint returns either a plain array or a paginated envelope
+      // { items: [...], total, skip, limit }. Normalise both.
+      if (Array.isArray(data)) return data as FeedbackItem[];
+      if (data && Array.isArray(data.items)) return data.items as FeedbackItem[];
+      return [];
     },
     enabled: !!id,
     staleTime: 15_000,
@@ -1187,6 +1193,22 @@ export default function ProjectDetailsPage() {
         <div className="h-6 w-1/3 bg-gray-200 rounded" />
         <div className="h-4 w-full bg-gray-200 rounded" />
         <div className="h-4 w-5/6 bg-gray-200 rounded" />
+      </div>
+    );
+  if (projectError)
+    return (
+      <div className="p-8 text-center space-y-3">
+        <p className="text-red-600 font-medium">Unable to load project.</p>
+        <p className="text-sm text-gray-500">
+          The server could not be reached or returned an error. Check that the
+          backend is running and your session is still active.
+        </p>
+        <button
+          className="text-sm text-indigo-600 underline"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
       </div>
     );
   if (!project) return <p className="p-4">Project not found.</p>;
@@ -2380,7 +2402,12 @@ export default function ProjectDetailsPage() {
               <MessageSquare className="w-5 h-5" /> Feedback Ledger
             </h2>
             <Button asChild variant="outline" size="sm">
-              <Link href={`/projects/${id}/review`}>Open review workspace</Link>
+              <Link
+                href={`/projects/${id}#feedback`}
+                title="Jump to the Feedback tab for this project"
+              >
+                Open review workspace
+              </Link>
             </Button>
           </div>
 

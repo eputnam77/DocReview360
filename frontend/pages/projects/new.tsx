@@ -61,6 +61,7 @@ export default function NewProjectPage() {
   const [docType, setDocType] = useState<string | undefined>(undefined);
   const [phase, setPhase] = useState<string | undefined>(undefined);
   const [workflow, setWorkflow] = useState<string | undefined>(undefined);
+  const [workflowTemplates, setWorkflowTemplates] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +170,23 @@ export default function NewProjectPage() {
     setPhases(mergeProjectPhases(configuredPhases, docTypePhases));
     setPhase(undefined);
   }, [docType, docTypeMap, configuredPhases]);
+
+  useEffect(() => {
+    // Load available workflow templates so users can pick one manually when
+    // no default is configured for the selected doc type / phase.
+    authenticatedFetch('/workflows')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (!Array.isArray(data)) { setWorkflowTemplates([]); return; }
+        const ids: string[] = data
+          .map((d: unknown) =>
+            typeof d === "string" ? d : (d as { id?: string })?.id ?? ""
+          )
+          .filter(Boolean);
+        setWorkflowTemplates(ids);
+      })
+      .catch(() => setWorkflowTemplates([]));
+  }, []);
 
   useEffect(() => {
     const resolved = resolveDefaultWorkflow(
@@ -281,10 +299,41 @@ export default function NewProjectPage() {
           <FieldGate when={!!docType && !!phase}>
             <div>
               <Label htmlFor="workflow">Workflow</Label>
-              <Input id="workflow" value={workflow || ""} disabled={true} placeholder="Assigned by backend" />
-              <p className="text-xs text-gray-500">
-                Assigned from document type defaults, or from selected phase defaults.
-              </p>
+              {workflow ? (
+                /* Auto-resolved default — show read-only but allow override */
+                <>
+                  <Input id="workflow" value={workflow} disabled={true} />
+                  <p className="text-xs text-gray-500">
+                    Auto-assigned from document type / phase defaults.{" "}
+                    <button
+                      type="button"
+                      className="text-indigo-600 underline"
+                      onClick={() => setWorkflow(undefined)}
+                    >
+                      Change
+                    </button>
+                  </p>
+                </>
+              ) : workflowTemplates.length > 0 ? (
+                /* No default resolved — allow manual selection */
+                <>
+                  <Select value={workflow ?? ""} onValueChange={(v) => setWorkflow(v || undefined)}>
+                    <SelectTrigger id="workflow">
+                      <SelectValue placeholder="Select a workflow (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workflowTemplates.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    No default configured for this doc type / phase. Select one or leave blank.
+                  </p>
+                </>
+              ) : (
+                <Input id="workflow" value="" disabled={true} placeholder="No workflows configured" />
+              )}
             </div>
           </FieldGate>
           <details className="mt-4">

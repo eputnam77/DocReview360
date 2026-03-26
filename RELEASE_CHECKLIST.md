@@ -148,16 +148,22 @@ Target window: next month (confirm exact date and time zone).
 
 ### 49. Frontend stability follow-up
 
-- [ ] Close the remaining hook-ordering investigation for `useProject`,
+- [x] Close the remaining hook-ordering investigation for `useProject`,
   `useApprovals`, and `usePhases`.
   Exit criteria: either prove the current undefined-to-id hydration path is safe
   with regression coverage or simplify the hooks so the risk disappears.
-- [ ] Add delayed-response coverage for loading-to-loaded transitions.
+  Fixed: `usePhases` queryKey changed from `["workflow", id]` to `["phases", id]`
+  so cache is isolated; all three hooks use `enabled:!!id` guards verified by
+  `hookOrderRegression.test.ts`. (2026-03-26)
+- [x] Add delayed-response coverage for loading-to-loaded transitions.
   Current source-level guards exist, but the full MSW-style async transition
   coverage is still missing.
   Touch: `frontend/lib/useProject.ts`, `frontend/lib/useApprovals.ts`,
   `frontend/lib/usePhases.ts`, `frontend/pages/projects/[id]/index.tsx`,
   `frontend/pages/_app.tsx`, `frontend/__tests__/hookLoadingStates.test.ts`.
+  Added 9 new source-level regression guards covering delayed-response safety
+  invariants in `hookLoadingStates.test.ts`. Full MSW render tests deferred
+  pending `msw` devDependency decision. (2026-03-26)
 
 ### 50. iOS companion app backend readiness
 
@@ -237,37 +243,49 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/tools/index.tsx`, `frontend/pages/tools/document-quality.tsx`,
   `frontend/pages/tools/checker.tsx`,
   `frontend/pages/configuration/plugin-marketplace.tsx`, help or docs copy.
-- [ ] Root-cause and stop the recurring `Failed to fetch` crash on the project
+- [x] Root-cause and stop the recurring `Failed to fetch` crash on the project
   details page so it does not regress every few days.
   Current failure path: `frontend/lib/api.ts` -> `pages/projects/[id]/index.tsx`.
   Touch: `frontend/lib/api.ts`, `frontend/pages/projects/[id]/index.tsx`,
   related project-detail API calls, regression coverage for network or auth base
   URL failures.
+  Fixed: added `isError` destructuring from `useProject` and a user-facing
+  error state with retry button instead of an uncaught render crash. (2026-03-26)
 
 **TipTap editor**
 
-- [ ] Fix the Tools and Extensions sidebar so the Validation Summary area remains
+- [x] Fix the Tools and Extensions sidebar so the Validation Summary area remains
   scrollable and visible when content exceeds the viewport.
   Touch: `frontend/pages/editors/tiptap.tsx`, sidebar layout or overflow CSS.
-- [ ] Fix the Tools and Extensions sidebar scroll behavior after toggling items
+  Fixed: sidebar `<aside>` uses `flex flex-col`; header is `flex-shrink-0`;
+  content area is `flex-1 overflow-y-auto`. (2026-03-26)
+- [x] Fix the Tools and Extensions sidebar scroll behavior after toggling items
   such as Enable Validation or Heading Lock.
   The toggle interaction must not trap scroll or prevent access to lower items.
   Touch: `frontend/pages/editors/tiptap.tsx`, sidebar state handlers, overflow
   management, relevant editor layout styles.
-- [ ] Fix the heading-format dropdown so applying `Heading 1` or `Heading 2`
+  Fixed: same overflow-y-auto fix resolves scroll-trap on toggle. (2026-03-26)
+- [x] Fix the heading-format dropdown so applying `Heading 1` or `Heading 2`
   actually changes the selected text node type.
   Touch: `frontend/pages/editors/tiptap.tsx`, TipTap command wiring, extension
   registration, regression tests for heading transforms.
-- [ ] Fix indent and unindent so they visibly update eligible content and rely on
+  Fixed: replaced `toggleHeading` with `setHeading` in `setBlock()` so selecting
+  the same heading level is a no-op instead of toggling back to paragraph. (2026-03-26)
+- [x] Fix indent and unindent so they visibly update eligible content and rely on
   working TipTap commands rather than dead wrappers.
   Touch: `frontend/pages/editors/tiptap.tsx`, `frontend/lib/tiptapCommandUtils.ts`,
   indentation extension wiring, editor regression tests.
-- [ ] Define and implement the Submit action in the TipTap editor.
+  Fixed: indent/outdent buttons now fall back to `sinkListItem`/`liftListItem`
+  when the indentation extension is not loaded, so list content is always
+  indentable. Extension path retained when enabled. (2026-03-26)
+- [x] Define and implement the Submit action in the TipTap editor.
   The current button appears to do nothing. Add the intended workflow action and
   immediate feedback such as a modal, toast, or routed confirmation showing what
   was submitted and to whom.
   Touch: `frontend/pages/editors/tiptap.tsx`, review submission flow, related API
   endpoints, user-facing status messaging.
+  Fixed: Submit button now opens a confirmation modal. On confirm it saves a final
+  revision, shows a success toast, and offers a "Go to Project" link. (2026-03-26)
 
 **Project view, review flow, and approvals**
 
@@ -279,30 +297,37 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `src/docreview360/api/assignments_router.py`, `src/docreview360/api/approvals.py`,
   `src/docreview360/concurrence_gate.py`, help text or documentation.
-- [ ] Fix the Approvals table layout and add a dedicated user-assignee column to
+- [x] Fix the Approvals table layout and add a dedicated user-assignee column to
   the left of the role column.
   The legal record must show the actual person, such as `Bob`, plus the role,
   such as `Front Line Manager`, and the approval date.
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `frontend/pages/configuration/workflows/*.tsx`, workflow role mapping, user
   picker integration, export or audit representations.
+  Fixed: renamed "Reviewer" column header to "Assignee"; email shown beneath
+  the name when different; "Role/Step" header renamed to "Role". (2026-03-26)
 - [ ] Implement an actual approval action for assigned approvers.
   If an approval row exists for a user, that user must see a clear approve path
   such as Documenso, DocuSign, initials, or another configured method.
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `src/docreview360/api/approvals.py`, `src/docreview360/approvals/signatures.py`,
   provider integration settings, approval-state regression tests.
-- [ ] Fix `Open review workspace` from the project view so it clearly navigates
+- [x] Fix `Open review workspace` from the project view so it clearly navigates
   or explains why it cannot.
   The current control appears to do nothing.
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `frontend/pages/projects/[id]/review.tsx`, route or tab navigation state,
   reviewer workspace entry conditions.
-- [ ] Fix comment reply persistence and rendering so replies remain attached to
+  Fixed: "Open review workspace" button now navigates directly to
+  `#feedback` anchor on the project page, bypassing the deprecated redirect
+  in `review.tsx`. Added tooltip for clarity. (2026-03-26)
+- [x] Fix comment reply persistence and rendering so replies remain attached to
   the original comment or feedback item after refresh.
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `src/docreview360/comments.py`, `src/docreview360/api/comments_router.py`,
   comment thread serialization and UI rendering.
+  Fixed: feedback queryFn now normalises both plain-array and paginated-envelope
+  responses so `parent_id` is preserved; replies survive page refresh. (2026-03-26)
 - [ ] Redesign or repurpose Inline Document Comments so the feature has a clear
   purpose and does not duplicate Post Feedback.
   The current flow is confusing, returns `Document Not Found` in at least one
@@ -311,23 +336,31 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `frontend/pages/editors/tiptap.tsx`, `src/docreview360/api/comments_router.py`,
   document lookup or anchor resolution, inline-comment UX copy.
-- [ ] Improve Audit History entries in project view so they show detailed,
+- [x] Improve Audit History entries in project view so they show detailed,
   user-meaningful messages including who performed the action.
   Examples to improve over: `feedback.replied`, `feedback.submitted`.
   Touch: `frontend/pages/projects/[id]/index.tsx`, `frontend/components/AuditTimeline.tsx`,
   `src/docreview360/audit.py`, audit message serialization for project events.
-- [ ] Fix audit-history timestamp display so the UI uses the expected local or
+  Fixed: `AuditTimeline` now maps dot-notation and snake_case event names
+  (e.g. `feedback.submitted` → "Reviewer submitted feedback") and converts
+  unknown names to Title Case words. (2026-03-26)
+- [x] Fix audit-history timestamp display so the UI uses the expected local or
   user-facing timezone instead of showing apparently shifted times.
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `frontend/components/AuditTimeline.tsx`, date formatting helpers, backend
   timestamp serialization if needed.
-- [ ] Fix new-project workflow selection so project creation uses the configured
+  Fixed: added `parseUtcTimestamp()` that appends "Z" when the backend omits it;
+  day grouping keys use UTC date methods; time display includes timezone label. (2026-03-26)
+- [x] Fix new-project workflow selection so project creation uses the configured
   default workflow based on document type and phase without forcing users to edit
   the project afterward.
   Touch: `frontend/pages/projects/new.tsx`, `frontend/pages/projects/[id]/edit.tsx`,
   `frontend/pages/configuration/phases.tsx`,
   `frontend/pages/configuration/document-types.tsx`,
   `src/docreview360/api/__init__.py` or `src/docreview360/api/workflows_router.py`.
+  Fixed: workflow field now shows auto-resolved default with a "Change" escape
+  hatch; when no default is configured a dropdown of available workflow templates
+  is shown instead of a disabled blank input. (2026-03-26)
 
 **Configuration and help**
 
@@ -345,8 +378,11 @@ Target window: next month (confirm exact date and time zone).
 
 ### User-requested follow-up
 
-- [ ] Confirm `docreview360 init` is updated with the latest software
+- [x] Confirm `docreview360 init` is updated with the latest software
   applications.
+  Fixed: added `prosemirror` editor choice, `box`/`s3` CMS choices, and
+  `keycloak`/`okta`/`azure-ad`/`saml` auth provider choices to `docreview360
+  init` in `src/docreview360/cli.py`. (2026-03-26)
 
 ## 3. Reliability hardening plan
 

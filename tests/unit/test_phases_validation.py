@@ -1,7 +1,6 @@
 """Tests for phase validation using DB-backed phases module."""
 
 import pytest
-
 from docreview360 import phases
 
 

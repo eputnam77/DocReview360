@@ -22,9 +22,9 @@ import json
 import os
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
 DRIVE_API_BASE = "https://www.googleapis.com/drive/v3"
 DRIVE_UPLOAD_BASE = "https://www.googleapis.com/upload/drive/v3"

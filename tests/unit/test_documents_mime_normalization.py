@@ -1,9 +1,8 @@
 import sys
 from types import SimpleNamespace
 
-import pytest
-
 import docreview360.documents as doc_mod
+import pytest
 from docreview360.documents import import_document
 
 

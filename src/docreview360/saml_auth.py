@@ -304,6 +304,7 @@ def get_sp_metadata() -> str:
         raise RuntimeError("SAML_SP_ACS_URL must be set to generate SP metadata")
 
     from urllib.parse import urlparse
+
     from onelogin.saml2.settings import OneLogin_Saml2_Settings
 
     parsed = urlparse(sp_acs_url)

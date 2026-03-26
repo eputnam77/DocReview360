@@ -17,10 +17,9 @@ import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -79,7 +78,7 @@ class TestWOPIModule:
     def test_get_wopi_file_info_returns_correct_fields(self) -> None:
         """get_wopi_file_info returns a WOPICheckFileInfo with expected fields."""
         from docreview360.documents import import_document
-        from docreview360.wopi import get_wopi_file_info, WOPICheckFileInfo
+        from docreview360.wopi import WOPICheckFileInfo, get_wopi_file_info
 
         doc = import_document("hello.txt", b"Hello from WOPI", user="alice")
         info = get_wopi_file_info(doc.id, "alice")
@@ -105,8 +104,8 @@ class TestWOPIModule:
 
     def test_get_wopi_file_info_missing_doc_raises_404(self) -> None:
         """get_wopi_file_info raises HTTPException 404 for missing doc."""
-        from fastapi import HTTPException
         from docreview360.wopi import get_wopi_file_info
+        from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
             get_wopi_file_info("nonexistent-doc-id", "alice")
@@ -115,7 +114,7 @@ class TestWOPIModule:
     def test_lock_unlock_cycle(self) -> None:
         """A lock can be acquired and then released with the correct token."""
         from docreview360.documents import import_document
-        from docreview360.wopi import get_wopi_lock, set_wopi_lock, release_wopi_lock
+        from docreview360.wopi import get_wopi_lock, release_wopi_lock, set_wopi_lock
 
         doc = import_document("lock.txt", b"lock test", user="alice")
         file_id = doc.id
@@ -149,9 +148,9 @@ class TestWOPIModule:
 
     def test_relock_different_token_raises_409(self) -> None:
         """Re-locking with a different token raises HTTP 409."""
-        from fastapi import HTTPException
         from docreview360.documents import import_document
         from docreview360.wopi import set_wopi_lock
+        from fastapi import HTTPException
 
         doc = import_document("conflict.txt", b"conflict", user="alice")
         set_wopi_lock(doc.id, "token-first", "alice")

@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from cryptography import x509
 from cryptography.x509 import ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID, ExtensionOID
-
 from docreview360 import certs
 
 

@@ -3,7 +3,6 @@
 import math
 
 import pytest
-
 from docreview360.vector_search import _cosine
 
 

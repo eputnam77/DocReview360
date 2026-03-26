@@ -5,11 +5,10 @@ from importlib import reload
 from pathlib import Path
 from typing import Any
 
-import pytest
-from fastapi.testclient import TestClient
-
 import docreview360.api as api
+import pytest
 from docreview360 import auth
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

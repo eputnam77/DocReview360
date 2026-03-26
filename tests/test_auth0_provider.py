@@ -1,7 +1,6 @@
 import pytest
-from jose import jwt
-
 from docreview360.auth0_provider import verify_auth0_token
+from jose import jwt
 
 SECRET = "secret"
 ISSUER = "https://auth.example.com/"

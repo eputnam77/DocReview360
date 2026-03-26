@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360 import db_store, feature_flags
 
 

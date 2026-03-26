@@ -7,11 +7,9 @@ than just the specific examples covered by example-based tests.
 
 from __future__ import annotations
 
-import pytest
+from docreview360.pagination import PaginatedResponse
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-from docreview360.pagination import PaginatedResponse
 
 # ---------------------------------------------------------------------------
 # Strategies

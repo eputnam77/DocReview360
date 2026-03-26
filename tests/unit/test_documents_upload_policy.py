@@ -1,6 +1,5 @@
-import pytest
-
 import docreview360.documents as documents
+import pytest
 
 
 @pytest.fixture(autouse=True)

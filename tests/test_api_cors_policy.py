@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.api import _LOCAL_CORS_ORIGINS, _resolve_cors_origins
 
 

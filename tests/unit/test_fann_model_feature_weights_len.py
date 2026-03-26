@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.ml.torch_models import build_clarity_critic
 
 

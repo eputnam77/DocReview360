@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import List
 
 
-
 @dataclass
 class StepInstance:
     """Single workflow step and its status."""

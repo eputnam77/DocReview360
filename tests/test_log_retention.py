@@ -2,8 +2,6 @@ import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import insert
-
 from docreview360.celery_app import app
 from docreview360.logs import (
     _get_db,
@@ -13,6 +11,7 @@ from docreview360.logs import (
     schedule_log_purge,
 )
 from docreview360.models import AuditLog
+from sqlalchemy import insert
 
 
 def test_purge_expired_logs() -> None:

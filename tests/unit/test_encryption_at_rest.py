@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from docreview360 import backup_utils, crypto
 from docreview360.crypto import decrypt_payload, encrypt_payload
 from docreview360.secrets import store_secret

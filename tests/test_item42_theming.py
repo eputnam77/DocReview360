@@ -177,8 +177,8 @@ class TestHexColorValidation:
         return f"theming-valid-org-{suffix}"
 
     def _call(self, **kwargs):
-        from docreview360.db_store import get_db
         from docreview360.branding import set_branding
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             return set_branding(db, self._org("v"), updated_by="admin", **kwargs)
@@ -209,8 +209,8 @@ class TestHexColorValidation:
 
     def test_none_sidebar_bg_is_accepted(self):
         """None is valid — it means 'use the default (no override)'."""
-        from docreview360.db_store import get_db
         from docreview360.branding import set_branding
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             org = self._org("none-ok")
@@ -248,9 +248,8 @@ class TestThemingAPI:
 
     def test_public_branding_endpoint_has_color_fields(self):
         """GET /branding must include branding_primary_color and related fields."""
-        from fastapi.testclient import TestClient
-
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         resp = client.get("/branding")
@@ -264,9 +263,8 @@ class TestThemingAPI:
 
     def test_put_org_branding_with_color_fields(self):
         """PUT /orgs/{id}/branding persists all four color fields."""
-        from fastapi.testclient import TestClient
-
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -286,9 +284,8 @@ class TestThemingAPI:
 
     def test_put_org_branding_invalid_color_returns_422(self):
         """PUT /orgs/{id}/branding with an invalid hex color returns 422."""
-        from fastapi.testclient import TestClient
-
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -301,9 +298,8 @@ class TestThemingAPI:
 
     def test_get_org_branding_returns_color_fields(self):
         """GET /orgs/{id}/branding returns all four color fields in branding dict."""
-        from fastapi.testclient import TestClient
-
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -315,9 +311,8 @@ class TestThemingAPI:
 
     def test_put_then_get_org_branding_roundtrip(self):
         """Values written via PUT are returned unchanged by GET."""
-        from fastapi.testclient import TestClient
-
         from docreview360.api import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)
@@ -335,10 +330,9 @@ class TestThemingAPI:
 
     def test_delete_org_branding_resets_color_fields(self):
         """DELETE /orgs/{id}/branding reverts colors to BRANDING_DEFAULTS values."""
-        from fastapi.testclient import TestClient
-
         from docreview360.api import app
         from docreview360.branding import BRANDING_DEFAULTS
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         headers = self._alice_headers(client)

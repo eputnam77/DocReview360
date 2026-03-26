@@ -63,7 +63,8 @@ def audit_html(html: str) -> List[str]:
 # Extended WCAG 2.1 AA / Section 508 scanner
 # ---------------------------------------------------------------------------
 
-from dataclasses import dataclass, field as _field
+from dataclasses import dataclass
+from dataclasses import field as _field
 from datetime import datetime, timezone
 
 _EMPTY_LINK = re.compile(r"<a\b[^>]*>\s*(?:<[^>]+>\s*)*</a>", re.IGNORECASE | re.DOTALL)

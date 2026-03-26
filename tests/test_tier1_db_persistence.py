@@ -10,13 +10,8 @@ durable and will be recovered after a process restart.
 
 from __future__ import annotations
 
-import json
-
 import pytest
-
-from docreview360.database import Database
 from docreview360.db_store import reset_db
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -47,9 +42,7 @@ class TestApprovalPersistence:
         from docreview360.approvals import (
             approvals,
             create_approval,
-            get_approval,
             load_approvals_from_db,
-            reset_approvals,
         )
 
         # Create an approval — this also writes to the DB.
@@ -103,10 +96,9 @@ class TestApprovalPersistence:
             delete_approval,
             load_approvals_from_db,
         )
-        from docreview360.documents import documents
 
         # Provide a document so unlink_approval doesn't raise.
-        from docreview360.documents import DocumentModel
+        from docreview360.documents import DocumentModel, documents
 
         doc_id = "doc-delete"
         documents[doc_id] = DocumentModel(id=doc_id, content="x", history=[])

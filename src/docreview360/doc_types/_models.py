@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import List
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator
 

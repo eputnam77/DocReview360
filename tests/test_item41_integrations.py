@@ -17,7 +17,10 @@ os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 class TestConfluenceIntegration:
     def test_client_from_env_raises_without_url(self, monkeypatch):
         monkeypatch.delenv("CONFLUENCE_BASE_URL", raising=False)
-        from docreview360.integrations.confluence_integration import client_from_env, ConfluenceError
+        from docreview360.integrations.confluence_integration import (
+            ConfluenceError,
+            client_from_env,
+        )
 
         with pytest.raises(ConfluenceError, match="CONFLUENCE_BASE_URL"):
             client_from_env()
@@ -36,6 +39,7 @@ class TestConfluenceIntegration:
 
     def test_auth_header(self):
         import base64
+
         from docreview360.integrations.confluence_integration import ConfluenceClient
 
         client = ConfluenceClient(
@@ -101,7 +105,10 @@ class TestGoogleDriveIntegration:
     def test_client_from_env_raises_without_credentials(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_DRIVE_ACCESS_TOKEN", raising=False)
         monkeypatch.delenv("GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON", raising=False)
-        from docreview360.integrations.google_drive_integration import client_from_env, GoogleDriveError
+        from docreview360.integrations.google_drive_integration import (
+            GoogleDriveError,
+            client_from_env,
+        )
 
         with pytest.raises(GoogleDriveError):
             client_from_env()
@@ -177,8 +184,9 @@ class TestPluginSandbox:
         assert "os" in (result.error or "") or len(result.violations) > 0
 
     def test_restricted_mode_timeout(self):
-        from docreview360.plugin_sandbox import PluginSandbox
         import time
+
+        from docreview360.plugin_sandbox import PluginSandbox
 
         sandbox = PluginSandbox(mode="restricted", timeout_seconds=0.2)
         result = sandbox.run(lambda: time.sleep(10))
@@ -199,7 +207,7 @@ class TestPluginSandbox:
         assert r.value == 42
 
     def test_sandboxed_loader_registration(self):
-        from docreview360.plugin_sandbox import SandboxedPluginLoader, PluginManifest
+        from docreview360.plugin_sandbox import PluginManifest, SandboxedPluginLoader
 
         loader = SandboxedPluginLoader()
         manifest = PluginManifest(

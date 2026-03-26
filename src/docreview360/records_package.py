@@ -10,7 +10,7 @@ import json
 import logging
 import zipfile
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -164,8 +164,9 @@ def _collect_notifications(project_id: str) -> list[dict[str, Any]]:
 def _collect_nara_metadata(project_id: str) -> dict[str, Any]:
     """Collect NARA metadata for all documents in the project."""
     try:
-        from .db_store import get_db
         from sqlalchemy import text as _text
+
+        from .db_store import get_db
         db = get_db()
         with db.session() as conn:
             rows = conn.execute(
@@ -200,8 +201,9 @@ def _collect_nara_metadata(project_id: str) -> dict[str, Any]:
 def _collect_document_versions(project_id: str) -> list[dict[str, Any]]:
     """Collect document version history for the project."""
     try:
-        from .db_store import get_db
         from sqlalchemy import text as _text
+
+        from .db_store import get_db
         db = get_db()
         with db.session() as conn:
             rows = conn.execute(

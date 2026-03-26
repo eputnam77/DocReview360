@@ -36,7 +36,7 @@ def cli() -> None:
 )
 @click.option(
     "--editor",
-    type=click.Choice(["tiptap", "onlyoffice"], case_sensitive=False),
+    type=click.Choice(["tiptap", "onlyoffice", "prosemirror"], case_sensitive=False),
     default="tiptap",
     show_default=True,
     prompt=True,
@@ -44,7 +44,7 @@ def cli() -> None:
 @click.option(
     "--cms",
     type=click.Choice(
-        ["none", "local", "sharepoint", "confluence", "gdrive"],
+        ["none", "local", "sharepoint", "confluence", "gdrive", "box", "s3"],
         case_sensitive=False,
     ),
     default="none",
@@ -59,6 +59,10 @@ def cli() -> None:
             "login.gov",
             "auth0",
             "pivcac",
+            "keycloak",
+            "okta",
+            "azure-ad",
+            "saml",
         ],
         case_sensitive=False,
     ),
@@ -97,13 +101,15 @@ def init(
     Parameters
     ----------
     database:
-        Selected database backend.
+        Selected database backend (postgres, mysql, sqlite).
     editor:
-        Preferred document editor.
+        Preferred document editor (tiptap, onlyoffice, prosemirror).
     cms:
-        CMS integration option.
+        CMS integration option (none, local, sharepoint, confluence, gdrive,
+        box, s3).
     auth:
-        Authentication provider.
+        Authentication provider (oidc, login.gov, auth0, pivcac, keycloak,
+        okta, azure-ad, saml).
     seed:
         When ``True`` a sample Advisory Circular markdown file is created.
     """

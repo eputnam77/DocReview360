@@ -11,7 +11,12 @@ import threading
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from ._models import ApprovalStep, WorkflowTemplateModel, WorkflowTemplatePayload, WorkflowTemplateStep
+from ._models import (
+    ApprovalStep,
+    WorkflowTemplateModel,
+    WorkflowTemplatePayload,
+    WorkflowTemplateStep,
+)
 
 _logger = logging.getLogger(__name__)
 

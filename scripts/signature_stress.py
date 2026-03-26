@@ -13,7 +13,6 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
-
 from docreview360.documents import import_document
 
 api_module = types.ModuleType("docreview360.api")

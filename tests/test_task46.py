@@ -1,12 +1,11 @@
 from pathlib import Path
 
-import pytest
-from fastapi import Depends, FastAPI
-from fastapi.testclient import TestClient
-
 import docreview360.rbac as rbac
+import pytest
 from docreview360 import auth
 from docreview360.api import app
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)

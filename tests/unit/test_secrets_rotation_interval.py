@@ -3,7 +3,6 @@ import contextlib
 from datetime import timedelta
 
 import pytest
-
 from docreview360.secrets import schedule_rotation
 
 

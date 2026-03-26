@@ -1,11 +1,10 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
-
 import docreview360.api as api_module
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def _configure_user_repository() -> None:

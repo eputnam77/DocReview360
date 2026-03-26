@@ -3,11 +3,10 @@
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
-from docreview360.approvals import approvals, create_approval
+from docreview360.approvals import approvals
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:
@@ -85,7 +84,7 @@ class TestSignInitialsValidation:
             f"/approvals/{aid}/sign-initials", json={"initials": "ab"}, headers=_alice_headers()
         )
         assert resp.status_code == 422
-        assert "uppercase" in resp.json()["detail"].lower()
+        assert "uppercase" in (resp.json().get("detail") or resp.json().get("message", "")).lower()
 
     def test_invalid_single_letter(self) -> None:
         client = TestClient(app)

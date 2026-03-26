@@ -12,9 +12,6 @@ from __future__ import annotations
 
 import pytest
 
-from docreview360.database import Database
-from docreview360.db_store import reset_db
-
 # Note: the conftest.py ``_reset_document_types`` autouse fixture already
 # provides per-test DB isolation by calling reset_db("sqlite+pysqlite:///:memory:")
 # before each test and reset_db(None) after.  No additional fixture is needed here.
@@ -152,7 +149,7 @@ class TestDocTypePersistence:
     def test_add_doc_type_persists(self):
         """A document type added via add_document_type is visible on re-query."""
 
-        from docreview360.doc_types import add_document_type, get_document_type, DocumentTypeModel
+        from docreview360.doc_types import DocumentTypeModel, add_document_type, get_document_type
 
         dt = DocumentTypeModel(name="Custom Type", template="<h1>X</h1>", workflow=["Draft"])
         add_document_type(dt)
@@ -166,10 +163,10 @@ class TestDocTypePersistence:
         """Updating a document type is reflected on the next read."""
 
         from docreview360.doc_types import (
+            DocumentTypeModel,
             add_document_type,
             get_document_type,
             update_document_type,
-            DocumentTypeModel,
         )
 
         dt = DocumentTypeModel(name="Mutable", template="<h1>v1</h1>", workflow=["Draft"])
@@ -187,10 +184,10 @@ class TestDocTypePersistence:
         """Deleting a document type removes it from list_document_types."""
 
         from docreview360.doc_types import (
+            DocumentTypeModel,
             add_document_type,
             delete_document_type,
             list_document_types,
-            DocumentTypeModel,
         )
 
         dt = DocumentTypeModel(name="Transient", template="", workflow=["Draft"])
@@ -210,10 +207,10 @@ class TestDocTypePersistence:
         """Renaming a document type (via update) is reflected on next read."""
 
         from docreview360.doc_types import (
+            DocumentTypeModel,
             add_document_type,
             get_document_type,
             update_document_type,
-            DocumentTypeModel,
         )
 
         dt = DocumentTypeModel(name="OldName", template="", workflow=["Draft"])
@@ -229,7 +226,7 @@ class TestDocTypePersistence:
         """Writes made through the public API are visible via raw DB queries."""
 
         from docreview360.db_store import get_db
-        from docreview360.doc_types import add_document_type, DocumentTypeModel
+        from docreview360.doc_types import DocumentTypeModel, add_document_type
 
         dt = DocumentTypeModel(name="SharedType", template="", workflow=["Draft"])
         add_document_type(dt)
@@ -283,7 +280,6 @@ class TestDocTypePersistence:
     def test_app_starts_with_zero_json_files(self, tmp_path):
         """The app boots correctly when no JSON files are present."""
 
-        import os
 
         from docreview360.db_store import reset_db as _reset
 

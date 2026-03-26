@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from docreview360.iac_templates import get_template
 
 

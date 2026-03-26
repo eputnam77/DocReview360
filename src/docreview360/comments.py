@@ -12,7 +12,6 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-
 COMMENT_STATUSES = ("open", "resolved", "accepted", "rejected")
 COMMENT_TAGS = ("legal", "style", "technical", "policy")
 # Feedback sources: where in the UI / flow the comment originated.

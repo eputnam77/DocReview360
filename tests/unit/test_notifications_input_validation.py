@@ -1,8 +1,7 @@
-import pytest
-
 import docreview360.email_templates as et
 import docreview360.notifications as n
 import docreview360.search as search
+import pytest
 
 
 def test_add_template_validates_subject_and_body(tmp_path) -> None:

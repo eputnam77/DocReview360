@@ -2,7 +2,6 @@ import json
 from datetime import datetime, timedelta
 
 import pytest
-
 from docreview360 import ai_utils, quality, search
 from docreview360.quality import QUALITY_FLAG_NAMES, quality_assessment
 

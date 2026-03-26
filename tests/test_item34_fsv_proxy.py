@@ -28,10 +28,9 @@ import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -68,6 +67,7 @@ class TestIsFsvConfigured:
         monkeypatch.delenv("FEDERAL_STYLE_VALIDATOR_URL", raising=False)
         # Re-import to pick up cleared env
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         assert _mod.is_fsv_configured() is False
@@ -76,6 +76,7 @@ class TestIsFsvConfigured:
         """is_fsv_configured() must return False when FEDERAL_STYLE_VALIDATOR_URL is empty."""
         monkeypatch.setenv("FEDERAL_STYLE_VALIDATOR_URL", "")
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         assert _mod.is_fsv_configured() is False
@@ -84,6 +85,7 @@ class TestIsFsvConfigured:
         """is_fsv_configured() must return True when FEDERAL_STYLE_VALIDATOR_URL is non-empty."""
         monkeypatch.setenv("FEDERAL_STYLE_VALIDATOR_URL", "http://fsv-service:8080")
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         assert _mod.is_fsv_configured() is True
@@ -92,6 +94,7 @@ class TestIsFsvConfigured:
         """get_fsv_url() must return None when the env var is absent."""
         monkeypatch.delenv("FEDERAL_STYLE_VALIDATOR_URL", raising=False)
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         assert _mod.get_fsv_url() is None
@@ -100,6 +103,7 @@ class TestIsFsvConfigured:
         """get_fsv_url() must return the configured URL."""
         monkeypatch.setenv("FEDERAL_STYLE_VALIDATOR_URL", "http://fsv-service:8080")
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         assert _mod.get_fsv_url() == "http://fsv-service:8080"
@@ -119,6 +123,7 @@ class TestFsvProxyFunctionsUnconfigured:
     ) -> None:
         monkeypatch.delenv("FEDERAL_STYLE_VALIDATOR_URL", raising=False)
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         with pytest.raises(NotImplementedError):
@@ -130,6 +135,7 @@ class TestFsvProxyFunctionsUnconfigured:
     ) -> None:
         monkeypatch.delenv("FEDERAL_STYLE_VALIDATOR_URL", raising=False)
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         with pytest.raises(NotImplementedError):
@@ -141,6 +147,7 @@ class TestFsvProxyFunctionsUnconfigured:
     ) -> None:
         monkeypatch.delenv("FEDERAL_STYLE_VALIDATOR_URL", raising=False)
         import importlib
+
         import docreview360.fsv_proxy as _mod
         importlib.reload(_mod)
         with pytest.raises(NotImplementedError):

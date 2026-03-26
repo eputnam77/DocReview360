@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import docreview360.doc_types as doc_types_module
 import pytest
 from pydantic import ValidationError
-
-import docreview360.doc_types as doc_types_module
 
 
 @pytest.fixture(autouse=True)

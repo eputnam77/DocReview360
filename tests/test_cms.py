@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
+import sys
 from types import SimpleNamespace
 from typing import cast
 
-import sys
-
 import pytest
-
 from docreview360 import auth
 from docreview360.api.documents_router import (
     CmsExportRequest,

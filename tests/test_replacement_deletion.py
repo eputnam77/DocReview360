@@ -11,14 +11,13 @@ from collections.abc import Generator
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, doc_types, rbac
 from docreview360.api import app
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.phases import add_phase
 from docreview360.search import ProjectModel, add_project, projects
 from docreview360.workflows import workflows
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:
@@ -120,8 +119,8 @@ class TestReplacementDeletion:
         resp = client.delete("/document-types/Original Doc Type", headers=hdrs)
         assert resp.status_code == 400
         error = resp.json()
-        assert "is in use" in error["detail"]
-        assert "Please specify a replacement" in error["detail"]
+        assert "is in use" in (error.get("detail") or error.get("message", ""))
+        assert "Please specify a replacement" in (error.get("detail") or error.get("message", ""))
 
         # Delete with replacement
         resp = client.delete(
@@ -181,10 +180,14 @@ class TestReplacementDeletion:
         add_project(project)
 
         # Try to delete with non-existent replacement
-        resp = client.delete("/document-types/Test Doc Type?replacement=Non-existent Doc Type", headers=hdrs)
+        resp = client.delete(
+            "/document-types/Test Doc Type?replacement=Non-existent Doc Type", headers=hdrs
+        )
         assert resp.status_code == 404
         error = resp.json()
-        assert "Replacement document type 'Non-existent Doc Type' not found" in error["detail"]
+        assert "Replacement document type 'Non-existent Doc Type' not found" in (
+            error.get("detail") or error.get("message", "")
+        )
 
     def test_phase_usage_check(self) -> None:
         """Test that phase usage is correctly detected."""
@@ -240,8 +243,8 @@ class TestReplacementDeletion:
         resp = client.delete("/phases/Original Phase", headers=hdrs)
         assert resp.status_code == 400
         error = resp.json()
-        assert "is in use" in error["detail"]
-        assert "Please specify a replacement" in error["detail"]
+        assert "is in use" in (error.get("detail") or error.get("message", ""))
+        assert "Please specify a replacement" in (error.get("detail") or error.get("message", ""))
 
         # Delete with replacement
         resp = client.delete("/phases/Original Phase?replacement=Replacement Phase", headers=hdrs)
@@ -289,7 +292,9 @@ class TestReplacementDeletion:
         resp = client.delete("/phases/Test Phase?replacement=Non-existent Phase", headers=hdrs)
         assert resp.status_code == 404
         error = resp.json()
-        assert "Replacement phase 'Non-existent Phase' not found" in error["detail"]
+        assert "Replacement phase 'Non-existent Phase' not found" in (
+            error.get("detail") or error.get("message", "")
+        )
 
     def test_delete_nonexistent_item(self) -> None:
         """Test deletion of non-existent items."""
@@ -369,10 +374,14 @@ class TestReplacementDeletion:
         add_project(project)
 
         # Try to replace with the same document type (should fail)
-        resp = client.delete("/document-types/Test Doc Type?replacement=Test Doc Type", headers=hdrs)
+        resp = client.delete(
+            "/document-types/Test Doc Type?replacement=Test Doc Type", headers=hdrs
+        )
         assert resp.status_code == 400
         error = resp.json()
-        assert "Replacement document type 'Test Doc Type' not found" in error["detail"]
+        assert "Replacement document type 'Test Doc Type' not found" in (
+            error.get("detail") or error.get("message", "")
+        )
 
     def test_cascade_effects(self) -> None:
         """Test that deletion with replacement properly cascades to all affected entities."""

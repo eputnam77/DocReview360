@@ -4,12 +4,11 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.approvals import approvals
 from docreview360.workflows import workflows
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

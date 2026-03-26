@@ -11,7 +11,8 @@ from typing import Any, Iterator
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session as _OrmSession, sessionmaker
+from sqlalchemy.orm import Session as _OrmSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from .models import Base

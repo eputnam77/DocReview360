@@ -8,7 +8,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Body, Depends, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -23,22 +35,25 @@ def _emit_webhook(event: str, data: dict) -> None:
         emit_lifecycle_event(event, data)  # type: ignore[arg-type]
     except Exception:
         pass
-from ..approvals import (
-    SignedApprovalImmutableError,
-    get_approval,
-    send_for_signature,
-    update_approval_state,
-)
+from ..approvals import verify_document_signature
 from ..archive import (
     ArchiveRecord,
-    archive_document as archive_doc,
     get_archive,
     list_archives,
 )
-from ..audit import AuditLogEntry, get_audit_log, log_audit_event
+from ..archive import (
+    archive_document as archive_doc,
+)
+from ..audit import AuditLogEntry, get_audit_log
 from ..cache import cache_get, cache_set, clear_cache
 from ..cms import fetch_from_cms, save_to_cms
-from ..comments import CommentModel, add_comment, list_comments, render_comment_for_response, update_comment
+from ..comments import (
+    CommentModel,
+    add_comment,
+    list_comments,
+    render_comment_for_response,
+    update_comment,
+)
 from ..config import CONFIG_FILE, Config
 from ..documenso import (
     complete_signature,
@@ -47,25 +62,24 @@ from ..documenso import (
 )
 from ..documents import (
     DocumentModel,
+    DocumentRevision,
     FrozenDocumentError,
+    diff_document_revisions,
+    freeze_document,
     get_document,
     get_version_history,
-    freeze_document,
-    unfreeze_document,
-    restore_document_version,
-    diff_document_revisions,
     import_document,
     list_public_documents,
     public_documents_report,
+    restore_document_version,
+    unfreeze_document,
     update_document,
-    DocumentRevision,
 )
 from ..documents import list_documents as list_docs
 from ..exporter import export_document
 from ..integrations.signature import get_provider
 from ..logs import log_event
 from ..search import get_project
-from ..approvals import verify_document_signature
 
 _logger = logging.getLogger(__name__)
 
@@ -211,6 +225,7 @@ async def import_document_endpoint(
 ) -> DocumentModel:
     """Import a DOCX or Markdown file and store it as a document."""
     import tempfile
+
     import docreview360.api as _api_mod
     _api_mod._UPLOAD_RATE_LIMITER.enforce(f"documents-import:{current_user.username}:{_request_source(request)}")
 
@@ -218,7 +233,6 @@ async def import_document_endpoint(
         project_model = get_project(project)
         if project_model is None:
             raise HTTPException(status_code=404, detail="Project not found")
-        from ..search import get_project as _get_project
         from .projects_router import _enforce_project_access
         _enforce_project_access(project_model, current_user)
     resolved_user = user
@@ -281,8 +295,8 @@ async def import_tiptap_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> DocumentModel:
     """Import a TipTap JSON document."""
-    from ..tiptap import import_tiptap_document
     from ..messages import render
+    from ..tiptap import import_tiptap_document
 
     try:
         document = import_tiptap_document(
@@ -1078,9 +1092,11 @@ async def get_document_quality_history(
     _enforce_document_access(document, current_user)
 
     try:
+        from sqlalchemy import desc as _desc
+        from sqlalchemy import select as _select
+
         from ..db_store import get_db
         from ..models import DocumentQualityScore as _OrmScore
-        from sqlalchemy import select as _select, desc as _desc
 
         db = get_db()
         with db.orm_session() as session:

@@ -2,14 +2,13 @@ import uuid
 from typing import cast
 
 from celery import Task
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 from docreview360.api import approvals as api_approvals
 from docreview360.approvals import ApprovalModel, approvals
 from docreview360.audit import clear_audit_log, log_audit_event
 from docreview360.celery_app import echo
 from docreview360.logs import TRACE_ID
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 
 def test_trace_id_propagates_to_logs_and_provider(monkeypatch) -> None:

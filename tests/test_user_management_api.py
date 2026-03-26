@@ -1,9 +1,8 @@
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, profile, rbac, settings_manager
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def _admin_headers() -> dict[str, str]:

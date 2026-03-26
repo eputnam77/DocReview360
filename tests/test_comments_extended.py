@@ -5,20 +5,16 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.comments import (
-    CommentModel,
     add_comment,
     list_comments,
     reset_comment_state,
     update_comment,
-    COMMENT_STATUSES,
-    COMMENT_TAGS,
 )
 from docreview360.documents import documents, import_document
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)

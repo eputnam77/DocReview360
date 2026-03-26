@@ -1,14 +1,13 @@
 from pathlib import Path
 
 import pytest
-from sqlalchemy import inspect, text
-from sqlalchemy.exc import OperationalError
-
 from docreview360.database import (
     Database,
     _parse_sql_statements,
     default_url,
 )
+from sqlalchemy import inspect, text
+from sqlalchemy.exc import OperationalError
 
 
 def test_default_url_variants() -> None:

@@ -15,15 +15,12 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-import os
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from jose import JWTError, jwt
 
-from .. import auth as _auth
-from ..auth import ALGORITHM, SECRET_KEY, TOKEN_AUDIENCE, TOKEN_ISSUER
 from ..documents import get_document
 from ..wopi import (
     WOPICheckFileInfo,

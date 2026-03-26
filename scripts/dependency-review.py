@@ -182,7 +182,7 @@ def check_npm_audit() -> None:
 
 def print_summary() -> None:
     print(f"\n{'='*60}")
-    print(f"  DEPENDENCY REVIEW SUMMARY")
+    print("  DEPENDENCY REVIEW SUMMARY")
     print("=" * 60)
 
     if not findings:

@@ -16,7 +16,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from pathlib import Path
@@ -181,12 +180,12 @@ def check_document_upload(client: object, project_id: str, headers: dict) -> str
 
     # 400 with a detail message means the endpoint is reachable but input invalid
     if status == 400 and "detail" in body:
-        ok("Documents", f"POST /documents/tiptap reachable → 400 (input validation working)")
+        ok("Documents", "POST /documents/tiptap reachable → 400 (input validation working)")
         return None
 
     # 422 means the endpoint exists but input was wrong format
     if status == 422:
-        ok("Documents", f"POST /documents/tiptap reachable → 422 (schema validation active)")
+        ok("Documents", "POST /documents/tiptap reachable → 422 (schema validation active)")
         return None
 
     # Check that the documents list endpoint works

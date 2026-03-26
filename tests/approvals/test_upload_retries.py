@@ -6,7 +6,6 @@ import asyncio
 from typing import Any, Dict, List, Tuple
 
 import pytest
-
 from docreview360 import approvals as approvals_mod
 from docreview360.approvals import signatures as approvals_sig
 from docreview360.monitoring import APPROVAL_UPLOAD_RETRIES

@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from cryptography.fernet import Fernet
-
 from docreview360.security_hardening import encrypt_backup as create_backup
 
 

@@ -5,8 +5,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
 from .yaml_loader import load_yaml_file, save_yaml_file
 
 RBAC_FILE = Path("rbac.yaml")

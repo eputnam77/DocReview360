@@ -1,11 +1,10 @@
 from datetime import timedelta
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.documents import DocumentModel
 from docreview360.exporter import export_document
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

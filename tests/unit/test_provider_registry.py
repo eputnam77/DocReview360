@@ -1,6 +1,5 @@
-import pytest
-
 import docreview360.integrations.registry as registry
+import pytest
 
 
 def test_providers_returns_copy(monkeypatch):

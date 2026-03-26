@@ -3,8 +3,6 @@
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.doc_types import (
@@ -15,6 +13,7 @@ from docreview360.doc_types import (
     list_all_phases,
     reset_document_types,
 )
+from fastapi.testclient import TestClient
 
 
 def _alice_headers() -> dict[str, str]:

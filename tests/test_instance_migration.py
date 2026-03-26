@@ -2,7 +2,6 @@ import gzip
 import json
 
 import pytest
-
 from docreview360 import doc_types
 from docreview360.doc_types import DocumentTypeModel, add_document_type
 from docreview360.migration import export_instance, import_instance

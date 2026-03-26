@@ -28,9 +28,9 @@ from ._models import (
     WorkflowTemplateStep,
 )
 from ._templates import (
+    _TEMPLATES_LOAD_LOCK,
     DEFAULT_WORKFLOW_TEMPLATES,
     DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE,
-    _TEMPLATES_LOAD_LOCK,
     _coerce_template_payload,
     _ensure_templates_loaded,
     _env_flag_enabled,

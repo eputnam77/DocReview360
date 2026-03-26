@@ -3,7 +3,6 @@ import io
 from types import SimpleNamespace
 
 import pytest
-
 from docreview360 import object_storage
 from docreview360.object_storage import _validate_key, download_file, upload_file
 

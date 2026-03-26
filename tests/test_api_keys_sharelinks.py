@@ -12,12 +12,10 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
+from docreview360 import api_keys as api_keys_mod
 from docreview360 import auth, rbac
 from docreview360.api import app
-from docreview360 import api_keys as api_keys_mod
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers

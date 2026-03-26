@@ -1,10 +1,9 @@
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.api import ml as ml_module
 from docreview360.logs import log_event
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)

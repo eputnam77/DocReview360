@@ -2,9 +2,8 @@ import asyncio
 import types
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 import docreview360.secrets as secrets
+import pytest
 from docreview360.secrets import configure_vault, get_secret, schedule_rotation, store_secret
 
 

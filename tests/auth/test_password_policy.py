@@ -4,10 +4,9 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import pytest
-
 import docreview360
 import docreview360.settings_manager as settings_manager
+import pytest
 
 
 def _reload_auth(monkeypatch: pytest.MonkeyPatch, **env: str):

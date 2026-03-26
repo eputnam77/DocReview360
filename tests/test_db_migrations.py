@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import pytest
+from docreview360.database import Database
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError
-
-from docreview360.database import Database
 
 
 def test_sql_migrations(tmp_path: Path) -> None:

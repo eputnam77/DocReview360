@@ -1,9 +1,8 @@
 """Tests covering MFA enforcement for the login endpoints."""
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 
 def _ensure_demo_user() -> tuple[str, str]:

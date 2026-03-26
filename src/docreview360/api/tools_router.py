@@ -39,7 +39,7 @@ from ..fsv_proxy import (
     is_fsv_configured,
 )
 from ..logs import log_event
-from ..rbac import has_role, require_role
+from ..rbac import has_role
 from ..search import (
     get_project,
     list_saved_searches,

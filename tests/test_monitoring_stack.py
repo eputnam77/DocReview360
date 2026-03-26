@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from docreview360.monitoring import start_observability_stack
 
 

@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from docreview360 import secrets, settings_manager
 from docreview360.crypto import EncryptionKeyError
 

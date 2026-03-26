@@ -7,9 +7,8 @@ from typing import Any
 
 import numpy as np
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
+from fastapi.testclient import TestClient
 
 
 class _FakeSession:

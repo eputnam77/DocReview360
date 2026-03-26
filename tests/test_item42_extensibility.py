@@ -2,7 +2,6 @@
 """Tests for Item 42: hierarchical config, feature flags, custom workflows, custom fields."""
 from __future__ import annotations
 
-import json
 import os
 
 import pytest
@@ -73,7 +72,10 @@ class TestHierarchicalConfig:
 
     def test_get_org_config_all_merges_defaults(self):
         from docreview360.db_store import get_db
-        from docreview360.hierarchical_config import SYSTEM_DEFAULTS, get_org_config_all, set_org_config
+        from docreview360.hierarchical_config import (
+            get_org_config_all,
+            set_org_config,
+        )
 
         with get_db().orm_session() as db:
             set_org_config(db, "org-delta", "auth.mfa_required", True, updated_by="admin")
@@ -164,8 +166,8 @@ class TestCustomWorkflows:
     ]
 
     def test_create_and_list(self):
-        from docreview360.db_store import get_db
         from docreview360.custom_workflows import create_custom_workflow, list_custom_workflows
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             wf = create_custom_workflow(
@@ -209,8 +211,12 @@ class TestCustomWorkflows:
         assert any("sla_days" in e for e in errors)
 
     def test_delete_workflow(self):
+        from docreview360.custom_workflows import (
+            create_custom_workflow,
+            delete_custom_workflow,
+            get_custom_workflow,
+        )
         from docreview360.db_store import get_db
-        from docreview360.custom_workflows import create_custom_workflow, delete_custom_workflow, get_custom_workflow
 
         with get_db().orm_session() as db:
             create_custom_workflow(db, "org-del", "Delete Me", self.VALID_STEPS, created_by="admin")
@@ -226,12 +232,12 @@ class TestCustomWorkflows:
 
 class TestCustomFields:
     def test_create_text_field_and_get_values(self):
-        from docreview360.db_store import get_db
         from docreview360.custom_fields import (
             create_field_definition,
             get_field_values,
             set_field_value,
         )
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             defn = create_field_definition(
@@ -248,8 +254,8 @@ class TestCustomFields:
             assert values["classification"] == "CUI"
 
     def test_validate_number_field(self):
-        from docreview360.db_store import get_db
         from docreview360.custom_fields import create_field_definition, validate_field_value
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             defn = create_field_definition(
@@ -269,8 +275,8 @@ class TestCustomFields:
             assert err_ok is None
 
     def test_validate_select_field(self):
-        from docreview360.db_store import get_db
         from docreview360.custom_fields import create_field_definition, validate_field_value
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             defn = create_field_definition(
@@ -290,8 +296,8 @@ class TestCustomFields:
             assert err_ok is None
 
     def test_required_field_validation(self):
-        from docreview360.db_store import get_db
         from docreview360.custom_fields import create_field_definition, validate_field_value
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             defn = create_field_definition(
@@ -309,12 +315,12 @@ class TestCustomFields:
             assert "required" in err.lower()
 
     def test_soft_delete_field(self):
-        from docreview360.db_store import get_db
         from docreview360.custom_fields import (
             create_field_definition,
             delete_field_definition,
             list_field_definitions,
         )
+        from docreview360.db_store import get_db
 
         with get_db().orm_session() as db:
             defn = create_field_definition(

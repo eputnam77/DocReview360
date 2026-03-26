@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from docreview360.ml import clear_session_cache
 from docreview360.ml.compliance_classifier import evaluate_compliance, model_path
 from docreview360.ml.features import compliance_features

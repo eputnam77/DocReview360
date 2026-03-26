@@ -7,11 +7,11 @@ import hashlib
 import logging
 import mimetypes
 import re
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Callable, Iterable, Mapping, Optional
 from uuid import uuid4
-from datetime import datetime, timezone
 
 try:  # Optional dependency for HTML sanitization.
     import bleach
@@ -568,8 +568,8 @@ def update_document_quality_score(
     Returns the updated :class:`DocumentModel`, or ``None`` when ``doc_id`` is
     not found.
     """
-    from uuid import uuid4 as _uuid4
     from datetime import timezone as _tz
+    from uuid import uuid4 as _uuid4
 
     document = documents.get(doc_id)
     now = datetime.now(_tz.utc)
@@ -583,8 +583,8 @@ def update_document_quality_score(
         db = get_db()
         with db.orm_session() as session:
             # Update the Document ORM row's summary columns if it exists.
+
             from ..models import Document as _OrmDoc
-            from sqlalchemy import select as _select
 
             orm_doc = session.get(_OrmDoc, doc_id)
             if orm_doc is not None:

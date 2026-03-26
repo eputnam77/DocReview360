@@ -13,13 +13,9 @@ Covers:
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 import tempfile
-import time
 from pathlib import Path
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HEADLESS_SCRIPT = REPO_ROOT / "scripts" / "headless-loop.sh"

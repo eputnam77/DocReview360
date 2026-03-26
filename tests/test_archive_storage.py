@@ -2,9 +2,8 @@ import hashlib
 import json
 from pathlib import Path
 
-import pytest
-
 import docreview360.archive as _archive_mod
+import pytest
 from docreview360.archive import archive_document, archives
 from docreview360.documents import DocumentModel
 from docreview360.object_storage import download_file, upload_file

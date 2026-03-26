@@ -12,8 +12,6 @@ from __future__ import annotations
 import json
 import logging
 import sys
-import time
-from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -274,12 +272,8 @@ class TestRateLimiter:
         """rate_limit_dep raises HTTP 429 when limit is exceeded."""
         import asyncio
 
-        from fastapi import HTTPException
-        from fastapi.testclient import TestClient
-        from starlette.requests import Request
-        from starlette.testclient import TestClient as StarletteTestClient
-
         from docreview360.rate_limiter import rate_limit_dep, reset_for_testing
+        from fastapi import HTTPException
 
         reset_for_testing("testclient")
 
@@ -459,7 +453,7 @@ class TestTelemetry:
         assert result is False
 
     def test_get_tracer_returns_noop_when_not_configured(self) -> None:
-        from docreview360.telemetry import _NoopTracer, get_tracer
+        from docreview360.telemetry import get_tracer
 
         tracer = get_tracer("test.module")
         # Without OTel installed or configured, should be noop-like.

@@ -1,11 +1,10 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 import docreview360.audit as audit
 import docreview360.integrity as integrity
 import docreview360.logs as logs
+import pytest
 
 
 @pytest.fixture

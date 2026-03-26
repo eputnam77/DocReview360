@@ -5,7 +5,6 @@ os.environ.setdefault("DOCREVIEW360_DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP", "1")
 
 import pytest
-
 from docreview360.database import Database  # noqa: E402
 
 
@@ -22,13 +21,12 @@ def _disable_migrations(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(Database, "_apply_sql_migrations", lambda self, *args, **kwargs: None)
 
 
-from fastapi.testclient import TestClient  # noqa: E402
-
 from docreview360 import auth  # noqa: E402
 from docreview360.api import app  # noqa: E402
 from docreview360.approvals import approvals, create_approval  # noqa: E402
 from docreview360.audit import clear_audit_log, get_audit_log  # noqa: E402
 from docreview360.documents import import_document  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 
 def _auth_headers() -> dict[str, str]:

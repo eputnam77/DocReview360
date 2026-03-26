@@ -14,12 +14,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import subprocess
 import sys
-from collections import Counter
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -105,7 +103,7 @@ def hunt_flaky(runs: int, test_path: str | None) -> dict[str, list[int]]:
             f"{len(per_test_failures)} distinct test(s) failed across {runs} run(s)",
         )
     else:
-        note("Hunt", "LOW", f"Some run(s) failed but no test IDs captured — check pytest output")
+        note("Hunt", "LOW", "Some run(s) failed but no test IDs captured — check pytest output")
 
     return per_test_failures
 

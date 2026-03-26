@@ -5,11 +5,10 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 from docreview360.plugins import load_plugins, registry
 from docreview360.plugins_ui import render_plugin_table
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 # PL-01
 

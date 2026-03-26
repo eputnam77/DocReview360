@@ -1,9 +1,8 @@
 import types
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 import docreview360.secrets as secrets
+import pytest
 from docreview360.secrets import get_secret, store_secret
 
 

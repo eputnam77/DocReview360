@@ -7,7 +7,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-
 from docreview360 import provider_store
 from docreview360.integrations.signature import documenso
 from docreview360.monitoring import SIGNATURE_FAILURES

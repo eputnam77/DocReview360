@@ -19,7 +19,8 @@ except Exception:
 
 try:
     import onnx
-    from onnx import helper as onnx_helper, numpy_helper as onnx_numpy_helper
+    from onnx import helper as onnx_helper
+    from onnx import numpy_helper as onnx_numpy_helper
 except Exception:
     onnx = None  # type: ignore[assignment]
     onnx_helper = None  # type: ignore[assignment]

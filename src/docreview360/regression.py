@@ -6,7 +6,6 @@ from __future__ import annotations
 from pathlib import Path
 
 
-
 def run_regression(fixtures: Path) -> int:
     """Count Markdown files under ``fixtures`` as dummy regression."""
     if not fixtures.exists():

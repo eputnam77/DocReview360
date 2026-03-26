@@ -13,15 +13,12 @@ Each test class maps to a route group or module.  Tests check:
 
 from __future__ import annotations
 
-import io
 from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Shared helpers

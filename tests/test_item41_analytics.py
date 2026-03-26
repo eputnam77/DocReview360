@@ -13,10 +13,9 @@ import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Auth helpers
@@ -240,6 +239,7 @@ class TestExternalSearchConfig:
         monkeypatch.delenv("ELASTICSEARCH_URL", raising=False)
         # Re-import to pick up monkeypatched env
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.is_external_search_configured() is False
@@ -249,6 +249,7 @@ class TestExternalSearchConfig:
         monkeypatch.setenv("DOCREVIEW360_SEARCH_BACKEND", "sqlite")
         monkeypatch.setenv("OPENSEARCH_URL", "http://localhost:9200")
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.is_external_search_configured() is False
@@ -258,6 +259,7 @@ class TestExternalSearchConfig:
         monkeypatch.setenv("DOCREVIEW360_SEARCH_BACKEND", "opensearch")
         monkeypatch.setenv("OPENSEARCH_URL", "http://localhost:9200")
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.is_external_search_configured() is True
@@ -267,6 +269,7 @@ class TestExternalSearchConfig:
         monkeypatch.setenv("DOCREVIEW360_SEARCH_BACKEND", "elasticsearch")
         monkeypatch.setenv("ELASTICSEARCH_URL", "http://localhost:9200")
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.is_external_search_configured() is True
@@ -276,6 +279,7 @@ class TestExternalSearchConfig:
         monkeypatch.setenv("DOCREVIEW360_SEARCH_BACKEND", "opensearch")
         monkeypatch.delenv("OPENSEARCH_URL", raising=False)
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.is_external_search_configured() is False
@@ -284,6 +288,7 @@ class TestExternalSearchConfig:
         """get_search_backend() returns 'sqlite' when env var not set."""
         monkeypatch.delenv("DOCREVIEW360_SEARCH_BACKEND", raising=False)
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.get_search_backend() == "sqlite"
@@ -292,6 +297,7 @@ class TestExternalSearchConfig:
         """get_search_backend() returns 'opensearch' when configured."""
         monkeypatch.setenv("DOCREVIEW360_SEARCH_BACKEND", "opensearch")
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.get_search_backend() == "opensearch"
@@ -302,6 +308,7 @@ class TestExternalSearchConfig:
         monkeypatch.delenv("OPENSEARCH_URL", raising=False)
         monkeypatch.delenv("ELASTICSEARCH_URL", raising=False)
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         with pytest.raises(NotImplementedError, match="No external search backend"):
@@ -311,6 +318,7 @@ class TestExternalSearchConfig:
         """ExternalSearchClient can be instantiated with an explicit base_url."""
         monkeypatch.delenv("OPENSEARCH_URL", raising=False)
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         client = _ext.ExternalSearchClient(base_url="http://localhost:9200")
@@ -320,6 +328,7 @@ class TestExternalSearchConfig:
     def test_client_strips_trailing_slash(self, monkeypatch) -> None:
         """ExternalSearchClient strips trailing slash from base_url."""
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         client = _ext.ExternalSearchClient(base_url="http://localhost:9200/")
@@ -337,6 +346,7 @@ class TestExternalSearchConfig:
         """get_external_url() returns None when backend is sqlite."""
         monkeypatch.setenv("DOCREVIEW360_SEARCH_BACKEND", "sqlite")
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.get_external_url() is None
@@ -346,6 +356,7 @@ class TestExternalSearchConfig:
         monkeypatch.setenv("DOCREVIEW360_SEARCH_BACKEND", "opensearch")
         monkeypatch.setenv("OPENSEARCH_URL", "http://search-host:9200")
         from importlib import reload
+
         import docreview360.search._external as _ext
         reload(_ext)
         assert _ext.get_external_url() == "http://search-host:9200"
@@ -389,6 +400,7 @@ class TestAnalyticsDashboardFunction:
     def test_analytics_export_json(self) -> None:
         """analytics_export with fmt='json' returns valid JSON string."""
         import json
+
         from docreview360.reporting import analytics_export
         content, media_type = analytics_export(fmt="json")
         assert media_type == "application/json"

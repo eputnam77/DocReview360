@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from docreview360 import auth, demo_data, rbac
 from docreview360.search import _reset_state_for_testing, get_project, list_projects
 

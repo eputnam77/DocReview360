@@ -25,11 +25,9 @@ import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
-
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -151,7 +149,7 @@ class TestPluginListOrdering:
 
     def test_list_returns_deep_copies(self):
         """Mutating the returned list should not affect PLUGIN_DATA."""
-        from docreview360.plugin_marketplace import list_plugins_with_info, PLUGIN_DATA
+        from docreview360.plugin_marketplace import PLUGIN_DATA, list_plugins_with_info
 
         plugins = list_plugins_with_info()
         before_category = PLUGIN_DATA["textstat"]["category"]
@@ -189,7 +187,7 @@ class TestOrgToolConfigFunctions:
         assert cfg["enabled_builtins"] == {}
 
     def test_set_disabled_plugins(self):
-        from docreview360.plugin_marketplace import set_org_tool_config, get_org_tool_config
+        from docreview360.plugin_marketplace import get_org_tool_config, set_org_tool_config
 
         set_org_tool_config("org-a", disabled_plugins=["language-tool-python"])
         cfg = get_org_tool_config("org-a")
@@ -203,9 +201,9 @@ class TestOrgToolConfigFunctions:
 
     def test_set_enabled_builtins(self):
         from docreview360.plugin_marketplace import (
-            set_org_tool_config,
-            get_org_tool_config,
             BUILTIN_PLUGIN_IDS,
+            get_org_tool_config,
+            set_org_tool_config,
         )
         bid = next(iter(BUILTIN_PLUGIN_IDS))
         set_org_tool_config("org-c", enabled_builtins={bid: False})
@@ -219,7 +217,7 @@ class TestOrgToolConfigFunctions:
             set_org_tool_config("org-d", enabled_builtins={"not-a-builtin": True})
 
     def test_get_effective_plugins_marks_disabled(self):
-        from docreview360.plugin_marketplace import set_org_tool_config, get_effective_plugins
+        from docreview360.plugin_marketplace import get_effective_plugins, set_org_tool_config
 
         set_org_tool_config("org-e", disabled_plugins=["pylanguagetool"])
         plugins = get_effective_plugins("org-e")
@@ -238,9 +236,9 @@ class TestOrgToolConfigFunctions:
 
     def test_get_builtin_status_with_org_override(self):
         from docreview360.plugin_marketplace import (
-            set_org_tool_config,
-            get_builtin_status,
             BUILTIN_PLUGIN_IDS,
+            get_builtin_status,
+            set_org_tool_config,
         )
         bid = next(iter(BUILTIN_PLUGIN_IDS))
         # Globally all builtins default to True; set org override to False
@@ -250,9 +248,9 @@ class TestOrgToolConfigFunctions:
 
     def test_get_builtin_status_no_org_id_unaffected(self):
         from docreview360.plugin_marketplace import (
-            set_org_tool_config,
-            get_builtin_status,
             BUILTIN_PLUGIN_IDS,
+            get_builtin_status,
+            set_org_tool_config,
         )
         bid = next(iter(BUILTIN_PLUGIN_IDS))
         set_org_tool_config("org-g", enabled_builtins={bid: False})

@@ -5,10 +5,7 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from docreview360 import keycloak_auth
-
 
 # ---------------------------------------------------------------------------
 # extract_keycloak_roles

@@ -1,7 +1,6 @@
 import copy
 
 import pytest
-
 from docreview360 import documents as doc_mod
 from docreview360 import search as search_mod
 from docreview360.tiptap import import_tiptap_document, tiptap_to_markdown

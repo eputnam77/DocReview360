@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 
 import yaml
-
 from docreview360 import rbac
 
 

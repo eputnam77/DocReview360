@@ -1,7 +1,6 @@
 import math
 
 import pytest
-
 from docreview360.ml.torch_models import build_risk_critic
 from docreview360.review_analytics import (
     LessonsRepository,

@@ -13,10 +13,9 @@ import pytest
 
 os.environ.setdefault("DOCREVIEW360_ENV", "dev")
 
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -110,7 +109,11 @@ class TestFeedbackLedger:
             dispose_feedback_item(item.id, "open", disposition_by="alice")
 
     def test_reply_to_feedback(self) -> None:
-        from docreview360.feedback_ledger import create_feedback_item, list_feedback_items, reply_to_feedback
+        from docreview360.feedback_ledger import (
+            create_feedback_item,
+            list_feedback_items,
+            reply_to_feedback,
+        )
         parent = create_feedback_item("proj-reply-1", "bob", "Please explain this.", feedback_type="question")
         reply = reply_to_feedback(parent.id, "alice", "Happy to explain — see comment below.")
         assert reply.parent_id == parent.id
@@ -127,7 +130,9 @@ class TestFeedbackLedger:
 
     def test_feedback_progress(self) -> None:
         from docreview360.feedback_ledger import (
-            create_feedback_item, dispose_feedback_item, get_feedback_progress
+            create_feedback_item,
+            dispose_feedback_item,
+            get_feedback_progress,
         )
         pid = "proj-prog-1"
         i1 = create_feedback_item(pid, "bob", "Item 1", feedback_type="comment")
@@ -357,7 +362,7 @@ class TestNotificationLog:
     """Tests for notification log persistence and GET endpoint."""
 
     def test_log_notification(self) -> None:
-        from docreview360.notification_log import log_notification, list_notification_log
+        from docreview360.notification_log import list_notification_log, log_notification
         entry = log_notification(
             "review.assigned",
             "You were invited to review project X. /projects/p1#reviewers",
@@ -370,7 +375,7 @@ class TestNotificationLog:
         assert any(e.id == entry.id for e in entries)
 
     def test_list_notification_log_respects_project(self) -> None:
-        from docreview360.notification_log import log_notification, list_notification_log
+        from docreview360.notification_log import list_notification_log, log_notification
         log_notification("review.signed", "msg", project_id="proj-log-a", reviewer="alice")
         log_notification("review.signed", "msg", project_id="proj-log-b", reviewer="bob")
 
@@ -463,7 +468,6 @@ class TestNotificationDeepLinks:
 
     def test_assigned_notification_contains_deep_link(self) -> None:
         from docreview360.notification_log import list_notification_log
-        from docreview360.notifications import sent_emails
 
         client = TestClient(app)
         hdrs = _alice_headers()

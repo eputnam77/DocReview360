@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import pytest
-
 from docreview360.services import ApprovalService, DocumentService, ProjectService
-
 
 # ---------------------------------------------------------------------------
 # ProjectService

@@ -171,8 +171,8 @@ def _odt_to_text(data: bytes) -> str:
     ODT files are ZIP archives containing ``content.xml``.  The text
     content is extracted by stripping XML tags from that entry.
     """
-    import zipfile
     import xml.etree.ElementTree as ET
+    import zipfile
 
     try:
         with zipfile.ZipFile(BytesIO(data)) as zf:

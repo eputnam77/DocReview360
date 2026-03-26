@@ -1,6 +1,5 @@
-import pytest
-
 import docreview360.autosuggest as autosuggest
+import pytest
 
 
 class DummyResp:

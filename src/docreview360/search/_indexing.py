@@ -12,7 +12,7 @@ import sqlite3
 import threading
 from collections import Counter
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Dict, Set
 
@@ -300,7 +300,6 @@ class SearchIndex:
         projects: dict[str, ProjectModel] | None = None,
         next_project_number: int | None = None,
     ) -> None:
-        import uuid
 
         self.index: Dict[str, Set[str]] = {}
         if projects is None:

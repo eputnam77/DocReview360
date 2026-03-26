@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
-
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.rbac import add_role
 from docreview360.search import ProjectModel, add_project
+from fastapi.testclient import TestClient
 
 
 def _setup() -> None:

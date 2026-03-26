@@ -6,8 +6,6 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from fastapi.testclient import TestClient
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.approvals import (
@@ -17,6 +15,7 @@ from docreview360.approvals import (
     verify_document_signature,
 )
 from docreview360.integrations.signature import base, documenso
+from fastapi.testclient import TestClient
 
 
 class FailingProvider:

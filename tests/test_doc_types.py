@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360 import doc_types, search
 from docreview360.doc_types import DocumentTypeModel, reset_document_types
 

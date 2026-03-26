@@ -1,9 +1,8 @@
 from pathlib import Path
 
+import docreview360.provider_store as ps
 import pytest
 import yaml
-
-import docreview360.provider_store as ps
 
 
 def test_load_providers_rejects_non_mapping(

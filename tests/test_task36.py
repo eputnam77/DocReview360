@@ -1,5 +1,4 @@
 import pytest
-
 from docreview360.ai_balancer import (
     assign_job,
     complete_job,

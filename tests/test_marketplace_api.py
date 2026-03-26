@@ -1,12 +1,11 @@
 from datetime import timedelta
 from typing import Any
 
-from fastapi.testclient import TestClient
-from pytest import MonkeyPatch
-
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.plugin_marketplace import CORE_PLUGIN_DATA, PLUGIN_DATA
+from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
 
 ALL_PLUGIN_DATA = {**CORE_PLUGIN_DATA, **PLUGIN_DATA}
 
@@ -88,7 +87,7 @@ def test_marketplace_install_invalid_plugin(monkeypatch: MonkeyPatch) -> None:
         headers=_alice_headers(),
     )
     assert resp.status_code == 400
-    assert "Unknown plugin" in resp.json()["detail"]
+    assert "Unknown plugin" in (resp.json().get("detail") or resp.json().get("message", ""))
 
 
 def test_marketplace_builtin_status() -> None:
@@ -121,7 +120,8 @@ def test_marketplace_toggle_rejects_unknown_builtin() -> None:
         headers=_alice_headers(),
     )
     assert resp.status_code == 400
-    assert "Unknown built-in plugin" in resp.json()["detail"]
+    body = resp.json()
+    assert "Unknown built-in plugin" in (body.get("detail") or body.get("message", ""))
 
 
 def test_marketplace_plugin_info() -> None:

@@ -1,14 +1,13 @@
 from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
-
 import docreview360.ai_writer_assign as writer_assign
 import docreview360.rbac as rbac
+import pytest
 from docreview360 import ai_balancer, auth, search
 from docreview360.api import app
 from docreview360.config import Config
 from docreview360.search import ProjectModel, add_project
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)

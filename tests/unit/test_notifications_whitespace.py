@@ -1,6 +1,5 @@
-import pytest
-
 import docreview360.notifications as n
+import pytest
 
 
 def test_send_email_rejects_whitespace_recipient():

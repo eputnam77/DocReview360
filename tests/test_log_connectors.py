@@ -5,7 +5,6 @@ import httpx
 import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
-
 from docreview360 import logs
 from docreview360.config import Config
 from docreview360.log_connectors import (
