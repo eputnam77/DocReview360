@@ -120,7 +120,7 @@ class TestProjects:
     def test_list_projects_authenticated(self, client: TestClient, alice: dict) -> None:
         resp = client.get("/projects", headers=alice)
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        assert isinstance(resp.json()["items"], list)
 
     def test_create_project(self, client: TestClient, alice: dict) -> None:
         payload = {"name": "CovTest Project", "doc_type": "Policy"}
@@ -161,7 +161,7 @@ class TestDocuments:
     def test_list_documents_authenticated(self, client: TestClient, alice: dict) -> None:
         resp = client.get("/documents", headers=alice)
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        assert isinstance(resp.json()["items"], list)
 
     def test_get_document_not_found(self, client: TestClient, alice: dict) -> None:
         resp = client.get("/documents/nonexistent-doc-id", headers=alice)

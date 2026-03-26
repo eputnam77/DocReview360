@@ -395,7 +395,7 @@ class TestConfigurationPropagation:
         resp = client.get("/projects", headers=headers)
         assert resp.status_code == 200
 
-        projects = resp.json()
+        projects = resp.json()["items"]
         project_ids = [p["id"] for p in projects]
         assert "config-test-1" in project_ids
         assert "config-test-2" in project_ids

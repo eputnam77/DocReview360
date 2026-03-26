@@ -34,8 +34,9 @@ def _ensure_email_template(name: str, subject: str, body: str, task: str | None 
     try:
         if email_templates.get_template(name) is None:
             email_templates.create_template(name, subject, body, task=task)
-    except Exception:
+    except Exception as exc:
         # Avoid failing notification flows if persistence is unavailable.
+        _logger.warning("Could not persist email template %r: %s", name, exc)
         return
 
 
@@ -43,7 +44,8 @@ def _resolve_template(name: str) -> Template:
     tmpl = None
     try:
         tmpl = email_templates.get_template(name)
-    except Exception:
+    except Exception as exc:
+        _logger.debug("Could not load persisted template %r: %s", name, exc)
         tmpl = None
     if tmpl is not None:
         return Template(tmpl.subject, tmpl.body)

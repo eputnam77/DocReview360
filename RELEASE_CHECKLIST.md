@@ -162,36 +162,36 @@ Target window: next month (confirm exact date and time zone).
 
 **Phase 2: Pagination**
 
-- [ ] Add `skip` and `limit` pagination to `GET /projects`.
-- [ ] Add `skip` and `limit` pagination to `GET /projects/{id}/feedback`.
-- [ ] Add `skip` and `limit` pagination to `GET /projects/{id}/assignments`.
-- [ ] Add `skip` and `limit` pagination to `GET /projects/{id}/notification-log`.
-- [ ] Add `skip` and `limit` pagination to `GET /documents`.
-- [ ] Add `skip` and `limit` pagination to `GET /comments/{project_id}`.
-- [ ] Return shared pagination metadata in responses.
+- [x] Add `skip` and `limit` pagination to `GET /projects`. (2026-03-25)
+- [x] Add `skip` and `limit` pagination to `GET /projects/{id}/feedback`. (2026-03-25)
+- [x] Add `skip` and `limit` pagination to `GET /projects/{id}/assignments`. (2026-03-25)
+- [x] Add `skip` and `limit` pagination to `GET /projects/{id}/notification-log`. (2026-03-25)
+- [x] Add `skip` and `limit` pagination to `GET /documents`. (2026-03-25)
+- [x] Add `skip` and `limit` pagination to `GET /comments/{project_id}`. (2026-03-25)
+- [x] Return shared pagination metadata in responses.
   Target shape: `{ items: [...], total: N, skip: 0, limit: 20 }`.
   Touch: `src/docreview360/api/projects_router.py`,
   `src/docreview360/api/feedback_router.py`,
   `src/docreview360/api/assignments_router.py`,
   `src/docreview360/api/documents_router.py`,
   `src/docreview360/api/comments_router.py`,
-  `src/docreview360/api/notifications_router.py` or related response models.
+  `src/docreview360/api/notifications_router.py` or related response models. (2026-03-25)
 
 **Phase 3: Push notifications**
 
-- [ ] Add device token registration endpoints.
-  Target: `POST /devices/register`, `DELETE /devices/{token}`.
+- [x] Add device token registration endpoints.
+  Target: `POST /devices/register`, `DELETE /devices/{token}`. (2026-03-25)
 - [ ] Integrate APNs with token-based auth.
 - [ ] Extend `send_notification()` to dispatch APNs alongside Slack, Teams,
   email, and webhook flows.
-- [ ] Add `GET /notifications/unread-count` for badge updates.
+- [x] Add `GET /notifications/unread-count` for badge updates.
   Touch: `src/docreview360/notifications.py`,
   `src/docreview360/api/notifications_router.py`, auth or session storage,
-  device-token persistence.
+  device-token persistence. (2026-03-25)
 
 **Phase 4: API ergonomics**
 
-- [ ] Add `GET /assignments/me/summary`.
+- [x] Add `GET /assignments/me/summary`. (2026-03-25)
 - [ ] Add `Content-Length` headers on download responses.
 - [ ] Decide whether to add a compact rendered document-view endpoint for
   read-only mobile viewing.
@@ -359,14 +359,14 @@ place and was removed from this file.
   `src/docreview360/api/__init__.py`, routers incrementally.
   Exit criteria: shared `AppError` hierarchy, `ErrorResponse` model, stable
   4xx or 5xx envelope, `trace_id` included. (2026-03-25)
-- [ ] R-02. Fix test-suite ordering and environment leakage.
+- [x] R-02. Fix test-suite ordering and environment leakage.
   Touch: `tests/conftest.py`, env-mutating tests, module-level caches.
   Exit criteria: full suite is order-independent and CI can catch pollution
-  reliably.
-- [ ] R-03. Add dedicated integration coverage for untested routers.
+  reliably. (2026-03-25)
+- [x] R-03. Add dedicated integration coverage for untested routers.
   Add coverage for: admin, dashboards, organizations, SCIM, SLA, legal,
   records, branches, config, feedback, assignments, and WOPI.
-  Touch: `tests/api/` new files.
+  Touch: `tests/api/` new files. (2026-03-25)
 - [x] R-04. Add startup configuration validation.
   Touch: `src/docreview360/config_validator.py` (new),
   `src/docreview360/api/__init__.py`. (2026-03-25)
@@ -388,21 +388,21 @@ place and was removed from this file.
   backward-compatible re-exports.
 - [ ] R-09. Break up `frontend/pages/projects/[id]/index.tsx` into smaller
   project components.
-- [ ] R-10. Replace the placeholder Dependabot config with real update rules for
+- [x] R-10. Replace the placeholder Dependabot config with real update rules for
   `pip`, `npm`, and `github-actions`.
-  Touch: `.github/dependabot.yml`.
-- [ ] R-11. Standardize retry logic.
+  Touch: `.github/dependabot.yml`. (2026-03-25)
+- [x] R-11. Standardize retry logic.
   Touch: `src/docreview360/retry.py` (new),
   `src/docreview360/event_dispatcher.py`,
-  `src/docreview360/approvals/signatures.py`.
-- [ ] R-12. Add logging to silent catch blocks where failures should be
+  `src/docreview360/approvals/signatures.py`. (2026-03-25)
+- [x] R-12. Add logging to silent catch blocks where failures should be
   diagnosable.
   Touch: `src/docreview360/notifications.py`, `src/docreview360/sod.py`,
-  `src/docreview360/event_dispatcher.py`, other silent handlers.
-- [ ] R-13. Add typed response models to admin endpoints that still return raw
+  `src/docreview360/event_dispatcher.py`, other silent handlers. (2026-03-25)
+- [x] R-13. Add typed response models to admin endpoints that still return raw
   dicts.
   Touch: `src/docreview360/api/schemas/admin_schemas.py` (new),
-  `src/docreview360/api/admin_router.py`, other untyped routers.
+  `src/docreview360/api/admin_router.py`, other untyped routers. (2026-03-25)
 
 ### P2: Longer-term hardening
 
@@ -410,8 +410,8 @@ place and was removed from this file.
   Touch: `src/docreview360/services/` (new), routers incrementally.
 - [ ] R-15. Add property-based tests for models, crypto, and search behavior.
   Touch: `pyproject.toml`, `tests/property/`.
-- [ ] R-16. Add per-module coverage reporting.
-  Touch: `scripts/coverage-by-module.py` (new), `.github/workflows/ci.yml`.
+- [x] R-16. Add per-module coverage reporting.
+  Touch: `scripts/coverage-by-module.py` (new), `.github/workflows/ci.yml`. (2026-03-25)
 - [ ] R-17. Remove the deprecated frontend API proxy once all consumers are
   migrated.
   Current remaining imports:
@@ -424,9 +424,9 @@ place and was removed from this file.
   prevent reintroduction.
 - [ ] R-18. Expose a Prometheus scrape endpoint.
   Touch: `src/docreview360/api/__init__.py`, `src/docreview360/monitoring.py`.
-- [ ] R-19. Add migration safety tooling and docs.
+- [x] R-19. Add migration safety tooling and docs.
   Touch: `scripts/check-migration-safety.py` (new), `alembic/`,
-  `.github/workflows/ci.yml`, `docs/migrations.md`.
+  `.github/workflows/ci.yml`, `docs/migrations.md`. (2026-03-25)
 
 ## 4. Final release sign-off
 

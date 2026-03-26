@@ -206,11 +206,11 @@ class TestFrontendBackendIntegration:
         resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
 
-        projects = resp.json()
-        assert isinstance(projects, list)
+        projects_data = resp.json()
+        assert isinstance(projects_data["items"], list)
 
         # Should include our test project
-        project_ids = [p["id"] for p in projects]
+        project_ids = [p["id"] for p in projects_data["items"]]
         assert "response-test" in project_ids
 
     def test_configuration_endpoint_consistency(self) -> None:

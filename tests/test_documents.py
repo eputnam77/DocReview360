@@ -48,7 +48,7 @@ def test_import_and_edit_document() -> None:
     assert doc["ingestion_hash"] == expected_hash
 
     resp = client.get("/documents", headers=headers)
-    assert any(d["id"] == doc_id for d in resp.json())
+    assert any(d["id"] == doc_id for d in resp.json()["items"])
 
     updated = "# Title\n\nUpdated"
     resp = client.post(

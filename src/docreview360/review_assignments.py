@@ -191,6 +191,18 @@ def list_assignments(project_id: str) -> list[ReviewAssignmentModel]:
     return [_row_to_model(row) for row in rows]
 
 
+def list_all_assignments_for_reviewer(reviewer: str) -> list[ReviewAssignmentModel]:
+    """Return all assignments across all projects for a specific reviewer."""
+    _ensure_table()
+    db = get_db()
+    with db.session() as conn:
+        rows = conn.execute(
+            _text(f"{_SELECT_ALL} WHERE reviewer = :reviewer ORDER BY requested_at"),
+            {"reviewer": reviewer},
+        ).fetchall()
+    return [_row_to_model(row) for row in rows]
+
+
 def get_assignment(assignment_id: str) -> Optional[ReviewAssignmentModel]:
     """Return a single assignment by ID, or None if not found."""
     _ensure_table()

@@ -138,9 +138,16 @@ async def list_project_feedback(
     status: Optional[str] = Query(default=None),
     phase: Optional[str] = Query(default=None),
     assignment_id: Optional[str] = Query(default=None),
+    skip: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(20, ge=1, le=200, description="Maximum items to return"),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> list[dict]:
-    """List feedback items for a project, with optional filters."""
+) -> dict:
+    """List feedback items for a project, with optional filters and pagination.
+
+    Response shape: ``{ items: [...], total: N, skip: 0, limit: 20 }``
+    """
+    from ..pagination import PaginatedResponse
+
     project = _get_project_or_404(project_id)
     _require_project_access(project, current_user)
     items = list_feedback_items(
@@ -151,7 +158,13 @@ async def list_project_feedback(
         phase=phase,
         assignment_id=assignment_id,
     )
-    return [i.model_dump() for i in items]
+    page = PaginatedResponse.from_sequence(items, skip=skip, limit=limit)
+    return {
+        "items": [i.model_dump() for i in page.items],
+        "total": page.total,
+        "skip": page.skip,
+        "limit": page.limit,
+    }
 
 
 @router.post("/projects/{project_id}/feedback", status_code=201)

@@ -104,7 +104,7 @@ class TestEndToEndConfigurationFlow:
         # Step 4: Verify project appears in project list
         resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
-        projects = resp.json()
+        projects = resp.json()["items"]
         project_ids = [p["id"] for p in projects]
         assert "e2e-test-project" in project_ids
 
@@ -175,7 +175,7 @@ class TestEndToEndConfigurationFlow:
         # Verify both projects exist
         resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
-        projects = resp.json()
+        projects = resp.json()["items"]
         project_ids = [p["id"] for p in projects]
         assert "update-test-project" in project_ids
         assert "updated-test-project" in project_ids
@@ -256,7 +256,7 @@ class TestEndToEndConfigurationFlow:
         # Verify all projects exist
         resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
-        projects = resp.json()
+        projects = resp.json()["items"]
         project_ids = [p["id"] for p in projects]
         for i in range(3):
             assert f"persistence-test-{i}" in project_ids
@@ -369,7 +369,7 @@ class TestEndToEndConfigurationFlow:
 
         resp = client.get("/projects", headers=hdrs)
         assert resp.status_code == 200
-        projects = resp.json()
+        projects = resp.json()["items"]
         assert len(projects) >= 5
 
         end_time = time.time()

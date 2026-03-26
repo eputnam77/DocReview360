@@ -204,20 +204,32 @@ def _check_all_complete(project_id: str, project: Any) -> bool:
 @router.get("/projects/{project_id}/assignments")
 async def list_project_assignments(
     project_id: str,
+    skip: int = Query(0, ge=0, description="Number of assignments to skip"),
+    limit: int = Query(20, ge=1, le=200, description="Maximum assignments to return"),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> list[dict]:
-    """List all reviewer assignments for a project.
+) -> dict:
+    """List all reviewer assignments for a project, with pagination.
 
     On first access, migrates any bare ``reviewers`` list to ``ReviewAssignment``
     records in ``"reviewing"`` status for backward compatibility.
+
+    Response shape: ``{ items: [...], total: N, skip: 0, limit: 20 }``
     """
+    from ..pagination import PaginatedResponse
+
     project = _get_project_or_404(project_id)
     _require_project_access(project, current_user)
     assignments = list_assignments(project_id)
     # Auto-migrate existing bare reviewer list on first access.
     if not assignments and getattr(project, "reviewers", None):
         assignments = migrate_reviewers_to_assignments(project_id, project.reviewers)
-    return [a.model_dump() for a in assignments]
+    page = PaginatedResponse.from_sequence(assignments, skip=skip, limit=limit)
+    return {
+        "items": [a.model_dump() for a in page.items],
+        "total": page.total,
+        "skip": page.skip,
+        "limit": page.limit,
+    }
 
 
 @router.post("/projects/{project_id}/assignments", status_code=201)
@@ -617,19 +629,32 @@ async def sign_assignment_internally(
 @router.get("/projects/{project_id}/notification-log")
 async def get_project_notification_log(
     project_id: str,
-    limit: int = Query(default=50, ge=1, le=200),
+    skip: int = Query(0, ge=0, description="Number of entries to skip"),
+    limit: int = Query(default=50, ge=1, le=200, description="Maximum entries to return"),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> list[dict]:
-    """Return recent notification log entries for a project."""
+) -> dict:
+    """Return notification log entries for a project, with pagination.
+
+    Response shape: ``{ items: [...], total: N, skip: 0, limit: 50 }``
+    """
+    from ..pagination import PaginatedResponse
+
     project = _get_project_or_404(project_id)
     _require_project_access(project, current_user)
     try:
         from ..notification_log import list_notification_log
-        entries = list_notification_log(project_id, limit=limit)
-        return [e.model_dump() for e in entries]
+        # Fetch a larger window then slice; notification_log limit caps DB scan
+        entries = list_notification_log(project_id, limit=skip + limit)
+        page = PaginatedResponse.from_sequence(entries, skip=skip, limit=limit)
+        return {
+            "items": [e.model_dump() for e in page.items],
+            "total": page.total,
+            "skip": page.skip,
+            "limit": page.limit,
+        }
     except Exception as exc:
         _logger.debug("Notification log read failed: %s", exc)
-        return []
+        return {"items": [], "total": 0, "skip": skip, "limit": limit}
 
 
 @router.post("/projects/{project_id}/assignments/{assignment_id}/remind")
@@ -677,3 +702,75 @@ async def delete_project_assignment(
         reviewer=reviewer,
     )
     return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: API ergonomics (Item 50)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/assignments/me/summary")
+async def get_my_assignments_summary(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Return a summary of all assignments belonging to the current user.
+
+    Aggregates counts by status across all projects so the iOS home screen can
+    show a badge without fetching every assignment record individually.
+
+    Response shape::
+
+        {
+            "username": "alice",
+            "total": 5,
+            "by_status": {
+                "invited": 1,
+                "reviewing": 2,
+                "submitted": 1,
+                "concurred": 1,
+                "non_concurred": 0
+            },
+            "overdue": 1
+        }
+    """
+    from datetime import date
+
+    from ..review_assignments import list_all_assignments_for_reviewer
+
+    try:
+        all_assignments = list_all_assignments_for_reviewer(current_user.username)
+    except Exception as exc:
+        _logger.debug("list_all_assignments_for_reviewer failed: %s", exc)
+        # Fallback: scan all projects (expensive but safe)
+        from ..search import list_projects as _list_projects
+
+        all_assignments = []
+        for project in _list_projects(None):
+            all_assignments.extend(
+                [a for a in list_assignments(project.id) if a.reviewer == current_user.username]
+            )
+
+    by_status: dict[str, int] = {}
+    overdue = 0
+    today = date.today()
+
+    for a in all_assignments:
+        status = a.status or "unknown"
+        by_status[status] = by_status.get(status, 0) + 1
+        if (
+            a.due_date
+            and a.status not in TERMINAL_STATUSES
+        ):
+            try:
+                due = date.fromisoformat(a.due_date[:10])
+                if due < today:
+                    overdue += 1
+            except (ValueError, TypeError):
+                pass
+
+    return {
+        "username": current_user.username,
+        "total": len(all_assignments),
+        "by_status": by_status,
+        "overdue": overdue,
+    }

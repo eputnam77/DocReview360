@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from .. import auth
 from ..comments import list_comments, render_comment_for_response
@@ -15,6 +15,47 @@ from ..search import get_project
 _logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/comments/{project_id}")
+async def list_project_comments(
+    project_id: str,
+    skip: int = Query(0, ge=0, description="Number of comments to skip"),
+    limit: int = Query(20, ge=1, le=200, description="Maximum comments to return"),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Return all comments for a project aggregated across its documents, with pagination.
+
+    Response shape: ``{ items: [...], total: N, skip: 0, limit: 20 }``
+    """
+    from ..pagination import PaginatedResponse
+
+    project = get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    docs = [d for d in list_documents() if d.project == project_id]
+    all_comments: list[dict] = []
+    for doc in docs:
+        for raw in list_comments(doc.id):
+            comment = render_comment_for_response(raw)
+            item = {
+                "id": comment.id,
+                "document_id": doc.id,
+                "user": comment.user,
+                "text": comment.text,
+                "status": comment.status,
+                "created": comment.created.isoformat() if comment.created else None,
+            }
+            all_comments.append(item)
+
+    page = PaginatedResponse.from_sequence(all_comments, skip=skip, limit=limit)
+    return {
+        "items": page.items,
+        "total": page.total,
+        "skip": page.skip,
+        "limit": page.limit,
+    }
 
 
 @router.get("/comments/{project_id}/export/docx")

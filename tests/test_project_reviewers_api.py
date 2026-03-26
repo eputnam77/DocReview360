@@ -60,7 +60,7 @@ def test_project_reviewer_crud_updates_assignments() -> None:
     approvals = client.get(f"/approvals?workflow={wf_id}", headers=headers).json()
     assert any(a["reviewer"] == "alice" for a in approvals)
 
-    assigned = client.get("/projects", params={"user": "alice"}, headers=headers).json()
+    assigned = client.get("/projects", params={"user": "alice"}, headers=headers).json()["items"]
     assert any(p["id"] == project_id for p in assigned)
 
     update_resp = client.put(

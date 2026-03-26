@@ -249,3 +249,86 @@ async def update_user_pref(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return _pref_to_schema(pref)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Device token registration (iOS push notifications, Item 50)
+# ---------------------------------------------------------------------------
+
+# In-memory device token store.  Key = token string, value = registration dict.
+# Production deployments should replace this with a persistent store.
+_device_tokens: dict[str, dict[str, str]] = {}
+
+
+class DeviceRegistrationBody(BaseModel):
+    """Request body for POST /devices/register."""
+
+    token: str
+    platform: str = "ios"  # "ios" | "android"
+
+
+@router.post("/devices/register", status_code=201)
+async def register_device_token(
+    body: DeviceRegistrationBody,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Register a device push-notification token for the current user.
+
+    Returns the stored registration record.
+    """
+    if not body.token.strip():
+        raise HTTPException(status_code=422, detail="token must not be blank")
+    record: dict[str, str] = {
+        "token": body.token,
+        "platform": body.platform,
+        "username": current_user.username,
+    }
+    _device_tokens[body.token] = record
+    _logger.info(
+        "Device token registered: user=%s platform=%s", current_user.username, body.platform
+    )
+    return record
+
+
+@router.delete("/devices/{token}", status_code=204)
+async def unregister_device_token(
+    token: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> None:
+    """Unregister a push-notification device token.
+
+    The token must be owned by the requesting user unless the caller is an admin.
+    """
+    from .. import rbac as _rbac
+
+    existing = _device_tokens.get(token)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Device token not found")
+
+    is_admin = "admin" in _rbac.get_roles(current_user.username)
+    if existing["username"] != current_user.username and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorised to unregister this token")
+
+    _device_tokens.pop(token, None)
+    _logger.info("Device token unregistered: user=%s", current_user.username)
+
+
+@router.get("/notifications/unread-count")
+async def get_unread_notification_count(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, int]:
+    """Return the number of unread notifications for the current user (iOS badge count)."""
+    try:
+        from ..notification_log import list_all_notification_log_for_user
+
+        entries = list_all_notification_log_for_user(current_user.username)
+        unread = sum(1 for e in entries if not getattr(e, "read", False))
+    except Exception as exc:
+        _logger.debug("Could not compute unread count: %s", exc)
+        unread = 0
+    return {"unread_count": unread}
+
+
+def _reset_device_tokens_for_testing() -> None:  # pragma: no cover
+    """Clear the in-memory device token store (test helper)."""
+    _device_tokens.clear()

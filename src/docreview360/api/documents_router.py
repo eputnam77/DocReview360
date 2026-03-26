@@ -309,46 +309,61 @@ async def import_tiptap_endpoint(
     return document
 
 
-@router.get("/documents", response_model=list[DocumentModel])
+@router.get("/documents")
 async def list_documents_endpoint(
+    skip: int = Query(0, ge=0, description="Number of documents to skip"),
+    limit: int = Query(20, ge=1, le=200, description="Maximum documents to return"),
     current_user: auth.User = Depends(auth.get_current_user),
-) -> list[DocumentModel]:
-    """Return all imported documents with caching."""
+) -> dict:
+    """Return imported documents with caching and pagination.
+
+    Response shape: ``{ items: [...], total: N, skip: 0, limit: 20 }``
+    """
+    from ..pagination import PaginatedResponse
+
     cache_key = (
         f"documents-{current_user.username}"
         if not _is_admin_user(current_user)
         else "documents"
     )
+    docs_list: list[DocumentModel]
     cached = cache_get(cache_key)
     if cached:
         try:
             if isinstance(cached, bytes):
                 cached = cached.decode()
             data = json.loads(cached)
-            docs = [DocumentModel.model_validate(d) for d in data]
+            docs_list = [DocumentModel.model_validate(d) for d in data]
             if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
-                log_event("read", entity_id="documents", count=len(docs))
-            return docs
+                log_event("read", entity_id="documents", count=len(docs_list))
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             log_event("cache_decode_failed", key=cache_key, message=str(exc))
-    docs_list = list_docs()
-    if not _is_admin_user(current_user):
-        visible_docs: list[DocumentModel] = []
-        for document in docs_list:
-            try:
-                _enforce_document_access(document, current_user)
-                visible_docs.append(document)
-            except HTTPException:
-                continue
-        docs_list = visible_docs
-    cache_set(
-        cache_key,
-        json.dumps([d.model_dump(mode="json") for d in docs_list]),
-        ttl=30,
-    )
-    if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
-        log_event("read", entity_id="documents", count=len(docs_list))
-    return docs_list
+            docs_list = list_docs()
+    else:
+        docs_list = list_docs()
+        if not _is_admin_user(current_user):
+            visible_docs: list[DocumentModel] = []
+            for document in docs_list:
+                try:
+                    _enforce_document_access(document, current_user)
+                    visible_docs.append(document)
+                except HTTPException:
+                    continue
+            docs_list = visible_docs
+        cache_set(
+            cache_key,
+            json.dumps([d.model_dump(mode="json") for d in docs_list]),
+            ttl=30,
+        )
+        if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
+            log_event("read", entity_id="documents", count=len(docs_list))
+    page = PaginatedResponse.from_sequence(docs_list, skip=skip, limit=limit)
+    return {
+        "items": [d.model_dump(mode="json") if hasattr(d, "model_dump") else d for d in page.items],
+        "total": page.total,
+        "skip": page.skip,
+        "limit": page.limit,
+    }
 
 
 @router.get("/documents/public", response_model=list[DocumentModel])

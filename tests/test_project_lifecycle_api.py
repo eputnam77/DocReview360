@@ -37,7 +37,7 @@ def test_project_lifecycle_persists_and_deletes() -> None:
 
     list_resp = client.get("/projects", headers=headers)
     assert list_resp.status_code == 200
-    project_ids = {item["id"] for item in list_resp.json()}
+    project_ids = {item["id"] for item in list_resp.json()["items"]}
     assert "proj-1" in project_ids
 
     if not auth.USER_REPOSITORY.get_user("alice"):
@@ -78,7 +78,7 @@ def test_project_lifecycle_persists_and_deletes() -> None:
 
     list_after = client.get("/projects", headers=headers)
     assert list_after.status_code == 200
-    after_ids = {item["id"] for item in list_after.json()}
+    after_ids = {item["id"] for item in list_after.json()["items"]}
     assert "proj-1" not in after_ids
 
     manager_after = client.get(

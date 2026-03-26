@@ -4,9 +4,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 from typing import Callable
+
+_logger = logging.getLogger(__name__)
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
 
@@ -123,7 +126,8 @@ def _check_no_self_approval(
     try:
         from .documents import documents
         doc = documents.get(document_id)
-    except Exception:
+    except Exception as exc:
+        _logger.debug("SoD self-approval check: could not load document %r: %s", document_id, exc)
         return
     if doc is None:
         return
@@ -146,7 +150,10 @@ def _check_no_workflow_creator_approval(
         from .workflows import workflows
         from .approvals import approvals
         wf = workflows.get(workflow_id)
-    except Exception:
+    except Exception as exc:
+        _logger.debug(
+            "SoD workflow-creator check: could not load workflow %r: %s", workflow_id, exc
+        )
         return
     if wf is None:
         return
@@ -159,7 +166,8 @@ def _check_no_workflow_creator_approval(
             a.reviewer != user_id and a.state == "approved" and a.workflow == workflow_id
             for a in approvals.values()
         )
-    except Exception:
+    except Exception as exc:
+        _logger.debug("SoD workflow-creator check: could not iterate approvals: %s", exc)
         return
     if not other_approvers_approved:
         raise SoDViolationError(
@@ -177,14 +185,16 @@ def _check_role_conflict(
         return
     try:
         conflicts: dict[str, list[str]] = json.loads(raw)
-    except Exception:
+    except Exception as exc:
+        _logger.warning("DOCREVIEW360_SOD_ROLE_CONFLICTS is not valid JSON: %s", exc)
         return
     if not conflicts:
         return
     try:
         from .rbac import get_roles
         user_roles = get_roles(user_id)
-    except Exception:
+    except Exception as exc:
+        _logger.debug("SoD role-conflict check: could not load roles for %r: %s", user_id, exc)
         return
     for role, conflicting_roles in conflicts.items():
         if role in user_roles:

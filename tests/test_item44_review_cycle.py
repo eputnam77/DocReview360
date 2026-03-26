@@ -284,7 +284,7 @@ class TestAssignmentAPI:
         project_id = self._create_project(client, hdrs)
         resp = client.get(f"/projects/{project_id}/assignments", headers=hdrs)
         assert resp.status_code == 200
-        assert resp.json() == []
+        assert resp.json()["items"] == []
 
     def test_create_and_list_assignment(self) -> None:
         client = TestClient(app)
@@ -303,7 +303,7 @@ class TestAssignmentAPI:
         # List — should have one entry
         resp2 = client.get(f"/projects/{project_id}/assignments", headers=hdrs)
         assert resp2.status_code == 200
-        assert len(resp2.json()) == 1
+        assert len(resp2.json()["items"]) == 1
 
     def test_start_assignment_transitions_to_reviewing(self) -> None:
         client = TestClient(app)

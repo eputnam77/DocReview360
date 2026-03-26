@@ -280,7 +280,7 @@ class TestAutoStart:
         assert aid in data["started"]
         # Verify status changed
         get_resp = client.get(f"/projects/{pid}/assignments", headers=hdrs)
-        assignments = get_resp.json()
+        assignments = get_resp.json()["items"]
         bob_assign = next((a for a in assignments if a["id"] == aid), None)
         assert bob_assign is not None
         assert bob_assign["status"] == "reviewing"
@@ -310,7 +310,7 @@ class TestAutoStart:
         assert resp.json()["started"] == []
         # bob's assignment still invited
         get_resp = client.get(f"/projects/{pid}/assignments", headers=hdrs)
-        bob_assign = next((a for a in get_resp.json() if a["id"] == aid), None)
+        bob_assign = next((a for a in get_resp.json()["items"] if a["id"] == aid), None)
         assert bob_assign["status"] == "invited"
 
 
@@ -529,7 +529,7 @@ class TestFeedbackPhaseArchive:
         items_resp = client.get(
             f"/projects/{pid}/feedback?phase=Draft&status=open", headers=hdrs
         )
-        assert items_resp.json() == []
+        assert items_resp.json()["items"] == []
 
     def test_archive_phase_leaves_already_resolved_items(self) -> None:
         client = TestClient(app)
@@ -648,7 +648,7 @@ class TestConcurWithComments:
         )
         # Feedback item should have been created
         feedback_resp = client.get(f"/projects/{pid}/feedback", headers=hdrs)
-        items = feedback_resp.json()
+        items = feedback_resp.json()["items"]
         assert any(i["text"] == text and i["reviewer"] == "bob" for i in items)
 
     def test_concur_with_comments_wrong_reviewer_403(self) -> None:
