@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-
 from docreview360 import auth, comments
 from docreview360.api import app
 from fastapi.testclient import TestClient
