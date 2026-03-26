@@ -93,14 +93,6 @@ Target window: next month (confirm exact date and time zone).
 
 ### 50. iOS companion app backend readiness
 
-**Phase 4: API ergonomics**
-
-- [x] Decide whether to add a compact rendered document-view endpoint for
-  read-only mobile viewing. (2026-03-26)
-  Decision: YES. Added `GET /documents/{doc_id}/compact` to `documents_router.py`;
-  returns plain_text, word_count, version_number, frozen, and quality fields.
-  Covered by `tests/test_item50_item51_backlog.py::TestCompactDocumentView`.
-
 **Phase 5: iOS planning outside this repo**
 
 - [ ] Generate a Swift client from `/openapi.json`.
@@ -109,28 +101,7 @@ Target window: next month (confirm exact date and time zone).
 - [ ] Decide between `WKWebView` rendering and a native document viewer.
 - [ ] Set up TestFlight and App Store Connect metadata.
 
-### 51. 2026-03-25 admin, editor, and project UX review
-
-**Project view, review flow, and approvals**
-
-- [x] Clarify or redesign the relationship between Reviewer Sign-off and
-  Concurrence versus Approvals. (2026-03-26)
-  Added `ReviewerSignOff` model and `reviewer_sign_offs` list to `ReviewSummary`
-  in `concurrence_gate.py` — each entry exposes the reviewer, outcome, and
-  `concurred_at` timestamp (fixing the missing concurred-date gap).
-  Added `GET /projects/{project_id}/sign-off-map` to `assignments_router.py` that
-  returns a side-by-side breakdown of lightweight concurrences vs. formal approvals
-  with a `formality_note` explaining when each is appropriate.
-  Covered by `tests/test_item50_item51_backlog.py`.
-
-## 3. Reliability hardening plan
-
-### P2: Longer-term hardening
-
-- [ ] R-15. Add property-based tests for models, crypto, and search behavior.
-  Touch: `pyproject.toml`, `tests/property/`.
-
-## 4. Final release sign-off
+## 3. Final release sign-off
 
 - [ ] All section 1 release-blocker items are complete.
 - [ ] All P0 reliability items are complete.
@@ -158,7 +129,7 @@ Target window: next month (confirm exact date and time zone).
   enabled.
 - [ ] Release announcement and upgrade notes are drafted.
 
-## 5. Post-release
+## 4. Post-release
 
 - [ ] Install from PyPI into a fresh venv and run `docreview360 --help`.
 - [ ] Smoke-test the CLI-to-API-to-UI flow using released artifacts.
