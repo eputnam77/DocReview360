@@ -385,4 +385,29 @@ def send_notification(
     if ns.get("webhook_enabled") and ns.get("webhook_url"):
         results["webhook"].append(send_webhook_notification(ns["webhook_url"], event, **context))
 
+    # ------------------------------------------------------------------
+    # APNs — dispatch to iOS device tokens registered for this recipient
+    # ------------------------------------------------------------------
+    apns_results: list[dict[str, Any]] = []
+    try:
+        from .integrations.apns import send_apns_notification
+        from .api.notifications_router import _device_tokens
+
+        title = f"[DocReview360] {event}"
+        body_text = context.get("message") or message
+        target_tokens = [
+            rec["token"]
+            for rec in _device_tokens.values()
+            if rec.get("platform") == "ios"
+            and (recipient_username is None or rec.get("username") == recipient_username)
+        ]
+        for token in target_tokens:
+            result = send_apns_notification(device_token=token, title=title, body=body_text)
+            apns_results.append(result)
+    except ImportError:
+        pass
+    except Exception as exc:
+        _logger.warning("APNs dispatch error: %s", exc)
+    results["apns"] = apns_results  # type: ignore[assignment]
+
     return results

@@ -19,7 +19,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from .. import auth
 from ..cache import cache_get, cache_set, clear_cache
@@ -211,61 +211,68 @@ def _resolve_workflow_template(
 class ProjectCreate(BaseModel):
     """Input model for creating projects."""
 
-    id: str | None = None
-    name: str
-    document_number: str | None = None
-    user: str | None = None
+    id: str | None = Field(default=None, max_length=100)
+    name: str = Field(min_length=1, max_length=200)
+    document_number: str | None = Field(default=None, max_length=100)
+    user: str | None = Field(default=None, max_length=150)
     # Optional organization scoping — if omitted the creator's org is used.
-    org_id: int | None = None
-    doc_type: str | None = None
-    phase: str | None = None
-    workflow: str | None = None
-    priority: int = 0
-    description: str | None = None
+    org_id: int | None = Field(default=None, ge=1)
+    doc_type: str | None = Field(default=None, max_length=100)
+    phase: str | None = Field(default=None, max_length=100)
+    workflow: str | None = Field(default=None, max_length=200)
+    priority: int = Field(default=0, ge=0, le=4)
+    description: str | None = Field(default=None, max_length=2000)
     # NARA records management fields
-    nara_schedule_number: str | None = None
-    nara_disposition_authority: str | None = None
-    nara_retention_period: str | None = None
-    nara_record_series: str | None = None
+    nara_schedule_number: str | None = Field(default=None, max_length=100)
+    nara_disposition_authority: str | None = Field(default=None, max_length=200)
+    nara_retention_period: str | None = Field(default=None, max_length=100)
+    nara_record_series: str | None = Field(default=None, max_length=200)
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("name must not be blank")
+        return v
 
 
 class ProjectUpdate(BaseModel):
     """Fields allowed when updating a project."""
 
-    name: str | None = None
-    user: str | None = None
-    doc_type: str | None = None
-    phase: str | None = None
-    workflow: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    user: str | None = Field(default=None, max_length=150)
+    doc_type: str | None = Field(default=None, max_length=100)
+    phase: str | None = Field(default=None, max_length=100)
+    workflow: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
     # NARA records management fields
-    nara_schedule_number: str | None = None
-    nara_disposition_authority: str | None = None
-    nara_retention_period: str | None = None
-    nara_record_series: str | None = None
+    nara_schedule_number: str | None = Field(default=None, max_length=100)
+    nara_disposition_authority: str | None = Field(default=None, max_length=200)
+    nara_retention_period: str | None = Field(default=None, max_length=100)
+    nara_record_series: str | None = Field(default=None, max_length=200)
 
 
 class ProjectReviewerPayload(BaseModel):
     """Input model for managing project reviewers."""
 
-    reviewer: str
+    reviewer: str = Field(min_length=1, max_length=150)
 
 
 class PriorityUpdate(BaseModel):
     """Input for updating project priority."""
 
-    priority: int
+    priority: int = Field(ge=0, le=4)
 
 
 class TemporaryAssign(BaseModel):
     """Input for temporary reassignment."""
 
-    user: str
+    user: str = Field(min_length=1, max_length=150)
     until: datetime
 
 
 class WatchBody(BaseModel):
-    user: str
+    user: str = Field(min_length=1, max_length=150)
 
 
 # ---------------------------------------------------------------------------

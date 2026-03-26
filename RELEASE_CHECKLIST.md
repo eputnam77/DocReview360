@@ -29,19 +29,19 @@ Target window: next month (confirm exact date and time zone).
 
 ### Repository hygiene and public readiness
 
-- [ ] Run a secret scan across full history and working tree.
-- [ ] Rotate or remove any hardcoded tokens, test credentials, or sample secrets.
-- [ ] Remove local-only and stale release artifacts from the repo root, or move
+- [x] Run a secret scan across full history and working tree. (2026-03-26)
+- [x] Rotate or remove any hardcoded tokens, test credentials, or sample secrets. (2026-03-26)
+- [x] Remove local-only and stale release artifacts from the repo root, or move
   them out of the default branch.
   Review: `_debug_test.py`, `ai-notes.md`, `push-after-fix.ps1`, `tatus`,
-  local `.db` files, ad hoc JSON stores, `.tmp/` outputs.
+  local `.db` files, ad hoc JSON stores, `.tmp/` outputs. (2026-03-26)
 - [ ] Decide whether `.dev/`, `.claude/`, and `CLAUDE.md` belong in the public repo.
-- [ ] Remove or untrack legacy frontend-generated files that should not ship.
+- [x] Remove or untrack legacy frontend-generated files that should not ship.
   Review: `frontend/document_types.json`, `frontend/phases.json`,
-  `frontend/phase_workflow_links.json`, `frontend/pages__backup_js_*`.
-- [ ] Replace remaining placeholder or stale public metadata.
+  `frontend/phase_workflow_links.json`, `frontend/pages__backup_js_*`. (2026-03-26)
+- [x] Replace remaining placeholder or stale public metadata.
   Review: `src/docreview360.egg-info/PKG-INFO`, docs metadata,
-  `info@example.com`, `registry.example.com`, contact info, license text.
+  `info@example.com`, `registry.example.com`, contact info, license text. (2026-03-26)
 - [ ] Review references to private repositories and mark them optional or remove
   them.
 - [ ] Confirm public-repo settings are ready.
@@ -60,8 +60,8 @@ Target window: next month (confirm exact date and time zone).
   Exclude: runtime-generated state, logs, local databases, temp files.
 - [ ] Test install from built artifacts in a clean environment.
 - [ ] If publishing, run a TestPyPI dry run.
-- [ ] Tighten the Docker build context so local junk is not copied into images.
-  Touch: `.dockerignore`, `Dockerfile`, release build context.
+- [x] Tighten the Docker build context so local junk is not copied into images.
+  Touch: `.dockerignore`, `Dockerfile`, release build context. (2026-03-26)
 
 ### Docs, verification, and CI
 
@@ -181,9 +181,9 @@ Target window: next month (confirm exact date and time zone).
 
 - [x] Add device token registration endpoints.
   Target: `POST /devices/register`, `DELETE /devices/{token}`. (2026-03-25)
-- [ ] Integrate APNs with token-based auth.
-- [ ] Extend `send_notification()` to dispatch APNs alongside Slack, Teams,
-  email, and webhook flows.
+- [x] Integrate APNs with token-based auth. (2026-03-26)
+- [x] Extend `send_notification()` to dispatch APNs alongside Slack, Teams,
+  email, and webhook flows. (2026-03-26)
 - [x] Add `GET /notifications/unread-count` for badge updates.
   Touch: `src/docreview360/notifications.py`,
   `src/docreview360/api/notifications_router.py`, auth or session storage,
@@ -192,13 +192,13 @@ Target window: next month (confirm exact date and time zone).
 **Phase 4: API ergonomics**
 
 - [x] Add `GET /assignments/me/summary`. (2026-03-25)
-- [ ] Add `Content-Length` headers on download responses.
+- [x] Add `Content-Length` headers on download responses. (2026-03-26)
 - [ ] Decide whether to add a compact rendered document-view endpoint for
   read-only mobile viewing.
-- [ ] Add `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers.
+- [x] Add `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers.
   Touch: `src/docreview360/api/assignments_router.py`,
   `src/docreview360/api/documents_router.py`, rate-limit middleware or response
-  helpers.
+  helpers. (2026-03-26)
 
 **Phase 5: iOS planning outside this repo**
 
@@ -212,18 +212,18 @@ Target window: next month (confirm exact date and time zone).
 
 **Dashboard and tools**
 
-- [ ] Replace generic audit event names in the admin dashboard feed with useful
+- [x] Replace generic audit event names in the admin dashboard feed with useful
   human-readable messages that explain who did what.
   Examples to improve over: `read`, `create_project`, `list_workflows_endpoint`.
   Prefer the richer audit message or context fields when available.
   Touch: `frontend/pages/dashboard/admin.tsx`, `frontend/components/AuditTimeline.tsx`,
-  `src/docreview360/api/dashboards_router.py`, `src/docreview360/audit.py`.
-- [ ] Fix "Recently Active Users" so it shows real user names from user
+  `src/docreview360/api/dashboards_router.py`, `src/docreview360/audit.py`. (2026-03-26)
+- [x] Fix "Recently Active Users" so it shows real user names from user
   management instead of role labels such as `SME` or `Front Line Manager`.
   Touch: `frontend/pages/dashboard/admin.tsx`,
   `frontend/pages/configuration/user-management.tsx`,
   `src/docreview360/api/dashboards_router.py`, user lookup or audit activity
-  aggregation.
+  aggregation. (2026-03-26)
 - [ ] Decide and implement the final tools information architecture.
   Recommendation: keep `Document Converter` as a standalone page, collapse the
   current `Federal Style Validator` and `Document Quality Checker` overlap into a
@@ -377,15 +377,15 @@ place and was removed from this file.
 
 ### P1: Strongly recommended before release
 
-- [ ] R-06. Add systematic input validation constraints.
+- [x] R-06. Add systematic input validation constraints.
   Touch: router parameters and Pydantic models across `src/docreview360/api/`
-  and domain `_models.py` files.
-- [ ] R-07. Split oversized routers into focused modules.
+  and domain `_models.py` files. (2026-03-26)
+- [x] R-07. Split oversized routers into focused modules.
   Targets: `src/docreview360/api/admin_router.py`,
   `src/docreview360/api/workflows_router.py`,
-  `src/docreview360/api/tools_router.py`.
-- [ ] R-08. Split `src/docreview360/models.py` into domain packages with
-  backward-compatible re-exports.
+  `src/docreview360/api/tools_router.py`. (2026-03-26)
+- [x] R-08. Split `src/docreview360/models.py` into domain packages with
+  backward-compatible re-exports. (2026-03-26)
 - [ ] R-09. Break up `frontend/pages/projects/[id]/index.tsx` into smaller
   project components.
 - [x] R-10. Replace the placeholder Dependabot config with real update rules for

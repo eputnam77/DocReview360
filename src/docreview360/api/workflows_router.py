@@ -22,7 +22,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .. import auth
 from ..approvals import (
@@ -108,12 +108,29 @@ router = APIRouter()
 # Pydantic models
 # ---------------------------------------------------------------------------
 
+_WORKFLOW_MODES = {"sequential", "parallel", "hybrid"}
+
+
 class WorkflowCreate(BaseModel):
     """Input model for creating workflows."""
 
-    project: str
-    phases: list[str]
-    mode: str = "sequential"
+    project: str = Field(min_length=1, max_length=200)
+    phases: list[str] = Field(min_length=1, max_length=50)
+    mode: str = Field(default="sequential", min_length=1, max_length=20)
+
+    @field_validator("mode")
+    @classmethod
+    def mode_must_be_valid(cls, v: str) -> str:
+        if v not in _WORKFLOW_MODES:
+            raise ValueError(f"mode must be one of {sorted(_WORKFLOW_MODES)}")
+        return v
+
+    @field_validator("phases")
+    @classmethod
+    def phases_not_empty_strings(cls, v: list[str]) -> list[str]:
+        if any(not p.strip() for p in v):
+            raise ValueError("phases must not contain blank entries")
+        return v
 
 
 class WorkflowTemplateResponse(BaseModel):
@@ -127,26 +144,29 @@ class WorkflowTemplateResponse(BaseModel):
     usage: int = 0
 
 
+_APPROVAL_STATES = {"pending", "approved", "rejected", "withdrawn", "escalated"}
+
+
 class ReviewerAssign(BaseModel):
     """Input model for assigning reviewers."""
 
-    user: str
+    user: str = Field(min_length=1, max_length=150)
 
 
 class ApprovalCreate(BaseModel):
     """Input model for creating approvals."""
 
-    workflow: str
-    reviewer: str
-    doc_id: str | None = None
+    workflow: str = Field(min_length=1, max_length=200)
+    reviewer: str = Field(min_length=1, max_length=150)
+    doc_id: str | None = Field(default=None, max_length=100)
     due_at: datetime | None = None
-    description: str | None = None
-    phase_id: str | None = None
+    description: str | None = Field(default=None, max_length=1000)
+    phase_id: str | None = Field(default=None, max_length=100)
     required: bool | None = None
-    role: str | None = None
-    order: int = 0
+    role: str | None = Field(default=None, max_length=100)
+    order: int = Field(default=0, ge=0, le=999)
     reminder_at: datetime | None = None
-    escalate_to: str | None = None
+    escalate_to: str | None = Field(default=None, max_length=150)
     escalation_at: datetime | None = None
 
 
@@ -155,21 +175,28 @@ class ApprovalUpdate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    state: str
-    signature_id: str | None = Field(default=None, alias="signature")
+    state: str = Field(min_length=1, max_length=20)
+    signature_id: str | None = Field(default=None, alias="signature", max_length=200)
     due_at: datetime | None = None
+
+    @field_validator("state")
+    @classmethod
+    def state_must_be_valid(cls, v: str) -> str:
+        if v not in _APPROVAL_STATES:
+            raise ValueError(f"state must be one of {sorted(_APPROVAL_STATES)}")
+        return v
 
 
 class SignInitialsBody(BaseModel):
     """Input model for approving via initials signature."""
 
-    initials: str
+    initials: str = Field(min_length=1, max_length=10)
 
 
 class PhaseModel(BaseModel):
     """Simple phase schema."""
 
-    name: str
+    name: str = Field(min_length=1, max_length=100)
 
 
 class PhaseWorkflowLinkModel(BaseModel):
@@ -200,10 +227,10 @@ class PhaseWorkflowLinkUpdateModel(BaseModel):
 class EmailTemplatePayload(BaseModel):
     """Payload for email templates."""
 
-    name: str
-    subject: str
-    body: str
-    task: str | None = None
+    name: str = Field(min_length=1, max_length=100)
+    subject: str = Field(min_length=1, max_length=300)
+    body: str = Field(min_length=1, max_length=50_000)
+    task: str | None = Field(default=None, max_length=100)
 
 
 # ---------------------------------------------------------------------------
@@ -1115,8 +1142,12 @@ async def download_template_endpoint(
         "md": "text/markdown",
     }.get(extension, "application/octet-stream")
     filename = metadata.get("filename") or f"{name}.{extension}"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return Response(content=ver.content, media_type=content_type, headers=headers)
+    raw = ver.content if isinstance(ver.content, bytes) else (ver.content or "").encode()
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Length": str(len(raw)),
+    }
+    return Response(content=raw, media_type=content_type, headers=headers)
 
 
 @router.post("/templates/{name}/approve")

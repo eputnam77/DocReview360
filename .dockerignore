@@ -96,3 +96,39 @@ archive_store/
 
 # Temporary files
 .tmp/
+
+# Infrastructure / deployment tooling (not part of runtime image)
+helm/
+k8s/
+iac/
+monitoring/
+nginx/
+alembic/
+alembic.ini
+migrations/
+
+# Developer scripts (not needed at runtime)
+scripts/
+
+# Examples and artifacts (not part of runtime image)
+examples/
+artifacts/
+
+# PowerShell scripts
+*.ps1
+
+# Node modules at root level (if any)
+node_modules/
+
+# Build metadata
+frontend/tsconfig.tsbuildinfo
+
+# Additional release/security docs (not part of image)
+SECURITY_REVIEW.md
+FSV_INTEGRATION_UX_TASKS.md
+RELEASE_CHECKLIST.md
+CHANGELOG.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+TERMS.md
+SECURITY.md

@@ -294,6 +294,18 @@ class _FixedWindowRateLimiter:
                 raise HTTPException(status_code=429, detail="Rate limit exceeded")
             bucket.append(now)
 
+    def status(self, key: str) -> tuple[int, float]:
+        """Return ``(remaining, reset_in_seconds)`` without recording a hit."""
+        now = time.monotonic()
+        with self._lock:
+            bucket = self._hits.get(key, deque())
+            # Evict stale entries without mutating the live bucket
+            fresh = sum(1 for ts in bucket if now - ts <= self._window_seconds)
+            remaining = max(0, self._limit - fresh)
+            oldest = next((ts for ts in bucket if now - ts <= self._window_seconds), now)
+            reset_in = max(0.0, self._window_seconds - (now - oldest))
+        return remaining, reset_in
+
     def reset(self) -> None:
         with self._lock:
             self._hits.clear()
@@ -988,7 +1000,14 @@ async def _validation_error_handler(
 ) -> Response:
     """Return a structured 422 for Pydantic/FastAPI request validation failures."""
     trace_id = getattr(request.state, "trace_id", None) or uuid.uuid4().hex
-    details = {"validation_errors": exc.errors()}
+    # Sanitize errors: ctx may contain non-serializable Exception instances.
+    sanitized = []
+    for err in exc.errors():
+        sanitized_err = {k: (str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v) for k, v in err.items()}
+        if "ctx" in sanitized_err and isinstance(err.get("ctx"), dict):
+            sanitized_err["ctx"] = {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v for k, v in err["ctx"].items()}
+        sanitized.append(sanitized_err)
+    details = {"validation_errors": sanitized}
     payload = ErrorResponse(
         error="validation_error",
         message="Request validation failed",
@@ -1047,6 +1066,23 @@ async def correlation_id_middleware(request: Request, call_next: Any) -> Respons
         TRACE_ID.reset(token)
 
     response.headers[_CORRELATION_HEADER] = correlation_id
+    return response
+
+
+@app.middleware("http")
+async def rate_limit_headers_middleware(request: Request, call_next: Any) -> Response:
+    """Add X-RateLimit-Remaining and X-RateLimit-Reset headers to every response.
+
+    Uses the global search rate limiter bucket keyed by the client IP so callers
+    can track how many requests they have left before the window resets.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    client_ip = forwarded or (request.client.host if request.client else "unknown")
+    remaining, reset_in = _SEARCH_RATE_LIMITER.status(f"global:{client_ip}")
+
+    response = await call_next(request)
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    response.headers["X-RateLimit-Reset"] = str(int(reset_in))
     return response
 
 

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import BaseModel
 
 from .. import auth, reporting
+from ..audit import humanize_audit_action
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..logs import LogEntry, log_event, query_logs
@@ -66,6 +67,12 @@ class VisibilityPayload(BaseModel):
     logs: bool | None = None
     # Generic list of widget IDs chosen by the user (Item 45 Phase 3)
     widgets: list[str] | None = None
+
+
+class EnrichedLogEntry(LogEntry):
+    """LogEntry extended with a human-readable message for the dashboard feed."""
+
+    human_message: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +148,31 @@ async def list_audit(
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("audit_log_access", entity_id="logs", count=len(entries))
     return entries
+
+
+@router.get("/dashboard/audit-feed", response_model=list[EnrichedLogEntry])
+async def audit_feed(
+    limit: int | None = 50,
+    offset: int | None = None,
+    _: str = Depends(require_audit_access),
+) -> list[EnrichedLogEntry]:
+    """Return recent audit events enriched with human-readable ``human_message`` descriptions.
+
+    Intended for the admin dashboard activity feed.  Each entry includes the
+    underlying ``LogEntry`` fields plus a plain-English ``human_message`` that
+    explains who performed which action.
+    """
+    entries = query_logs(limit=limit, offset=offset)
+    enriched: list[EnrichedLogEntry] = []
+    for entry in entries:
+        msg = humanize_audit_action(
+            action=entry.action,
+            user_id=entry.user_id,
+            entity_id=entry.entity_id,
+            details=entry.details,
+        )
+        enriched.append(EnrichedLogEntry(**entry.model_dump(), human_message=msg))
+    return enriched
 
 
 @router.get("/logs/export")
@@ -226,6 +258,84 @@ async def export_logs_endpoint(
     if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
         log_event("read", entity_id="logs_export", count=len(entries), fmt=fmt)
     return Response(content=content, media_type=media)
+
+
+# ---------------------------------------------------------------------------
+# Recently active users endpoint (Item 51)
+# ---------------------------------------------------------------------------
+
+
+class RecentlyActiveUser(BaseModel):
+    """Summary of a recently active user for the admin dashboard."""
+
+    username: str
+    display_name: str
+    roles: list[str]
+    last_active: str | None = None
+    action_count: int = 0
+
+
+@router.get("/dashboard/recently-active-users", response_model=list[RecentlyActiveUser])
+async def recently_active_users(
+    days: int = 30,
+    limit: int = 20,
+    _user: auth.User = Depends(require_role("admin")),
+) -> list[RecentlyActiveUser]:
+    """Return users who have been active in the last ``days`` days.
+
+    Each entry includes the actual username and display name — never just a
+    role label — so the admin dashboard can show real people.
+    """
+    from datetime import timedelta
+
+    from ..logs import query_logs
+
+    since = datetime.now(timezone.utc) - timedelta(days=max(1, days))
+    recent_logs = query_logs(start=since, limit=None)
+
+    activity: dict[str, dict[str, Any]] = {}
+    for entry in recent_logs:
+        if not entry.user_id:
+            continue
+        username = entry.user_id
+        if username not in activity:
+            activity[username] = {"last_active": entry.timestamp, "count": 0}
+        if entry.timestamp and (
+            activity[username]["last_active"] is None
+            or entry.timestamp > activity[username]["last_active"]
+        ):
+            activity[username]["last_active"] = entry.timestamp
+        activity[username]["count"] += 1
+
+    # Sort by action count descending, take top N
+    ranked = sorted(activity.items(), key=lambda kv: kv[1]["count"], reverse=True)[:limit]
+
+    try:
+        from ..rbac import get_roles
+        from ..profile import get_profile_data
+    except ImportError:
+        get_roles = lambda u: []  # noqa: E731
+        get_profile_data = lambda u: {}  # noqa: E731
+
+    result: list[RecentlyActiveUser] = []
+    for username, info in ranked:
+        roles = get_roles(username) if callable(get_roles) else []
+        try:
+            profile = get_profile_data(username) if callable(get_profile_data) else {}
+            display_name = profile.get("displayName") or profile.get("name") or username
+        except Exception:
+            display_name = username
+        last_ts = info["last_active"]
+        result.append(
+            RecentlyActiveUser(
+                username=username,
+                display_name=str(display_name),
+                roles=sorted(roles),
+                last_active=last_ts.isoformat() if last_ts else None,
+                action_count=info["count"],
+            )
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------

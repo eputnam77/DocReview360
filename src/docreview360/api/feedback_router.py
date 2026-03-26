@@ -7,7 +7,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from .. import auth
 from ..logs import log_event
@@ -48,24 +48,46 @@ def _emit_webhook(event: str, data: dict) -> None:
 
 
 class FeedbackCreate(BaseModel):
-    text: str
-    feedback_type: str = "comment"
-    assignment_id: Optional[str] = None
-    phase: Optional[str] = None
-    tags: list[str] = []
+    text: str = Field(min_length=1, max_length=10_000)
+    feedback_type: str = Field(default="comment", min_length=1, max_length=50)
+    assignment_id: Optional[str] = Field(default=None, max_length=100)
+    phase: Optional[str] = Field(default=None, max_length=100)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+
+    @field_validator("feedback_type")
+    @classmethod
+    def type_must_be_known(cls, v: str) -> str:
+        if v not in FEEDBACK_TYPES:
+            raise ValueError(f"feedback_type must be one of {sorted(FEEDBACK_TYPES)}")
+        return v
+
+    @field_validator("tags")
+    @classmethod
+    def tags_not_blank(cls, v: list[str]) -> list[str]:
+        if any(not t.strip() for t in v):
+            raise ValueError("tags must not contain blank entries")
+        return [t.strip()[:100] for t in v]
 
 
 class DispositionBody(BaseModel):
-    status: str  # accepted | rejected | resolved
-    reason: Optional[str] = None
+    status: str = Field(min_length=1, max_length=50)  # accepted | rejected | resolved
+    reason: Optional[str] = Field(default=None, max_length=2000)
+
+    @field_validator("status")
+    @classmethod
+    def status_must_be_valid(cls, v: str) -> str:
+        valid = set(FEEDBACK_STATUSES) - {"open"}
+        if v not in valid:
+            raise ValueError(f"status must be one of {sorted(valid)}")
+        return v
 
 
 class ReplyBody(BaseModel):
-    text: str
+    text: str = Field(min_length=1, max_length=10_000)
 
 
 class ArchivePhaseBody(BaseModel):
-    phase: str
+    phase: str = Field(min_length=1, max_length=100)
 
 
 # ---------------------------------------------------------------------------
