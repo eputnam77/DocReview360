@@ -9,18 +9,6 @@ Target window: next month (confirm exact date and time zone).
 
 ## 1. Release blockers and execution
 
-### Review blockers found on 2026-03-25
-
-- [x] Fix the `/token` login regression. `tests/test_token.py::test_jwt_token_flow`
-  currently returns `401` for `POST /token`.
-  Touch: `src/docreview360/api/auth_router.py`, `src/docreview360/auth/_core.py`,
-  `src/docreview360/auth/_repository.py`, `tests/test_token.py`. (2026-03-25)
-- [x] Fix pytest temp-directory setup so targeted suites can run reliably in this
-  workspace.
-  Touch: `tests/conftest.py`, `.tmp/`, local temp-dir handling.
-  Blocked suites during this review: `tests/test_release_checklist_user_fixes.py`,
-  `tests/test_dashboard.py`. (2026-03-25)
-
 ### Scope and branch control
 
 - [ ] Freeze feature scope. Only fixes after this checkpoint.
@@ -29,19 +17,7 @@ Target window: next month (confirm exact date and time zone).
 
 ### Repository hygiene and public readiness
 
-- [x] Run a secret scan across full history and working tree. (2026-03-26)
-- [x] Rotate or remove any hardcoded tokens, test credentials, or sample secrets. (2026-03-26)
-- [x] Remove local-only and stale release artifacts from the repo root, or move
-  them out of the default branch.
-  Review: `_debug_test.py`, `ai-notes.md`, `push-after-fix.ps1`, `tatus`,
-  local `.db` files, ad hoc JSON stores, `.tmp/` outputs. (2026-03-26)
 - [ ] Decide whether `.dev/`, `.claude/`, and `CLAUDE.md` belong in the public repo.
-- [x] Remove or untrack legacy frontend-generated files that should not ship.
-  Review: `frontend/document_types.json`, `frontend/phases.json`,
-  `frontend/phase_workflow_links.json`, `frontend/pages__backup_js_*`. (2026-03-26)
-- [x] Replace remaining placeholder or stale public metadata.
-  Review: `src/docreview360.egg-info/PKG-INFO`, docs metadata,
-  `info@example.com`, `registry.example.com`, contact info, license text. (2026-03-26)
 - [ ] Review references to private repositories and mark them optional or remove
   them.
 - [ ] Confirm public-repo settings are ready.
@@ -60,8 +36,6 @@ Target window: next month (confirm exact date and time zone).
   Exclude: runtime-generated state, logs, local databases, temp files.
 - [ ] Test install from built artifacts in a clean environment.
 - [ ] If publishing, run a TestPyPI dry run.
-- [x] Tighten the Docker build context so local junk is not copied into images.
-  Touch: `.dockerignore`, `Dockerfile`, release build context. (2026-03-26)
 
 ### Docs, verification, and CI
 
@@ -78,8 +52,6 @@ Target window: next month (confirm exact date and time zone).
   document upload or view or edit, approval request flow, PDF or Markdown export,
   backend-unavailable UI handling.
 - [ ] Verify GitHub Actions CI passes on a clean run.
-- [x] Ensure the CI coverage threshold matches the release gate.
-  Touch: `.github/workflows/ci.yml` (80% → 90%). (2026-03-26)
 - [ ] Decide whether PyPI publish should be automated on tag.
 
 ### Deployment readiness
@@ -146,66 +118,12 @@ Target window: next month (confirm exact date and time zone).
   `frontend/extensions/tiptapFederalStyleLint.ts`,
   `frontend/pages/tools/checker.tsx`.
 
-### 49. Frontend stability follow-up
-
-- [x] Close the remaining hook-ordering investigation for `useProject`,
-  `useApprovals`, and `usePhases`.
-  Exit criteria: either prove the current undefined-to-id hydration path is safe
-  with regression coverage or simplify the hooks so the risk disappears.
-  Fixed: `usePhases` queryKey changed from `["workflow", id]` to `["phases", id]`
-  so cache is isolated; all three hooks use `enabled:!!id` guards verified by
-  `hookOrderRegression.test.ts`. (2026-03-26)
-- [x] Add delayed-response coverage for loading-to-loaded transitions.
-  Current source-level guards exist, but the full MSW-style async transition
-  coverage is still missing.
-  Touch: `frontend/lib/useProject.ts`, `frontend/lib/useApprovals.ts`,
-  `frontend/lib/usePhases.ts`, `frontend/pages/projects/[id]/index.tsx`,
-  `frontend/pages/_app.tsx`, `frontend/__tests__/hookLoadingStates.test.ts`.
-  Added 9 new source-level regression guards covering delayed-response safety
-  invariants in `hookLoadingStates.test.ts`. Full MSW render tests deferred
-  pending `msw` devDependency decision. (2026-03-26)
-
 ### 50. iOS companion app backend readiness
-
-**Phase 2: Pagination**
-
-- [x] Add `skip` and `limit` pagination to `GET /projects`. (2026-03-25)
-- [x] Add `skip` and `limit` pagination to `GET /projects/{id}/feedback`. (2026-03-25)
-- [x] Add `skip` and `limit` pagination to `GET /projects/{id}/assignments`. (2026-03-25)
-- [x] Add `skip` and `limit` pagination to `GET /projects/{id}/notification-log`. (2026-03-25)
-- [x] Add `skip` and `limit` pagination to `GET /documents`. (2026-03-25)
-- [x] Add `skip` and `limit` pagination to `GET /comments/{project_id}`. (2026-03-25)
-- [x] Return shared pagination metadata in responses.
-  Target shape: `{ items: [...], total: N, skip: 0, limit: 20 }`.
-  Touch: `src/docreview360/api/projects_router.py`,
-  `src/docreview360/api/feedback_router.py`,
-  `src/docreview360/api/assignments_router.py`,
-  `src/docreview360/api/documents_router.py`,
-  `src/docreview360/api/comments_router.py`,
-  `src/docreview360/api/notifications_router.py` or related response models. (2026-03-25)
-
-**Phase 3: Push notifications**
-
-- [x] Add device token registration endpoints.
-  Target: `POST /devices/register`, `DELETE /devices/{token}`. (2026-03-25)
-- [x] Integrate APNs with token-based auth. (2026-03-26)
-- [x] Extend `send_notification()` to dispatch APNs alongside Slack, Teams,
-  email, and webhook flows. (2026-03-26)
-- [x] Add `GET /notifications/unread-count` for badge updates.
-  Touch: `src/docreview360/notifications.py`,
-  `src/docreview360/api/notifications_router.py`, auth or session storage,
-  device-token persistence. (2026-03-25)
 
 **Phase 4: API ergonomics**
 
-- [x] Add `GET /assignments/me/summary`. (2026-03-25)
-- [x] Add `Content-Length` headers on download responses. (2026-03-26)
 - [ ] Decide whether to add a compact rendered document-view endpoint for
   read-only mobile viewing.
-- [x] Add `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers.
-  Touch: `src/docreview360/api/assignments_router.py`,
-  `src/docreview360/api/documents_router.py`, rate-limit middleware or response
-  helpers. (2026-03-26)
 
 **Phase 5: iOS planning outside this repo**
 
@@ -219,18 +137,6 @@ Target window: next month (confirm exact date and time zone).
 
 **Dashboard and tools**
 
-- [x] Replace generic audit event names in the admin dashboard feed with useful
-  human-readable messages that explain who did what.
-  Examples to improve over: `read`, `create_project`, `list_workflows_endpoint`.
-  Prefer the richer audit message or context fields when available.
-  Touch: `frontend/pages/dashboard/admin.tsx`, `frontend/components/AuditTimeline.tsx`,
-  `src/docreview360/api/dashboards_router.py`, `src/docreview360/audit.py`. (2026-03-26)
-- [x] Fix "Recently Active Users" so it shows real user names from user
-  management instead of role labels such as `SME` or `Front Line Manager`.
-  Touch: `frontend/pages/dashboard/admin.tsx`,
-  `frontend/pages/configuration/user-management.tsx`,
-  `src/docreview360/api/dashboards_router.py`, user lookup or audit activity
-  aggregation. (2026-03-26)
 - [ ] Decide and implement the final tools information architecture.
   Recommendation: keep `Document Converter` as a standalone page, collapse the
   current `Federal Style Validator` and `Document Quality Checker` overlap into a
@@ -243,49 +149,6 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/tools/index.tsx`, `frontend/pages/tools/document-quality.tsx`,
   `frontend/pages/tools/checker.tsx`,
   `frontend/pages/configuration/plugin-marketplace.tsx`, help or docs copy.
-- [x] Root-cause and stop the recurring `Failed to fetch` crash on the project
-  details page so it does not regress every few days.
-  Current failure path: `frontend/lib/api.ts` -> `pages/projects/[id]/index.tsx`.
-  Touch: `frontend/lib/api.ts`, `frontend/pages/projects/[id]/index.tsx`,
-  related project-detail API calls, regression coverage for network or auth base
-  URL failures.
-  Fixed: added `isError` destructuring from `useProject` and a user-facing
-  error state with retry button instead of an uncaught render crash. (2026-03-26)
-
-**TipTap editor**
-
-- [x] Fix the Tools and Extensions sidebar so the Validation Summary area remains
-  scrollable and visible when content exceeds the viewport.
-  Touch: `frontend/pages/editors/tiptap.tsx`, sidebar layout or overflow CSS.
-  Fixed: sidebar `<aside>` uses `flex flex-col`; header is `flex-shrink-0`;
-  content area is `flex-1 overflow-y-auto`. (2026-03-26)
-- [x] Fix the Tools and Extensions sidebar scroll behavior after toggling items
-  such as Enable Validation or Heading Lock.
-  The toggle interaction must not trap scroll or prevent access to lower items.
-  Touch: `frontend/pages/editors/tiptap.tsx`, sidebar state handlers, overflow
-  management, relevant editor layout styles.
-  Fixed: same overflow-y-auto fix resolves scroll-trap on toggle. (2026-03-26)
-- [x] Fix the heading-format dropdown so applying `Heading 1` or `Heading 2`
-  actually changes the selected text node type.
-  Touch: `frontend/pages/editors/tiptap.tsx`, TipTap command wiring, extension
-  registration, regression tests for heading transforms.
-  Fixed: replaced `toggleHeading` with `setHeading` in `setBlock()` so selecting
-  the same heading level is a no-op instead of toggling back to paragraph. (2026-03-26)
-- [x] Fix indent and unindent so they visibly update eligible content and rely on
-  working TipTap commands rather than dead wrappers.
-  Touch: `frontend/pages/editors/tiptap.tsx`, `frontend/lib/tiptapCommandUtils.ts`,
-  indentation extension wiring, editor regression tests.
-  Fixed: indent/outdent buttons now fall back to `sinkListItem`/`liftListItem`
-  when the indentation extension is not loaded, so list content is always
-  indentable. Extension path retained when enabled. (2026-03-26)
-- [x] Define and implement the Submit action in the TipTap editor.
-  The current button appears to do nothing. Add the intended workflow action and
-  immediate feedback such as a modal, toast, or routed confirmation showing what
-  was submitted and to whom.
-  Touch: `frontend/pages/editors/tiptap.tsx`, review submission flow, related API
-  endpoints, user-facing status messaging.
-  Fixed: Submit button now opens a confirmation modal. On confirm it saves a final
-  revision, shows a success toast, and offers a "Go to Project" link. (2026-03-26)
 
 **Project view, review flow, and approvals**
 
@@ -297,37 +160,12 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `src/docreview360/api/assignments_router.py`, `src/docreview360/api/approvals.py`,
   `src/docreview360/concurrence_gate.py`, help text or documentation.
-- [x] Fix the Approvals table layout and add a dedicated user-assignee column to
-  the left of the role column.
-  The legal record must show the actual person, such as `Bob`, plus the role,
-  such as `Front Line Manager`, and the approval date.
-  Touch: `frontend/pages/projects/[id]/index.tsx`,
-  `frontend/pages/configuration/workflows/*.tsx`, workflow role mapping, user
-  picker integration, export or audit representations.
-  Fixed: renamed "Reviewer" column header to "Assignee"; email shown beneath
-  the name when different; "Role/Step" header renamed to "Role". (2026-03-26)
 - [ ] Implement an actual approval action for assigned approvers.
   If an approval row exists for a user, that user must see a clear approve path
   such as Documenso, DocuSign, initials, or another configured method.
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `src/docreview360/api/approvals.py`, `src/docreview360/approvals/signatures.py`,
   provider integration settings, approval-state regression tests.
-- [x] Fix `Open review workspace` from the project view so it clearly navigates
-  or explains why it cannot.
-  The current control appears to do nothing.
-  Touch: `frontend/pages/projects/[id]/index.tsx`,
-  `frontend/pages/projects/[id]/review.tsx`, route or tab navigation state,
-  reviewer workspace entry conditions.
-  Fixed: "Open review workspace" button now navigates directly to
-  `#feedback` anchor on the project page, bypassing the deprecated redirect
-  in `review.tsx`. Added tooltip for clarity. (2026-03-26)
-- [x] Fix comment reply persistence and rendering so replies remain attached to
-  the original comment or feedback item after refresh.
-  Touch: `frontend/pages/projects/[id]/index.tsx`,
-  `src/docreview360/comments.py`, `src/docreview360/api/comments_router.py`,
-  comment thread serialization and UI rendering.
-  Fixed: feedback queryFn now normalises both plain-array and paginated-envelope
-  responses so `parent_id` is preserved; replies survive page refresh. (2026-03-26)
 - [ ] Redesign or repurpose Inline Document Comments so the feature has a clear
   purpose and does not duplicate Post Feedback.
   The current flow is confusing, returns `Document Not Found` in at least one
@@ -336,31 +174,6 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/projects/[id]/index.tsx`,
   `frontend/pages/editors/tiptap.tsx`, `src/docreview360/api/comments_router.py`,
   document lookup or anchor resolution, inline-comment UX copy.
-- [x] Improve Audit History entries in project view so they show detailed,
-  user-meaningful messages including who performed the action.
-  Examples to improve over: `feedback.replied`, `feedback.submitted`.
-  Touch: `frontend/pages/projects/[id]/index.tsx`, `frontend/components/AuditTimeline.tsx`,
-  `src/docreview360/audit.py`, audit message serialization for project events.
-  Fixed: `AuditTimeline` now maps dot-notation and snake_case event names
-  (e.g. `feedback.submitted` → "Reviewer submitted feedback") and converts
-  unknown names to Title Case words. (2026-03-26)
-- [x] Fix audit-history timestamp display so the UI uses the expected local or
-  user-facing timezone instead of showing apparently shifted times.
-  Touch: `frontend/pages/projects/[id]/index.tsx`,
-  `frontend/components/AuditTimeline.tsx`, date formatting helpers, backend
-  timestamp serialization if needed.
-  Fixed: added `parseUtcTimestamp()` that appends "Z" when the backend omits it;
-  day grouping keys use UTC date methods; time display includes timezone label. (2026-03-26)
-- [x] Fix new-project workflow selection so project creation uses the configured
-  default workflow based on document type and phase without forcing users to edit
-  the project afterward.
-  Touch: `frontend/pages/projects/new.tsx`, `frontend/pages/projects/[id]/edit.tsx`,
-  `frontend/pages/configuration/phases.tsx`,
-  `frontend/pages/configuration/document-types.tsx`,
-  `src/docreview360/api/__init__.py` or `src/docreview360/api/workflows_router.py`.
-  Fixed: workflow field now shows auto-resolved default with a "Change" escape
-  hatch; when no default is configured a dropdown of available workflow templates
-  is shown instead of a disabled blank input. (2026-03-26)
 
 **Configuration and help**
 
@@ -376,92 +189,7 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/help.tsx`, help-content data structures, locale files,
   project or review UI guidance and empty-state copy.
 
-### User-requested follow-up
-
-- [x] Confirm `docreview360 init` is updated with the latest software
-  applications.
-  Fixed: added `prosemirror` editor choice, `box`/`s3` CMS choices, and
-  `keycloak`/`okta`/`azure-ad`/`saml` auth provider choices to `docreview360
-  init` in `src/docreview360/cli.py`. (2026-03-26)
-
-## 3. Reliability hardening plan
-
-This section keeps only the remaining work. WebSocket JWT auth is already in
-place and was removed from this file.
-
-### P0: Must finish before release
-
-- [x] R-01. Introduce a unified error response contract.
-  Touch: `src/docreview360/errors.py` (new),
-  `src/docreview360/api/__init__.py`, routers incrementally.
-  Exit criteria: shared `AppError` hierarchy, `ErrorResponse` model, stable
-  4xx or 5xx envelope, `trace_id` included. (2026-03-25)
-- [x] R-02. Fix test-suite ordering and environment leakage.
-  Touch: `tests/conftest.py`, env-mutating tests, module-level caches.
-  Exit criteria: full suite is order-independent and CI can catch pollution
-  reliably. (2026-03-25)
-- [x] R-03. Add dedicated integration coverage for untested routers.
-  Add coverage for: admin, dashboards, organizations, SCIM, SLA, legal,
-  records, branches, config, feedback, assignments, and WOPI.
-  Touch: `tests/api/` new files. (2026-03-25)
-- [x] R-04. Add startup configuration validation.
-  Touch: `src/docreview360/config_validator.py` (new),
-  `src/docreview360/api/__init__.py`. (2026-03-25)
-- [x] R-05. Add global exception handling for unhandled errors and validation
-  failures.
-  Touch: `src/docreview360/api/__init__.py`.
-  Note: implement this together with R-01 so the error envelope does not fork. (2026-03-25)
-
-### P1: Strongly recommended before release
-
-- [x] R-06. Add systematic input validation constraints.
-  Touch: router parameters and Pydantic models across `src/docreview360/api/`
-  and domain `_models.py` files. (2026-03-26)
-- [x] R-07. Split oversized routers into focused modules.
-  Targets: `src/docreview360/api/admin_router.py`,
-  `src/docreview360/api/workflows_router.py`,
-  `src/docreview360/api/tools_router.py`. (2026-03-26)
-- [x] R-08. Split `src/docreview360/models.py` into domain packages with
-  backward-compatible re-exports. (2026-03-26)
-- [x] R-09. Break up `frontend/pages/projects/[id]/index.tsx` into smaller
-  project components.
-  Touch: `frontend/components/project/` (new), `frontend/pages/projects/[id]/index.tsx`. (2026-03-26)
-- [x] R-10. Replace the placeholder Dependabot config with real update rules for
-  `pip`, `npm`, and `github-actions`.
-  Touch: `.github/dependabot.yml`. (2026-03-25)
-- [x] R-11. Standardize retry logic.
-  Touch: `src/docreview360/retry.py` (new),
-  `src/docreview360/event_dispatcher.py`,
-  `src/docreview360/approvals/signatures.py`. (2026-03-25)
-- [x] R-12. Add logging to silent catch blocks where failures should be
-  diagnosable.
-  Touch: `src/docreview360/notifications.py`, `src/docreview360/sod.py`,
-  `src/docreview360/event_dispatcher.py`, other silent handlers. (2026-03-25)
-- [x] R-13. Add typed response models to admin endpoints that still return raw
-  dicts.
-  Touch: `src/docreview360/api/schemas/admin_schemas.py` (new),
-  `src/docreview360/api/admin_router.py`, other untyped routers. (2026-03-25)
-
-### P2: Longer-term hardening
-
-- [x] R-14. Introduce a service layer for core business logic.
-  Touch: `src/docreview360/services/` (new), routers incrementally. (2026-03-26)
-- [x] R-15. Add property-based tests for models, crypto, and search behavior.
-  Touch: `pyproject.toml`, `tests/property/`. (2026-03-26)
-- [x] R-16. Add per-module coverage reporting.
-  Touch: `scripts/coverage-by-module.py` (new), `.github/workflows/ci.yml`. (2026-03-25)
-- [x] R-17. Remove the deprecated frontend API proxy once all consumers are
-  migrated.
-  Touch: `frontend/lib/apiProxy.ts` (deleted), proxy route files (deleted),
-  `frontend/scripts/check-no-api-proxy.sh` (lint guard added),
-  `frontend/package.json` (lint:no-api-proxy script added). (2026-03-26)
-- [x] R-18. Expose a Prometheus scrape endpoint.
-  Touch: `src/docreview360/api/__init__.py`, `tests/api/test_metrics_endpoint.py`. (2026-03-26)
-- [x] R-19. Add migration safety tooling and docs.
-  Touch: `scripts/check-migration-safety.py` (new), `alembic/`,
-  `.github/workflows/ci.yml`, `docs/migrations.md`. (2026-03-25)
-
-## 4. Final release sign-off
+## 3. Final release sign-off
 
 - [ ] All section 1 release-blocker items are complete.
 - [ ] All P0 reliability items are complete.
@@ -489,7 +217,7 @@ place and was removed from this file.
   enabled.
 - [ ] Release announcement and upgrade notes are drafted.
 
-## 5. Post-release
+## 4. Post-release
 
 - [ ] Install from PyPI into a fresh venv and run `docreview360 --help`.
 - [ ] Smoke-test the CLI-to-API-to-UI flow using released artifacts.
