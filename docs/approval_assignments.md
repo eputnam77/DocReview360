@@ -115,4 +115,74 @@ Potential improvements could include:
 - **Assignment Types**: Distinguish between direct vs. approval assignments in the UI
 - **Role Filtering**: Allow filtering by specific approval roles
 - **Assignment History**: Track when and how assignments were made
-- **Notification Integration**: Alert users when they're assigned to new projects 
+- **Notification Integration**: Alert users when they're assigned to new projects
+
+---
+
+## Reviewer Sign-off vs. Formal Approval — Clarification
+
+DocReview360 has **two distinct acknowledgment mechanisms** that serve different purposes.
+Understanding the difference is critical for compliance and audit purposes.
+
+### Reviewer Sign-off (Concurrence)
+
+**Location:** Assignments section of the project page (`/projects/{id}` — Assignments tab).
+
+**What it is:** An informal, in-system acknowledgment that a reviewer has read the document
+and either concurred, non-concurred, or acknowledged receipt. This is part of the iterative
+review lifecycle and may happen multiple times across review rounds.
+
+**Properties:**
+- Recorded in the review assignment audit trail (`/projects/{id}/assignments`).
+- Does **not** require a cryptographic signature or external signature provider.
+- Status values: `pending`, `in_progress`, `signed` (concurred), `non_concurred`, `declined`.
+- A reviewer may be invited to review without ever appearing in the Approvals table.
+- Multiple sign-offs per phase are normal; each reviewer who has an assignment can sign off.
+
+**When to use:** Use assignments/sign-off for the document review and comment-resolution
+cycle — i.e., to track that everyone who needs to read the document has done so and noted
+their position.
+
+### Formal Approval
+
+**Location:** Approvals section of the project page (`/projects/{id}` — Approvals tab).
+
+**What it is:** A legally binding approval record created using a configured signature method.
+Formal approvals are tied to a specific document version and phase; they are cryptographically
+linked to the document content hash at time of signing.
+
+**Properties:**
+- Requires an explicit approval row to be created for a reviewer (owner/admin action).
+- Signature method is one of: **Documenso**, **DocuSign**, or **in-app initials**.
+- Recorded via `POST /approvals/{id}/sign` (new endpoint, RELEASE_CHECKLIST §51).
+- Status values: `pending`, `approved`, `overdue`, `rejected`.
+- Once approved, the record is **immutable** (cannot be reset without admin action and
+  creates an audit entry).
+- All required approvals must be `approved` before a phase can be advanced.
+
+**When to use:** Use formal approvals when a phase gate requires documented, auditable,
+legally binding sign-off — e.g., senior management, legal, or regulatory approval before
+release or publication.
+
+### Summary Table
+
+| Aspect | Reviewer Sign-off | Formal Approval |
+|---|---|---|
+| **UI location** | Assignments section | Approvals section |
+| **Binding** | Informal / acknowledgment | Legal record |
+| **Signature** | None required | Documenso / DocuSign / initials |
+| **Document hash** | Not linked | Cryptographically linked |
+| **Phase gate** | No | Yes (blocks advance if required) |
+| **Immutable** | No (can be reset) | Yes (admin reset only) |
+| **Audit trail** | Assignment log | Approval + audit log |
+| **Who can do it** | Any invited reviewer | Only assigned approvers |
+
+### API Endpoints
+
+| Action | Endpoint |
+|---|---|
+| Sign off (concur) | `POST /projects/{id}/assignments/{aid}/sign` |
+| Non-concur | `POST /projects/{id}/assignments/{aid}/non-concur` |
+| Formally approve | `POST /approvals/{id}/sign` |
+| Sign with initials | `POST /approvals/{id}/sign-initials` |
+| View approval history | `GET /approvals/{id}/history` |

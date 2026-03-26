@@ -10,6 +10,32 @@ Supported citation families:
 - IEC standards (IEC 62304, IEC 62366, etc.)
 - EU Medical Device Regulation (EU MDR 2017/745)
 - EU In Vitro Diagnostic Regulation (EU IVDR 2017/746)
+
+# ---------------------------------------------------------------------------
+# LEGACY MODULE — FSV Cutover Notice (RELEASE_CHECKLIST item 34)
+# ---------------------------------------------------------------------------
+# This module provides standalone regulatory citation checking that was used
+# before the Federal Style Validator (FSV) service was integrated.
+#
+# Current status:
+#   - The unified /tools/check endpoint in api/tools_router.py delegates all
+#     style, readability, and quality checks to the FSV proxy (fsv_proxy.py)
+#     when the FSV service is configured (FSV_BASE_URL env var is set).
+#   - This module is NOT duplicating FSV logic; it handles regulatory citation
+#     *format* validation only (CFR, ISO, IEC, EU MDR references), which the
+#     FSV service does not cover.
+#
+# Intended removal path:
+#   1. If/when FSV gains regulatory-citation checking: migrate callers to the
+#      FSV endpoint and remove this module (target: v1.0 release).
+#   2. Until then, this module is retained as a lightweight, offline fallback
+#      with no external dependencies.
+#
+# There is NO duplicate style/readability/quality logic between this module
+# and tools_router.py. Each serves a distinct purpose:
+#   - tools_router.py  → style, readability, quality (via FSV + ml/quality.py)
+#   - regulatory.py    → regulatory citation format validation (offline)
+# ---------------------------------------------------------------------------
 """
 from __future__ import annotations
 

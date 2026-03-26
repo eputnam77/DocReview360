@@ -16,15 +16,60 @@ import {
   ChevronUp,
   ExternalLink,
   Keyboard,
+  ShieldCheck,
+  User,
+  Eye,
+  Stamp,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// FAQ data
+// Role definitions
 // ---------------------------------------------------------------------------
 
-const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
+type UserRole = "administrator" | "project-owner" | "reviewer" | "approver";
+
+interface RoleTab {
+  value: UserRole;
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
+const ROLE_TABS: RoleTab[] = [
+  {
+    value: "administrator",
+    label: "Administrator",
+    icon: <ShieldCheck className="w-4 h-4" />,
+    color: "text-red-700",
+  },
+  {
+    value: "project-owner",
+    label: "Project Owner",
+    icon: <User className="w-4 h-4" />,
+    color: "text-indigo-700",
+  },
+  {
+    value: "reviewer",
+    label: "Reviewer",
+    icon: <Eye className="w-4 h-4" />,
+    color: "text-emerald-700",
+  },
+  {
+    value: "approver",
+    label: "Approver",
+    icon: <Stamp className="w-4 h-4" />,
+    color: "text-amber-700",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// FAQ data — tagged by role
+// ---------------------------------------------------------------------------
+
+const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode; roles: UserRole[] }> = [
   {
     q: "How do I create a project?",
+    roles: ["project-owner", "administrator"],
     a: (
       <>
         Navigate to <strong>Projects</strong> in the sidebar and click{" "}
@@ -36,6 +81,7 @@ const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "How do I upload a document?",
+    roles: ["project-owner", "administrator"],
     a: (
       <>
         Open a project, go to the <strong>Documents</strong> tab, and click{" "}
@@ -47,6 +93,7 @@ const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "How do I assign reviewers to a project?",
+    roles: ["project-owner", "administrator"],
     a: (
       <>
         Open the project and scroll to the <strong>Reviewers</strong> section.
@@ -58,6 +105,7 @@ const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "What is a workflow phase?",
+    roles: ["administrator", "project-owner", "reviewer", "approver"],
     a: (
       <>
         Phases represent the sequential stages a document must pass through
@@ -70,6 +118,7 @@ const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "How do I advance a project to the next phase?",
+    roles: ["project-owner", "administrator"],
     a: (
       <>
         In the project view, open the <strong>Overview</strong> tab and click{" "}
@@ -81,6 +130,7 @@ const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "Where do I find the API reference?",
+    roles: ["administrator"],
     a: (
       <>
         The interactive API reference is served directly by the backend at{" "}
@@ -94,6 +144,7 @@ const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
   },
   {
     q: "How do I reset my password or enable MFA?",
+    roles: ["administrator", "project-owner", "reviewer", "approver"],
     a: (
       <>
         Click your username in the sidebar to open your <strong>Profile</strong>{" "}
@@ -103,7 +154,130 @@ const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
       </>
     ),
   },
+  {
+    q: "How do I submit my review?",
+    roles: ["reviewer"],
+    a: (
+      <>
+        Open the project you were invited to review. Go to the{" "}
+        <strong>Feedback</strong> tab and use <strong>Post Feedback</strong> to
+        add comments or questions. When you have finished, click{" "}
+        <strong>Submit Review</strong>. Your concurrence is then recorded and
+        the project owner is notified.
+      </>
+    ),
+  },
+  {
+    q: "How do I approve a document?",
+    roles: ["approver"],
+    a: (
+      <>
+        Open the project and go to the <strong>Approvals</strong> tab. Find
+        your approval row and follow the configured approval method — this may
+        be an electronic signature via Documenso, an initials field, or another
+        method set by your administrator. The approval date is recorded and
+        visible in the audit history.
+      </>
+    ),
+  },
+  {
+    q: "How do I configure user roles and permissions?",
+    roles: ["administrator"],
+    a: (
+      <>
+        Go to <strong>Configuration &rarr; Permissions</strong> to define roles
+        and their capabilities. Then go to{" "}
+        <strong>Configuration &rarr; User Management</strong> to assign roles to
+        individual users. Complete the Setup sequence in order: Permissions
+        first, then Users, Workflows, Phases, and Document Types.
+      </>
+    ),
+  },
+  {
+    q: "How do I monitor system activity as an admin?",
+    roles: ["administrator"],
+    a: (
+      <>
+        Go to <strong>Configuration &rarr; Audit Logs</strong> to review
+        system-wide activity. The Admin Dashboard also shows a live audit
+        timeline and recently active users. Individual project audit histories
+        are visible in each project&apos;s <strong>History</strong> tab.
+      </>
+    ),
+  },
 ];
+
+// ---------------------------------------------------------------------------
+// Role guide content
+// ---------------------------------------------------------------------------
+
+const ROLE_GUIDES: Record<UserRole, { heading: string; tasks: string[]; quickLinks: Array<{ label: string; href: string }> }> = {
+  administrator: {
+    heading: "Administrator Guide",
+    tasks: [
+      "Complete the Setup sequence: Permissions → Users → Workflows → Phases → Document Types.",
+      "Manage user accounts, roles, and MFA enrollment.",
+      "Configure workflow templates and phase requirements.",
+      "Enable or disable built-in tools and install plugins from the Plugin Marketplace.",
+      "Monitor system activity via Audit Logs and the Admin Dashboard.",
+      "Customize branding, templates, and integrations for your organization.",
+    ],
+    quickLinks: [
+      { label: "Configuration", href: "/configuration" },
+      { label: "User Management", href: "/configuration/user-management" },
+      { label: "Permissions", href: "/configuration/permissions" },
+      { label: "Workflows", href: "/configuration/workflows" },
+      { label: "Audit Logs", href: "/configuration/audit-logs" },
+      { label: "Plugin Marketplace", href: "/configuration/plugin-marketplace" },
+    ],
+  },
+  "project-owner": {
+    heading: "Project Owner Guide",
+    tasks: [
+      "Create a new project: choose a document type and workflow template.",
+      "Upload documents or create them in the TipTap editor.",
+      "Invite reviewers and set due dates.",
+      "Monitor the Feedback tab and disposition each reviewer comment.",
+      "Advance the project through phases once required approvals are complete.",
+      "Export the final document and review record for records retention.",
+    ],
+    quickLinks: [
+      { label: "My Projects", href: "/projects" },
+      { label: "New Project", href: "/projects/new" },
+      { label: "TipTap Editor", href: "/editors/tiptap" },
+      { label: "Document Quality Checker", href: "/tools/document-quality" },
+    ],
+  },
+  reviewer: {
+    heading: "Reviewer Guide",
+    tasks: [
+      "Open a project you have been invited to review.",
+      "Read the documents in the Documents tab.",
+      "Use the Feedback tab to post comments, questions, and concerns.",
+      "Open the TipTap editor to add inline comments or suggestions.",
+      "Click Submit Review when you have finished providing feedback.",
+      "Your concurrence is recorded and the project owner is notified automatically.",
+    ],
+    quickLinks: [
+      { label: "My Projects", href: "/projects" },
+      { label: "TipTap Editor", href: "/editors/tiptap" },
+    ],
+  },
+  approver: {
+    heading: "Approver Guide",
+    tasks: [
+      "Open the project assigned to you for approval.",
+      "Review the documents and feedback history.",
+      "Go to the Approvals tab and find your approval row.",
+      "Complete the approval using the configured signature or initials method.",
+      "Your approval date is recorded in the project audit history.",
+      "If you have questions, post feedback in the Feedback tab before approving.",
+    ],
+    quickLinks: [
+      { label: "My Projects", href: "/projects" },
+    ],
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Key concepts data
@@ -253,6 +427,8 @@ function KbdKey({ children }: { children: string }) {
 // ---------------------------------------------------------------------------
 
 export default function HelpPage() {
+  const [activeRole, setActiveRole] = useState<UserRole>("administrator");
+
   return (
     <div className="p-8 space-y-6 max-w-5xl">
       {/* Page header */}
@@ -267,7 +443,7 @@ export default function HelpPage() {
       </div>
 
       <Tabs defaultValue="getting-started">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="getting-started">
             <Rocket className="w-4 h-4 mr-1.5" />
             Getting Started
@@ -275,6 +451,10 @@ export default function HelpPage() {
           <TabsTrigger value="concepts">
             <BookOpen className="w-4 h-4 mr-1.5" />
             Key Concepts
+          </TabsTrigger>
+          <TabsTrigger value="by-role">
+            <Users2 className="w-4 h-4 mr-1.5" />
+            By Role
           </TabsTrigger>
           <TabsTrigger value="faq">
             <HelpCircle className="w-4 h-4 mr-1.5" />
@@ -360,6 +540,89 @@ export default function HelpPage() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        {/* ---- By Role -------------------------------------------------- */}
+        <TabsContent value="by-role" className="mt-6 space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Select your role to see the tasks and guidance most relevant to you.
+          </p>
+
+          {/* Role selector */}
+          <div className="flex flex-wrap gap-2">
+            {ROLE_TABS.map((role) => (
+              <button
+                key={role.value}
+                type="button"
+                onClick={() => setActiveRole(role.value)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  activeRole === role.value
+                    ? "bg-indigo-600 border-indigo-600 text-white"
+                    : "border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-700"
+                }`}
+              >
+                {role.icon}
+                {role.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Role content */}
+          {ROLE_TABS.map((role) => {
+            if (role.value !== activeRole) return null;
+            const guide = ROLE_GUIDES[role.value];
+            const roleFaqs = FAQ_ITEMS.filter((f) => f.roles.includes(role.value));
+            return (
+              <div key={role.value} className="space-y-6">
+                {/* Task list */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                    <span className={role.color}>{role.icon}</span>
+                    <CardTitle className="text-base font-semibold">{guide.heading}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ol className="space-y-2 list-decimal list-inside">
+                      {guide.tasks.map((task) => (
+                        <li key={task} className="text-sm text-muted-foreground">
+                          {task}
+                        </li>
+                      ))}
+                    </ol>
+                  </CardContent>
+                </Card>
+
+                {/* Quick links */}
+                {guide.quickLinks.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Quick Links</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {guide.quickLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Role-specific FAQ */}
+                {roleFaqs.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700">
+                      Common Questions for {role.label}
+                    </h3>
+                    {roleFaqs.map((item) => (
+                      <FaqItem key={item.q} q={item.q} a={item.a} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </TabsContent>
 
         {/* ---- FAQ ------------------------------------------------------ */}

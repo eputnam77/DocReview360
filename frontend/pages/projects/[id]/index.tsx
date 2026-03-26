@@ -268,6 +268,13 @@ export default function ProjectDetailsPage() {
     tags: string[];
     question_satisfied: boolean;
     assignment_id?: string | null;
+    /** "inline" for comments extracted from TipTap; absent/null for manual feedback. */
+    source?: string | null;
+    /** Character offset in the document for inline comments. */
+    range_from?: number | null;
+    range_to?: number | null;
+    /** Original comment mark ID from the TipTap document. */
+    comment_id?: string | null;
   }
   interface FeedbackProgress {
     total: number;
@@ -2221,11 +2228,42 @@ export default function ProjectDetailsPage() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence
             </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSignaturesPreviewOpen((prev) => !prev)}
+              title={signaturesPreviewOpen ? "Hide document preview" : "Show document preview"}
+            >
+              {signaturesPreviewOpen ? (
+                <><ChevronDown className="w-4 h-4 mr-1" /> Hide Preview</>
+              ) : (
+                <><ChevronRight className="w-4 h-4 mr-1" /> Show Preview</>
+              )}
+            </Button>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-300">
             This section tracks each invited reviewer&apos;s review lifecycle after they have been assigned above.
             It is separate from phase approvals.
           </p>
+
+          {/* Collapsible document preview panel */}
+          {signaturesPreviewOpen && (
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Document Preview — {project?.title ?? "Untitled"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <textarea
+                  readOnly
+                  className="w-full h-40 rounded border bg-white dark:bg-gray-900 p-2 text-sm text-gray-700 dark:text-gray-300 resize-none font-mono"
+                  value={project?.title ? `Document: ${project.title}\nStatus: ${project.status ?? "unknown"}\nType: ${project.type ?? "—"}\n\n[Open the editor to view full document content]` : "[No document loaded]"}
+                  aria-label="Document preview"
+                />
+              </CardContent>
+            </Card>
+          )}
 
           {assignments.length === 0 ? (
             <Card>
@@ -2453,15 +2491,48 @@ export default function ProjectDetailsPage() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <MessageSquare className="w-5 h-5" /> Feedback Ledger
             </h2>
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={`/projects/${id}#feedback`}
-                title="Jump to the Feedback tab for this project"
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFeedbackPreviewOpen((prev) => !prev)}
+                title={feedbackPreviewOpen ? "Hide document preview" : "Show document preview"}
               >
-                Open review workspace
-              </Link>
-            </Button>
+                {feedbackPreviewOpen ? (
+                  <><ChevronDown className="w-4 h-4 mr-1" /> Hide Preview</>
+                ) : (
+                  <><ChevronRight className="w-4 h-4 mr-1" /> Show Preview</>
+                )}
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  href={`/projects/${id}#feedback`}
+                  title="Jump to the Feedback tab for this project"
+                >
+                  Open review workspace
+                </Link>
+              </Button>
+            </div>
           </div>
+
+          {/* Collapsible document preview panel */}
+          {feedbackPreviewOpen && (
+            <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  Document Preview — {project?.title ?? "Untitled"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <textarea
+                  readOnly
+                  className="w-full h-40 rounded border bg-white dark:bg-gray-900 p-2 text-sm text-gray-700 dark:text-gray-300 resize-none font-mono"
+                  value={project?.title ? `Document: ${project.title}\nStatus: ${project.status ?? "unknown"}\nType: ${project.type ?? "—"}\n\n[Open the editor to view full document content]` : "[No document loaded]"}
+                  aria-label="Document preview"
+                />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Progress bar */}
           {feedbackProgress && feedbackProgress.total > 0 && (
@@ -2639,6 +2710,18 @@ export default function ProjectDetailsPage() {
                               <p className="text-xs text-gray-500 mt-1 italic">
                                 Reason: {item.disposition_reason}
                               </p>
+                            )}
+                            {/* Jump to inline anchor — shown for inline-sourced feedback */}
+                            {item.source === "inline" && (
+                              <div className="mt-1">
+                                <Link
+                                  href={`/editors/tiptap?id=${project?.id ?? ""}&project=${id}#comment-${item.comment_id ?? item.id}`}
+                                  className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 underline"
+                                  title={`Open editor at this comment (range ${item.range_from ?? "?"}–${item.range_to ?? "?"})`}
+                                >
+                                  <FileEdit className="w-3 h-3" /> Jump to location
+                                </Link>
+                              </div>
                             )}
                           </div>
                           <button

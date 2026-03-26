@@ -33,6 +33,7 @@ import { useUserStore } from "@/state/user";
 
 // Custom TipTap extensions
 import { tiptapStructure } from "../../extensions/tiptapStructure";
+import { extractCommentsFromDoc } from "../../extensions/tiptapComments";
 
 // Hocuspocus provider for server-backed collaboration
 import { HocuspocusProvider } from "@hocuspocus/provider";
@@ -1601,6 +1602,34 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
                       className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
                       onClick={async () => {
                         await saveRevision(editor.getHTML(), true, true);
+
+                        // Extract inline comment marks and post to feedback ledger.
+                        if (projectId) {
+                          try {
+                            const jsonDoc = editor.getJSON() as Record<string, unknown>;
+                            const inlineComments = extractCommentsFromDoc(jsonDoc);
+                            for (const c of inlineComments) {
+                              await authenticatedFetch(
+                                `/projects/${projectId}/feedback`,
+                                {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    text: c.metadata?.text ?? c.text ?? "(inline comment)",
+                                    feedback_type: "comment",
+                                    source: "inline",
+                                    range_from: c.from,
+                                    range_to: c.to,
+                                    comment_id: c.commentId,
+                                  }),
+                                },
+                              ).catch(() => {/* best-effort */});
+                            }
+                          } catch {
+                            /* non-fatal: inline comment extraction should not block submit */
+                          }
+                        }
+
                         setSubmitDone(true);
                         toast.success("Document submitted for review.");
                       }}
