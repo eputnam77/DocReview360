@@ -223,6 +223,33 @@ export const PLUGIN_REGISTRY: readonly PluginManifest[] = [
     exportName: "tiptapWatermark",
   },
 
+  {
+    name: "comment-mark",
+    version: "1.0.0",
+    description:
+      "Anchors inline comments to selected text as mark attributes. " +
+      "Marked text is highlighted in light yellow; comment metadata (author, text, " +
+      "timestamp) is stored in data attributes for extraction during review submission.",
+    lazy: true,
+    alwaysOn: false,
+    tiptapRange: ">=2.0.0 <3.0.0",
+    importPath: "./tiptapComments",
+    exportName: "CommentMark",
+  },
+  {
+    name: "track-changes",
+    version: "1.0.0",
+    description:
+      "Reviewer-attributed track-changes extension: insertions are highlighted " +
+      "in green, deletions in red strikethrough. Each change stores a changeId and " +
+      "reviewer name, and can be individually accepted or rejected.",
+    lazy: true,
+    alwaysOn: false,
+    tiptapRange: ">=2.0.0 <3.0.0",
+    importPath: "./tiptapTrackChanges",
+    exportName: "TrackChanges",
+  },
+
   // ── Experimental extensions (not active in v0.1) ─────────────────────────
   {
     name: "yjs-collab",
