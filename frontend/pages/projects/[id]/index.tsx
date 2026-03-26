@@ -127,6 +127,10 @@ export default function ProjectDetailsPage() {
   const [newFeedbackText, setNewFeedbackText] = useState("");
   const [newFeedbackType, setNewFeedbackType] = useState("comment");
 
+  // Collapsible document preview panels (Feedback and Signatures tabs)
+  const [feedbackPreviewOpen, setFeedbackPreviewOpen] = useState(false);
+  const [signaturesPreviewOpen, setSignaturesPreviewOpen] = useState(false);
+
   const approvalsForPhase = useMemo(
     () =>
       approvals.filter(
@@ -1037,9 +1041,34 @@ export default function ProjectDetailsPage() {
       return;
     }
     try {
-      const data = await approve(aid);
-      const sigId = data?.id ?? data?.signature?.id;
-      const signatureUrl = data?.url;
+      // POST /approvals/{id}/sign — handles both in-app signature and external
+      // provider delegation. Returns the updated ApprovalModel on success.
+      const res = await authenticatedFetch(`/approvals/${aid}/sign`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        // 409 with a redirect URL means an external provider flow was started.
+        const signatureUrl: string | undefined = err?.url;
+        if (signatureUrl) {
+          if (signatureUrl.startsWith("/")) {
+            router.push(signatureUrl);
+          } else {
+            try {
+              const parsed = new URL(signatureUrl);
+              if (parsed.origin === window.location.origin) {
+                window.location.assign(parsed.href);
+              }
+            } catch {
+              /* ignore invalid URLs */
+            }
+          }
+          return;
+        }
+        toast.error(err?.detail ?? "Failed to submit approval");
+        return;
+      }
+      const updated = await res.json();
+      // If the response includes a signing URL (external provider), redirect.
+      const signatureUrl: string | undefined = updated?.url;
       if (signatureUrl && typeof window !== "undefined") {
         if (signatureUrl.startsWith("/")) {
           router.push(signatureUrl);
@@ -1055,13 +1084,21 @@ export default function ProjectDetailsPage() {
         }
         return;
       }
+      // If the approval was recorded in-app, update local state directly.
+      if (updated?.state === "approved") {
+        setApprovals((prev) => prev.map((a) => (a.id === aid ? { ...a, ...updated } : a)));
+        toast.success("Approval recorded successfully.");
+        return;
+      }
+      // Fallback: check for a Documenso signature ID to redirect to signing page.
+      const sigId = updated?.signature || updated?.signature_id;
       if (sigId) {
         router.push(
           `/documenso/${encodeURIComponent(String(sigId))}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${encodeURIComponent(aid)}`,
         );
       }
     } catch {
-      /* handled in hook */
+      toast.error("Failed to submit approval. Please try again.");
     }
   };
 
@@ -2349,6 +2386,21 @@ export default function ProjectDetailsPage() {
             Approvals are optional phase-specific signoffs. A reviewer can be invited to review without also
             being added here. Add an approval only when the current phase requires one.
           </p>
+          {/* Help text: Sign-off vs Formal Approval distinction */}
+          <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 p-3 text-xs text-blue-800 dark:text-blue-300 space-y-1">
+            <p>
+              <span className="font-semibold">Reviewer Sign-off</span> (in the Assignments section
+              above) is an informal acknowledgment that a reviewer has read and concurred with the
+              document content. It is recorded in the review audit trail but carries no legal
+              binding.
+            </p>
+            <p>
+              <span className="font-semibold">Formal Approval</span> (this section) creates a legal
+              record of approval using a configured signature method — Documenso, DocuSign, or
+              in-app initials. Only users explicitly added to this Approvals table can formally
+              approve; their signature is cryptographically linked to the document version.
+            </p>
+          </div>
           <Card>
             <CardContent className="space-y-4 overflow-x-auto">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">

@@ -3,6 +3,30 @@
 This quick note explains how to run the container on common free-tier platforms.
 The image expects a `PORT` environment variable supplied by the host.
 
+## Environment variables
+
+The table below lists all recognised environment variables. Variables marked
+**required** must be set in every production deployment.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DOCREVIEW360_ENV` | Yes | — | Set to `production` to enforce secret validation and disable demo user seeding. Set to `dev` to enable demo users (`alice/password`, `bob/password`) and skip secret enforcement. |
+| `DOCREVIEW360_DATABASE_URL` | Yes | SQLite in-memory | Database connection string (`sqlite:///./docreview360.db` or a Postgres URL). |
+| `DOCREVIEW360_SECRET_KEY` | Yes | — | HS256 JWT signing secret. Must be a long random string in production. |
+| `SIGNATURE_PROVIDER` | No | `sandbox` | Signature backend — `sandbox` (non-binding stub) or `documenso` (production). |
+| `DOCREVIEW360_ML_MODEL_DIR` | No | — | Path to a packaged ONNX model directory created by `docreview360 ml package`. |
+| `DOCREVIEW360_ML_PROVIDER` | No | `cpu` | ONNX execution provider (`cpu`, `cuda`, `coreml`, `openvino`). |
+| `DOCREVIEW360_ML_THREADS` | No | `$(nproc)` | Number of intra-op threads for the ONNX Runtime CPU provider. |
+| `PORT` | Yes | `8000` | TCP port the uvicorn server binds to (injected by most cloud platforms). |
+| `DATABASE_URL` | No | — | Alias accepted by some cloud platforms; maps to `DOCREVIEW360_DATABASE_URL`. |
+| `DOCUMENSO_FAILURE_THRESHOLD` | No | `3` | Consecutive HTTP errors before the Documenso circuit breaker opens. |
+| `DOCUMENSO_FAILURE_WINDOW_SECONDS` | No | `60` | Rolling window for evaluating Documenso failure rate. |
+| `DOCUMENSO_FAILURE_COOLDOWN_SECONDS` | No | `300` | Seconds to wait before attempting Documenso recovery. |
+| `OPENAI_KEY` | No | — | OpenAI API token (used when no vault is configured). |
+| `SHAREPOINT_TOKEN` | No | — | SharePoint bearer token (used when no vault is configured). |
+
+
+
 1. **Render** – add a Postgres database service and set `DATABASE_URL` to the
    connection string. The platform automatically provides `PORT`.
 2. **Heroku** – provision a Postgres add-on and enable the `PORT` config

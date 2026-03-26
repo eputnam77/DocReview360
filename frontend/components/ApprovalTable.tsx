@@ -95,6 +95,7 @@ export default function ApprovalTable({
   const [selected, setSelected] = useState<string[]>([]);
   const [initialsModalId, setInitialsModalId] = useState<string | null>(null);
   const [initialsValue, setInitialsValue] = useState("");
+  const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [requiredOnly, setRequiredOnly] = useState(false);
@@ -204,6 +205,17 @@ export default function ApprovalTable({
         </TableCell>
         <TableCell>{a.required ? "Yes" : "No"}</TableCell>
         <TableCell className="text-right">
+          {/* Prominent Approve button for the assigned approver */}
+          {currentUser === a.reviewer && a.state !== "approved" && (
+            <Button
+              size="sm"
+              className="mr-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setConfirmApproveId(a.id)}
+              title="Formally approve this document using your configured signature method"
+            >
+              <Icon.CheckCircle2 className="w-3 h-3 mr-1" /> Approve
+            </Button>
+          )}
           <RowMenu>
             <Menu.Item>
               {({ active }) => (
@@ -465,6 +477,48 @@ export default function ApprovalTable({
           >
             Next
           </Button>
+        </div>
+      )}
+
+      {/* Formal Approve confirmation modal */}
+      {confirmApproveId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm formal approval"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-96 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              Confirm Formal Approval
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              You are about to formally approve this document. This action creates a legal
+              record of your approval using your configured signature method (Documenso,
+              DocuSign, or in-app initials). This cannot be undone without an administrator
+              resetting the approval.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmApproveId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => {
+                  const id = confirmApproveId;
+                  setConfirmApproveId(null);
+                  onSign(id);
+                }}
+              >
+                Confirm Approval
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

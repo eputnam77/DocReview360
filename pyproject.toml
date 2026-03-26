@@ -197,6 +197,11 @@ dev = [
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────
+# NOTE: Frontend assets (the Next.js application under frontend/) are intentionally
+# excluded from the PyPI distribution. The sdist and wheel contain only the Python
+# backend package (src/docreview360). Operators who need the frontend must build it
+# separately: `cd frontend && npm install --legacy-peer-deps && npm run build`.
+# See MANIFEST.in for the corresponding `prune frontend` directive.
 [tool.setuptools]
 
 [tool.setuptools.package-dir]

@@ -340,11 +340,21 @@ export default function CheckerPage() {
 
     return (
         <div className="p-8 space-y-8 max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold">Document Checker</h1>
-            <p className="text-gray-500 text-sm">
-                Validate documents against federal style guidelines, plain
-                language standards, and regulatory requirements.
-            </p>
+            {/* FSV Visual System — page header */}
+            <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold">Document Quality Checker</h1>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                        Powered by Federal Style Validator
+                    </span>
+                </div>
+                <p className="text-gray-500 text-sm">
+                    Validate documents against federal style guidelines
+                    (FAA/DoD), plain language standards, acronym compliance,
+                    and regulatory requirements using the Federal Style
+                    Validator engine.
+                </p>
+            </div>
 
             {/* API Status Indicator */}
             {apiStatus !== "unknown" && (
@@ -400,9 +410,9 @@ export default function CheckerPage() {
                                 Upload a document
                             </CardTitle>
                             <CardDescription>
-                                DOC / DOCX only. The checker validates headings,
-                                accessibility, and FAA style using
-                                FedStyleValidator.
+                                DOC / DOCX only. The Federal Style Validator
+                                checks headings, accessibility, FAA/DoD style
+                                rules, plain language, and undefined acronyms.
                             </CardDescription>
                         </CardHeader>
 
@@ -422,8 +432,8 @@ export default function CheckerPage() {
                                     disabled={isLoading}
                                 >
                                     {isLoading
-                                        ? "Running FedStyleValidator checks..."
-                                        : "Run checks"}
+                                        ? "Running Federal Style Validator checks..."
+                                        : "Run FSV checks"}
                                 </Button>
                             </form>
                         </CardContent>
@@ -473,7 +483,7 @@ export default function CheckerPage() {
                             <CardHeader className="flex flex-row items-center gap-3 pb-2">
                                 <FileWarning className="h-6 w-6 text-orange-600" />
                                 <CardTitle className="text-lg font-semibold">
-                                    FedStyleValidator Results
+                                    Federal Style Validator Results
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -616,8 +626,9 @@ export default function CheckerPage() {
                     {unifiedResults && (
                         <div className="mt-6 space-y-4">
                             <h2 className="text-lg font-semibold flex items-center gap-2">
-                                <FileWarning className="h-5 w-5 text-orange-600" />
-                                Validation Report
+                                <FileWarning className="h-5 w-5 text-indigo-600" />
+                                {/* FSV Visual System — report section header */}
+                                Federal Style Validator Report
                             </h2>
 
                             {/* Quality Score Card */}
@@ -720,11 +731,12 @@ export default function CheckerPage() {
                                 </Card>
                             )}
 
-                            {/* Acronym Issues Card */}
+                            {/* Acronym Issues Card — FSV amber lint color */}
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-base">
-                                        Acronym Issues
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" />
+                                        FSV Acronym Issues
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -757,11 +769,12 @@ export default function CheckerPage() {
                                 </CardContent>
                             </Card>
 
-                            {/* Style Issues Card */}
+                            {/* Style Issues Card — FSV orange lint color */}
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-base">
-                                        Style Issues
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-orange-400" />
+                                        FSV Style Issues
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -771,7 +784,7 @@ export default function CheckerPage() {
                                                 (s, i) => (
                                                     <li
                                                         key={i}
-                                                        className="text-sm border-l-2 border-orange-300 pl-3"
+                                                        className="text-sm border-l-2 border-orange-400 pl-3"
                                                     >
                                                         <p className="font-medium">
                                                             {s.issue}
@@ -854,11 +867,12 @@ export default function CheckerPage() {
                                 </Card>
                             )}
 
-                            {/* Heading Structure Card */}
+                            {/* Heading Structure Card — FSV yellow lint color */}
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-base">
-                                        Heading Structure
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                                        FSV Heading Structure
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>

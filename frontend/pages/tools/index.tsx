@@ -49,11 +49,11 @@ const ALL_TOOLS_ITEMS: ToolItem[] = [
     configHref: "/configuration",
   },
   {
-    id: "fedstylevalidator",
-    label: "Federal Style Validator",
-    href: "/tools/checker",
-    icon: <SpellCheck className="w-6 h-6 text-green-600" />,
-    desc: "Core tool — validates documents for FAA/DoD style, plain language, acronyms, regulatory references, and readability. Enabled by default for all organizations.",
+    id: "document-quality",
+    label: "Document Quality Checker",
+    href: "/tools/document-quality",
+    icon: <FileCheck className="w-6 h-6 text-emerald-600" />,
+    desc: "Powered by Federal Style Validator — checks FAA/DoD style, plain language, acronyms, regulatory references, readability, grammar, and accessibility compliance.",
     isBuiltIn: true,
     isCore: true,
     configHref: "/configuration/document-types",
@@ -76,17 +76,6 @@ const ALL_TOOLS_ITEMS: ToolItem[] = [
     desc: "Analyze readability, sentiment, and extract insights from documents.",
     isBuiltIn: false,
     requiresPlugins: ["textstat", "readability", "textblob", "spacy", "lexnlp"],
-    configHref: "/configuration",
-  },
-  {
-    id: "document-quality",
-    label: "Document Quality Checker",
-    href: "/tools/document-quality",
-    icon: <FileCheck className="w-6 h-6 text-emerald-600" />,
-    desc: "Check grammar, spelling, style, and accessibility compliance.",
-    isBuiltIn: false,
-    requiresPlugins: ["language-tool-python", "pyspellchecker", "gingerit"],
-    includesBuiltIn: ["fedstylevalidator"],
     configHref: "/configuration",
   },
   {
@@ -177,7 +166,7 @@ export default function ToolsPage() {
         if (builtinRes.ok) {
           setBuiltinStatus(await builtinRes.json());
         } else {
-          setBuiltinStatus({ fedstylevalidator: true, scdocbuilder: true });
+          setBuiltinStatus({ "document-quality": true, scdocbuilder: true });
         }
 
         // Fetch auto-validation setting
@@ -219,7 +208,7 @@ export default function ToolsPage() {
           setCommunityPlugins(community);
         }
       } catch {
-        setBuiltinStatus({ fedstylevalidator: true, scdocbuilder: true });
+        setBuiltinStatus({ "document-quality": true, scdocbuilder: true });
       } finally {
         setLoading(false);
       }
@@ -481,8 +470,8 @@ export default function ToolsPage() {
         </div>
       )}
 
-      {/* On-save auto-validation — admin panel, shown when FSV is active */}
-      {isAdmin && builtinStatus["fedstylevalidator"] !== false && (
+      {/* On-save auto-validation — admin panel, shown when Document Quality Checker is active */}
+      {isAdmin && builtinStatus["document-quality"] !== false && (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-2">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-indigo-500" />
@@ -552,8 +541,8 @@ export default function ToolsPage() {
         </div>
       )}
 
-      {/* Per-check FSV category configuration — admin only, shown when FSV is active */}
-      {isAdmin && builtinStatus["fedstylevalidator"] !== false && fsvCategories.length > 0 && (
+      {/* Per-check FSV category configuration — admin only, shown when Document Quality Checker is active */}
+      {isAdmin && builtinStatus["document-quality"] !== false && fsvCategories.length > 0 && (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
             <Settings className="w-4 h-4 text-indigo-500" />
