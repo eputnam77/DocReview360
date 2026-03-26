@@ -58,148 +58,28 @@ import React, {
 } from "react";
 import { toast } from "react-hot-toast";
 
-// ---------------------------------------------------------------------------
-// 1 ▲ Types
-// ---------------------------------------------------------------------------
-interface Project {
-  id: string;
-  number: string | number;
-  type: string;
-  title: string;
-  owner: string;
-  status: string;
-  progress: number;
-  updated?: string;
-  editor?: string;
-  workflow?: string;
-  currentPhaseId?: string | null;
-}
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  action: string;
-  type: "approval" | "review" | "edit" | "phase";
-  ref?: string;
-}
-interface WorkflowStep {
-  name: string;
-  status?: "complete" | "active" | "pending";
-}
-interface Workflow {
-  id: string;
-  phase: string;
-  steps?: WorkflowStep[];
-}
-interface Approval {
-  id: string;
-  reviewer: string;
-  email: string;
-  state: "pending" | "approved" | "overdue" | "rejected";
-  dueAt: string;
-  signedAt?: string;
-  comments?: string;
-  documensoSigId?: string;
-  description?: string; // Description from the approval step
-  phaseId?: string;
-  required?: boolean;
-}
-interface VersionEntry {
-  id: string;
-  timestamp: string;
-  author: string;
-  action: string;
-}
+// Sub-components extracted from this file (R-09)
+import {
+  type Project,
+  type LogEntry,
+  type WorkflowStep,
+  type Workflow,
+  type Approval,
+  type VersionEntry,
+  ProgBar,
+  LifecycleStepper,
+  LIFECYCLE_STEPS,
+  StickyNav,
+  NAV,
+  VersionDrawer,
+} from "@/components/project";
 
-// Utility helpers
+// ---------------------------------------------------------------------------
+// 1 ▲ Utility helpers (types moved to @/components/project/_types)
 // ---------------------------------------------------------------------------
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 function classNames(...classes: (string | false | undefined)[]) {
   return classes.filter(Boolean).join(" ");
-}
-function ProgBar({ value }: { value: number }) {
-  const pct = Math.max(0, Math.min(100, value));
-  return (
-    <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2">
-      <div
-        className={cn(
-          "h-2 rounded-full transition-all",
-          pct === 100
-            ? "bg-green-500"
-            : pct >= 70
-              ? "bg-blue-500"
-              : pct > 0
-                ? "bg-yellow-400"
-                : "bg-gray-400",
-        )}
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-}
-
-// Sticky nav — Phase 6 layout
-const NAV = [
-  { id: "overview", label: "Overview" },
-  { id: "reviewers", label: "Reviewers" },
-  { id: "feedback", label: "Feedback" },
-  { id: "signatures", label: "Signatures" },
-  { id: "approvals", label: "Approvals" },
-  { id: "history", label: "History" },
-];
-
-// Lifecycle stepper steps — Phase 6
-const LIFECYCLE_STEPS = [
-  { id: "assign_reviewers", label: "Assign Reviewers" },
-  { id: "collect_feedback", label: "Collect Feedback" },
-  { id: "address_feedback", label: "Address Feedback" },
-  { id: "collect_signatures", label: "Collect Signatures" },
-  { id: "complete", label: "Complete" },
-];
-
-function LifecycleStepper({ step }: { step: string }) {
-  const idx = LIFECYCLE_STEPS.findIndex((s) => s.id === step);
-  return (
-    <div className="flex items-center gap-0 overflow-x-auto pb-1">
-      {LIFECYCLE_STEPS.map((s, i) => {
-        const done = i < idx;
-        const active = i === idx;
-        return (
-          <React.Fragment key={s.id}>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <div
-                className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2",
-                  done
-                    ? "bg-green-500 border-green-500 text-white"
-                    : active
-                      ? "bg-indigo-600 border-indigo-600 text-white"
-                      : "bg-white border-gray-300 text-gray-400",
-                )}
-              >
-                {done ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
-              </div>
-              <span
-                className={cn(
-                  "text-xs font-medium hidden sm:block",
-                  active ? "text-indigo-700" : done ? "text-green-600" : "text-gray-400",
-                )}
-              >
-                {s.label}
-              </span>
-            </div>
-            {i < LIFECYCLE_STEPS.length - 1 && (
-              <div
-                className={cn(
-                  "flex-1 h-0.5 mx-1 min-w-[16px]",
-                  i < idx ? "bg-green-400" : "bg-gray-200",
-                )}
-              />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
 }
 
 const PHASE_CHECKS: Record<string, string[]> = {
@@ -207,103 +87,6 @@ const PHASE_CHECKS: Record<string, string[]> = {
   review: ["Review feedback addressed"],
   approval: ["Approval package prepared"],
 };
-function StickyNav() {
-  const [active, setActive] = React.useState(NAV[0].id);
-  const linksRef = React.useRef<(HTMLAnchorElement | null)[]>([]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
-    const idx = NAV.findIndex((n) => n.id === active);
-    let newIdx = idx;
-    if (e.key === "ArrowRight") {
-      newIdx = (idx + 1) % NAV.length;
-    } else if (e.key === "ArrowLeft") {
-      newIdx = (idx - 1 + NAV.length) % NAV.length;
-    } else if (e.key === "Home") {
-      newIdx = 0;
-    } else if (e.key === "End") {
-      newIdx = NAV.length - 1;
-    } else {
-      return;
-    }
-    e.preventDefault();
-    const newTab = NAV[newIdx];
-    setActive(newTab.id);
-    linksRef.current[newIdx]?.focus();
-  };
-
-  return (
-    <nav className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur supports-backdrop-blur:border-b supports-backdrop-blur:border-gray-200 dark:supports-backdrop-blur:border-gray-700">
-      <ul
-        role="tablist"
-        className="flex gap-6 px-8 py-2 text-sm font-medium overflow-x-auto scrollbar-hide"
-        onKeyDown={handleKeyDown}
-      >
-        {NAV.map((s, i) => (
-          <li key={s.id}>
-            <a
-              ref={(el) => {
-                linksRef.current[i] = el;
-              }}
-              role="tab"
-              id={`nav-${s.id}`}
-              aria-selected={active === s.id}
-              tabIndex={active === s.id ? 0 : -1}
-              href={`#${s.id}`}
-              className="hover:text-indigo-600 dark:hover:text-indigo-400 text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              onClick={() => setActive(s.id)}
-              onKeyDown={(e) => {
-                if (e.key === " " || e.key === "Enter") {
-                  e.preventDefault();
-                  setActive(s.id);
-                  linksRef.current[i]?.click();
-                }
-              }}
-            >
-              {s.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
-
-
-// Version timeline drawer (roadmap)
-function VersionDrawer({
-  open,
-  onClose,
-  versions,
-}: {
-  open: boolean;
-  onClose: () => void;
-  versions: VersionEntry[];
-}) {
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        role="dialog"
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
-        className="max-w-md sm:max-w-md"
-      >
-        <DialogHeader>
-          <DialogTitle>Document Versions</DialogTitle>
-        </DialogHeader>
-        <ul className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-          {versions.map((v) => (
-            <li key={v.id} className="relative pl-6">
-              <span className="absolute left-0 top-1.5 w-3 h-3 bg-indigo-600 rounded-full" />
-              <p className="text-sm font-medium">{v.action}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {v.timestamp} — {v.author}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ----------------------------------------------------------------------------
 // 4 ▲ Main component
