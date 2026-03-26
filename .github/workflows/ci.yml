@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   push:
@@ -103,7 +103,7 @@ jobs:
           poetry run python scripts/run_e2e.py
       - name: Upload E2E smoke artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-smoke-artifacts
           path: .e2e-runs/
@@ -154,7 +154,7 @@ jobs:
           poetry run python scripts/run_e2e.py
       - name: Upload E2E full artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-full-artifacts
           path: .e2e-runs/
