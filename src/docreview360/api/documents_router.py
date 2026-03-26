@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 """Documents sub-router: /documents/*, /cms/*, /sign/* routes."""
+
 from __future__ import annotations
 
 import json
@@ -32,9 +33,12 @@ def _emit_webhook(event: str, data: dict) -> None:
     """Best-effort lifecycle webhook emission — never raises."""
     try:
         from .webhooks import emit_lifecycle_event
+
         emit_lifecycle_event(event, data)  # type: ignore[arg-type]
     except Exception:
         pass
+
+
 from ..approvals import verify_document_signature
 from ..archive import (
     ArchiveRecord,
@@ -90,6 +94,7 @@ router = APIRouter()
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def _is_admin_user(user: auth.User) -> bool:
     return has_role(user.username, "admin")
 
@@ -135,6 +140,7 @@ def _request_source(request: Request) -> str:
 def require_audit_access(current_user: auth.User = Depends(auth.get_current_user)) -> str:
     """Ensure the requester may view audit logs and record the attempt."""
     from ..rbac import has_permission
+
     if has_permission(current_user.username, "view_audit_log"):
         log_event("audit_log_access", user_id=current_user.username, status="success")
         return current_user.username
@@ -145,6 +151,7 @@ def require_audit_access(current_user: auth.User = Depends(auth.get_current_user
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
+
 
 class RevisionCreate(BaseModel):
     """Payload for creating a document revision."""
@@ -214,6 +221,7 @@ class ArchiveMetadata(BaseModel):
 # Document routes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/documents/import", status_code=201, response_model=DocumentModel)
 async def import_document_endpoint(
     request: Request,
@@ -227,13 +235,17 @@ async def import_document_endpoint(
     import tempfile
 
     import docreview360.api as _api_mod
-    _api_mod._UPLOAD_RATE_LIMITER.enforce(f"documents-import:{current_user.username}:{_request_source(request)}")
+
+    _api_mod._UPLOAD_RATE_LIMITER.enforce(
+        f"documents-import:{current_user.username}:{_request_source(request)}"
+    )
 
     if project:
         project_model = get_project(project)
         if project_model is None:
             raise HTTPException(status_code=404, detail="Project not found")
         from .projects_router import _enforce_project_access
+
         _enforce_project_access(project_model, current_user)
     resolved_user = user
     if user is not None or not _is_admin_user(current_user):
@@ -269,6 +281,7 @@ async def import_document_endpoint(
         ttl=30,
     )
     from ..messages import render
+
     log_event(
         "import_document",
         user_id=resolved_user,
@@ -283,7 +296,12 @@ async def import_document_endpoint(
     )
     _emit_webhook(
         "document.created",
-        {"document_id": document.id, "project_id": project, "user": resolved_user, "filename": filename},
+        {
+            "document_id": document.id,
+            "project_id": project,
+            "user": resolved_user,
+            "filename": filename,
+        },
     )
     return document
 
@@ -336,9 +354,7 @@ async def list_documents_endpoint(
     from ..pagination import PaginatedResponse
 
     cache_key = (
-        f"documents-{current_user.username}"
-        if not _is_admin_user(current_user)
-        else "documents"
+        f"documents-{current_user.username}" if not _is_admin_user(current_user) else "documents"
     )
     docs_list: list[DocumentModel]
     cached = cache_get(cache_key)
@@ -432,6 +448,46 @@ async def get_document_endpoint(
     return document
 
 
+@router.get("/documents/{doc_id}/compact")
+async def get_document_compact_endpoint(
+    doc_id: str,
+    current_user: auth.User = Depends(require_permission("read")),
+) -> dict[str, Any]:
+    """Return a compact read-only document view for mobile clients.
+
+    Strips markup from content and returns only the fields needed for a
+    read-only display: plain text, word count, version metadata, and quality
+    score.  Omits revision history, Yjs updates, and edit-control fields so
+    the response stays small on constrained connections.
+
+    **Item 50 Phase 4** — compact rendered document-view endpoint.
+    """
+    import re
+
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+
+    # Strip HTML/markdown tags to produce readable plain text.
+    plain = re.sub(r"<[^>]+>", " ", document.content)
+    plain = re.sub(r"\s+", " ", plain).strip()
+    word_count = len(plain.split()) if plain else 0
+
+    return {
+        "id": document.id,
+        "project": document.project,
+        "plain_text": plain,
+        "word_count": word_count,
+        "version_number": document.version_number,
+        "frozen": document.frozen,
+        "last_quality_score": document.last_quality_score,
+        "last_quality_date": (
+            document.last_quality_date.isoformat() if document.last_quality_date else None
+        ),
+    }
+
+
 @router.get("/documents/{doc_id}/audit", response_model=list[AuditLogEntry])
 async def get_document_audit_endpoint(
     doc_id: str,
@@ -489,6 +545,7 @@ async def list_phase_snapshots_endpoint(
         raise HTTPException(status_code=404, detail="Document not found")
     _enforce_document_access(document, current_user)
     from ..audit_snapshots import get_phase_snapshots
+
     return get_phase_snapshots(doc_id)
 
 
@@ -504,6 +561,7 @@ async def create_phase_snapshot_endpoint(
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
     from ..audit_snapshots import capture_phase_snapshot
+
     return capture_phase_snapshot(
         doc_id,
         phase,
@@ -570,6 +628,7 @@ async def update_document_endpoint(
 # CMS routes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/cms/export/{doc_id}", response_model=CmsExportResponse)
 async def export_document_to_cms(
     doc_id: str,
@@ -578,6 +637,7 @@ async def export_document_to_cms(
 ) -> CmsExportResponse:
     """Export a document to the configured CMS."""
     from ..messages import render
+
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="document not found")
@@ -667,6 +727,7 @@ async def import_document_from_cms(
 # Revision routes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/documents/{doc_id}/revisions", status_code=201)
 async def create_revision_endpoint(
     doc_id: str,
@@ -736,6 +797,7 @@ async def get_revision_endpoint(
 # Comment routes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/documents/{doc_id}/comments", response_model=CommentModel, status_code=201)
 async def add_comment_endpoint(
     doc_id: str,
@@ -799,6 +861,7 @@ async def update_comment_endpoint(
 # Export route
 # ---------------------------------------------------------------------------
 
+
 @router.get("/documents/{doc_id}/export")
 async def export_document_endpoint(
     doc_id: str,
@@ -819,7 +882,10 @@ async def export_document_endpoint(
 ) -> Response:
     """Return the document converted to the requested format."""
     import docreview360.api as _api_mod
-    _api_mod._EXPORT_RATE_LIMITER.enforce(f"export:{current_user.username}:{_request_source(request)}")
+
+    _api_mod._EXPORT_RATE_LIMITER.enforce(
+        f"export:{current_user.username}:{_request_source(request)}"
+    )
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -843,6 +909,7 @@ async def export_document_endpoint(
 # ---------------------------------------------------------------------------
 # Archive routes
 # ---------------------------------------------------------------------------
+
 
 @router.post("/archive/{doc_id}", status_code=201, response_model=ArchiveRecord)
 async def archive_document_endpoint(
@@ -918,17 +985,28 @@ async def download_report(
         raise HTTPException(status_code=404, detail="Document not found")
     _enforce_document_access(document, current_user)
     if fmt == "html" and record.report_html is not None:
-        body = record.report_html.encode() if isinstance(record.report_html, str) else record.report_html
+        body = (
+            record.report_html.encode()
+            if isinstance(record.report_html, str)
+            else record.report_html
+        )
         return Response(body, media_type="text/html", headers={"Content-Length": str(len(body))})
     if fmt == "pdf" and record.report_pdf is not None:
-        body = record.report_pdf if isinstance(record.report_pdf, bytes) else record.report_pdf.encode()
-        return Response(body, media_type="application/pdf", headers={"Content-Length": str(len(body))})
+        body = (
+            record.report_pdf
+            if isinstance(record.report_pdf, bytes)
+            else record.report_pdf.encode()
+        )
+        return Response(
+            body, media_type="application/pdf", headers={"Content-Length": str(len(body))}
+        )
     raise HTTPException(status_code=404, detail="Report not found")
 
 
 # ---------------------------------------------------------------------------
 # Sign routes
 # ---------------------------------------------------------------------------
+
 
 @router.post("/sign/{doc_id}")
 async def sign_document(
@@ -941,6 +1019,7 @@ async def sign_document(
 ) -> dict[str, str]:
     """Create a signature request for ``doc_id`` using the active provider."""
     import docreview360.api as _api_mod
+
     _api_mod._SIGNATURE_RATE_LIMITER.enforce(f"sign:{user}:{_request_source(request)}")
     provider = get_provider()
     sig_id, url, _meta = provider.request_signature(
@@ -968,6 +1047,7 @@ async def complete_sign(
     provider.process_webhook({"id": sig_id, "status": "signed"})
     try:
         from ..approvals import handle_signature_return
+
         await handle_signature_return(sig_id)
     except (KeyError, ValueError) as exc:
         _logger.warning("handle_signature_return failed for sig_id %r: %s", sig_id, exc)

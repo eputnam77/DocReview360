@@ -35,6 +35,7 @@ def _emit_webhook(event: str, data: dict) -> None:
     """Best-effort lifecycle webhook emission — never raises."""
     try:
         from .webhooks import emit_lifecycle_event
+
         emit_lifecycle_event(event, data)  # type: ignore[arg-type]
     except Exception:
         pass
@@ -94,6 +95,7 @@ def _get_assignment_or_404(assignment_id: str) -> ReviewAssignmentModel:
 def _require_project_access(project, current_user: auth.User) -> None:
     """Allow access if user passes standard project access OR is an assignment reviewer."""
     from .projects_router import _is_admin_user
+
     if _is_admin_user(current_user):
         return
     # Check if user is an assignment-based reviewer on this project
@@ -102,11 +104,13 @@ def _require_project_access(project, current_user: auth.User) -> None:
         return
     # Fall back to standard project access check
     from .projects_router import _enforce_project_access
+
     _enforce_project_access(project, current_user)
 
 
 def _require_manage_access(project, current_user: auth.User) -> None:
     from .projects_router import _enforce_project_manage_access
+
     _enforce_project_manage_access(project, current_user)
 
 
@@ -134,8 +138,7 @@ def _emit_review_notification(
                 f"project '{project.name}'. {deep_link}"
             ),
             "review.replaced": (
-                f"You have been replaced as reviewer on project '{project.name}'. "
-                f"{deep_link}"
+                f"You have been replaced as reviewer on project '{project.name}'. " f"{deep_link}"
             ),
             "review.non_concurred": (
                 f"Reviewer '{assignment.reviewer}' has non-concurred on "
@@ -170,6 +173,7 @@ def _emit_review_notification(
         # Persist to notification log (best-effort)
         try:
             from ..notification_log import log_notification
+
             log_notification(
                 event,
                 message,
@@ -251,11 +255,14 @@ async def create_project_assignment(
         reviewer=assignment.reviewer,
         assignment_id=assignment.id,
     )
-    _emit_webhook("review.assigned", {
-        "project_id": project_id,
-        "assignment_id": assignment.id,
-        "reviewer": assignment.reviewer,
-    })
+    _emit_webhook(
+        "review.assigned",
+        {
+            "project_id": project_id,
+            "assignment_id": assignment.id,
+            "reviewer": assignment.reviewer,
+        },
+    )
     return assignment.model_dump()
 
 
@@ -288,7 +295,9 @@ async def start_assignment(
     _get_project_or_404(project_id)
     assignment = _get_assignment_or_404(assignment_id)
     if assignment.reviewer != current_user.username:
-        raise HTTPException(status_code=403, detail="Only the assigned reviewer can start the review")
+        raise HTTPException(
+            status_code=403, detail="Only the assigned reviewer can start the review"
+        )
     if assignment.status != "invited":
         raise HTTPException(
             status_code=409, detail=f"Cannot start from status '{assignment.status}'"
@@ -333,11 +342,14 @@ async def submit_assignment(
         assignment_id=assignment_id,
         reviewer=assignment.reviewer,
     )
-    _emit_webhook("review.submitted", {
-        "project_id": project_id,
-        "assignment_id": assignment_id,
-        "reviewer": assignment.reviewer,
-    })
+    _emit_webhook(
+        "review.submitted",
+        {
+            "project_id": project_id,
+            "assignment_id": assignment_id,
+            "reviewer": assignment.reviewer,
+        },
+    )
     return result.model_dump()
 
 
@@ -364,12 +376,15 @@ async def concur_assignment(
         reviewer=assignment.reviewer,
         outcome="concurred",
     )
-    _emit_webhook("review.completed", {
-        "project_id": project_id,
-        "assignment_id": assignment_id,
-        "reviewer": assignment.reviewer,
-        "outcome": "concurred",
-    })
+    _emit_webhook(
+        "review.completed",
+        {
+            "project_id": project_id,
+            "assignment_id": assignment_id,
+            "reviewer": assignment.reviewer,
+            "outcome": "concurred",
+        },
+    )
     return result.model_dump()
 
 
@@ -391,6 +406,7 @@ async def concur_assignment_with_comments(
         raise HTTPException(status_code=403, detail="Only the assigned reviewer can concur")
     # Persist the reviewer's closing comment
     from ..feedback_ledger import create_feedback_item
+
     create_feedback_item(
         project_id,
         current_user.username,
@@ -410,12 +426,15 @@ async def concur_assignment_with_comments(
         reviewer=assignment.reviewer,
         outcome="concurred_with_comments",
     )
-    _emit_webhook("review.completed", {
-        "project_id": project_id,
-        "assignment_id": assignment_id,
-        "reviewer": assignment.reviewer,
-        "outcome": "concurred_with_comments",
-    })
+    _emit_webhook(
+        "review.completed",
+        {
+            "project_id": project_id,
+            "assignment_id": assignment_id,
+            "reviewer": assignment.reviewer,
+            "outcome": "concurred_with_comments",
+        },
+    )
     return result.model_dump()
 
 
@@ -513,6 +532,7 @@ async def get_project_review_summary(
     project = _get_project_or_404(project_id)
     _require_project_access(project, current_user)
     from ..concurrence_gate import get_review_summary
+
     summary = get_review_summary(project_id)
     return summary.model_dump()
 
@@ -576,6 +596,7 @@ async def get_assignment_eligibility(
     _require_project_access(project, current_user)
     _get_assignment_or_404(assignment_id)
     from ..concurrence_gate import check_concurrence_eligibility
+
     result = check_concurrence_eligibility(project_id, assignment_id)
     return result.model_dump()
 
@@ -617,12 +638,15 @@ async def sign_assignment_internally(
         reviewer=assignment.reviewer,
         outcome="signed",
     )
-    _emit_webhook("review.completed", {
-        "project_id": project_id,
-        "assignment_id": assignment_id,
-        "reviewer": assignment.reviewer,
-        "outcome": "signed",
-    })
+    _emit_webhook(
+        "review.completed",
+        {
+            "project_id": project_id,
+            "assignment_id": assignment_id,
+            "reviewer": assignment.reviewer,
+            "outcome": "signed",
+        },
+    )
     return result.model_dump()
 
 
@@ -643,6 +667,7 @@ async def get_project_notification_log(
     _require_project_access(project, current_user)
     try:
         from ..notification_log import list_notification_log
+
         # Fetch a larger window then slice; notification_log limit caps DB scan
         entries = list_notification_log(project_id, limit=skip + limit)
         page = PaginatedResponse.from_sequence(entries, skip=skip, limit=limit)
@@ -676,7 +701,9 @@ async def remind_reviewer(
     return {"ok": True, "assignment_id": assignment_id}
 
 
-@router.delete("/projects/{project_id}/assignments/{assignment_id}", status_code=204, response_model=None)
+@router.delete(
+    "/projects/{project_id}/assignments/{assignment_id}", status_code=204, response_model=None
+)
 async def delete_project_assignment(
     project_id: str,
     assignment_id: str,
@@ -757,10 +784,7 @@ async def get_my_assignments_summary(
     for a in all_assignments:
         status = a.status or "unknown"
         by_status[status] = by_status.get(status, 0) + 1
-        if (
-            a.due_date
-            and a.status not in TERMINAL_STATUSES
-        ):
+        if a.due_date and a.status not in TERMINAL_STATUSES:
             try:
                 due = date.fromisoformat(a.due_date[:10])
                 if due < today:
@@ -773,4 +797,123 @@ async def get_my_assignments_summary(
         "total": len(all_assignments),
         "by_status": by_status,
         "overdue": overdue,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Item 51: sign-off-map — clarifies Concurrence vs Approvals relationship
+# ---------------------------------------------------------------------------
+
+
+@router.get("/projects/{project_id}/sign-off-map")
+async def get_sign_off_map(
+    project_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict:
+    """Return a clear breakdown of reviewer sign-offs vs. formal approvals.
+
+    **Item 51** — clarifies the relationship between the two mechanisms:
+
+    * **Reviewer sign-off / concurrence** — lightweight, assignment-based.
+      Completed by a reviewer clicking "Concur" or "Sign internally".
+      Tracked on the ``ReviewAssignment`` record (``signed_at`` timestamp).
+      No external signature provider is involved.
+    * **Formal approval** — heavyweight, signature-based.
+      Initiated via ``POST /approvals/{id}/sign`` and optionally routed
+      through Documenso / DocuSign.  Tracked on an ``ApprovalModel`` record.
+
+    Response shape::
+
+        {
+          "project_id": "...",
+          "reviewer_sign_offs": [
+            {
+              "reviewer": "bob",
+              "assignment_id": "...",
+              "outcome": "concurred",           # concurred | signed | non_concurred | in_progress
+              "concurred_at": "2026-03-25T..."  # null when not yet complete
+            }
+          ],
+          "formal_approvals": [
+            {
+              "approval_id": "...",
+              "reviewer": "alice",
+              "state": "approved",
+              "signed_at": "2026-03-25T..."
+            }
+          ],
+          "formality_note": "...",
+          "review_summary": { ... }
+        }
+    """
+    project = _get_project_or_404(project_id)
+    _require_project_access(project, current_user)
+
+    # -- reviewer sign-offs (assignment-based) ----------------------------
+    assignments = list_assignments(project_id)
+    sign_offs = []
+    for a in assignments:
+        if a.status == "replaced":
+            continue
+        if a.status in ("concurred", "signed"):
+            outcome = a.status
+            ts = a.signed_at.isoformat() if a.signed_at else None
+        elif a.status == "non_concurred":
+            outcome = "non_concurred"
+            ts = a.signed_at.isoformat() if a.signed_at else None
+        else:
+            outcome = "in_progress"
+            ts = None
+        sign_offs.append(
+            {
+                "reviewer": a.reviewer,
+                "assignment_id": a.id,
+                "outcome": outcome,
+                "concurred_at": ts,
+            }
+        )
+
+    # -- formal approvals (signature-based) — filter by project via workflow --
+    from ..approvals import list_approvals as _list_approvals
+    from ..workflows import get_workflow as _get_workflow
+
+    formal: list[dict[str, Any]] = []
+    try:
+        for ap in _list_approvals():
+            try:
+                wf = _get_workflow(ap.workflow)
+                if wf and getattr(wf, "project", None) != project_id:
+                    continue
+            except Exception:
+                continue
+            formal.append(
+                {
+                    "approval_id": ap.id,
+                    "reviewer": ap.reviewer,
+                    "state": ap.state,
+                    "signed_at": ap.signed_at.isoformat() if ap.signed_at else None,
+                }
+            )
+    except Exception:
+        pass
+
+    # -- review summary for lifecycle context ----------------------------
+    from ..concurrence_gate import get_review_summary
+
+    try:
+        summary = get_review_summary(project_id).model_dump()
+    except Exception:
+        summary = {}
+
+    return {
+        "project_id": project_id,
+        "reviewer_sign_offs": sign_offs,
+        "formal_approvals": formal,
+        "formality_note": (
+            "Reviewer sign-offs (concurrence) are lightweight in-app confirmations. "
+            "Formal approvals require an explicit signature action and may route through "
+            "an external provider (e.g. Documenso). Both appear here so administrators "
+            "can select the appropriate level of ceremony for each project."
+        ),
+        "review_summary": summary,
     }
