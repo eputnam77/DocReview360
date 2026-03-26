@@ -4,8 +4,8 @@ This file previously held a long-running feature checklist and became stale over
 
 Use these sources instead:
 
-- [`CHANGELOG.md`](../CHANGELOG.md) for released changes by version.
-- [`RELEASE_CHECKLIST.md`](../RELEASE_CHECKLIST.md) for current in-progress release tasks.
+- [`CHANGELOG.md`](changelog.md) for released changes by version.
+- [`RELEASE_CHECKLIST.md`](release_checklist.md) for current in-progress release tasks.
 
 Documentation policy:
 

@@ -155,4 +155,4 @@ Authentication uses the returned token as `Bearer <token>` in the
 
 ## GraphQL
 Read-only queries are available via a small GraphQL layer. See
-[`CHANGELOG.md`](../CHANGELOG.md) for release history and API evolution notes.
+[`CHANGELOG.md`](changelog.md) for release history and API evolution notes.

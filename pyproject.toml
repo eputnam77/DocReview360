@@ -1,6 +1,6 @@
 # ─────────────────────────────── build & metadata ──────────────────────────────
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,8 +9,7 @@ version         = "0.1.2"
 description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
 requires-python = ">=3.11,<3.13"
-license         = "MIT"
-license-files   = ["LICENSE"]
+license         = {text = "MIT"}
 keywords        = [
   "document-review",
   "workflow",
@@ -215,7 +214,7 @@ exclude = ["tests*", ".dev*"]
 "docreview360.styles"        = ["*.md"]
 "docreview360.templates"     = ["*.html"]
 "docreview360.iac_templates" = ["*.tf"]
-"docreview360"               = ["py.typed", "*.yaml", "*.yml", "*.json"]
+"docreview360"               = ["py.typed", "*.yaml", "*.yml", "*.json", "*.html", "*.sql", "*.md"]
 "docreview360.migrations"    = ["*.sql"]
 "docreview360.ml"            = ["*.json", "*.onnx"]
 "docreview360.ml.assets"     = ["*.onnx", "*.pt", "*.pkl"]

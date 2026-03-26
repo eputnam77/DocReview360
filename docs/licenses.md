@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-DocReview360 is licensed under the [MIT License](../LICENSE).
+DocReview360 is licensed under the [MIT License](https://github.com/eputnam77/DocReview360/blob/main/LICENSE).
 
 This file documents the licenses of third-party dependencies bundled with or
 required by DocReview360. It is informational, not legally authoritative. Review
