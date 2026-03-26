@@ -61,6 +61,47 @@ describe("help.tsx — five-tab layout", () => {
 });
 
 // ---------------------------------------------------------------------------
+// /help page — role-based tabs (Item 51)
+// ---------------------------------------------------------------------------
+
+describe("help.tsx — role-based By Role tab", () => {
+  const helpPage = src("pages/help.tsx");
+
+  it("has a By Role tab", () => {
+    expect(helpPage).toContain("By Role");
+    expect(helpPage).toMatch(/value="by-role"/);
+  });
+
+  it("has an Administrator section in the By Role content", () => {
+    expect(helpPage).toContain("Administrator");
+  });
+
+  it("has a Project Owner section in the By Role content", () => {
+    expect(helpPage).toContain("Project Owner");
+  });
+
+  it("has a Reviewer section in the By Role content", () => {
+    expect(helpPage).toContain("Reviewer");
+  });
+
+  it("has an Approver section in the By Role content", () => {
+    expect(helpPage).toContain("Approver");
+  });
+
+  it("FAQ items are tagged with roles array", () => {
+    expect(helpPage).toMatch(/roles:\s*\[/);
+  });
+
+  it("ROLE_GUIDES defines tasks for each role", () => {
+    expect(helpPage).toContain("ROLE_GUIDES");
+    expect(helpPage).toContain("administrator");
+    expect(helpPage).toContain("project-owner");
+    expect(helpPage).toContain("reviewer");
+    expect(helpPage).toContain("approver");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Sidebar — "Help & Support" collapsible section
 // ---------------------------------------------------------------------------
 

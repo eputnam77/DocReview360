@@ -1,5 +1,6 @@
 /**
  * Item 48 — Tools index page status badges and admin controls.
+ * Item 51 — Tools information architecture (FSV + Quality Checker collapsed).
  *
  * Source-level tests verifying:
  *  - StatusBadge renders Active / Disabled / Not-installed states
@@ -8,6 +9,9 @@
  *  - Enable/Disable toggle buttons are gated by isAdmin + isBuiltIn
  *  - CommunityBadge is rendered for community tools
  *  - CoreBadge is rendered for core tools
+ *  - Federal Style Validator is collapsed into Document Quality Checker
+ *  - Document Quality Checker entry navigates to /tools/document-quality
+ *  - Description mentions "Federal Style Validator"
  */
 import { readFileSync } from "fs";
 import { join, resolve } from "path";
@@ -161,5 +165,42 @@ describe("Tools index — getStatus logic", () => {
 
   it("returns 'not-installed' for uninstalled community tools", () => {
     expect(page).toMatch(/return\s+["']not-installed["']/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Item 51 — Tools IA: FSV collapsed into Document Quality Checker
+// ---------------------------------------------------------------------------
+
+describe("Tools index — Item 51 tools information architecture", () => {
+  it("Document Quality Checker entry is present", () => {
+    expect(page).toContain("Document Quality Checker");
+  });
+
+  it("Document Quality Checker navigates to /tools/document-quality", () => {
+    expect(page).toContain('href: "/tools/document-quality"');
+  });
+
+  it("Document Quality Checker description mentions Federal Style Validator", () => {
+    expect(page).toMatch(/Federal Style Validator/);
+  });
+
+  it("Document Quality Checker is marked as core (isCore: true)", () => {
+    // The merged entry should be core
+    expect(page).toMatch(/isCore:\s*true/);
+  });
+
+  it("Document Quality Checker is a built-in tool (isBuiltIn: true)", () => {
+    expect(page).toMatch(/isBuiltIn:\s*true/);
+  });
+
+  it("Document Converter standalone entry is still present", () => {
+    expect(page).toContain("Document Converter");
+    expect(page).toContain('href: "/tools/converter"');
+  });
+
+  it("there is no separate standalone Federal Style Validator top-level entry", () => {
+    // The FSV should NOT appear as its own separate card entry with id fedstylevalidator
+    expect(page).not.toMatch(/id:\s*["']fedstylevalidator["']/);
   });
 });
