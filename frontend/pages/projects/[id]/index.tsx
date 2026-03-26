@@ -2838,13 +2838,13 @@ export default function ProjectDetailsPage() {
             );
           })()}
 
-          {/* Inline reviewer comments (legacy) */}
+          {/* Anchored Comments */}
           <Disclosure>
             {({ open }) => (
               <>
                 <Disclosure.Button className="w-full text-left">
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-600">
-                    <LayoutList className="w-4 h-4" /> Inline Document Comments{" "}
+                    <LayoutList className="w-4 h-4" /> Anchored Comments{" "}
                     {open ? "" : "(collapsed)"}
                   </h3>
                 </Disclosure.Button>
@@ -2859,7 +2859,21 @@ export default function ProjectDetailsPage() {
                   leaveTo="transform opacity-0 scale-95"
                 >
                   <Card>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-4 space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Comments are anchored to document locations. Use the TipTap editor to add
+                        them.{" "}
+                        <span className="inline-flex items-center gap-1">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                            Anchored
+                          </span>{" "}
+                          = location-pinned;{" "}
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                            Feedback
+                          </span>{" "}
+                          = general reviewer input (see Feedback Ledger above).
+                        </span>
+                      </p>
                       <ReviewerComments
                         docId={project.id}
                         currentUser={username ?? ""}
