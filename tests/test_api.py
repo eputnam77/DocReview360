@@ -53,7 +53,7 @@ def test_list_projects() -> None:
     client = TestClient(app)
     resp = client.get("/projects", headers=_alice_headers())
     assert resp.status_code == 200
-    assert resp.json()[0]["name"] == "Demo Project"
+    assert resp.json()["items"][0]["name"] == "Demo Project"
 
 
 def test_demo_review_endpoint() -> None:
@@ -78,7 +78,7 @@ def test_list_documents() -> None:
     assert resp.status_code == 201
     doc_id = resp.json()["id"]
     resp = client.get("/documents", headers=hdrs)
-    assert any(d["id"] == doc_id for d in resp.json())
+    assert any(d["id"] == doc_id for d in resp.json()["items"])
 
 
 def test_metrics_and_audit_endpoints() -> None:
