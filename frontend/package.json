@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@editorjs/delimiter": "^1.4.2",
-    "@editorjs/editorjs": "^2.31.0",
+    "@editorjs/editorjs": "^2.31.5",
     "@editorjs/header": "^2.8.8",
     "@editorjs/list": "^2.0.8",
     "@editorjs/quote": "^2.7.6",
