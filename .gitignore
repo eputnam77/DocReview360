@@ -103,3 +103,4 @@ frontend/pages__backup_js_*
 # Developer notes and internal scripts
 push-after-fix.ps1
 tatus
+.claude/worktrees/
