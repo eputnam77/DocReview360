@@ -59,18 +59,40 @@ export interface TabsTriggerProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   value: string;
 }
-export function TabsTrigger({ value, className, ...props }: TabsTriggerProps) {
+export function TabsTrigger({ value, className, onKeyDown, ...props }: TabsTriggerProps) {
   const ctx = React.useContext(TabsContext);
   if (!ctx) throw new Error("TabsTrigger must be used within Tabs");
   const isActive = ctx.value === value;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const tablist = e.currentTarget.closest('[role="tablist"]');
+    if (tablist) {
+      const tabs = Array.from(tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+      const idx = tabs.indexOf(e.currentTarget);
+      let next = -1;
+      if (e.key === "ArrowRight") next = (idx + 1) % tabs.length;
+      else if (e.key === "ArrowLeft") next = (idx - 1 + tabs.length) % tabs.length;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = tabs.length - 1;
+      if (next >= 0) {
+        e.preventDefault();
+        tabs[next].focus();
+        tabs[next].click();
+      }
+    }
+    onKeyDown?.(e);
+  };
+
   return (
     <button
       type="button"
       role="tab"
+      id={`tab-trigger-${value}`}
       aria-selected={isActive}
       aria-controls={`tab-panel-${value}`}
       tabIndex={isActive ? 0 : -1}
       onClick={() => ctx.setValue(value)}
+      onKeyDown={handleKeyDown}
       className={cn(
         "min-w-[80px] rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
         isActive
@@ -99,6 +121,8 @@ export function TabsContent({
     <div
       id={`tab-panel-${value}`}
       role="tabpanel"
+      aria-labelledby={`tab-trigger-${value}`}
+      tabIndex={0}
       className={cn("mt-3", className)}
       {...props}
     >

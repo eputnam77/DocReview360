@@ -189,7 +189,17 @@ Target window: next month (confirm exact date and time zone).
   Touch: `frontend/pages/help.tsx`, help-content data structures, locale files,
   project or review UI guidance and empty-state copy.
 
-## 3. Final release sign-off
+## 3. Accessibility gate (required before release)
+
+- [ ] Automated accessibility checks pass (axe-core, no critical violations).
+  Run: `cd frontend && npm test -- --reporter=verbose 2>&1 | grep -E "a11y|accessibility"`.
+- [ ] Manual AT test script completed for critical flows (login, project creation, review workflow, approvals, editor).
+  AT combinations required: NVDA + Chrome, VoiceOver + Safari (keyboard-only).
+- [ ] No unresolved WCAG 2.1 AA blockers in `docs/section508_wcag.md` conformance table.
+- [ ] Skip-to-main-content link is verified functional in a real browser.
+- [ ] Tab keyboard navigation (ArrowLeft/Right/Home/End) verified on all tab groups.
+
+## 4. Final release sign-off
 
 - [ ] All section 1 release-blocker items are complete.
 - [ ] All P0 reliability items are complete.
@@ -217,7 +227,7 @@ Target window: next month (confirm exact date and time zone).
   enabled.
 - [ ] Release announcement and upgrade notes are drafted.
 
-## 4. Post-release
+## 5. Post-release
 
 - [ ] Install from PyPI into a fresh venv and run `docreview360 --help`.
 - [ ] Smoke-test the CLI-to-API-to-UI flow using released artifacts.
