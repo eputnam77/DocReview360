@@ -46,9 +46,12 @@ So the practical status is: **partially accessible, not yet compliance-proven**.
    - Browser + AT combinations: NVDA/JAWS + Chrome/Edge, VoiceOver + Safari.
    - Include keyboard-only, zoom/reflow (200%/400%), and contrast checks.
 
-3. **Add CI-grade automation**
+3. **Add CI-grade automation** ✅ DONE
    - Add page-level axe tests for top workflows, not just isolated components.
    - Add a manual-test checklist artifact required for release signoff.
+   - Implemented: added `frontend/__tests__/a11y_public_pages.test.tsx` with axe-core page-level checks for `/signup`, `/terms`, and `/privacy` routes in addition to existing accessibility tests.
+   - Manual signoff artifact: release checklist already includes an accessibility gate in `docs/release_checklist.md` requiring manual AT script completion before release.
+   - Tests: `cd frontend && npx vitest run __tests__/a11y_public_pages.test.tsx __tests__/a11y_skip_link.test.ts __tests__/a11y_tabs.test.ts __tests__/a11y_help_shortcut.test.ts --configLoader runner` (33 assertions, all passing).
 
 ### Track 2 — Keyboard and focus operability (highest priority)
 
