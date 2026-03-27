@@ -172,8 +172,14 @@ export default function App({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <div className="flex min-h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded focus:shadow-lg"
+          >
+            Skip to main content
+          </a>
           <Sidebar />
-          <main className="flex flex-1 flex-col overflow-y-auto">
+          <main id="main-content" className="flex flex-1 flex-col overflow-y-auto" tabIndex={-1}>
             <Toaster position="top-right" />
             <div className="flex-1">
               <PageErrorBoundary resetKey={router.pathname}>

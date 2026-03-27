@@ -52,22 +52,29 @@ So the practical status is: **partially accessible, not yet compliance-proven**.
 
 ### Track 2 — Keyboard and focus operability (highest priority)
 
-4. **Add “Skip to main content” in app shell**
+4. **Add “Skip to main content” in app shell** ✅ DONE
    - Add skip link before sidebar in `_app.tsx`.
    - Ensure it becomes visible on keyboard focus and moves focus to the main container.
+   - Implemented: skip link added to `pages/_app.tsx`; `<main>` has `id=”main-content”` and `tabIndex={-1}`.
+   - Tests: `__tests__/a11y_skip_link.test.ts` (8 assertions, all passing).
 
-5. **Upgrade custom Tabs keyboard behavior**
+5. **Upgrade custom Tabs keyboard behavior** ✅ DONE
    - Implement ArrowLeft/ArrowRight (and optionally Home/End) on `TabsTrigger`/`TabsList`.
    - Keep active tab in tab order (`tabIndex=0`) and inactive tabs `-1`.
+   - Implemented: `onKeyDown` handler in `components/ui/tabs.tsx`; `TabsContent` now has `aria-labelledby` and `tabIndex={0}`; `TabsTrigger` has `id=”tab-trigger-{value}”`.
+   - Tests: `__tests__/a11y_tabs.test.ts` (13 assertions, all passing).
 
 6. **Audit all custom interactive widgets for keyboard parity**
    - Validate Enter/Space activation for custom button-like containers.
    - Ensure modal/dialog/drawer focus trap + initial focus + return-focus behavior is consistent.
    - Ensure Escape closes overlays only when contextually appropriate.
 
-7. **Fix shortcut consistency**
+7. **Fix shortcut consistency** ✅ DONE (partial)
    - Either implement the `?` shortcut on Help page or remove/document it accurately.
    - Build a shortcut registry to avoid mismatch between docs and behavior.
+   - Implemented: `pages/help.tsx` now listens for `?` key (ignoring INPUT/TEXTAREA) and switches the Tabs to the "shortcuts" tab.
+   - Tests: `__tests__/a11y_help_shortcut.test.ts` (9 assertions, all passing).
+   - Remaining: a global shortcut registry for future cross-page shortcuts is not yet built.
 
 ### Track 3 — Screen-reader and semantic quality
 
@@ -97,15 +104,17 @@ So the practical status is: **partially accessible, not yet compliance-proven**.
 
 ### Track 5 — Governance and documentation integrity
 
-14. **Align compliance documentation with evidence**
+14. **Align compliance documentation with evidence** ✅ DONE
    - Update `docs/section508_wcag.md` to clearly separate “implemented”, “tested”, and “pending” status.
    - Attach evidence links to test runs and manual reports.
+   - Implemented: `docs/section508_wcag.md` now has a “Front-End Conformance Status” table with Implemented/Tested/Pending rows and evidence file references.
 
-15. **Release gate**
+15. **Release gate** ✅ DONE
    - Add an accessibility gate in release checklist requiring:
      - passing automated accessibility checks,
      - completed manual AT script for critical flows,
      - no unresolved critical WCAG blockers.
+   - Implemented: Section 3 “Accessibility gate” added to `docs/release_checklist.md` with five checkboxes.
 
 ---
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -334,6 +334,19 @@ function KbdKey({ children }: { children: string }) {
 // ---------------------------------------------------------------------------
 
 export default function HelpPage() {
+  const [activeTab, setActiveTab] = useState("getting-started");
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (e.key === "?" && tag !== "INPUT" && tag !== "TEXTAREA") {
+        setActiveTab("shortcuts");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <div className="p-8 space-y-6 max-w-5xl">
       {/* Page header */}
@@ -347,7 +360,7 @@ export default function HelpPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="getting-started">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="getting-started">
             <Rocket className="w-4 h-4 mr-1.5" />

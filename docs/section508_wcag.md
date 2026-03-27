@@ -11,6 +11,26 @@ This guide documents compliance status, how to run automated scans, and known ga
 
 ---
 
+## Front-End Conformance Status
+
+> Status key: **Implemented** = code change merged; **Tested** = covered by automated tests; **Pending** = not yet done.
+
+| Feature | Status | Evidence |
+|---------|--------|----------|
+| Skip-to-main-content link | Implemented, Tested | `_app.tsx`; `__tests__/a11y_skip_link.test.ts` |
+| Tabs keyboard navigation (ArrowLeft/Right/Home/End) | Implemented, Tested | `components/ui/tabs.tsx`; `__tests__/a11y_tabs.test.ts` |
+| Tab panel `aria-labelledby` and `tabIndex=0` | Implemented, Tested | `components/ui/tabs.tsx`; `__tests__/a11y_tabs.test.ts` |
+| `?` shortcut navigates to Keyboard Shortcuts tab | Implemented, Tested | `pages/help.tsx`; `__tests__/a11y_help_shortcut.test.ts` |
+| Toolbar axe-core scan | Implemented, Tested | `__tests__/accessibility.test.tsx` |
+| Page-level axe coverage for critical flows | Pending | — |
+| Modal/dialog focus trap and return-focus | Pending — needs audit | — |
+| `aria-live` regions for async toasts | Pending | — |
+| Contrast audit (light/dark themes) | Pending — needs manual review | — |
+| Zoom/reflow at 320 px / 400% | Pending — needs manual review | — |
+| AT manual test script (NVDA, VoiceOver) | Pending | — |
+
+---
+
 ## Automated Accessibility Scanning
 
 ### API Endpoint
@@ -103,6 +123,9 @@ Returns:
 - Modal dialogs trap focus while open; `Esc` closes them.
 - Data tables include `<th scope="col">` headers for screen readers.
 - Form inputs use `<label for="...">` associations throughout.
+- **Implemented:** Skip-to-main-content link is present in the app shell (`_app.tsx`), visible on keyboard focus, and moves focus to the `<main>` container.
+- **Implemented:** Custom Tabs component (`components/ui/tabs.tsx`) supports ArrowLeft/ArrowRight/Home/End keyboard navigation per ARIA tablist pattern; inactive tabs use `tabIndex=-1`; tab panels have `aria-labelledby` and `tabIndex=0`.
+- **Implemented:** `?` key on the Help page navigates to the Keyboard Shortcuts tab.
 
 ## Screen Reader Compatibility
 
