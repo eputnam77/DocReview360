@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,12 +59,7 @@ def _require_ort() -> None:
         )
 
 
-def _hash_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(8192), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+from ._hashing import file_sha256 as _hash_file
 
 
 def _read_custom_metadata(path: Path) -> dict[str, str]:
@@ -99,7 +95,14 @@ def get_session(
     with _LOCK:
         session = _SESSION_CACHE.get(key)  # type: ignore[arg-type]
         if session is None:
-            session = ort.InferenceSession(str(model_path), providers=resolved_providers)
+            opts = ort.SessionOptions()
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            opts.intra_op_num_threads = os.cpu_count() or 4
+            opts.inter_op_num_threads = 1
+            opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+            session = ort.InferenceSession(
+                str(model_path), sess_options=opts, providers=resolved_providers
+            )
             _SESSION_CACHE[key] = session  # type: ignore[index]
         return session
 

@@ -73,12 +73,7 @@ else:  # pragma: no cover - executed in environments without torch
     _SignatureAnomalyNet = None  # type: ignore[assignment]
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(8192), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+from ._hashing import file_sha256 as _sha256
 
 
 def _mark_validated(path: Path) -> None:
@@ -255,7 +250,7 @@ def score_signature_anomaly(features: Sequence[float]) -> tuple[float, ModelMeta
     try:
         session = get_session(model_path)
         outputs = infer(session, {"input": array})
-        score = float(np.clip(outputs[0].squeeze().item(), 0.0, 1.0))
+        score = float(np.clip(outputs[0][0, 0], 0.0, 1.0))
         meta = get_model_metadata(session)
     except Exception:
         linear = float(_ANOMALY_BIAS)

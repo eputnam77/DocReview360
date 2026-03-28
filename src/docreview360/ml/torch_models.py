@@ -396,12 +396,7 @@ def _attach_metadata(model_path: Path, metadata: Mapping[str, str]) -> None:
     onnx.save_model(model, model_path)
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(8192), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+from ._hashing import file_sha256 as _sha256
 
 
 def export_critic_to_onnx(

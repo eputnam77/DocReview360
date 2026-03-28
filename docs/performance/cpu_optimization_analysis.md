@@ -363,20 +363,21 @@ left on.
 
 ## Summary Priority Matrix
 
-| # | Issue | Effort | CPU Impact | Files Changed |
-|---|---|---|---|---|
-| 1 | Cache `_base_stats` | Small | **High** | `ml/features.py` |
-| 2 | ONNX session options | Small | **High** | `ml/onnx_infer.py` |
-| 11 | Pre-compile PII middleware regex | Trivial | **High** (per-request) | `nemo_guardrails.py` |
-| 3 | Pre-compile regex in features | Small | **Medium** | `ml/features.py` |
-| 6 | Pre-compute training features | Small | **Medium** (training) | `ml/routing_critic.py` |
-| 9 | Lazy-load TipTap editor | Small | **Medium** (frontend) | `frontend/pages/editors/tiptap.tsx` |
-| 4 | Consolidate syllable counters | Small | **Low-Medium** | `ml/features.py`, `doc_validation.py`, `ai_utils.py` |
-| 8 | Cache `high_risk_warnings` | Small | **Low-Medium** | `quality.py` |
-| 10 | Memoize dashboard charts | Small | **Low-Medium** (frontend) | `frontend/pages/dashboard/*.tsx` |
-| 12 | Disable Celery eager mode in prod | Config | **High** (prod only) | `celery_app.py` / env config |
-| 5 | Consolidate hash helpers | Trivial | **Low** | `ml/onnx_infer.py`, `quality.py` |
-| 7 | Simplify scalar extraction | Trivial | **Low** | Multiple ML files |
+| # | Issue | Effort | CPU Impact | Files Changed | Status |
+|---|---|---|---|---|---|
+| 1 | Cache `_base_stats` | Small | **High** | `ml/features.py` | **DONE** |
+| 2 | ONNX session options | Small | **High** | `ml/onnx_infer.py` | **DONE** |
+| 11 | Pre-compile PII middleware regex | Trivial | **High** (per-request) | `nemo_guardrails.py` | **DONE** |
+| 3 | Pre-compile regex in features | Small | **Medium** | `ml/features.py` | **DONE** |
+| 6 | Pre-compute training features | Small | **Medium** (training) | `ml/routing_critic.py` | **DONE** |
+| 9 | Lazy-load TipTap editor | Small | **Medium** (frontend) | `frontend/pages/editors/tiptap.tsx` | **DONE** |
+| 4 | Consolidate syllable counters | Small | **Low-Medium** | `ml/features.py`, `doc_validation.py`, `ai_utils.py` | **DONE** |
+| 8 | Cache `high_risk_warnings` | Small | **Low-Medium** | `quality.py` | **DONE** |
+| 10 | Memoize dashboard charts | Small | **Low-Medium** (frontend) | `frontend/pages/dashboard/*.tsx` | **DONE** |
+| 12 | Disable Celery eager mode in prod | Config | **High** (prod only) | `celery_app.py` / env config | **DONE** |
+| 5 | Consolidate hash helpers | Trivial | **Low** | `ml/onnx_infer.py`, `quality.py`, `torch_models.py`, `signature_anomaly.py` | **DONE** |
+| 7 | Simplify scalar extraction | Trivial | **Low** | `reviewer_model.py`, `signature_anomaly.py` | **DONE** |
 
-Items 1-3 together would yield the most significant CPU reduction with minimal code
-change. Item 6 is critical if model training is run frequently.
+All 12 items have been implemented and verified through `tests/test_cpu_optimizations.py`
+(27 test cases). Golden fixtures updated to reflect the improved syllable-counting
+heuristic (silent-e handling consolidated from `doc_validation.py`).

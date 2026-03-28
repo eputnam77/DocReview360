@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Sequence
 
@@ -23,14 +24,11 @@ _MODEL_PATH = Path(__file__).resolve().parent / "models" / "quality_critic.onnx"
 
 
 def _file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
     try:
-        with open(path, "rb") as handle:
-            for chunk in iter(lambda: handle.read(8192), b""):
-                digest.update(chunk)
+        from .ml._hashing import file_sha256
+        return file_sha256(path)
     except FileNotFoundError:
         return ""
-    return digest.hexdigest()
 
 
 try:
@@ -101,20 +99,23 @@ def _feature_weights(doc_type: str | None) -> Sequence[float] | None:
     return _DOC_TYPE_WEIGHTS.get(doc_type, _DOC_TYPE_WEIGHTS["default"])
 
 
-def high_risk_warnings(text: str) -> list[str]:
-    """Return list of risky terms present in ``text``."""
+_WORD_BOUNDARY_RE = re.compile(r"\b\w+\b")
+
+
+@lru_cache(maxsize=32)
+def _high_risk_warnings_cached(text: str) -> tuple[str, ...]:
+    """Cached inner implementation returning an immutable tuple."""
     lower = text.lower()
-    # Preserve the order in which risky terms appear in ``text`` so callers can
-    # present warnings alongside the offending words.  Sorting the terms made
-    # the output deterministic but lost this positional information.  Tokenise
-    # the input and collect unique matches in encounter order.  Using ``findall``
-    # with ``\b`` boundaries ensures substrings inside larger words do not
-    # trigger false positives.
     found: list[str] = []
-    for word in re.findall(r"\b\w+\b", lower):
+    for word in _WORD_BOUNDARY_RE.findall(lower):
         if word in _HIGH_RISK_TERMS and word not in found:
             found.append(word)
-    return found
+    return tuple(found)
+
+
+def high_risk_warnings(text: str) -> list[str]:
+    """Return list of risky terms present in ``text``."""
+    return list(_high_risk_warnings_cached(text))
 
 
 def _feature_vector(text: str, doc_type: str | None) -> np.ndarray:

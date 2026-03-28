@@ -170,17 +170,8 @@ def validate_heading_structure(text: str) -> list[HeadingIssue]:
 
 _SENTENCE_END_RE = re.compile(r"[.!?]+")
 _WORD_RE = re.compile(r"\b[a-zA-Z]+\b")
-_VOWEL_RE = re.compile(r"[aeiouAEIOU]")
 
-
-def _count_syllables(word: str) -> int:
-    """Estimate syllable count for a single word."""
-    word = word.lower()
-    count = len(_VOWEL_RE.findall(word))
-    # Subtract silent trailing 'e'
-    if word.endswith("e") and count > 1:
-        count -= 1
-    return max(1, count)
+from .ml.features import count_syllables as _count_syllables
 
 
 @dataclass

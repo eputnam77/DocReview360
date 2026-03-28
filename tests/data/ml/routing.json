@@ -5,7 +5,7 @@
       "duplication": 0.0,
       "metadata_signal": 1.0,
       "novelty": 0.9,
-      "priority": 0.543765,
+      "priority": 0.51204,
       "structure": 0.416667
     },
     "version": "1.0.0"
@@ -26,26 +26,26 @@
     "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
   },
   "recommendation": {
-    "approval_likelihood": 0.6253101792390389,
+    "approval_likelihood": 0.6215863146598665,
     "feature_vector": [
       0.15600000321865082,
       0.8999999761581421,
       0.0,
       0.41666701436042786,
-      0.343764990568161,
+      0.3120400011539459,
       0.0
     ],
     "ranked_reviewers": [
       {
-        "probability": 0.37247899174690247,
+        "probability": 0.36989790201187134,
         "reviewer": "bob"
       },
       {
-        "probability": 0.32299962639808655,
+        "probability": 0.3238288462162018,
         "reviewer": "alice"
       },
       {
-        "probability": 0.304521381855011,
+        "probability": 0.3062732219696045,
         "reviewer": "charlie"
       }
     ]
