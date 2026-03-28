@@ -89,7 +89,7 @@ def test_checker_uses_public_documents_fallback_and_descriptive_labels() -> None
 
 
 def test_tiptap_editor_uses_safe_indent_commands_and_larger_canvas() -> None:
-    tiptap_page = _project_file("frontend/pages/editors/tiptap.tsx")
+    tiptap_page = _project_file("frontend/components/TiptapEditorFull.tsx")
     assert 'runEditorCommand(editor, "indent")' in tiptap_page
     assert 'canRunEditorCommand(editor, "indent")' in tiptap_page
     assert 'max-w-[1200px]' in tiptap_page
@@ -129,7 +129,7 @@ def test_tiptap_heading_lock_filters_locked_heading_transactions() -> None:
 
 def test_template_routes_use_slash_safe_builder() -> None:
     template_path_helper = _project_file("frontend/lib/templatePath.ts")
-    tiptap_page = _project_file("frontend/pages/editors/tiptap.tsx")
+    tiptap_page = _project_file("frontend/components/TiptapEditorFull.tsx")
     template_index = _project_file("frontend/pages/configuration/templates/index.tsx")
     template_edit = _project_file("frontend/pages/configuration/templates/edit.tsx")
     assert 'encodeURIComponent(name)' in template_path_helper
