@@ -10,6 +10,7 @@ import re
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence, cast
 
@@ -129,31 +130,49 @@ def _tokenise(text: str) -> list[str]:
     return _WORD_RE.findall(text.lower())
 
 
-def count_syllables(word: str) -> int:
-    """Rough syllable estimator used for readability features."""
+_SYLLABLE_RE = re.compile(r"[aeiouy]+")
 
-    groups = re.findall(r"[aeiouy]+", word.lower())
-    return max(1, len(groups))
+
+def count_syllables(word: str) -> int:
+    """Rough syllable estimator used for readability features.
+
+    Handles the silent trailing 'e' heuristic (consolidated from
+    ``doc_validation._count_syllables``).
+    """
+    lower = word.lower()
+    count = len(_SYLLABLE_RE.findall(lower))
+    # Subtract silent trailing 'e' (ported from doc_validation.py)
+    if lower.endswith("e") and count > 1:
+        count -= 1
+    return max(1, count)
+
+
+_SENTENCE_SPLIT_RE = re.compile(r".*?[.!?](?:\s|$)", re.S)
+_TRAILING_WS_RE = re.compile(r"[ \t]+$")
+_DOUBLE_SPACE_RE = re.compile(r"\s{2,}")
+_REPEATED_PUNCT_RE = re.compile(r"[.!?]{2,}")
+_MISSING_SPACE_RE = re.compile(r"[;,](?!\s)")
+_REPEATED_CAPS_RE = re.compile(r"[A-Z]{2,}[a-z]")
 
 
 def _heuristic_style_score(text: str) -> float:
-    sentences_raw = re.findall(r".*?[.!?](?:\s|$)", text, re.S) or [text]
+    sentences_raw = _SENTENCE_SPLIT_RE.findall(text) or [text]
     good = 0
     for raw in sentences_raw:
         if not raw.strip():
             continue
         lines = raw.splitlines()
-        trailing_ws = any(re.search(r"[ \t]+$", line) for line in lines)
+        trailing_ws = any(_TRAILING_WS_RE.search(line) for line in lines)
         s = raw.strip()
         words = s.split()
         has_repeat = any(w1.lower() == w2.lower() for w1, w2 in zip(words, words[1:]))
-        missing_space = re.search(r"[;,](?!\s)", s)
-        repeated_caps = re.search(r"[A-Z]{2,}[a-z]", s)
+        missing_space = _MISSING_SPACE_RE.search(s)
+        repeated_caps = _REPEATED_CAPS_RE.search(s)
         passes_base = (
             s[0].isupper()
             and s[-1] in ".!?"
-            and not re.search(r"\s{2,}", s)
-            and not re.search(r"[.!?]{2,}", s)
+            and not _DOUBLE_SPACE_RE.search(s)
+            and not _REPEATED_PUNCT_RE.search(s)
             and not has_repeat
             and not missing_space
             and not trailing_ws
@@ -252,6 +271,7 @@ def _metadata_completeness(metadata: Mapping[str, Any] | None) -> float:
     return _clamp(filled / total)
 
 
+@lru_cache(maxsize=32)
 def _base_stats(text: str) -> _BaseStats:
     words = _tokenise(text)
     repeated = sum(1 for i in range(len(words) - 1) if words[i] == words[i + 1])

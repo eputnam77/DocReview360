@@ -25,7 +25,7 @@ def test_classifier_returns_expected_probability_and_rules() -> None:
     result = evaluate_compliance(text, metadata)
 
     assert result.source in ("onnx", "heuristic")
-    assert result.probability == pytest.approx(0.5254678, rel=1e-6, abs=1e-6)
+    assert result.probability == pytest.approx(0.5905729683680667, rel=1e-6, abs=1e-6)
     assert result.failing_rules == [
         "low_readability",
         "weak_structure",
@@ -53,4 +53,4 @@ def test_classifier_falls_back_when_model_missing(tmp_path: Path) -> None:
         backup.rename(original)
 
     assert result.source == "heuristic"
-    assert result.probability == pytest.approx(0.5254678, rel=1e-6, abs=1e-6)
+    assert result.probability == pytest.approx(0.5905729683680667, rel=1e-6, abs=1e-6)

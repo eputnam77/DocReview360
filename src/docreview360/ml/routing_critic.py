@@ -122,9 +122,14 @@ def train_routing_critic(
         if example.reviewer not in reviewer_to_index:
             raise ValueError(f"unknown reviewer '{example.reviewer}'")
 
+    feature_matrix = np.array(
+        [routing_feature_vector(ex.text, ex.metadata) for ex in examples],
+        dtype=np.float32,
+    )
+
     for _ in range(epochs):
-        for example in examples:
-            features = routing_feature_vector(example.text, example.metadata)
+        for i, example in enumerate(examples):
+            features = feature_matrix[i]
             approval_prob, reviewer_logits = critic.predict(features)
 
             target = 1.0 if example.approved else 0.0

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,30 +113,30 @@ export default function ManagerDashboardPage() {
     },
   });
 
-  useEffect(() => {
-    if (data) {
-      const projects = Array.isArray(data.projects) ? data.projects : [];
-      const docs = projects.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
-      const approvals = projects.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
-      // Sum overdue_approvals from each project entry (approval-level overdue count)
-      const overdueApprovals = projects.reduce((t: number, p: any) => t + (p.overdue_approvals ?? 0), 0);
-      const statusCounts = new Map<string, number>();
-      const docTypeCounts = new Map<string, number>();
-      projects.forEach((p: any) => {
-        const status = typeof p.status === "string" && p.status.trim()
-          ? p.status
-          : "Unknown";
-        statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
-        const docType = typeof p.doc_type === "string" && p.doc_type.trim()
-          ? p.doc_type
-          : "Unknown";
-        docTypeCounts.set(docType, (docTypeCounts.get(docType) ?? 0) + 1);
-      });
-      const inProgress = statusCounts.get("In Progress") ?? 0;
-      const completed =
-        statusCounts.get("Complete") ?? statusCounts.get("Completed") ?? 0;
-      const workload = data.workload && typeof data.workload === "object" ? data.workload : {};
-      setStats({
+  const derivedData = useMemo(() => {
+    if (!data) return null;
+    const projects = Array.isArray(data.projects) ? data.projects : [];
+    const docs = projects.reduce((t: number, p: any) => t + (p.docs ?? 0), 0);
+    const approvals = projects.reduce((t: number, p: any) => t + (p.pending_approvals ?? 0), 0);
+    const overdueApprovals = projects.reduce((t: number, p: any) => t + (p.overdue_approvals ?? 0), 0);
+    const statusCounts = new Map<string, number>();
+    const docTypeCounts = new Map<string, number>();
+    projects.forEach((p: any) => {
+      const status = typeof p.status === "string" && p.status.trim()
+        ? p.status
+        : "Unknown";
+      statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+      const docType = typeof p.doc_type === "string" && p.doc_type.trim()
+        ? p.doc_type
+        : "Unknown";
+      docTypeCounts.set(docType, (docTypeCounts.get(docType) ?? 0) + 1);
+    });
+    const inProgress = statusCounts.get("In Progress") ?? 0;
+    const completed =
+      statusCounts.get("Complete") ?? statusCounts.get("Completed") ?? 0;
+    const workload = data.workload && typeof data.workload === "object" ? data.workload : {};
+    return {
+      stats: {
         projects: projects.length,
         users: Object.keys(workload).length,
         documents: docs,
@@ -145,33 +145,37 @@ export default function ManagerDashboardPage() {
         completed,
         overdue: overdueApprovals,
         active: projects.filter((p: any) => p.pending_approvals > 0).length,
-      });
-      setStatusData(
-        Array.from(statusCounts.entries()).map(([name, value]) => ({
-          name,
-          value,
-        })),
-      );
-      setUserLeaderboard(
-        Object.entries(workload).map(([user, count]) => ({
-          user,
-          projects: count as number,
-        })),
-      );
-      setDocTypes(
-        Array.from(docTypeCounts.entries()).map(([type, count]) => ({
-          type,
-          count,
-        })),
-      );
+      },
+      statusData: Array.from(statusCounts.entries()).map(([name, value]) => ({
+        name,
+        value,
+      })),
+      userLeaderboard: Object.entries(workload).map(([user, count]) => ({
+        user,
+        projects: count as number,
+      })),
+      docTypes: Array.from(docTypeCounts.entries()).map(([type, count]) => ({
+        type,
+        count,
+      })),
+      quality: data.quality ?? null,
+    };
+  }, [data]);
+
+  useEffect(() => {
+    if (derivedData) {
+      setStats(derivedData.stats);
+      setStatusData(derivedData.statusData);
+      setUserLeaderboard(derivedData.userLeaderboard);
+      setDocTypes(derivedData.docTypes);
       setActivityData([]);
       setLogs([]);
       setDeadlines([]);
       setErrorStats([]);
       setTurnarounds([]);
       setReviewStats([]);
-      if (data.quality) {
-        setQuality(data.quality);
+      if (derivedData.quality) {
+        setQuality(derivedData.quality);
       }
     } else if (isError) {
       setStats({
@@ -195,7 +199,7 @@ export default function ManagerDashboardPage() {
       setReviewStats([]);
       setQuality(null);
     }
-  }, [data, isError]);
+  }, [derivedData, isError]);
 
   // --- KPI Card ---
   const StatCard = ({

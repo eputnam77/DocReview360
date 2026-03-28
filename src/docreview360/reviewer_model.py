@@ -265,7 +265,7 @@ class ReviewerModel:
         start = perf_counter()
         if self._session is not None:
             approval_arr, reviewer_logits = infer(self._session, {"input": features.reshape(1, -1)})
-            approval_likelihood = float(np.clip(approval_arr.squeeze().item(), 0.0, 1.0))
+            approval_likelihood = float(np.clip(approval_arr[0, 0], 0.0, 1.0))
             logits = reviewer_logits.squeeze(0)
         else:
             approval_linear = float(

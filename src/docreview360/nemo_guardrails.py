@@ -12,11 +12,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 
+_SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+
+
 def contains_pii(text: str) -> bool:
     """Return ``True`` if the text appears to contain PII such as SSNs."""
 
-    ssn_pattern = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
-    return bool(ssn_pattern.search(text))
+    return bool(_SSN_RE.search(text))
 
 
 class GuardrailsMiddleware(BaseHTTPMiddleware):

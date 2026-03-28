@@ -22,10 +22,17 @@ from .search import search_index
 broker_url = os.environ.get("CELERY_BROKER_URL", "memory://")
 backend_url = os.environ.get("CELERY_RESULT_BACKEND", "cache+memory://")
 app = Celery("docreview360", broker=broker_url, backend=backend_url)
-app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
-
 _env = os.environ.get("DOCREVIEW360_ENV", "").strip().lower()
 _prod_envs = {"production", "prod", "staging"}
+
+# Default to eager mode for dev convenience.  Production environments MUST
+# set ``CELERY_EAGER=0`` and provide a real broker (Redis / RabbitMQ) to
+# avoid blocking API request threads with CPU-intensive tasks.
+if _env in _prod_envs:
+    app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "0") == "1"
+else:
+    app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
+
 if _env in _prod_envs and broker_url.startswith("memory://"):
     _logger.warning(
         "CELERY_BROKER_URL is set to 'memory://' in environment '%s'. "
