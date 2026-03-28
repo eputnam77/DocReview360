@@ -199,7 +199,8 @@ def test_update_project_with_file_upload() -> None:
     docs_resp = client.get("/documents", headers=hdrs)
     assert docs_resp.status_code == 200
     docs = docs_resp.json()
-    project_docs = [d for d in docs if d.get("project") == "pedit-file"]
+    items = docs["items"] if isinstance(docs, dict) else docs
+    project_docs = [d for d in items if d.get("project") == "pedit-file"]
     assert len(project_docs) > 0
 
 

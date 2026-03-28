@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from datetime import datetime, timezone
 from typing import AsyncIterator, Optional
@@ -23,7 +22,6 @@ from ..approvals import (
     get_signed_document,
     handle_signature_return,
     remind_approvals,
-    send_for_signature,
     update_approval_state,
     verify_document_hash,
     verify_document_signature_stream,
@@ -185,95 +183,6 @@ async def verify_hash_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     valid = verify_document_hash(approval_id, data)
     return {"valid": valid}
-
-
-@router.post("/approvals/{approval_id}/sign", response_model=ApprovalModel)
-@log_call
-async def sign_approval_endpoint(
-    approval_id: str,
-    current_user: auth.User = Depends(auth.get_current_user),
-) -> ApprovalModel:
-    """Record a formal approval signature for *approval_id*.
-
-    Behaviour depends on the configured ``SIGNATURE_PROVIDER``:
-
-    * **sandbox / none** — records an in-app initialled timestamp as the
-      signature and immediately marks the approval ``approved``.
-    * **documenso / docusign / any external provider** — delegates to
-      :func:`~docreview360.approvals.send_for_signature` to initiate the
-      external signing flow.  The approval is returned in its current
-      (``pending``) state; it transitions to ``approved`` once the provider
-      posts its callback.
-
-    Only the reviewer assigned to the approval may call this endpoint.
-    """
-    approval = get_approval(approval_id)
-    if approval is None:
-        raise HTTPException(status_code=404, detail="Approval not found")
-
-    if approval.reviewer != current_user.username:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not the assigned approver for this approval.",
-        )
-
-    if approval.state == "approved":
-        raise HTTPException(status_code=409, detail="Approval is already completed.")
-
-    provider = os.getenv("SIGNATURE_PROVIDER", "sandbox").lower()
-
-    if provider in ("sandbox", "none", ""):
-        # In-app signature: record initialled timestamp as the signature value.
-        timestamp = datetime.now(timezone.utc).isoformat()
-        sig_id = f"[in-app:{current_user.username}:{timestamp}]"
-        try:
-            updated = await update_approval_state(
-                approval_id,
-                "approved",
-                signature_id=sig_id,
-            )
-        except SignedApprovalImmutableError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        except (KeyError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        log_event(
-            "approval_signed_inapp",
-            approval_id=approval_id,
-            user=current_user.username,
-            provider="in-app",
-        )
-        log_audit_event(
-            approval.document_id,
-            "approval_signed",
-            actor=current_user.username,
-            approval_id=approval_id,
-            provider="in-app",
-        )
-        return updated
-    else:
-        # External provider: initiate the signing flow and return current record.
-        from ..workflows import get_workflow
-
-        wf = get_workflow(approval.workflow)
-        return_to = f"/projects/{wf.project}" if wf else "/"
-        doc_id = approval.document_id or (wf.project if wf else approval_id)
-        try:
-            send_for_signature(approval_id, doc_id, approval.reviewer, return_to)
-        except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        except PermissionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
-        log_event(
-            "approval_sign_initiated",
-            approval_id=approval_id,
-            user=current_user.username,
-            provider=provider,
-        )
-        # Return the (still-pending) approval record; state updates via callback.
-        updated_approval = get_approval(approval_id)
-        if updated_approval is None:
-            raise HTTPException(status_code=404, detail="Approval not found after signing")
-        return updated_approval
 
 
 @router.post("/approvals/remind")

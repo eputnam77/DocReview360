@@ -100,7 +100,8 @@ def test_update_signed_approval_returns_conflict() -> None:
         json={"state": "pending"},
     )
     assert second.status_code == 409
-    assert second.json() == {"detail": "signed approvals cannot be modified; reset required"}
+    body = second.json()
+    assert body["message"] == "signed approvals cannot be modified; reset required"
 
 
 def test_approval_return_rejects_external_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -124,7 +125,7 @@ def test_approval_return_rejects_external_redirect(monkeypatch: pytest.MonkeyPat
         },
     )
     assert resp.status_code == 400
-    assert resp.json()["detail"] == "invalid redirect target"
+    assert resp.json()["message"] == "invalid redirect target"
 
 
 def test_dashboard_approvals_flags_document_version_mismatch() -> None:

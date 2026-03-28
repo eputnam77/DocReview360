@@ -104,7 +104,7 @@ def test_project_approval_picker_accepts_invited_reviewers() -> None:
 
 
 def test_checker_uses_public_documents_fallback_and_descriptive_labels() -> None:
-    checker_page = _project_file("frontend/pages/tools/checker.tsx")
+    checker_page = _project_file("frontend/pages/tools/document-quality.tsx")
     assert "/documents/public" in checker_page
     assert "Showing public system documents only." in checker_page
     assert "formatSystemDocumentLabel" in checker_page
