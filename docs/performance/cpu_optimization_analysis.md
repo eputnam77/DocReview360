@@ -314,18 +314,67 @@ changes but chart data has not.
 
 ---
 
+## 11. Regex Compiled on Every Call in PII Middleware (HIGH impact)
+
+**Location:** `src/docreview360/nemo_guardrails.py:18`
+
+```python
+def contains_pii(text: str) -> bool:
+    ssn_pattern = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+    return bool(ssn_pattern.search(text))
+```
+
+The SSN regex is compiled **inside the function body**, meaning it is recompiled on every
+invocation. This function is called by `GuardrailsMiddleware.dispatch()` on every POST/PUT
+request containing JSON. The middleware recursively walks the entire JSON payload calling
+`contains_pii` on every string value, so a single request with 20 string fields triggers
+20 regex compilations.
+
+**Fix:** Move the compile to module level:
+
+```python
+_SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+
+def contains_pii(text: str) -> bool:
+    return bool(_SSN_RE.search(text))
+```
+
+---
+
+## 12. Celery Eager Mode Default (CONTEXT-DEPENDENT)
+
+**Location:** `src/docreview360/celery_app.py:25`
+
+```python
+app.conf.task_always_eager = os.environ.get("CELERY_EAGER", "1") == "1"
+```
+
+By default, Celery tasks run synchronously in the request thread (`task_always_eager=True`).
+This is fine for the dev/prototype environment, but in production it means CPU-intensive
+tasks like `quality_gate` (which runs the full ONNX guardrails pipeline) block the API
+request thread.
+
+**Recommendation:** Ensure production deployments set `CELERY_EAGER=0` and configure a
+proper broker (Redis/RabbitMQ). This is likely already intended given the warning at
+lines 28-35, but worth calling out as a CPU bottleneck when eager mode is accidentally
+left on.
+
+---
+
 ## Summary Priority Matrix
 
 | # | Issue | Effort | CPU Impact | Files Changed |
 |---|---|---|---|---|
 | 1 | Cache `_base_stats` | Small | **High** | `ml/features.py` |
 | 2 | ONNX session options | Small | **High** | `ml/onnx_infer.py` |
-| 3 | Pre-compile regex | Small | **Medium** | `ml/features.py` |
+| 11 | Pre-compile PII middleware regex | Trivial | **High** (per-request) | `nemo_guardrails.py` |
+| 3 | Pre-compile regex in features | Small | **Medium** | `ml/features.py` |
 | 6 | Pre-compute training features | Small | **Medium** (training) | `ml/routing_critic.py` |
+| 9 | Lazy-load TipTap editor | Small | **Medium** (frontend) | `frontend/pages/editors/tiptap.tsx` |
 | 4 | Consolidate syllable counters | Small | **Low-Medium** | `ml/features.py`, `doc_validation.py`, `ai_utils.py` |
 | 8 | Cache `high_risk_warnings` | Small | **Low-Medium** | `quality.py` |
-| 9 | Lazy-load TipTap editor | Small | **Medium** (frontend) | `frontend/pages/editors/tiptap.tsx` |
 | 10 | Memoize dashboard charts | Small | **Low-Medium** (frontend) | `frontend/pages/dashboard/*.tsx` |
+| 12 | Disable Celery eager mode in prod | Config | **High** (prod only) | `celery_app.py` / env config |
 | 5 | Consolidate hash helpers | Trivial | **Low** | `ml/onnx_infer.py`, `quality.py` |
 | 7 | Simplify scalar extraction | Trivial | **Low** | Multiple ML files |
 
