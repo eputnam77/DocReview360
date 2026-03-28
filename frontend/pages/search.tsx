@@ -45,8 +45,13 @@ export default function SearchPage() {
 
   return (
     <div className="p-8 space-y-6">
-      <form onSubmit={onSubmit} className="flex gap-2 max-w-md">
+      <h1 className="text-xl font-bold">{t("search.title", "Search")}</h1>
+      <form onSubmit={onSubmit} className="flex gap-2 max-w-md" role="search">
+        <label htmlFor="search-input" className="sr-only">
+          {t("search.placeholder", "Search all content")}
+        </label>
         <Input
+          id="search-input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("search.placeholder", "Search all content...")}

@@ -2,7 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import {
+    AlertCircle,
     BarChart3,
+    CheckCircle,
     FileCheck,
     FileCog,
     Settings,
@@ -155,6 +157,9 @@ export default function ToolsPage() {
   const [fsvUrl, setFsvUrl] = useState("");
   const [fsvUrlInput, setFsvUrlInput] = useState("");
   const [savingFsvUrl, setSavingFsvUrl] = useState(false);
+  // DR-FSV-12: Test connection state
+  const [testingFsvConnection, setTestingFsvConnection] = useState(false);
+  const [fsvConnectionStatus, setFsvConnectionStatus] = useState<"idle" | "ok" | "fail">("idle");
 
   const isAdmin = useUserStore((s) => s.isAdmin);
 
@@ -318,6 +323,26 @@ export default function ToolsPage() {
       toast.error("Failed to save FSV URL.");
     } finally {
       setSavingFsvUrl(false);
+    }
+  }
+
+  // DR-FSV-12: Test FSV connection --------------------------------------------------
+
+  async function testFsvConnection() {
+    setTestingFsvConnection(true);
+    setFsvConnectionStatus("idle");
+    try {
+      const res = await authenticatedFetch("/fsv/status");
+      if (res.ok) {
+        const data = await res.json();
+        setFsvConnectionStatus(data.reachable ? "ok" : "fail");
+      } else {
+        setFsvConnectionStatus("fail");
+      }
+    } catch {
+      setFsvConnectionStatus("fail");
+    } finally {
+      setTestingFsvConnection(false);
     }
   }
 
@@ -521,7 +546,7 @@ export default function ToolsPage() {
             <input
               type="url"
               value={fsvUrlInput}
-              onChange={(e) => setFsvUrlInput(e.target.value)}
+              onChange={(e) => { setFsvUrlInput(e.target.value); setFsvConnectionStatus("idle"); }}
               placeholder="http://localhost:8080"
               className="flex-1 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
@@ -532,10 +557,32 @@ export default function ToolsPage() {
             >
               {savingFsvUrl ? "Saving…" : "Save"}
             </button>
+            {/* DR-FSV-12: Test connection */}
+            <button
+              onClick={testFsvConnection}
+              disabled={testingFsvConnection || !fsvUrlInput}
+              className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
+            >
+              {testingFsvConnection ? "Testing…" : "Test connection"}
+            </button>
           </div>
           {fsvUrl && (
             <div className="text-xs text-green-600">
               Active: <span className="font-mono">{fsvUrl}</span>
+            </div>
+          )}
+          {/* DR-FSV-12: Inline connection test result */}
+          {fsvConnectionStatus !== "idle" && (
+            <div
+              className={`flex items-center gap-1 text-xs font-medium ${
+                fsvConnectionStatus === "ok" ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {fsvConnectionStatus === "ok" ? (
+                <><CheckCircle className="h-3.5 w-3.5" /> Federal Style Validator is reachable</>
+              ) : (
+                <><AlertCircle className="h-3.5 w-3.5" /> Unreachable — check the URL and ensure FSV is running</>
+              )}
             </div>
           )}
         </div>

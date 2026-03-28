@@ -11,6 +11,50 @@ This guide documents compliance status, how to run automated scans, and known ga
 
 ---
 
+## Conformance Scope
+
+In-scope routes and user journeys mapped to WCAG 2.1 AA:
+
+| Route | Key User Journey | Priority |
+|-------|-----------------|----------|
+| `/login` | Authenticate with username/password | Critical |
+| `/signup` | Create new account | Critical |
+| `/projects` | View and navigate project list | Critical |
+| `/projects/[id]` | Review workflow, inline comments, track changes | Critical |
+| `/approvals` | Approve/reject documents | Critical |
+| `/editors/tiptap` | Rich-text editing | High |
+| `/configuration/*` | Admin configuration of workflows, plugins | High |
+| `/tools/*` | Document quality, converter, analysis tools | High |
+| `/profile` | Update personal settings | Medium |
+| `/search` | Full-text search | Medium |
+| `/help` | Keyboard shortcut reference | Medium |
+
+**Pass criteria per route (WCAG 2.1 AA):**
+- Zero axe-core violations at rule level `critical` or `serious`.
+- All interactive controls operable by keyboard alone (Tab/Enter/Space/Esc/Arrows).
+- All form inputs have programmatically associated labels.
+- Page has exactly one `<h1>`; heading hierarchy is logical.
+- Color is not the only means of conveying information.
+- Text contrast ≥ 4.5:1 (normal text) or 3:1 (large text / UI components).
+
+---
+
+## AT Test Matrix
+
+Browser + AT combinations required for release signoff:
+
+| Assistive Technology | Browser | Platform | Coverage |
+|---------------------|---------|----------|----------|
+| NVDA (latest) | Chrome (latest) | Windows 11 | Login, projects list, review flow, approvals |
+| JAWS (2023+) | Edge (latest) | Windows 11 | Login, rich-text editor, configuration |
+| VoiceOver | Safari (latest) | macOS Ventura+ | Login, projects list, help page |
+| VoiceOver | Safari (iOS 16+) | iPhone/iPad | Login, projects list (responsive) |
+| Keyboard-only | Chrome | Any | All critical routes — no AT required |
+| 400% zoom | Chrome | Windows | Login, projects, editor — no horizontal scroll |
+| 320 px viewport | Chrome DevTools | — | All pages — single-column reflow, no overlap |
+
+---
+
 ## Front-End Conformance Status
 
 > Status key: **Implemented** = code change merged; **Tested** = covered by automated tests; **Pending** = not yet done.
@@ -22,12 +66,23 @@ This guide documents compliance status, how to run automated scans, and known ga
 | Tab panel `aria-labelledby` and `tabIndex=0` | Implemented, Tested | `components/ui/tabs.tsx`; `__tests__/a11y_tabs.test.ts` |
 | `?` shortcut navigates to Keyboard Shortcuts tab | Implemented, Tested | `pages/help.tsx`; `__tests__/a11y_help_shortcut.test.ts` |
 | Toolbar axe-core scan | Implemented, Tested | `__tests__/accessibility.test.tsx` |
-| Page-level axe coverage for critical flows | Pending | — |
-| Modal/dialog focus trap and return-focus | Pending — needs audit | — |
-| `aria-live` regions for async toasts | Pending | — |
-| Contrast audit (light/dark themes) | Pending — needs manual review | — |
-| Zoom/reflow at 320 px / 400% | Pending — needs manual review | — |
-| AT manual test script (NVDA, VoiceOver) | Pending | — |
+| Page-level axe coverage for public pages (signup, terms, privacy) | Implemented, Tested | `__tests__/a11y_public_pages.test.tsx` |
+| `<h1>` on login page (sr-only, above CardTitle h3) | Implemented, Tested | `pages/login.tsx`; `__tests__/a11y_landmarks_forms.test.ts` |
+| `<h1>` on search page | Implemented, Tested | `pages/search.tsx`; `__tests__/a11y_landmarks_forms.test.ts` |
+| Search form `role="search"` landmark | Implemented, Tested | `pages/search.tsx`; `__tests__/a11y_landmarks_forms.test.ts` |
+| `aria-live="assertive"` error region on login form | Implemented, Tested | `pages/login.tsx`; `__tests__/a11y_landmarks_forms.test.ts` |
+| Login inputs: `aria-describedby` + `aria-invalid` on error | Implemented, Tested | `pages/login.tsx`; `__tests__/a11y_landmarks_forms.test.ts` |
+| Profile form: all Label/input pairs have `htmlFor`/`id` | Implemented, Tested | `pages/profile.tsx`; `__tests__/a11y_landmarks_forms.test.ts` |
+| Plugin marketplace toggle buttons: `aria-pressed` + `aria-label` | Implemented, Tested | `pages/configuration/plugin-marketplace.tsx`; `__tests__/a11y_landmarks_forms.test.ts` |
+| Table component: `<caption>`, `<thead>`, `<th scope="col">` | Implemented, Tested | `components/ui/table.tsx`; `__tests__/a11y_table_controls.test.ts` |
+| Dialog/modal focus trap via Radix UI | Implemented, Tested | `components/ui/dialog.tsx`, `modal.tsx`; `__tests__/a11y_table_controls.test.ts` |
+| `prefers-reduced-motion` CSS (WCAG 2.3.3) | Implemented, Tested | `styles/globals.css`; `__tests__/a11y_visual.test.ts` |
+| CSS design tokens: foreground/background in light + dark | Implemented, Tested | `styles/globals.css`; `__tests__/a11y_visual.test.ts` |
+| Button focus-visible ring (WCAG 2.4.7) | Implemented, Tested | `components/ui/button.tsx`; `__tests__/a11y_visual.test.ts` |
+| Page-level axe coverage for critical flows (login, project creation, review, approvals, editor) | Pending | — |
+| Contrast audit — manual measurement of token pairs (4.5:1 AA) | Pending — needs manual review | — |
+| Zoom/reflow at 320 px / 400% — manual browser check | Pending — needs manual review | — |
+| AT manual test script (NVDA, VoiceOver) per matrix above | Pending | — |
 
 ---
 
@@ -126,6 +181,10 @@ Returns:
 - **Implemented:** Skip-to-main-content link is present in the app shell (`_app.tsx`), visible on keyboard focus, and moves focus to the `<main>` container.
 - **Implemented:** Custom Tabs component (`components/ui/tabs.tsx`) supports ArrowLeft/ArrowRight/Home/End keyboard navigation per ARIA tablist pattern; inactive tabs use `tabIndex=-1`; tab panels have `aria-labelledby` and `tabIndex=0`.
 - **Implemented:** `?` key on the Help page navigates to the Keyboard Shortcuts tab.
+- **Implemented:** All form inputs in login and profile pages have programmatically associated `<label>` elements via `htmlFor`/`id` pairs.
+- **Implemented:** Login page announces authentication errors via an `aria-live="assertive"` region; inputs gain `aria-invalid` and `aria-describedby` on failure.
+- **Implemented:** Plugin marketplace toggle buttons expose `aria-pressed` (current state) and a descriptive `aria-label` for icon-only controls.
+- **Implemented:** `prefers-reduced-motion` media query in `globals.css` suppresses animations and transitions for users who have configured this OS preference.
 
 ## Screen Reader Compatibility
 

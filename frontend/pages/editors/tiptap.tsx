@@ -1,6 +1,7 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import { Extension } from "@tiptap/core";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -1694,25 +1695,32 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
             Archived • <a href={pdfUrl} className="underline" target="_blank" rel="noopener noreferrer">download PDF</a>
           </div>
         )}
-        {/* Item 34 Phase 3: on-save validation quality indicator */}
+        {/* DR-FSV-9/10: quality pill — semantic colors + link to checker page */}
         {validationSummary && (
-          <div
-            title={`Quality score: ${validationSummary.score != null ? Math.round(validationSummary.score * 100) : "N/A"}% | Grade: ${validationSummary.grade ?? "N/A"} | Issues: ${validationSummary.issue_count ?? 0}`}
-            className={`ml-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium cursor-default ${
+          <Link
+            href={docId ? `/tools/document-quality?document_id=${encodeURIComponent(docId)}` : "/tools/document-quality"}
+            title={`Quality score: ${validationSummary.score != null ? Math.round(validationSummary.score * 100) : "N/A"}% | Grade: ${validationSummary.grade ?? "N/A"} | Issues: ${validationSummary.issue_count ?? 0} — Click to view full report`}
+            className={`ml-3 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium hover:opacity-80 ${
               (validationSummary.score ?? 0) >= 0.8
-                ? "bg-green-100 text-green-800"
+                ? "bg-green-50 border-green-200 text-green-600"
                 : (validationSummary.score ?? 0) >= 0.5
-                ? "bg-amber-100 text-amber-800"
-                : "bg-red-100 text-red-800"
+                ? "bg-amber-50 border-amber-200 text-amber-600"
+                : "bg-red-50 border-red-200 text-red-600"
             }`}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {validationSummary.score != null
-              ? `${Math.round(validationSummary.score * 100)}%`
+              ? `${Math.round(validationSummary.score * 100)}% — ${
+                  (validationSummary.score ?? 0) >= 0.8
+                    ? "Good"
+                    : (validationSummary.score ?? 0) >= 0.5
+                    ? "Needs attention"
+                    : "Issues found"
+                }`
               : validationSummary.issue_count != null
               ? `${validationSummary.issue_count} issues`
               : "Validated"}
-          </div>
+          </Link>
         )}
         <AiSuggestButton
           editor={editor}

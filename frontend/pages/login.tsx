@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const router = useRouter();
   const refreshUser = useUserStore((state) => state.refresh);
   const { t } = useTranslation();
@@ -31,6 +32,7 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
+    setLoginError("");
 
     try {
       const response = await fetch(`${API}/token`, {
@@ -64,10 +66,14 @@ export default function LoginPage() {
         toast.success("Login successful");
       } else {
         const errorData = await response.json();
-        toast.error(errorData.detail || "Login failed");
+        const msg = errorData.detail || "Login failed";
+        setLoginError(msg);
+        toast.error(msg);
       }
     } catch (error) {
-      toast.error("An error occurred during login");
+      const msg = "An error occurred during login";
+      setLoginError(msg);
+      toast.error(msg);
       console.error("Login error:", error);
     } finally {
       setLoading(false);
@@ -80,8 +86,9 @@ export default function LoginPage() {
                     dark:from-gray-950 dark:to-gray-900">
       <Card className="w-full max-w-md mx-4 shadow-2xl">
         <CardHeader className="space-y-1 text-center">
-          <LogIn className="mx-auto h-10 w-10 text-indigo-600" />
-          <CardTitle className="text-2xl font-bold">
+          <h1 className="sr-only">{t("login.title")}</h1>
+          <LogIn className="mx-auto h-10 w-10 text-indigo-600" aria-hidden="true" />
+          <CardTitle className="text-2xl font-bold" aria-hidden="true">
             {t("login.title")}
           </CardTitle>
           <CardDescription>
@@ -90,6 +97,15 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent>
+          <div
+            id="login-error"
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+            className="sr-only"
+          >
+            {loginError}
+          </div>
           <form className="space-y-4" onSubmit={handleLogin} autoComplete="on">
             <div className="space-y-2">
               <Label htmlFor="username">{t("login.username")}</Label>
@@ -100,6 +116,8 @@ export default function LoginPage() {
                 placeholder="alice or bob"
                 autoComplete="username"
                 required
+                aria-describedby={loginError ? "login-error" : undefined}
+                aria-invalid={loginError ? true : undefined}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -114,6 +132,8 @@ export default function LoginPage() {
                 placeholder="password"
                 autoComplete="current-password"
                 required
+                aria-describedby={loginError ? "login-error" : undefined}
+                aria-invalid={loginError ? true : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

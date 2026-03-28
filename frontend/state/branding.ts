@@ -2,6 +2,21 @@ import { create } from "zustand";
 
 import { authenticatedFetch } from "@/lib/api";
 
+/**
+ * DR-FSV-1: Canonical brand tokens from FedStyleValidator (brand-tokens.json v1.0.0).
+ * DocReview360 reads these when rendering the FSV add-in surface so colors stay
+ * in sync as FSV's design evolves, instead of hardcoding hex values everywhere.
+ */
+export const FSV_BRAND_TOKENS = {
+  version: "1.0.0",
+  primaryColor: "#4F46E5",   // Indigo-600 — primary action, aligned with DocReview360
+  primaryHover: "#4338CA",   // Indigo-700
+  severityError: "#EF4444",  // red-500 — error indicators
+  severityWarning: "#F59E0B", // amber-500 — warning indicators
+  severityInfo: "#0EA5E9",   // sky-500 — info indicators
+  severitySuccess: "#22C55E", // green-500 — success/pass indicators
+} as const;
+
 interface BrandingState {
   brandingCompanyName: string;
   brandingLogoUrl: string | null;
@@ -14,6 +29,8 @@ interface BrandingState {
   brandingAccentColor: string | null;
   brandingSidebarBg: string | null;
   brandingSidebarText: string | null;
+  /** DR-FSV-1: Primary color for FSV add-in surfaces. Falls back to FSV_BRAND_TOKENS.primaryColor when no org override is set. */
+  fsvPrimaryColor: string;
   releaseVersion: string;
   releaseBuildNumber: string;
   releaseBuildDate: string;
@@ -35,6 +52,7 @@ const DEFAULTS = {
   brandingAccentColor: null as string | null,
   brandingSidebarBg: null as string | null,
   brandingSidebarText: null as string | null,
+  fsvPrimaryColor: FSV_BRAND_TOKENS.primaryColor,
   releaseVersion: "0.0.0-dev",
   releaseBuildNumber: "dev",
   releaseBuildDate: "unknown",
@@ -102,6 +120,11 @@ export const useBrandingStore = create<BrandingState>((set, get) => ({
           typeof data.branding_sidebar_text === "string" && data.branding_sidebar_text.trim()
             ? data.branding_sidebar_text.trim()
             : null,
+        // DR-FSV-1: org override falls back to canonical FSV token
+        fsvPrimaryColor:
+          typeof data.branding_primary_color === "string" && data.branding_primary_color.trim()
+            ? data.branding_primary_color.trim()
+            : FSV_BRAND_TOKENS.primaryColor,
         releaseVersion:
           typeof data.release_version === "string" && data.release_version.trim()
             ? data.release_version.trim()

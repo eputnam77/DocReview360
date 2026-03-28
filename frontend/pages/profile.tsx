@@ -222,8 +222,9 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <Avatar src={profile.picture} alt="Profile picture" size={64} />
             <div className="flex-1">
-              <Label className="block mb-1">{t("profile.picture_url", "Profile Picture URL")}</Label>
+              <Label htmlFor="profile-picture-url" className="block mb-1">{t("profile.picture_url", "Profile Picture URL")}</Label>
               <Input
+                id="profile-picture-url"
                 placeholder="https://example.com/me.jpg"
                 value={profile.picture}
                 onChange={(e) => updateField("picture", e.target.value)}
@@ -231,16 +232,17 @@ export default function ProfilePage() {
               <div className="text-xs text-gray-500 mt-1">
                 Paste a link to your photo or upload an image below.
               </div>
-              <Label className="block mb-1 mt-3">{t("profile.picture_upload", "Or Upload Picture")}</Label>
-              <FileInput accept="image/*" onChange={handlePictureFile} />
+              <Label htmlFor="profile-picture-file" className="block mb-1 mt-3">{t("profile.picture_upload", "Or Upload Picture")}</Label>
+              <FileInput id="profile-picture-file" accept="image/*" onChange={handlePictureFile} />
               <div className="text-xs text-gray-500 mt-1">
                 JPG, PNG or GIF up to a few MB.
               </div>
             </div>
           </div>
           <div>
-            <Label>{t("profile.display_name", "Display Name")}</Label>
+            <Label htmlFor="profile-display-name">{t("profile.display_name", "Display Name")}</Label>
             <Input
+              id="profile-display-name"
               placeholder="Full Name"
               value={profile.displayName}
               onChange={(e) => updateField("displayName", e.target.value)}
@@ -250,23 +252,26 @@ export default function ProfilePage() {
             </div>
           </div>
           <div>
-            <Label>{t("profile.email", "Email")}</Label>
+            <Label htmlFor="profile-email">{t("profile.email", "Email")}</Label>
             <Input
+              id="profile-email"
               type="email"
               value={profile.email}
               onChange={(e) => updateField("email", e.target.value)}
             />
           </div>
           <div>
-            <Label>{t("profile.phone", "Phone")}</Label>
+            <Label htmlFor="profile-phone">{t("profile.phone", "Phone")}</Label>
             <Input
+              id="profile-phone"
               value={profile.phone}
               onChange={(e) => updateField("phone", e.target.value)}
             />
           </div>
           <div>
-            <Label>{t("profile.shorthand", "Shorthand")}</Label>
+            <Label htmlFor="profile-shorthand">{t("profile.shorthand", "Shorthand")}</Label>
             <Input
+              id="profile-shorthand"
               placeholder="e.g. JD"
               value={profile.shorthand}
               onChange={(e) => updateField("shorthand", e.target.value)}
@@ -276,24 +281,27 @@ export default function ProfilePage() {
             </div>
           </div>
           <div>
-            <Label>{t("profile.job_title", "Job Title")}</Label>
+            <Label htmlFor="profile-job-title">{t("profile.job_title", "Job Title")}</Label>
             <Input
+              id="profile-job-title"
               placeholder="e.g. Project Analyst"
               value={profile.jobTitle}
               onChange={(e) => updateField("jobTitle", e.target.value)}
             />
           </div>
           <div>
-            <Label>{t("profile.department", "Department")}</Label>
+            <Label htmlFor="profile-department">{t("profile.department", "Department")}</Label>
             <Input
+              id="profile-department"
               placeholder="e.g. Regulatory Affairs"
               value={profile.department}
               onChange={(e) => updateField("department", e.target.value)}
             />
           </div>
           <div>
-            <Label>{t("profile.timezone", "Time Zone")}</Label>
+            <Label htmlFor="profile-timezone">{t("profile.timezone", "Time Zone")}</Label>
             <select
+              id="profile-timezone"
               className="w-full border rounded p-2 mt-1"
               value={profile.timeZone}
               onChange={(e) => updateField("timeZone", e.target.value)}
@@ -312,8 +320,9 @@ export default function ProfilePage() {
           <CardTitle>{t("profile.appearance", "Appearance")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Label>{t("profile.theme", "Theme")}</Label>
+          <Label htmlFor="profile-theme">{t("profile.theme", "Theme")}</Label>
           <select
+            id="profile-theme"
             className="w-full border rounded p-2 mt-1"
             value={profile.theme}
             onChange={(e) => {
@@ -395,15 +404,20 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>{t("profile.change_password", "Change Password")}</Label>
+            <Label htmlFor="profile-new-password">{t("profile.change_password", "Change Password")}</Label>
             <Input
+              id="profile-new-password"
               type="password"
               placeholder={t("profile.password_placeholder", "New password")}
               value={password}
               autoComplete="new-password"
               onChange={e => setPassword(e.target.value)}
             />
+            <Label htmlFor="profile-confirm-password" className="sr-only">
+              {t("profile.password_confirm_label", "Confirm New Password")}
+            </Label>
             <Input
+              id="profile-confirm-password"
               type="password"
               placeholder={t("profile.password_confirm_placeholder", "Confirm new password")}
               value={passwordConfirm}

@@ -39,7 +39,7 @@ export default function PluginMarketplace() {
         const builtInPlugins: Plugin[] = [
           {
             id: "fedstylevalidator",
-            name: "FedStyleValidator",
+            name: "Federal Style Validator",
             description: "Federal Style Validator for government documents. Validates FAA style guidelines, accessibility standards, and regulatory compliance requirements. Provides detailed feedback on heading structure, formatting, and content validation.",
             category: "Document Quality",
             version: "2.1.0",
@@ -221,7 +221,7 @@ export default function PluginMarketplace() {
         setPlugins([
           {
             id: "fedstylevalidator",
-            name: "FedStyleValidator",
+            name: "Federal Style Validator",
             description: "Federal Style Validator for government documents. Validates FAA style guidelines, accessibility standards, and regulatory compliance requirements. Provides detailed feedback on heading structure, formatting, and content validation.",
             category: "Document Quality",
             version: "2.1.0",
@@ -459,7 +459,7 @@ export default function PluginMarketplace() {
                 and enhanced export capabilities. These are actual Python packages that integrate seamlessly with the core system.
               </p>
               <p className="text-blue-700 text-sm">
-                <strong>Built-in Tools:</strong> FedStyleValidator and SCDocBuilder are pre-installed tools that can be toggled on/off
+                <strong>Built-in Tools:</strong> Federal Style Validator and SCDocBuilder are pre-installed tools that can be toggled on/off
                 in the Tool menus. These tools are always available but can be hidden from navigation if not needed.
               </p>
               <p className="text-blue-700 text-sm">
@@ -530,17 +530,19 @@ export default function PluginMarketplace() {
                       variant="ghost"
                       size="sm"
                       className="p-1"
+                      aria-pressed={plugin.isEnabled || false}
+                      aria-label={`${plugin.isEnabled ? 'Disable' : 'Enable'} ${plugin.name} in Tool menus`}
                     >
                       {toggling === plugin.id ? (
-                        <Settings className="w-5 h-5 animate-pulse text-gray-400" />
+                        <Settings className="w-5 h-5 animate-pulse text-gray-400" aria-hidden="true" />
                       ) : plugin.isEnabled ? (
-                        <ToggleRight className="w-5 h-5 text-green-600" />
+                        <ToggleRight className="w-5 h-5 text-green-600" aria-hidden="true" />
                       ) : (
-                        <ToggleLeft className="w-5 h-5 text-gray-400" />
+                        <ToggleLeft className="w-5 h-5 text-gray-400" aria-hidden="true" />
                       )}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500" aria-live="polite">
                     {plugin.isEnabled ? 'Visible in Tool menus' : 'Hidden from Tool menus'}
                   </p>
                 </div>
@@ -581,13 +583,15 @@ export default function PluginMarketplace() {
                         variant="ghost"
                         size="sm"
                         className="p-1"
+                        aria-pressed={plugin.isEnabled || false}
+                        aria-label={`${plugin.isEnabled ? 'Disable' : 'Enable'} ${plugin.name} in Tool menus`}
                       >
                         {toggling === plugin.id ? (
-                          <Settings className="w-5 h-5 animate-pulse text-gray-400" />
+                          <Settings className="w-5 h-5 animate-pulse text-gray-400" aria-hidden="true" />
                         ) : plugin.isEnabled ? (
-                          <ToggleRight className="w-5 h-5 text-green-600" />
+                          <ToggleRight className="w-5 h-5 text-green-600" aria-hidden="true" />
                         ) : (
-                          <ToggleLeft className="w-5 h-5 text-gray-400" />
+                          <ToggleLeft className="w-5 h-5 text-gray-400" aria-hidden="true" />
                         )}
                       </Button>
                     </div>
