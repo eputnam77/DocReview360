@@ -1,12 +1,12 @@
-﻿# DocReview360
+# DocReview360
 
-Lightweight document workflowsCLI, API, and React UI in one repo.
+Lightweight document workflows — CLI, API, and React UI in one repo.
 
 **DocReview360** lets teams organize files, route them through quick approval steps, and track status at a glance. The prototype ships with:
 
 * a FastAPI backend
 * a minimal React/Next.js frontend
-* a singlecommand CLI wizard (`docreview360 init`)
+* a single-command CLI wizard (`docreview360 init`)
 
 so you can test everything locally and decide how it fits your process.
 
@@ -30,6 +30,7 @@ It is not legal advice and is not positioned as a certified regulatory complianc
 - Terms: `TERMS.md`
 - Contribution process: `CONTRIBUTING.md`
 - Community conduct: `CODE_OF_CONDUCT.md`
+
 ## API compatibility
 
 - Existing endpoints remain available without a prefix.
@@ -51,69 +52,21 @@ These measurements are a transparency baseline for release readiness, not peak-l
 
 ---
 
-## AI model pipeline at a glance
-
-DocReview360's review suggestions rely on a small PyTorch model that exports to
-**ONNX Runtime** for production. Training runs through
-`docreview360 ml train`, which logs metrics and saves the latest weights to
-`artifacts/models/latest.pt`. The `docreview360 ml export` command then freezes
-the model and converts it to `artifacts/models/latest.onnx` using
-`torch.onnx.export` with opset **18**, dynamic axes, and model metadata that
-captures the feature schema. This keeps inference portable across GPU and CPU
-targets without shipping the full Python stack.
-
-Once the ONNX bundle is generated you can:
-
-1. Run `docreview360 ml package` to stage the ONNX model, tokenizer vocabulary,
-   and feature manifest into `artifacts/packages/<timestamp>/` for deployment.
-2. Copy the folder to the API container and point
-   `DOCREVIEW360_ML_MODEL_DIR=/app/artifacts/packages/<timestamp>`.
-3. Restart the worker pods so they hotswap to the new graph on boot.
-
-### CPU-first deployment
-
-Most teams deploy the ONNX model with the `CPUExecutionProvider`. You only need
-libonnxruntime (already bundled in the Docker image) and a JSON feature schema.
-Set `DOCREVIEW360_ML_PROVIDER=cpu` and `DOCREVIEW360_ML_THREADS=<n>` to match
-the number of vCPUs available. GPU execution remains optionalwhen no GPU is
-detected the runtime automatically falls back to CPU.
-
-### Quantization options
-
-When export time matters, enable dynamic quantization by running
-`docreview360 ml export --quantize dynamic`. The command applies
-`onnxruntime.quantization.quantize_dynamic` to produce
-`artifacts/models/latest.int8.onnx`, typically yielding a **23** latency
-reduction on commodity CPUs. For maximum compression, pass
-`--quantize static --calibration-set data/calibration/` to generate a calibrated
-INT8 graphjust ensure the calibration set mirrors your production inputs. Both
-variants keep the floating-point model alongside the quantized files so you can
-compare accuracy before rolling out the optimized version.
-
----
-
 ## Quick Start
 
-The fastest path to a running instance on any platform:
+The fastest path to a running instance. Requires Python 3.11–3.12 (3.13 not supported) and Node 18+.
 
-**macOS / Linux**
 ```bash
+# 1. Clone and set up the Python environment
 git clone https://github.com/eputnam77/DocReview360.git && cd DocReview360
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,test]"
-DOCREVIEW360_ENV=dev uvicorn docreview360.api:app --reload
-```
+uv venv --python 3.12 && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+uv pip install -e ".[dev,test,security]"
+pre-commit install
 
-**Windows (PowerShell)**
-```powershell
-git clone https://github.com/eputnam77/DocReview360.git; cd DocReview360
-python -m venv .venv; .venv\Scripts\Activate.ps1
-pip install -e ".[dev,test]"
-$env:DOCREVIEW360_ENV="dev"; uvicorn docreview360.api:app --reload
-```
+# 2. Start the backend
+DOCREVIEW360_ENV=dev uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
 
-Once the backend is running on `http://localhost:8000`, start the frontend:
-```bash
+# 3. In a second terminal, start the frontend
 cd frontend && npm install --legacy-peer-deps
 echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
 npm run dev   # http://localhost:3000
@@ -123,70 +76,64 @@ Log in with `alice` / `password` (admin) or `bob` / `password` (auditor).
 
 ---
 
-## Quick install (recommended)
+## Full installation
 
-We use **pipx** for global tool shims, **uv** for ultrafast Python/venv work, and **Poetry1.8** for lockfile sync.
+### Prerequisites
 
 ```bash
-# 0. One-time setup: Python & pipx -------------------------------------------------
-python --version                # confirm Python 3.11 or 3.12 (3.13 not yet supported due to PyTorch wheels)
+python --version   # confirm Python 3.11 or 3.12 (3.13 not yet supported due to PyTorch wheels)
+```
 
+Install **pipx** and **uv** if you don't have them:
+
+```bash
 # Debian / Raspberry Pi OS
-sudo apt update
-sudo apt install pipx
-pipx ensurepath                # add pipx to PATH
-source ~/.bashrc               # reload sheel so PATH is updated
+sudo apt update && sudo apt install pipx
+pipx ensurepath && source ~/.bashrc
 
 # Windows
 python -m pip install --user pipx
-python -m pipx ensurepath       # restart shell if PATH changes
+python -m pipx ensurepath   # restart shell if PATH changes
 
 # All platforms
-pipx install uv                 # fast resolver, venv mgr, lockfile, tool runner
+pipx install uv   # fast resolver, venv manager, lockfile, tool runner
+```
 
-# 1. Clone project ---------------------------------------------------------------
+### Install steps
+
+```bash
+# 1. Clone the repo
 git clone https://github.com/eputnam77/DocReview360.git
 cd DocReview360
-# 2. Create and activate venv (Python 3.12 recommended) ----------------------------
+
+# 2. Create and activate the venv (Python 3.12 recommended)
 uv python install 3.12
 uv venv --python 3.12
+source .venv/bin/activate      # Mac/Linux
+# .venv\Scripts\activate       # Windows
 
-# Activate the venv:
-#   On Mac/Linux:
-source .venv/bin/activate
-#   On Windows:
-.venv\Scripts\activate
-
-# 3. Install project + extras (dev, test, security) ------------------------------
+# 3. Install project + extras
 uv pip install -e ".[dev,test,security]"
-# optional:
-# uv pip install -e ".[ml]"
-# (Optional) Allow prerelease dependencies if needed:
-# uv pip install -e ".[dev,test,security]" --prerelease=allow
+# Optional ML extras: uv pip install -e ".[ml]"
 
-# 4. (Optional) Upgrade pip and pre-commit inside the venv -----------------------
-uv pip install --upgrade pip pre-commit
-
-# 5. Install Git hooks -----------------------------------------------------------
+# 4. Install Git hooks
 pre-commit install
 ```
 
-DocReview360 ships with the built-in ``sandbox`` signature provider enabled for
-local development. Set ``SIGNATURE_PROVIDER=documenso`` (or provide a fallback
-list) when you want to use Documenso's hosted serviceremember that Documenso
-will deliver callbacks to ``POST /hooks/documenso``.
+DocReview360 ships with the built-in `sandbox` signature provider for local development. Set `SIGNATURE_PROVIDER=documenso` when you want to use Documenso's hosted service — Documenso will deliver callbacks to `POST /hooks/documenso`.
 
-*(Need a plainPython fallback? See Virtualenv fallback below.)*
+*(Need a plain-Python fallback without uv? See [Virtualenv fallback](#virtualenv-fallback) below.)*
 
 ---
 
-##  Configure secrets
+## Configure secrets
 
 ```bash
-cp .env.example .env           # template included
-# or export variables directly:
+cp .env.example .env   # template included, or export variables directly
+```
 
-# Unix/Linux/macOS (bash/zsh):
+**Unix/Linux/macOS:**
+```bash
 export DOCREVIEW360_SECRET_KEY=your-secret
 export DOCREVIEW360_ALGORITHM=HS256
 export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
@@ -197,11 +144,12 @@ export DOCREVIEW360_OIDC_ALGORITHM=HS256
 export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
 export DOCREVIEW360_OIDC_TOKEN_ISSUER=docreview360-oidc.local
 export DOCREVIEW360_OIDC_TOKEN_AUDIENCE=docreview360-oidc
-# Treat any non-dev/test value (for example ``production``) as production.
-# When set, missing secrets trigger a startup failure instead of a warning.
+# Non-dev/test values (e.g. "production") enforce required secrets at startup.
 export DOCREVIEW360_ENV=dev
+```
 
-# Windows PowerShell:
+**Windows PowerShell:**
+```powershell
 $env:DOCREVIEW360_SECRET_KEY="your-secret"
 $env:DOCREVIEW360_ALGORITHM="HS256"
 $env:DOCREVIEW360_ACCESS_EXPIRE_MINUTES="30"
@@ -212,24 +160,24 @@ $env:DOCREVIEW360_OIDC_ALGORITHM="HS256"
 $env:DOCREVIEW360_OIDC_EXPIRE_MINUTES="30"
 $env:DOCREVIEW360_OIDC_TOKEN_ISSUER="docreview360-oidc.local"
 $env:DOCREVIEW360_OIDC_TOKEN_AUDIENCE="docreview360-oidc"
-# Treat any non-dev/test value (for example ``production``) as production.
-# When set, missing secrets trigger a startup failure instead of a warning.
 $env:DOCREVIEW360_ENV="dev"
+```
 
-# Optional:
-# DOCREVIEW360_SIGNATURE_SECRET  (digital signatures)
-# SIGNATURE_PROVIDER=sandbox  (default order: sandbox  Documenso  local; Documenso will send webhooks to /hooks/documenso)
-# SIGNATURE_PROVIDER_PRIMARY=sandbox  (explicit primary provider override)
-# SIGNATURE_PROVIDER_FALLBACK=documenso,local  (comma-separated fallbacks)
-# DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK=true  (allow fallback when signature verification fails)
-# NEXT_PUBLIC_API_BASE=http://localhost:8000  (frontend  backend, leave blank to use dashboard host)
-# DOCREVIEW360_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000  (frontend host(s) allowed by CORS)
+**Optional variables:**
+```bash
+# DOCREVIEW360_SIGNATURE_SECRET          — HMAC secret for digital signatures
+# SIGNATURE_PROVIDER=sandbox             — default order: sandbox → Documenso → local
+# SIGNATURE_PROVIDER_PRIMARY=sandbox     — explicit primary provider override
+# SIGNATURE_PROVIDER_FALLBACK=documenso,local  — comma-separated fallbacks
+# DOCREVIEW360_ALLOW_SIGNATURE_FALLBACK=true
+# NEXT_PUBLIC_API_BASE=http://localhost:8000
+# DOCREVIEW360_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 # DOCREVIEW360_REQUIRE_MFA=false
 # DOCREVIEW360_SEED_DEMO_USERS=true
 # DOCREVIEW360_MAX_FAILED_ATTEMPTS=5
 # DOCREVIEW360_LOCKOUT_SECONDS=300
 # DOCREVIEW360_USER_DB=./docreview360_users.db
-# When authenticating with HTTP-only cookies also send an X-CSRF-Token header that matches the csrf_token cookie value.
+# When using HTTP-only cookies, also send an X-CSRF-Token header matching the csrf_token cookie.
 ```
 
 ### Environment variables reference
@@ -276,9 +224,9 @@ $env:DOCREVIEW360_ENV="dev"
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE` | unset (defaults to disabled) | Persist template edits to `DOCREVIEW360_TEMPLATE_STORE_FILE`. |
-| `DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE` | unset (defaults to disabled) | Persist email template edits. |
-| `DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE` | unset (defaults to disabled) | Persist workflow template edits. |
+| `DOCREVIEW360_ENABLE_TEMPLATE_PERSISTENCE` | unset (disabled) | Persist template edits to `DOCREVIEW360_TEMPLATE_STORE_FILE`. |
+| `DOCREVIEW360_ENABLE_EMAIL_TEMPLATE_PERSISTENCE` | unset (disabled) | Persist email template edits. |
+| `DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE` | unset (disabled) | Persist workflow template edits. |
 | `DOCREVIEW360_SKIP_SAMPLE_BOOTSTRAP` | unset | Skip seeding sample data when set. |
 | `DOCREVIEW360_ENABLE_SAMPLE_BOOTSTRAP` | unset | Explicitly re-enable sample bootstrap when set to `1`. |
 
@@ -334,7 +282,9 @@ Run the CLI wizard to generate `docreview360.yaml`:
 docreview360 init
 ```
 
-##  Encryption at rest
+---
+
+## Encryption at rest
 
 DocReview360 can encrypt archived artefacts, archive metadata, and backups at
 rest with AES-GCM. Configure `security.encryption_at_rest` in `settings.yaml`
@@ -355,28 +305,17 @@ docreview360 migrate import backup.gz
 ## Run the backend API
 
 ```bash
-# Ensure you're in the project root and virtual environment is activated
-# cd DocReview360  # only if you're not already in the repo root
-# source .venv/bin/activate  # On Mac/Linux
-# .venv\Scripts\activate     # On Windows
+# Ensure you're in the project root with the virtual environment activated.
 
-# Start the backend server on macOS/Linux
-uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+# macOS/Linux
+DOCREVIEW360_ENV=dev uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
 # Binding to 0.0.0.0 lets Playwright and other remote browsers reach the dev server.
 ```
 
 ```powershell
-# Start the backend server on Windows PowerShell (auto-loads .env when present)
+# Windows PowerShell (auto-loads .env when present)
 pwsh -File scripts/windows/start-backend.ps1
 ```
-
-**Important:** The backend server must be running for the frontend to work properly, especially the document checker that integrates with FedStyleValidator (Federal Style Validator).
-
-**Prerequisites:** Ensure you've configured the environment variables (see " Configure secrets" section above) or have a `.env` file in the project root.
-
-- **API Documentation:** FastAPI autogenerates interactive docs at http://localhost:8000/docs
-- **Health Check:** Test the server at http://localhost:8000/health
-- **Federal Style Validator Integration:** The document checker requires this backend to process files
 
 Pass secrets on the command line when you do not want to persist them:
 
@@ -386,15 +325,13 @@ pwsh -File scripts/windows/start-backend.ps1 `
   -AccessExpireMinutes 60
 ```
 
-The script first loads values from `.env` (if present), then applies its own
-development fallback values when variables are still missing:
-`DOCREVIEW360_SECRET_KEY=docreview360-dev-secret`,
-`DOCREVIEW360_OIDC_SECRET_KEY=docreview360-oidc-dev-secret`, and a 30-minute
-token expiry for both token types.
+The script loads values from `.env` first, then applies development fallbacks for any missing variables:
+`DOCREVIEW360_SECRET_KEY=docreview360-dev-secret`, `DOCREVIEW360_OIDC_SECRET_KEY=docreview360-oidc-dev-secret`, and a 30-minute token expiry.
 
-### Verify backend login (recommended)
+- **API docs:** http://localhost:8000/docs
+- **Health check:** http://localhost:8000/health
 
-Use the standard token flow that the frontend uses (`/token` -> `/users/me`).
+### Verify backend login
 
 ```bash
 TOKEN=$(curl -s -X POST "http://127.0.0.1:8000/token" \
@@ -415,397 +352,248 @@ Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/users/me" `
   -Headers @{ Authorization = "Bearer $token" }
 ```
 
-Optional OIDC flow: use `/oidc/token` and then `/oidc/me`.
+Optional OIDC flow: use `/oidc/token` then `/oidc/me`.
 
-Demo users are available in local/dev/test by default:
-- `alice` / `password` (roles: `user`, `admin`)
-- `bob` / `password` (roles: `auditor`)
-- Set `DOCREVIEW360_SEED_DEMO_USERS=false` to disable automatic demo-user seeding.
+Demo users (available in local/dev/test by default):
+
+| Username | Password | Roles |
+| --- | --- | --- |
+| `alice` | `password` | user, admin |
+| `bob` | `password` | auditor |
+
+Set `DOCREVIEW360_SEED_DEMO_USERS=false` to disable automatic seeding.
 
 ---
 
-## Run the React frontend (Node18+)
+## Run the React frontend (Node 18+)
 
 ```bash
-# Ensure you are at DocReview360/frontend
 cd frontend
 npm install --legacy-peer-deps
-
-# Create environment file for frontend-backend communication
-# Choose the command for your operating system:
-
-# Windows PowerShell (recommended for Windows):
-Set-Content -Path .env.local -Value "NEXT_PUBLIC_API_BASE=http://localhost:8000"
-
-# Windows Command Prompt:
-# echo NEXT_PUBLIC_API_BASE=http://localhost:8000 > .env.local
-
-# Unix/Linux/macOS (bash/zsh):
-# cat > .env.local << 'EOF'
-# # Backend API base URL (required for Federal Style Validator integration)
-# NEXT_PUBLIC_API_BASE=http://localhost:8000
-# EOF
-
-# Universal alternative (works on all platforms):
-# echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
-
-npm run dev
+echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
+npm run dev   # http://localhost:3000
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/) and log in with one of the test accounts:
-
-**Admin Access:**
-- Username: `alice`
-- Password: `password`
-- Roles: user, admin (Full administrative access)
-
-**Non-Admin Access:**
-- Username: `bob`
-- Password: `password`
-- Roles: auditor (Limited access, no admin privileges)
-
-**Note:** The frontend requires the backend server to be running for full functionality (especially the document checker). Ensure the backend is started first.
+The backend must be running before starting the frontend (required for the document checker and Federal Style Validator integration).
 
 ---
 
-## Virtualenv fallback (nouv)
+## Virtualenv fallback
+
+If you prefer plain pip without uv:
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-python -m pip install --upgrade pip
-pip install poetry
-poetry install --with dev --sync   # --sync flag still works but is deprecated :contentReference[oaicite:5]{index=5}
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install --upgrade pip
+pip install -e ".[dev,test,security]"
+pre-commit install
 ```
 
 ---
 
-##  Quality Checks & Testing Guide
+## Quality checks and testing
 
-This project uses a multi-tool testing pipeline to ensure code quality, formatting, type safety, security, and robustness. Below is the full suite of commands and best practices for local development and CI validation.
+This project uses a multi-tool pipeline for linting, type checking, security scanning, and test coverage.
 
----
+### Lint, format, and type checks
 
-### 1.  Lint, Format, and Static Type Checks
+Pre-commit hooks run automatically before every commit after `pre-commit install`:
 
-**Defined in `.pre-commit-config.yaml`** and run automatically before every commit (after running `pre-commit install`):
-
-* **Ruff:** Linting and formatting for Python code (also handles import sorting)
-* **Black:** Auto-formats Python code to a consistent style
-* **Mypy:** Static type checking
-* **Bandit:** Python code security scanning (see below for details)
-* **mdformat:** Markdown linting and formatting, with Ruff rules
-* **Codespell:** Checks for common spelling mistakes in code, comments, and docs
-
-**To run all checks across the codebase:**
+- **Ruff** — linting and import sorting
+- **Black** — code formatting
+- **Mypy** — static type checking
+- **Bandit** — security scanning
+- **mdformat** — Markdown linting
+- **Codespell** — spell checking
 
 ```bash
-pre-commit install           # (First time only) Installs pre-commit hooks
-pre-commit run --all-files   # Run all checks across the codebase
+pre-commit run --all-files   # run all checks across the codebase
 ```
 
-> **Tip:** This is the recommended first step before committing or pushing code.
-
----
-
-### 2.  Unit Tests with Coverage
-
-Run the full test suite with code coverage reporting using pytest:
+### Unit tests with coverage
 
 ```bash
 pytest --cov=src
 ```
 
-* Replace `src` with your module's directory if different.
-* Coverage results can be uploaded to Codecov or other CI tools.
+Coverage gate for release: **90% branch coverage** (`--cov-fail-under=90`).
 
----
-
-### 3.  Spellchecking
-
-Run [Codespell](https://github.com/codespell-project/codespell) to catch common typos in code, comments, and documentation:
+### Security scanning
 
 ```bash
-codespell src tests docs
+# Code security
+bandit -r src -lll --skip B101
+
+# Dependency vulnerabilities
+python scripts/run-pip-audit.py
 ```
 
-> **Note:** Codespell is also included in pre-commit, so this check runs automatically before each commit.
-
----
-
-### 4.  Docstring Formatting (Optional)
-
-[docformatter](https://github.com/PyCQA/docformatter) ensures all Python docstrings follow [PEP 257](https://peps.python.org/pep-0257/) conventions.
+### Suggested workflow
 
 ```bash
-docformatter -r src/
+pre-commit run --all-files         # lint, format, type check, spellcheck, security
+pytest --cov=src                   # unit tests with coverage
+bandit -r src -lll --skip B101     # security scan (code)
+python scripts/run-pip-audit.py    # security scan (dependencies)
 ```
 
-* Recommended for teams/projects that enforce strict docstring style.
+### Quick reference
+
+| Tool | Purpose | Command |
+| --- | --- | --- |
+| Ruff | Lint/format Python | `pre-commit run --all-files` |
+| Black | Code formatter | `pre-commit run --all-files` |
+| Mypy | Static type checking | `pre-commit run --all-files` |
+| Bandit | Security (code) | `bandit -r src -lll --skip B101` |
+| pip-audit | Security (dependencies) | `python scripts/run-pip-audit.py` |
+| Codespell | Spell check | `codespell src tests docs` |
+| mdformat | Markdown formatting | `pre-commit run --all-files` |
+| docformatter | Docstring style (optional) | `docformatter -r src/` |
+| Mutmut | Mutation testing (optional) | `mutmut run --paths-to-mutate src` |
+| Pytest | Unit tests/coverage | `pytest --cov=src` |
 
 ---
 
-### 5.  Security Scanning
-
-Run security scanners to identify vulnerabilities:
-
-* **Bandit:** Scans Python source code for security issues
-
-  ```bash
-  bandit -r src -lll --skip B101
-  ```
-
-  * `-r src`: Recursively scans the `src` directory
-  * `-lll`: Only high-severity issues
-  * `--skip B101`: Skip assert statement warnings
-
-* **pip-audit:** Checks installed dependencies for known security vulnerabilities
-
-  ```bash
-  pip-audit
-  pip-audit -r requirements.txt
-  ```
-
-* **Safety (Optional):** Another dependency vulnerability scanner
-
-  ```bash
-  safety check
-  ```
-
-  * Not required if using pip-audit, but can be added for redundancy.
-
----
-
-### 6.  Mutation Testing (Optional)
-
-[Mutmut](https://mutmut.readthedocs.io/en/latest/) tests your suites effectiveness by making small code changes ("mutations") and checking if your tests catch them.
+## End-to-end (E2E) testing
 
 ```bash
-mutmut run --paths-to-mutate src
-mutmut results
+# Full suite
+python scripts/run_e2e.py
+
+# Smoke gate (recommended for PR checks)
+E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke python scripts/run_e2e.py
+
+# Full suite (recommended for main/nightly)
+E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_full python scripts/run_e2e.py
 ```
 
-* Use this occasionally or in CI for robust projects.
-* Mutation testing can be time-consuming.
+### Prerequisites
 
----
+- Playwright browser binaries: `playwright install`
+- No manual `E2E_BACKEND_URL` / `E2E_FRONTEND_URL` setup required — `scripts/run_e2e.py` provisions these automatically.
 
-### 7.  Suggested Workflow
+### Typical runtime
+
+2–6 minutes on a warm environment. First run may be longer if frontend dependencies are being installed.
+
+### Debugging failures
 
 ```bash
-pre-commit run --all-files        # Lint, format, type check, spellcheck, markdown, security
-pytest --cov=src                  # Unit tests with coverage
-bandit -r src -lll --skip B101    # Security scan (code)
-python scripts/run-pip-audit.py   # Security scan (dependencies) - handles local packages
-codespell src tests docs          # Spell check (if not running in pre-commit)
-docformatter -r src/              # (Optional) Docstring formatting
-mutmut run --paths-to-mutate src  # (Optional) Mutation testing
-mutmut results
+KEEP_E2E_ARTIFACTS=1 python scripts/run_e2e.py
 ```
 
----
+Artifacts are preserved in `.e2e-runs/<run-id>/`:
+- `logs/backend.log`
+- `logs/frontend.log`
+- `artifacts/`
 
-### 8.  Quick Reference Table
-
-| Tool         | Purpose                     | Command Example                               |
-| ------------ | --------------------------- | --------------------------------------------- |
-| Ruff         | Lint/format Python code     | `pre-commit run --all-files`                  |
-| Black        | Code formatter              | `pre-commit run --all-files`                  |
-| Mypy         | Static type checking        | `pre-commit run --all-files`                  |
-| Bandit       | Security (code)             | `bandit -r src -lll --skip B101`              |
-| pip-audit    | Security (dependencies)     | `python scripts/run-pip-audit.py` / `pip-audit -r requirements.txt` |
-| Codespell    | Spell check                 | `codespell src tests docs`                    |
-| mdformat     | Markdown formatting/linting | `pre-commit run --all-files`                  |
-| docformatter | Docstring style (optional)  | `docformatter -r src/`                        |
-| Mutmut       | Mutation test (optional)    | `mutmut run --paths-to-mutate src`            |
-| Pytest       | Unit tests/coverage         | `pytest --cov=src`                            |
-| Safety       | Security (deps, optional)   | `safety check`                                |
+By default, Playwright artifacts are retained only on failed tests (`E2E_PLAYWRIGHT_ARTIFACTS=failure`).
 
 ---
 
-### About the requirements files
+## GitHub Codespaces
 
-`requirements*.txt` are generated for legacy tooling; `poetry sync` (or `pip install -e ".[dev]"`) remains the canonical way to keep dependencies in lockstep with **pyproject.toml**.
+Run the commands above from your Codespace terminal. When `uvicorn` is running, forward port 8000 in the **Ports** panel and choose **Open in Browser** to access the login page.
 
 ---
 
-### GitHub Codespaces
+## AI model pipeline
 
-Run the commands above from your Codespace terminal. When `uvicorn` is running,
-forward port 8000 in the **Ports** panel and choose **Open in Browser** to access the login page.
+DocReview360's review suggestions rely on a small PyTorch model exported to **ONNX Runtime** for production.
 
-A test token is available with:
 ```bash
-TOKEN=$(curl -s -X POST "http://127.0.0.1:8000/token" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=alice&password=password" \
-  | python -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
-
-curl -s "http://127.0.0.1:8000/users/me" -H "Authorization: Bearer $TOKEN"
+docreview360 ml train      # train and save weights to artifacts/models/latest.pt
+docreview360 ml export     # freeze and convert to artifacts/models/latest.onnx (opset 18)
+docreview360 ml package    # stage ONNX model + tokenizer vocab + feature manifest to artifacts/packages/<timestamp>/
 ```
-Use the token in the `Authorization` header to call `/users/me`.
 
-**Test Users:**
-- **Admin:** `alice` / `password` (Has admin privileges)
-- **Non-Admin:** `bob` / `password` (Has auditor role with limited access)
+Point the API container to the packaged bundle:
+```bash
+DOCREVIEW360_ML_MODEL_DIR=/app/artifacts/packages/<timestamp>
+```
 
-The API is a learning tool. Endpoints return dummy data but illustrate how projects, documents and approvals could work together. The frontend contains a login page, dashboard, project creation form, two editor pages and a review tracker table.
+**CPU-first deployment:** Set `DOCREVIEW360_ML_PROVIDER=cpu` and `DOCREVIEW360_ML_THREADS=<n>` to match available vCPUs. GPU execution is optional — when no GPU is detected the runtime falls back to CPU automatically.
+
+**Quantization:** Pass `--quantize dynamic` to `ml export` for a ~23% latency reduction on commodity CPUs via `onnxruntime.quantization.quantize_dynamic`. Use `--quantize static --calibration-set data/calibration/` for maximum compression (ensure the calibration set mirrors production inputs).
+
+See `docs/` for the full ML pipeline reference.
+
+---
 
 ## Features
 
-- In-memory storage for projects and documents
+- Structured document review with configurable approval gating
+- Immutable audit trail with HMAC integrity verification
+- RBAC with `admin`, `auditor`, `reviewer`, and `viewer` roles
 - Import/export of Markdown and DOCX files
 - Search with saved queries
 - Simple plugin system for editors and exporters
-- Minimal authentication flow with a login form, dashboard and project creation page
+- JWT authentication with optional TOTP MFA
+- ONNX-based AI review suggestions (optional)
 
-**Test Users:**
-The system comes with two predefined test users for development and testing:
-
-1. **Alice** (`alice` / `password`) - Has admin privileges with full access to all features
-2. **Bob** (`bob` / `password`) - Has auditor role with limited access for testing role-based permissions
-
-See the [`docs/`](docs/) directory for a full tour of the API, CLI options, and UI navigation tips. The
-[architecture overview](docs/adr/0001-core-architecture.md) describes how the backend, frontend and future services fit together.
+---
 
 ## Usage example
 
-The following short session shows how a new user might work with DocReview360. After
-starting the server open a second terminal and run:
-
 ```bash
-# create a project and upload a document
+# Create a project and upload a document
 docreview360 project create "My first project"
 docreview360 document add --project "My first project" README.md
 
-# request approval from a team member
+# Request approval from a team member
 docreview360 approval request --project "My first project" --user bob
 
-# export the document to PDF using the default plugin
+# Export the document to PDF using the default plugin
 docreview360 export pdf --project "My first project" --out build/project.pdf
 ```
 
-Reload the projects page and you will see the document listed with its approval
-status. The quick turnaround gives a fresh-doc scent that highlights how light
-the workflow can be.
+---
 
 ## Deploy with Docker
 
-Running the app inside containers is a handy way to share it on a server or your favorite cloud provider. The repository already contains a `Dockerfile` and a `docker-compose.yml` so you can start quickly.
+```bash
+# Build the image
+docker build -t docreview360:latest .
 
-See `docs/deployment.md` for platform-specific notes about environment variables and database setup on Render, Heroku, Fly.io and Railway.
+# Launch the container
+docker run -d -p 8000:8000 docreview360:latest
 
-1. **Build the image**
-   ```bash
-   docker build -t docreview360:latest .
-   ```
-2. **Launch the container on its own**
-   ```bash
-   docker run -d -p 8000:8000 docreview360:latest
-   ```
-   Visit <http://localhost:8000/> to confirm everything works.
-3. **Run the full stack**
-   ```bash
-   docker compose up
-   ```
-   This command starts Postgres, OpenSearch, Redis and the DocReview360 services.
+# Run the full stack (Postgres, OpenSearch, Redis + DocReview360)
+docker compose up
+```
 
-If you need to deploy on a remote host, tag the image with your registry name and push it:
+See [`docs/deployment.md`](docs/deployment.md) for platform-specific notes (Render, Heroku, Fly.io, Railway) and environment variable setup.
+
+To deploy on a remote host:
 
 ```bash
 docker tag docreview360:latest <your-registry>/docreview360:1.0.0
 docker push <your-registry>/docreview360:1.0.0
 ```
 
-Update your server or container orchestration tool to pull the new image and your DocReview360 instance will be online.
-
-## Running Tests
-
-1. **Install development dependencies**
-   ```bash
-   poetry install --with dev
-   poetry sync --with dev
-   uv pip install -r pyproject.toml --extra dev
-   ```
-2. **Run the full quality gate**
-   ```bash
-   pre-commit run --all-files
-   ```
-   This runs Ruff, Black, MyPy, and the Python test suite.
-
-## End-to-End (E2E) Testing
-
-Use the repository E2E runner as the canonical local command:
-
-```bash
-poetry run python scripts/run_e2e.py
-```
-
-Smoke gate (recommended for PR checks):
-
-```bash
-E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke poetry run python scripts/run_e2e.py
-```
-
-Full suite (recommended on main/nightly):
-
-```bash
-E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_full poetry run python scripts/run_e2e.py
-```
-
-### Prerequisites
-
-- Python + frontend dev dependencies installed (`poetry install --with dev` and frontend `npm install` handled automatically by the runner when needed).
-- Playwright browser binaries installed:
-  ```bash
-  poetry run playwright install
-  ```
-- No manual `E2E_BACKEND_URL` / `E2E_FRONTEND_URL` setup is required; `scripts/run_e2e.py` provisions these automatically.
-
-### Typical runtime
-
-- Usually **2-6 minutes** on a warm environment (first run can be longer because frontend dependencies may be installed).
-
-### What success looks like
-
-- `pytest` exits with status code `0`.
-- The runner shuts down backend/frontend processes and removes `.e2e-runs/<run-id>/` automatically on success.
-
-### Verbose mode
-
-```bash
-KEEP_E2E_ARTIFACTS=1 poetry run python scripts/run_e2e.py
-```
-
-This preserves logs and artifacts in `.e2e-runs/<run-id>/` for inspection.
-By default, Playwright artifacts are retained only on failed tests (`E2E_PLAYWRIGHT_ARTIFACTS=failure`).
-
-### Debugging failures
-
-1. Re-run with `KEEP_E2E_ARTIFACTS=1`.
-2. Inspect:
-   - `.e2e-runs/<run-id>/logs/backend.log`
-   - `.e2e-runs/<run-id>/logs/frontend.log`
-   - `.e2e-runs/<run-id>/artifacts/`
-3. If tests are unexpectedly skipped, ensure Playwright browsers are installed (`poetry run playwright install`).
+---
 
 ## Git send-email hook
 
-If you contribute via `git send-email` you can enable an optional validation
-hook. Copy `scripts/sendemail-validate.sample` (also mirrored under
-`.git/hooks/sendemail-validate.sample`) to `.git/hooks/sendemail-validate` and
-make it executable:
+Copy `scripts/sendemail-validate.sample` to `.git/hooks/sendemail-validate` and make it executable:
 
 ```bash
 cp scripts/sendemail-validate.sample .git/hooks/sendemail-validate
 chmod +x .git/hooks/sendemail-validate
 ```
 
-The hook relies on `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. It also runs `gitlint --staged` to validate a patch series. Install these tools with `poetry install --with dev && poetry sync --with dev && uv pip install -r pyproject.toml --extra dev`.
+The hook uses `codespell` and `gitlint` to check spelling and patch style before invoking a light-weight validator in `docreview360.git_hooks`. Install these tools with:
+
+```bash
+uv pip install -e ".[dev,test,security]"
+```
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide, including:
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide, including:
 
 - Development environment setup
 - Branch naming and commit message conventions (Conventional Commits)
@@ -824,6 +612,8 @@ uv pip install -e ".[dev,test,security]"
 pre-commit install
 pytest -q   # verify baseline passes
 ```
+
+---
 
 ## License
 

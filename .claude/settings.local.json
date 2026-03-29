@@ -17,7 +17,15 @@
       "Bash(cat:*)",
       "Bash(find /home/hoctar77/CodingProjects/DocReview360/DocReview360/frontend/pages -name \"*log*\" -type f 2>/dev/null | head -10)",
       "Bash(node /home/hoctar77/CodingProjects/DocReview360/DocReview360/scripts/check-api-fetch-pattern.mjs 2>&1)",
-      "Bash(DOCREVIEW360_ENV=dev pytest tests/test_item16_docs_links.py -q --tb=short 2>&1 | tail -20)"
+      "Bash(DOCREVIEW360_ENV=dev pytest tests/test_item16_docs_links.py -q --tb=short 2>&1 | tail -20)",
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Bash(netstat -ano)",
+      "Bash(powershell.exe -Command \"Get-Process -Id 28028, 11708 2>&1 | Select-Object Id, ProcessName, Path\")",
+      "Bash(alembic current:*)",
+      "Bash(alembic heads:*)",
+      "Bash(.venv/Scripts/alembic current:*)",
+      "Bash(.venv/Scripts/alembic heads:*)"
     ]
   }
 }

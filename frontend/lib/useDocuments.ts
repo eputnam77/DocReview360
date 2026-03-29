@@ -34,7 +34,7 @@ export function useProjectDocuments(projectId: string | undefined) {
       const res = await authenticatedFetch(`/documents?project=${projectId}`);
       if (!res.ok) throw new Error(`Failed to fetch documents (${res.status})`);
       const data = await res.json();
-      return Array.isArray(data) ? data : [];
+      return Array.isArray(data) ? data : (data.items ?? []);
     },
   });
 }

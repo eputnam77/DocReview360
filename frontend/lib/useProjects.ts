@@ -35,7 +35,8 @@ export function useProjects() {
     queryFn: async () => {
       const res = await authenticatedFetch('/projects');
       if (!res.ok) throw new Error(`Failed to fetch projects (${res.status})`);
-      return res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.items ?? []);
     },
   });
 }

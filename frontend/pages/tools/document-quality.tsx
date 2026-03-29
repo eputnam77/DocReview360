@@ -551,7 +551,7 @@ function FederalStyleValidatorPanel() {
                 throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
             const data = await res.json();
-            const docs: SystemDocument[] = Array.isArray(data) ? data : data.documents ?? [];
+            const docs: SystemDocument[] = Array.isArray(data) ? data : (data.items ?? []);
             setDocuments(docs);
             setDocumentAccessNote(note);
         } catch (err) {

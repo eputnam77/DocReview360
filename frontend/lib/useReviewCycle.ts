@@ -105,7 +105,8 @@ export function useReviewCycle(projectId: string): ReviewCycleResult {
       if (!projectId) return [];
       const res = await authenticatedFetch(`/projects/${projectId}/assignments`);
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.items ?? []);
     },
     staleTime: 30_000,
   });
@@ -148,7 +149,8 @@ export function useReviewCycle(projectId: string): ReviewCycleResult {
       if (!projectId) return [];
       const res = await authenticatedFetch(`/projects/${projectId}/feedback`);
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.items ?? []);
     },
     staleTime: 30_000,
   });

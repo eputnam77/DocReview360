@@ -241,7 +241,9 @@ export default function ProjectDetailsPage() {
     queryFn: async () => {
       if (!id) return [];
       const res = await authenticatedFetch(`/projects/${id}/assignments`);
-      return res.ok ? res.json() : [];
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.items ?? []);
     },
     enabled: !!id,
     staleTime: 30_000,
