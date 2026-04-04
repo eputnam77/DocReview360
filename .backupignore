@@ -1,0 +1,49 @@
+# VCS
+.git/
+.github_sync/
+
+# Dependencies and environments
+node_modules/
+venv/
+.venv/
+env/
+
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest_tmp/
+.mypy_cache/
+.ruff_cache/
+.nox/
+.tox/
+.coverage
+coverage/
+coverage.xml
+htmlcov/
+
+# Build and packaging artifacts
+dist/
+build/
+site/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Local secrets and env files
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/worktrees/
