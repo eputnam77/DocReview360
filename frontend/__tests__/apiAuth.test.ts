@@ -1,25 +1,31 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { authenticatedFetch } from "@/lib/api";
+import {
+  authenticatedFetch,
+  clearStoredAccessToken,
+  setStoredAccessToken,
+} from "@/lib/api";
 
 describe("authenticatedFetch auth headers", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    localStorage.clear();
+    clearStoredAccessToken();
+    document.cookie = "csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
     global.fetch = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 200 })) as typeof fetch;
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearStoredAccessToken();
+    document.cookie = "csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
     if (originalFetch) {
       global.fetch = originalFetch;
     }
   });
 
   it("adds bearer auth from stored access token", async () => {
-    localStorage.setItem("access_token", "token-123");
+    setStoredAccessToken("token-123");
 
     await authenticatedFetch("http://example.test/projects", { method: "POST" });
 
@@ -30,7 +36,7 @@ describe("authenticatedFetch auth headers", () => {
   });
 
   it("does not overwrite an explicit authorization header", async () => {
-    localStorage.setItem("access_token", "token-123");
+    setStoredAccessToken("token-123");
 
     await authenticatedFetch("http://example.test/projects", {
       headers: { Authorization: "Bearer explicit-token" },
@@ -39,5 +45,15 @@ describe("authenticatedFetch auth headers", () => {
     const [, options] = vi.mocked(global.fetch).mock.calls[0];
     const headers = new Headers(options?.headers);
     expect(headers.get("Authorization")).toBe("Bearer explicit-token");
+  });
+
+  it("adds X-CSRF-Token from the csrf cookie", async () => {
+    document.cookie = "csrf_token=csrf-123; path=/";
+
+    await authenticatedFetch("http://example.test/projects");
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = new Headers(options?.headers);
+    expect(headers.get("X-CSRF-Token")).toBe("csrf-123");
   });
 });

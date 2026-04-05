@@ -84,6 +84,7 @@ foreach ($entry in $overrides.GetEnumerator()) {
 }
 
 $defaults = @{
+    DOCREVIEW360_ENV                   = 'dev'
     DOCREVIEW360_SECRET_KEY            = 'docreview360-dev-secret'
     DOCREVIEW360_ALGORITHM             = 'HS256'
     DOCREVIEW360_ACCESS_EXPIRE_MINUTES = '30'

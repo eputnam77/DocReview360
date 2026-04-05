@@ -46,6 +46,7 @@ export interface Approval {
   description?: string;
   phaseId?: string;
   required?: boolean;
+  role?: string;
 }
 
 export interface VersionEntry {

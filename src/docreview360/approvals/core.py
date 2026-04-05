@@ -285,6 +285,39 @@ def create_approval(
     return approval
 
 
+def assign_approval_reviewer(approval_id: str, reviewer: str) -> ApprovalModel:
+    """Assign a specific user to an existing approval role.
+
+    Updates the ``reviewer`` field without creating a new approval record.
+    Raises :class:`KeyError` if the approval does not exist.
+    """
+    approval = approvals.get(approval_id)
+    if approval is None:
+        raise KeyError(f"approval {approval_id!r} not found")
+    previous_reviewer = approval.reviewer
+    approval.reviewer = reviewer
+    _persist_approval(approval)
+    log_event(
+        "approval_reviewer_assigned",
+        approval_id=approval_id,
+        workflow=approval.workflow,
+        role=approval.role,
+        previous_reviewer=previous_reviewer,
+        new_reviewer=reviewer,
+        doc_id=approval.document_id,
+    )
+    log_audit_event(
+        approval.document_id,
+        "reviewer_assigned",
+        actor=reviewer,
+        approval_id=approval_id,
+        workflow=approval.workflow,
+        role=approval.role,
+        previous_reviewer=previous_reviewer,
+    )
+    return approval
+
+
 def get_approval(approval_id: str) -> ApprovalModel | None:
     """Return the approval for *approval_id*, loading from DB if not cached."""
     cached = approvals.get(approval_id)

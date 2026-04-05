@@ -89,6 +89,7 @@ export interface Approval {
   description?: string;
   phaseId?: string;
   required?: boolean;
+  role?: string;
   signature_provider?: string;
   signature_id?: string;
   certificate_url?: string;

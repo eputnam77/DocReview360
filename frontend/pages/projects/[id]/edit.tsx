@@ -12,6 +12,7 @@ import {
 import { authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import { useRouter } from "next/router";
+import { useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useRef, useState } from "react";
 
 interface WorkflowTemplate {
@@ -116,6 +117,7 @@ function mergePhases(configuredPhases: string[], docTypePhases: string[]): strin
 
 export default function EditProjectPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const id = router.isReady ? (router.query.id as string | undefined) : undefined;
   const username = useUserStore((s) => s.username);
   const isAdmin = useUserStore((s) => s.isAdmin);
@@ -336,6 +338,7 @@ export default function EditProjectPage() {
       if (!res.ok) {
         throw new Error(await readProjectUpdateError(res));
       }
+      await queryClient.invalidateQueries({ queryKey: ["project", id] });
       router.push(`/projects/${id}`);
     } catch (err) {
       setError((err as Error).message);

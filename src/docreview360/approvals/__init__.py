@@ -17,6 +17,7 @@ from .core import (
     _persist_approval,
     approval_dashboard,
     approvals,
+    assign_approval_reviewer,
     create_approval,
     delete_approval,
     get_approval,

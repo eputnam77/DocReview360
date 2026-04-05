@@ -3,7 +3,7 @@
 const envBase = process.env.NEXT_PUBLIC_API_BASE?.trim();
 const RUNTIME_API_BASE_KEY = "docreview360_api_base";
 
-function _runtimeBase(): string | null {
+function _windowRuntimeBase(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
@@ -11,27 +11,50 @@ function _runtimeBase(): string | null {
   if (typeof fromWindow === "string" && fromWindow.trim()) {
     return fromWindow.trim();
   }
+  return null;
+}
+
+function _storageRuntimeBase(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
   const fromStorage = window.localStorage.getItem(RUNTIME_API_BASE_KEY);
   return fromStorage && fromStorage.trim() ? fromStorage.trim() : null;
 }
 
 export const API =
-  _runtimeBase() ??
+  _windowRuntimeBase() ??
   (envBase && envBase.length > 0
     ? envBase
-    : typeof window !== "undefined"
-      ? `${window.location.protocol}//${window.location.hostname}:8000`
-      : "http://localhost:8000");
+    : _storageRuntimeBase() ??
+      (typeof window !== "undefined"
+        ? `${window.location.protocol}//${window.location.hostname}:8000`
+        : "http://localhost:8000"));
 
 function _resolveApiBase(): string {
   return (
-    _runtimeBase() ??
+    _windowRuntimeBase() ??
     (envBase && envBase.length > 0
       ? envBase
-      : typeof window !== "undefined"
-        ? `${window.location.protocol}//${window.location.hostname}:8000`
-        : "http://localhost:8000")
+      : _storageRuntimeBase() ??
+        (typeof window !== "undefined"
+          ? `${window.location.protocol}//${window.location.hostname}:8000`
+          : "http://localhost:8000"))
   );
+}
+
+function _readCookie(name: string): string | null {
+  if (typeof document === "undefined" || !document.cookie) {
+    return null;
+  }
+  const prefix = `${name}=`;
+  for (const cookie of document.cookie.split(";")) {
+    const trimmed = cookie.trim();
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+  }
+  return null;
 }
 
 // JWT is stored in memory only — never in localStorage or sessionStorage.
@@ -53,6 +76,10 @@ export function clearStoredAccessToken(): void {
   _memoryToken = null;
 }
 
+export function getCsrfToken(): string | null {
+  return _readCookie("csrf_token");
+}
+
 // Utility function for authenticated API calls
 export async function authenticatedFetch(
   url: string,
@@ -62,6 +89,10 @@ export async function authenticatedFetch(
   const storedToken = getStoredAccessToken();
   if (storedToken && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${storedToken}`);
+  }
+  const csrfToken = getCsrfToken();
+  if (csrfToken && !headers.has("X-CSRF-Token")) {
+    headers.set("X-CSRF-Token", csrfToken);
   }
 
   // Prepend API base URL to relative URLs
@@ -81,7 +112,14 @@ export async function authenticatedFetch(
       credentials: "include",
     });
   } catch (error) {
-    console.error(`Failed to fetch ${fullUrl}:`, error);
-    throw error;
+    // Network-level failures (backend down, DNS error, connection refused)
+    // return a synthetic 503 instead of throwing.  Every caller already
+    // checks `res.ok`, so they handle this gracefully — and no uncaught
+    // TypeError crashes the page.
+    console.error(`Network error fetching ${fullUrl}:`, error);
+    return new Response(
+      JSON.stringify({ detail: "Network error: unable to reach the API server" }),
+      { status: 503, statusText: "Service Unavailable", headers: { "Content-Type": "application/json" } },
+    );
   }
 }

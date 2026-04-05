@@ -24,6 +24,8 @@ interface Props {
   approvals: Approval[];
   currentUser?: string;
   canEdit?: boolean;
+  reviewerOptions?: string[];
+  onAssign?: (approvalId: string, reviewer: string) => void;
   onSign: (id: string) => void;
   onSignInitials: (id: string, initials: string) => void;
   onReset: (id: string) => void;
@@ -85,6 +87,8 @@ export default function ApprovalTable({
   approvals,
   currentUser,
   canEdit,
+  reviewerOptions = [],
+  onAssign,
   onSign,
   onSignInitials,
   onReset,
@@ -96,6 +100,8 @@ export default function ApprovalTable({
   const [initialsModalId, setInitialsModalId] = useState<string | null>(null);
   const [initialsValue, setInitialsValue] = useState("");
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignValue, setAssignValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [requiredOnly, setRequiredOnly] = useState(false);
@@ -106,14 +112,17 @@ export default function ApprovalTable({
 
   const roles = useMemo(() => {
     const set = new Set<string>();
-    approvals.forEach((a) => a.description && set.add(a.description));
+    approvals.forEach((a) => {
+      if (a.role) set.add(a.role);
+      else if (a.description) set.add(a.description);
+    });
     return Array.from(set);
   }, [approvals]);
 
   const filtered = useMemo(() => {
     return approvals.filter((a) => {
       if (statusFilter !== "all" && a.state !== statusFilter) return false;
-      if (roleFilter !== "all" && a.description !== roleFilter) return false;
+      if (roleFilter !== "all" && (a.role || a.description) !== roleFilter) return false;
       if (requiredOnly && !a.required) return false;
       if (
         debouncedSearch &&
@@ -156,8 +165,11 @@ export default function ApprovalTable({
     return acc;
   }, [filtered]);
 
+  const isUnassigned = (a: Approval) => !a.reviewer || a.reviewer === a.role;
+
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
     const a = paged[index];
+    const unassigned = isUnassigned(a);
     return (
       <TableRow key={a.id} id={`approval-${a.id}`} className="group" style={style}>
         <TableCell>
@@ -167,10 +179,71 @@ export default function ApprovalTable({
             onChange={() => toggleSelect(a.id)}
           />
         </TableCell>
+        <TableCell className="whitespace-nowrap text-sm font-medium text-gray-700 dark:text-gray-300">
+          {a.role || a.description || "—"}
+        </TableCell>
         <TableCell className="whitespace-nowrap">
-          <span className="font-medium">{a.reviewer}</span>
-          {a.email && a.email !== a.reviewer && (
-            <span className="block text-xs text-gray-500">{a.email}</span>
+          {assigningId === a.id ? (
+            <div className="flex items-center gap-1">
+              <input
+                list={`assign-options-${a.id}`}
+                value={assignValue}
+                onChange={(e) => setAssignValue(e.target.value)}
+                placeholder="Select reviewer"
+                className="border rounded px-2 py-1 text-sm w-32"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setAssigningId(null);
+                    setAssignValue("");
+                  }
+                  if (e.key === "Enter" && assignValue.trim() && onAssign) {
+                    onAssign(a.id, assignValue.trim());
+                    setAssigningId(null);
+                    setAssignValue("");
+                  }
+                }}
+              />
+              <datalist id={`assign-options-${a.id}`}>
+                {reviewerOptions.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              <button
+                className="text-xs px-1.5 py-0.5 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                onClick={() => {
+                  if (assignValue.trim() && onAssign) {
+                    onAssign(a.id, assignValue.trim());
+                    setAssigningId(null);
+                    setAssignValue("");
+                  }
+                }}
+              >
+                OK
+              </button>
+              <button
+                className="text-xs px-1.5 py-0.5 text-gray-500 hover:text-gray-700"
+                onClick={() => { setAssigningId(null); setAssignValue(""); }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : unassigned ? (
+            <button
+              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline italic"
+              onClick={() => {
+                if (canEdit && onAssign) {
+                  setAssigningId(a.id);
+                  setAssignValue("");
+                }
+              }}
+              disabled={!canEdit || !onAssign}
+              title={canEdit ? "Click to assign a reviewer to this role" : ""}
+            >
+              Unassigned
+            </button>
+          ) : (
+            <span className="font-medium">{a.reviewer}</span>
           )}
         </TableCell>
         <TableCell className="max-w-xs truncate text-sm text-gray-600 dark:text-gray-400">
@@ -217,6 +290,26 @@ export default function ApprovalTable({
             </Button>
           )}
           <RowMenu>
+            {canEdit && onAssign && (
+              <Menu.Item>
+                {({ active, close }) => (
+                  <button
+                    role="menuitem"
+                    className={classNames(
+                      "w-full px-3 py-2 text-left text-sm",
+                      active && "bg-indigo-50 dark:bg-gray-800",
+                    )}
+                    onClick={() => {
+                      close();
+                      setAssigningId(a.id);
+                      setAssignValue(unassigned ? "" : a.reviewer);
+                    }}
+                  >
+                    {unassigned ? "Assign reviewer" : "Reassign reviewer"}
+                  </button>
+                )}
+              </Menu.Item>
+            )}
             <Menu.Item>
               {({ active }) => (
                 <button
@@ -409,8 +502,9 @@ export default function ApprovalTable({
                 onChange={(e) => toggleSelectAll(e.target.checked)}
               />
             </TableHead>
-            <TableHead>Assignee</TableHead>
             <TableHead>Role</TableHead>
+            <TableHead>Assignee</TableHead>
+            <TableHead>Description</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Due</TableHead>
             <TableHead>Signed</TableHead>
@@ -432,7 +526,7 @@ export default function ApprovalTable({
             <TableFooter>
               <TableRow>
                 <TableCell />
-                <TableCell className="font-medium" colSpan={2}>Total: {totals.total}</TableCell>
+                <TableCell className="font-medium" colSpan={3}>Total: {totals.total}</TableCell>
                 <TableCell className="text-xs">
                   Pending {totals.pending} · Approved {totals.approved} · Overdue {totals.overdue} · Rejected {totals.rejected}
                 </TableCell>
@@ -446,7 +540,7 @@ export default function ApprovalTable({
         ) : (
           <TableBody>
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8">
+              <TableCell colSpan={9} className="text-center py-8">
                 <div className="text-gray-500 dark:text-gray-400 space-y-1">
                   <p className="text-sm font-medium">No approvals yet</p>
                   <p className="text-sm">Add an approval to invite reviewers.</p>

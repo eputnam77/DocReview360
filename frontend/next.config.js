@@ -2,6 +2,13 @@ const DEFAULT_API_ORIGINS = [
   "http://localhost:8000",
   "http://127.0.0.1:8000",
 ];
+const SAME_HOST_API_FALLBACKS = [
+  // authenticatedFetch() falls back to the current browser host on port 8000.
+  // Allow that zero-config dev path even when the app is opened via a machine
+  // hostname instead of localhost.
+  "http://*:8000",
+  "https://*:8000",
+];
 
 function normalizeOrigin(value) {
   if (!value || typeof value !== "string") {
@@ -16,7 +23,7 @@ function normalizeOrigin(value) {
 }
 
 function buildConnectSrc() {
-  const sources = new Set(["'self'", "ws:", "wss:"]);
+  const sources = new Set(["'self'", "ws:", "wss:", ...SAME_HOST_API_FALLBACKS]);
   for (const value of [
     process.env.NEXT_PUBLIC_API_BASE,
     process.env.DOCREVIEW360_API_BASE,

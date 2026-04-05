@@ -803,6 +803,7 @@ export default function ProjectDetailsPage() {
           description: created.description,
           phaseId: created.phase_id,
           required: created.required,
+          role: created.role,
         },
         ...prev,
       ]);
@@ -881,6 +882,41 @@ export default function ProjectDetailsPage() {
       setAddingApproval(false);
     }
   }, [approvalReviewerInput, approvalReviewerOptions, createApprovalForReviewer]);
+
+  const handleAssignApproval = useCallback(
+    async (approvalId: string, reviewer: string) => {
+      try {
+        const res = await authenticatedFetch(`/approvals/${approvalId}/assign`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewer }),
+        });
+        if (!res.ok) {
+          let detail = "Failed to assign reviewer";
+          try {
+            const data = await res.json();
+            if (typeof data?.detail === "string") detail = data.detail;
+          } catch { /* ignore */ }
+          toast.error(detail);
+          return;
+        }
+        const updated = await res.json();
+        setApprovals((prev) =>
+          prev.map((a) =>
+            a.id === approvalId
+              ? { ...a, reviewer: updated.reviewer, email: updated.reviewer }
+              : a,
+          ),
+        );
+        toast.success(`Assigned ${reviewer} to role.`);
+        refreshReviewerData();
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to assign reviewer.");
+      }
+    },
+    [refreshReviewerData],
+  );
 
   const handleUpdateReviewer = useCallback(async () => {
     if (!editingReviewer) return;
@@ -2483,6 +2519,8 @@ export default function ProjectDetailsPage() {
                 approvals={approvalsForPhase}
                 currentUser={username}
                 canEdit={canEdit}
+                reviewerOptions={approvalReviewerOptions}
+                onAssign={handleAssignApproval}
                 onSign={signApproval}
                 onSignInitials={signApprovalByInitials}
                 onReset={resetApprovalLocal}

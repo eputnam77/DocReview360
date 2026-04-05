@@ -1,49 +1,115 @@
-# VCS
+# =============================================================================
+# .backupignore — exclude everything that can be regenerated or is transient
+# Only source code, documentation, config, infra, and migrations get backed up
+# =============================================================================
+
+# --- VCS internals (your remote IS the backup) ---
 .git/
 .github_sync/
 
-# Dependencies and environments
+# --- Dependencies (reinstall from lock files) ---
 node_modules/
-venv/
 .venv/
+venv/
 env/
 
-# Python caches and tooling
+# --- Python caches and tooling ---
 __pycache__/
 *.py[cod]
+*.pyd
 .pytest_cache/
 .pytest_tmp/
+.pytest_tmp2/
 .mypy_cache/
 .ruff_cache/
 .nox/
 .tox/
+.pyre/
+.pytype/
 .coverage
+.coverage.*
 coverage/
 coverage.xml
 htmlcov/
+.cache/
+.pre-commit-cache/
+pip-wheel-metadata/
+__pypackages__/
+.ipynb_checkpoints/
+.hypothesis/
+.poetry-cache/
 
-# Build and packaging artifacts
+# --- Build and packaging artifacts ---
 dist/
 build/
 site/
 *.egg-info/
 .eggs/
-pip-wheel-metadata/
 
-# Logs and temp files
+# --- Frontend build artifacts ---
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# --- Runtime temp files (2GB+ of branding-config debris) ---
+.tmp/
+frontend/.tmp/
+tmp/
+temp/
 *.log
 *.tmp
 *.temp
-tmp/
-temp/
 
-# Local secrets and env files
+# --- Runtime SQLite databases (regenerated from migrations/seeds) ---
+docreview360.db
+docreview360_roles.db
+docreview360_users.db
+search_state.db
+search_state.db-shm
+search_state.db-wal
+frontend/docreview360.db
+frontend/docreview360_roles.db
+frontend/search_state.db
+
+# --- Runtime JSON state (ephemeral, not source of truth) ---
+worker_state.json
+phase_workflow_links.json
+phases.json
+
+# --- Generated content stores ---
+archive_store/
+tamper_proof_store/
+artifacts/
+
+# --- E2E debug artifacts ---
+.e2e-debug/
+.e2e-debug-webpack/
+.e2e-runs/
+test-results/
+playwright-report/
+
+# --- Lock files (advisory, transient) ---
+*.lock
+!uv.lock
+!poetry.lock
+!package-lock.json
+!frontend/package-lock.json
+
+# --- Local secrets and env files ---
 .env
-.env.*
+.env.local
+frontend/.env.local
 
-# OS/editor noise
+# --- OS and editor noise ---
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# --- Claude Code worktrees ---
 .claude/worktrees/
+
+# --- Test fixture binaries ---
+test.docx

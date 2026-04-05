@@ -23,6 +23,7 @@ interface RawApproval {
   description?: string | null;
   phase_id?: string | null;
   required?: boolean;
+  role?: string | null;
   signature_provider?: string | null;
   certificate_url?: string | null;
 }
@@ -42,6 +43,7 @@ const mapApproval = (approval: RawApproval): Approval => ({
   description: approval.description ?? undefined,
   phaseId: approval.phase_id ?? undefined,
   required: approval.required,
+  role: approval.role ?? undefined,
   signature_provider: approval.signature_provider ?? undefined,
   signature_id: approval.signature_id ?? undefined,
   certificate_url: approval.certificate_url ?? undefined,

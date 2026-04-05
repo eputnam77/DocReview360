@@ -61,7 +61,7 @@ export default function NewProjectPage() {
   const [docType, setDocType] = useState<string | undefined>(undefined);
   const [phase, setPhase] = useState<string | undefined>(undefined);
   const [workflow, setWorkflow] = useState<string | undefined>(undefined);
-  const [workflowTemplates, setWorkflowTemplates] = useState<string[]>([]);
+  const [workflowTemplates, setWorkflowTemplates] = useState<Array<{ id: string; name: string }>>([]);
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -174,16 +174,20 @@ export default function NewProjectPage() {
   useEffect(() => {
     // Load available workflow templates so users can pick one manually when
     // no default is configured for the selected doc type / phase.
-    authenticatedFetch('/workflows')
+    authenticatedFetch('/workflow-templates')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (!Array.isArray(data)) { setWorkflowTemplates([]); return; }
-        const ids: string[] = data
-          .map((d: unknown) =>
-            typeof d === "string" ? d : (d as { id?: string })?.id ?? ""
-          )
-          .filter(Boolean);
-        setWorkflowTemplates(ids);
+        const templates = data
+          .map((d: unknown) => {
+            if (typeof d === "object" && d !== null) {
+              const item = d as { id?: string; name?: string };
+              return { id: item.id ?? "", name: item.name ?? "" };
+            }
+            return { id: "", name: "" };
+          })
+          .filter((t: { id: string; name: string }) => t.id);
+        setWorkflowTemplates(templates);
       })
       .catch(() => setWorkflowTemplates([]));
   }, []);
@@ -323,7 +327,7 @@ export default function NewProjectPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {workflowTemplates.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

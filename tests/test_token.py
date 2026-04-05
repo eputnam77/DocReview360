@@ -20,10 +20,20 @@ def test_jwt_token_flow() -> None:
     assert payload["token_type"] == "bearer"
     assert payload["expires_in"] == auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     assert payload["refresh_token"]
+    set_cookie_headers = resp.headers.get_list("set-cookie")
+    csrf_token = resp.cookies.get("csrf_token")
+    assert any("access_token=" in header for header in set_cookie_headers)
+    assert csrf_token
 
     protected = client.get("/me", headers={"Authorization": f"Bearer {token}"})
     assert protected.status_code == 200
     assert protected.json()["username"] == username
+
+    client.cookies.set("access_token", token)
+    client.cookies.set("csrf_token", csrf_token)
+    cookie_protected = client.get("/me", headers={"X-CSRF-Token": csrf_token})
+    assert cookie_protected.status_code == 200
+    assert cookie_protected.json()["username"] == username
 
 
 def test_token_accepts_json_body() -> None:

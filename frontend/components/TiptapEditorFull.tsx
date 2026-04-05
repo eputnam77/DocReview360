@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { generateDiffHtml } from "../../utils/diff";
+import { generateDiffHtml } from "../utils/diff";
 import { logSaveError, isOffline } from "@/utils/saveStatus";
 import { useOfflineSync } from "@/lib/useOfflineSync";
 import { saveOfflineDraft } from "@/lib/offlineStorage";
 
-import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "../../components/ExtensionsPanel";
-import InsertMenu from "../../components/InsertMenu";
-import { toolbarButton } from "../../components/ToolbarButton";
+import ExtensionsPanel, { ExtensionItem, ExtensionStatus } from "./ExtensionsPanel";
+import InsertMenu from "./InsertMenu";
+import { toolbarButton } from "./ToolbarButton";
 
 // Core Extensions
 import Collaboration from "@tiptap/extension-collaboration";

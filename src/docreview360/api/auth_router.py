@@ -5,12 +5,13 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import secrets
 import time
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from pydantic import BaseModel
@@ -125,6 +126,21 @@ def _set_access_cookie(response: Response, token_resp: auth.Token) -> None:
         samesite="lax",
         max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+    response.set_cookie(
+        "csrf_token",
+        secrets.token_urlsafe(32),
+        httponly=False,
+        secure=True,
+        samesite="lax",
+        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+
+
+def _build_token_response(token_resp: auth.Token) -> JSONResponse:
+    """Return a JSON token payload with the matching auth cookies attached."""
+    response = JSONResponse(content=token_resp.model_dump())
+    _set_access_cookie(response, token_resp)
+    return response
 
 
 def _record_access_session(username: str, access_token: str, request: Request) -> None:
@@ -162,8 +178,8 @@ def _record_access_session(username: str, access_token: str, request: Request) -
 
 @router.post("/token", response_model=auth.Token)
 async def token(
-    request: Request, response: Response
-) -> auth.Token:
+    request: Request,
+) -> Response:
     """Return a JWT access token for valid user credentials."""
     body = await _parse_password_grant(request)
     token_limiter, _ = _get_rate_limiters()
@@ -174,14 +190,13 @@ async def token(
         password=body.password,
         otp=body.otp or "",
     )
-    _set_access_cookie(response, token_resp)
     log_event(
         "login",
         user_id=body.username,
         message=render("login", user=body.username),
     )
     _record_access_session(body.username, token_resp.access_token, request)
-    return token_resp
+    return _build_token_response(token_resp)
 
 
 @router.post("/oidc/token", response_model=auth.Token)
@@ -198,7 +213,7 @@ async def oidc_token(
 
 
 @router.post("/token/refresh", response_model=auth.Token)
-async def refresh_token(request: Request, response: Response) -> auth.Token:
+async def refresh_token(request: Request) -> Response:
     """Rotate a refresh token and return a new short-lived access token."""
     try:
         body = _RefreshGrantBody.model_validate(await request.json())
@@ -213,10 +228,9 @@ async def refresh_token(request: Request, response: Response) -> auth.Token:
             detail="refresh_token is required",
         )
     token_resp = auth.refresh_access_token(body.refresh_token)
-    _set_access_cookie(response, token_resp)
     username = auth.get_current_user(request, token=token_resp.access_token).username
     _record_access_session(username, token_resp.access_token, request)
-    return token_resp
+    return _build_token_response(token_resp)
 
 
 @router.get("/me")
@@ -528,13 +542,9 @@ async def oidc_callback(
 
     # Set httpOnly cookie and redirect to dashboard
     redirect_resp = RedirectResponse("/projects", status_code=303)
-    redirect_resp.set_cookie(
-        "access_token",
-        access_token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    _set_access_cookie(
+        redirect_resp,
+        auth.Token(access_token=access_token, token_type="bearer"),
     )
     return redirect_resp
 
@@ -588,7 +598,7 @@ async def revoke_session(
 
 
 @router.post("/piv/verify")
-async def piv_verify(request: Request, response: Response) -> auth.Token:
+async def piv_verify(request: Request) -> Response:
     """Authenticate via a CAC/PIV client certificate.
 
     The reverse proxy (nginx/Apache) must forward the client certificate in
@@ -660,15 +670,7 @@ async def piv_verify(request: Request, response: Response) -> auth.Token:
     )
     log_event("login", user_id=username, message=f"PIV/CAC login from {ip or 'unknown'}")
 
-    response.set_cookie(
-        "access_token",
-        access_token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-    return auth.Token(access_token=access_token, token_type="bearer")
+    return _build_token_response(auth.Token(access_token=access_token, token_type="bearer"))
 
 
 # ---------------------------------------------------------------------------
@@ -758,7 +760,7 @@ async def webauthn_auth_begin(request: Request) -> dict:
 
 
 @router.post("/webauthn/authenticate/complete")
-async def webauthn_auth_complete(request: Request, response: Response) -> auth.Token:
+async def webauthn_auth_complete(request: Request) -> Response:
     """Complete a WebAuthn authentication ceremony and issue a JWT."""
     try:
         from .. import webauthn_auth
@@ -817,15 +819,7 @@ async def webauthn_auth_complete(request: Request, response: Response) -> auth.T
     )
     log_event("login", user_id=username, message=f"WebAuthn login from {ip or 'unknown'}")
 
-    response.set_cookie(
-        "access_token",
-        access_token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-    return auth.Token(access_token=access_token, token_type="bearer")
+    return _build_token_response(auth.Token(access_token=access_token, token_type="bearer"))
 
 
 @router.get("/webauthn/credentials")

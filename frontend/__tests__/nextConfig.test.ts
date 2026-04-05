@@ -29,5 +29,7 @@ describe("next.config CSP connect-src", () => {
     expect(csp).toContain("https://api.example.com");
     expect(csp).toContain("http://localhost:8000");
     expect(csp).toContain("http://127.0.0.1:8000");
+    expect(csp).toContain("http://*:8000");
+    expect(csp).toContain("https://*:8000");
   });
 });

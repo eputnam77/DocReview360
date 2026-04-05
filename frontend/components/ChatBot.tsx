@@ -15,6 +15,10 @@ export default function ChatBot() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: question }),
     });
+    if (!resp.ok) {
+      setAnswer("Error: could not reach the server. Please try again.");
+      return;
+    }
     const data = await resp.json();
     setAnswer(data.result);
   }

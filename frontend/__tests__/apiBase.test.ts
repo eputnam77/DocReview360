@@ -93,6 +93,27 @@ describe('API base URL resolution', () => {
     expect(capturedUrl).toBe('https://runtime.example.com/dashboard/user');
   });
 
+  it('prefers NEXT_PUBLIC_API_BASE over stale localStorage runtime base', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE', CUSTOM_BASE);
+    window.localStorage.setItem('docreview360_api_base', 'http://localhost:8001');
+
+    let capturedUrl: string | undefined;
+    vi.stubGlobal('fetch', (url: string) => {
+      capturedUrl = url;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+        headers: new Headers(),
+      } as Response);
+    });
+
+    const { authenticatedFetch } = await import('../lib/api');
+    await authenticatedFetch('/projects');
+
+    expect(capturedUrl).toBe(`${CUSTOM_BASE}/projects`);
+  });
+
   it('authenticatedFetch does not modify already-absolute URLs', async () => {
     vi.stubEnv('NEXT_PUBLIC_API_BASE', CUSTOM_BASE);
 

@@ -4,11 +4,12 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUserStore } from "@/state/user";
 import LoginPage from "@/pages/login";
-import { authenticatedFetch } from "@/lib/api";
+import { authenticatedFetch, getStoredAccessToken } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({
   API: "http://test",
   authenticatedFetch: vi.fn(),
+  getStoredAccessToken: vi.fn(() => null),
   setStoredAccessToken: vi.fn(),
   clearStoredAccessToken: vi.fn(),
 }));
@@ -31,17 +32,19 @@ vi.mock("next/router", () => ({
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 const mockAuthenticatedFetch = vi.mocked(authenticatedFetch);
+const mockGetStoredAccessToken = vi.mocked(getStoredAccessToken);
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const originalRefresh = useUserStore.getState().refresh;
 
 const clearSessionCookies = () => {
-  document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+  document.cookie = "csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
 };
 
 describe("user store", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetStoredAccessToken.mockReturnValue(null);
     clearSessionCookies();
     useUserStore.setState({
       isAdmin: false,
@@ -65,7 +68,7 @@ describe("user store", () => {
     });
   });
 
-  it("skips the session fetch when no access token is present", async () => {
+  it("skips the session fetch when no client-visible session hint is present", async () => {
     await useUserStore.getState().initialize();
 
     expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
@@ -77,7 +80,7 @@ describe("user store", () => {
   });
 
   it("returns early when /users/me responds with 401", async () => {
-    document.cookie = "access_token=test; path=/";
+    document.cookie = "csrf_token=test; path=/";
 
     mockAuthenticatedFetch.mockResolvedValueOnce(
       new Response(null, { status: 401 }),
@@ -95,7 +98,7 @@ describe("user store", () => {
   });
 
   it("hydrates the user and profile after a successful session fetch", async () => {
-    document.cookie = "access_token=test; path=/";
+    document.cookie = "csrf_token=test; path=/";
 
     const sessionResponse = {
       ok: true,

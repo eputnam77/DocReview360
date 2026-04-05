@@ -1145,6 +1145,7 @@ _LOCAL_CORS_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
+_LOCAL_CORS_ORIGIN_REGEX = r"^https?://[^/]+:(?:3000|5173|8000)$"
 
 
 def _resolve_cors_origins(allowed_origins: str | None, environment: str | None = None) -> list[str]:
@@ -1167,12 +1168,30 @@ def _resolve_cors_origins(allowed_origins: str | None, environment: str | None =
     )
 
 
+def _resolve_cors_origin_regex(allowed_origins: str | None, environment: str | None = None) -> str | None:
+    """Return a safe development regex for same-host frontend origins."""
+
+    if allowed_origins:
+        return None
+
+    normalized_env = (environment or os.getenv("DOCREVIEW360_ENV", "")).strip().lower()
+    if normalized_env == "prod":
+        raise RuntimeError("DOCREVIEW360_ENV must be set to 'production' for production mode.")
+    if normalized_env in _SAFE_CORS_ENVS:
+        return _LOCAL_CORS_ORIGIN_REGEX
+
+    raise RuntimeError(
+        "DOCREVIEW360_ALLOW_ORIGINS must be set when DOCREVIEW360_ENV is production-like."
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID", "X-Correlation-ID"],
     allow_origins=_resolve_cors_origins(os.getenv("DOCREVIEW360_ALLOW_ORIGINS")),
+    allow_origin_regex=_resolve_cors_origin_regex(os.getenv("DOCREVIEW360_ALLOW_ORIGINS")),
 )
 
 # Enable compression for large responses as recommended by the
@@ -1201,10 +1220,17 @@ class SecurityHeadersMiddleware:
 
         async def send_with_headers(message: Any) -> None:
             if message["type"] == "http.response.start":
-                headers = dict(message.get("headers", []))
-                for key, value in self._HEADERS.items():
-                    headers[key.lower().encode()] = value.encode()
-                message = {**message, "headers": list(headers.items())}
+                managed = {key.lower().encode() for key in self._HEADERS}
+                headers = [
+                    (key, value)
+                    for key, value in message.get("headers", [])
+                    if key.lower() not in managed
+                ]
+                headers.extend(
+                    (key.lower().encode(), value.encode())
+                    for key, value in self._HEADERS.items()
+                )
+                message = {**message, "headers": headers}
             await send(message)
 
         await self.app(scope, receive, send_with_headers)

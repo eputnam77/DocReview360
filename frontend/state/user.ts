@@ -1,16 +1,19 @@
 import { create } from "zustand";
-import { authenticatedFetch, clearStoredAccessToken } from "@/lib/api";
+import { authenticatedFetch, clearStoredAccessToken, getStoredAccessToken } from "@/lib/api";
 
-const SESSION_COOKIE_NAMES = ["access_token", "session", "sessionid"];
+const SESSION_HINT_COOKIE_NAMES = ["csrf_token"];
 
-const hasSessionCookie = () => {
+const hasClientVisibleSessionHint = () => {
+  if (getStoredAccessToken()) {
+    return true;
+  }
   if (typeof document === "undefined" || !document.cookie) {
     return false;
   }
 
   const cookies = document.cookie.split(";").map((cookie) => cookie.trim());
   return cookies.some((cookie) =>
-    SESSION_COOKIE_NAMES.some((name) => cookie.startsWith(`${name}=`)),
+    SESSION_HINT_COOKIE_NAMES.some((name) => cookie.startsWith(`${name}=`)),
   );
 };
 
@@ -49,7 +52,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       return;
     }
 
-    if (!force && !hasSessionCookie()) {
+    if (!force && !hasClientVisibleSessionHint()) {
       set({
         isAdmin: false,
         isAuditor: false,

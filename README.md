@@ -58,18 +58,49 @@ The fastest path to a running instance. Requires Python 3.11–3.12 (3.13 not su
 
 ```bash
 # 1. Clone and set up the Python environment
-git clone https://github.com/eputnam77/DocReview360.git && cd DocReview360
-uv venv --python 3.12 && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+git clone https://github.com/eputnam77/DocReview360.git
+cd DocReview360
+uv venv --python 3.12
+
+# macOS/Linux
+source .venv/bin/activate
+
 uv pip install -e ".[dev,test,security]"
 pre-commit install
 
 # 2. Start the backend
-DOCREVIEW360_ENV=dev uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+$env:DOCREVIEW360_ENV="dev" 
+python -m uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000 
+
+DOCREVIEW360_ENV=dev python -m uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
 
 # 3. In a second terminal, start the frontend
-cd frontend && npm install --legacy-peer-deps
-echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
+cd frontend
+npm install --legacy-peer-deps
+printf "NEXT_PUBLIC_API_BASE=http://localhost:8000\n" > .env.local
 npm run dev   # http://localhost:3000
+```
+
+```powershell
+# Windows PowerShell equivalent
+git clone https://github.com/eputnam77/DocReview360.git
+cd DocReview360
+uv venv --python 3.12
+.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev,test,security]"
+pre-commit install
+
+$env:DOCREVIEW360_ENV="dev"
+python -m uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+
+# In a second PowerShell terminal
+cd frontend
+npm install --legacy-peer-deps
+'NEXT_PUBLIC_API_BASE=http://localhost:8000' | Set-Content -LiteralPath .env.local
+npm run dev   # http://localhost:3000
+
+# Optional Windows helper
+pwsh -File scripts/windows/start-backend.ps1
 ```
 
 Log in with `alice` / `password` (admin) or `bob` / `password` (auditor).
@@ -308,12 +339,18 @@ docreview360 migrate import backup.gz
 # Ensure you're in the project root with the virtual environment activated.
 
 # macOS/Linux
-DOCREVIEW360_ENV=dev uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+DOCREVIEW360_ENV=dev python -m uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
 # Binding to 0.0.0.0 lets Playwright and other remote browsers reach the dev server.
 ```
 
 ```powershell
-# Windows PowerShell (auto-loads .env when present)
+# Windows PowerShell
+$env:DOCREVIEW360_ENV="dev"
+python -m uvicorn docreview360.api:app --reload --host 0.0.0.0 --port 8000
+```
+
+```powershell
+# Windows PowerShell helper (auto-loads .env when present)
 pwsh -File scripts/windows/start-backend.ps1
 ```
 
@@ -326,7 +363,8 @@ pwsh -File scripts/windows/start-backend.ps1 `
 ```
 
 The script loads values from `.env` first, then applies development fallbacks for any missing variables:
-`DOCREVIEW360_SECRET_KEY=docreview360-dev-secret`, `DOCREVIEW360_OIDC_SECRET_KEY=docreview360-oidc-dev-secret`, and a 30-minute token expiry.
+`DOCREVIEW360_ENV=dev`, `DOCREVIEW360_SECRET_KEY=docreview360-dev-secret`,
+`DOCREVIEW360_OIDC_SECRET_KEY=docreview360-oidc-dev-secret`, and a 30-minute token expiry.
 
 - **API docs:** http://localhost:8000/docs
 - **Health check:** http://localhost:8000/health

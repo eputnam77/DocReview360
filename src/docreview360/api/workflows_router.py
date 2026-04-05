@@ -28,6 +28,7 @@ from .. import auth
 from ..approvals import (
     ApprovalModel,
     SignedApprovalImmutableError,
+    assign_approval_reviewer,
     create_approval,
     delete_approval,
     get_approval,
@@ -185,6 +186,12 @@ class ApprovalUpdate(BaseModel):
         if v not in _APPROVAL_STATES:
             raise ValueError(f"state must be one of {sorted(_APPROVAL_STATES)}")
         return v
+
+
+class ApprovalAssign(BaseModel):
+    """Input model for assigning a user to an existing approval role."""
+
+    reviewer: str = Field(min_length=1, max_length=150)
 
 
 class SignInitialsBody(BaseModel):
@@ -935,6 +942,24 @@ async def delete_approval_endpoint(
     """Delete an approval by id."""
     try:
         return delete_approval(approval_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch("/approvals/{approval_id}/assign", response_model=ApprovalModel)
+@log_call
+async def assign_approval_endpoint(
+    approval_id: str,
+    body: ApprovalAssign = Body(...),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> ApprovalModel:
+    """Assign a specific user to an existing approval role.
+
+    Instead of creating a new approval row, this updates the reviewer field
+    on the existing approval so the workflow role is preserved.
+    """
+    try:
+        return assign_approval_reviewer(approval_id, body.reviewer)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
