@@ -4,11 +4,12 @@ DocReview360 is a document review app with a FastAPI backend, a React frontend, 
 
 ## Alpha release
 
-The current PyPI release is an alpha package. It includes the Python backend and the `docreview360` CLI. It does not include the Next.js frontend.
+The current PyPI release is an alpha package. It includes the Python backend, the `docreview360` CLI, and a bundled copy of the Next.js frontend source for alpha testing.
 
 ```bash
 python -m pip install --pre docreview360
 python -m pip install --pre "docreview360[fedstylevalidator]"
+docreview360 frontend extract ./docreview360-frontend
 ```
 
 Use the `fedstylevalidator` extra when you want the published Federal Style Validator package from PyPI.
@@ -63,7 +64,7 @@ Install from source for full-stack development:
 uv pip install -e ".[dev,test,security]"
 ```
 
-Install the alpha backend package from PyPI:
+Install the alpha package from PyPI:
 
 ```bash
 python -m pip install --pre docreview360

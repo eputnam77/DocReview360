@@ -88,9 +88,7 @@ docreview360 = "docreview360.cli:cli"
 
 # FedStyleValidator (Federal Style Validator) is optional; the core app
 # falls back to internal heuristics when the integration is unavailable.
-# The PyPI distribution name is ``govdocverify`` even though the import path
-# remains ``fedstylevalidator``.
-fedstylevalidator = ["govdocverify>=0.1.0"]
+fedstylevalidator = ["fedstylevalidator>=0.1.0"]
 
 # tokenizer support for OpenAI / tiktoken
 tokenizer = ["tiktoken>=0.5.1"]
@@ -201,11 +199,12 @@ dev = [
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────
-# NOTE: Frontend assets (the Next.js application under frontend/) are intentionally
-# excluded from the PyPI distribution. The sdist and wheel contain only the Python
-# backend package (src/docreview360). Operators who need the frontend must build it
-# separately: `cd frontend && npm install --legacy-peer-deps && npm run build`.
-# See MANIFEST.in for the corresponding `prune frontend` directive.
+# NOTE: The PyPI wheel bundles a curated copy of the Next.js frontend source under
+# ``docreview360/frontend_src`` so alpha users can extract and test the UI from an
+# installed package. The source distribution also includes the repository-level
+# ``frontend/`` tree with generated artefacts pruned out. Use
+# ``docreview360 frontend extract <path>`` after installation when you need a local
+# working copy to run ``npm install`` and the frontend test/build commands.
 [tool.setuptools]
 
 [tool.setuptools.package-dir]

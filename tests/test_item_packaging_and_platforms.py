@@ -30,9 +30,14 @@ class TestManifestIn:
         text = MANIFEST.read_text(encoding="utf-8")
         assert "prune .dev" in text
 
-    def test_prune_frontend(self) -> None:
+    def test_grafts_frontend(self) -> None:
         text = MANIFEST.read_text(encoding="utf-8")
-        assert "prune frontend" in text
+        assert "graft frontend" in text
+
+    def test_prunes_frontend_generated_dirs(self) -> None:
+        text = MANIFEST.read_text(encoding="utf-8")
+        assert "prune frontend/node_modules" in text
+        assert "prune frontend/.next" in text
 
     def test_prune_scripts(self) -> None:
         text = MANIFEST.read_text(encoding="utf-8")
@@ -77,6 +82,10 @@ class TestPyprojectPackageData:
     def test_explicit_docreview360_data(self) -> None:
         text = self._text()
         assert '"docreview360"' in text
+
+    def test_frontend_bundle_note_present(self) -> None:
+        text = self._text()
+        assert "docreview360 frontend extract" in text
 
     def test_tests_excluded_from_packages(self) -> None:
         text = self._text()

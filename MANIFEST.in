@@ -4,18 +4,24 @@
 include README.md
 include LICENSE
 include pyproject.toml
+include setup.py
 
 # Include runtime source tree
 recursive-include src/docreview360 *.py *.json *.html *.sql *.tf *.onnx
 
+# Include the frontend source tree for source distributions so pip can rebuild a
+# wheel with the bundled alpha UI without checking out the repository.
+graft frontend
+
 # Explicitly exclude things that must NOT ship in sdist
-# NOTE: The frontend/ directory (Next.js application) is NOT included in the
-# PyPI package. It must be built and deployed separately. See pyproject.toml
-# [tool.setuptools] note and docs/release_packaging.md for details.
+# NOTE: The source distribution includes the frontend source tree, but generated
+# build artefacts and local runtime state are pruned below.
 prune src/docreview360/scripts
 prune tests
 prune .dev
-prune frontend
+prune frontend/node_modules
+prune frontend/.next
+prune frontend/.tmp
 prune scripts
 prune docs
 prune artifacts

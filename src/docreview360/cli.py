@@ -11,6 +11,7 @@ import yaml
 from . import ml
 from .config import CONFIG_FILE, Config
 from .database import default_url
+from .frontend_assets import extract_frontend_source, frontend_source_root
 from .settings_manager import SETTINGS_FILE, load_settings
 
 
@@ -153,6 +154,37 @@ def init(
 def migrate() -> None:
     """Export or import instance data for migration."""
     return None
+
+
+@cli.group()
+def frontend() -> None:
+    """Inspect or extract the bundled frontend source tree."""
+
+    return None
+
+
+@frontend.command("path")
+def frontend_path() -> None:
+    """Print the directory containing the bundled frontend source."""
+
+    click.echo(str(frontend_source_root()))
+
+
+@frontend.command("extract")
+@click.argument("destination", type=click.Path(file_okay=False, path_type=Path))
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Allow extracting into a non-empty destination directory.",
+)
+def frontend_extract(destination: Path, force: bool) -> None:
+    """Copy the bundled frontend source tree into ``DESTINATION``."""
+
+    try:
+        target = extract_frontend_source(destination, force=force)
+    except (FileExistsError, FileNotFoundError, NotADirectoryError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Extracted frontend to {target}")
 
 
 @cli.group(name="ml")

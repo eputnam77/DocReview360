@@ -63,22 +63,24 @@ Sigstore users can substitute an equivalent tag-signing + verification process, 
 
 ## PyPI Wheel and Sdist
 
-### Frontend assets are NOT included in the PyPI package
+### Frontend source is included in the PyPI package
 
-The Next.js application under `frontend/` is intentionally excluded from both the
-wheel and the sdist. Operators who need the frontend must build and deploy it
-separately:
+The PyPI wheel bundles a curated copy of the Next.js frontend source under
+`docreview360/frontend_src`. The source distribution also includes the repository
+`frontend/` tree with generated artefacts removed. Alpha users can extract the
+bundled source and run the usual Node workflow locally:
 
 ```bash
-cd frontend
+docreview360 frontend extract ./docreview360-frontend
+cd ./docreview360-frontend
 npm install --legacy-peer-deps
 npm run build
-# Serve the static output or deploy to your CDN / container.
 ```
 
 ### What IS included in the wheel and sdist
 
-The PyPI distribution contains only the Python backend package:
+The PyPI distribution contains the Python backend package plus the frontend source
+bundle used for alpha testing:
 
 | Content | Notes |
 |---|---|
@@ -89,12 +91,13 @@ The PyPI distribution contains only the Python backend package:
 | `src/docreview360/**/*.tf` | IaC template assets packaged with the backend |
 | `src/docreview360/py.typed` | PEP 561 type marker |
 | `src/docreview360/ml/assets/*.onnx` | Packaged ONNX inference models |
+| `docreview360/frontend_src/**` | Bundled frontend source exposed via `docreview360 frontend extract` |
 | `README.md`, `LICENSE`, `pyproject.toml` | Top-level release metadata (sdist only) |
 
-**Excluded from both artifacts:**
+**Excluded generated/runtime artefacts:**
 
-- `frontend/` — Next.js application (build separately)
 - `tests/`, `docs/`, `scripts/`, `.dev/`, `.claude/` — dev/CI-only
+- `frontend/node_modules/`, `frontend/.next/`, `frontend/.tmp/` — generated frontend artefacts
 - `*.db`, `*.sqlite` — runtime state
 - `*.log`, `*.tmp` — transient files
 - `*.lock`, `.env`, `.env.*` — environment-specific secrets / lock files
