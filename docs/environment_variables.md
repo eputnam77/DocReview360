@@ -30,6 +30,7 @@ If you use the frontend, set `NEXT_PUBLIC_API_BASE` in `frontend/.env.local`.
 | `DOCREVIEW360_SECRET_KEY` | generated dev secret | JWT signing key for API tokens. |
 | `DOCREVIEW360_ALGORITHM` | `HS256` | JWT signing algorithm. |
 | `DOCREVIEW360_ACCESS_EXPIRE_MINUTES` | `30` | Access token TTL in minutes. |
+| `DOCREVIEW360_REFRESH_EXPIRE_DAYS` | `30` | Refresh token TTL in days. |
 | `DOCREVIEW360_TOKEN_ISSUER` | `docreview360.local` | JWT issuer for API tokens. |
 | `DOCREVIEW360_TOKEN_AUDIENCE` | `docreview360-users` | JWT audience for API tokens. |
 | `DOCREVIEW360_OIDC_SECRET_KEY` | generated dev secret | JWT signing key for OIDC tokens. |

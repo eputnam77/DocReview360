@@ -8,7 +8,7 @@ DocReview360 core is MIT-licensed. Notes on non-MIT dependencies:
 - **pyphen** (GPLv2+/LGPLv2+/MPL) — transitive via `textstat`; LGPL dynamically linked, not modified
 - **cmudict** (GPLv3+) — transitive via `textstat`; used as data resource only
 - **semgrep** (LGPLv2) — dev/security tooling only, not a runtime dependency
-- **govdocverify / FedStyleValidator** (GPL-3.0) — optional extra (`[fedstylevalidator]`); same author; not installed by default
+- **Federal Style Validator / fedstylevalidator** (GPL-3.0) — optional extra (`[fedstylevalidator]`); same author; not installed by default
 
 ## SPDX
 All source files in `src/docreview360/` carry `# SPDX-License-Identifier: MIT`.
@@ -109,7 +109,7 @@ All source files in `src/docreview360/` carry `# SPDX-License-Identifier: MIT`.
 | psycopg                                  | 3.2.9       | GNU Lesser General Public License v3 (LGPLv3)                                                                                                  |
 | psycopg-binary                           | 3.2.9       | GNU Lesser General Public License v3 (LGPLv3)                                                                                                  |
 | docreview360                             | 0.1.2       | MIT                                                                                                                                            |
-| govdocverify                             | 0.1.0       | GPL-3.0-only                                                                                                                                   |
+| fedstylevalidator                        | 0.1.0       | GPL-3.0-only                                                                                                                                   |
 | SQLAlchemy                               | 2.0.41      | MIT                                                                                                                                            |
 | anyio                                    | 4.10.0      | MIT                                                                                                                                            |
 | attrs                                    | 25.3.0      | MIT                                                                                                                                            |

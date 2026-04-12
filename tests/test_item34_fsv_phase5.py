@@ -71,14 +71,14 @@ class TestFsvOptionalDep:
         text = PYPROJECT.read_text(encoding="utf-8")
         assert "fedstylevalidator" in text
 
-    def test_govdocverify_in_fedstylevalidator_extra(self) -> None:
+    def test_fedstylevalidator_package_in_fedstylevalidator_extra(self) -> None:
         text = PYPROJECT.read_text(encoding="utf-8")
-        # The extra must reference govdocverify or FedStyleValidator
+        # The extra must reference the fedstylevalidator package.
         assert re.search(
-            r'fedstylevalidator\s*=\s*\[.*(?:govdocverify|FedStyleValidator).*\]',
+            r'fedstylevalidator\s*=\s*\[.*fedstylevalidator.*\]',
             text,
             re.DOTALL,
-        ), "fedstylevalidator extra must reference govdocverify or FedStyleValidator"
+        ), "fedstylevalidator extra must reference fedstylevalidator"
 
     def test_fedstylevalidator_in_mypy_ignores(self) -> None:
         """fedstylevalidator is an optional dep — mypy must not strict-check it."""
@@ -97,7 +97,7 @@ class TestFsvOptionalDep:
 class TestFsvVersionPolicy:
     def test_pyproject_fsv_dep_has_version_specifier(self) -> None:
         text = PYPROJECT.read_text(encoding="utf-8")
-        # Should have >= or == version specifier for govdocverify
+        # Should have >= or == version specifier for fedstylevalidator
         # or reference a git URL with a tag
         fsv_line_match = re.search(
             r'fedstylevalidator\s*=\s*\[([^\]]+)\]',

@@ -30,7 +30,7 @@ CORE_PLUGIN_DATA: dict[str, Any] = {
         "version": "1.0.0",
         "author": "DocReview360",
         "tags": ["style", "compliance", "readability", "regulatory", "federal"],
-        "pypi_name": "govdocverify",
+        "pypi_name": "fedstylevalidator",
         "is_core": True,
         "is_builtin": True,
     },

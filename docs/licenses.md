@@ -115,7 +115,7 @@ Notable optional/dev-only exceptions:
 - **psycopg** (LGPL-3.0) — optional extra (`[postgres]`); not required for MIT-clean installs.
 - **semgrep** (LGPL-2.1) — dev/security tooling only; not a runtime dependency.
 - **hypothesis** (MPL-2.0) — test tooling only; not a runtime dependency.
-- **govdocverify / FedStyleValidator** (GPL-3.0, optional `[fedstylevalidator]` extra) — same
+- **Federal Style Validator / fedstylevalidator** (GPL-3.0, optional `[fedstylevalidator]` extra) — same
   author; not installed by default; evaluate license terms when enabling this extra.
 
 The MIT License allows embedding DocReview360 in proprietary products without
