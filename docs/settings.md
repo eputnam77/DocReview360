@@ -37,6 +37,8 @@ and flags values that **operators must override** before going to production.
 The following environment variables take precedence over `settings.yaml` values.
 Set them in your deployment platform rather than storing credentials in the file.
 
+For the full reference, see [Environment Variables](environment_variables.md).
+
 | Variable | Purpose |
 |----------|---------|
 | `DOCREVIEW360_ENV` | Set to `production` to enforce secret validation and disable demo seeding. |

@@ -83,11 +83,10 @@ The PyPI distribution contains only the Python backend package:
 | Content | Notes |
 |---|---|
 | `src/docreview360/**/*.py` | All Python source modules |
-| `src/docreview360/**/*.yaml` / `*.yml` | Configuration schemas and fixtures |
-| `src/docreview360/**/*.json` | Feature-flag and quality-term data assets |
+| `src/docreview360/**/*.json` | Runtime JSON assets such as quality terms and watchlists |
 | `src/docreview360/**/*.html` | Jinja2 server-side templates |
 | `src/docreview360/**/*.sql` | Schema migration scripts |
-| `src/docreview360/**/*.md` | Embedded style guide text |
+| `src/docreview360/**/*.tf` | IaC template assets packaged with the backend |
 | `src/docreview360/py.typed` | PEP 561 type marker |
 | `src/docreview360/ml/assets/*.onnx` | Packaged ONNX inference models |
 | `README.md`, `LICENSE`, `pyproject.toml` | Top-level release metadata (sdist only) |
@@ -102,6 +101,25 @@ The PyPI distribution contains only the Python backend package:
 - `node_modules/`, `__pycache__/`, `*.pyc` — generated artefacts
 
 ### How to build and inspect artifacts
+
+### Alpha release flow
+
+Use a PEP 440 pre-release version for alpha uploads, for example `0.1.3a0`.
+Users installing from PyPI will typically need `--pre` until the first stable
+release is published.
+
+```bash
+python -m pip install ".[release]"
+python -m build
+python -m twine check dist/*.whl dist/*.tar.gz
+python -m twine upload --repository testpypi dist/*.whl dist/*.tar.gz
+```
+
+After validating the TestPyPI install path, upload the same artifacts to PyPI:
+
+```bash
+python -m twine upload dist/*.whl dist/*.tar.gz
+```
 
 **Build:**
 

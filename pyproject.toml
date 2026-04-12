@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name            = "docreview360"
-version         = "0.1.2"
+version         = "0.1.3a0"
 description     = "DocReview360 simplifies document workflows with approvals and templates."
 readme          = "README.md"
 requires-python = ">=3.11,<3.13"
-license         = {text = "MIT"}
+license         = "MIT"
 keywords        = [
   "document-review",
   "workflow",
@@ -78,7 +78,7 @@ Changelog     = "https://github.com/eputnam77/DocReview360/blob/main/CHANGELOG.m
 
 [[project.authors]]
 name  = "Eric Putnam"
-email = "eputnam77@users.noreply.github.com"
+email = "docreview360@putnamgroup.org"
 
 [project.scripts]
 docreview360 = "docreview360.cli:cli"
@@ -88,7 +88,9 @@ docreview360 = "docreview360.cli:cli"
 
 # FedStyleValidator (Federal Style Validator) is optional; the core app
 # falls back to internal heuristics when the integration is unavailable.
-fedstylevalidator = ["FedStyleValidator @ git+https://github.com/eputnam77/FedStyleValidator.git"]
+# The PyPI distribution name is ``govdocverify`` even though the import path
+# remains ``fedstylevalidator``.
+fedstylevalidator = ["govdocverify>=0.1.0"]
 
 # tokenizer support for OpenAI / tiktoken
 tokenizer = ["tiktoken>=0.5.1"]
@@ -175,6 +177,9 @@ security = [
 # developer convenience
 qa = ["pre-commit>=3.7"]
 
+# release packaging and publish validation
+release = ["build>=1.2", "twine>=5"]
+
 dev = [
   "ruff>=0.5",
   "mypy>=1.10",
@@ -208,15 +213,13 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-exclude = ["tests*", ".dev*"]
+exclude = ["tests*", ".dev*", "docreview360.scripts*"]
 
 [tool.setuptools.package-data]
-"docreview360.styles"        = ["*.md"]
 "docreview360.templates"     = ["*.html"]
 "docreview360.iac_templates" = ["*.tf"]
-"docreview360"               = ["py.typed", "*.yaml", "*.yml", "*.json", "*.html", "*.sql", "*.md"]
+"docreview360"               = ["py.typed", "*.json"]
 "docreview360.migrations"    = ["*.sql"]
-"docreview360.ml"            = ["*.json", "*.onnx"]
 "docreview360.ml.assets"     = ["*.onnx", "*.pt", "*.pkl"]
 
 # ───────────────────────────── code style tools ───────────────────────────────

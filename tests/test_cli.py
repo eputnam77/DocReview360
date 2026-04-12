@@ -1,5 +1,7 @@
 import csv
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 
 import docreview360.cli as cli_module
@@ -221,6 +223,56 @@ def test_ml_train_reports_missing_onnx_dependency(monkeypatch: pytest.MonkeyPatc
 
         assert result.exit_code == 1
         assert "onnx is not installed" in result.output
+
+
+def test_help_does_not_emit_auth_env_warnings() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "docreview360.cli", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    combined = result.stdout + result.stderr
+    assert result.returncode == 0
+    assert "Usage:" in combined
+    assert "DOCREVIEW360_SECRET_KEY environment variable not set" not in combined
+
+
+def test_verify_signatures_uses_packaged_service_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from docreview360.services import signature_verifier
+
+    calls: dict[str, object] = {}
+
+    class _FakeTask:
+        def run(self, **kwargs: object) -> int:
+            calls.update(kwargs)
+            return 3
+
+    monkeypatch.setattr(signature_verifier, "verify_document_signatures", _FakeTask())
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "verify-signatures",
+            "--scope",
+            "approved",
+            "--document-id",
+            "doc-1",
+            "--parallel",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == {
+        "scope": "approved",
+        "document_ids": ["doc-1"],
+        "parallel": True,
+    }
+    assert "Processed 3 approvals" in result.output
 
 
 def test_migrate_roundtrip(tmp_path: Path) -> None:

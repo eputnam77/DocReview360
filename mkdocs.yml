@@ -8,6 +8,7 @@ nav:
   - Usage Scenarios: scenarios.md
   - Developer Guide: developer.md
   - Deployment: deployment.md
+  - Environment Variables: environment_variables.md
   - Settings Reference: settings.md
   - Security:
       - Key Rotation: security/key-rotation.md
@@ -53,6 +54,7 @@ nav:
       - Tiptap Content: tiptap-supported-content.md
       - API Versioning: api_versioning.md
   - Testing:
+      - Testing and Quality: testing_and_quality.md
       - E2E Guide: e2e.md
       - Test Determinism: test_determinism.md
       - Manual Admin Scenario: manual-testing/admin-project-scenario.md

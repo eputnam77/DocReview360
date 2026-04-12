@@ -6,12 +6,13 @@ include LICENSE
 include pyproject.toml
 
 # Include runtime source tree
-recursive-include src/docreview360 *.py *.yaml *.yml *.json *.html *.sql *.txt *.md *.tf
+recursive-include src/docreview360 *.py *.json *.html *.sql *.tf *.onnx
 
 # Explicitly exclude things that must NOT ship in sdist
 # NOTE: The frontend/ directory (Next.js application) is NOT included in the
 # PyPI package. It must be built and deployed separately. See pyproject.toml
 # [tool.setuptools] note and docs/release_packaging.md for details.
+prune src/docreview360/scripts
 prune tests
 prune .dev
 prune frontend
