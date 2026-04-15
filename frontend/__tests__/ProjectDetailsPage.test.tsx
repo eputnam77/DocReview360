@@ -1,4 +1,4 @@
-import React from "react";
+import React, { act } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -42,9 +42,78 @@ const { stableProject, stableWorkflow, stableApprovals, stableReviewSummary } = 
       state: "pending" as const,
       dueAt: "2024-01-02",
       phaseId: "Review",
+      required: true,
+      role: "Approver",
+      description: "Review Approval",
     },
   ],
-  stableReviewSummary: { count: 0 },
+  stableReviewSummary: { count: 0, all_complete: false },
+}));
+
+const { defaultLifecycleRecord, signFailure, authenticatedFetchMock } = vi.hoisted(() => {
+  const defaultLifecycleRecord = {
+    project_id: "proj-1",
+    status: "draft",
+    updated_at: "2024-01-01T00:00:00Z",
+  };
+  const signFailure = {
+    enabled: false,
+    payload: { id: "sig-1", url: "/sandbox/sig-1" },
+  };
+  const authenticatedFetchMock = vi.fn(async (url: string) => {
+    if (url === "/users") {
+      return { ok: true, json: async () => ["alice", "bob", "carol"] };
+    }
+    if (url === "/projects/proj-1/lifecycle") {
+      return { ok: true, json: async () => ({ ...defaultLifecycleRecord }) };
+    }
+    if (url === "/projects/proj-1/assignments" || url === "/projects/proj-1/assignments/me") {
+      return { ok: true, json: async () => [] };
+    }
+    if (url === "/projects/proj-1/feedback/progress") {
+      return {
+        ok: true,
+        json: async () => ({ total: 0, open: 0, accepted: 0, rejected: 0, resolved: 0, addressed: 0, by_type: {} }),
+      };
+    }
+    if (url === "/projects/proj-1/feedback") {
+      return { ok: true, json: async () => ({ items: [], total: 0, skip: 0, limit: 20 }) };
+    }
+    if (url === "/projects/proj-1/review-summary") {
+      return { ok: true, json: async () => ({ ...reviewSummaryState }) };
+    }
+    if (url === "/api/audit?entity_id=proj-1") {
+      return { ok: true, json: async () => [] };
+    }
+    if (url === "/approvals/approval-1/sign") {
+      if (signFailure.enabled) {
+        return { ok: false, json: async () => ({ ...signFailure.payload }) };
+      }
+      return { ok: true, json: async () => ({ id: "approval-1", state: "approved", signedAt: "2024-01-02T10:00:00Z" }) };
+    }
+    return { ok: true, json: async () => [] };
+  });
+  return { defaultLifecycleRecord, signFailure, authenticatedFetchMock };
+});
+
+const { reviewSummaryState } = vi.hoisted(() => ({
+  reviewSummaryState: {
+    total_active: 0,
+    invited: 0,
+    reviewing: 0,
+    feedback_submitted: 0,
+    concurred: 0,
+    non_concurred: 0,
+    signed: 0,
+    declined: 0,
+    all_complete: false,
+    all_signed: false,
+    has_non_concurrence: false,
+    lifecycle_step: "draft",
+    feedback_total: 0,
+    feedback_open: 0,
+    feedback_addressed: 0,
+  },
 }));
 
 const { useUserStoreMock, defaultUserState } = vi.hoisted(() => {
@@ -70,7 +139,9 @@ vi.mock("@/state/user", () => ({ useUserStore: useUserStoreMock }));
 vi.mock("next/router", () => ({
   useRouter: () => ({
     query: { id: "proj-1" },
+    isReady: true,
     push: routerPushMock,
+    replace: vi.fn(),
   }),
 }));
 
@@ -229,12 +300,7 @@ vi.mock("@headlessui/react", () => {
 
 vi.mock("@/lib/api", () => ({
   API: "http://example.com",
-  authenticatedFetch: vi.fn(() =>
-    Promise.resolve({
-      ok: true,
-      json: () => [],
-    }),
-  ),
+  authenticatedFetch: authenticatedFetchMock,
 }));
 
 vi.mock("@/lib/useProject", () => ({
@@ -256,7 +322,7 @@ vi.mock("@/lib/useApprovals", () => ({
 }));
 
 vi.mock("@/lib/useReviewSummary", () => ({
-  useReviewSummary: () => ({ data: stableReviewSummary, isLoading: false }),
+  useReviewSummary: () => ({ data: stableReviewSummary, isLoading: false, refetch: vi.fn() }),
 }));
 
 vi.mock("@/lib/useProjectReviewers", () => ({
@@ -278,28 +344,110 @@ vi.mock("react-hot-toast", () => {
   return { toast };
 });
 
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ProjectDetailsPage />
+    </QueryClientProvider>,
+  );
+}
+
+async function openApprovalsSection() {
+  fireEvent.click(screen.getByTestId("approvals-section-toggle"));
+  await waitFor(() => {
+    expect(approvalTableSpy).toHaveBeenCalled();
+  });
+}
+
 describe("ProjectDetailsPage", () => {
   beforeEach(() => {
     approvalTableSpy.mockClear();
+    authenticatedFetchMock.mockClear();
+    routerPushMock.mockReset();
+    signFailure.enabled = false;
+    signFailure.payload = { id: "sig-1", url: "/sandbox/sig-1" };
+    stableReviewSummary.count = 0;
+    stableReviewSummary.all_complete = false;
+    defaultLifecycleRecord.status = "draft";
+    reviewSummaryState.total_active = 0;
+    reviewSummaryState.invited = 0;
+    reviewSummaryState.reviewing = 0;
+    reviewSummaryState.feedback_submitted = 0;
+    reviewSummaryState.concurred = 0;
+    reviewSummaryState.non_concurred = 0;
+    reviewSummaryState.signed = 0;
+    reviewSummaryState.declined = 0;
+    reviewSummaryState.all_complete = false;
+    reviewSummaryState.all_signed = false;
+    reviewSummaryState.has_non_concurrence = false;
+    reviewSummaryState.lifecycle_step = "draft";
+    reviewSummaryState.feedback_total = 0;
+    reviewSummaryState.feedback_open = 0;
+    reviewSummaryState.feedback_addressed = 0;
     useUserStore.setState({ ...defaultUserState });
   });
 
   it("renders without crashing and forwards currentUser to ApprovalTable", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const { container } = render(
-      <QueryClientProvider client={queryClient}>
-        <ProjectDetailsPage />
-      </QueryClientProvider>,
-    );
+    const { container } = renderPage();
 
-    await waitFor(() => {
-      expect(approvalTableSpy).toHaveBeenCalled();
-    });
+    await openApprovalsSection();
+
     expect(container.innerHTML).toContain("data-testid=\"approval-table\"");
     const currentUsers = approvalTableSpy.mock.calls.map(([props]: [Record<string, unknown>]) => props.currentUser);
     expect(currentUsers).toContain("alice");
+  });
+
+  it("renders approvals above reviewer sign-off and keeps those sections collapsed by default", () => {
+    renderPage();
+
+    const approvalsToggle = screen.getByTestId("approvals-section-toggle");
+    const reviewerToggle = screen.getByTestId("reviewer-signoff-section-toggle");
+    const commentsToggle = screen.getByTestId("comments-section-toggle");
+
+    expect(
+      approvalsToggle.compareDocumentPosition(reviewerToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      reviewerToggle.compareDocumentPosition(commentsToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByTestId("approval-table")).toBeNull();
+  });
+
+  it("routes approval signing through the local documenso page when the backend returns an unsupported local path", async () => {
+    signFailure.enabled = true;
+    renderPage();
+
+    await openApprovalsSection();
+
+    const latestProps = approvalTableSpy.mock.calls.at(-1)?.[0] as { onSign: (id: string) => Promise<void> };
+    await act(async () => {
+      await latestProps.onSign("approval-1");
+    });
+
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/documenso/sig-1?return=%2Fprojects%2Fproj-1%23approvals&approval=approval-1",
+    );
+  });
+
+  it("shows the reviewed lifecycle state when reviewer sign-off is complete", async () => {
+    stableReviewSummary.count = 1;
+    stableReviewSummary.all_complete = true;
+    reviewSummaryState.total_active = 1;
+    reviewSummaryState.concurred = 1;
+    reviewSummaryState.all_complete = true;
+    reviewSummaryState.lifecycle_step = "reviewed";
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("project-lifecycle-reviewed").className).toContain("ring-1");
+    });
+    expect(screen.getByTestId("project-lifecycle-in_review").className).toContain("bg-green-100");
+    expect(
+      screen.getByText("Reviewer sign-off is complete. Advance the formal project lifecycle when you are ready."),
+    ).toBeDefined();
   });
 
   it("allows expanding the audit history panel with the real Transition", () => {

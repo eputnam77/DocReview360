@@ -5,10 +5,9 @@ import React from "react";
 
 export const NAV = [
   { id: "overview", label: "Overview" },
-  { id: "reviewers", label: "Reviewers" },
-  { id: "feedback", label: "Feedback" },
-  { id: "signatures", label: "Signatures" },
   { id: "approvals", label: "Approvals" },
+  { id: "reviewers", label: "Reviewer Sign-off" },
+  { id: "feedback", label: "Comments" },
   { id: "history", label: "History" },
 ];
 

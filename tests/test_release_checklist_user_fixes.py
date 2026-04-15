@@ -75,17 +75,15 @@ def test_admin_dashboard_reads_audit_feed_and_uses_permissions_copy() -> None:
 def test_project_approval_picker_accepts_invited_reviewers() -> None:
     project_page = _project_file("frontend/pages/projects/[id]/index.tsx")
     assert "approvalReviewerOptions" in project_page
-    assert (
-        "Invite the reviewer in the Reviewers section before adding a phase approval."
-        in project_page
-    )
+    assert "Approval assignee must be an existing DocReview360 user." in project_page
 
 
-def test_checker_uses_public_documents_fallback_and_descriptive_labels() -> None:
+def test_checker_embeds_standalone_fsv_frontend() -> None:
     checker_page = _project_file("frontend/pages/tools/document-quality.tsx")
-    assert "/documents/public" in checker_page
-    assert "Showing public system documents only." in checker_page
-    assert "formatSystemDocumentLabel" in checker_page
+    assert "NEXT_PUBLIC_FSV_FRONTEND_URL" in checker_page
+    assert "/fsv/status" in checker_page
+    assert "<iframe" in checker_page
+    assert "/tools/checker" not in checker_page
 
 
 def test_tiptap_editor_uses_safe_indent_commands_and_larger_canvas() -> None:

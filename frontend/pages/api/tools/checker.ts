@@ -15,7 +15,7 @@ export const config = {
 
 const CHECKER_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 const DOWNLOAD_TTL_MS = 10 * 60 * 1000;
-const PRIVATE_DOWNLOAD_DIR = path.join(process.cwd(), ".tmp", "checker-downloads");
+const PRIVATE_DOWNLOAD_DIR = path.join(os.tmpdir(), "docreview360-checker-downloads");
 const ALLOWED_EXTENSIONS = new Set([".doc", ".docx"]);
 const downloadTokens = new Map<string, { path: string; filename: string; expiresAt: number }>();
 

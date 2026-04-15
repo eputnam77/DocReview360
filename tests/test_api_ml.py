@@ -257,6 +257,33 @@ def test_lifespan_warmup_runs_once() -> None:
         client.get("/ping")
     assert ml_module.warmup_count() == 1
 
+
+def test_warmup_suspends_fsv_style_runner(monkeypatch: pytest.MonkeyPatch) -> None:
+    import docreview360.ml.features as ml_features
+
+    ml_module.reset_warm_state_for_testing()
+    original_runner = object()
+    seen: list[bool] = []
+
+    monkeypatch.setattr(ml_features, "_gov_run", original_runner)
+    monkeypatch.setattr(
+        ml_module,
+        "quality_assessment",
+        lambda _text: seen.append(ml_features._gov_run is None) or types.SimpleNamespace(),
+    )
+    monkeypatch.setattr(
+        ml_module,
+        "evaluate_compliance",
+        lambda _text: seen.append(ml_features._gov_run is None) or types.SimpleNamespace(),
+    )
+    monkeypatch.setattr(ml_module, "get_signature_anomaly_metadata", lambda: {})
+    monkeypatch.setattr(ml_module, "_get_reviewer_model", lambda: object())
+
+    ml_module.warm_ml_sessions()
+
+    assert seen == [True, True]
+    assert ml_features._gov_run is original_runner
+
     with TestClient(app) as client:
         client.get("/ping")
     assert ml_module.warmup_count() == 1

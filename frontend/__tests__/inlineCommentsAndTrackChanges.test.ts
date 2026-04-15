@@ -260,19 +260,19 @@ describe("Registry entries for comment-mark and track-changes", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Item 44.5 — tiptap.tsx: inline mark extraction and Submit Review integration
+// Item 44.5 — TiptapEditorFull.tsx: inline mark extraction and Submit Review integration
 // ---------------------------------------------------------------------------
 
-describe("Item 44.5: tiptap.tsx — inline mark extraction on Submit Review", () => {
-  const tiptap = src("pages/editors/tiptap.tsx");
+describe("Item 44.5: TiptapEditorFull.tsx — inline mark extraction on Submit Review", () => {
+  const tiptap = src("components/TiptapEditorFull.tsx");
 
   it("imports CommentMark from tiptapComments", () => {
-    expect(tiptap).toContain('from "../../extensions/tiptapComments"');
+    expect(tiptap).toContain("tiptapComments");
     expect(tiptap).toContain("CommentMark");
   });
 
   it("imports TrackChanges from tiptapTrackChanges", () => {
-    expect(tiptap).toContain('from "../../extensions/tiptapTrackChanges"');
+    expect(tiptap).toContain("tiptapTrackChanges");
     expect(tiptap).toContain("TrackChanges");
   });
 

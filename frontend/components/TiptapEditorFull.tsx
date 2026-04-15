@@ -24,8 +24,8 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableRow from "@tiptap/extension-table-row";
 import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
-import SlashCommand from "../../extensions/tiptapSlashCommand";
-import sanitizeHtml from "../../utils/sanitize";
+import SlashCommand from "../extensions/tiptapSlashCommand";
+import sanitizeHtml from "../utils/sanitize";
 import { resolveStarterContent } from "@/lib/starterContent";
 import { canRunEditorCommand, runEditorCommand } from "@/lib/tiptapCommandUtils";
 import { API, authenticatedFetch } from "@/lib/api";
@@ -33,9 +33,9 @@ import { buildTemplateUrlPath } from "@/lib/templatePath";
 import { useUserStore } from "@/state/user";
 
 // Custom TipTap extensions
-import { tiptapStructure } from "../../extensions/tiptapStructure";
-import { CommentMark } from "../../extensions/tiptapComments";
-import { TrackChanges } from "../../extensions/tiptapTrackChanges";
+import { tiptapStructure } from "../extensions/tiptapStructure";
+import { CommentMark } from "../extensions/tiptapComments";
+import { TrackChanges } from "../extensions/tiptapTrackChanges";
 
 // Hocuspocus provider for server-backed collaboration
 import { HocuspocusProvider } from "@hocuspocus/provider";
@@ -1074,7 +1074,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
 
     await Promise.allSettled(
       inlineItems.map((item) =>
-        authenticatedFetch(`${API}/projects/${projectId}/feedback`, {
+        authenticatedFetch(`/projects/${projectId}/feedback`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1240,7 +1240,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       return;
     }
     setLintStatus("loading");
-    import("../../extensions/lint")
+    import("../extensions/lint")
       .then((mod) => {
         setLintExtension(() => mod.default);
         setLintEnabled(true);
@@ -1279,7 +1279,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       return;
     }
     setHeadingLockStatus("loading");
-    import("../../extensions/tiptapHeadingLock")
+    import("../extensions/tiptapHeadingLock")
       .then((mod) => {
         setHeadingLockExtension(() => mod.tiptapHeadingLock);
         setHeadingLockEnabled(true);
@@ -1297,7 +1297,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       return;
     }
     setIndentationStatus("loading");
-    import("../../extensions/tiptapIndentation")
+    import("../extensions/tiptapIndentation")
       .then((mod) => {
         setIndentationExtension(() => mod.tiptapIndentation);
         setIndentationEnabled(true);
@@ -1315,7 +1315,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       return;
     }
     setSectionNodeStatus("loading");
-    import("../../extensions/tiptapSectionNode")
+    import("../extensions/tiptapSectionNode")
       .then((mod) => {
         setSectionNodeExtension(() => mod.tiptapSectionNode);
         setSectionNodeEnabled(true);
@@ -1333,7 +1333,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       return;
     }
     setMarkReviewStatus("loading");
-    import("../../extensions/tiptapMarkReview")
+    import("../extensions/tiptapMarkReview")
       .then((mod) => {
         setMarkReviewExtension(() => mod.tiptapMarkReview);
         setMarkReviewEnabled(true);
@@ -1351,7 +1351,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       return;
     }
     setWatermarkStatus("loading");
-    import("../../extensions/tiptapWatermark")
+    import("../extensions/tiptapWatermark")
       .then((mod) => {
         setWatermarkExtension(() => mod.tiptapWatermark);
         setWatermarkEnabled(true);

@@ -16,7 +16,6 @@ import { Menu, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { toast } from "react-hot-toast";
 import * as Icons from "lucide-react";
-import { FixedSizeList as List } from "react-window";
 import type { Approval } from "@/types";
 const Icon = Icons as any;
 
@@ -27,6 +26,7 @@ interface Props {
   reviewerOptions?: string[];
   onAssign?: (approvalId: string, reviewer: string) => void;
   onSign: (id: string) => void;
+  onReject?: (id: string) => void;
   onSignInitials: (id: string, initials: string) => void;
   onReset: (id: string) => void;
   onRemove: (id: string) => void;
@@ -90,6 +90,7 @@ export default function ApprovalTable({
   reviewerOptions = [],
   onAssign,
   onSign,
+  onReject,
   onSignInitials,
   onReset,
   onRemove,
@@ -167,11 +168,10 @@ export default function ApprovalTable({
 
   const isUnassigned = (a: Approval) => !a.reviewer || a.reviewer === a.role;
 
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const a = paged[index];
+  const renderRow = (a: Approval) => {
     const unassigned = isUnassigned(a);
     return (
-      <TableRow key={a.id} id={`approval-${a.id}`} className="group" style={style}>
+      <TableRow key={a.id} id={`approval-${a.id}`} className="group">
         <TableCell>
           <input
             type="checkbox"
@@ -280,14 +280,27 @@ export default function ApprovalTable({
         <TableCell className="text-right">
           {/* Prominent Approve button for the assigned approver */}
           {currentUser === a.reviewer && a.state !== "approved" && (
-            <Button
-              size="sm"
-              className="mr-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => setConfirmApproveId(a.id)}
-              title="Formally approve this document using your configured signature method"
-            >
-              <Icon.CheckCircle2 className="w-3 h-3 mr-1" /> Approve
-            </Button>
+            <>
+              <Button
+                size="sm"
+                className="mr-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => setConfirmApproveId(a.id)}
+                title="Formally approve this document using your configured signature method"
+              >
+                <Icon.CheckCircle2 className="w-3 h-3 mr-1" /> Approve
+              </Button>
+              {onReject && a.state !== "rejected" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mr-2 border-red-300 text-red-700 hover:bg-red-50"
+                  onClick={() => onReject(a.id)}
+                  title="Mark this required approval as non-concurred"
+                >
+                  <Icon.XCircle className="w-3 h-3 mr-1" /> Non-concur
+                </Button>
+              )}
+            </>
           )}
           <RowMenu>
             {canEdit && onAssign && (
@@ -339,6 +352,25 @@ export default function ApprovalTable({
                     }}
                   >
                     Sign / Approve
+                  </button>
+                )}
+              </Menu.Item>
+            )}
+            {currentUser === a.reviewer && onReject && a.state !== "rejected" && (
+              <Menu.Item as={Fragment}>
+                {({ active, close }) => (
+                  <button
+                    role="menuitem"
+                    className={classNames(
+                      "w-full px-3 py-2 text-left text-sm text-red-600",
+                      active && "bg-indigo-50 dark:bg-gray-800",
+                    )}
+                    onClick={() => {
+                      close();
+                      onReject(a.id);
+                    }}
+                  >
+                    Non-concur
                   </button>
                 )}
               </Menu.Item>
@@ -491,7 +523,7 @@ export default function ApprovalTable({
       )}
 
       {/* Table */}
-      <Table caption="Approvals">
+      <Table caption="Approvals" className="table-fixed">
         <TableHeader>
           <TableRow>
             <TableHead>
@@ -514,15 +546,9 @@ export default function ApprovalTable({
         </TableHeader>
         {paged.length > 0 ? (
           <>
-            <List
-              height={Math.min(400, paged.length * 56)}
-              itemCount={paged.length}
-              itemSize={56}
-              width="100%"
-              outerElementType={TableBody as any}
-            >
-              {Row}
-            </List>
+            <TableBody>
+              {paged.map((approval) => renderRow(approval))}
+            </TableBody>
             <TableFooter>
               <TableRow>
                 <TableCell />

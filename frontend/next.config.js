@@ -37,17 +37,35 @@ function buildConnectSrc() {
   return Array.from(sources).join(" ");
 }
 
+function buildFrameSrc() {
+  const sources = new Set(["'self'"]);
+  for (const value of [
+    process.env.NEXT_PUBLIC_FSV_FRONTEND_URL,
+    process.env.DOCREVIEW360_FSV_FRONTEND_URL,
+  ]) {
+    const origin = normalizeOrigin(value);
+    if (origin) {
+      sources.add(origin);
+    }
+  }
+  return Array.from(sources).join(" ");
+}
+
 const connectSrc = buildConnectSrc();
+const frameSrc = buildFrameSrc();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   experimental: { optimizeCss: true },
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  outputFileTracingExcludes: {
+    "/api/tools/checker": ["next.config.js"],
+  },
   i18n: {
     locales: ["en", "es", "fr", "de"],
     defaultLocale: "en",
-    localeDetection: true,
+    localeDetection: false,
   },
   async headers() {
     return [
@@ -63,6 +81,7 @@ const nextConfig = {
               "img-src 'self' data: blob:",
               "font-src 'self'",
               `connect-src ${connectSrc}`,
+              `frame-src ${frameSrc}`,
               "frame-ancestors 'none'",
             ].join("; "),
           },

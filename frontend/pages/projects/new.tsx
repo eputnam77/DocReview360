@@ -219,7 +219,15 @@ export default function NewProjectPage() {
       return;
     }
 
-    const projectData = {
+    const projectData: {
+      document_number: string;
+      name: string;
+      user?: string;
+      doc_type?: string;
+      phase?: string;
+      description: string;
+      workflow?: string;
+    } = {
       document_number: docNumber,
       name: title,
       user: sme || undefined,

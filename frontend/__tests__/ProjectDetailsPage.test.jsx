@@ -67,7 +67,9 @@ vi.mock("@/state/user", () => ({ useUserStore: useUserStoreMock }));
 vi.mock("next/router", () => ({
     useRouter: () => ({
         query: { id: "proj-1" },
+        isReady: true,
         push: routerPushMock,
+        replace: vi.fn(),
     }),
 }));
 vi.mock("next/link", () => ({
@@ -96,6 +98,8 @@ vi.mock("lucide-react", () => {
         ChevronDown: Icon,
         ChevronRight: Icon,
         Bell: Icon,
+        PanelRightOpen: Icon,
+        PanelRightClose: Icon,
     };
 });
 function primitiveStub(tag) {
@@ -228,23 +232,31 @@ vi.mock("react-hot-toast", () => {
     });
     return { toast };
 });
+function renderPage() {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+        <QueryClientProvider client={queryClient}>
+            <ProjectDetailsPage />
+        </QueryClientProvider>
+    );
+}
+
+async function openApprovalsSection() {
+    fireEvent.click(screen.getByTestId("approvals-section-toggle"));
+    await waitFor(() => {
+        expect(approvalTableSpy).toHaveBeenCalled();
+    });
+}
 describe("ProjectDetailsPage", () => {
     beforeEach(() => {
         approvalTableSpy.mockClear();
         useUserStore.setState({ ...defaultUserState });
     });
     it("renders without crashing and forwards currentUser to ApprovalTable", async () => {
-        const queryClient = new QueryClient({
-            defaultOptions: { queries: { retry: false } },
-        });
-        const { container } = render(
-            <QueryClientProvider client={queryClient}>
-                <ProjectDetailsPage />
-            </QueryClientProvider>
-        );
-        await waitFor(() => {
-            expect(approvalTableSpy).toHaveBeenCalled();
-        });
+        const { container } = renderPage();
+        await openApprovalsSection();
         expect(container.innerHTML).toContain("data-testid=\"approval-table\"");
         const currentUsers = approvalTableSpy.mock.calls.map(([props]) => props.currentUser);
         expect(currentUsers).toContain("alice");

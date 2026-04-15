@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import deque
+from contextlib import contextmanager
 from threading import Lock
 from time import monotonic
 from typing import Deque, Mapping
@@ -100,6 +101,20 @@ _WARM_COUNT = 0
 _WARM_LOCK = Lock()
 
 
+@contextmanager
+def _suspend_fsv_style_runner() -> None:
+    """Temporarily disable the optional FSV style runner for warm-up calls."""
+
+    from ..ml import features as ml_features
+
+    original_runner = ml_features._gov_run
+    ml_features._gov_run = None
+    try:
+        yield
+    finally:
+        ml_features._gov_run = original_runner
+
+
 def _get_reviewer_model() -> ReviewerModel:
     """Return a cached :class:`ReviewerModel` instance."""
 
@@ -135,14 +150,15 @@ def warm_ml_sessions() -> None:
     with _WARM_LOCK:
         if _WARMED:
             return
-        try:
-            quality_assessment("Warmup text for caching")
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("Quality critic warm-up failed: %s", exc)
-        try:
-            evaluate_compliance("Warmup text for caching")
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("Compliance classifier warm-up failed: %s", exc)
+        with _suspend_fsv_style_runner():
+            try:
+                quality_assessment("Warmup text for caching")
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Quality critic warm-up failed: %s", exc)
+            try:
+                evaluate_compliance("Warmup text for caching")
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Compliance classifier warm-up failed: %s", exc)
         try:
             get_signature_anomaly_metadata()
         except Exception as exc:  # pragma: no cover - defensive

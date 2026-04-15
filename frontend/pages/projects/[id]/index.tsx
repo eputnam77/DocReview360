@@ -91,6 +91,16 @@ const PHASE_CHECKS: Record<string, string[]> = {
   approval: ["Approval package prepared"],
 };
 
+const PROJECT_LIFECYCLE_STATUSES = [
+  "draft",
+  "in_review",
+  "reviewed",
+  "ready_for_publication",
+  "published",
+  "submitted_to_records",
+  "closed",
+] as const;
+
 // ----------------------------------------------------------------------------
 // 4 ▲ Main component
 // ----------------------------------------------------------------------------
@@ -214,7 +224,10 @@ export default function ProjectDetailsPage() {
     removeReviewer,
     isLoading: reviewersLoading,
   } = useProjectReviewers(projectData?.id);
-  const { data: userOptions = [] } = useQuery({
+  interface UserDirectoryEntry {
+    username?: string | null;
+  }
+  const { data: userOptions = [] } = useQuery<UserDirectoryEntry[]>({
     queryKey: ["users"],
     queryFn: async () => {
       const res = await authenticatedFetch('/users');
@@ -252,9 +265,31 @@ export default function ProjectDetailsPage() {
     () => Array.from(new Set(assignments.filter((a) => a.status !== "replaced").map((a) => a.reviewer))),
     [assignments],
   );
-  const approvalReviewerOptions = useMemo(
-    () => Array.from(new Set([...assignmentReviewers, ...reviewers])).sort((left, right) => left.localeCompare(right)),
-    [assignmentReviewers, reviewers],
+  const allUsernames = useMemo<string[]>(
+    () =>
+      Array.from(
+        new Set(
+          userOptions.flatMap((user) => {
+            const username = typeof user?.username === "string" ? user.username.trim() : "";
+            return username ? [username] : [];
+          }),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [userOptions],
+  );
+  const reviewerUsernames = useMemo<string[]>(
+    () =>
+      reviewers.filter(
+        (reviewer): reviewer is string => typeof reviewer === "string" && reviewer.trim().length > 0,
+      ),
+    [reviewers],
+  );
+  const approvalReviewerOptions = useMemo<string[]>(
+    () =>
+      Array.from(new Set<string>([...allUsernames, ...assignmentReviewers, ...reviewerUsernames])).sort(
+        (left, right) => left.localeCompare(right),
+      ),
+    [allUsernames, assignmentReviewers, reviewerUsernames],
   );
 
   // Feedback ledger
@@ -362,6 +397,26 @@ export default function ProjectDetailsPage() {
     enabled: !!id,
     staleTime: 15_000,
   });
+  const requiredApprovalsForPhase = useMemo(
+    () => approvalsForPhase.filter((approval) => approval.required !== false),
+    [approvalsForPhase],
+  );
+  const requiredApprovalCount = requiredApprovalsForPhase.length;
+  const completedApprovalCount = useMemo(
+    () => requiredApprovalsForPhase.filter((approval) => approval.state === "approved").length,
+    [requiredApprovalsForPhase],
+  );
+  const activeAssignments = useMemo(
+    () => assignments.filter((assignment) => assignment.status !== "replaced"),
+    [assignments],
+  );
+  const completedAssignmentsCount = useMemo(
+    () =>
+      activeAssignments.filter((assignment) =>
+        ["concurred", "signed", "non_concurred", "declined"].includes(assignment.status),
+      ).length,
+    [activeAssignments],
+  );
 
   // My assignments on this project (Phase 5)
   const { data: myAssignments = [], refetch: refetchMyAssignments } = useQuery<ReviewAssignment[]>({
@@ -395,6 +450,38 @@ export default function ProjectDetailsPage() {
     enabled: !!id,
     staleTime: 30_000,
   });
+  const displayLifecycleStatus = useMemo(() => {
+    const persistedStatus = lifecycleRecord?.status ?? "draft";
+    const persistedIndex = PROJECT_LIFECYCLE_STATUSES.indexOf(
+      persistedStatus as (typeof PROJECT_LIFECYCLE_STATUSES)[number],
+    );
+    let derivedIndex = persistedIndex >= 0 ? persistedIndex : 0;
+
+    if (activeAssignments.length > 0) {
+      derivedIndex = Math.max(
+        derivedIndex,
+        PROJECT_LIFECYCLE_STATUSES.indexOf("in_review"),
+      );
+    }
+    if (reviewSummary?.all_complete) {
+      derivedIndex = Math.max(
+        derivedIndex,
+        PROJECT_LIFECYCLE_STATUSES.indexOf("reviewed"),
+      );
+    }
+
+    return PROJECT_LIFECYCLE_STATUSES[derivedIndex] ?? persistedStatus;
+  }, [activeAssignments.length, lifecycleRecord?.status, reviewSummary?.all_complete]);
+  const lifecycleReviewHint = useMemo(() => {
+    if (!reviewSummary || !lifecycleRecord) return null;
+    if (lifecycleRecord.status === "draft" && displayLifecycleStatus === "in_review") {
+      return "Review activity has started, but the formal project lifecycle has not been advanced yet.";
+    }
+    if (lifecycleRecord.status !== "reviewed" && displayLifecycleStatus === "reviewed") {
+      return "Reviewer sign-off is complete. Advance the formal project lifecycle when you are ready.";
+    }
+    return null;
+  }, [displayLifecycleStatus, lifecycleRecord, reviewSummary]);
 
   // SLA summary (Phase 8)
   interface SLASummary {
@@ -856,7 +943,7 @@ export default function ProjectDetailsPage() {
       return;
     }
     if (!approvalReviewerOptions.includes(reviewer)) {
-      const message = "Invite the reviewer in the Reviewers section before adding a phase approval.";
+      const message = "Approval assignee must be an existing DocReview360 user.";
       setApprovalActionError(message);
       toast.error(message);
       return;
@@ -1075,6 +1162,56 @@ export default function ProjectDetailsPage() {
       .finally(() => setShowHistory(true));
   }, []);
 
+  const buildApprovalSigningRoute = useCallback(
+    (approvalId: string, signatureId: string) =>
+      `/documenso/${encodeURIComponent(signatureId)}?return=${encodeURIComponent(
+        `/projects/${id}#approvals`,
+      )}&approval=${encodeURIComponent(approvalId)}`,
+    [id],
+  );
+
+  const routeToApprovalSignature = useCallback(
+    (approvalId: string, signatureId: string | undefined, signatureUrl: string | undefined) => {
+      if (signatureId) {
+        const localSigningRoute = buildApprovalSigningRoute(approvalId, signatureId);
+        if (!signatureUrl) {
+          router.push(localSigningRoute);
+          return true;
+        }
+        try {
+          const parsed = new URL(signatureUrl, window.location.origin);
+          if (parsed.origin !== window.location.origin) {
+            window.location.assign(parsed.href);
+            return true;
+          }
+          if (parsed.pathname.startsWith("/documenso/")) {
+            router.push(parsed.pathname + parsed.search + parsed.hash);
+            return true;
+          }
+          router.push(localSigningRoute);
+          return true;
+        } catch {
+          router.push(localSigningRoute);
+          return true;
+        }
+      }
+
+      if (!signatureUrl) return false;
+      try {
+        const parsed = new URL(signatureUrl, window.location.origin);
+        if (parsed.origin !== window.location.origin) {
+          window.location.assign(parsed.href);
+        } else {
+          router.push(parsed.pathname + parsed.search + parsed.hash);
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [buildApprovalSigningRoute, router],
+  );
+
   const signApproval = async (aid: string) => {
     const existing = approvals.find((a) => a.id === aid);
     if (existing?.state === "approved") {
@@ -1091,59 +1228,58 @@ export default function ProjectDetailsPage() {
       const res = await authenticatedFetch(`/approvals/${aid}/sign`, { method: "POST" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        // 409 with a redirect URL means an external provider flow was started.
         const signatureUrl: string | undefined = err?.url;
-        if (signatureUrl) {
-          if (signatureUrl.startsWith("/")) {
-            router.push(signatureUrl);
-          } else {
-            try {
-              const parsed = new URL(signatureUrl);
-              if (parsed.origin === window.location.origin) {
-                window.location.assign(parsed.href);
-              }
-            } catch {
-              /* ignore invalid URLs */
-            }
-          }
+        const signatureId: string | undefined = err?.id ?? err?.signature ?? err?.signature_id;
+        if (routeToApprovalSignature(aid, signatureId, signatureUrl)) {
           return;
         }
         toast.error(err?.detail ?? "Failed to submit approval");
         return;
       }
       const updated = await res.json();
-      // If the response includes a signing URL (external provider), redirect.
       const signatureUrl: string | undefined = updated?.url;
-      if (signatureUrl && typeof window !== "undefined") {
-        if (signatureUrl.startsWith("/")) {
-          router.push(signatureUrl);
-        } else {
-          try {
-            const parsed = new URL(signatureUrl);
-            if (parsed.origin === window.location.origin) {
-              window.location.assign(parsed.href);
-            }
-          } catch {
-            /* ignore invalid URLs */
-          }
-        }
+      const signatureId: string | undefined = updated?.id ?? updated?.signature ?? updated?.signature_id;
+      if (typeof window !== "undefined" && routeToApprovalSignature(aid, signatureId, signatureUrl)) {
         return;
       }
-      // If the approval was recorded in-app, update local state directly.
       if (updated?.state === "approved") {
         setApprovals((prev) => prev.map((a) => (a.id === aid ? { ...a, ...updated } : a)));
         toast.success("Approval recorded successfully.");
         return;
       }
-      // Fallback: check for a Documenso signature ID to redirect to signing page.
-      const sigId = updated?.signature || updated?.signature_id;
-      if (sigId) {
-        router.push(
-          `/documenso/${encodeURIComponent(String(sigId))}?return=${encodeURIComponent(`/projects/${id}#approvals`)}&approval=${encodeURIComponent(aid)}`,
-        );
-      }
+      toast.error("Approval flow could not be started.");
     } catch {
       toast.error("Failed to submit approval. Please try again.");
+    }
+  };
+
+  const rejectApproval = async (aid: string) => {
+    const existing = approvals.find((approval) => approval.id === aid);
+    if (existing?.state === "rejected") {
+      toast.error("Approval already marked as non-concurred.");
+      return;
+    }
+    if (existing?.reviewer !== username) {
+      toast.error("You are not assigned to this approval.");
+      return;
+    }
+    if (!confirm("Mark this approval as non-concurred?")) return;
+    try {
+      const res = await authenticatedFetch(`/approvals/${aid}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: "rejected" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to mark approval as non-concurred");
+        return;
+      }
+      const updated = await res.json();
+      setApprovals((prev) => prev.map((approval) => (approval.id === aid ? { ...approval, ...updated } : approval)));
+      toast.success("Approval marked as non-concurred.");
+    } catch {
+      toast.error("Failed to mark approval as non-concurred.");
     }
   };
 
@@ -1346,6 +1482,32 @@ export default function ProjectDetailsPage() {
       refetchSummary();
     } catch {
       toast.error("Failed to concur.");
+    }
+  };
+
+  const handleNonConcur = async (assignmentId: string) => {
+    const reason = window.prompt("Add the reason for non-concurrence:");
+    if (!reason?.trim()) return;
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/non-concur`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: reason.trim() }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to non-concur");
+        return;
+      }
+      toast.success("Marked as non-concurred.");
+      refetchAssignments();
+      refetchMyAssignments();
+      refetchSummary();
+    } catch {
+      toast.error("Failed to non-concur.");
     }
   };
 
@@ -1600,18 +1762,10 @@ export default function ProjectDetailsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-indigo-700 border-indigo-300"
-                          onClick={() => handleConcurWithComments(ma.id)}
+                          className="text-red-700 border-red-300"
+                          onClick={() => handleNonConcur(ma.id)}
                         >
-                          <MessageSquare className="w-4 h-4 mr-1" /> Concur with Comments
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-gray-600"
-                          onClick={() => handleSignInternal(ma.id)}
-                        >
-                          Internal Sign-off
+                          <XCircle className="w-4 h-4 mr-1" /> Non-concur
                         </Button>
                       </>
                     )}
@@ -1743,15 +1897,15 @@ export default function ProjectDetailsPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  {["draft","in_review","reviewed","ready_for_publication","published","submitted_to_records","closed"].map((s) => {
-                    const statuses = ["draft","in_review","reviewed","ready_for_publication","published","submitted_to_records","closed"];
-                    const currentIdx = statuses.indexOf(lifecycleRecord.status);
-                    const thisIdx = statuses.indexOf(s);
+                  {PROJECT_LIFECYCLE_STATUSES.map((s) => {
+                    const currentIdx = PROJECT_LIFECYCLE_STATUSES.indexOf(displayLifecycleStatus);
+                    const thisIdx = PROJECT_LIFECYCLE_STATUSES.indexOf(s);
                     const done = thisIdx < currentIdx;
                     const active = thisIdx === currentIdx;
                     return (
                       <span
                         key={s}
+                        data-testid={`project-lifecycle-${s}`}
                         className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium",
                           done ? "bg-green-100 text-green-700" :
@@ -1764,6 +1918,9 @@ export default function ProjectDetailsPage() {
                     );
                   })}
                 </div>
+                {lifecycleReviewHint && (
+                  <p className="text-xs text-indigo-600">{lifecycleReviewHint}</p>
+                )}
                 {/* Lifecycle transition buttons for SME/admin */}
                 {canEdit && (() => {
                   const nextMap: Record<string, string[]> = {
@@ -2079,35 +2236,214 @@ export default function ProjectDetailsPage() {
           </div>
         </section>
 
+        <section id="approvals" className="space-y-6">
+          <Disclosure>
+            {({ open }) => (
+              <>
+                <Disclosure.Button
+                  data-testid="approvals-section-toggle"
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-4 rounded-xl border bg-white/70 p-4 shadow-sm">
+                    <div className="space-y-1">
+                      <h2 className="flex items-center gap-2 text-lg font-semibold">
+                        <Users2 className="w-5 h-5" /> Approvals
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Workflow-driven required approvers for the current phase.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                      <span>{completedApprovalCount} / {requiredApprovalCount} complete</span>
+                      {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </div>
+                  </div>
+                </Disclosure.Button>
+                <Transition
+                  show={open}
+                  as={Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <div className="space-y-4">
+                    <div className="flex justify-end">
+                      {isOwner && (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={downloadApprovalSummary}>
+                            <Download className="w-4 h-4 mr-1" /> Download Summary
+                          </Button>
+                          <Button size="sm" onClick={() => sendReminder()}>
+                            <Mail className="w-4 h-4 mr-1" /> Remind Pending
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Required approvers come from the selected workflow. Add or reassign the user directly from
+                      DocReview360 user management when a role needs a specific assignee.
+                    </p>
+                    <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 p-3 text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                      <p>
+                        <span className="font-semibold">Formal approval</span> uses Documenso, DocuSign, or in-app
+                        initials to concur or non-concur on the required approval record.
+                      </p>
+                      <p>
+                        These rows are separate from optional reviewer sign-off so required approvers can stay focused
+                        on the workflow approval itself.
+                      </p>
+                    </div>
+                    <Card>
+                      <CardContent className="space-y-4 overflow-x-auto">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                          <div className="flex-1">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Add required approver
+                            </label>
+                            <UserPicker
+                              value={approvalReviewerInput}
+                              onChange={setApprovalReviewerInput}
+                              placeholder="Search for a userâ€¦"
+                              disabled={!canEdit || !project.workflow}
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={handleAddApproval}
+                            disabled={!canEdit || !project.workflow || !approvalReviewerInput.trim() || addingApproval}
+                          >
+                            <UserPlus className="w-4 h-4 mr-1" /> {addingApproval ? "Adding..." : "Add approver"}
+                          </Button>
+                        </div>
+                        {!project.workflow && (
+                          <p className="text-sm text-amber-700">
+                            Select a workflow on the project before adding required approvers.
+                          </p>
+                        )}
+                        {approvalActionError ? (
+                          <p className="text-sm text-red-600 dark:text-red-400">{approvalActionError}</p>
+                        ) : null}
+                        <ApprovalTable
+                          approvals={requiredApprovalsForPhase}
+                          currentUser={username}
+                          canEdit={canEdit}
+                          reviewerOptions={approvalReviewerOptions}
+                          onAssign={handleAssignApproval}
+                          onSign={signApproval}
+                          onReject={rejectApproval}
+                          onSignInitials={signApprovalByInitials}
+                          onReset={resetApprovalLocal}
+                          onRemove={removeApproval}
+                          onBulkReminder={(ids) => sendReminder(ids)}
+                          onHistory={viewHistory}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </Transition>
+              </>
+            )}
+          </Disclosure>
+        </section>
+
         {/* REVIEWERS SECTION — assignment lifecycle */}
         <section id="reviewers" className="space-y-6">
-          <div className="flex justify-between items-center flex-wrap gap-2">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Users2 className="w-5 h-5" /> Reviewers
-            </h2>
-            <div className="flex gap-2">
-              {canEdit && assignments.filter((a) => !["replaced","concurred","signed","declined"].includes(a.status)).length > 0 && (
-                <Button size="sm" variant="outline" onClick={handleRemindAll}>
-                  <Bell className="w-4 h-4 mr-1" /> Remind All
-                </Button>
-              )}
-              {assignments.length > 0 && (
-                <Button size="sm" variant="outline" onClick={handleExportReviewers}>
-                  <Download className="w-4 h-4 mr-1" /> Export
-                </Button>
-              )}
-            </div>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Reviewer assignments control who is invited, who can submit feedback, and who can sign off.
-            Use this section first, then add a separate approval below only when the current phase also
-            requires a formal approval record.
-          </p>
+          <Disclosure>
+            {({ open }) => (
+              <>
+                <Disclosure.Button
+                  data-testid="reviewer-signoff-section-toggle"
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-4 rounded-xl border bg-white/70 p-4 shadow-sm">
+                    <div className="space-y-1">
+                      <h2 className="flex items-center gap-2 text-lg font-semibold">
+                        <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Optional reviewers added manually from user management for in-app concurrence.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                      <span>{completedAssignmentsCount} / {activeAssignments.length} complete</span>
+                      {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </div>
+                  </div>
+                </Disclosure.Button>
+                <Transition
+                  show={open}
+                  as={Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Add a reviewer here when they only need to concur or non-concur in-app and are not part of
+                        the required workflow approvals.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSignaturesPreviewOpen((v) => !v)}
+                          title={signaturesPreviewOpen ? "Hide document preview" : "Show document preview"}
+                          data-testid="signatures-preview-toggle"
+                        >
+                          {signaturesPreviewOpen ? (
+                            <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
+                          ) : (
+                            <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
+                          )}
+                        </Button>
+                        {canEdit && assignments.filter((a) => !["replaced","concurred","signed","declined","non_concurred"].includes(a.status)).length > 0 && (
+                          <Button size="sm" variant="outline" onClick={handleRemindAll}>
+                            <Bell className="w-4 h-4 mr-1" /> Remind All
+                          </Button>
+                        )}
+                        {assignments.length > 0 && (
+                          <Button size="sm" variant="outline" onClick={handleExportReviewers}>
+                            <Download className="w-4 h-4 mr-1" /> Export
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {signaturesPreviewOpen && (
+                      <aside
+                        data-testid="signatures-preview-panel"
+                        className="border rounded-lg bg-gray-50 overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between px-4 py-2 bg-white border-b">
+                          <span className="text-sm font-medium text-gray-700">Document Preview (read-only)</span>
+                          <button
+                            onClick={() => setSignaturesPreviewOpen(false)}
+                            className="text-gray-400 hover:text-gray-600 text-xs"
+                            aria-label="Close preview"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <iframe
+                          src={`/editors/tiptap?projectId=${id}&readonly=1`}
+                          title="Document preview"
+                          className="w-full h-80 border-0 bg-white"
+                          sandbox="allow-scripts allow-same-origin"
+                        />
+                      </aside>
+                    )}
 
           {/* Review progress summary */}
           {assignments.length > 0 && (() => {
             const active = assignments.filter((a) => a.status !== "replaced");
-            const done = active.filter((a) => a.status === "concurred" || a.status === "signed");
+            const done = active.filter((a) => ["concurred", "signed", "non_concurred", "declined"].includes(a.status));
             const pct = active.length > 0 ? Math.round((done.length / active.length) * 100) : 0;
             return (
               <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 border">
@@ -2135,7 +2471,7 @@ export default function ProjectDetailsPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <div className="flex-1">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Invite reviewer
+                      Add reviewer
                     </label>
                     <UserPicker
                       value={assignmentReviewerInput}
@@ -2180,7 +2516,7 @@ export default function ProjectDetailsPage() {
                   {assignments.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-sm text-gray-500 text-center py-6">
-                        No reviewers assigned yet.
+                        No reviewer sign-off assignments yet.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -2195,6 +2531,9 @@ export default function ProjectDetailsPage() {
                         declined: "bg-orange-100 text-orange-700",
                         replaced: "bg-gray-100 text-gray-400 line-through",
                       };
+                      const isMine = a.reviewer === username;
+                      const isTerminal = ["concurred", "signed", "declined", "non_concurred", "replaced"].includes(a.status);
+                      const isEligible = eligibilityCache[a.id];
                       return (
                         <TableRow key={a.id} className={a.status === "replaced" ? "opacity-50" : ""}>
                           <TableCell className="font-medium">{a.reviewer}</TableCell>
@@ -2238,16 +2577,61 @@ export default function ProjectDetailsPage() {
                               );
                             })()}
                           </TableCell>
-                          <TableCell className="text-right space-x-1">
-                            {canEdit && a.status !== "replaced" && !["concurred","signed","declined"].includes(a.status) && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                title="Send reminder"
-                                onClick={() => handleSendReminder(a.id)}
-                              >
-                                <Bell className="w-4 h-4" />
-                              </Button>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2 flex-wrap">
+                              {isMine && !isTerminal && isEligible?.eligible && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-700 border-green-300"
+                                    onClick={() => handleConcur(a.id)}
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 mr-1" /> Concur
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-700 border-red-300"
+                                    onClick={() => handleNonConcur(a.id)}
+                                  >
+                                    <XCircle className="w-3 h-3 mr-1" /> Non-concur
+                                  </Button>
+                                </>
+                              )}
+                              {isMine && !isTerminal && isEligible !== undefined && !isEligible.eligible && (
+                                <span className="text-xs text-amber-600 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {(isEligible.unanswered_questions ?? 0) > 0
+                                    ? `Waiting for SME: ${isEligible.unanswered_questions} unanswered question(s)`
+                                    : `${isEligible.open_items} open feedback item(s)`}
+                                </span>
+                              )}
+                              {canEdit && !isTerminal && !isMine && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  title="Request concurrence"
+                                  onClick={() => handleRequestConcurrence(a.id)}
+                                >
+                                  <CheckCircle2 className="w-4 h-4 text-indigo-500" />
+                                </Button>
+                              )}
+                              {canEdit && !isTerminal && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  title="Send reminder"
+                                  onClick={() => handleSendReminder(a.id)}
+                                >
+                                  <Bell className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                            {a.status === "non_concurred" && a.replacement_reason && (
+                              <p className="mt-2 text-xs text-red-600 text-left">
+                                Non-concurrence reason: {a.replacement_reason}
+                              </p>
                             )}
                           </TableCell>
                         </TableRow>
@@ -2258,9 +2642,16 @@ export default function ProjectDetailsPage() {
               </Table>
             </CardContent>
           </Card>
+                  </div>
+                </Transition>
+              </>
+            )}
+          </Disclosure>
         </section>
 
         {/* SIGNATURES SECTION — Phase 4/6 */}
+        {false && (
+          <>
         <section id="signatures" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -2533,35 +2924,71 @@ export default function ProjectDetailsPage() {
         </section>
 
         {/* FEEDBACK SECTION — unified ledger */}
+          </>
+        )}
+
         <section id="feedback" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <MessageSquare className="w-5 h-5" /> Feedback Ledger
-            </h2>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFeedbackPreviewOpen((v) => !v)}
-                title={feedbackPreviewOpen ? "Hide document preview" : "Show document preview"}
-                data-testid="feedback-preview-toggle"
-              >
-                {feedbackPreviewOpen ? (
-                  <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
-                ) : (
-                  <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
-                )}
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link
-                  href={`/projects/${id}#feedback`}
-                  title="Jump to the Feedback tab for this project"
+          <Disclosure>
+            {({ open }) => (
+              <>
+                <Disclosure.Button
+                  data-testid="comments-section-toggle"
+                  className="w-full text-left"
                 >
-                  Open review workspace
-                </Link>
-              </Button>
-            </div>
-          </div>
+                  <div className="flex items-start justify-between gap-4 rounded-xl border bg-white/70 p-4 shadow-sm">
+                    <div className="space-y-1">
+                      <h2 className="flex items-center gap-2 text-lg font-semibold">
+                        <MessageSquare className="w-5 h-5" /> Comments
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Feedback threads, comments, and reviewer discussion.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                      <span>
+                        {feedbackProgress?.open ?? 0} open / {feedbackProgress?.total ?? 0} total
+                      </span>
+                      {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </div>
+                  </div>
+                </Disclosure.Button>
+                <Transition
+                  show={open}
+                  as={Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <div />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFeedbackPreviewOpen((v) => !v)}
+                          title={feedbackPreviewOpen ? "Hide document preview" : "Show document preview"}
+                          data-testid="feedback-preview-toggle"
+                        >
+                          {feedbackPreviewOpen ? (
+                            <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
+                          ) : (
+                            <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
+                          )}
+                        </Button>
+                        <Button asChild variant="outline" size="sm">
+                          <Link
+                            href={`/projects/${id}#feedback`}
+                            title="Jump to the Feedback tab for this project"
+                          >
+                            Open review workspace
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
 
           {/* Collapsible document preview panel */}
           {feedbackPreviewOpen && (
@@ -2911,7 +3338,7 @@ export default function ProjectDetailsPage() {
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
                             Feedback
                           </span>{" "}
-                          = general reviewer input (see Feedback Ledger above).
+                          = general reviewer input (see comments above).
                         </span>
                       </p>
                       <ReviewerComments
@@ -2921,6 +3348,11 @@ export default function ProjectDetailsPage() {
                       />
                     </CardContent>
                   </Card>
+                </Transition>
+              </>
+            )}
+          </Disclosure>
+                  </div>
                 </Transition>
               </>
             )}

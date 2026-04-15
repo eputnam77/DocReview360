@@ -5,7 +5,7 @@
  * 1. Tools admin page correctly loads FSV URL from GET /admin/settings/fsv-url
  * 2. Tools admin page correctly saves FSV URL via PUT /admin/settings/fsv-url
  * 3. FSV URL input is controlled and reflects the stored value
- * 4. Editor (tiptap.tsx) consumes the FSV proxy via /documents/preflight
+ * 4. Editor (TiptapEditorFull.tsx) consumes the FSV proxy via /documents/preflight
  *    (the backend reads the configured FSV URL transparently)
  * 5. fsv_proxy.py get_fsv_url() checks env → settings.yaml fallback chain
  * 6. is_fsv_configured() is exported and gates FSV features
@@ -75,11 +75,11 @@ describe("Tools page — FSV URL settings round-trip", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Editor consumption — tiptap.tsx fires /documents/preflight (backend proxies FSV)
+// Editor consumption — TiptapEditorFull.tsx fires /documents/preflight (backend proxies FSV)
 // ---------------------------------------------------------------------------
 
 describe("TipTap editor — FSV URL consumed via backend proxy", () => {
-  const tiptap = src("pages/editors/tiptap.tsx");
+  const tiptap = src("components/TiptapEditorFull.tsx");
 
   it("editor sends POST to /documents/preflight (not directly to FSV)", () => {
     expect(tiptap).toContain("/documents/preflight");

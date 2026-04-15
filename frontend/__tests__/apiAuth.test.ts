@@ -56,4 +56,15 @@ describe("authenticatedFetch auth headers", () => {
     const headers = new Headers(options?.headers);
     expect(headers.get("X-CSRF-Token")).toBe("csrf-123");
   });
+
+  it("returns a synthetic 503 response when fetch rejects", async () => {
+    vi.mocked(global.fetch).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const response = await authenticatedFetch("/projects");
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      detail: "Network error: unable to reach the API server",
+    });
+  });
 });

@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { useDashboardVisibility } from "@/state/visibility";
 import { authenticatedFetch } from "@/lib/api";
-import { useProjects } from "@/lib/useProjects";
+import { useProjects, type ProjectSummary } from "@/lib/useProjects";
 import { useUserStore } from "@/state/user";
 
 // Color palette for charts
@@ -44,7 +44,7 @@ type Log = {
 
 const LOG_LIMIT = 20;
 
-type ProjectRecord = Record<string, unknown>;
+type ProjectRecord = ProjectSummary;
 
 function normalizeStatus(value: unknown): string {
   if (typeof value !== "string") {
@@ -54,9 +54,10 @@ function normalizeStatus(value: unknown): string {
 }
 
 function isAssignedToUser(project: ProjectRecord, normalizedUser: string): boolean {
+  const record = project as unknown as Record<string, unknown>;
   const directKeys = ["user", "owner", "assigned_to", "assignee", "assignedTo"] as const;
   for (const key of directKeys) {
-    const value = project[key];
+    const value = record[key];
     if (typeof value === "string" && value.toLowerCase() === normalizedUser) {
       return true;
     }
@@ -64,7 +65,7 @@ function isAssignedToUser(project: ProjectRecord, normalizedUser: string): boole
 
   const listKeys = ["assignees", "assigned_users", "assignedTo", "reviewers"] as const;
   for (const key of listKeys) {
-    const value = project[key];
+    const value = record[key];
     if (
       Array.isArray(value) &&
       value.some((item) => {
@@ -116,8 +117,9 @@ function buildActivityData(projects: ProjectRecord[]): Activity[] {
   ];
 
   projects.forEach((project) => {
+    const record = project as unknown as Record<string, unknown>;
     for (const key of dateKeys) {
-      const dateString = extractDateString(project[key]);
+      const dateString = extractDateString(record[key]);
       if (dateString) {
         counts.set(dateString, (counts.get(dateString) ?? 0) + 1);
         break;
@@ -145,12 +147,13 @@ function computeDashboardData(
   let overdue = 0;
 
   projects.forEach((project) => {
+    const record = project as unknown as Record<string, unknown>;
     const normalizedStatus = normalizeStatus(
-      project["status"] ??
-        project["state"] ??
-        project["phase_status"] ??
-        project["workflow_status"] ??
-        project["current_status"],
+      record["status"] ??
+        record["state"] ??
+        record["phase_status"] ??
+        record["workflow_status"] ??
+        record["current_status"],
     );
 
     if (normalizedStatus.includes("progress")) {

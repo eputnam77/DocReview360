@@ -300,6 +300,20 @@ function renderPage() {
   );
 }
 
+async function openCommentsSection() {
+  fireEvent.click(screen.getByTestId("comments-section-toggle"));
+  await waitFor(() => {
+    expect(screen.getByTestId("feedback-preview-toggle")).toBeDefined();
+  });
+}
+
+async function openReviewerSection() {
+  fireEvent.click(screen.getByTestId("reviewer-signoff-section-toggle"));
+  await waitFor(() => {
+    expect(screen.getByTestId("signatures-preview-toggle")).toBeDefined();
+  });
+}
+
 describe("Document preview panel", () => {
   beforeEach(() => {
     approvalTableSpy.mockClear();
@@ -309,10 +323,10 @@ describe("Document preview panel", () => {
   it("feedback preview panel is hidden by default and toggles open on button click", async () => {
     renderPage();
 
-    // Wait for the project data to load (approval table renders after project state is set)
     await waitFor(() => {
-      expect(approvalTableSpy).toHaveBeenCalled();
+      expect(screen.getByTestId("comments-section-toggle")).toBeDefined();
     });
+    await openCommentsSection();
 
     // The feedback preview toggle button should be rendered
     const toggleButton = screen.getByTestId("feedback-preview-toggle");
@@ -345,10 +359,10 @@ describe("Document preview panel", () => {
   it("signatures preview panel is hidden by default and toggles open on button click", async () => {
     renderPage();
 
-    // Wait for the project data to load
     await waitFor(() => {
-      expect(approvalTableSpy).toHaveBeenCalled();
+      expect(screen.getByTestId("reviewer-signoff-section-toggle")).toBeDefined();
     });
+    await openReviewerSection();
 
     const toggleButton = screen.getByTestId("signatures-preview-toggle");
     expect(toggleButton).toBeDefined();
@@ -374,6 +388,7 @@ describe("Jump-to-location on inline feedback", () => {
 
   it("renders Jump button only for inline feedback items with a range_anchor", async () => {
     renderPage();
+    await openCommentsSection();
 
     // Wait for feedback items to load
     await waitFor(() => {
@@ -389,6 +404,7 @@ describe("Jump-to-location on inline feedback", () => {
 
   it("does not render Jump button for manual feedback items", async () => {
     renderPage();
+    await openCommentsSection();
 
     await waitFor(() => {
       // The manual feedback item text should be visible

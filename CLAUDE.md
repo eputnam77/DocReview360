@@ -28,7 +28,16 @@ poetry run python scripts/run_e2e.py
 ```bash
 cd frontend && npm install --legacy-peer-deps
 echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" > .env.local
+echo "NEXT_PUBLIC_FSV_FRONTEND_URL=http://127.0.0.1:3001" >> .env.local
 npm run dev   # http://localhost:3000
+```
+
+After frontend changes, run:
+
+```bash
+cd frontend
+npm test
+npm run build
 ```
 
 ### CLI

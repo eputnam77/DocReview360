@@ -19,14 +19,14 @@ import { useTranslation } from "@/lib/useTranslation";
 // The Project type: extend as needed
 interface Project {
   id: string;
-  number: string | number;
+  number: string | number | null;
   document_number?: string; // User-provided document number/reference
   type: string;
   title: string;
   status?: string;
   progress: number;
-  updated?: string;
-  user?: string;
+  updated?: string | null;
+  user?: string | null;
   currentPhaseId?: string | null;
 }
 
@@ -92,10 +92,12 @@ export default function ProjectList() {
     setViewMode(isAdmin ? "all" : "assigned");
   }, [isAdmin]);
 
-  const projects = useMemo(
+  const projects = useMemo<Project[]>(
     () =>
       fetchedProjects.map((project) => ({
         ...project,
+        document_number:
+          (project as unknown as { document_number?: string | null }).document_number ?? undefined,
         title: project.name,
         type: project.doc_type ?? "",
         progress: 0,

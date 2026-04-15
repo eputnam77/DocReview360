@@ -27,11 +27,11 @@ function src(relPath: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// On-save validation — tiptap.tsx
+// On-save validation — TiptapEditorFull.tsx
 // ---------------------------------------------------------------------------
 
-describe("tiptap.tsx — on-save validation (Item 34 Phase 3)", () => {
-  const tiptap = src("pages/editors/tiptap.tsx");
+describe("TiptapEditorFull.tsx — on-save validation (Item 34 Phase 3)", () => {
+  const tiptap = src("components/TiptapEditorFull.tsx");
 
   it("autoValidationEnabled ref is initialized", () => {
     expect(tiptap).toContain("autoValidationEnabled");
@@ -70,11 +70,11 @@ describe("tiptap.tsx — on-save validation (Item 34 Phase 3)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Validation summary toolbar / sidebar panel — tiptap.tsx
+// Validation summary toolbar / sidebar panel — TiptapEditorFull.tsx
 // ---------------------------------------------------------------------------
 
-describe("tiptap.tsx — validationSummary toolbar panel", () => {
-  const tiptap = src("pages/editors/tiptap.tsx");
+describe("TiptapEditorFull.tsx — validationSummary toolbar panel", () => {
+  const tiptap = src("components/TiptapEditorFull.tsx");
 
   it("validationSummary state is declared", () => {
     expect(tiptap).toContain("validationSummary");
@@ -177,7 +177,7 @@ describe("tools/index.tsx — FSV Core Tool designation", () => {
 
 describe("on-save validation configurable (Item 34 Phase 3 + Item 48)", () => {
   const toolsPage = src("pages/tools/index.tsx");
-  const tiptap = src("pages/editors/tiptap.tsx");
+  const tiptap = src("components/TiptapEditorFull.tsx");
 
   it("tools page fetches auto-validation enabled state from backend", () => {
     expect(toolsPage).toContain("autoValidationEnabled");
