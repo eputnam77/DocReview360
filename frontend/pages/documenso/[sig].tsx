@@ -50,22 +50,6 @@ export default function DocumensoSign() {
           const timestamp = new Date().toISOString();
           localStorage.setItem(`approval-${approvalId}`, timestamp);
           console.log(`Stored completion timestamp: ${timestamp}`);
-
-          // Also sync with backend immediately
-          authenticatedFetch(`/approvals/${approvalId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              state: 'approved',
-              signature: sig,
-            }),
-          }).then(r => {
-            console.log(`Backend sync response: ${r.status} ${r.statusText}`);
-          }).catch(err => {
-            console.error('Failed to sync approval with backend:', err);
-          });
         }
         setDone(true);
 
