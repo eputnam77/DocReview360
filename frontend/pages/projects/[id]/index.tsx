@@ -14,6 +14,15 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { authenticatedFetch } from "@/lib/api";
+import {
+  assignBrowserLocation,
+  downloadBrowserBlob,
+  promptInBrowser,
+  readLocalStorage,
+  reloadCurrentPage,
+  removeLocalStorage,
+  resolveBrowserUrl,
+} from "@/lib/browser";
 import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments, UserPicker, HelpTooltip } from "@/components";
 import type { TimelineStep } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
@@ -696,7 +705,7 @@ export default function ProjectDetailsPage() {
     // Check localStorage for completed signatures
     approvals.forEach((approval) => {
       if (approval.documensoSigId) {
-        const completedAt = localStorage.getItem(`approval-${approval.id}`);
+        const completedAt = readLocalStorage(`approval-${approval.id}`);
         if (completedAt && approval.state !== "approved") {
           // Update the approval state to reflect completion
           setApprovals((prev) =>
@@ -712,8 +721,6 @@ export default function ProjectDetailsPage() {
             ),
           );
 
-          // Sync with backend
-          syncApprovalWithBackend(approval.id, approval.documensoSigId);
         }
       }
     });
@@ -1178,36 +1185,34 @@ export default function ProjectDetailsPage() {
           router.push(localSigningRoute);
           return true;
         }
-        try {
-          const parsed = new URL(signatureUrl, window.location.origin);
-          if (parsed.origin !== window.location.origin) {
-            window.location.assign(parsed.href);
-            return true;
-          }
+        const parsed = resolveBrowserUrl(signatureUrl);
+        const currentOrigin = resolveBrowserUrl("/")?.origin;
+        if (parsed && currentOrigin && parsed.origin !== currentOrigin) {
+          return assignBrowserLocation(parsed.href);
+        }
+        if (parsed) {
           if (parsed.pathname.startsWith("/documenso/")) {
             router.push(parsed.pathname + parsed.search + parsed.hash);
             return true;
           }
           router.push(localSigningRoute);
           return true;
-        } catch {
-          router.push(localSigningRoute);
-          return true;
         }
+        router.push(localSigningRoute);
+        return true;
       }
 
       if (!signatureUrl) return false;
-      try {
-        const parsed = new URL(signatureUrl, window.location.origin);
-        if (parsed.origin !== window.location.origin) {
-          window.location.assign(parsed.href);
-        } else {
-          router.push(parsed.pathname + parsed.search + parsed.hash);
-        }
-        return true;
-      } catch {
+      const parsed = resolveBrowserUrl(signatureUrl);
+      const currentOrigin = resolveBrowserUrl("/")?.origin;
+      if (!parsed) {
         return false;
       }
+      if (currentOrigin && parsed.origin !== currentOrigin) {
+        return assignBrowserLocation(parsed.href);
+      }
+      router.push(parsed.pathname + parsed.search + parsed.hash);
+      return true;
     },
     [buildApprovalSigningRoute, router],
   );
@@ -1239,7 +1244,7 @@ export default function ProjectDetailsPage() {
       const updated = await res.json();
       const signatureUrl: string | undefined = updated?.url;
       const signatureId: string | undefined = updated?.id ?? updated?.signature ?? updated?.signature_id;
-      if (typeof window !== "undefined" && routeToApprovalSignature(aid, signatureId, signatureUrl)) {
+      if (routeToApprovalSignature(aid, signatureId, signatureUrl)) {
         return;
       }
       if (updated?.state === "approved") {
@@ -1304,9 +1309,7 @@ export default function ProjectDetailsPage() {
   };
 
   const resetApprovalLocal = async (aid: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(`approval-${aid}`);
-    }
+    removeLocalStorage(`approval-${aid}`);
     try {
       await reset(aid);
     } catch {
@@ -1330,27 +1333,6 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const syncApprovalWithBackend = async (approvalId: string, signatureId: string) => {
-    try {
-      const response = await authenticatedFetch(`/approvals/${approvalId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          state: 'approved',
-          signature: signatureId,
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to sync approval with backend');
-      }
-    } catch (error) {
-      console.error('Error syncing approval:', error);
-    }
-  };
-
   const exportRaci = () => {
     if (!project) return;
     const rows = [
@@ -1365,12 +1347,9 @@ export default function ProjectDetailsPage() {
     ];
     const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `raci-${project.id}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (!downloadBrowserBlob(blob, `raci-${project.id}.csv`)) {
+      toast.error("Download unavailable in this environment.");
+    }
   };
 
   const downloadApprovalSummary = async () => {
@@ -1382,12 +1361,9 @@ export default function ProjectDetailsPage() {
         return;
       }
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `approvals-${project.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (!downloadBrowserBlob(blob, `approvals-${project.id}.pdf`)) {
+        toast.error("Download unavailable in this environment.");
+      }
     } catch (err) {
       console.error(err);
       toast.error("Download failed");
@@ -1423,7 +1399,11 @@ export default function ProjectDetailsPage() {
         </p>
         <button
           className="text-sm text-indigo-600 underline"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            if (!reloadCurrentPage()) {
+              toast.error("Retry is only available in a browser session.");
+            }
+          }}
         >
           Retry
         </button>
@@ -1439,7 +1419,7 @@ export default function ProjectDetailsPage() {
 
   // Sign-internal handler
   const handleSignInternal = async (assignmentId: string) => {
-    const note = window.prompt("Optional note for internal acknowledgement:");
+    const note = promptInBrowser("Optional note for internal acknowledgement:");
     if (note === null) return; // cancelled
     try {
       const res = await authenticatedFetch(
@@ -1486,7 +1466,7 @@ export default function ProjectDetailsPage() {
   };
 
   const handleNonConcur = async (assignmentId: string) => {
-    const reason = window.prompt("Add the reason for non-concurrence:");
+    const reason = promptInBrowser("Add the reason for non-concurrence:");
     if (!reason?.trim()) return;
     try {
       const res = await authenticatedFetch(
@@ -1560,12 +1540,10 @@ export default function ProjectDetailsPage() {
       if (!res.ok) { toast.error("Failed to generate records package."); return; }
       const blob = await res.blob();
       const hash = res.headers.get("X-Content-Hash") ?? "";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `records-${id}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (!downloadBrowserBlob(blob, `records-${id}.zip`)) {
+        toast.error("Download unavailable in this environment.");
+        return;
+      }
       if (hash) toast.success(`Downloaded. SHA-256: ${hash.replace("sha256=", "").slice(0, 16)}…`);
     } catch {
       toast.error("Download failed.");
@@ -1587,7 +1565,7 @@ export default function ProjectDetailsPage() {
 
   // Concur with comments handler
   const handleConcurWithComments = async (assignmentId: string) => {
-    const text = window.prompt("Add your final comments for this concurrence (required):");
+    const text = promptInBrowser("Add your final comments for this concurrence (required):");
     if (!text?.trim()) return;
     try {
       const res = await authenticatedFetch(
@@ -1679,12 +1657,9 @@ export default function ProjectDetailsPage() {
     ];
     const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reviewers-${id}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (!downloadBrowserBlob(blob, `reviewers-${id}.csv`)) {
+      toast.error("Download unavailable in this environment.");
+    }
   };
 
   return (
@@ -3269,7 +3244,7 @@ export default function ProjectDetailsPage() {
                               variant="outline"
                               className="text-red-700 border-red-300 hover:bg-red-50"
                               onClick={() => {
-                                const reason = window.prompt("Reason for rejection:");
+                                const reason = promptInBrowser("Reason for rejection:");
                                 if (reason !== null) handleDisposition(item.id, "rejected", reason);
                               }}
                             >

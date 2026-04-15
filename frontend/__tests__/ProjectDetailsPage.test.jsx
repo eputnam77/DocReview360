@@ -124,7 +124,12 @@ vi.mock("@/components", async () => {
     };
 });
 vi.mock("@/components/ui/button", () => ({
-    Button: primitiveStub("button"),
+    Button: React.forwardRef(({ children, asChild = false, type = "button", ...props }, ref) => {
+        if (asChild && React.isValidElement(children)) {
+            return React.cloneElement(children, { ...props, ref });
+        }
+        return React.createElement("button", { ...props, ref, type }, children);
+    }),
 }));
 vi.mock("@/components/ui/card", () => ({
     Card: primitiveStub("div"),
@@ -133,7 +138,7 @@ vi.mock("@/components/ui/card", () => ({
     CardTitle: primitiveStub("div"),
 }));
 vi.mock("@/components/ui/dialog", () => ({
-    Dialog: primitiveStub("div"),
+    Dialog: ({ children, open: _open, onOpenChange: _onOpenChange, ...props }) => React.createElement("div", props, children),
     DialogContent: primitiveStub("div"),
     DialogHeader: primitiveStub("div"),
     DialogTitle: primitiveStub("div"),

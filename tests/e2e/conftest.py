@@ -8,6 +8,8 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+from .runtime_guard import FrontendCrashGate
+
 playwright_spec = importlib.util.find_spec("playwright")
 sync_api_spec = importlib.util.find_spec("playwright.sync_api") if playwright_spec else None
 
@@ -102,6 +104,18 @@ def _configure_e2e_browser_runtime(page, e2e_backend_url: str) -> None:
         }}
         """,
     )
+
+
+@pytest.fixture(autouse=True)
+def _frontend_smoke_crash_gate(request: pytest.FixtureRequest, page) -> None:
+    if request.node.get_closest_marker("e2e_smoke") is None:
+        yield
+        return
+
+    guard = FrontendCrashGate()
+    guard.attach(page)
+    yield
+    guard.assert_clean(test_id=request.node.nodeid)
 
 
 @pytest.fixture(scope="session")

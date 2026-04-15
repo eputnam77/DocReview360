@@ -29,6 +29,7 @@ import sanitizeHtml from "../utils/sanitize";
 import { resolveStarterContent } from "@/lib/starterContent";
 import { canRunEditorCommand, runEditorCommand } from "@/lib/tiptapCommandUtils";
 import { API, authenticatedFetch } from "@/lib/api";
+import { isBrowser, readLocalStorage, writeLocalStorage } from "@/lib/browser";
 import { buildTemplateUrlPath } from "@/lib/templatePath";
 import { useUserStore } from "@/state/user";
 
@@ -662,6 +663,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   // Close template picker when clicking outside
   useEffect(() => {
     if (!showTemplatePicker) return;
+    if (!isBrowser()) return;
     const handler = (e: MouseEvent) => {
       if (templatePickerRef.current && !templatePickerRef.current.contains(e.target as Node)) {
         setShowTemplatePicker(false);
@@ -764,10 +766,8 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
       .then(res => res.json())
       .then(setHistory)
       .catch(() => {
-        if (typeof window !== "undefined") {
-          const draft = localStorage.getItem("draft");
-          if (draft) setContent(draft);
-        }
+        const draft = readLocalStorage("draft");
+        if (draft) setContent(draft);
       });
   }, [api, docId, username]);
 
@@ -782,9 +782,7 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
     (html: string, immediate = false, promote = false) => {
       const exec = async () => {
         if (!docId) return;
-        if (typeof window !== "undefined") {
-          localStorage.setItem("draft", html);
-        }
+        writeLocalStorage("draft", html);
         // Always persist a local draft so content survives connectivity loss.
         saveOfflineDraft(docId, html);
         if (isOffline()) {

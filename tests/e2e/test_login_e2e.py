@@ -26,3 +26,15 @@ def test_login_flow(
     _login_via_api(page, e2e_frontend_url, e2e_backend_url, "alice")
     access_token = page.evaluate("() => localStorage.getItem('access_token')")
     assert access_token
+
+
+@pytest.mark.e2e_smoke
+def test_dashboard_route_loads_after_login(
+    page: Page, e2e_frontend_url: str, e2e_backend_url: str
+) -> None:
+    _login_via_api(page, e2e_frontend_url, e2e_backend_url, "alice")
+
+    page.goto(f"{e2e_frontend_url}/dashboard")
+    page.wait_for_url(f"{e2e_frontend_url}/dashboard")
+    page.get_by_role("heading", name="Dashboard").wait_for()
+    page.get_by_text("Assigned to Me").wait_for()

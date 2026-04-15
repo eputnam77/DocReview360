@@ -208,7 +208,15 @@ vi.mock("@/components", async () => {
 });
 
 vi.mock("@/components/ui/button", () => ({
-  Button: primitiveStub("button"),
+  Button: React.forwardRef<
+    HTMLElement,
+    React.PropsWithChildren<Record<string, unknown> & { asChild?: boolean; type?: string }>
+  >(({ children, asChild = false, type = "button", ...props }, ref) => {
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children, { ...(props as object), ref });
+    }
+    return React.createElement("button", { ...props, ref, type }, children);
+  }),
 }));
 
 vi.mock("@/components/ui/card", () => ({
@@ -219,7 +227,12 @@ vi.mock("@/components/ui/card", () => ({
 }));
 
 vi.mock("@/components/ui/dialog", () => ({
-  Dialog: primitiveStub("div"),
+  Dialog: ({
+    children,
+    open: _open,
+    onOpenChange: _onOpenChange,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => React.createElement("div", props, children),
   DialogContent: primitiveStub("div"),
   DialogHeader: primitiveStub("div"),
   DialogTitle: primitiveStub("div"),
@@ -367,8 +380,10 @@ describe("ProjectDetailsPage", () => {
     approvalTableSpy.mockClear();
     authenticatedFetchMock.mockClear();
     routerPushMock.mockReset();
+    localStorage.clear();
     signFailure.enabled = false;
     signFailure.payload = { id: "sig-1", url: "/sandbox/sig-1" };
+    delete stableApprovals[0].documensoSigId;
     stableReviewSummary.count = 0;
     stableReviewSummary.all_complete = false;
     defaultLifecycleRecord.status = "draft";
@@ -400,8 +415,12 @@ describe("ProjectDetailsPage", () => {
     expect(currentUsers).toContain("alice");
   });
 
-  it("renders approvals above reviewer sign-off and keeps those sections collapsed by default", () => {
+  it("renders approvals above reviewer sign-off and keeps those sections collapsed by default", async () => {
     renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("approvals-section-toggle")).toBeDefined();
+    });
 
     const approvalsToggle = screen.getByTestId("approvals-section-toggle");
     const reviewerToggle = screen.getByTestId("reviewer-signoff-section-toggle");
@@ -430,6 +449,24 @@ describe("ProjectDetailsPage", () => {
     expect(routerPushMock).toHaveBeenCalledWith(
       "/documenso/sig-1?return=%2Fprojects%2Fproj-1%23approvals&approval=approval-1",
     );
+  });
+
+  it("does not issue a duplicate approval update when local signature completion is restored from storage", async () => {
+    stableApprovals[0].documensoSigId = "sig-1";
+    localStorage.setItem("approval-approval-1", "2024-01-02T10:00:00Z");
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(authenticatedFetchMock).toHaveBeenCalled();
+    });
+
+    expect(
+      authenticatedFetchMock.mock.calls.some(
+        ([url, options]: [string, RequestInit | undefined]) =>
+          url === "/approvals/approval-1" && options?.method === "PUT",
+      ),
+    ).toBe(false);
   });
 
   it("shows the reviewed lifecycle state when reviewer sign-off is complete", async () => {
