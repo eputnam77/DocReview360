@@ -8,5 +8,5 @@ const TipTapEditorPage = dynamic(
   { ssr: false, loading: () => <EditorSkeleton /> },
 );
 
-export { createTiptapApi } from "../../components/TiptapEditorFull";
+export { createTiptapApi } from "../../lib/tiptapApi";
 export default TipTapEditorPage;

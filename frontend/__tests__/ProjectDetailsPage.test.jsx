@@ -141,6 +141,7 @@ vi.mock("@/components/ui/dialog", () => ({
     Dialog: ({ children, open: _open, onOpenChange: _onOpenChange, ...props }) => React.createElement("div", props, children),
     DialogContent: primitiveStub("div"),
     DialogHeader: primitiveStub("div"),
+    DialogDescription: primitiveStub("div"),
     DialogTitle: primitiveStub("div"),
 }));
 vi.mock("@headlessui/react", () => {

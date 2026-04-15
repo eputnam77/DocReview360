@@ -31,7 +31,7 @@ Results:
 
 - Production build passed.
 - Frontend test suite passed.
-- Vitest reported `62` passing test files and `654` passing tests.
+- Vitest reported `66` passing test files and `669` passing tests.
 
 This means the current problem is not "the app cannot build" or "the existing unit suite is red." It means the current checks are not strong enough to catch the runtime failures you are seeing in the browser.
 
@@ -218,14 +218,56 @@ Verification:
 
 Task 5. Put editor-heavy modules behind explicit client-only loading boundaries.
 
+Status: done on 2026-04-15.
+
+Implemented in:
+
+- `frontend/pages/editors/tiptap.tsx`
+- `frontend/lib/tiptapApi.ts`
+- `frontend/components/TiptapEditorFull.tsx`
+- `frontend/__tests__/editorEntryPoints.test.ts`
+- `frontend/__tests__/pageApiHelpers.test.ts`
+
 - For browser-only editor modules, use Next.js dynamic import with SSR disabled where appropriate.
 - Keep server-safe shells small and deterministic.
 - Separate page shell rendering from editor bootstrapping.
 
+What changed:
+
+- Kept the TipTap route behind `dynamic(..., { ssr: false })` with the existing `EditorSkeleton` loading shell.
+- Moved `createTiptapApi` out of `TiptapEditorFull` into a server-safe `frontend/lib/tiptapApi.ts` module.
+- Updated the page entrypoint to re-export the API helper from the lightweight module instead of the full editor component, so helper imports no longer pull the editor bundle into non-editor paths.
+
+Verification:
+
+- `npm test -- __tests__/pageApiHelpers.test.ts __tests__/editorEntryPoints.test.ts`
+- `npm run build`
+
 Task 6. Tighten dialog and component contracts.
+
+Status: done on 2026-04-15.
+
+Implemented in:
+
+- `frontend/components/project/VersionDrawer.tsx`
+- `frontend/pages/projects/[id]/index.tsx`
+- `frontend/__tests__/VersionDrawer.test.tsx`
+- `frontend/__tests__/dialogContracts.test.ts`
 
 - Fix React warnings that indicate props are leaking to DOM nodes or component wrappers are mismatched.
 - Start with the `ProjectDetailsPage` and `VersionDrawer` path because it already emits warnings in tests.
+
+What changed:
+
+- Removed redundant manual `Escape` key handlers from the project history dialog and `VersionDrawer`, relying on the shared Radix dialog `onOpenChange` contract for close behavior.
+- Removed the explicit `role="dialog"` override from `VersionDrawer` so dialog semantics come from the shared dialog primitive instead of page-level overrides.
+- Added an explicit dialog description to `VersionDrawer` so the shared Radix dialog contract remains accessibility-complete without runtime warnings.
+- Added regression coverage that checks the project dialogs no longer wire duplicate close handlers and that `VersionDrawer` closes exactly once on `Escape`.
+
+Verification:
+
+- `npm test -- __tests__/VersionDrawer.test.tsx __tests__/dialogContracts.test.ts __tests__/ProjectDetailsPage.test.tsx __tests__/projectDocumentPreview.test.tsx`
+- `npm run build`
 
 ### Phase 3. Reduce complexity in the highest-risk files
 

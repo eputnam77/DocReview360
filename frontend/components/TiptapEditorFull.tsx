@@ -27,10 +27,10 @@ import StarterKit from "@tiptap/starter-kit";
 import SlashCommand from "../extensions/tiptapSlashCommand";
 import sanitizeHtml from "../utils/sanitize";
 import { resolveStarterContent } from "@/lib/starterContent";
+import { createTiptapApi } from "@/lib/tiptapApi";
 import { canRunEditorCommand, runEditorCommand } from "@/lib/tiptapCommandUtils";
 import { API, authenticatedFetch } from "@/lib/api";
 import { isBrowser, readLocalStorage, writeLocalStorage } from "@/lib/browser";
-import { buildTemplateUrlPath } from "@/lib/templatePath";
 import { useUserStore } from "@/state/user";
 
 // Custom TipTap extensions
@@ -43,44 +43,6 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 
 // Yjs for collaboration
 import * as Y from "yjs";
-
-export function createTiptapApi(fetcher: typeof authenticatedFetch = authenticatedFetch) {
-  return {
-    fetchPreferences: (docId: string) =>
-      fetcher(`${API}/projects/${docId}/preferences`),
-    fetchDocument: (docId: string) =>
-      fetcher(`${API}/documents/${docId}`),
-    fetchProject: (projectId: string) =>
-      fetcher(`${API}/projects/${projectId}`),
-    savePreferences: (docId: string, prefs: Record<string, unknown>) =>
-      fetcher(`${API}/projects/${docId}/preferences`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefs),
-      }),
-    fetchRevisions: (docId: string, username: string) =>
-      fetcher(`${API}/documents/${docId}/revisions`, {
-        headers: { "X-User": username },
-      }),
-    createRevision: (docId: string, username: string, body: Record<string, unknown>) =>
-      fetcher(`${API}/documents/${docId}/revisions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User": username,
-        },
-        body: JSON.stringify(body),
-      }),
-    fetchRevision: (docId: string, revisionId: string) =>
-      fetcher(`${API}/documents/${docId}/revisions/${revisionId}`),
-    fetchArchive: (archiveId: string) => fetcher(`${API}/archive/${archiveId}`),
-    fetchTemplates: () => fetcher(`${API}/templates`),
-    fetchTemplate: (filename: string) =>
-      fetcher(`${API}${buildTemplateUrlPath(filename)}`),
-    fetchStarterContent: (docType: string) =>
-      fetcher(`/document-types/${encodeURIComponent(docType)}/starter-content`),
-  } as const;
-}
 
 // Icons
 const Bold = dynamic(() => import("lucide-react").then((m) => m.Bold));

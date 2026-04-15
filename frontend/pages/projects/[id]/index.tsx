@@ -3487,7 +3487,7 @@ export default function ProjectDetailsPage() {
         versions={versions}
       />
       <Dialog open={showHistory} onOpenChange={setShowHistory}>
-        <DialogContent className="max-w-md" onKeyDown={(e) => e.key === "Escape" && setShowHistory(false)}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Approval History</DialogTitle>
           </DialogHeader>

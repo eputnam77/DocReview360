@@ -208,6 +208,7 @@ vi.mock("@/components/ui/dialog", () => ({
   }: React.PropsWithChildren<Record<string, unknown>>) => React.createElement("div", props, children),
   DialogContent: primitiveStub("div"),
   DialogHeader: primitiveStub("div"),
+  DialogDescription: primitiveStub("div"),
   DialogTitle: primitiveStub("div"),
 }));
 
