@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime
 from typing import Any, Callable, Dict
 
 from ..certs import fetch_certificate as _fetch_certificate
+
+_logger = logging.getLogger(__name__)
 
 SIGNED_FOLDER = os.getenv("SHAREPOINT_SIGNED_FOLDER", "signed")
 CERT_FOLDER = os.getenv("SHAREPOINT_CERT_FOLDER", "certificates")
@@ -48,8 +51,12 @@ async def upload_final_pdf(
     if certificate_url:
         try:
             cert_bytes = fetcher(certificate_url)
-        except Exception:
-            cert_bytes = b""
+        except Exception as exc:
+            _logger.error(
+                "Failed to fetch certificate from %r for approval %r: %s",
+                certificate_url, approval_id, exc, exc_info=exc
+            )
+            raise
     if cert_bytes:
         await client.upload_file(f"{CERT_FOLDER}/{approval_id}", cert_bytes)
 

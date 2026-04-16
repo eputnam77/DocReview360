@@ -31,8 +31,8 @@ def _emit_webhook(event: str, data: dict) -> None:
     try:
         from .webhooks import emit_lifecycle_event
         emit_lifecycle_event(event, data)  # type: ignore[arg-type]
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.error("lifecycle webhook emission failed for event %r: %s", event, exc, exc_info=exc)
 from ..approvals import build_approvals_summary_pdf
 from ..audit import log_audit_event
 from ..doc_types import get_document_type

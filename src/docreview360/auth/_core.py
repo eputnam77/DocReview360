@@ -397,8 +397,6 @@ def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme
     if not token and cookie_token:
         _require_csrf_token(request)
         token = cookie_token
-    elif not token:
-        token = cookie_token
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     try:
@@ -520,8 +518,6 @@ def get_current_user_oidc(
     cookie_token = request.cookies.get("access_token")
     if not token and cookie_token:
         _require_csrf_token(request)
-        token = cookie_token
-    elif not token:
         token = cookie_token
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

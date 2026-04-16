@@ -39,6 +39,15 @@ export function useEditorSave({
   const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoValidationEnabled = useRef(true);
+  const isMounted = useRef(true);
+
+  // Track mounted state and clear pending save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      isMounted.current = false;
+    };
+  }, []);
 
   // Fetch auto-validation setting once on mount
   useEffect(() => {
@@ -58,11 +67,11 @@ export function useEditorSave({
         saveOfflineDraft(docId, html);
 
         if (isOffline()) {
-          setSaveStatus("offline");
+          if (isMounted.current) setSaveStatus("offline");
           return;
         }
 
-        setSaveStatus("saving");
+        if (isMounted.current) setSaveStatus("saving");
         try {
           const body: Record<string, unknown> = { content: html };
           if (promote) body.promote = true;
@@ -72,7 +81,7 @@ export function useEditorSave({
           }
 
           const res = await api.createRevision(docId, username, body);
-          setSaveStatus("saved");
+          if (isMounted.current) setSaveStatus("saved");
 
           const data = res.ok ? await res.json() : {};
           if (data.archiveId) {
@@ -80,7 +89,7 @@ export function useEditorSave({
             if (a.ok) {
               const rec = await a.json();
               const pdf = rec.metadata?.artefact_locations?.pdf;
-              if (pdf) setPdfUrl(pdf);
+              if (pdf && isMounted.current) setPdfUrl(pdf);
             }
           }
 
@@ -97,12 +106,14 @@ export function useEditorSave({
               .then((r) => (r.ok ? r.json() : null))
               .then((result) => {
                 if (!result) return;
-                setValidationSummary({
-                  score: result.quality_score ?? result.score,
-                  grade: result.plain_language_grade ?? result.grade,
-                  issue_count: (result.issues ?? result.errors ?? []).length,
-                  source: result.source,
-                });
+                if (isMounted.current) {
+                  setValidationSummary({
+                    score: result.quality_score ?? result.score,
+                    grade: result.plain_language_grade ?? result.grade,
+                    issue_count: (result.issues ?? result.errors ?? []).length,
+                    source: result.source,
+                  });
+                }
               })
               .catch(() => {}); // best-effort — never block save
           }
@@ -111,7 +122,7 @@ export function useEditorSave({
           return resp;
         } catch (err) {
           const status = await logSaveError(err);
-          setSaveStatus(status);
+          if (isMounted.current) setSaveStatus(status);
         }
       };
 

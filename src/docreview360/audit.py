@@ -427,7 +427,11 @@ def purge_audit_logs(retention_days: int | None = None) -> int:
                     removed += 1
                     continue
             except Exception as exc:
-                logger.warning("Skipping malformed audit log entry at index %d: %s", idx, exc)
+                logger.warning(
+                    "Skipping corrupt audit log entry at index %d (line: %.120r): %s",
+                    idx, line.rstrip(), exc
+                )
+                continue
             keep.append(line)
     if removed:
         if keep:

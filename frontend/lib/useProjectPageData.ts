@@ -6,7 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import React, { useMemo, useEffect } from "react";
 import { authenticatedFetch } from "@/lib/api";
-import type { Approval, LogEntry, Project, Workflow } from "@/components/project/_types";
+import type { Approval, LogEntry, Project, Workflow, VersionEntry } from "@/components/project/_types";
 import type { AuditEntry } from "@/components/AuditTimeline";
 
 // ---------------------------------------------------------------------------
@@ -343,6 +343,20 @@ export function useProjectPageData(
   });
 
   // -------------------------------------------------------------------------
+  // Document versions (for VersionDrawer)
+  // -------------------------------------------------------------------------
+  const { data: versions = [] } = useQuery<VersionEntry[]>({
+    queryKey: ["document-versions", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const res = await authenticatedFetch(`/documents/${id}/versions`);
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+
+  // -------------------------------------------------------------------------
   // Assignment eligibility cache
   // -------------------------------------------------------------------------
   const [eligibilityCache, setEligibilityCache] = React.useState<
@@ -361,7 +375,7 @@ export function useProjectPageData(
           refetchSummary();
         }
       })
-      .catch(() => {}); // best-effort
+      .catch((err: unknown) => { console.warn("[view-tracking] failed:", err); }); // best-effort
   }, [id, username, refetchAssignments, refetchMyAssignments, refetchSummary]);
 
   // Fetch eligibility for each active assignment
@@ -581,6 +595,7 @@ export function useProjectPageData(
   return {
     // queries
     userOptions,
+    versions,
     assignments,
     refetchAssignments,
     feedbackItems,

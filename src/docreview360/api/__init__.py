@@ -1392,8 +1392,8 @@ def _branding_payload_from_config(cfg: Config | None) -> BrandingPayload:
             _branding_accent_color = _org_branding.get("accent_color") or None
             _branding_sidebar_bg = _org_branding.get("sidebar_bg") or None
             _branding_sidebar_text = _org_branding.get("sidebar_text") or None
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.error("Failed to load branding configuration: %s", exc, exc_info=exc)
 
     return BrandingPayload(
         branding_company_name=(active_cfg.branding_company_name or "DocReview360").strip()

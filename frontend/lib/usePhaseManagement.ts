@@ -75,7 +75,7 @@ export function usePhaseManagement({
           queryClient.invalidateQueries({ queryKey: ["workflow", project.workflow] });
         }
       } catch (error) {
-        console.error(error);
+        console.warn("[usePhaseManagement]", error);
         toast.error("Failed to update phase");
       }
     }

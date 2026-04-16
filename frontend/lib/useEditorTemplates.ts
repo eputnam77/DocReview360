@@ -38,7 +38,8 @@ export function useEditorTemplates({
   const [projectDocType, setProjectDocType] = useState<string | null>(null);
   const defaultTemplateApplied = useRef(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const templatePickerRef = useRef<HTMLDivElement>(null);
+  const templatePickerRef = useRef<HTMLDivElement | null>(null);
+  const pickerListenerRef = useRef<((e: MouseEvent) => void) | null>(null);
 
   // Load document and extract project ID
   useEffect(() => {
@@ -79,15 +80,28 @@ export function useEditorTemplates({
 
   // Close template picker when clicking outside
   useEffect(() => {
-    if (!showTemplatePicker) return;
+    if (!showTemplatePicker) {
+      if (pickerListenerRef.current) {
+        document.removeEventListener("mousedown", pickerListenerRef.current);
+        pickerListenerRef.current = null;
+      }
+      return;
+    }
     if (!isBrowser()) return;
+    if (pickerListenerRef.current) {
+      document.removeEventListener("mousedown", pickerListenerRef.current);
+    }
     const handler = (e: MouseEvent) => {
       if (templatePickerRef.current && !templatePickerRef.current.contains(e.target as Node)) {
         setShowTemplatePicker(false);
       }
     };
+    pickerListenerRef.current = handler;
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      pickerListenerRef.current = null;
+    };
   }, [showTemplatePicker]);
 
   function handleStartBlank() {

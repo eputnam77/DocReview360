@@ -35,8 +35,8 @@ def _emit_webhook(event: str, data: dict) -> None:
         from .webhooks import emit_lifecycle_event
 
         emit_lifecycle_event(event, data)  # type: ignore[arg-type]
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.error("lifecycle webhook emission failed for event %r: %s", event, exc, exc_info=exc)
 
 
 from ..approvals import verify_document_signature

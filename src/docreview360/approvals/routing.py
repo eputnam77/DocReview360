@@ -28,7 +28,13 @@ def run_confirmed_action(confirm: bool, action: Callable[[], None] | None = None
         if action:
             try:
                 action()
-            except Exception:
+            except Exception as exc:
+                _logger.error(
+                    "confirmed action %r failed: %s",
+                    getattr(action, "__name__", action),
+                    exc,
+                    exc_info=exc,
+                )
                 return False
         return True
     return False

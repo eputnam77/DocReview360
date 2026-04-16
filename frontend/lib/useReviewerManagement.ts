@@ -102,6 +102,9 @@ export function useReviewerManagement({
         throw new Error(detail);
       }
       const created = await response.json();
+      if (!created?.id || !created?.reviewer) {
+        throw new Error("Unexpected response shape from POST /approvals — missing id or reviewer");
+      }
       setApprovals((prev) => [
         {
           id: created.id,
@@ -232,7 +235,7 @@ export function useReviewerManagement({
       setEditingValue("");
       refreshReviewerData();
     } catch (error) {
-      console.error(error);
+      console.warn("[useReviewerManagement]", error);
     }
   }, [editingReviewer, editingValue, updateReviewer, refreshReviewerData]);
 
@@ -242,7 +245,7 @@ export function useReviewerManagement({
         await removeReviewer(reviewer);
         refreshReviewerData();
       } catch (error) {
-        console.error(error);
+        console.warn("[useReviewerManagement]", error);
       }
     },
     [removeReviewer, refreshReviewerData],

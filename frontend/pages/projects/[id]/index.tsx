@@ -77,7 +77,6 @@ import {
   type WorkflowStep,
   type Workflow,
   type Approval,
-  type VersionEntry,
   ProgBar,
   LifecycleStepper,
   LIFECYCLE_STEPS,
@@ -124,6 +123,7 @@ const PROJECT_LIFECYCLE_STATUSES = [
 export default function ProjectDetailsPage() {
   const router = useRouter();
   const id = router.isReady ? (router.query.id as string | undefined) : undefined;
+  const safeId = typeof id === "string" ? id : undefined;
 
   // ── Core local state ──────────────────────────────────────────────────
   const [project, setProject] = useState<Project | null>(null);
@@ -131,7 +131,6 @@ export default function ProjectDetailsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [historyEvents, setHistoryEvents] = useState<AuditEntry[]>([]);
-  const [versions] = useState<VersionEntry[]>([]);
   const [reviewCount, setReviewCount] = useState(0);
   const [showVersions, setShowVersions] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -185,7 +184,7 @@ export default function ProjectDetailsPage() {
   );
 
   // ── Primary data hooks ────────────────────────────────────────────────
-  const { data: projectData, isLoading: projectLoading, isError: projectError } = useProject(id as string);
+  const { data: projectData, isLoading: projectLoading, isError: projectError } = useProject(safeId);
   const { data: workflowData, isLoading: phasesLoading } = usePhases(projectData?.workflow);
   const {
     approvals: approvalsData,
@@ -204,6 +203,7 @@ export default function ProjectDetailsPage() {
   // ── Secondary queries + derived state (useProjectPageData) ────────────
   const {
     userOptions,
+    versions,
     assignments,
     feedbackItems,
     feedbackProgress,
@@ -270,11 +270,11 @@ export default function ProjectDetailsPage() {
       .then((data: any[]) =>
         setLogs(
           data.map((d) => ({
-            id: d.id ?? d.timestamp,
-            timestamp: d.timestamp,
-            action: d.details?.message || d.action,
-            type: (d.details?.type as LogEntry["type"]) || "edit",
-            ref: d.details?.approvalId || d.details?.reviewId || d.details?.phaseId,
+            id: d?.id ?? d?.timestamp,
+            timestamp: d?.timestamp,
+            action: d?.details?.message || d?.action,
+            type: (d?.details?.type as LogEntry["type"]) || "edit",
+            ref: d?.details?.approvalId ?? d?.details?.reviewId ?? d?.details?.phaseId ?? null,
           })),
         ),
       )
