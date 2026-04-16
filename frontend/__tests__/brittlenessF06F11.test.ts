@@ -247,3 +247,168 @@ describe("F-14 projects/[id]/index.tsx — safeId replaces id as string cast", (
     expect(src).toContain("useProject(safeId)");
   });
 });
+
+// ---------------------------------------------------------------------------
+// F-04: SectionErrorBoundary component exists and is wired
+// ---------------------------------------------------------------------------
+
+describe("F-04 SectionErrorBoundary — component structure", () => {
+  const COMPONENTS = join(REPO_ROOT, "frontend", "components");
+  function comp(name: string) {
+    return readFileSync(join(COMPONENTS, name), "utf8");
+  }
+
+  const src = comp("SectionErrorBoundary.tsx");
+
+  it("is a React.Component (class-based error boundary)", () => {
+    expect(src).toContain("extends React.Component");
+  });
+
+  it("implements getDerivedStateFromError", () => {
+    expect(src).toContain("getDerivedStateFromError");
+  });
+
+  it("implements componentDidCatch", () => {
+    expect(src).toContain("componentDidCatch");
+  });
+
+  it("renders fallback with role=alert", () => {
+    expect(src).toContain('role="alert"');
+  });
+
+  it("supports custom label prop", () => {
+    expect(src).toContain("label");
+    expect(src).toMatch(/label.*"This section"/s);
+  });
+
+  it("supports custom fallback prop", () => {
+    expect(src).toContain("fallback");
+  });
+
+  it("is exported from components barrel", () => {
+    const barrel = comp("index.tsx");
+    expect(barrel).toContain("SectionErrorBoundary");
+    expect(barrel).toContain("./SectionErrorBoundary");
+  });
+});
+
+describe("F-04 projects/[id]/index.tsx — SectionErrorBoundary wiring", () => {
+  const src = page("projects", "[id]", "index.tsx");
+
+  it("imports SectionErrorBoundary from @/components", () => {
+    expect(src).toContain("SectionErrorBoundary");
+  });
+
+  it("wraps ApprovalTable in SectionErrorBoundary", () => {
+    expect(src).toMatch(/<SectionErrorBoundary[\s\S]*?ApprovalTable[\s\S]*?<\/SectionErrorBoundary>/);
+  });
+
+  it("wraps AuditTimeline in SectionErrorBoundary", () => {
+    expect(src).toMatch(/<SectionErrorBoundary[\s\S]*?AuditTimeline[\s\S]*?<\/SectionErrorBoundary>/);
+  });
+
+  it("wraps SLA summary in SectionErrorBoundary", () => {
+    expect(src).toMatch(/<SectionErrorBoundary label="SLA summary">/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-05: ApprovalTable handlers object consolidation
+// ---------------------------------------------------------------------------
+
+describe("F-05 ApprovalTable — handlers object prop", () => {
+  const COMPONENTS = join(REPO_ROOT, "frontend", "components");
+  const src = readFileSync(join(COMPONENTS, "ApprovalTable.tsx"), "utf8");
+
+  it("exports ApprovalHandlers interface", () => {
+    expect(src).toContain("export interface ApprovalHandlers");
+  });
+
+  it("Props uses handlers: ApprovalHandlers instead of individual callbacks", () => {
+    expect(src).toContain("handlers: ApprovalHandlers");
+    // Props interface should not have onSign directly — it's inside ApprovalHandlers
+    const propsBlock = src.slice(src.indexOf("interface Props"), src.indexOf("interface Props") + 200);
+    expect(propsBlock).not.toContain("onSign:");
+  });
+
+  it("ApprovalHandlers contains onSign", () => {
+    expect(src).toContain("onSign:");
+  });
+
+  it("ApprovalHandlers contains onRemove", () => {
+    expect(src).toContain("onRemove:");
+  });
+
+  it("ApprovalHandlers contains onBulkReminder", () => {
+    expect(src).toContain("onBulkReminder:");
+  });
+
+  it("component destructures handlers inside function body", () => {
+    expect(src).toContain("const {");
+    expect(src).toMatch(/const \{[\s\S]*?onSign[\s\S]*?\} = handlers/);
+  });
+});
+
+describe("F-05 projects/[id]/index.tsx — uses handlers object at call sites", () => {
+  const src = page("projects", "[id]", "index.tsx");
+
+  it("does NOT pass onSign as a top-level prop to ApprovalTable", () => {
+    expect(src).not.toMatch(/ApprovalTable[\s\S]{0,500}onSign=/);
+  });
+
+  it("passes handlers={{ ... }} to first ApprovalTable", () => {
+    expect(src).toContain("handlers={{");
+  });
+
+  it("handlers object contains onSign", () => {
+    expect(src).toMatch(/handlers=\{[\s\S]*?onSign:/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-08: document-types.tsx loading state and error display
+// ---------------------------------------------------------------------------
+
+describe("F-08 document-types.tsx — loading state and error UI", () => {
+  const src = page("configuration", "document-types.tsx");
+
+  it("declares isLoading state", () => {
+    expect(src).toContain("isLoading");
+    expect(src).toMatch(/useState.*true.*isLoading|isLoading.*useState.*true/s);
+  });
+
+  it("declares fetchError state", () => {
+    expect(src).toContain("fetchError");
+    expect(src).toMatch(/useState.*null.*fetchError|fetchError.*useState.*null/s);
+  });
+
+  it("uses Promise.all for parallel fetches", () => {
+    expect(src).toContain("Promise.all");
+  });
+
+  it("renders loading skeleton while fetching", () => {
+    expect(src).toContain("animate-pulse");
+    expect(src).toContain('aria-busy="true"');
+  });
+
+  it("renders error message when fetch fails", () => {
+    expect(src).toContain("fetchError");
+    expect(src).toContain('role="alert"');
+    expect(src).toContain("Failed to load configuration data");
+  });
+
+  it("has a try-again button in the error state", () => {
+    expect(src).toContain("Try again");
+    expect(src).toContain("loadConfigData");
+  });
+
+  it("sets isLoading false in finally block", () => {
+    expect(src).toContain(".finally(");
+    expect(src).toMatch(/finally.*setIsLoading.*false|setIsLoading.*false.*finally/s);
+  });
+
+  it("logs fetch failures to console.warn", () => {
+    expect(src).toContain("console.warn");
+    expect(src).toContain("[document-types]");
+  });
+});

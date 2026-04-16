@@ -23,7 +23,7 @@ import {
   removeLocalStorage,
   resolveBrowserUrl,
 } from "@/lib/browser";
-import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments, UserPicker, HelpTooltip } from "@/components";
+import { ApprovalTable, AuditTimeline, ProjectSummaryBar, KpiCards, PhaseAdvanceModal, WorkflowTimeline, ReviewerComments, UserPicker, HelpTooltip, SectionErrorBoundary } from "@/components";
 import type { TimelineStep } from "@/components";
 import type { AuditEntry } from "@/components/AuditTimeline";
 import { cn } from "@/lib/utils";
@@ -851,6 +851,7 @@ export default function ProjectDetailsPage() {
           )}
 
           {/* SLA Summary — Phase 8 */}
+          <SectionErrorBoundary label="SLA summary">
           {slaSummary && slaSummary.total > 0 && (
             <Card>
               <CardHeader>
@@ -892,6 +893,7 @@ export default function ProjectDetailsPage() {
               </CardContent>
             </Card>
           )}
+          </SectionErrorBoundary>
 
           {/* Document Quality Scores — only shown when FSV is enabled (Item 34 Phase 4) */}
           {fsvEnabled && qualityScores && qualityScores.length > 0 && (
@@ -1216,20 +1218,24 @@ export default function ProjectDetailsPage() {
                         {approvalActionError ? (
                           <p className="text-sm text-red-600 dark:text-red-400">{approvalActionError}</p>
                         ) : null}
-                        <ApprovalTable
-                          approvals={requiredApprovalsForPhase}
-                          currentUser={username}
-                          canEdit={canEdit}
-                          reviewerOptions={approvalReviewerOptions}
-                          onAssign={handleAssignApproval}
-                          onSign={signApproval}
-                          onReject={rejectApproval}
-                          onSignInitials={signApprovalByInitials}
-                          onReset={resetApprovalLocal}
-                          onRemove={removeApproval}
-                          onBulkReminder={(ids) => sendReminder(ids)}
-                          onHistory={viewHistory}
-                        />
+                        <SectionErrorBoundary label="Approvals table">
+                          <ApprovalTable
+                            approvals={requiredApprovalsForPhase}
+                            currentUser={username}
+                            canEdit={canEdit}
+                            reviewerOptions={approvalReviewerOptions}
+                            handlers={{
+                              onAssign: handleAssignApproval,
+                              onSign: signApproval,
+                              onReject: rejectApproval,
+                              onSignInitials: signApprovalByInitials,
+                              onReset: resetApprovalLocal,
+                              onRemove: removeApproval,
+                              onBulkReminder: (ids) => sendReminder(ids),
+                              onHistory: viewHistory,
+                            }}
+                          />
+                        </SectionErrorBoundary>
                       </CardContent>
                     </Card>
                   </div>
@@ -1796,19 +1802,23 @@ export default function ProjectDetailsPage() {
               {approvalActionError ? (
                 <p className="text-sm text-red-600 dark:text-red-400">{approvalActionError}</p>
               ) : null}
-              <ApprovalTable
-                approvals={approvalsForPhase}
-                currentUser={username}
-                canEdit={canEdit}
-                reviewerOptions={approvalReviewerOptions}
-                onAssign={handleAssignApproval}
-                onSign={signApproval}
-                onSignInitials={signApprovalByInitials}
-                onReset={resetApprovalLocal}
-                onRemove={removeApproval}
-                onBulkReminder={(ids) => sendReminder(ids)}
-                onHistory={viewHistory}
-              />
+              <SectionErrorBoundary label="Approvals table">
+                <ApprovalTable
+                  approvals={approvalsForPhase}
+                  currentUser={username}
+                  canEdit={canEdit}
+                  reviewerOptions={approvalReviewerOptions}
+                  handlers={{
+                    onAssign: handleAssignApproval,
+                    onSign: signApproval,
+                    onSignInitials: signApprovalByInitials,
+                    onReset: resetApprovalLocal,
+                    onRemove: removeApproval,
+                    onBulkReminder: (ids) => sendReminder(ids),
+                    onHistory: viewHistory,
+                  }}
+                />
+              </SectionErrorBoundary>
             </CardContent>
           </Card>
         </section>
@@ -2270,7 +2280,11 @@ export default function ProjectDetailsPage() {
                   leaveFrom="transform opacity-100 scale-100"
                   leaveTo="transform opacity-0 scale-95"
                 >
-                  <AuditTimeline events={auditEvents} />
+                  <div>
+                    <SectionErrorBoundary label="Audit timeline">
+                      <AuditTimeline events={auditEvents} />
+                    </SectionErrorBoundary>
+                  </div>
                 </Transition>
               </>
             )}

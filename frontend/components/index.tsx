@@ -56,6 +56,7 @@ export { default as ChatBot } from "./ChatBot";
 export { default as EnvironmentSwitcher } from "./EnvironmentSwitcher";
 export { default as PhaseTabs } from "./PhaseTabs";
 export { default as ApprovalTable } from "./ApprovalTable";
+export type { ApprovalHandlers } from "./ApprovalTable";
 export { default as AuditTimeline } from "./AuditTimeline";
 export { default as ProjectSummaryBar } from "./ProjectSummaryBar";
 export { default as KpiCards } from "./KpiCards";
@@ -66,6 +67,7 @@ export { default as ReviewerComments } from "./ReviewerComments";
 export { default as UserPicker } from "./UserPicker";
 export { default as LocaleSwitcher } from "./LocaleSwitcher";
 export { default as HelpTooltip } from "./HelpTooltip";
+export { SectionErrorBoundary } from "./SectionErrorBoundary";
 
 // Add more as your project grows...
 // export { default as SomeOtherComponent } from "./workflow/SomeOtherComponent";

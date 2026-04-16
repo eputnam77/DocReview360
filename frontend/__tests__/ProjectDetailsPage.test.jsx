@@ -121,6 +121,7 @@ vi.mock("@/components", async () => {
         ReviewerComments: () => React.createElement("div", { "data-testid": "reviewer-comments" }),
         UserPicker: () => React.createElement("div", { "data-testid": "user-picker" }),
         HelpTooltip: ({ children }) => React.createElement("span", null, children),
+        SectionErrorBoundary: ({ children }) => React.createElement(React.Fragment, null, children),
     };
 });
 vi.mock("@/components/ui/button", () => ({

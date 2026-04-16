@@ -19,11 +19,7 @@ import * as Icons from "lucide-react";
 import type { Approval } from "@/types";
 const Icon = Icons as any;
 
-interface Props {
-  approvals: Approval[];
-  currentUser?: string;
-  canEdit?: boolean;
-  reviewerOptions?: string[];
+export interface ApprovalHandlers {
   onAssign?: (approvalId: string, reviewer: string) => void;
   onSign: (id: string) => void;
   onReject?: (id: string) => void;
@@ -32,6 +28,14 @@ interface Props {
   onRemove: (id: string) => void;
   onBulkReminder: (ids: string[]) => void;
   onHistory: (id: string) => void;
+}
+
+interface Props {
+  approvals: Approval[];
+  currentUser?: string;
+  canEdit?: boolean;
+  reviewerOptions?: string[];
+  handlers: ApprovalHandlers;
 }
 
 function classNames(...classes: (string | false | undefined)[]) {
@@ -88,15 +92,18 @@ export default function ApprovalTable({
   currentUser,
   canEdit,
   reviewerOptions = [],
-  onAssign,
-  onSign,
-  onReject,
-  onSignInitials,
-  onReset,
-  onRemove,
-  onBulkReminder,
-  onHistory,
+  handlers,
 }: Props) {
+  const {
+    onAssign,
+    onSign,
+    onReject,
+    onSignInitials,
+    onReset,
+    onRemove,
+    onBulkReminder,
+    onHistory,
+  } = handlers;
   const [selected, setSelected] = useState<string[]>([]);
   const [initialsModalId, setInitialsModalId] = useState<string | null>(null);
   const [initialsValue, setInitialsValue] = useState("");

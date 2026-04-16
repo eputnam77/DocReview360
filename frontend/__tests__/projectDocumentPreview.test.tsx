@@ -177,6 +177,8 @@ vi.mock("@/components", () => {
     UserPicker: () => React.createElement("div", null),
     HelpTooltip: ({ children }: React.PropsWithChildren) =>
       React.createElement("span", null, children),
+    SectionErrorBoundary: ({ children }: React.PropsWithChildren) =>
+      React.createElement(React.Fragment, null, children),
   };
 });
 

@@ -204,6 +204,7 @@ vi.mock("@/components", async () => {
     ReviewerComments: () => React.createElement("div", { "data-testid": "reviewer-comments" }),
     UserPicker: () => React.createElement("div", { "data-testid": "user-picker" }),
     HelpTooltip: ({ children }: React.PropsWithChildren) => React.createElement("span", null, children),
+    SectionErrorBoundary: ({ children }: React.PropsWithChildren) => React.createElement(React.Fragment, null, children),
   };
 });
 
@@ -442,9 +443,9 @@ describe("ProjectDetailsPage", () => {
 
     await openApprovalsSection();
 
-    const latestProps = approvalTableSpy.mock.calls.at(-1)?.[0] as { onSign: (id: string) => Promise<void> };
+    const latestProps = approvalTableSpy.mock.calls.at(-1)?.[0] as { handlers: { onSign: (id: string) => Promise<void> } };
     await act(async () => {
-      await latestProps.onSign("approval-1");
+      await latestProps.handlers.onSign("approval-1");
     });
 
     expect(routerPushMock).toHaveBeenCalledWith(

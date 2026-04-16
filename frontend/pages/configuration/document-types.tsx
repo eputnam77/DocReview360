@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, Clock, Pencil, Plus, Trash } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useRef } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/api";
@@ -420,32 +420,42 @@ export default function DocumentTypesPage() {
   const [showAllSLA, setShowAllSLA] = useState(false);
   const [loadingAllSLA, setLoadingAllSLA] = useState(false);
 
+  // Loading + error state for the three parallel configuration fetches
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const hasFetched = useRef(false);
+
+  const loadConfigData = () => {
+    setIsLoading(true);
+    setFetchError(null);
+    Promise.all([
+      authenticatedFetch('/document-types')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`/document-types: ${r.status}`))))
+        .then((data: unknown) => setTypes(normalizeDocTypes(data))),
+      authenticatedFetch('/phases')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`/phases: ${r.status}`))))
+        .then((data: string[]) => setPhases(Array.isArray(data) ? data : [])),
+      authenticatedFetch('/workflow-templates')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`/workflow-templates: ${r.status}`))))
+        .then((data: any[]) => {
+          if (Array.isArray(data)) {
+            setTemplates(data.map((t) => ({ id: t.id || t.name, name: t.name || t.id })));
+          }
+        }),
+    ])
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Failed to load configuration data";
+        setFetchError(msg);
+        console.warn("[document-types] fetch failed:", err);
+      })
+      .finally(() => setIsLoading(false));
+  };
+
   useEffect(() => {
-    // Fetch document types from backend
-    authenticatedFetch('/document-types')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: unknown) => {
-        const list = normalizeDocTypes(data);
-        setTypes(list);
-      })
-      .catch(() => setTypes([]));
-
-    // Fetch available phases from backend
-    authenticatedFetch('/phases')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: string[]) => setPhases(Array.isArray(data) ? data : []))
-      .catch(() => setPhases([]));
-
-    // Fetch workflow templates for the "Default Workflow" selector
-    authenticatedFetch('/workflow-templates')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => {
-        if (Array.isArray(data)) {
-          setTemplates(data.map((t) => ({ id: t.id || t.name, name: t.name || t.id })));
-        }
-      })
-      .catch(() => setTemplates([]));
-  }, []);
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    loadConfigData();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleSLARow = (docTypeId: string) => {
     setExpandedSLA((prev) => (prev === docTypeId ? null : docTypeId));
@@ -722,6 +732,40 @@ export default function DocumentTypesPage() {
       toast.error("Failed to update document type phases");
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6" aria-busy="true" aria-label="Loading document types">
+        <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-4 w-96 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-10 w-full animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="p-8 space-y-4">
+        <h1 className="text-2xl font-bold">Document Types</h1>
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          <strong>Failed to load configuration data.</strong>{" "}
+          <span className="opacity-75">{fetchError}</span>
+          <div className="mt-2">
+            <button
+              className="text-red-600 underline hover:no-underline"
+              onClick={loadConfigData}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-6">
