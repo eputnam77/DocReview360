@@ -79,21 +79,22 @@ describe("Tools page — FSV URL settings round-trip", () => {
 // ---------------------------------------------------------------------------
 
 describe("TipTap editor — FSV URL consumed via backend proxy", () => {
-  const tiptap = src("components/TiptapEditorFull.tsx");
+  // After Phase 3 extraction, the preflight/validation logic lives in useEditorSave.ts
+  const saveHook = src("lib/useEditorSave.ts");
 
   it("editor sends POST to /documents/preflight (not directly to FSV)", () => {
-    expect(tiptap).toContain("/documents/preflight");
+    expect(saveHook).toContain("/documents/preflight");
   });
 
   it("preflight is the editor's FSV integration point", () => {
     // The editor never calls FSV directly — it goes through the backend proxy
-    expect(tiptap).not.toContain("/fsv/");
-    expect(tiptap).not.toContain("FEDERAL_STYLE_VALIDATOR_URL");
+    expect(saveHook).not.toContain("/fsv/");
+    expect(saveHook).not.toContain("FEDERAL_STYLE_VALIDATOR_URL");
   });
 
   it("validation result is stored in validationSummary state", () => {
-    expect(tiptap).toContain("setValidationSummary");
-    expect(tiptap).toContain("validationSummary");
+    expect(saveHook).toContain("setValidationSummary");
+    expect(saveHook).toContain("validationSummary");
   });
 });
 

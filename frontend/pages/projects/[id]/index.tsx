@@ -86,6 +86,14 @@ import {
   VersionDrawer,
 } from "@/components/project";
 
+// Business logic hooks (Phase 3 extraction)
+import { useProjectPageData } from "@/lib/useProjectPageData";
+import { usePhaseManagement } from "@/lib/usePhaseManagement";
+import { useReviewerManagement } from "@/lib/useReviewerManagement";
+import { useApprovalSigning } from "@/lib/useApprovalSigning";
+import { useFeedbackHandlers } from "@/lib/useFeedbackHandlers";
+import { useReviewLifecycle } from "@/lib/useReviewLifecycle";
+
 // ---------------------------------------------------------------------------
 // 1 ▲ Utility helpers (types moved to @/components/project/_types)
 // ---------------------------------------------------------------------------
@@ -115,11 +123,9 @@ const PROJECT_LIFECYCLE_STATUSES = [
 // ----------------------------------------------------------------------------
 export default function ProjectDetailsPage() {
   const router = useRouter();
-  // Guard against undefined id during Next.js router hydration. On the first
-  // render router.query is empty ({}); wait until router.isReady before using it.
   const id = router.isReady ? (router.query.id as string | undefined) : undefined;
 
-  // ▼ state
+  // ── Core local state ──────────────────────────────────────────────────
   const [project, setProject] = useState<Project | null>(null);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -127,81 +133,39 @@ export default function ProjectDetailsPage() {
   const [historyEvents, setHistoryEvents] = useState<AuditEntry[]>([]);
   const [versions] = useState<VersionEntry[]>([]);
   const [reviewCount, setReviewCount] = useState(0);
-  const [showPhaseDialog, setShowPhaseDialog] = useState(false);
-  const [pendingPhase, setPendingPhase] = useState<string | null>(null);
-  const [reviewerInput, setReviewerInput] = useState("");
-  const [reviewerActionError, setReviewerActionError] = useState<string | null>(null);
-  const [addingReviewer, setAddingReviewer] = useState(false);
-  const [approvalReviewerInput, setApprovalReviewerInput] = useState("");
-  const [approvalActionError, setApprovalActionError] = useState<string | null>(null);
-  const [addingApproval, setAddingApproval] = useState(false);
-  const [editingReviewer, setEditingReviewer] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState("");
-
-  // Assignment-based reviewer state
-  const [assignmentReviewerInput, setAssignmentReviewerInput] = useState("");
-  const [assignmentDueDate, setAssignmentDueDate] = useState("");
-  const [addingAssignment, setAddingAssignment] = useState(false);
-  const [expandedFeedback, setExpandedFeedback] = useState<Set<string>>(new Set());
-  const [replyText, setReplyText] = useState<Record<string, string>>({});
-  const [feedbackTypeFilter, setFeedbackTypeFilter] = useState("all");
-  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState("all");
-  const [newFeedbackText, setNewFeedbackText] = useState("");
-  const [newFeedbackType, setNewFeedbackType] = useState("comment");
-
-  // Collapsible document preview panels (Feedback and Signatures tabs)
-  const [feedbackPreviewOpen, setFeedbackPreviewOpen] = useState(false);
-  const [signaturesPreviewOpen, setSignaturesPreviewOpen] = useState(false);
-
-  const approvalsForPhase = useMemo(
-    () =>
-      approvals.filter(
-        (a) => !project?.currentPhaseId || a.phaseId === project.currentPhaseId,
-      ),
-    [approvals, project?.currentPhaseId],
-  );
-
   const [showVersions, setShowVersions] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-
-  // NARA records retention fields (Phase 7)
+  const [feedbackPreviewOpen, setFeedbackPreviewOpen] = useState(false);
+  const [signaturesPreviewOpen, setSignaturesPreviewOpen] = useState(false);
   const [naraScheduleNumber, setNaraScheduleNumber] = useState("");
   const [naraDispositionAuthority, setNaraDispositionAuthority] = useState("");
   const [naraRetentionPeriod, setNaraRetentionPeriod] = useState("");
   const [naraRecordSeries, setNaraRecordSeries] = useState("");
   const [savingNara, setSavingNara] = useState(false);
 
-  // Reviewer-centric feedback filter (Phase 5) — must be declared here (before any early returns)
-  const [feedbackShowMyOnly, setFeedbackShowMyOnly] = React.useState(false);
-
-  // ▼ permission based on logged in user
+  // ── User / permissions ────────────────────────────────────────────────
   const username = useUserStore((s) => s.username);
   const isAdmin = useUserStore((s) => s.isAdmin);
   const isOwner = project?.owner === username;
   const canEdit = isOwner || isAdmin;
 
-  const phaseList = useMemo(
-    () => workflow?.steps?.map((s) => ({ id: s.name, name: s.name })) ?? [],
-    [workflow?.steps],
+  // ── Derived state ─────────────────────────────────────────────────────
+  const approvalsForPhase = useMemo(
+    () => approvals.filter((a) => !project?.currentPhaseId || a.phaseId === project.currentPhaseId),
+    [approvals, project?.currentPhaseId],
   );
-
+  const phaseList = useMemo(() => workflow?.steps?.map((s) => ({ id: s.name, name: s.name })) ?? [], [workflow?.steps]);
   const phaseCounts = useMemo(() => {
     const map: Record<string, number> = {};
-    approvals.forEach((a) => {
-      if (a.phaseId) map[a.phaseId] = (map[a.phaseId] || 0) + 1;
-    });
+    approvals.forEach((a) => { if (a.phaseId) map[a.phaseId] = (map[a.phaseId] || 0) + 1; });
     return map;
   }, [approvals]);
-
   const canAdvance = useMemo(
     () =>
       approvalsForPhase.length === 0 ||
-      approvalsForPhase
-        .filter((a) => a.required !== false)
-        .every((a) => a.state === "approved"),
+      approvalsForPhase.filter((a) => a.required !== false).every((a) => a.state === "approved"),
     [approvalsForPhase],
   );
-
   const timelineSteps = useMemo<TimelineStep[]>(
     () =>
       workflow?.steps?.map((s) => ({
@@ -210,8 +174,17 @@ export default function ProjectDetailsPage() {
       })) ?? [],
     [workflow?.steps],
   );
+  const stats = useMemo(
+    () => ({
+      assigned: approvalsForPhase.length,
+      approved: approvalsForPhase.filter((a) => a.state === "approved").length,
+      pending: approvalsForPhase.filter((a) => a.state === "pending").length,
+      overdue: approvalsForPhase.filter((a) => a.state === "overdue").length,
+    }),
+    [approvalsForPhase],
+  );
 
-  // ▼ data hooks
+  // ── Primary data hooks ────────────────────────────────────────────────
   const { data: projectData, isLoading: projectLoading, isError: projectError } = useProject(id as string);
   const { data: workflowData, isLoading: phasesLoading } = usePhases(projectData?.workflow);
   const {
@@ -226,371 +199,56 @@ export default function ProjectDetailsPage() {
     projectData?.currentPhaseId ?? undefined,
   );
   const queryClient = useQueryClient();
+  const { reviewers, addReviewer, updateReviewer, removeReviewer } = useProjectReviewers(projectData?.id);
+
+  // ── Secondary queries + derived state (useProjectPageData) ────────────
   const {
-    reviewers,
-    addReviewer,
-    updateReviewer,
-    removeReviewer,
-    isLoading: reviewersLoading,
-  } = useProjectReviewers(projectData?.id);
-  interface UserDirectoryEntry {
-    username?: string | null;
-  }
-  const { data: userOptions = [] } = useQuery<UserDirectoryEntry[]>({
-    queryKey: ["users"],
-    queryFn: async () => {
-      const res = await authenticatedFetch('/users');
-      if (!res.ok) return [];
-      return res.json();
-    },
+    userOptions,
+    assignments,
+    feedbackItems,
+    feedbackProgress,
+    notifLog,
+    reviewSummary,
+    myAssignments,
+    lifecycleRecord,
+    slaSummary,
+    slaDeadlines,
+    qualityScores,
+    fsvEnabled,
+    eligibilityCache,
+    refetchAssignments,
+    refetchFeedback,
+    refetchProgress,
+    refetchSummary,
+    refetchMyAssignments,
+    refetchLifecycle,
+    refetchSla,
+    assignmentReviewers,
+    allUsernames,
+    reviewerUsernames,
+    approvalReviewerOptions,
+    requiredApprovalsForPhase,
+    completedApprovalCount,
+    activeAssignments,
+    completedAssignmentsCount,
+    displayLifecycleStatus,
+    lifecycleReviewHint,
+    assignmentEvents,
+    auditEvents,
+    reviewerOptions,
+  } = useProjectPageData(id, {
+    username,
+    approvals,
+    approvalsForPhase,
+    project,
+    workflow,
+    reviewCountData,
+    logs,
   });
 
-  // Reviewer assignments (lifecycle model)
-  interface ReviewAssignment {
-    id: string;
-    reviewer: string;
-    status: string;
-    requested_at: string;
-    due_date?: string | null;
-    started_at?: string | null;
-    completed_at?: string | null;
-    signed_at?: string | null;
-    replaced_by?: string | null;
-    replacement_reason?: string | null;
-  }
-  const { data: assignments = [], refetch: refetchAssignments } = useQuery<ReviewAssignment[]>({
-    queryKey: ["assignments", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/assignments`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data) ? data : (data.items ?? []);
-    },
-    enabled: !!id,
-    staleTime: 30_000,
-  });
-  const assignmentReviewers = useMemo(
-    () => Array.from(new Set(assignments.filter((a) => a.status !== "replaced").map((a) => a.reviewer))),
-    [assignments],
-  );
-  const allUsernames = useMemo<string[]>(
-    () =>
-      Array.from(
-        new Set(
-          userOptions.flatMap((user) => {
-            const username = typeof user?.username === "string" ? user.username.trim() : "";
-            return username ? [username] : [];
-          }),
-        ),
-      ).sort((left, right) => left.localeCompare(right)),
-    [userOptions],
-  );
-  const reviewerUsernames = useMemo<string[]>(
-    () =>
-      reviewers.filter(
-        (reviewer): reviewer is string => typeof reviewer === "string" && reviewer.trim().length > 0,
-      ),
-    [reviewers],
-  );
-  const approvalReviewerOptions = useMemo<string[]>(
-    () =>
-      Array.from(new Set<string>([...allUsernames, ...assignmentReviewers, ...reviewerUsernames])).sort(
-        (left, right) => left.localeCompare(right),
-      ),
-    [allUsernames, assignmentReviewers, reviewerUsernames],
-  );
-
-  // Feedback ledger
-  interface FeedbackItem {
-    id: string;
-    reviewer: string;
-    feedback_type: string;
-    text: string;
-    phase?: string | null;
-    status: string;
-    created_at: string;
-    disposition_by?: string | null;
-    disposition_at?: string | null;
-    disposition_reason?: string | null;
-    parent_id?: string | null;
-    tags: string[];
-    question_satisfied: boolean;
-    assignment_id?: string | null;
-    /** "inline" for TipTap-extracted marks, undefined for manual entries */
-    source?: string | null;
-    /** Position range anchor "from:to" for inline feedback */
-    range_anchor?: string | null;
-  }
-  interface FeedbackProgress {
-    total: number;
-    open: number;
-    accepted: number;
-    rejected: number;
-    resolved: number;
-    addressed: number;
-    by_type: Record<string, number>;
-  }
-  const { data: feedbackItems = [], refetch: refetchFeedback } = useQuery<FeedbackItem[]>({
-    queryKey: ["feedback", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/feedback`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      // The endpoint returns either a plain array or a paginated envelope
-      // { items: [...], total, skip, limit }. Normalise both.
-      if (Array.isArray(data)) return data as FeedbackItem[];
-      if (data && Array.isArray(data.items)) return data.items as FeedbackItem[];
-      return [];
-    },
-    enabled: !!id,
-    staleTime: 15_000,
-  });
-  const { data: feedbackProgress, refetch: refetchProgress } = useQuery<FeedbackProgress>({
-    queryKey: ["feedback-progress", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await authenticatedFetch(`/projects/${id}/feedback/progress`);
-      return res.ok ? res.json() : null;
-    },
-    enabled: !!id,
-    staleTime: 15_000,
-  });
-
-  // Notification log
-  interface NotifLogEntry {
-    id: string;
-    event: string;
-    message: string;
-    reviewer?: string | null;
-    sent_at: string;
-    channel: string;
-  }
-  const { data: notifLog = [] } = useQuery<NotifLogEntry[]>({
-    queryKey: ["notif-log", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/notification-log`);
-      return res.ok ? res.json() : [];
-    },
-    enabled: !!id,
-    staleTime: 60_000,
-  });
-
-  // Review lifecycle summary (Phase 6)
-  interface ReviewSummary {
-    total_active: number;
-    invited: number;
-    reviewing: number;
-    feedback_submitted: number;
-    concurred: number;
-    non_concurred: number;
-    signed: number;
-    declined: number;
-    all_complete: boolean;
-    all_signed: boolean;
-    has_non_concurrence: boolean;
-    lifecycle_step: string;
-    feedback_total: number;
-    feedback_open: number;
-    feedback_addressed: number;
-  }
-  const { data: reviewSummary, refetch: refetchSummary } = useQuery<ReviewSummary>({
-    queryKey: ["review-summary", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await authenticatedFetch(`/projects/${id}/review-summary`);
-      return res.ok ? res.json() : null;
-    },
-    enabled: !!id,
-    staleTime: 15_000,
-  });
-  const requiredApprovalsForPhase = useMemo(
-    () => approvalsForPhase.filter((approval) => approval.required !== false),
-    [approvalsForPhase],
-  );
   const requiredApprovalCount = requiredApprovalsForPhase.length;
-  const completedApprovalCount = useMemo(
-    () => requiredApprovalsForPhase.filter((approval) => approval.state === "approved").length,
-    [requiredApprovalsForPhase],
-  );
-  const activeAssignments = useMemo(
-    () => assignments.filter((assignment) => assignment.status !== "replaced"),
-    [assignments],
-  );
-  const completedAssignmentsCount = useMemo(
-    () =>
-      activeAssignments.filter((assignment) =>
-        ["concurred", "signed", "non_concurred", "declined"].includes(assignment.status),
-      ).length,
-    [activeAssignments],
-  );
 
-  // My assignments on this project (Phase 5)
-  const { data: myAssignments = [], refetch: refetchMyAssignments } = useQuery<ReviewAssignment[]>({
-    queryKey: ["my-assignments", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/assignments/me`);
-      return res.ok ? res.json() : [];
-    },
-    enabled: !!id,
-    staleTime: 30_000,
-  });
-
-  // Lifecycle status (Phase 7)
-  interface LifecycleRecord {
-    project_id: string;
-    status: string;
-    updated_at: string;
-    set_by?: string | null;
-    published_ref?: string | null;
-    published_at?: string | null;
-    published_venue?: string | null;
-  }
-  const { data: lifecycleRecord, refetch: refetchLifecycle } = useQuery<LifecycleRecord>({
-    queryKey: ["lifecycle", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await authenticatedFetch(`/projects/${id}/lifecycle`);
-      return res.ok ? res.json() : { project_id: id, status: "draft", updated_at: "" };
-    },
-    enabled: !!id,
-    staleTime: 30_000,
-  });
-  const displayLifecycleStatus = useMemo(() => {
-    const persistedStatus = lifecycleRecord?.status ?? "draft";
-    const persistedIndex = PROJECT_LIFECYCLE_STATUSES.indexOf(
-      persistedStatus as (typeof PROJECT_LIFECYCLE_STATUSES)[number],
-    );
-    let derivedIndex = persistedIndex >= 0 ? persistedIndex : 0;
-
-    if (activeAssignments.length > 0) {
-      derivedIndex = Math.max(
-        derivedIndex,
-        PROJECT_LIFECYCLE_STATUSES.indexOf("in_review"),
-      );
-    }
-    if (reviewSummary?.all_complete) {
-      derivedIndex = Math.max(
-        derivedIndex,
-        PROJECT_LIFECYCLE_STATUSES.indexOf("reviewed"),
-      );
-    }
-
-    return PROJECT_LIFECYCLE_STATUSES[derivedIndex] ?? persistedStatus;
-  }, [activeAssignments.length, lifecycleRecord?.status, reviewSummary?.all_complete]);
-  const lifecycleReviewHint = useMemo(() => {
-    if (!reviewSummary || !lifecycleRecord) return null;
-    if (lifecycleRecord.status === "draft" && displayLifecycleStatus === "in_review") {
-      return "Review activity has started, but the formal project lifecycle has not been advanced yet.";
-    }
-    if (lifecycleRecord.status !== "reviewed" && displayLifecycleStatus === "reviewed") {
-      return "Reviewer sign-off is complete. Advance the formal project lifecycle when you are ready.";
-    }
-    return null;
-  }, [displayLifecycleStatus, lifecycleRecord, reviewSummary]);
-
-  // SLA summary (Phase 8)
-  interface SLASummary {
-    project_id: string;
-    total: number;
-    on_track: number;
-    due_soon: number;
-    overdue: number;
-    no_deadline: number;
-    max_overdue_days: number;
-  }
-  interface DeadlineStatus {
-    assignment_id: string;
-    reviewer: string;
-    due_date?: string | null;
-    days_remaining?: number | null;
-    status: string;
-    overdue_days: number;
-  }
-  const { data: slaSummary, refetch: refetchSla } = useQuery<SLASummary>({
-    queryKey: ["sla-summary", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await authenticatedFetch(`/projects/${id}/sla-summary`);
-      return res.ok ? res.json() : null;
-    },
-    enabled: !!id,
-    staleTime: 60_000,
-  });
-  const { data: slaDeadlines = [] } = useQuery<DeadlineStatus[]>({
-    queryKey: ["sla-deadlines", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/sla-deadlines`);
-      return res.ok ? res.json() : [];
-    },
-    enabled: !!id,
-    staleTime: 60_000,
-  });
-
-  // Assignment eligibility cache — stores full eligibility objects
-  interface EligibilityResult {
-    eligible: boolean;
-    open_items: number;
-    unanswered_questions: number;
-    total_feedback: number;
-    reason?: string | null;
-  }
-  const [eligibilityCache, setEligibilityCache] = React.useState<Record<string, EligibilityResult | undefined>>({});
-
-  // Auto-start invited assignments when reviewer opens project view (Phase 5)
-  useEffect(() => {
-    if (!id || !username) return;
-    authenticatedFetch(`/projects/${id}/assignments/view`, { method: "POST" })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.started?.length > 0) {
-          refetchAssignments();
-          refetchMyAssignments();
-          refetchSummary();
-        }
-      })
-      .catch(() => {}); // best-effort
-  }, [id, username, refetchAssignments, refetchMyAssignments, refetchSummary]);
-
-  // Fetch eligibility for each active assignment
-  useEffect(() => {
-    if (!id || assignments.length === 0) return;
-    let cancelled = false;
-    const active = assignments.filter((a) => !["replaced", "concurred", "signed", "declined"].includes(a.status));
-    Promise.all(
-      active.map(async (a) => {
-        const res = await authenticatedFetch(
-          `/projects/${id}/assignments/${a.id}/eligibility`
-        ).catch(() => null);
-        if (res?.ok) {
-          const data: EligibilityResult = await res.json();
-          return [a.id, data] as const;
-        }
-        return null;
-      }),
-    ).then((results) => {
-      if (cancelled) return;
-      const cache: Record<string, EligibilityResult | undefined> = {};
-      for (const r of results) {
-        if (r) cache[r[0]] = r[1];
-      }
-      setEligibilityCache(cache);
-    });
-    return () => { cancelled = true; };
-  }, [id, assignments, setEligibilityCache]);
-
-  const reviewerOptions = useMemo(
-    () =>
-      userOptions
-        .filter((u: any) => Array.isArray(u.roles) && u.roles.includes("reviewer"))
-        .map((u: any) => u.username),
-    [userOptions],
-  );
-
+  // ── Sync primary queries → local state ───────────────────────────────
   useEffect(() => {
     setProject(projectData ?? null);
     if (projectData) {
@@ -599,22 +257,14 @@ export default function ProjectDetailsPage() {
       setNaraRetentionPeriod(projectData.nara_retention_period ?? "");
       setNaraRecordSeries(projectData.nara_record_series ?? "");
     }
-  }, [projectData, id]);
-  useEffect(() => {
-    setWorkflow(workflowData ?? null);
-  }, [workflowData, id]);
-  useEffect(() => {
-    setApprovals(approvalsData ?? []);
-  }, [approvalsData, id]);
-  useEffect(() => {
-    setReviewCount(reviewCountData?.count ?? 0);
-  }, [reviewCountData, id]);
+  }, [projectData]);
+  useEffect(() => { setWorkflow(workflowData ?? null); }, [workflowData]);
+  useEffect(() => { setApprovals(approvalsData ?? []); }, [approvalsData]);
+  useEffect(() => { setReviewCount(reviewCountData?.count ?? 0); }, [reviewCountData]);
 
+  // ── Audit log ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!id || !username) {
-      setLogs([]);
-      return;
-    }
+    if (!id || !username) { setLogs([]); return; }
     authenticatedFetch(`/api/audit?entity_id=${id}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
@@ -624,90 +274,20 @@ export default function ProjectDetailsPage() {
             timestamp: d.timestamp,
             action: d.details?.message || d.action,
             type: (d.details?.type as LogEntry["type"]) || "edit",
-            ref:
-              d.details?.approvalId ||
-              d.details?.reviewId ||
-              d.details?.phaseId,
+            ref: d.details?.approvalId || d.details?.reviewId || d.details?.phaseId,
           })),
         ),
       )
       .catch(() => setLogs([]));
   }, [id, username]);
 
-  const loading = projectLoading || phasesLoading || approvalsLoading || reviewLoading;
-
-  // Synthetic review lifecycle events derived from assignment timestamps
-  const assignmentEvents = useMemo<AuditEntry[]>(() => {
-    const events: AuditEntry[] = [];
-    for (const a of assignments) {
-      if (a.requested_at) {
-        events.push({
-          id: `${a.id}-invited`,
-          timestamp: a.requested_at,
-          message: `Reviewer '${a.reviewer}' invited`,
-          type: "review" as const,
-        });
-      }
-      if (a.started_at) {
-        events.push({
-          id: `${a.id}-started`,
-          timestamp: a.started_at,
-          message: `Reviewer '${a.reviewer}' started review`,
-          type: "review" as const,
-        });
-      }
-      if (a.completed_at) {
-        events.push({
-          id: `${a.id}-submitted`,
-          timestamp: a.completed_at,
-          message: `Reviewer '${a.reviewer}' submitted feedback`,
-          type: "review" as const,
-        });
-      }
-      if (a.signed_at) {
-        events.push({
-          id: `${a.id}-signed`,
-          timestamp: a.signed_at,
-          message: `Reviewer '${a.reviewer}' ${a.status === "non_concurred" ? "non-concurred" : a.status === "signed" ? "signed (internal)" : "concurred"}`,
-          type: "review" as const,
-        });
-      }
-    }
-    return events;
-  }, [assignments]);
-
-  const auditEvents = useMemo(
-    () => {
-      const base = logs.map((l) => ({
-        id: l.id,
-        timestamp: l.timestamp,
-        message: l.action,
-        type: l.type,
-        link:
-          l.type === "approval" && l.ref
-            ? `#approval-${l.ref}`
-            : l.type === "review" && l.ref
-            ? `/projects/${id}/reviews#${l.ref}`
-            : undefined,
-      }));
-      // Merge and sort by timestamp descending
-      return [...base, ...assignmentEvents].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      );
-    },
-    [logs, id, assignmentEvents],
-  );
-
-  // ▼ check for completed signatures on page load
+  // ── Completed signature detection ─────────────────────────────────────
   useEffect(() => {
     if (!approvals.length) return;
-
-    // Check localStorage for completed signatures
     approvals.forEach((approval) => {
       if (approval.documensoSigId) {
         const completedAt = readLocalStorage(`approval-${approval.id}`);
         if (completedAt && approval.state !== "approved") {
-          // Update the approval state to reflect completion
           setApprovals((prev) =>
             prev.map((a) =>
               a.id === approval.id
@@ -715,624 +295,100 @@ export default function ProjectDetailsPage() {
                     ...a,
                     state: "approved" as const,
                     signedAt: completedAt,
-                    documensoSigId: approval.documensoSigId
+                    documensoSigId: approval.documensoSigId,
                   }
                 : a,
             ),
           );
-
         }
       }
     });
   }, [approvals]);
 
-  // ▼ review KPIs memo
-  const stats = useMemo(() => {
-    const assigned = approvalsForPhase.length;
-    return {
-      assigned,
-      approved: approvalsForPhase.filter((a) => a.state === "approved").length,
-      pending: approvalsForPhase.filter((a) => a.state === "pending").length,
-      overdue: approvalsForPhase.filter((a) => a.state === "overdue").length,
-    };
-  }, [approvalsForPhase]);
+  // ── Overdue escalation ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isOwner) return;
+    const overdue = approvalsForPhase.filter((a) => a.state === "overdue");
+    if (overdue.length > 0) {
+      toast.error(
+        "Escalation: overdue approvals - " + overdue.map((o) => o.reviewer).join(", "),
+      );
+    }
+  }, [approvalsForPhase, isOwner]);
 
-  // ▼ document quality scores
-  interface DocumentScore {
-    document_id: string;
-    quality_score: number;
-    plain_language_grade: string;
-    flesch_reading_ease: number;
-    quality_flags: Record<string, number>;
-    high_risk_terms: string[];
-    doc_type_avg_score: number | null;
-  }
-  const { data: qualityScores } = useQuery<DocumentScore[]>({
-    queryKey: ["project-doc-scores", id],
-    queryFn: async () => {
-      const res = await authenticatedFetch(`/projects/${id}/documents/scores`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!id,
-    staleTime: 60_000,
+  // ── Business logic hooks ──────────────────────────────────────────────
+  const phase = usePhaseManagement({ id, project, workflow, canAdvance, setProject, setWorkflow });
+  const revMgmt = useReviewerManagement({
+    id,
+    project,
+    workflow,
+    approvals,
+    setApprovals,
+    approvalReviewerOptions,
+    reviewerOptions,
+    addReviewer,
+    updateReviewer,
+    removeReviewer,
+  });
+  const signing = useApprovalSigning({
+    id,
+    username,
+    approvals,
+    approvalsForPhase,
+    setApprovals,
+    setHistoryEvents,
+    setShowHistory,
+    reset,
+    remind,
+  });
+  const fb = useFeedbackHandlers({ id, refetchFeedback, refetchProgress });
+  const lifecycle = useReviewLifecycle({
+    id,
+    refetchAssignments,
+    refetchMyAssignments,
+    refetchSummary,
+    refetchLifecycle,
   });
 
-  // Item 34 Phase 4: gate FSV-specific UI on FSV plugin enabled state
-  const { data: fsvEnabled = true } = useQuery<boolean>({
-    queryKey: ["fsv-enabled"],
-    queryFn: async () => {
-      const res = await authenticatedFetch("/plugin-marketplace/builtin-status");
-      if (!res.ok) return true;
-      const status: Record<string, boolean> = await res.json();
-      return status["fedstylevalidator"] !== false;
-    },
-    staleTime: 60_000,
-  });
+  // ── Destructure for JSX compatibility ────────────────────────────────
+  const { showPhaseDialog, setShowPhaseDialog, pendingPhase, requestPhaseChange, confirmPhaseChange } = phase;
+  const {
+    reviewerInput, setReviewerInput,
+    reviewerActionError, setReviewerActionError,
+    addingReviewer,
+    approvalReviewerInput, setApprovalReviewerInput,
+    approvalActionError, setApprovalActionError,
+    addingApproval,
+    editingReviewer, setEditingReviewer,
+    editingValue, setEditingValue,
+    refreshReviewerData, createApprovalForReviewer,
+    handleAddReviewer, handleAddApproval, handleAssignApproval,
+    handleUpdateReviewer, handleRemoveReviewer,
+  } = revMgmt;
+  const {
+    signApproval, rejectApproval, signApprovalByInitials, resetApprovalLocal, removeApproval,
+    sendApprovalReminder: sendReminder, viewApprovalHistory: viewHistory,
+    buildApprovalSigningRoute,
+  } = signing;
+  const {
+    newFeedbackText, setNewFeedbackText,
+    newFeedbackType, setNewFeedbackType,
+    replyText, setReplyText,
+    expandedFeedback, setExpandedFeedback,
+    feedbackTypeFilter, setFeedbackTypeFilter,
+    feedbackStatusFilter, setFeedbackStatusFilter,
+    feedbackShowMyOnly, setFeedbackShowMyOnly,
+    handlePostFeedback, handleDisposition, handleReply,
+  } = fb;
+  const {
+    assignmentReviewerInput, setAssignmentReviewerInput,
+    assignmentDueDate, setAssignmentDueDate,
+    addingAssignment,
+    handleAddAssignment, handleSendReminder, handleSignInternal,
+    handleConcur, handleNonConcur, handleSubmitReview, handleLifecycleTransition,
+  } = lifecycle;
 
-  // ▼ handlers --------------------------------------------------------------
-  const handlePhaseChange = useCallback(
-    (phaseId: string) => {
-      if (!workflow?.steps) return;
-      const idx = workflow.steps.findIndex((s) => s.name === phaseId);
-      if (idx === -1) return;
-      const steps = workflow.steps.map((s, i) => ({
-        ...s,
-        status:
-          i < idx
-            ? ("complete" as const)
-            : i === idx
-              ? ("active" as const)
-              : ("pending" as const),
-      }));
-      setWorkflow({ ...workflow, steps, phase: steps[idx].name });
-      setProject((prev) =>
-        prev ? { ...prev, currentPhaseId: steps[idx].name } : prev,
-      );
-    },
-    [workflow],
-  );
-
-  const requestPhaseChange = useCallback(
-    (phaseId: string) => {
-      if (phaseId === project?.currentPhaseId) return;
-      if (!canAdvance) {
-        toast.error("All required approvals must be complete before advancing the phase.");
-        return;
-      }
-      setPendingPhase(phaseId);
-      setShowPhaseDialog(true);
-    },
-    [project?.currentPhaseId, canAdvance],
-  );
-
-  const confirmPhaseChange = useCallback(async () => {
-    if (pendingPhase && project?.id) {
-      try {
-        const res = await authenticatedFetch(`/projects/${project.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phase: pendingPhase }),
-        });
-        if (!res.ok) {
-          throw new Error("Failed to update project phase");
-        }
-        handlePhaseChange(pendingPhase);
-        queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-        if (project.workflow) {
-          queryClient.invalidateQueries({ queryKey: ["workflow", project.workflow] });
-        }
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to update phase");
-      }
-    }
-    setShowPhaseDialog(false);
-    setPendingPhase(null);
-  }, [pendingPhase, project, handlePhaseChange, queryClient]);
-
-  const refreshReviewerData = useCallback(() => {
-    if (!project?.id) return;
-    queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-    queryClient.invalidateQueries({ queryKey: ["project-reviewers", project.id] });
-    if (project.workflow) {
-      queryClient.invalidateQueries({ queryKey: ["approvals", project.workflow] });
-      queryClient.invalidateQueries({ queryKey: ["workflow", project.workflow] });
-    }
-  }, [project?.id, project?.workflow, queryClient]);
-
-  const createApprovalForReviewer = useCallback(
-    async (reviewer: string) => {
-      if (!project?.workflow) {
-        throw new Error("This project has no workflow configured.");
-      }
-
-      const phaseId = project.currentPhaseId ?? workflow?.phase ?? undefined;
-      const alreadyExists = approvals.some(
-        (a) =>
-          a.reviewer === reviewer &&
-          ((phaseId && a.phaseId === phaseId) || (!phaseId && !a.phaseId)),
-      );
-
-      if (alreadyExists) {
-        return false;
-      }
-
-      const response = await authenticatedFetch('/approvals', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workflow: project.workflow,
-          reviewer,
-          phase_id: phaseId,
-          required: true,
-          description: "Review Approval",
-        }),
-      });
-
-      if (!response.ok) {
-        let detail = "Failed to create approval";
-        try {
-          const data = await response.json();
-          if (typeof data?.detail === "string" && data.detail.trim()) {
-            detail = data.detail;
-          }
-        } catch {
-          // ignore parse failure and keep default message
-        }
-        throw new Error(detail);
-      }
-
-      const created = await response.json();
-      setApprovals((prev) => [
-        {
-          id: created.id,
-          reviewer: created.reviewer,
-          email: created.reviewer,
-          state: created.state,
-          dueAt: created.due_at || new Date().toISOString().split("T")[0],
-          signedAt: created.signed_at,
-          comments: created.comments || "",
-          documensoSigId: created.signature || created.signature_id,
-          description: created.description,
-          phaseId: created.phase_id,
-          required: created.required,
-          role: created.role,
-        },
-        ...prev,
-      ]);
-
-      refreshReviewerData();
-      return true;
-    },
-    [approvals, project?.currentPhaseId, project?.workflow, refreshReviewerData, workflow?.phase],
-  );
-  const handleAddReviewer = useCallback(async () => {
-    const reviewer = reviewerInput.trim();
-    if (!reviewer) {
-      const message = "Select a reviewer to add.";
-      setReviewerActionError(message);
-      toast.error(message);
-      return;
-    }
-    if (reviewerOptions.length > 0 && !reviewerOptions.includes(reviewer)) {
-      const message = "Reviewer must be an existing reviewer username.";
-      setReviewerActionError(message);
-      toast.error(message);
-      return;
-    }
-    try {
-      setAddingReviewer(true);
-      setReviewerActionError(null);
-      await addReviewer(reviewer);
-      const created = await createApprovalForReviewer(reviewer);
-      setReviewerInput("");
-      if (!created) {
-        toast("Reviewer added. Approval already exists for this phase.");
-      }
-      refreshReviewerData();
-    } catch (error) {
-      console.error(error);
-      const message = error instanceof Error ? error.message : "Failed to add reviewer";
-      setReviewerActionError(message);
-    } finally {
-      setAddingReviewer(false);
-    }
-  }, [addReviewer, createApprovalForReviewer, reviewerInput, reviewerOptions, refreshReviewerData]);
-
-
-  const handleAddApproval = useCallback(async () => {
-    const reviewer = approvalReviewerInput.trim();
-    if (!reviewer) {
-      const message = "Select a reviewer for the approval.";
-      setApprovalActionError(message);
-      toast.error(message);
-      return;
-    }
-    if (!approvalReviewerOptions.includes(reviewer)) {
-      const message = "Approval assignee must be an existing DocReview360 user.";
-      setApprovalActionError(message);
-      toast.error(message);
-      return;
-    }
-    try {
-      setAddingApproval(true);
-      setApprovalActionError(null);
-      const created = await createApprovalForReviewer(reviewer);
-      if (!created) {
-        const message = "Approval already exists for this reviewer in the current phase.";
-        setApprovalActionError(message);
-        toast(message);
-        return;
-      }
-      setApprovalReviewerInput("");
-      toast.success("Approval added.");
-    } catch (error) {
-      console.error(error);
-      const message = error instanceof Error ? error.message : "Failed to add approval";
-      setApprovalActionError(message);
-      toast.error(message);
-    } finally {
-      setAddingApproval(false);
-    }
-  }, [approvalReviewerInput, approvalReviewerOptions, createApprovalForReviewer]);
-
-  const handleAssignApproval = useCallback(
-    async (approvalId: string, reviewer: string) => {
-      try {
-        const res = await authenticatedFetch(`/approvals/${approvalId}/assign`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reviewer }),
-        });
-        if (!res.ok) {
-          let detail = "Failed to assign reviewer";
-          try {
-            const data = await res.json();
-            if (typeof data?.detail === "string") detail = data.detail;
-          } catch { /* ignore */ }
-          toast.error(detail);
-          return;
-        }
-        const updated = await res.json();
-        setApprovals((prev) =>
-          prev.map((a) =>
-            a.id === approvalId
-              ? { ...a, reviewer: updated.reviewer, email: updated.reviewer }
-              : a,
-          ),
-        );
-        toast.success(`Assigned ${reviewer} to role.`);
-        refreshReviewerData();
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to assign reviewer.");
-      }
-    },
-    [refreshReviewerData],
-  );
-
-  const handleUpdateReviewer = useCallback(async () => {
-    if (!editingReviewer) return;
-    const reviewer = editingValue.trim();
-    if (!reviewer) {
-      toast.error("Reviewer name required.");
-      return;
-    }
-    try {
-      await updateReviewer({ reviewer: editingReviewer, nextReviewer: reviewer });
-      setEditingReviewer(null);
-      setEditingValue("");
-      refreshReviewerData();
-    } catch (error) {
-      console.error(error);
-    }
-  }, [editingReviewer, editingValue, updateReviewer, refreshReviewerData]);
-
-  const handleRemoveReviewer = useCallback(
-    async (reviewer: string) => {
-      try {
-        await removeReviewer(reviewer);
-        refreshReviewerData();
-      } catch (error) {
-        console.error(error);
-      }
-    },
-    [removeReviewer, refreshReviewerData],
-  );
-
-  // Assignment management handlers
-  const handleAddAssignment = async () => {
-    const reviewer = assignmentReviewerInput.trim();
-    if (!reviewer) {
-      toast.error("Enter a reviewer username.");
-      return;
-    }
-    try {
-      setAddingAssignment(true);
-      const body: Record<string, unknown> = { reviewer };
-      if (assignmentDueDate) body.due_date = assignmentDueDate;
-      const res = await authenticatedFetch(`/projects/${id}/assignments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.detail ?? "Failed to add reviewer");
-      }
-      setAssignmentReviewerInput("");
-      setAssignmentDueDate("");
-      refetchAssignments();
-      toast.success("Reviewer invited.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add reviewer");
-    } finally {
-      setAddingAssignment(false);
-    }
-  };
-
-  const handleSendReminder = async (assignmentId: string) => {
-    try {
-      const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/remind`,
-        { method: "POST" },
-      );
-      if (!res.ok) throw new Error("Failed");
-      toast.success("Reminder sent.");
-    } catch {
-      toast.error("Failed to send reminder.");
-    }
-  };
-
-  // Feedback handlers
-  const handlePostFeedback = async () => {
-    if (!newFeedbackText.trim()) return;
-    try {
-      const res = await authenticatedFetch(`/projects/${id}/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: newFeedbackText, feedback_type: newFeedbackType }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      setNewFeedbackText("");
-      refetchFeedback();
-      refetchProgress();
-      toast.success("Feedback submitted.");
-    } catch {
-      toast.error("Failed to submit feedback.");
-    }
-  };
-
-  const handleDisposition = async (itemId: string, status: string, reason?: string) => {
-    try {
-      const body: Record<string, unknown> = { status };
-      if (reason) body.reason = reason;
-      const res = await authenticatedFetch(
-        `/projects/${id}/feedback/${itemId}/disposition`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-      );
-      if (!res.ok) throw new Error("Failed");
-      refetchFeedback();
-      refetchProgress();
-      toast.success(`Marked as ${status}.`);
-    } catch {
-      toast.error("Failed to update status.");
-    }
-  };
-
-  const handleReply = async (parentId: string) => {
-    const text = replyText[parentId]?.trim();
-    if (!text) return;
-    try {
-      const res = await authenticatedFetch(`/projects/${id}/feedback/${parentId}/reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      setReplyText((prev) => ({ ...prev, [parentId]: "" }));
-      refetchFeedback();
-      toast.success("Reply posted.");
-    } catch {
-      toast.error("Failed to post reply.");
-    }
-  };
-
-  const sendReminder = (ids?: string[]) => {
-    const targets = approvalsForPhase.filter(
-      (a) =>
-        (ids ? ids.includes(a.id) : true) &&
-        (a.state === "pending" || a.state === "overdue"),
-    );
-    remind(targets.map((a) => a.id));
-  };
-
-  const viewHistory = useCallback((aid: string) => {
-    authenticatedFetch(`/approvals/${aid}/history`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) =>
-        setHistoryEvents(
-          data.map((d) => ({
-            id: d.id ?? d.timestamp,
-            timestamp: d.timestamp,
-            message: d.event || d.action || d.message,
-            type: "approval" as const,
-          })),
-        ),
-      )
-      .catch(() => setHistoryEvents([]))
-      .finally(() => setShowHistory(true));
-  }, []);
-
-  const buildApprovalSigningRoute = useCallback(
-    (approvalId: string, signatureId: string) =>
-      `/documenso/${encodeURIComponent(signatureId)}?return=${encodeURIComponent(
-        `/projects/${id}#approvals`,
-      )}&approval=${encodeURIComponent(approvalId)}`,
-    [id],
-  );
-
-  const routeToApprovalSignature = useCallback(
-    (approvalId: string, signatureId: string | undefined, signatureUrl: string | undefined) => {
-      if (signatureId) {
-        const localSigningRoute = buildApprovalSigningRoute(approvalId, signatureId);
-        if (!signatureUrl) {
-          router.push(localSigningRoute);
-          return true;
-        }
-        const parsed = resolveBrowserUrl(signatureUrl);
-        const currentOrigin = resolveBrowserUrl("/")?.origin;
-        if (parsed && currentOrigin && parsed.origin !== currentOrigin) {
-          return assignBrowserLocation(parsed.href);
-        }
-        if (parsed) {
-          if (parsed.pathname.startsWith("/documenso/")) {
-            router.push(parsed.pathname + parsed.search + parsed.hash);
-            return true;
-          }
-          router.push(localSigningRoute);
-          return true;
-        }
-        router.push(localSigningRoute);
-        return true;
-      }
-
-      if (!signatureUrl) return false;
-      const parsed = resolveBrowserUrl(signatureUrl);
-      const currentOrigin = resolveBrowserUrl("/")?.origin;
-      if (!parsed) {
-        return false;
-      }
-      if (currentOrigin && parsed.origin !== currentOrigin) {
-        return assignBrowserLocation(parsed.href);
-      }
-      router.push(parsed.pathname + parsed.search + parsed.hash);
-      return true;
-    },
-    [buildApprovalSigningRoute, router],
-  );
-
-  const signApproval = async (aid: string) => {
-    const existing = approvals.find((a) => a.id === aid);
-    if (existing?.state === "approved") {
-      toast.error("Approval already completed.");
-      return;
-    }
-    if (existing?.reviewer !== username) {
-      toast.error("You are not assigned to this approval.");
-      return;
-    }
-    try {
-      // POST /approvals/{id}/sign — handles both in-app signature and external
-      // provider delegation. Returns the updated ApprovalModel on success.
-      const res = await authenticatedFetch(`/approvals/${aid}/sign`, { method: "POST" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        const signatureUrl: string | undefined = err?.url;
-        const signatureId: string | undefined = err?.id ?? err?.signature ?? err?.signature_id;
-        if (routeToApprovalSignature(aid, signatureId, signatureUrl)) {
-          return;
-        }
-        toast.error(err?.detail ?? "Failed to submit approval");
-        return;
-      }
-      const updated = await res.json();
-      const signatureUrl: string | undefined = updated?.url;
-      const signatureId: string | undefined = updated?.id ?? updated?.signature ?? updated?.signature_id;
-      if (routeToApprovalSignature(aid, signatureId, signatureUrl)) {
-        return;
-      }
-      if (updated?.state === "approved") {
-        setApprovals((prev) => prev.map((a) => (a.id === aid ? { ...a, ...updated } : a)));
-        toast.success("Approval recorded successfully.");
-        return;
-      }
-      toast.error("Approval flow could not be started.");
-    } catch {
-      toast.error("Failed to submit approval. Please try again.");
-    }
-  };
-
-  const rejectApproval = async (aid: string) => {
-    const existing = approvals.find((approval) => approval.id === aid);
-    if (existing?.state === "rejected") {
-      toast.error("Approval already marked as non-concurred.");
-      return;
-    }
-    if (existing?.reviewer !== username) {
-      toast.error("You are not assigned to this approval.");
-      return;
-    }
-    if (!confirm("Mark this approval as non-concurred?")) return;
-    try {
-      const res = await authenticatedFetch(`/approvals/${aid}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: "rejected" }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to mark approval as non-concurred");
-        return;
-      }
-      const updated = await res.json();
-      setApprovals((prev) => prev.map((approval) => (approval.id === aid ? { ...approval, ...updated } : approval)));
-      toast.success("Approval marked as non-concurred.");
-    } catch {
-      toast.error("Failed to mark approval as non-concurred.");
-    }
-  };
-
-  const signApprovalByInitials = async (aid: string, initials: string) => {
-    try {
-      const res = await authenticatedFetch(`/approvals/${aid}/sign-initials`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initials }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to sign with initials");
-        return;
-      }
-      const updated = await res.json();
-      setApprovals((prev) => prev.map((a) => (a.id === aid ? { ...a, ...updated } : a)));
-      toast.success("Approved with initials");
-    } catch {
-      toast.error("Failed to sign with initials");
-    }
-  };
-
-  const resetApprovalLocal = async (aid: string) => {
-    removeLocalStorage(`approval-${aid}`);
-    try {
-      await reset(aid);
-    } catch {
-      /* handled in hook */
-    }
-  };
-
-  const removeApproval = async (aid: string) => {
-    try {
-      const response = await authenticatedFetch(`/approvals/${aid}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to remove approval");
-      }
-      setApprovals((prev) => prev.filter((x) => x.id !== aid));
-      toast.success("Approval removed");
-    } catch (error) {
-      console.error("Error removing approval:", error);
-      toast.error("Failed to remove approval");
-    }
-  };
-
+  // ── Remaining small handlers ──────────────────────────────────────────
   const exportRaci = () => {
     if (!project) return;
     const rows = [
@@ -1356,10 +412,7 @@ export default function ProjectDetailsPage() {
     if (!project) return;
     try {
       const res = await authenticatedFetch(`/projects/${project.id}/approvals/pdf`);
-      if (!res.ok) {
-        toast.error("Failed to download summary");
-        return;
-      }
+      if (!res.ok) { toast.error("Failed to download summary"); return; }
       const blob = await res.blob();
       if (!downloadBrowserBlob(blob, `approvals-${project.id}.pdf`)) {
         toast.error("Download unavailable in this environment.");
@@ -1370,16 +423,127 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  useEffect(() => {
-    if (!isOwner) return;
-    const overdue = approvalsForPhase.filter((a) => a.state === "overdue");
-    if (overdue.length > 0) {
-      toast.error(
-        "Escalation: overdue approvals - " +
-          overdue.map((o) => o.reviewer).join(", "),
-      );
+  const handleDownloadRecordsPackage = async () => {
+    try {
+      const res = await authenticatedFetch(`/projects/${id}/records-package`);
+      if (!res.ok) { toast.error("Failed to generate records package."); return; }
+      const blob = await res.blob();
+      const hash = res.headers.get("X-Content-Hash") ?? "";
+      if (!downloadBrowserBlob(blob, `records-${id}.zip`)) {
+        toast.error("Download unavailable in this environment.");
+        return;
+      }
+      if (hash) toast.success(`Downloaded. SHA-256: ${hash.replace("sha256=", "").slice(0, 16)}\u2026`);
+    } catch {
+      toast.error("Download failed.");
     }
-  }, [approvalsForPhase, isOwner]);
+  };
+
+  const handleRunSlaReminders = async () => {
+    try {
+      const res = await authenticatedFetch(`/projects/${id}/run-sla-reminders`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      toast.success(`${data.sent} reminder(s) sent.`);
+      refetchSla();
+    } catch {
+      toast.error("Failed to send SLA reminders.");
+    }
+  };
+
+  const handleConcurWithComments = async (assignmentId: string) => {
+    const text = promptInBrowser("Add your final comments for this concurrence (required):");
+    if (!text?.trim()) return;
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/concur-with-comments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.detail ?? "Failed to concur");
+        return;
+      }
+      toast.success("Concurred with comments. Your notes have been added to the feedback ledger.");
+      refetchAssignments();
+      refetchMyAssignments();
+      refetchSummary();
+      refetchFeedback();
+    } catch {
+      toast.error("Failed to concur.");
+    }
+  };
+
+  const handleRequestConcurrence = async (assignmentId: string) => {
+    try {
+      const res = await authenticatedFetch(
+        `/projects/${id}/assignments/${assignmentId}/request-concurrence`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error("Failed");
+      toast.success("Concurrence requested. Reviewer notified.");
+    } catch {
+      toast.error("Failed to request concurrence.");
+    }
+  };
+
+  const handleRemindAll = async () => {
+    const targets = assignments.filter(
+      (a) => !["replaced", "concurred", "signed", "declined"].includes(a.status),
+    );
+    if (targets.length === 0) { toast("No reviewers to remind."); return; }
+    await Promise.all(targets.map((a) => handleSendReminder(a.id)));
+    toast.success(`Reminder sent to ${targets.length} reviewer(s).`);
+  };
+
+  const handleSaveNara = async () => {
+    if (!id) return;
+    setSavingNara(true);
+    try {
+      const res = await authenticatedFetch(`/projects/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nara_schedule_number: naraScheduleNumber || null,
+          nara_disposition_authority: naraDispositionAuthority || null,
+          nara_retention_period: naraRetentionPeriod || null,
+          nara_record_series: naraRecordSeries || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save NARA metadata");
+      toast.success("NARA metadata saved.");
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+    } catch {
+      toast.error("Failed to save NARA metadata.");
+    } finally {
+      setSavingNara(false);
+    }
+  };
+
+  const handleExportReviewers = () => {
+    const rows = [
+      ["Reviewer", "Status", "Invited", "Due Date", "Signed At"],
+      ...assignments.map((a) => [
+        a.reviewer,
+        a.status,
+        a.requested_at ? new Date(a.requested_at).toLocaleDateString() : "",
+        a.due_date ? new Date(a.due_date).toLocaleDateString() : "",
+        a.signed_at ? new Date(a.signed_at).toLocaleDateString() : "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    if (!downloadBrowserBlob(blob, `reviewers-${id}.csv`)) {
+      toast.error("Download unavailable in this environment.");
+    }
+  };
+
+  // ── Loading / error / not-found guards ───────────────────────────────
+  const loading = projectLoading || phasesLoading || approvalsLoading || reviewLoading;
 
   if (loading)
     return (
@@ -1412,255 +576,6 @@ export default function ProjectDetailsPage() {
   if (!project) return <p className="p-4">Project not found.</p>;
 
   const editorURL = `/editors/${project.editor ?? "tiptap"}?projectId=${project.id}`;
-
-  // ------------------------------------------------------------------------
-  //                             RENDER
-  // ------------------------------------------------------------------------
-
-  // Sign-internal handler
-  const handleSignInternal = async (assignmentId: string) => {
-    const note = promptInBrowser("Optional note for internal acknowledgement:");
-    if (note === null) return; // cancelled
-    try {
-      const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/sign-internal`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ note: note || null }),
-        },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to sign");
-        return;
-      }
-      toast.success("Internally acknowledged.");
-      refetchAssignments();
-      refetchMyAssignments();
-      refetchSummary();
-    } catch {
-      toast.error("Failed to sign.");
-    }
-  };
-
-  // Concur handler (already exists in backend)
-  const handleConcur = async (assignmentId: string) => {
-    try {
-      const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/concur`,
-        { method: "POST" },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to concur");
-        return;
-      }
-      toast.success("Concurred.");
-      refetchAssignments();
-      refetchMyAssignments();
-      refetchSummary();
-    } catch {
-      toast.error("Failed to concur.");
-    }
-  };
-
-  const handleNonConcur = async (assignmentId: string) => {
-    const reason = promptInBrowser("Add the reason for non-concurrence:");
-    if (!reason?.trim()) return;
-    try {
-      const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/non-concur`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason: reason.trim() }),
-        },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to non-concur");
-        return;
-      }
-      toast.success("Marked as non-concurred.");
-      refetchAssignments();
-      refetchMyAssignments();
-      refetchSummary();
-    } catch {
-      toast.error("Failed to non-concur.");
-    }
-  };
-
-  // Submit review handler
-  const handleSubmitReview = async (assignmentId: string) => {
-    try {
-      const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/submit`,
-        { method: "POST" },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to submit review");
-        return;
-      }
-      toast.success("Review submitted. The SME has been notified.");
-      refetchAssignments();
-      refetchMyAssignments();
-      refetchSummary();
-    } catch {
-      toast.error("Failed to submit review.");
-    }
-  };
-
-  // Lifecycle transition handler (Phase 7)
-  const handleLifecycleTransition = async (newStatus: string) => {
-    if (!confirm(`Transition project status to "${newStatus.replace(/_/g, " ")}"?`)) return;
-    try {
-      const res = await authenticatedFetch(`/projects/${id}/lifecycle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to transition status");
-        return;
-      }
-      refetchLifecycle();
-      toast.success(`Project status → ${newStatus.replace(/_/g, " ")}`);
-    } catch {
-      toast.error("Failed to transition project status.");
-    }
-  };
-
-  // Download records package (Phase 7)
-  const handleDownloadRecordsPackage = async () => {
-    try {
-      const res = await authenticatedFetch(`/projects/${id}/records-package`);
-      if (!res.ok) { toast.error("Failed to generate records package."); return; }
-      const blob = await res.blob();
-      const hash = res.headers.get("X-Content-Hash") ?? "";
-      if (!downloadBrowserBlob(blob, `records-${id}.zip`)) {
-        toast.error("Download unavailable in this environment.");
-        return;
-      }
-      if (hash) toast.success(`Downloaded. SHA-256: ${hash.replace("sha256=", "").slice(0, 16)}…`);
-    } catch {
-      toast.error("Download failed.");
-    }
-  };
-
-  // Run SLA reminders manually (Phase 8)
-  const handleRunSlaReminders = async () => {
-    try {
-      const res = await authenticatedFetch(`/projects/${id}/run-sla-reminders`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      toast.success(`${data.sent} reminder(s) sent.`);
-      refetchSla();
-    } catch {
-      toast.error("Failed to send SLA reminders.");
-    }
-  };
-
-  // Concur with comments handler
-  const handleConcurWithComments = async (assignmentId: string) => {
-    const text = promptInBrowser("Add your final comments for this concurrence (required):");
-    if (!text?.trim()) return;
-    try {
-      const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/concur-with-comments`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.detail ?? "Failed to concur");
-        return;
-      }
-      toast.success("Concurred with comments. Your notes have been added to the feedback ledger.");
-      refetchAssignments();
-      refetchMyAssignments();
-      refetchSummary();
-      refetchFeedback();
-    } catch {
-      toast.error("Failed to concur.");
-    }
-  };
-
-  // Request concurrence from a reviewer (SME action)
-  const handleRequestConcurrence = async (assignmentId: string) => {
-    try {
-      const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/request-concurrence`,
-        { method: "POST" },
-      );
-      if (!res.ok) throw new Error("Failed");
-      toast.success("Concurrence requested. Reviewer notified.");
-    } catch {
-      toast.error("Failed to request concurrence.");
-    }
-  };
-
-  // Bulk remind all non-terminal reviewers
-  const handleRemindAll = async () => {
-    const targets = assignments.filter(
-      (a) => !["replaced", "concurred", "signed", "declined"].includes(a.status),
-    );
-    if (targets.length === 0) {
-      toast("No reviewers to remind.");
-      return;
-    }
-    await Promise.all(targets.map((a) => handleSendReminder(a.id)));
-    toast.success(`Reminder sent to ${targets.length} reviewer(s).`);
-  };
-
-  // Save NARA records retention metadata (Phase 7)
-  const handleSaveNara = async () => {
-    if (!id) return;
-    setSavingNara(true);
-    try {
-      const res = await authenticatedFetch(`/projects/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nara_schedule_number: naraScheduleNumber || null,
-          nara_disposition_authority: naraDispositionAuthority || null,
-          nara_retention_period: naraRetentionPeriod || null,
-          nara_record_series: naraRecordSeries || null,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save NARA metadata");
-      toast.success("NARA metadata saved.");
-      queryClient.invalidateQueries({ queryKey: ["project", id] });
-    } catch {
-      toast.error("Failed to save NARA metadata.");
-    } finally {
-      setSavingNara(false);
-    }
-  };
-
-  // Export reviewer list as CSV
-  const handleExportReviewers = () => {
-    const rows = [
-      ["Reviewer", "Status", "Invited", "Due Date", "Signed At"],
-      ...assignments.map((a) => [
-        a.reviewer,
-        a.status,
-        a.requested_at ? new Date(a.requested_at).toLocaleDateString() : "",
-        a.due_date ? new Date(a.due_date).toLocaleDateString() : "",
-        a.signed_at ? new Date(a.signed_at).toLocaleDateString() : "",
-      ]),
-    ];
-    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    if (!downloadBrowserBlob(blob, `reviewers-${id}.csv`)) {
-      toast.error("Download unavailable in this environment.");
-    }
-  };
 
   return (
     <>

@@ -92,13 +92,23 @@ describe("NARA metadata — save round trip", () => {
 
 describe("SLA panel — endpoint wiring", () => {
   it("queries /projects/{id}/sla-summary for SLA overview data", () => {
-    expect(page).toContain("/sla-summary");
-    expect(page).toMatch(/projects\/\$\{id\}\/sla-summary|sla-summary.*id/s);
+    // After Phase 3 extraction, SLA queries live in useProjectPageData.ts
+    const dataHook = readFileSync(
+      join(REPO_ROOT, "frontend/lib/useProjectPageData.ts"),
+      "utf8",
+    );
+    expect(dataHook).toContain("/sla-summary");
+    expect(dataHook).toMatch(/projects\/\$\{id\}\/sla-summary|sla-summary.*id/s);
   });
 
   it("queries /projects/{id}/sla-deadlines for per-reviewer deadlines", () => {
-    expect(page).toContain("/sla-deadlines");
-    expect(page).toMatch(/projects\/\$\{id\}\/sla-deadlines|sla-deadlines.*id/s);
+    // After Phase 3 extraction, SLA queries live in useProjectPageData.ts
+    const dataHook = readFileSync(
+      join(REPO_ROOT, "frontend/lib/useProjectPageData.ts"),
+      "utf8",
+    );
+    expect(dataHook).toContain("/sla-deadlines");
+    expect(dataHook).toMatch(/projects\/\$\{id\}\/sla-deadlines|sla-deadlines.*id/s);
   });
 
   it("run-sla-reminders endpoint is wired for manual SLA reminder dispatch", () => {
@@ -115,14 +125,24 @@ describe("SLA panel — endpoint wiring", () => {
   });
 
   it("SLA deadline data is fetched using the project id query key", () => {
-    expect(page).toMatch(/queryKey.*sla-deadlines.*id|sla-deadlines.*queryKey.*id/s);
+    // After Phase 3 extraction, the queryKey lives in useProjectPageData.ts
+    const dataHook = readFileSync(
+      join(REPO_ROOT, "frontend/lib/useProjectPageData.ts"),
+      "utf8",
+    );
+    expect(dataHook).toMatch(/queryKey.*sla-deadlines.*id|sla-deadlines.*queryKey.*id/s);
   });
 });
 
 describe("SLA panel — SLA summary shape", () => {
   it("SLASummary interface includes a total field", () => {
-    expect(page).toContain("total:");
-    // The slaSummary.total check guards the render.
+    // After Phase 3 extraction, the SLASummary type is defined in useProjectPageData.ts
+    const dataHook = readFileSync(
+      join(REPO_ROOT, "frontend/lib/useProjectPageData.ts"),
+      "utf8",
+    );
+    expect(dataHook).toContain("total:");
+    // The slaSummary.total check guards the render in the page.
     expect(page).toContain("slaSummary.total");
   });
 });

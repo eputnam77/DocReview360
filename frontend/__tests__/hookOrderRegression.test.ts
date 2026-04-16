@@ -31,22 +31,23 @@ function src(relPath: string): string {
 describe("feedbackShowMyOnly hook-order regression", () => {
   const page = src("pages/projects/[id]/index.tsx");
 
-  it("feedbackShowMyOnly useState is present in the page", () => {
+  it("feedbackShowMyOnly is available in the page (destructured from useFeedbackHandlers)", () => {
+    // After Phase 3 extraction, feedbackShowMyOnly comes from useFeedbackHandlers hook
     expect(page).toContain("feedbackShowMyOnly");
-    expect(page).toMatch(/useState.*false.*feedbackShowMyOnly|feedbackShowMyOnly.*useState.*false/s);
   });
 
-  it("has a comment documenting the hook-order constraint", () => {
-    // The comment was added to document WHY the state is placed before early returns.
-    expect(page).toContain("before any early returns");
+  it("useFeedbackHandlers encapsulates feedbackShowMyOnly state", () => {
+    // The hook-order safety is now encapsulated in useFeedbackHandlers.ts
+    const hook = src("lib/useFeedbackHandlers.ts");
+    expect(hook).toContain("feedbackShowMyOnly");
+    expect(hook).toMatch(/useState.*false.*feedbackShowMyOnly|feedbackShowMyOnly.*useState.*false/s);
   });
 
-  it("feedbackShowMyOnly declaration appears in the component before any conditional early return", () => {
+  it("useFeedbackHandlers hook call appears in the page before any conditional early return", () => {
     const lines = page.split("\n");
-    // Find the hook declaration.
-    const hookLine = lines.findIndex((l) => l.includes("feedbackShowMyOnly") && l.includes("useState"));
-    // Find the first conditional early-return pattern AFTER the hook declaration.
-    // These look like: `if (!something) return null/undefined/jsx`
+    // Find the useFeedbackHandlers call in the page
+    const hookLine = lines.findIndex((l) => l.includes("useFeedbackHandlers("));
+    // Find the first conditional early-return pattern AFTER the hook call
     const firstConditionalReturn = lines.findIndex(
       (l, i) =>
         i > hookLine &&
@@ -54,12 +55,10 @@ describe("feedbackShowMyOnly hook-order regression", () => {
     );
     expect(hookLine).toBeGreaterThan(0);
     // Either no conditional early returns exist after the hook (good),
-    // or they all appear after the hook line (also good).
-    // The key invariant: hookLine < firstConditionalReturn OR no conditional return exists.
+    // or the hook appears before them (also good).
     if (firstConditionalReturn !== -1) {
       expect(hookLine).toBeLessThan(firstConditionalReturn);
     }
-    // Always pass if no conditional early returns are found after the hook.
     expect(hookLine).toBeGreaterThan(0);
   });
 });

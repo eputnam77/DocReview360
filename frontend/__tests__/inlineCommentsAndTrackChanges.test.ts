@@ -265,33 +265,41 @@ describe("Registry entries for comment-mark and track-changes", () => {
 
 describe("Item 44.5: TiptapEditorFull.tsx — inline mark extraction on Submit Review", () => {
   const tiptap = src("components/TiptapEditorFull.tsx");
+  // After Phase 3 extraction, CommentMark/TrackChanges extension wiring is in useEditorExtensions.ts
+  const extHook = src("lib/useEditorExtensions.ts");
 
   it("imports CommentMark from tiptapComments", () => {
-    expect(tiptap).toContain("tiptapComments");
-    expect(tiptap).toContain("CommentMark");
+    // After extraction, the import lives in useEditorExtensions.ts
+    expect(extHook).toContain("tiptapComments");
+    expect(extHook).toContain("CommentMark");
   });
 
   it("imports TrackChanges from tiptapTrackChanges", () => {
-    expect(tiptap).toContain("tiptapTrackChanges");
-    expect(tiptap).toContain("TrackChanges");
+    // After extraction, the import lives in useEditorExtensions.ts
+    expect(extHook).toContain("tiptapTrackChanges");
+    expect(extHook).toContain("TrackChanges");
   });
 
   it("commentMarkEnabled state is declared (default true)", () => {
-    expect(tiptap).toContain("commentMarkEnabled");
-    expect(tiptap).toMatch(/commentMarkEnabled.*useState.*true|useState.*true.*commentMarkEnabled/s);
+    // After extraction, this state lives in useEditorExtensions.ts
+    expect(extHook).toContain("commentMarkEnabled");
+    expect(extHook).toMatch(/commentMarkEnabled.*useState.*true|useState.*true.*commentMarkEnabled/s);
   });
 
   it("trackChangesEnabled state is declared (default true)", () => {
-    expect(tiptap).toContain("trackChangesEnabled");
-    expect(tiptap).toMatch(/trackChangesEnabled.*useState.*true|useState.*true.*trackChangesEnabled/s);
+    // After extraction, this state lives in useEditorExtensions.ts
+    expect(extHook).toContain("trackChangesEnabled");
+    expect(extHook).toMatch(/trackChangesEnabled.*useState.*true|useState.*true.*trackChangesEnabled/s);
   });
 
   it("CommentMark is pushed to editor extensions when commentMarkEnabled", () => {
-    expect(tiptap).toMatch(/commentMarkEnabled[\s\S]*?CommentMark|CommentMark[\s\S]*?commentMarkEnabled/);
+    // After extraction, the extension push logic lives in useEditorExtensions.ts
+    expect(extHook).toMatch(/commentMarkEnabled[\s\S]*?CommentMark|CommentMark[\s\S]*?commentMarkEnabled/);
   });
 
   it("TrackChanges is pushed to editor extensions when trackChangesEnabled", () => {
-    expect(tiptap).toMatch(/trackChangesEnabled[\s\S]*?TrackChanges|TrackChanges[\s\S]*?trackChangesEnabled/);
+    // After extraction, the extension push logic lives in useEditorExtensions.ts
+    expect(extHook).toMatch(/trackChangesEnabled[\s\S]*?TrackChanges|TrackChanges[\s\S]*?trackChangesEnabled/);
   });
 
   it("extractAndPostInlineMarks function is defined", () => {
@@ -313,7 +321,8 @@ describe("Item 44.5: TiptapEditorFull.tsx — inline mark extraction on Submit R
   });
 
   it("inline items are POSTed to /projects/{projectId}/feedback", () => {
-    expect(tiptap).toMatch(/projects\/\$\{projectId\}\/feedback/);
+    // The rewritten TiptapEditorFull uses templates.projectId from useEditorTemplates
+    expect(tiptap).toMatch(/projects\/\$\{.*[Pp]roject[Ii]d.*\}\/feedback/);
     expect(tiptap).toMatch(/method.*POST|POST.*method/);
   });
 
