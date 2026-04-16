@@ -8,6 +8,7 @@ existing imports from ``docreview360.approvals`` continue to work unchanged.
 from __future__ import annotations
 
 # core: ApprovalModel, in-memory store, CRUD, DB helpers
+# ruff: noqa: F401  (all imports below are intentional re-exports for backward compat)
 from .core import (
     ApprovalModel,
     _approval_from_db_data,
@@ -22,8 +23,11 @@ from .core import (
     delete_approval,
     get_approval,
     get_approval_by_signature,
+    get_approval_lock,
+    get_approvals_for_workflow,
     list_approvals,
     load_approvals_from_db,
+    release_approval_lock,
     remind_approvals,
     reset_approval,
     reset_approvals,
@@ -86,8 +90,11 @@ __all__ = [
     "delete_approval",
     "get_approval",
     "get_approval_by_signature",
+    "get_approval_lock",
+    "get_approvals_for_workflow",
     "list_approvals",
     "load_approvals_from_db",
+    "release_approval_lock",
     "remind_approvals",
     "reset_approval",
     "reset_approvals",

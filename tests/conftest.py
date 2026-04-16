@@ -238,24 +238,19 @@ def _reset_approvals() -> Generator[None, None, None]:
     The approvals module keeps a module-level ``approvals`` dict that is
     DB-backed for production use but still has an in-memory cache layer.
     Clearing it between tests prevents approval state leaking across boundaries.
+    Also clears the per-approval lock registry and workflow index (B-01, B-08).
     """
     try:
-        import docreview360.approvals as approvals_mod
+        from docreview360.approvals.core import reset_approvals as _reset
 
-        if hasattr(approvals_mod, "approvals") and hasattr(
-            approvals_mod.approvals, "clear"
-        ):
-            approvals_mod.approvals.clear()
+        _reset()
     except Exception:
         pass
     yield
     try:
-        import docreview360.approvals as approvals_mod
+        from docreview360.approvals.core import reset_approvals as _reset
 
-        if hasattr(approvals_mod, "approvals") and hasattr(
-            approvals_mod.approvals, "clear"
-        ):
-            approvals_mod.approvals.clear()
+        _reset()
     except Exception:
         pass
 

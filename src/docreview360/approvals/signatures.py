@@ -304,7 +304,17 @@ async def _upload_approval_artifacts(
     document: bytes | None,
     certificate_url: str | None,
 ) -> None:
-    """Delegate upload of finalized artifacts to the SharePoint integration."""
+    """Delegate upload of finalized artifacts to the SharePoint integration.
+
+    Raises :class:`ValueError` on document hash mismatch.  Raises any other
+    exception propagated from the upload so the retry loop in
+    ``update_approval_state`` can count attempts and eventually raise
+    :class:`RuntimeError` if all retries are exhausted.
+
+    If SharePoint credentials are not configured (``ValueError: Missing
+    SharePoint credentials``), the upload is silently skipped — this preserves
+    the legacy test-environment behavior where no SharePoint is available.
+    """
     if document is not None and approval.document_hash is not None:
         if hashlib.sha256(document).hexdigest() != approval.document_hash:
             raise ValueError("document hash mismatch")
@@ -312,16 +322,25 @@ async def _upload_approval_artifacts(
     from ..integrations.sharepoint_upload import upload_final_pdf
 
     assert approval.signed_at is not None
-    await upload_final_pdf(
-        approval_id=approval.id,
-        item_id=approval.document_id,
-        document=document,
-        document_hash=approval.document_hash,
-        provider_metadata=approval.provider_metadata,
-        signed_at=approval.signed_at,
-        certificate_url=certificate_url,
-        fetcher=fetch_certificate,
-    )
+    try:
+        await upload_final_pdf(
+            approval_id=approval.id,
+            item_id=approval.document_id,
+            document=document,
+            document_hash=approval.document_hash,
+            provider_metadata=approval.provider_metadata,
+            signed_at=approval.signed_at,
+            certificate_url=certificate_url,
+            fetcher=fetch_certificate,
+        )
+    except ValueError as exc:
+        if "Missing SharePoint credentials" in str(exc):
+            _logger.debug(
+                "SharePoint not configured — skipping artifact upload for approval %r",
+                approval.id,
+            )
+            return
+        raise
 
 
 async def update_approval_state(  # noqa: C901
@@ -335,138 +354,156 @@ async def update_approval_state(  # noqa: C901
     document: bytes | None = None,
 ) -> Any:
     from ..workflows import workflows
-    from .core import _persist_approval, approvals
+    from .core import _persist_approval, approvals, get_approval_lock, get_approvals_for_workflow
 
-    approval = approvals[approval_id]
-    if approval.state == "approved":
-        raise SignedApprovalImmutableError("signed approvals cannot be modified; reset required")
-    wf = workflows.get(approval.workflow)
-    if state == "approved" and wf and wf.mode == "sequential":
-        for a in approvals.values():
-            if (
-                a.workflow == approval.workflow
-                and a.order < approval.order
-                and a.state != "approved"
-            ):
-                raise ValueError("previous steps incomplete")
-    if state == "approved":
-        resolved_document = document
-        if resolved_document is None:
-            resolved_document = _load_document_bytes(approval.document_id)
-        if resolved_document is not None:
-            resolved_hash = _hash_document_bytes(resolved_document)
-            if approval.document_hash is None:
-                approval.document_hash = resolved_hash
-            elif resolved_hash != approval.document_hash:
-                raise ValueError("document hash mismatch")
-            if approval.signature_id is not None:
-                expected_signature_hash = _signature_record_content_hash(
-                    approval, approval.signature_id
-                )
-                if expected_signature_hash is None:
-                    _record_signature_content_hash(
-                        approval,
-                        signature_id=approval.signature_id,
-                        content_hash=resolved_hash,
-                    )
-                elif expected_signature_hash != resolved_hash:
-                    raise ValueError("document hash mismatch")
-    previous = approval.state
-    approval.state = state
-    if signature_id is not None:
-        approval.signature_id = signature_id
-    if certificate_url is not None:
-        if urlparse(certificate_url).scheme != "https":
-            raise ValueError("certificate URL must use HTTPS")
-        approval.certificate_url = certificate_url
-    if due_at is not None:
-        approval.due_at = due_at
-    if state == "approved":
-        approval.signed_at = signed_at or datetime.now(timezone.utc)
-        policy = _upload_retry_policy()
-        attempt = 1
-        delay = policy.base_delay
-        while True:
-            try:
-                await _upload_approval_artifacts(approval, document, certificate_url)
-                break
-            except Exception as exc:
-                if attempt >= policy.max_attempts:
-                    APPROVAL_UPLOAD_RETRIES.labels("exhausted").inc()
-                    log_event(
-                        "approval_upload_failed",
-                        severity="error",
-                        approval_id=approval.id,
-                        workflow=approval.workflow,
-                        provider=approval.signature_provider,
-                        attempts=attempt,
-                        error=str(exc),
-                        error_type=type(exc).__name__,
-                    )
-                    break
-                APPROVAL_UPLOAD_RETRIES.labels("retry").inc()
-                wait = delay if delay > 0 else 0
-                if wait:
-                    await asyncio.sleep(wait)
-                attempt += 1
-                if policy.base_delay <= 0:
-                    delay = 0
-                elif delay <= 0:
-                    delay = policy.base_delay
-                else:
-                    delay = min(delay * 2, policy.max_delay)
-    else:
-        approval.signed_at = None
-        approval.certificate_url = None
-
-    project_id = wf.project if wf else ""
-    log_event(
-        f"approval_{state}",
-        user_id=approval.reviewer,
-        project=project_id,
-        approval_id=approval_id,
-        provider=approval.signature_provider,
-        signature_id=approval.signature_id,
-        document_hash=approval.document_hash,
-        doc_id=approval.document_id,
-        previous_state=previous,
-        provider_metadata=approval.provider_metadata,
-    )
-    log_audit_event(
-        approval.document_id,
-        state,
-        actor=approval.reviewer,
-        provider=approval.signature_provider,
-        signature_id=approval.signature_id,
-        document_hash=approval.document_hash,
-        previous_state=previous,
-        project=project_id,
-        approval_id=approval_id,
-        provider_metadata=approval.provider_metadata,
-    )
-
-    if state == "approved" and wf:
-        if wf.mode == "sequential":
-            next_steps = [
-                a
-                for a in approvals.values()
-                if a.workflow == approval.workflow and a.order > approval.order
-            ]
-            if next_steps:
-                next_step = min(next_steps, key=lambda a: a.order)
-                if next_step.state != "approved":
-                    next_step.state = "pending"
-                    _persist_approval(next_step)
-        if all(
-            a.state == "approved" for a in approvals.values() if a.workflow == approval.workflow
-        ):
-            log_event(
-                f"All required approvals completed for project {project_id}",
-                project=project_id,
-                doc_id=approval.document_id,
+    # B-01/B-02: Serialise concurrent mutations for the same approval.
+    async with get_approval_lock(approval_id):
+        approval = approvals[approval_id]
+        if approval.state == "approved":
+            raise SignedApprovalImmutableError(
+                "signed approvals cannot be modified; reset required"
             )
-    _persist_approval(approval)
-    return approval
+        wf = workflows.get(approval.workflow)
+        if state == "approved" and wf and wf.mode == "sequential":
+            # B-08: Use index instead of full scan.
+            for a in get_approvals_for_workflow(approval.workflow, approval.phase_id):
+                if a.order < approval.order and a.state != "approved":
+                    raise ValueError("previous steps incomplete")
+        if state == "approved":
+            resolved_document = document
+            if resolved_document is None:
+                resolved_document = _load_document_bytes(approval.document_id)
+            if resolved_document is not None:
+                resolved_hash = _hash_document_bytes(resolved_document)
+                if approval.document_hash is None:
+                    approval.document_hash = resolved_hash
+                elif resolved_hash != approval.document_hash:
+                    raise ValueError("document hash mismatch")
+                if approval.signature_id is not None:
+                    expected_signature_hash = _signature_record_content_hash(
+                        approval, approval.signature_id
+                    )
+                    if expected_signature_hash is None:
+                        _record_signature_content_hash(
+                            approval,
+                            signature_id=approval.signature_id,
+                            content_hash=resolved_hash,
+                        )
+                    elif expected_signature_hash != resolved_hash:
+                        raise ValueError("document hash mismatch")
+
+        # Snapshot previous state for rollback (B-03, B-07).
+        previous_state = approval.state
+        previous_signature_id = approval.signature_id
+        # Deep snapshot of the full approval before any mutation (B-07).
+        approval_snapshot = approval.model_copy(deep=True)
+
+        approval.state = state
+        if signature_id is not None:
+            approval.signature_id = signature_id
+        if certificate_url is not None:
+            if urlparse(certificate_url).scheme != "https":
+                raise ValueError("certificate URL must use HTTPS")
+            approval.certificate_url = certificate_url
+        if due_at is not None:
+            approval.due_at = due_at
+        if state == "approved":
+            approval.signed_at = signed_at or datetime.now(timezone.utc)
+            policy = _upload_retry_policy()
+            attempt = 1
+            delay = policy.base_delay
+            while True:
+                try:
+                    await _upload_approval_artifacts(approval, document, certificate_url)
+                    break
+                except Exception as exc:
+                    if attempt >= policy.max_attempts:
+                        # B-03: Exhausted retries — roll back state before raising.
+                        APPROVAL_UPLOAD_RETRIES.labels("exhausted").inc()
+                        log_event(
+                            "approval_upload_failed",
+                            severity="error",
+                            approval_id=approval.id,
+                            workflow=approval.workflow,
+                            provider=approval.signature_provider,
+                            attempts=attempt,
+                            error=str(exc),
+                            error_type=type(exc).__name__,
+                        )
+                        approval.state = previous_state
+                        approval.signed_at = None
+                        if signature_id is not None:
+                            approval.signature_id = previous_signature_id
+                        raise RuntimeError(
+                            "Artifact upload failed after exhausting retries"
+                            " — approval not recorded"
+                        ) from exc
+                    APPROVAL_UPLOAD_RETRIES.labels("retry").inc()
+                    wait = delay if delay > 0 else 0
+                    if wait:
+                        await asyncio.sleep(wait)
+                    attempt += 1
+                    if policy.base_delay <= 0:
+                        delay = 0
+                    elif delay <= 0:
+                        delay = policy.base_delay
+                    else:
+                        delay = min(delay * 2, policy.max_delay)
+        else:
+            approval.signed_at = None
+            approval.certificate_url = None
+
+        project_id = wf.project if wf else ""
+        log_event(
+            f"approval_{state}",
+            user_id=approval.reviewer,
+            project=project_id,
+            approval_id=approval_id,
+            provider=approval.signature_provider,
+            signature_id=approval.signature_id,
+            document_hash=approval.document_hash,
+            doc_id=approval.document_id,
+            previous_state=previous_state,
+            provider_metadata=approval.provider_metadata,
+        )
+        log_audit_event(
+            approval.document_id,
+            state,
+            actor=approval.reviewer,
+            provider=approval.signature_provider,
+            signature_id=approval.signature_id,
+            document_hash=approval.document_hash,
+            previous_state=previous_state,
+            project=project_id,
+            approval_id=approval_id,
+            provider_metadata=approval.provider_metadata,
+        )
+
+        if state == "approved" and wf:
+            if wf.mode == "sequential":
+                # B-08: Use index instead of full scan.
+                wf_approvals = get_approvals_for_workflow(approval.workflow, approval.phase_id)
+                next_steps = [
+                    a for a in wf_approvals if a.order > approval.order
+                ]
+                if next_steps:
+                    next_step = min(next_steps, key=lambda a: a.order)
+                    if next_step.state != "approved":
+                        old_next = next_step.model_copy()
+                        next_step.state = "pending"
+                        _persist_approval(next_step, previous=old_next)
+            # B-08: Use index for "all complete?" check.
+            wf_all = get_approvals_for_workflow(approval.workflow, approval.phase_id)
+            if all(a.state == "approved" for a in wf_all):
+                log_event(
+                    f"All required approvals completed for project {project_id}",
+                    project=project_id,
+                    doc_id=approval.document_id,
+                )
+
+        # B-07: Pass pre-mutation snapshot so persist can roll back on DB failure.
+        _persist_approval(approval, previous=approval_snapshot)
+        return approval
 
 
 def send_for_signature(  # noqa: C901

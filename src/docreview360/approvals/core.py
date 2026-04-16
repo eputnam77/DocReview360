@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -58,6 +59,44 @@ class ApprovalModel(BaseModel):
 
 approvals: Dict[str, ApprovalModel] = {}
 
+# ---------------------------------------------------------------------------
+# B-01/B-02: Per-approval async locks
+# ---------------------------------------------------------------------------
+
+_approval_locks: Dict[str, asyncio.Lock] = {}
+
+
+def get_approval_lock(approval_id: str) -> asyncio.Lock:
+    """Return (creating if necessary) the async lock for *approval_id*."""
+    if approval_id not in _approval_locks:
+        _approval_locks[approval_id] = asyncio.Lock()
+    return _approval_locks[approval_id]
+
+
+def release_approval_lock(approval_id: str) -> None:
+    """Remove the lock for *approval_id* from the registry (call on delete)."""
+    _approval_locks.pop(approval_id, None)
+
+
+# ---------------------------------------------------------------------------
+# B-08: Secondary index — (workflow, phase_id) → [approval_id, ...]
+# ---------------------------------------------------------------------------
+
+_workflow_approvals: Dict[str, List[str]] = {}
+
+
+def _wa_key(workflow: str, phase_id: str | None) -> str:
+    return f"{workflow}:{phase_id or ''}"
+
+
+def get_approvals_for_workflow(
+    workflow: str, phase_id: str | None = None
+) -> List[ApprovalModel]:
+    """Return all approvals for *workflow* (optionally scoped to *phase_id*)."""
+    key = _wa_key(workflow, phase_id)
+    ids = _workflow_approvals.get(key, [])
+    return [approvals[aid] for aid in ids if aid in approvals]
+
 
 # ---------------------------------------------------------------------------
 # DB persistence helpers
@@ -80,14 +119,23 @@ def _approval_from_db_data(data: Dict[str, Any]) -> ApprovalModel:
     return ApprovalModel.model_validate(data)
 
 
-def _persist_approval(approval: ApprovalModel) -> None:
-    """Upsert *approval* into the ``approval_records`` table."""
+def _persist_approval(
+    approval: ApprovalModel, previous: ApprovalModel | None = None
+) -> None:
+    """Upsert *approval* into the ``approval_records`` table.
+
+    B-07: If the DB write fails and *previous* is provided, the in-memory store
+    is restored to *previous* so the dict never holds a state that is not
+    durable.
+    """
+    conn_ref: Any = None
     try:
         from sqlalchemy import text as _text
 
         db = get_db()
         data = _approval_to_db_data(approval)
         with db.session() as conn:
+            conn_ref = conn
             conn.execute(
                 _text(
                     "INSERT INTO approval_records (id, workflow_id, reviewer, state, data)"
@@ -102,8 +150,16 @@ def _persist_approval(approval: ApprovalModel) -> None:
                     "data": __import__("json").dumps(data),
                 },
             )
-    except Exception as exc:  # pragma: no cover - best effort
-        _logger.warning("Failed to persist approval %r to DB: %s", approval.id, exc)
+            conn_ref = None  # session committed successfully
+    except Exception as exc:
+        try:
+            if conn_ref is not None:
+                conn_ref.rollback()
+        except Exception:
+            pass
+        if previous is not None:
+            approvals[approval.id] = previous
+        _logger.error("Failed to persist approval %r to DB: %s", approval.id, exc)
 
 
 def _delete_approval_from_db(approval_id: str) -> None:
@@ -155,6 +211,8 @@ def reset_approvals() -> None:
     Scoped to test fixtures.  In production, use targeted deletion instead.
     """
     approvals.clear()
+    _approval_locks.clear()
+    _workflow_approvals.clear()
     try:
         from sqlalchemy import text as _text
 
@@ -201,6 +259,16 @@ def create_approval(
     if signature_provider is None:
         signature_provider = get_default_provider()
     approval_id = uuid4().hex
+
+    # B-13: Enforce order uniqueness within the same workflow/phase.
+    if order != 0:
+        existing = get_approvals_for_workflow(workflow, phase_id)
+        if any(a.order == order and a.id != approval_id for a in existing):
+            raise ValueError(
+                f"An approval with order={order} already exists in workflow '{workflow}'"
+                f" phase '{phase_id}'"
+            )
+
     doc_hash = None
     existing_document = get_document(doc_id)
     if existing_document is not None:
@@ -229,6 +297,9 @@ def create_approval(
         scoring_metadata=scoring_metadata or {},
     )
     approvals[approval_id] = approval
+    # B-08: Maintain secondary index.
+    _wa_idx_key = _wa_key(workflow, phase_id)
+    _workflow_approvals.setdefault(_wa_idx_key, []).append(approval_id)
     _persist_approval(approval)
     try:
         link_approval(doc_id, approval_id)
@@ -349,6 +420,14 @@ def get_approval(approval_id: str) -> ApprovalModel | None:
 def delete_approval(approval_id: str) -> ApprovalModel:
     """Remove an approval and unlink it from its document."""
     approval = approvals.pop(approval_id)
+    # B-08: Remove from secondary index.
+    _wa_idx_key = _wa_key(approval.workflow, approval.phase_id)
+    try:
+        _workflow_approvals[_wa_idx_key].remove(approval_id)
+    except (KeyError, ValueError):
+        pass
+    # B-01/B-02: Release the per-approval lock.
+    release_approval_lock(approval_id)
     _delete_approval_from_db(approval_id)
     unlink_approval(approval.document_id, approval.id)
     log_event(
