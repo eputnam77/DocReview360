@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -114,6 +115,17 @@ def _approval_to_db_data(approval: ApprovalModel) -> Dict[str, Any]:
     return data
 
 
+def _normalize_phase_scope(phase_id: str | None) -> str:
+    return phase_id or ""
+
+
+def _approval_order_conflict_message(approval: ApprovalModel) -> str:
+    return (
+        f"An approval with order={approval.order} already exists in workflow "
+        f"'{approval.workflow}' phase '{approval.phase_id}'"
+    )
+
+
 def _approval_from_db_data(data: Dict[str, Any]) -> ApprovalModel:
     """Deserialise an :class:`ApprovalModel` from JSON storage."""
     return ApprovalModel.model_validate(data)
@@ -138,16 +150,22 @@ def _persist_approval(
             conn_ref = conn
             conn.execute(
                 _text(
-                    "INSERT INTO approval_records (id, workflow_id, reviewer, state, data)"
-                    " VALUES (:id, :wf, :rev, :st, :data)"
-                    " ON CONFLICT(id) DO UPDATE SET state=excluded.state, data=excluded.data"
+                    "INSERT INTO approval_records ("
+                    "id, workflow_id, phase_id, reviewer, state, approval_order, data"
+                    ") VALUES (:id, :wf, :phase_id, :rev, :st, :approval_order, :data)"
+                    " ON CONFLICT(id) DO UPDATE SET workflow_id=excluded.workflow_id,"
+                    " phase_id=excluded.phase_id, reviewer=excluded.reviewer,"
+                    " state=excluded.state, approval_order=excluded.approval_order,"
+                    " data=excluded.data"
                 ),
                 {
                     "id": approval.id,
                     "wf": approval.workflow,
+                    "phase_id": _normalize_phase_scope(approval.phase_id),
                     "rev": approval.reviewer,
                     "st": approval.state,
-                    "data": __import__("json").dumps(data),
+                    "approval_order": approval.order,
+                    "data": json.dumps(data),
                 },
             )
             conn_ref = None  # session committed successfully
@@ -159,7 +177,42 @@ def _persist_approval(
             pass
         if previous is not None:
             approvals[approval.id] = previous
+        message = str(exc).lower()
+        if "uq_approval_records_workflow_phase_order" in message or (
+            "approval_records.workflow_id" in message
+            and "approval_records.phase_id" in message
+            and "approval_records.approval_order" in message
+        ):
+            raise ValueError(_approval_order_conflict_message(approval)) from exc
         _logger.error("Failed to persist approval %r to DB: %s", approval.id, exc)
+
+
+def _ensure_unique_order_in_db(workflow: str, phase_id: str | None, order: int) -> None:
+    """Check persisted approvals so duplicate order values fail before insert."""
+
+    if order == 0:
+        return
+    from sqlalchemy import text as _text
+
+    db = get_db()
+    with db.session() as conn:
+        row = conn.execute(
+            _text(
+                "SELECT id FROM approval_records"
+                " WHERE workflow_id = :wf AND phase_id = :phase_id AND approval_order = :order"
+                " LIMIT 1"
+            ),
+            {
+                "wf": workflow,
+                "phase_id": _normalize_phase_scope(phase_id),
+                "order": order,
+            },
+        ).fetchone()
+    if row is not None:
+        raise ValueError(
+            f"An approval with order={order} already exists in workflow '{workflow}'"
+            f" phase '{phase_id}'"
+        )
 
 
 def _delete_approval_from_db(approval_id: str) -> None:
@@ -185,20 +238,21 @@ def load_approvals_from_db() -> None:
     resumes with previously persisted approval state.
     """
     try:
-        import json as _json
-
         from sqlalchemy import text as _text
 
         db = get_db()
         with db.session() as conn:
             rows = conn.execute(_text("SELECT data FROM approval_records")).fetchall()
         for (raw,) in rows:
-            data = _json.loads(raw) if isinstance(raw, str) else raw
+            data = json.loads(raw) if isinstance(raw, str) else raw
             try:
                 approval = _approval_from_db_data(data)
                 # Only populate cache for records that aren't already loaded
                 if approval.id not in approvals:
                     approvals[approval.id] = approval
+                    _workflow_approvals.setdefault(
+                        _wa_key(approval.workflow, approval.phase_id), []
+                    ).append(approval.id)
             except Exception as exc:  # pragma: no cover - skip corrupt rows
                 _logger.debug("Skipping corrupt approval row: %s", exc)
     except Exception as exc:  # pragma: no cover - DB not available yet
@@ -228,7 +282,7 @@ def _hash_document_model(document: DocumentModel) -> str:
     return _hash_document_bytes(document.content.encode("utf-8"))
 
 
-def create_approval(
+def create_approval(  # noqa: C901
     workflow: str,
     reviewer: str,
     doc_id: str | None = None,
@@ -268,6 +322,7 @@ def create_approval(
                 f"An approval with order={order} already exists in workflow '{workflow}'"
                 f" phase '{phase_id}'"
             )
+        _ensure_unique_order_in_db(workflow, phase_id, order)
 
     doc_hash = None
     existing_document = get_document(doc_id)
@@ -300,7 +355,15 @@ def create_approval(
     # B-08: Maintain secondary index.
     _wa_idx_key = _wa_key(workflow, phase_id)
     _workflow_approvals.setdefault(_wa_idx_key, []).append(approval_id)
-    _persist_approval(approval)
+    try:
+        _persist_approval(approval)
+    except ValueError:
+        approvals.pop(approval_id, None)
+        try:
+            _workflow_approvals[_wa_idx_key].remove(approval_id)
+        except (KeyError, ValueError):
+            pass
+        raise
     try:
         link_approval(doc_id, approval_id)
     except KeyError as exc:
@@ -396,8 +459,6 @@ def get_approval(approval_id: str) -> ApprovalModel | None:
         return cached
     # Fall back to DB (e.g. after server restart or cache eviction)
     try:
-        import json as _json
-
         from sqlalchemy import text as _text
 
         db = get_db()
@@ -408,9 +469,13 @@ def get_approval(approval_id: str) -> ApprovalModel | None:
             ).fetchone()
         if row is not None:
             raw = row[0]
-            data = _json.loads(raw) if isinstance(raw, str) else raw
+            data = json.loads(raw) if isinstance(raw, str) else raw
             approval = _approval_from_db_data(data)
             approvals[approval_id] = approval
+            _workflow_approvals.setdefault(
+                _wa_key(approval.workflow, approval.phase_id),
+                [],
+            ).append(approval_id)
             return approval
     except Exception as exc:  # pragma: no cover - DB not available
         _logger.warning("Failed to load approval %r from DB: %s", approval_id, exc)

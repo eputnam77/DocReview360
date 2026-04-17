@@ -249,6 +249,8 @@ from .feedback_router import router as feedback_router
 from .records_router import router as records_router
 from .sla_router import router as sla_router
 from .wopi_router import router as wopi_router
+from .health_router import router as health_router
+from .public_router import router as public_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1122,12 +1124,6 @@ class APIVersionPrefixMiddleware:
 
 app.add_middleware(APIVersionPrefixMiddleware)
 
-@app.get("/ping")
-async def ping() -> dict[str, str]:
-    """Lightweight health check endpoint used by the frontend."""
-
-    return {"status": "ok"}
-
 
 # Add CORS middleware to allow frontend requests.
 #
@@ -1263,6 +1259,8 @@ app.include_router(feedback_router)
 app.include_router(records_router)
 app.include_router(sla_router)
 app.include_router(wopi_router)
+app.include_router(health_router)
+app.include_router(public_router)
 if os.environ.get("ENABLE_GUARDRAILS", "").lower() in {"1", "true", "yes"}:
     # Activate NeMo Guardrails PII checker when explicitly enabled
     set_guardrails(contains_pii)
@@ -1279,178 +1277,6 @@ if os.environ.get("DOCREVIEW360_METRICS_DISABLED", "").lower() not in {"1", "tru
 
 
 # Startup/shutdown now handled via lifespan
-
-
-@app.get("/health")
-async def health_check() -> Response:
-    """Health check endpoint for monitoring.
-
-    Returns 200 with ``{"status": "healthy", "db": "ok"}`` when the primary
-    database is reachable, or 503 with ``{"status": "degraded", "db": "unavailable"}``
-    when the connectivity check fails.
-    """
-    import json as _json
-    from sqlalchemy import text as _text
-
-    db_status = "ok"
-    http_status = 200
-    try:
-        db = _get_db()
-        with db.session() as conn:
-            conn.execute(_text("SELECT 1"))
-    except Exception as _db_exc:
-        _logger.warning("Health check DB connectivity failed: %s", _db_exc)
-        db_status = "unavailable"
-        http_status = 503
-
-    payload = _json.dumps({"status": "healthy" if http_status == 200 else "degraded", "db": db_status})
-    return Response(content=payload, status_code=http_status, media_type="application/json")
-
-
-@app.get("/health/live")
-async def health_live() -> Response:
-    """Liveness probe -- returns 200 when the process is running.
-
-    Does not check external dependencies; used by container orchestrators to
-    decide whether to restart the container.
-    """
-    import json as _json
-    payload = _json.dumps({"status": "live"})
-    return Response(content=payload, status_code=200, media_type="application/json")
-
-
-@app.get("/health/ready")
-async def health_ready() -> Response:
-    """Readiness probe -- returns 200 only when the app can serve traffic.
-
-    Checks the primary database connection.  Returns 503 when the database is
-    unavailable so load balancers stop routing requests until the dependency
-    recovers.
-    """
-    import json as _json
-    from sqlalchemy import text as _text
-
-    db_status = "ok"
-    http_status = 200
-    try:
-        db = _get_db()
-        with db.session() as conn:
-            conn.execute(_text("SELECT 1"))
-    except Exception as _db_exc:
-        _logger.warning("Readiness check DB connectivity failed: %s", _db_exc)
-        db_status = "unavailable"
-        http_status = 503
-
-    payload = _json.dumps({"status": "ready" if http_status == 200 else "not_ready", "db": db_status})
-    return Response(content=payload, status_code=http_status, media_type="application/json")
-
-
-def _e2e_enabled() -> bool:
-    return os.getenv("DOCREVIEW360_E2E_MODE") == "1"
-
-
-@app.post("/e2e/seed")
-async def seed_e2e_endpoint() -> dict[str, Any]:
-    """Reset and seed deterministic data for E2E runs."""
-    if not _e2e_enabled():
-        raise HTTPException(status_code=404, detail="Not found")
-    from ..e2e_seed import seed_e2e_data
-
-    return seed_e2e_data()
-
-
-def _branding_payload_from_config(cfg: Config | None) -> BrandingPayload:
-    """Build safe branding and release metadata for UI shell rendering."""
-
-    active_cfg = cfg or Config(database="sqlite", editor="tiptap", cms="none", auth="oidc")
-    logo_url: str | None
-    try:
-        logo_url = _normalize_branding_logo_url(active_cfg.branding_logo_url)
-    except ValueError:
-        logo_url = None
-
-    def _safe_link(value: str, default: str) -> str:
-        return value if _is_valid_branding_href(value) else default
-
-    release_build_number = os.getenv("DOCREVIEW360_RELEASE_BUILD_NUMBER", "dev")
-    release_build_date = os.getenv("DOCREVIEW360_RELEASE_BUILD_DATE", "unknown")
-    release_commit = os.getenv("DOCREVIEW360_RELEASE_COMMIT")
-    environment = os.getenv("DOCREVIEW360_ENV", "dev") or "dev"
-
-    # Load org-level theme colors from the default org ("system") when available.
-    _branding_primary_color: str | None = None
-    _branding_accent_color: str | None = None
-    _branding_sidebar_bg: str | None = None
-    _branding_sidebar_text: str | None = None
-    try:
-        from ..branding import get_branding as _get_branding
-        from ..db_store import get_db as _get_db
-
-        with _get_db().orm_session() as _db:
-            _org_branding = _get_branding(_db, "system")
-            _branding_primary_color = _org_branding.get("primary_color") or None
-            _branding_accent_color = _org_branding.get("accent_color") or None
-            _branding_sidebar_bg = _org_branding.get("sidebar_bg") or None
-            _branding_sidebar_text = _org_branding.get("sidebar_text") or None
-    except Exception as exc:
-        _logger.error("Failed to load branding configuration: %s", exc, exc_info=exc)
-
-    return BrandingPayload(
-        branding_company_name=(active_cfg.branding_company_name or "DocReview360").strip()
-        or "DocReview360",
-        branding_logo_url=logo_url,
-        branding_logo_alt=(active_cfg.branding_logo_alt or "Organization logo").strip()
-        or "Organization logo",
-        branding_support_url=_safe_link(active_cfg.branding_support_url, "/docs/"),
-        branding_docs_url=_safe_link(active_cfg.branding_docs_url, "/docs/"),
-        branding_security_url=_safe_link(active_cfg.branding_security_url, "/security"),
-        branding_privacy_url=_safe_link(active_cfg.branding_privacy_url, "/privacy"),
-        branding_primary_color=_branding_primary_color,
-        branding_accent_color=_branding_accent_color,
-        branding_sidebar_bg=_branding_sidebar_bg,
-        branding_sidebar_text=_branding_sidebar_text,
-        release_version=_load_release_version(),
-        release_build_number=release_build_number,
-        release_build_date=release_build_date,
-        release_commit=release_commit,
-        environment=environment,
-    )
-
-
-@app.get("/branding", response_model=BrandingPayload)
-async def branding_endpoint() -> BrandingPayload:
-    """Return public branding and release metadata for UI shell components."""
-
-    cfg = Config.load(CONFIG_FILE)
-    return _branding_payload_from_config(cfg)
-
-
-@app.get("/users/me")
-async def current_user_endpoint(
-    current_user: auth.User = Depends(auth.get_current_user),
-) -> dict[str, Any]:
-    """Return information about the current user."""
-    roles = list(get_roles(current_user.username))
-    cfg = Config.load(CONFIG_FILE)
-    inactivity_timeout = (
-        cfg.inactivity_timeout_minutes if cfg is not None else 30
-    )
-    branding = _branding_payload_from_config(cfg)
-    return {
-        "username": current_user.username,
-        "is_admin": "admin" in roles,
-        "active": auth.is_active(current_user.username),
-        "roles": roles,
-        "inactivity_timeout_minutes": inactivity_timeout,
-        "branding_company_name": branding.branding_company_name,
-        "branding_logo_url": branding.branding_logo_url,
-        "branding_logo_alt": branding.branding_logo_alt,
-        "release_version": branding.release_version,
-        "release_build_number": branding.release_build_number,
-        "release_build_date": branding.release_build_date,
-        "release_commit": branding.release_commit,
-        "environment": branding.environment,
-    }
 
 
 def require_audit_access(current_user: auth.User = Depends(auth.get_current_user)) -> str:

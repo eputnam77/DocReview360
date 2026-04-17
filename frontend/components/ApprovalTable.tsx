@@ -16,8 +16,10 @@ import { Menu, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { toast } from "react-hot-toast";
 import * as Icons from "lucide-react";
+import { FixedSizeList as List, type ListChildComponentProps } from "react-window";
 import type { Approval } from "@/types";
 const Icon = Icons as any;
+const ROW_HEIGHT = 72;
 
 export interface ApprovalHandlers {
   onAssign?: (approvalId: string, reviewer: string) => void;
@@ -153,6 +155,8 @@ export default function ApprovalTable({
   }, [filtered, page, pageSize]);
 
   const pageCount = Math.ceil(filtered.length / pageSize);
+  const virtualizationEnabled = filtered.length > pageSize;
+  const visibleApprovals = virtualizationEnabled ? filtered : paged;
 
   const totals = useMemo(() => {
     const acc = {
@@ -460,7 +464,7 @@ export default function ApprovalTable({
     );
 
   const toggleSelectAll = (checked: boolean) => {
-    setSelected(checked ? paged.map((a) => a.id) : []);
+    setSelected(checked ? visibleApprovals.map((a) => a.id) : []);
   };
 
   const remindSelected = () => {
@@ -469,6 +473,14 @@ export default function ApprovalTable({
     toast.success("Reminder sent");
     setSelected([]);
   };
+
+  const VirtualizedRow = ({ index, style }: ListChildComponentProps) => (
+    <div style={style}>
+      <Table className="table-fixed">
+        <TableBody>{renderRow(filtered[index])}</TableBody>
+      </Table>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -537,7 +549,7 @@ export default function ApprovalTable({
               <input
                 type="checkbox"
                 aria-label="Select all"
-                checked={selected.length === paged.length && paged.length > 0}
+                checked={selected.length === visibleApprovals.length && visibleApprovals.length > 0}
                 onChange={(e) => toggleSelectAll(e.target.checked)}
               />
             </TableHead>
@@ -551,7 +563,7 @@ export default function ApprovalTable({
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
-        {paged.length > 0 ? (
+        {!virtualizationEnabled && paged.length > 0 ? (
           <>
             <TableBody>
               {paged.map((approval) => renderRow(approval))}
@@ -570,7 +582,7 @@ export default function ApprovalTable({
               </TableRow>
             </TableFooter>
           </>
-        ) : (
+        ) : !virtualizationEnabled ? (
           <TableBody>
             <TableRow>
               <TableCell colSpan={9} className="text-center py-8">
@@ -581,9 +593,27 @@ export default function ApprovalTable({
               </TableCell>
             </TableRow>
           </TableBody>
-        )}
+        ) : null}
       </Table>
-      {pageCount > 1 && (
+      {virtualizationEnabled && (
+        <div
+          className="overflow-hidden rounded-md border border-t-0"
+          data-testid="approval-table-virtualized"
+        >
+          <List
+            height={Math.min(filtered.length, 8) * ROW_HEIGHT}
+            itemCount={filtered.length}
+            itemSize={ROW_HEIGHT}
+            width="100%"
+          >
+            {VirtualizedRow}
+          </List>
+          <div className="border-t px-4 py-3 text-xs text-gray-600">
+            Pending {totals.pending} Â· Approved {totals.approved} Â· Overdue {totals.overdue} Â· Rejected {totals.rejected}
+          </div>
+        </div>
+      )}
+      {!virtualizationEnabled && pageCount > 1 && (
         <div className="flex justify-end items-center gap-2 mt-2 text-sm">
           <Button
             size="sm"

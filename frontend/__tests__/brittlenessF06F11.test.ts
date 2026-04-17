@@ -235,16 +235,22 @@ describe("F-12 useReviewerManagement — no console.error", () => {
 describe("F-14 projects/[id]/index.tsx — safeId replaces id as string cast", () => {
   const src = page("projects", "[id]", "index.tsx");
 
-  it("does NOT contain useProject(id as string)", () => {
-    expect(src).not.toContain("useProject(id as string)");
+  it("does NOT cast router.query.id to string", () => {
+    expect(src).not.toContain("router.query.id as string");
   });
 
-  it("declares safeId with typeof guard", () => {
-    expect(src).toMatch(/typeof id === "string"/);
+  it("derives safeId from the raw route param with a typeof guard", () => {
+    expect(src).toContain("const routeId = router.isReady ? router.query.id : undefined;");
+    expect(src).toMatch(/typeof routeId === "string"/);
   });
 
   it("uses safeId in useProject call", () => {
     expect(src).toContain("useProject(safeId)");
+  });
+
+  it("passes safeId into the dependent project hooks", () => {
+    expect(src).toContain("useProjectPageData(safeId");
+    expect(src).toContain("id: safeId");
   });
 });
 
@@ -312,6 +318,15 @@ describe("F-04 projects/[id]/index.tsx — SectionErrorBoundary wiring", () => {
   });
 });
 
+describe("F-04 editors/tiptap.tsx — editor is wrapped in SectionErrorBoundary", () => {
+  const src = page("editors", "tiptap.tsx");
+
+  it("wraps the lazy editor page in a SectionErrorBoundary", () => {
+    expect(src).toContain("<SectionErrorBoundary label=\"Editor\">");
+    expect(src).toContain("<TipTapEditorPage />");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // F-05: ApprovalTable handlers object consolidation
 // ---------------------------------------------------------------------------
@@ -372,18 +387,23 @@ describe("F-05 projects/[id]/index.tsx — uses handlers object at call sites", 
 describe("F-08 document-types.tsx — loading state and error UI", () => {
   const src = page("configuration", "document-types.tsx");
 
-  it("declares isLoading state", () => {
+  it("derives loading state from React Query hooks", () => {
     expect(src).toContain("isLoading");
-    expect(src).toMatch(/useState.*true.*isLoading|isLoading.*useState.*true/s);
+    expect(src).toContain("useQuery<DocType[], Error>");
+    expect(src).toContain("useQuery<string[], Error>");
+    expect(src).toContain("useQuery<TemplateOption[], Error>");
   });
 
-  it("declares fetchError state", () => {
+  it("derives fetchError from the query errors", () => {
     expect(src).toContain("fetchError");
-    expect(src).toMatch(/useState.*null.*fetchError|fetchError.*useState.*null/s);
+    expect(src).toContain("documentTypesError ?? phasesError ?? workflowTemplatesError");
   });
 
-  it("uses Promise.all for parallel fetches", () => {
-    expect(src).toContain("Promise.all");
+  it("refetches all three queries from the retry handler", () => {
+    expect(src).toContain("Promise.all([");
+    expect(src).toContain("refetchDocumentTypes()");
+    expect(src).toContain("refetchPhases()");
+    expect(src).toContain("refetchWorkflowTemplates()");
   });
 
   it("renders loading skeleton while fetching", () => {
@@ -402,9 +422,8 @@ describe("F-08 document-types.tsx — loading state and error UI", () => {
     expect(src).toContain("loadConfigData");
   });
 
-  it("sets isLoading false in finally block", () => {
-    expect(src).toContain(".finally(");
-    expect(src).toMatch(/finally.*setIsLoading.*false|setIsLoading.*false.*finally/s);
+  it("combines the three query loading flags into a single isLoading value", () => {
+    expect(src).toContain("const isLoading = documentTypesLoading || phasesLoading || workflowTemplatesLoading");
   });
 
   it("logs fetch failures to console.warn", () => {

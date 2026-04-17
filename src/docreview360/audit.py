@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from .monitoring import AUDIT_CORRUPT_LINES_SKIPPED
 from .object_storage import upload_file
 from .security_compliance import should_purge
 from .settings_manager import load_settings
@@ -319,7 +320,11 @@ def get_audit_log(document_id: str, secret: str | None = None) -> List[AuditLogE
                 continue
             try:
                 body = {k: v for k, v in data.items() if k != "hash"}
-                if effective_secret and not _verify_hash(body, data.get("hash", ""), effective_secret):
+                if effective_secret and not _verify_hash(
+                    body,
+                    data.get("hash", ""),
+                    effective_secret,
+                ):
                     _raise_corruption(
                         reason="hash_mismatch",
                         message="Audit log entry failed HMAC verification",
@@ -370,7 +375,11 @@ def get_audit_entry(entry_id: str, secret: str | None = None) -> AuditLogEntry |
                 continue
             try:
                 body = {k: v for k, v in data.items() if k != "hash"}
-                if effective_secret and not _verify_hash(body, data.get("hash", ""), effective_secret):
+                if effective_secret and not _verify_hash(
+                    body,
+                    data.get("hash", ""),
+                    effective_secret,
+                ):
                     _raise_corruption(
                         reason="hash_mismatch",
                         message="Audit log entry failed HMAC verification",
@@ -397,6 +406,33 @@ def clear_audit_log() -> None:
     """Remove all audit events (useful for tests)."""
 
     if _AUDIT_LOG_PATH.exists():
+        _AUDIT_LOG_PATH.unlink()
+
+
+def _warn_corrupt_audit_log_line(idx: int, line: str, exc: Exception) -> None:
+    AUDIT_CORRUPT_LINES_SKIPPED.inc()
+    logger.warning(
+        "Skipping corrupt audit log entry at index %d (line: %.120r): %s",
+        idx,
+        line.rstrip(),
+        exc,
+    )
+
+
+def _rewrite_audit_log_after_purge(keep: List[str]) -> None:
+    if keep:
+        tmp_path = _AUDIT_LOG_PATH.with_suffix(".tmp")
+        try:
+            with tmp_path.open("w", encoding="utf-8") as fh:
+                for line in keep:
+                    fh.write(line)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp_path, _AUDIT_LOG_PATH)
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
+    else:
         _AUDIT_LOG_PATH.unlink()
 
 
@@ -427,27 +463,11 @@ def purge_audit_logs(retention_days: int | None = None) -> int:
                     removed += 1
                     continue
             except Exception as exc:
-                logger.warning(
-                    "Skipping corrupt audit log entry at index %d (line: %.120r): %s",
-                    idx, line.rstrip(), exc
-                )
+                _warn_corrupt_audit_log_line(idx, line, exc)
                 continue
             keep.append(line)
     if removed:
-        if keep:
-            tmp_path = _AUDIT_LOG_PATH.with_suffix(".tmp")
-            try:
-                with tmp_path.open("w", encoding="utf-8") as fh:
-                    for line in keep:
-                        fh.write(line)
-                    fh.flush()
-                    os.fsync(fh.fileno())
-                os.replace(tmp_path, _AUDIT_LOG_PATH)
-            except Exception:
-                tmp_path.unlink(missing_ok=True)
-                raise
-        else:
-            _AUDIT_LOG_PATH.unlink()
+        _rewrite_audit_log_after_purge(keep)
     return removed
 
 

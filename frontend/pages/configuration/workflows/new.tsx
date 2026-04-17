@@ -27,37 +27,43 @@ export default function NewWorkflowPage() {
   const [user, setUser] = useState("");
   const [users, setUsers] = useState<string[]>([]);
   const [required, setRequired] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Load document types through API route
-    authenticatedFetch(`/document-types`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => {
-        setDocTypes(data.map((d) => (typeof d === "string" ? d : d.name)));
-      })
-      .catch(() => {
-        setDocTypes([]);
-      });
-  }, []);
+  const loadFormOptions = async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const [docTypesResponse, usersResponse] = await Promise.all([
+        authenticatedFetch(`/document-types`),
+        authenticatedFetch(`/users`),
+      ]);
+      const docTypeData = docTypesResponse.ok ? await docTypesResponse.json() : [];
+      setDocTypes(docTypeData.map((d: any) => (typeof d === "string" ? d : d.name)));
 
-  // fetch users for lookup
-  useEffect(() => {
-    authenticatedFetch(`/users`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: any[]) => {
-        if (Array.isArray(data) && data.length) {
-          setUsers(
-            data
-              .map((u) => (typeof u === "string" ? u : u.username || ""))
-              .filter(Boolean)
-          );
-        } else {
-          setUsers([]);
-        }
-      })
-      .catch(() => {
+      const userData = usersResponse.ok ? await usersResponse.json() : [];
+      if (Array.isArray(userData) && userData.length) {
+        setUsers(
+          userData
+            .map((u) => (typeof u === "string" ? u : u.username || ""))
+            .filter(Boolean),
+        );
+      } else {
         setUsers([]);
-      });
+      }
+    } catch (error) {
+      setDocTypes([]);
+      setUsers([]);
+      setFetchError(
+        error instanceof Error ? error.message : "Failed to load workflow form options.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadFormOptions();
   }, []);
 
 
@@ -126,6 +132,33 @@ export default function NewWorkflowPage() {
 
     toast.success("Workflow saved.");
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6">
+        <div className="h-10 w-64 animate-pulse rounded bg-gray-200" />
+        <div className="space-y-3 rounded border p-6">
+          <div className="h-10 animate-pulse rounded bg-gray-100" />
+          <div className="h-10 animate-pulse rounded bg-gray-100" />
+          <div className="h-48 animate-pulse rounded bg-gray-100" />
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="p-8 space-y-4">
+        <h1 className="text-2xl font-bold">Create New Workflow</h1>
+        <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {fetchError}
+        </div>
+        <Button size="sm" onClick={() => void loadFormOptions()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-8">

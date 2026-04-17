@@ -88,6 +88,8 @@ function normalizePhases(items: unknown): Phase[] {
 export default function PhasesPage() {
   const [phases, setPhases] = useState<Phase[]>([]);
   const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -151,9 +153,21 @@ export default function PhasesPage() {
     }
   };
 
+  const loadInitialData = async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      await Promise.all([loadPhases(), loadWorkflowTemplates()]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load phase configuration";
+      setFetchError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    void loadPhases();
-    void loadWorkflowTemplates();
+    void loadInitialData();
   }, []);
 
   const checkUsage = async (phaseName: string): Promise<UsageInfo | null> => {
@@ -328,6 +342,35 @@ export default function PhasesPage() {
     setEditingId(null);
     setEditName("");
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 p-8">
+        <div className="h-8 w-40 animate-pulse rounded bg-gray-200" />
+        <div className="h-12 w-full animate-pulse rounded bg-gray-100" />
+        <div className="space-y-2 rounded border p-4">
+          <div className="h-10 animate-pulse rounded bg-gray-100" />
+          <div className="h-10 animate-pulse rounded bg-gray-100" />
+          <div className="h-10 animate-pulse rounded bg-gray-100" />
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="space-y-4 p-8">
+        <h1 className="text-2xl font-bold">Phases</h1>
+        <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>Failed to load phase configuration.</p>
+          <p className="opacity-80">{fetchError}</p>
+        </div>
+        <Button onClick={() => void loadInitialData()} size="sm">
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-8">

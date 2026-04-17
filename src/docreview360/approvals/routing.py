@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
-from ..celery_app import app
+from ..celery_app import app, claim_task_idempotency
 from ..logs import log_event
 from ..ml.onnx_infer import metadata_to_context
 from ..quality import approval_likelihood, quality_model_metadata
@@ -66,9 +66,21 @@ def _resolve_pending_approval(event: str, approval_id: str) -> Any:
     return approval
 
 
-@app.task(name="docreview360.approval_reminder")
+@app.task(
+    name="docreview360.approval_reminder",
+    acks_late=True,
+    task_reject_on_worker_lost=True,
+)
 def _reminder_task(approval_id: str) -> None:
     """Log a reminder event for ``approval_id``."""
+    if not claim_task_idempotency("docreview360.approval_reminder", (approval_id,)):
+        log_event(
+            "approval_reminder_skipped",
+            severity="info",
+            approval_id=approval_id,
+            reason="duplicate_task_window",
+        )
+        return
     approval = _resolve_pending_approval("approval_reminder", approval_id)
     if approval is None:
         return
@@ -81,9 +93,25 @@ def _reminder_task(approval_id: str) -> None:
     )
 
 
-@app.task(name="docreview360.approval_escalation")
+@app.task(
+    name="docreview360.approval_escalation",
+    acks_late=True,
+    task_reject_on_worker_lost=True,
+)
 def _escalation_task(approval_id: str, target: str) -> None:
     """Log an escalation event for ``approval_id``."""
+    if not claim_task_idempotency(
+        "docreview360.approval_escalation",
+        (approval_id, target),
+    ):
+        log_event(
+            "approval_escalated_skipped",
+            severity="info",
+            approval_id=approval_id,
+            target=target,
+            reason="duplicate_task_window",
+        )
+        return
     approval = _resolve_pending_approval("approval_escalated", approval_id)
     if approval is None:
         return

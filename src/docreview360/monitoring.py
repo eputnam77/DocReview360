@@ -71,6 +71,12 @@ APPROVAL_UPLOAD_RETRIES = Counter(
     ["status"],
 )
 
+# Metrics tracking corrupted audit log lines discarded during retention purges.
+AUDIT_CORRUPT_LINES_SKIPPED = Counter(
+    "docreview360_audit_corrupt_lines_skipped_total",
+    "Number of corrupt audit log lines skipped during purge",
+)
+
 # Metrics tracking anomaly detection outcomes during verification.
 SIGNATURE_ANOMALIES = Counter(
     "docreview360_signature_anomalies_total",

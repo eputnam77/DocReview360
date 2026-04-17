@@ -12,11 +12,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, Clock, Pencil, Plus, Trash } from "lucide-react";
-import { Fragment, useEffect, useState, useRef } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/api";
 import HelpTooltip from "@/components/HelpTooltip";
+import { useQuery } from "@tanstack/react-query";
 
 interface DocType {
   id: string;
@@ -122,6 +123,57 @@ const normalizeDocTypes = (items: unknown): DocType[] => {
 
   return normalized.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 };
+
+const normalizeTemplateOptions = (items: unknown): TemplateOption[] => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const template = item as { id?: unknown; name?: unknown };
+      const id =
+        typeof template.id === "string" && template.id.trim()
+          ? template.id.trim()
+          : typeof template.name === "string" && template.name.trim()
+          ? template.name.trim()
+          : "";
+      if (!id) return null;
+      const name =
+        typeof template.name === "string" && template.name.trim()
+          ? template.name.trim()
+          : id;
+      return { id, name };
+    })
+    .filter((item): item is TemplateOption => item !== null);
+};
+
+async function fetchDocumentTypes(): Promise<DocType[]> {
+  const response = await authenticatedFetch("/document-types");
+  if (!response.ok) {
+    throw new Error(`/document-types: ${response.status}`);
+  }
+  return normalizeDocTypes(await response.json());
+}
+
+async function fetchPhases(): Promise<string[]> {
+  const response = await authenticatedFetch("/phases");
+  if (!response.ok) {
+    throw new Error(`/phases: ${response.status}`);
+  }
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload.filter((value): value is string => typeof value === "string") : [];
+}
+
+async function fetchWorkflowTemplates(): Promise<TemplateOption[]> {
+  const response = await authenticatedFetch("/workflow-templates");
+  if (!response.ok) {
+    throw new Error(`/workflow-templates: ${response.status}`);
+  }
+  return normalizeTemplateOptions(await response.json());
+}
+
+function getFetchErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Failed to load configuration data";
+}
 
 function PhaseSelector({
   docTypeId,
@@ -403,12 +455,9 @@ function AllSLAPanel({ allSLAConfigs }: { allSLAConfigs: SLAConfig[] }) {
 // ---------------------------------------------------------------------------
 
 export default function DocumentTypesPage() {
-  const [types, setTypes] = useState<DocType[]>([]);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [phases, setPhases] = useState<string[]>([]);
-  const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
   const [replacementDocType, setReplacementDocType] = useState<string>("");
   const [usageInfo, setUsageInfo] = useState<any>(null);
@@ -420,42 +469,52 @@ export default function DocumentTypesPage() {
   const [showAllSLA, setShowAllSLA] = useState(false);
   const [loadingAllSLA, setLoadingAllSLA] = useState(false);
 
-  // Loading + error state for the three parallel configuration fetches
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const hasFetched = useRef(false);
+  const {
+    data: types = [],
+    isLoading: documentTypesLoading,
+    error: documentTypesError,
+    refetch: refetchDocumentTypes,
+  } = useQuery<DocType[], Error>({
+    queryKey: ["configuration", "document-types"],
+    queryFn: fetchDocumentTypes,
+    retry: false,
+  });
+  const {
+    data: phases = [],
+    isLoading: phasesLoading,
+    error: phasesError,
+    refetch: refetchPhases,
+  } = useQuery<string[], Error>({
+    queryKey: ["configuration", "phases"],
+    queryFn: fetchPhases,
+    retry: false,
+  });
+  const {
+    data: templates = [],
+    isLoading: workflowTemplatesLoading,
+    error: workflowTemplatesError,
+    refetch: refetchWorkflowTemplates,
+  } = useQuery<TemplateOption[], Error>({
+    queryKey: ["configuration", "workflow-templates"],
+    queryFn: fetchWorkflowTemplates,
+    retry: false,
+  });
 
-  const loadConfigData = () => {
-    setIsLoading(true);
-    setFetchError(null);
-    Promise.all([
-      authenticatedFetch('/document-types')
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`/document-types: ${r.status}`))))
-        .then((data: unknown) => setTypes(normalizeDocTypes(data))),
-      authenticatedFetch('/phases')
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`/phases: ${r.status}`))))
-        .then((data: string[]) => setPhases(Array.isArray(data) ? data : [])),
-      authenticatedFetch('/workflow-templates')
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`/workflow-templates: ${r.status}`))))
-        .then((data: any[]) => {
-          if (Array.isArray(data)) {
-            setTemplates(data.map((t) => ({ id: t.id || t.name, name: t.name || t.id })));
-          }
-        }),
-    ])
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Failed to load configuration data";
-        setFetchError(msg);
-        console.warn("[document-types] fetch failed:", err);
-      })
-      .finally(() => setIsLoading(false));
-  };
+  const isLoading = documentTypesLoading || phasesLoading || workflowTemplatesLoading;
+  const fetchError = documentTypesError ?? phasesError ?? workflowTemplatesError;
 
   useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    loadConfigData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!fetchError) return;
+    console.warn("[document-types] fetch failed:", fetchError);
+  }, [fetchError]);
+
+  const loadConfigData = () => {
+    void Promise.all([
+      refetchDocumentTypes(),
+      refetchPhases(),
+      refetchWorkflowTemplates(),
+    ]);
+  };
 
   const toggleSLARow = (docTypeId: string) => {
     setExpandedSLA((prev) => (prev === docTypeId ? null : docTypeId));
@@ -519,8 +578,7 @@ export default function DocumentTypesPage() {
         body: JSON.stringify(body),
       });
       if (r.ok) {
-        const created = await r.json();
-        setTypes(normalizeDocTypes([...types, { id: created.name, name: created.name, phases: [] }]));
+        await refetchDocumentTypes();
       } else {
         toast.error("Failed to add document type");
       }
@@ -571,10 +629,7 @@ export default function DocumentTypesPage() {
         }
       }
 
-      const refreshed = await authenticatedFetch('/document-types')
-        .then((r) => (r.ok ? r.json() : []))
-        .catch(() => []);
-      setTypes(normalizeDocTypes(refreshed));
+      await refetchDocumentTypes();
 
       if (createdCount > 0) {
         toast.success(`Added ${createdCount} government-first document types.`);
@@ -610,7 +665,7 @@ export default function DocumentTypesPage() {
     try {
       const res = await authenticatedFetch(`/document-types/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (res.ok) {
-        setTypes(types.filter((t) => t.id !== id));
+        await refetchDocumentTypes();
       } else {
         toast.error("Failed to delete document type");
       }
@@ -627,7 +682,7 @@ export default function DocumentTypesPage() {
         { method: "DELETE" }
       );
       if (response.ok) {
-        setTypes(types.filter((t) => t.id !== showDeleteDialog));
+        await refetchDocumentTypes();
       } else {
         const error = await response.json();
         toast.error(`Error: ${error.detail}`);
@@ -664,7 +719,7 @@ export default function DocumentTypesPage() {
       if (!res.ok) {
         throw new Error("Failed to update document type");
       }
-      setTypes(normalizeDocTypes(types.map((t) => (t.id === id ? { ...t, name: body.name } : t))));
+      await refetchDocumentTypes();
       setEditingId(null);
       setEditName("");
       return;
@@ -693,13 +748,7 @@ export default function DocumentTypesPage() {
         }),
       });
       if (!res.ok) throw new Error("Failed to update default workflow");
-      setTypes(
-        types.map((t) =>
-          t.id === docTypeId
-            ? { ...t, default_workflow_template_id: templateId || undefined }
-            : t,
-        ),
-      );
+      await refetchDocumentTypes();
     } catch {
       toast.error("Failed to update default workflow");
     }
@@ -725,9 +774,7 @@ export default function DocumentTypesPage() {
       if (!res.ok) {
         throw new Error("Failed to update document type phases");
       }
-      setTypes(
-        types.map((t) => (t.id === docTypeId ? { ...t, phases: updatedPhases } : t)),
-      );
+      await refetchDocumentTypes();
     } catch {
       toast.error("Failed to update document type phases");
     }
@@ -753,7 +800,7 @@ export default function DocumentTypesPage() {
         <h1 className="text-2xl font-bold">Document Types</h1>
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
           <strong>Failed to load configuration data.</strong>{" "}
-          <span className="opacity-75">{fetchError}</span>
+          <span className="opacity-75">{getFetchErrorMessage(fetchError)}</span>
           <div className="mt-2">
             <button
               className="text-red-600 underline hover:no-underline"

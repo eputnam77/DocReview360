@@ -37,6 +37,8 @@ interface RolePermissionSummary {
 export default function PermissionsPage() {
   const [roles, setRoles] = useState<RolePermissionSummary[]>([]);
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const roleLabel = useMemo(() => {
     const mapping = new Map<string, string>();
@@ -49,14 +51,45 @@ export default function PermissionsPage() {
       const resp = await authenticatedFetch('/rbac/role-permissions');
       const data = resp.ok ? await resp.json() : [];
       setRoles(Array.isArray(data) ? data : []);
+      setFetchError(null);
     } catch {
       setRoles([]);
+      setFetchError("Unable to load role permissions.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     void loadRoles();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-4">
+        <div className="h-8 w-64 animate-pulse rounded bg-gray-200" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="h-40 animate-pulse rounded border bg-gray-100" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="p-8 space-y-4">
+        <h1 className="text-2xl font-bold">Permissions Management</h1>
+        <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {fetchError}
+        </div>
+        <Button size="sm" onClick={() => { setIsLoading(true); void loadRoles(); }}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   const updateRole = async (role: string, permissions: string[]) => {
     const resp = await authenticatedFetch(

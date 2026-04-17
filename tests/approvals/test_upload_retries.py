@@ -6,6 +6,7 @@ import asyncio
 from typing import Any, Dict, List, Tuple
 
 import pytest
+
 from docreview360 import approvals as approvals_mod
 from docreview360.approvals import signatures as approvals_sig
 from docreview360.monitoring import APPROVAL_UPLOAD_RETRIES
@@ -71,10 +72,13 @@ async def test_update_state_retries_and_logs(monkeypatch: pytest.MonkeyPatch) ->
     retry_before = _baseline("retry")
     exhausted_before = _baseline("exhausted")
 
-    await approvals_mod.update_approval_state("approval-xyz", "approved")
+    with pytest.raises(RuntimeError, match="Artifact upload failed after exhausting retries"):
+        await approvals_mod.update_approval_state("approval-xyz", "approved")
 
     assert attempts == 3
     assert sleeps == [0.01, 0.02]
+    assert approvals_mod.approvals["approval-xyz"].state == "pending"
+    assert approvals_mod.approvals["approval-xyz"].signed_at is None
 
     retry_after = _baseline("retry")
     exhausted_after = _baseline("exhausted")

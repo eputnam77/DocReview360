@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
+import threading
+import time
 from typing import Any, cast
-
-_logger = logging.getLogger(__name__)
 
 from celery import Celery, Task
 
@@ -18,6 +20,8 @@ from .exporter import export_batch
 from .guardrails import evaluate_guardrails, load_guardrail_thresholds
 from .logs import TRACE_ID, log_event
 from .search import search_index
+
+_logger = logging.getLogger(__name__)
 
 broker_url = os.environ.get("CELERY_BROKER_URL", "memory://")
 backend_url = os.environ.get("CELERY_RESULT_BACKEND", "cache+memory://")
@@ -72,6 +76,48 @@ class TracedTask(Task):
 
 
 app.Task = TracedTask
+
+_IDEMPOTENCY_WINDOW_SECONDS = max(
+    1,
+    int(os.environ.get("DOCREVIEW360_TASK_IDEMPOTENCY_WINDOW_SECONDS", "300")),
+)
+_task_idempotency_lock = threading.Lock()
+_task_idempotency_cache: dict[str, float] = {}
+
+
+def claim_task_idempotency(
+    task_name: str,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any] | None = None,
+    *,
+    window_seconds: int = _IDEMPOTENCY_WINDOW_SECONDS,
+    now: float | None = None,
+) -> bool:
+    """Return ``True`` when this task call should execute in the current window."""
+
+    current_time = time.time() if now is None else now
+    payload = {
+        "task": task_name,
+        "args": args,
+        "kwargs": kwargs or {},
+        "window": int(current_time // window_seconds),
+    }
+    key = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+    expires_at = current_time + window_seconds
+    with _task_idempotency_lock:
+        expired = [
+            digest
+            for digest, deadline in _task_idempotency_cache.items()
+            if deadline <= current_time
+        ]
+        for digest in expired:
+            _task_idempotency_cache.pop(digest, None)
+        if key in _task_idempotency_cache:
+            return False
+        _task_idempotency_cache[key] = expires_at
+    return True
 
 
 def echo(value: str) -> str:
@@ -168,7 +214,14 @@ def reindex_document(doc_id: str) -> None:
     search_index.add_document(doc)
 
 
-reindex_document = cast(Task, app.task(name="docreview360.reindex_document")(reindex_document))
+reindex_document = cast(
+    Task,
+    app.task(
+        name="docreview360.reindex_document",
+        acks_late=True,
+        task_reject_on_worker_lost=True,
+    )(reindex_document),
+)
 
 
 def create_backup_task(path: str) -> str:
@@ -181,7 +234,14 @@ def create_backup_task(path: str) -> str:
     return str(target)
 
 
-create_backup_task = cast(Task, app.task(name="docreview360.create_backup")(create_backup_task))
+create_backup_task = cast(
+    Task,
+    app.task(
+        name="docreview360.create_backup",
+        acks_late=True,
+        task_reject_on_worker_lost=True,
+    )(create_backup_task),
+)
 
 
 def reindex_all() -> int:
@@ -194,4 +254,11 @@ def reindex_all() -> int:
     return count
 
 
-reindex_all = cast(Task, app.task(name="docreview360.reindex_all")(reindex_all))
+reindex_all = cast(
+    Task,
+    app.task(
+        name="docreview360.reindex_all",
+        acks_late=True,
+        task_reject_on_worker_lost=True,
+    )(reindex_all),
+)

@@ -70,3 +70,28 @@ def test_escalation_task_logs_for_pending(monkeypatch: Any) -> None:
     actions = {action for action, _ in recorder.events}
     assert "approval_escalated" in actions
     assert "approval_escalated_skipped" not in actions
+
+
+def test_reminder_task_skips_duplicate_window(monkeypatch: Any) -> None:
+    approvals_mod.approvals.clear()
+    approvals_mod.approvals["approval-1"] = _make_approval(state="pending")
+    recorder = _EventRecorder()
+    monkeypatch.setattr(approvals_routing, "log_event", recorder)
+    monkeypatch.setattr(
+        approvals_routing,
+        "claim_task_idempotency",
+        lambda *_args, **_kwargs: False,
+    )
+
+    approvals_mod._reminder_task("approval-1")
+
+    skipped = [event for event in recorder.events if event[0] == "approval_reminder_skipped"]
+    assert skipped
+    assert skipped[0][1]["reason"] == "duplicate_task_window"
+
+
+def test_background_tasks_are_retry_safe() -> None:
+    assert approvals_routing._reminder_task.acks_late is True
+    assert approvals_routing._reminder_task.task_reject_on_worker_lost is True
+    assert approvals_routing._escalation_task.acks_late is True
+    assert approvals_routing._escalation_task.task_reject_on_worker_lost is True

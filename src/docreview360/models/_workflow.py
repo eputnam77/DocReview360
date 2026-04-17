@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Workflow models: Workflow, Approval, ApprovalRecord, WorkflowInstanceRecord, WorkflowTemplateRecord."""
+"""Workflow models for workflows, approvals, and persisted workflow state."""
 
 from __future__ import annotations
 
@@ -8,7 +8,9 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     ForeignKey,
+    Index,
     String,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,11 +44,23 @@ class ApprovalRecord(Base):
     """Persistent storage for approval instances (replaces in-memory dict)."""
 
     __tablename__ = "approval_records"
+    __table_args__ = (
+        Index(
+            "uq_approval_records_workflow_phase_order",
+            "workflow_id",
+            "phase_id",
+            "approval_order",
+            unique=True,
+            sqlite_where=text("approval_order <> 0"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     workflow_id: Mapped[str] = mapped_column(String, index=True)
+    phase_id: Mapped[str] = mapped_column(String, default="", server_default="")
     reviewer: Mapped[str] = mapped_column(String)
     state: Mapped[str] = mapped_column(String(20), index=True)
+    approval_order: Mapped[int] = mapped_column(default=0, server_default="0")
     data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 

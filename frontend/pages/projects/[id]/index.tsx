@@ -32,6 +32,7 @@ import { usePhases } from "@/lib/usePhases";
 import { useApprovals } from "@/lib/useApprovals";
 import { useProjectReviewers } from "@/lib/useProjectReviewers";
 import { useReviewSummary } from "@/lib/useReviewSummary";
+import { ApprovalsTab, AuditTab, FeedbackTab, LifecycleTab, NaraTab, SlaTab } from "@/components/project";
 import { useUserStore } from "@/state/user";
 import { Disclosure, Transition } from "@headlessui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -122,8 +123,8 @@ const PROJECT_LIFECYCLE_STATUSES = [
 // ----------------------------------------------------------------------------
 export default function ProjectDetailsPage() {
   const router = useRouter();
-  const id = router.isReady ? (router.query.id as string | undefined) : undefined;
-  const safeId = typeof id === "string" ? id : undefined;
+  const routeId = router.isReady ? router.query.id : undefined;
+  const safeId = typeof routeId === "string" ? routeId : undefined;
 
   // ── Core local state ──────────────────────────────────────────────────
   const [project, setProject] = useState<Project | null>(null);
@@ -236,7 +237,7 @@ export default function ProjectDetailsPage() {
     assignmentEvents,
     auditEvents,
     reviewerOptions,
-  } = useProjectPageData(id, {
+  } = useProjectPageData(safeId, {
     username,
     approvals,
     approvalsForPhase,
@@ -264,8 +265,8 @@ export default function ProjectDetailsPage() {
 
   // ── Audit log ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!id || !username) { setLogs([]); return; }
-    authenticatedFetch(`/api/audit?entity_id=${id}`)
+    if (!safeId || !username) { setLogs([]); return; }
+    authenticatedFetch(`/api/audit?entity_id=${safeId}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setLogs(
@@ -279,7 +280,7 @@ export default function ProjectDetailsPage() {
         ),
       )
       .catch(() => setLogs([]));
-  }, [id, username]);
+  }, [safeId, username]);
 
   // ── Completed signature detection ─────────────────────────────────────
   useEffect(() => {
@@ -317,9 +318,9 @@ export default function ProjectDetailsPage() {
   }, [approvalsForPhase, isOwner]);
 
   // ── Business logic hooks ──────────────────────────────────────────────
-  const phase = usePhaseManagement({ id, project, workflow, canAdvance, setProject, setWorkflow });
+  const phase = usePhaseManagement({ id: safeId, project, workflow, canAdvance, setProject, setWorkflow });
   const revMgmt = useReviewerManagement({
-    id,
+    id: safeId,
     project,
     workflow,
     approvals,
@@ -331,7 +332,7 @@ export default function ProjectDetailsPage() {
     removeReviewer,
   });
   const signing = useApprovalSigning({
-    id,
+    id: safeId,
     username,
     approvals,
     approvalsForPhase,
@@ -341,9 +342,9 @@ export default function ProjectDetailsPage() {
     reset,
     remind,
   });
-  const fb = useFeedbackHandlers({ id, refetchFeedback, refetchProgress });
+  const fb = useFeedbackHandlers({ id: safeId, refetchFeedback, refetchProgress });
   const lifecycle = useReviewLifecycle({
-    id,
+    id: safeId,
     refetchAssignments,
     refetchMyAssignments,
     refetchSummary,
@@ -424,12 +425,13 @@ export default function ProjectDetailsPage() {
   };
 
   const handleDownloadRecordsPackage = async () => {
+    if (!safeId) return;
     try {
-      const res = await authenticatedFetch(`/projects/${id}/records-package`);
+      const res = await authenticatedFetch(`/projects/${safeId}/records-package`);
       if (!res.ok) { toast.error("Failed to generate records package."); return; }
       const blob = await res.blob();
       const hash = res.headers.get("X-Content-Hash") ?? "";
-      if (!downloadBrowserBlob(blob, `records-${id}.zip`)) {
+      if (!downloadBrowserBlob(blob, `records-${safeId}.zip`)) {
         toast.error("Download unavailable in this environment.");
         return;
       }
@@ -440,8 +442,9 @@ export default function ProjectDetailsPage() {
   };
 
   const handleRunSlaReminders = async () => {
+    if (!safeId) return;
     try {
-      const res = await authenticatedFetch(`/projects/${id}/run-sla-reminders`, { method: "POST" });
+      const res = await authenticatedFetch(`/projects/${safeId}/run-sla-reminders`, { method: "POST" });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
       toast.success(`${data.sent} reminder(s) sent.`);
@@ -452,11 +455,12 @@ export default function ProjectDetailsPage() {
   };
 
   const handleConcurWithComments = async (assignmentId: string) => {
+    if (!safeId) return;
     const text = promptInBrowser("Add your final comments for this concurrence (required):");
     if (!text?.trim()) return;
     try {
       const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/concur-with-comments`,
+        `/projects/${safeId}/assignments/${assignmentId}/concur-with-comments`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -479,9 +483,10 @@ export default function ProjectDetailsPage() {
   };
 
   const handleRequestConcurrence = async (assignmentId: string) => {
+    if (!safeId) return;
     try {
       const res = await authenticatedFetch(
-        `/projects/${id}/assignments/${assignmentId}/request-concurrence`,
+        `/projects/${safeId}/assignments/${assignmentId}/request-concurrence`,
         { method: "POST" },
       );
       if (!res.ok) throw new Error("Failed");
@@ -501,10 +506,10 @@ export default function ProjectDetailsPage() {
   };
 
   const handleSaveNara = async () => {
-    if (!id) return;
+    if (!safeId) return;
     setSavingNara(true);
     try {
-      const res = await authenticatedFetch(`/projects/${id}`, {
+      const res = await authenticatedFetch(`/projects/${safeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -516,7 +521,7 @@ export default function ProjectDetailsPage() {
       });
       if (!res.ok) throw new Error("Failed to save NARA metadata");
       toast.success("NARA metadata saved.");
-      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["project", safeId] });
     } catch {
       toast.error("Failed to save NARA metadata.");
     } finally {
@@ -525,6 +530,7 @@ export default function ProjectDetailsPage() {
   };
 
   const handleExportReviewers = () => {
+    if (!safeId) return;
     const rows = [
       ["Reviewer", "Status", "Invited", "Due Date", "Signed At"],
       ...assignments.map((a) => [
@@ -537,7 +543,7 @@ export default function ProjectDetailsPage() {
     ];
     const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    if (!downloadBrowserBlob(blob, `reviewers-${id}.csv`)) {
+    if (!downloadBrowserBlob(blob, `reviewers-${safeId}.csv`)) {
       toast.error("Download unavailable in this environment.");
     }
   };
@@ -609,7 +615,7 @@ export default function ProjectDetailsPage() {
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button asChild size="sm">
-                <Link href={`/editors/tiptap?projectId=${id}`}>
+                <Link href={`/editors/tiptap?projectId=${safeId}`}>
                   <FileEdit className="w-4 h-4 mr-1" /> Open Document
                 </Link>
               </Button>
@@ -851,6 +857,7 @@ export default function ProjectDetailsPage() {
           )}
 
           {/* SLA Summary — Phase 8 */}
+          <SlaTab>
           <SectionErrorBoundary label="SLA summary">
           {slaSummary && slaSummary.total > 0 && (
             <Card>
@@ -894,6 +901,7 @@ export default function ProjectDetailsPage() {
             </Card>
           )}
           </SectionErrorBoundary>
+          </SlaTab>
 
           {/* Document Quality Scores — only shown when FSV is enabled (Item 34 Phase 4) */}
           {fsvEnabled && qualityScores && qualityScores.length > 0 && (
@@ -1003,6 +1011,7 @@ export default function ProjectDetailsPage() {
 
           {/* Records Retention (NARA) — Phase 7 */}
           {canEdit && (
+            <NaraTab>
             <Disclosure>
               {({ open }) => (
                 <>
@@ -1094,6 +1103,7 @@ export default function ProjectDetailsPage() {
                 </>
               )}
             </Disclosure>
+            </NaraTab>
           )}
 
           {/* Primary CTA + quality badge */}
@@ -1128,7 +1138,7 @@ export default function ProjectDetailsPage() {
           </div>
         </section>
 
-        <section id="approvals" className="space-y-6">
+        <ApprovalsTab>
           <Disclosure>
             {({ open }) => (
               <>
@@ -1243,10 +1253,10 @@ export default function ProjectDetailsPage() {
               </>
             )}
           </Disclosure>
-        </section>
+        </ApprovalsTab>
 
         {/* REVIEWERS SECTION — assignment lifecycle */}
-        <section id="reviewers" className="space-y-6">
+        <LifecycleTab>
           <Disclosure>
             {({ open }) => (
               <>
@@ -1328,7 +1338,7 @@ export default function ProjectDetailsPage() {
                           </button>
                         </div>
                         <iframe
-                          src={`/editors/tiptap?projectId=${id}&readonly=1`}
+                          src={`/editors/tiptap?projectId=${safeId}&readonly=1`}
                           title="Document preview"
                           className="w-full h-80 border-0 bg-white"
                           sandbox="allow-scripts allow-same-origin"
@@ -1543,7 +1553,7 @@ export default function ProjectDetailsPage() {
               </>
             )}
           </Disclosure>
-        </section>
+        </LifecycleTab>
 
         {/* SIGNATURES SECTION — Phase 4/6 */}
         {false && (
@@ -1585,7 +1595,7 @@ export default function ProjectDetailsPage() {
                 </button>
               </div>
               <iframe
-                src={`/editors/tiptap?projectId=${id}&readonly=1`}
+                src={`/editors/tiptap?projectId=${safeId}&readonly=1`}
                 title="Document preview"
                 className="w-full h-80 border-0 bg-white"
                 sandbox="allow-scripts allow-same-origin"
@@ -1827,7 +1837,7 @@ export default function ProjectDetailsPage() {
           </>
         )}
 
-        <section id="feedback" className="space-y-6">
+        <FeedbackTab>
           <Disclosure>
             {({ open }) => (
               <>
@@ -1881,7 +1891,7 @@ export default function ProjectDetailsPage() {
                         </Button>
                         <Button asChild variant="outline" size="sm">
                           <Link
-                            href={`/projects/${id}#feedback`}
+                            href={`/projects/${safeId}#feedback`}
                             title="Jump to the Feedback tab for this project"
                           >
                             Open review workspace
@@ -1907,7 +1917,7 @@ export default function ProjectDetailsPage() {
                 </button>
               </div>
               <iframe
-                src={`/editors/tiptap?projectId=${id}&readonly=1`}
+                src={`/editors/tiptap?projectId=${safeId}&readonly=1`}
                 title="Document preview"
                 className="w-full h-80 border-0 bg-white"
                 sandbox="allow-scripts allow-same-origin"
@@ -2090,7 +2100,7 @@ export default function ProjectDetailsPage() {
                             {/* Jump-to-location for inline feedback */}
                             {item.source === "inline" && item.range_anchor && (
                               <Link
-                                href={`/editors/tiptap?projectId=${id}&anchor=${item.range_anchor}`}
+                                href={`/editors/tiptap?projectId=${safeId}&anchor=${item.range_anchor}`}
                                 className="inline-flex items-center gap-1 mt-1 text-xs text-indigo-600 hover:underline"
                                 title="Jump to this location in the editor"
                                 data-testid="jump-to-location"
@@ -2186,7 +2196,7 @@ export default function ProjectDetailsPage() {
                               variant="outline"
                               onClick={async () => {
                                 await authenticatedFetch(
-                                  `/projects/${id}/feedback/${item.id}/question-satisfied`,
+                                  `/projects/${safeId}/feedback/${item.id}/question-satisfied`,
                                   { method: "POST" },
                                 );
                                 refetchFeedback();
@@ -2257,10 +2267,10 @@ export default function ProjectDetailsPage() {
               </>
             )}
           </Disclosure>
-        </section>
+        </FeedbackTab>
 
         {/* HISTORY SECTION */}
-        <section id="history" className="space-y-6">
+        <AuditTab>
           <Disclosure defaultOpen>
             {({ open }) => (
               <>
@@ -2342,7 +2352,7 @@ export default function ProjectDetailsPage() {
               )}
             </Disclosure>
           )}
-        </section>
+        </AuditTab>
 
         {/* RECORDS SECTION — visible when submitted_to_records or closed (Phase 7) */}
         {lifecycleRecord && ["submitted_to_records", "closed", "published", "ready_for_publication"].includes(lifecycleRecord.status) && (

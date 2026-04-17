@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import StarterKit from "@tiptap/starter-kit";
@@ -19,6 +19,9 @@ import { CommentMark } from "@/extensions/tiptapComments";
 import { TrackChanges } from "@/extensions/tiptapTrackChanges";
 import SlashCommand from "@/extensions/tiptapSlashCommand";
 import type { ExtensionStatus } from "@/components/ExtensionsPanel";
+import { useEditorCollab } from "@/lib/useEditorCollab";
+import { useEditorLint } from "@/lib/useEditorLint";
+import { useEditorOptionalExtensions } from "@/lib/useEditorOptionalExtensions";
 
 export interface EditorExtensionsState {
   // Collab
@@ -91,38 +94,59 @@ export function useEditorExtensions({
   syncNowRef: React.MutableRefObject<() => void>;
   onSaveStatus: (status: "saving" | "saved" | "error" | "offline") => void;
 }): EditorExtensionsState {
-  const [collabEnabled, setCollabEnabled] = useState(false);
-  const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
-  const [provider, setProvider] = useState<any>(null);
-
-  const [lintEnabled, setLintEnabled] = useState(false);
-  const [lintExtension, setLintExtension] = useState<any>(null);
-  const [lintStatus, setLintStatus] = useState<ExtensionStatus>("idle");
-
-  const [headingLockEnabled, setHeadingLockEnabled] = useState(false);
-  const [headingLockExtension, setHeadingLockExtension] = useState<any>(null);
-  const [headingLockStatus, setHeadingLockStatus] = useState<ExtensionStatus>("idle");
-
-  const [indentationEnabled, setIndentationEnabled] = useState(false);
-  const [indentationExtension, setIndentationExtension] = useState<any>(null);
-  const [indentationStatus, setIndentationStatus] = useState<ExtensionStatus>("idle");
-
-  const [sectionNodeEnabled, setSectionNodeEnabled] = useState(false);
-  const [sectionNodeExtension, setSectionNodeExtension] = useState<any>(null);
-  const [sectionNodeStatus, setSectionNodeStatus] = useState<ExtensionStatus>("idle");
-
-  const [markReviewEnabled, setMarkReviewEnabled] = useState(false);
-  const [markReviewExtension, setMarkReviewExtension] = useState<any>(null);
-  const [markReviewStatus, setMarkReviewStatus] = useState<ExtensionStatus>("idle");
-
-  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
-  const [watermarkExtension, setWatermarkExtension] = useState<any>(null);
-  const [watermarkStatus, setWatermarkStatus] = useState<ExtensionStatus>("idle");
-  const [watermarkText, setWatermarkText] = useState("Sample");
-
   const [commentMarkEnabled] = useState(true);
   const [trackChangesEnabled] = useState(true);
   const [aiSuggestEnabled, setAiSuggestEnabled] = useState(false);
+  const persistPreferencesRef = useRef<
+    (overrides?: Partial<Record<string, boolean | string>>) => Promise<void>
+  >(async () => undefined);
+
+  const {
+    collabEnabled,
+    yDoc,
+    provider,
+    setCollabEnabled,
+    setYDoc,
+    setProvider,
+    handleToggleCollab,
+  } = useEditorCollab({
+    persistPreferences: (overrides) => persistPreferencesRef.current(overrides),
+  });
+  const { lintEnabled, lintExtension, lintStatus, setLintEnabled, handleToggleLint } = useEditorLint({
+    persistPreferences: (overrides) => persistPreferencesRef.current(overrides),
+  });
+  const {
+    headingLockEnabled,
+    headingLockExtension,
+    headingLockStatus,
+    setHeadingLockEnabled,
+    indentationEnabled,
+    indentationExtension,
+    indentationStatus,
+    setIndentationEnabled,
+    sectionNodeEnabled,
+    sectionNodeExtension,
+    sectionNodeStatus,
+    setSectionNodeEnabled,
+    markReviewEnabled,
+    markReviewExtension,
+    markReviewStatus,
+    setMarkReviewEnabled,
+    watermarkEnabled,
+    watermarkExtension,
+    watermarkStatus,
+    setWatermarkEnabled,
+    watermarkText,
+    setWatermarkText,
+    handleToggleHeadingLock,
+    handleToggleIndentation,
+    handleToggleSectionNode,
+    handleToggleMarkReview,
+    handleToggleWatermark,
+    handleWatermarkText,
+  } = useEditorOptionalExtensions({
+    persistPreferences: (overrides) => persistPreferencesRef.current(overrides),
+  });
 
   // ── Preference persistence ─────────────────────────────────────────────────
   const persistPreferences = useCallback(
@@ -153,6 +177,8 @@ export function useEditorExtensions({
     ],
   );
 
+  persistPreferencesRef.current = persistPreferences;
+
   // ── Load preferences on mount ──────────────────────────────────────────────
   useEffect(() => {
     if (!docId) return;
@@ -176,144 +202,12 @@ export function useEditorExtensions({
   }, [api, docId]);
 
   // ── Toggle handlers ────────────────────────────────────────────────────────
-  function handleToggleLint() {
-    if (lintEnabled) {
-      setLintEnabled(false);
-      setLintExtension(null);
-      setLintStatus("idle");
-      persistPreferences({ lint: false });
-      return;
-    }
-    setLintStatus("loading");
-    import("../extensions/lint")
-      .then((mod) => {
-        setLintExtension(() => mod.default);
-        setLintEnabled(true);
-        setLintStatus("loaded");
-        persistPreferences({ lint: true });
-      })
-      .catch(() => setLintStatus("error"));
-  }
-
-  function handleToggleCollab() {
-    setCollabEnabled((prev) => {
-      const next = !prev;
-      if (prev && provider) {
-        provider.disconnect();
-        setYDoc(null);
-        setProvider(null);
-      }
-      persistPreferences({ collab: next });
-      return next;
-    });
-  }
-
   function handleToggleAiSuggest() {
     setAiSuggestEnabled((prev) => {
       const next = !prev;
-      persistPreferences({ ai_suggest: next });
+      void persistPreferences({ ai_suggest: next });
       return next;
     });
-  }
-
-  function handleToggleHeadingLock() {
-    if (headingLockEnabled) {
-      setHeadingLockEnabled(false);
-      setHeadingLockExtension(null);
-      setHeadingLockStatus("idle");
-      persistPreferences({ heading_lock: false });
-      return;
-    }
-    setHeadingLockStatus("loading");
-    import("../extensions/tiptapHeadingLock")
-      .then((mod) => {
-        setHeadingLockExtension(() => mod.tiptapHeadingLock);
-        setHeadingLockEnabled(true);
-        setHeadingLockStatus("loaded");
-        persistPreferences({ heading_lock: true });
-      })
-      .catch(() => setHeadingLockStatus("error"));
-  }
-
-  function handleToggleIndentation() {
-    if (indentationEnabled) {
-      setIndentationEnabled(false);
-      setIndentationExtension(null);
-      setIndentationStatus("idle");
-      persistPreferences({ indentation: false });
-      return;
-    }
-    setIndentationStatus("loading");
-    import("../extensions/tiptapIndentation")
-      .then((mod) => {
-        setIndentationExtension(() => mod.tiptapIndentation);
-        setIndentationEnabled(true);
-        setIndentationStatus("loaded");
-        persistPreferences({ indentation: true });
-      })
-      .catch(() => setIndentationStatus("error"));
-  }
-
-  function handleToggleSectionNode() {
-    if (sectionNodeEnabled) {
-      setSectionNodeEnabled(false);
-      setSectionNodeExtension(null);
-      setSectionNodeStatus("idle");
-      persistPreferences({ section_node: false });
-      return;
-    }
-    setSectionNodeStatus("loading");
-    import("../extensions/tiptapSectionNode")
-      .then((mod) => {
-        setSectionNodeExtension(() => mod.tiptapSectionNode);
-        setSectionNodeEnabled(true);
-        setSectionNodeStatus("loaded");
-        persistPreferences({ section_node: true });
-      })
-      .catch(() => setSectionNodeStatus("error"));
-  }
-
-  function handleToggleMarkReview() {
-    if (markReviewEnabled) {
-      setMarkReviewEnabled(false);
-      setMarkReviewExtension(null);
-      setMarkReviewStatus("idle");
-      persistPreferences({ mark_review: false });
-      return;
-    }
-    setMarkReviewStatus("loading");
-    import("../extensions/tiptapMarkReview")
-      .then((mod) => {
-        setMarkReviewExtension(() => mod.tiptapMarkReview);
-        setMarkReviewEnabled(true);
-        setMarkReviewStatus("loaded");
-        persistPreferences({ mark_review: true });
-      })
-      .catch(() => setMarkReviewStatus("error"));
-  }
-
-  function handleToggleWatermark() {
-    if (watermarkEnabled) {
-      setWatermarkEnabled(false);
-      setWatermarkExtension(null);
-      setWatermarkStatus("idle");
-      persistPreferences({ watermark: false });
-      return;
-    }
-    setWatermarkStatus("loading");
-    import("../extensions/tiptapWatermark")
-      .then((mod) => {
-        setWatermarkExtension(() => mod.tiptapWatermark);
-        setWatermarkEnabled(true);
-        setWatermarkStatus("loaded");
-        persistPreferences({ watermark: true, watermark_text: watermarkText });
-      })
-      .catch(() => setWatermarkStatus("error"));
-  }
-
-  function handleWatermarkText(text: string) {
-    setWatermarkText(text);
-    persistPreferences({ watermark_text: text });
   }
 
   // ── Extensions memo ────────────────────────────────────────────────────────

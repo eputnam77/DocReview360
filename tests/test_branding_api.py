@@ -1,10 +1,12 @@
+import importlib
 from pathlib import Path
 from uuid import uuid4
+
+from fastapi.testclient import TestClient
 
 from docreview360 import api as api_mod
 from docreview360 import config as conf_mod
 from docreview360.config import Config
-from fastapi.testclient import TestClient
 
 
 def test_branding_endpoint_defaults(monkeypatch) -> None:
@@ -47,3 +49,27 @@ def test_branding_endpoint_uses_config(monkeypatch) -> None:
     assert payload["branding_company_name"] == "Acme Aviation"
     assert payload["branding_logo_url"] == "https://example.com/acme-logo.png"
     assert payload["branding_logo_alt"] == "Acme logo"
+
+
+def test_health_config_reports_branding_failure(monkeypatch) -> None:
+    health_router_mod = importlib.import_module("docreview360.api.health_router")
+    monkeypatch.setattr(
+        health_router_mod,
+        "get_branding_config_status",
+        lambda: {
+            "loaded": False,
+            "status": "error",
+            "error": "db offline",
+            "primary_color": None,
+            "accent_color": None,
+            "sidebar_bg": None,
+            "sidebar_text": None,
+        },
+    )
+
+    client = TestClient(api_mod.app)
+    resp = client.get("/health/config")
+    assert resp.status_code == 503
+    payload = resp.json()
+    assert payload["status"] == "degraded"
+    assert payload["branding"]["error"] == "db offline"

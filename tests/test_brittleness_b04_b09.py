@@ -10,7 +10,6 @@ from unittest.mock import patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # B-04: CSRF bypass on cookie-token fallback
 # ---------------------------------------------------------------------------
@@ -23,11 +22,10 @@ def test_b04_empty_bearer_does_not_fall_through_to_cookie_auth() -> None:
     bearer string (which is falsy but not None) can no longer silently bypass
     the CSRF check and adopt the cookie token.  The request should receive 401.
     """
-    from datetime import timedelta
+    from fastapi.testclient import TestClient
 
     from docreview360 import auth
     from docreview360.api import app
-    from fastapi.testclient import TestClient
 
     # Ensure alice exists and get a valid token for the cookie.
     try:
@@ -60,11 +58,10 @@ def test_b04_empty_bearer_does_not_fall_through_to_cookie_auth() -> None:
 
 def test_b04_valid_bearer_does_not_require_csrf() -> None:
     """A non-empty Bearer token should work without a CSRF token (control test)."""
-    from datetime import timedelta
+    from fastapi.testclient import TestClient
 
     from docreview360 import auth
     from docreview360.api import app
-    from fastapi.testclient import TestClient
 
     try:
         auth.USER_REPOSITORY.create_user(
@@ -150,7 +147,10 @@ def test_b05_emit_webhook_logs_error_not_silenced(module_name: str) -> None:
 
 
 @pytest.mark.parametrize("module_name", ROUTER_FILES)
-def test_b05_emit_webhook_logs_on_failure(module_name: str, caplog: pytest.LogCaptureFixture) -> None:
+def test_b05_emit_webhook_logs_on_failure(
+    module_name: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """_emit_webhook must emit an error log when emit_lifecycle_event raises."""
     import importlib
     import logging
@@ -164,7 +164,7 @@ def test_b05_emit_webhook_logs_on_failure(module_name: str, caplog: pytest.LogCa
         side_effect=RuntimeError("webhook boom"),
     ):
         with patch(
-            f"docreview360.api.webhooks.emit_lifecycle_event",
+            "docreview360.api.webhooks.emit_lifecycle_event",
             side_effect=RuntimeError("webhook boom"),
         ):
             with caplog.at_level(logging.ERROR, logger=full_module):
@@ -256,6 +256,7 @@ def test_b09_corrupt_entry_skipped_not_preserved(
 ) -> None:
     """purge_audit_logs must skip corrupt lines, not preserve them."""
     from docreview360 import audit
+    from docreview360.monitoring import AUDIT_CORRUPT_LINES_SKIPPED
 
     log_path = tmp_path / "audit.log"
     monkeypatch.setattr(audit, "_AUDIT_LOG_PATH", log_path)
@@ -297,6 +298,8 @@ def test_b09_corrupt_entry_skipped_not_preserved(
         fh.write(corrupt_line + "\n")
         fh.write(recent_valid + "\n")
 
+    skipped_before = float(AUDIT_CORRUPT_LINES_SKIPPED._value.get())
+
     # Purge with 30-day retention — the old_valid entry is >400 days old, so removed.
     # The corrupt entry should be skipped (not counted as removed, not preserved).
     # The recent_valid entry should be kept.
@@ -324,6 +327,7 @@ def test_b09_corrupt_entry_skipped_not_preserved(
     assert "old_event" not in content, (
         "Old valid audit entry was not removed during purge"
     )
+    assert float(AUDIT_CORRUPT_LINES_SKIPPED._value.get()) == pytest.approx(skipped_before + 1)
 
 
 def test_b09_all_corrupt_no_crash(
@@ -331,6 +335,7 @@ def test_b09_all_corrupt_no_crash(
 ) -> None:
     """purge_audit_logs with only corrupt lines must not crash and removes none."""
     from docreview360 import audit
+    from docreview360.monitoring import AUDIT_CORRUPT_LINES_SKIPPED
 
     log_path = tmp_path / "audit.log"
     monkeypatch.setattr(audit, "_AUDIT_LOG_PATH", log_path)
@@ -339,9 +344,11 @@ def test_b09_all_corrupt_no_crash(
         fh.write("GARBAGE\n")
         fh.write("MORE GARBAGE\n")
 
+    skipped_before = float(AUDIT_CORRUPT_LINES_SKIPPED._value.get())
     removed = audit.purge_audit_logs(retention_days=30)
     # No valid old entries were removed
     assert removed == 0
+    assert float(AUDIT_CORRUPT_LINES_SKIPPED._value.get()) == pytest.approx(skipped_before + 2)
 
 
 # ---------------------------------------------------------------------------

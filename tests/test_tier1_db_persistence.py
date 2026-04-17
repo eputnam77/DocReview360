@@ -11,6 +11,7 @@ durable and will be recovered after a process restart.
 from __future__ import annotations
 
 import pytest
+
 from docreview360.db_store import reset_db
 
 # ---------------------------------------------------------------------------
@@ -128,6 +129,23 @@ class TestApprovalPersistence:
         # After simulated restart, still empty.
         load_approvals_from_db()
         assert len(approvals) == 0
+
+    def test_duplicate_order_rejected_after_cache_reset(self):
+        """DB-backed uniqueness still applies when in-memory caches are empty."""
+        from docreview360.approvals import (
+            approvals,
+            create_approval,
+            load_approvals_from_db,
+            reset_approvals,
+        )
+
+        reset_approvals()
+        create_approval("wf-db-order", "alice", "doc-order-a", phase_id="legal", order=3)
+        approvals.clear()
+        load_approvals_from_db()
+
+        with pytest.raises(ValueError, match="order=3"):
+            create_approval("wf-db-order", "bob", "doc-order-b", phase_id="legal", order=3)
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +287,7 @@ class TestWorkflowEngineDB:
 
         # Create two approvals in sequential mode (order 0 and 1)
         a1 = create_approval("wf-engine", "step1", "doc-engine", order=0, state="pending")
-        a2 = create_approval("wf-engine", "step2", "doc-engine", order=1, state="future")
+        _a2 = create_approval("wf-engine", "step2", "doc-engine", order=1, state="future")
 
         # Clear in-memory so engine must go to DB
         approvals.clear()

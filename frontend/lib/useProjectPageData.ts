@@ -8,6 +8,13 @@ import React, { useMemo, useEffect } from "react";
 import { authenticatedFetch } from "@/lib/api";
 import type { Approval, LogEntry, Project, Workflow, VersionEntry } from "@/components/project/_types";
 import type { AuditEntry } from "@/components/AuditTimeline";
+import {
+  useProjectDocumentScores,
+  useProjectFeedbackData,
+  useProjectFSVStatus,
+  useProjectReviewCycleData,
+  useProjectVersionHistory,
+} from "@/lib/projectPageDataHooks";
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -179,115 +186,26 @@ export function useProjectPageData(
   // -------------------------------------------------------------------------
   // User directory
   // -------------------------------------------------------------------------
-  const { data: userOptions = [] } = useQuery<UserDirectoryEntry[]>({
-    queryKey: ["users"],
-    queryFn: async () => {
-      const res = await authenticatedFetch("/users");
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
+  const {
+    userOptionsQuery,
+    assignmentsQuery,
+    reviewSummaryQuery,
+    myAssignmentsQuery,
+    lifecycleQuery,
+  } = useProjectReviewCycleData(id);
+  const { feedbackItemsQuery, feedbackProgressQuery, notifLogQuery } = useProjectFeedbackData(id);
+  const qualityScoresQuery = useProjectDocumentScores(id);
+  const versionsQuery = useProjectVersionHistory(id);
+  const fsvEnabledQuery = useProjectFSVStatus();
 
-  // -------------------------------------------------------------------------
-  // Reviewer assignments (lifecycle model)
-  // -------------------------------------------------------------------------
-  const { data: assignments = [], refetch: refetchAssignments } = useQuery<ReviewAssignment[]>({
-    queryKey: ["assignments", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/assignments`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data) ? data : (data.items ?? []);
-    },
-    enabled: !!id,
-    staleTime: 30_000,
-  });
-
-  // -------------------------------------------------------------------------
-  // Feedback ledger
-  // -------------------------------------------------------------------------
-  const { data: feedbackItems = [], refetch: refetchFeedback } = useQuery<FeedbackItem[]>({
-    queryKey: ["feedback", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/feedback`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (Array.isArray(data)) return data as FeedbackItem[];
-      if (data && Array.isArray(data.items)) return data.items as FeedbackItem[];
-      return [];
-    },
-    enabled: !!id,
-    staleTime: 15_000,
-  });
-
-  const { data: feedbackProgress, refetch: refetchProgress } = useQuery<FeedbackProgress>({
-    queryKey: ["feedback-progress", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await authenticatedFetch(`/projects/${id}/feedback/progress`);
-      return res.ok ? res.json() : null;
-    },
-    enabled: !!id,
-    staleTime: 15_000,
-  });
-
-  // -------------------------------------------------------------------------
-  // Notification log
-  // -------------------------------------------------------------------------
-  const { data: notifLog = [] } = useQuery<NotifLogEntry[]>({
-    queryKey: ["notif-log", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/notification-log`);
-      return res.ok ? res.json() : [];
-    },
-    enabled: !!id,
-    staleTime: 60_000,
-  });
-
-  // -------------------------------------------------------------------------
-  // Review lifecycle summary
-  // -------------------------------------------------------------------------
-  const { data: reviewSummary, refetch: refetchSummary } = useQuery<ReviewSummary>({
-    queryKey: ["review-summary", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await authenticatedFetch(`/projects/${id}/review-summary`);
-      return res.ok ? res.json() : null;
-    },
-    enabled: !!id,
-    staleTime: 15_000,
-  });
-
-  // -------------------------------------------------------------------------
-  // My assignments on this project
-  // -------------------------------------------------------------------------
-  const { data: myAssignments = [], refetch: refetchMyAssignments } = useQuery<ReviewAssignment[]>({
-    queryKey: ["my-assignments", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/projects/${id}/assignments/me`);
-      return res.ok ? res.json() : [];
-    },
-    enabled: !!id,
-    staleTime: 30_000,
-  });
-
-  // -------------------------------------------------------------------------
-  // Lifecycle status
-  // -------------------------------------------------------------------------
-  const { data: lifecycleRecord, refetch: refetchLifecycle } = useQuery<LifecycleRecord>({
-    queryKey: ["lifecycle", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await authenticatedFetch(`/projects/${id}/lifecycle`);
-      return res.ok ? res.json() : { project_id: id, status: "draft", updated_at: "" };
-    },
-    enabled: !!id,
-    staleTime: 30_000,
-  });
+  const { data: userOptions = [] } = userOptionsQuery;
+  const { data: assignments = [], refetch: refetchAssignments } = assignmentsQuery;
+  const { data: reviewSummary, refetch: refetchSummary } = reviewSummaryQuery;
+  const { data: myAssignments = [], refetch: refetchMyAssignments } = myAssignmentsQuery;
+  const { data: lifecycleRecord, refetch: refetchLifecycle } = lifecycleQuery;
+  const { data: feedbackItems = [], refetch: refetchFeedback } = feedbackItemsQuery;
+  const { data: feedbackProgress, refetch: refetchProgress } = feedbackProgressQuery;
+  const { data: notifLog = [] } = notifLogQuery;
 
   // -------------------------------------------------------------------------
   // SLA summary
@@ -317,44 +235,9 @@ export function useProjectPageData(
   // -------------------------------------------------------------------------
   // Document quality scores
   // -------------------------------------------------------------------------
-  const { data: qualityScores } = useQuery<DocumentScore[]>({
-    queryKey: ["project-doc-scores", id],
-    queryFn: async () => {
-      const res = await authenticatedFetch(`/projects/${id}/documents/scores`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!id,
-    staleTime: 60_000,
-  });
-
-  // -------------------------------------------------------------------------
-  // FSV plugin gate
-  // -------------------------------------------------------------------------
-  const { data: fsvEnabled = true } = useQuery<boolean>({
-    queryKey: ["fsv-enabled"],
-    queryFn: async () => {
-      const res = await authenticatedFetch("/plugin-marketplace/builtin-status");
-      if (!res.ok) return true;
-      const status: Record<string, boolean> = await res.json();
-      return status["fedstylevalidator"] !== false;
-    },
-    staleTime: 60_000,
-  });
-
-  // -------------------------------------------------------------------------
-  // Document versions (for VersionDrawer)
-  // -------------------------------------------------------------------------
-  const { data: versions = [] } = useQuery<VersionEntry[]>({
-    queryKey: ["document-versions", id],
-    queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/documents/${id}/versions`);
-      return res.ok ? res.json() : [];
-    },
-    enabled: !!id,
-    staleTime: 60_000,
-  });
+  const { data: qualityScores } = qualityScoresQuery;
+  const { data: fsvEnabled = true } = fsvEnabledQuery;
+  const { data: versions = [] } = versionsQuery;
 
   // -------------------------------------------------------------------------
   // Assignment eligibility cache
