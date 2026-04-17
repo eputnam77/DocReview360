@@ -8,7 +8,7 @@ export type AuditType = "approval" | "review" | "edit" | "phase";
 
 export interface AuditEntry {
   id: string;
-  timestamp: string;
+  timestamp?: string | null;
   message: string;
   type: AuditType;
   link?: string;
@@ -90,6 +90,10 @@ function parseUtcTimestamp(ts: string): Date {
   return new Date(ts + "Z");
 }
 
+function readTimestamp(ts: AuditEntry["timestamp"]): string | null {
+  return typeof ts === "string" && ts.trim() ? ts : null;
+}
+
 // Format a UTC timestamp for display in the user's local timezone but make
 // the grouping key (YYYY-MM-DD) always based on UTC date to avoid
 // cross-midnight flicker.
@@ -116,10 +120,12 @@ const AuditTimeline = forwardRef<HTMLDivElement, Props>(({ events }, ref) => {
   );
 
   const grouped = useMemo(() => {
-    const map: Record<string, AuditEntry[]> = {};
+    const map: Record<string, Array<AuditEntry & { timestamp: string }>> = {};
     filtered.forEach((e) => {
-      const day = utcDayKey(e.timestamp);
-      (map[day] ||= []).push(e);
+      const timestamp = readTimestamp(e.timestamp);
+      if (!timestamp) return;
+      const day = utcDayKey(timestamp);
+      (map[day] ||= []).push({ ...e, timestamp });
     });
     return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
@@ -157,6 +163,7 @@ const AuditTimeline = forwardRef<HTMLDivElement, Props>(({ events }, ref) => {
             </h3>
             <ul className="space-y-1 text-sm">
               {items
+                .slice()
                 .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
                 .map((e) => (
                   <li key={e.id} className="flex gap-2">

@@ -257,6 +257,11 @@ describe("useEditorExtensions — structure", () => {
     expect(src).toContain("extensions");
   });
 
+  it("keeps collaboration lifecycle in useEffect so render stays pure", () => {
+    expect(src).toContain("Keep collaboration provider lifecycle out of render");
+    expect(src).toContain("collabDocIdRef");
+  });
+
   it("includes StarterKit, Underline, Table extensions", () => {
     expect(src).toContain("StarterKit");
     expect(src).toContain("Underline");

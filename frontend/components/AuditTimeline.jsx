@@ -14,10 +14,14 @@ const APPROVAL_EVENT_LABELS = {
     signature_invalid: "Signature invalid",
     signature_requested: "Signature requested",
     approval_revoked: "Approval revoked",
+    approved: "Approved",
+    rejected: "Rejected",
+    reset: "Approval reset",
 };
 const formatMessage = (e) => e.type === "approval"
     ? APPROVAL_EVENT_LABELS[e.message] || e.message
     : e.message;
+const readTimestamp = (ts) => typeof ts === "string" && ts.trim() ? ts : null;
 const AuditTimeline = forwardRef(({ events }, ref) => {
     const [filters, setFilters] = useState({
         approval: true,
@@ -29,8 +33,11 @@ const AuditTimeline = forwardRef(({ events }, ref) => {
     const grouped = useMemo(() => {
         const map = {};
         filtered.forEach((e) => {
-            const day = e.timestamp.slice(0, 10);
-            (map[day] ||= []).push(e);
+            const timestamp = readTimestamp(e.timestamp);
+            if (!timestamp)
+                return;
+            const day = timestamp.slice(0, 10);
+            (map[day] ||= []).push({ ...e, timestamp });
         });
         return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
     }, [filtered]);
@@ -50,6 +57,7 @@ const AuditTimeline = forwardRef(({ events }, ref) => {
             </h3>
             <ul className="space-y-1 text-sm">
               {items
+                .slice()
                 .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
                 .map((e) => (<li key={e.id} className="flex gap-2">
                     <span className="w-16 text-gray-500">

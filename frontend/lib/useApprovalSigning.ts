@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/api";
 import { assignBrowserLocation, removeLocalStorage, resolveBrowserUrl } from "@/lib/browser";
 import type { Approval } from "@/components/project/_types";
+import type { AuditEntry } from "@/components/AuditTimeline";
 
 export interface ApprovalSigningState {
   buildApprovalSigningRoute: (approvalId: string, signatureId: string) => string;
@@ -37,12 +38,22 @@ export function useApprovalSigning({
   approvals: Approval[];
   approvalsForPhase: Approval[];
   setApprovals: React.Dispatch<React.SetStateAction<Approval[]>>;
-  setHistoryEvents: React.Dispatch<React.SetStateAction<any[]>>;
+  setHistoryEvents: React.Dispatch<React.SetStateAction<AuditEntry[]>>;
   setShowHistory: React.Dispatch<React.SetStateAction<boolean>>;
   reset: (aid: string) => Promise<void>;
   remind: (ids: string[]) => void;
 }): ApprovalSigningState {
   const router = useRouter();
+
+  const readAuditTimestamp = useCallback(
+    (entry: { timestamp?: unknown; verified_at?: unknown }) =>
+      typeof entry.timestamp === "string" && entry.timestamp.trim()
+        ? entry.timestamp
+        : typeof entry.verified_at === "string" && entry.verified_at.trim()
+          ? entry.verified_at
+          : null,
+    [],
+  );
 
   const buildApprovalSigningRoute = useCallback(
     (approvalId: string, signatureId: string) =>
@@ -193,17 +204,31 @@ export function useApprovalSigning({
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setHistoryEvents(
-          data.map((d) => ({
-            id: d.id ?? d.timestamp,
-            timestamp: d.timestamp,
-            message: d.event || d.action || d.message,
-            type: "approval" as const,
-          })),
+          data.flatMap((d, index) => {
+            const timestamp = readAuditTimestamp(d);
+            if (!timestamp) return [];
+            return [{
+              id:
+                (typeof d?.id === "string" && d.id.trim()
+                  ? d.id
+                  : `${aid}-history-${index}`),
+              timestamp,
+              message:
+                (typeof d?.event === "string" && d.event.trim()
+                  ? d.event
+                  : typeof d?.action === "string" && d.action.trim()
+                    ? d.action
+                    : typeof d?.message === "string" && d.message.trim()
+                      ? d.message
+                      : "approval_updated"),
+              type: "approval" as const,
+            }];
+          }),
         ),
       )
       .catch(() => setHistoryEvents([]))
       .finally(() => setShowHistory(true));
-  }, [setHistoryEvents, setShowHistory]);
+  }, [readAuditTimestamp, setHistoryEvents, setShowHistory]);
 
   return {
     buildApprovalSigningRoute,

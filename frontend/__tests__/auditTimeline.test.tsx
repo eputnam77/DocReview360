@@ -29,4 +29,27 @@ describe('AuditTimeline approval events', () => {
     expect(text).toContain('Signature hash mismatch');
     root.unmount();
   });
+
+  it('ignores events without a usable timestamp instead of crashing', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const events: AuditEntry[] = [
+      {
+        id: '1',
+        timestamp: '2024-01-01T10:00:00Z',
+        message: 'approved',
+        type: 'approval',
+      },
+      {
+        id: '2',
+        message: 'approved',
+        type: 'approval',
+      },
+    ];
+    expect(() => root.render(<AuditTimeline events={events} />)).not.toThrow();
+    await new Promise(r => setTimeout(r, 0));
+    expect(container.textContent || '').toContain('Approved');
+    root.unmount();
+  });
 });

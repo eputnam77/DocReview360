@@ -247,6 +247,16 @@ export default function ProjectDetailsPage() {
     logs,
   });
 
+  const readAuditTimestamp = useCallback(
+    (entry: { timestamp?: unknown; verified_at?: unknown }) =>
+      typeof entry.timestamp === "string" && entry.timestamp.trim()
+        ? entry.timestamp
+        : typeof entry.verified_at === "string" && entry.verified_at.trim()
+          ? entry.verified_at
+          : null,
+    [],
+  );
+
   const requiredApprovalCount = requiredApprovalsForPhase.length;
 
   // ── Sync primary queries → local state ───────────────────────────────
@@ -270,17 +280,30 @@ export default function ProjectDetailsPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: any[]) =>
         setLogs(
-          data.map((d) => ({
-            id: d?.id ?? d?.timestamp,
-            timestamp: d?.timestamp,
-            action: d?.details?.message || d?.action,
-            type: (d?.details?.type as LogEntry["type"]) || "edit",
-            ref: d?.details?.approvalId ?? d?.details?.reviewId ?? d?.details?.phaseId ?? null,
-          })),
+          data.flatMap((d, index) => {
+            const timestamp = readAuditTimestamp(d);
+            const action =
+              (typeof d?.details?.message === "string" && d.details.message.trim()
+                ? d.details.message
+                : typeof d?.action === "string" && d.action.trim()
+                  ? d.action
+                  : null);
+            if (!timestamp || !action) return [];
+            return [{
+              id:
+                (typeof d?.id === "string" && d.id.trim()
+                  ? d.id
+                  : `audit-${safeId}-${index}`),
+              timestamp,
+              action,
+              type: (d?.details?.type as LogEntry["type"]) || "edit",
+              ref: d?.details?.approvalId ?? d?.details?.reviewId ?? d?.details?.phaseId ?? null,
+            }];
+          }),
         ),
       )
       .catch(() => setLogs([]));
-  }, [safeId, username]);
+  }, [readAuditTimestamp, safeId, username]);
 
   // ── Completed signature detection ─────────────────────────────────────
   useEffect(() => {

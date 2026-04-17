@@ -63,6 +63,7 @@ describe("Remaining brittleness findings", () => {
     expect(src).toContain("useEditorCollab");
     expect(src).toContain("useEditorLint");
     expect(src).toContain("useEditorOptionalExtensions");
+    expect(src).toContain("Keep collaboration provider lifecycle out of render");
     expect(lib("useEditorCollab.ts")).toContain("export function useEditorCollab");
     expect(lib("useEditorLint.ts")).toContain("export function useEditorLint");
     expect(lib("useEditorOptionalExtensions.ts")).toContain(

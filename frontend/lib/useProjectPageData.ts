@@ -400,8 +400,8 @@ export function useProjectPageData(
     return null;
   }, [displayLifecycleStatus, lifecycleRecord, reviewSummary]);
 
-  const assignmentEvents = useMemo<AuditEntry[]>(() => {
-    const events: AuditEntry[] = [];
+  const assignmentEvents = useMemo<Array<AuditEntry & { timestamp: string }>>(() => {
+    const events: Array<AuditEntry & { timestamp: string }> = [];
     for (const a of assignments) {
       if (a.requested_at) {
         events.push({
@@ -446,18 +446,20 @@ export function useProjectPageData(
   }, [assignments]);
 
   const auditEvents = useMemo(() => {
-    const base = logs.map((l) => ({
-      id: l.id,
-      timestamp: l.timestamp,
-      message: l.action,
-      type: l.type,
-      link:
-        l.type === "approval" && l.ref
-          ? `#approval-${l.ref}`
-          : l.type === "review" && l.ref
-          ? `/projects/${id}/reviews#${l.ref}`
-          : undefined,
-    }));
+    const base = logs
+      .filter((l) => typeof l.timestamp === "string" && l.timestamp.trim())
+      .map((l) => ({
+        id: l.id,
+        timestamp: l.timestamp,
+        message: l.action,
+        type: l.type,
+        link:
+          l.type === "approval" && l.ref
+            ? `#approval-${l.ref}`
+            : l.type === "review" && l.ref
+            ? `/projects/${id}/reviews#${l.ref}`
+            : undefined,
+      }));
     return [...base, ...assignmentEvents].sort(
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),

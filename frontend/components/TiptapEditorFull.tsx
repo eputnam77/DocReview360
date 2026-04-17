@@ -41,11 +41,17 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   // ── Core hooks ─────────────────────────────────────────────────────────────
   // Use a ref so extensions can call setSaveStatus before the save hook is returned
   const setSaveStatusRef = useRef<(s: "saving" | "saved" | "error" | "offline") => void>(() => {});
+  const handleExtensionSaveStatus = useCallback(
+    (status: "saving" | "saved" | "error" | "offline") => {
+      setSaveStatusRef.current(status);
+    },
+    [],
+  );
   const ext = useEditorExtensions({
     docId,
     api,
     syncNowRef,
-    onSaveStatus: (s) => setSaveStatusRef.current(s),
+    onSaveStatus: handleExtensionSaveStatus,
   });
   const saveWithYDoc = useEditorSave({ docId, username, yDoc: ext.yDoc, api });
   // Wire the ref so future collab callbacks reach the live setter

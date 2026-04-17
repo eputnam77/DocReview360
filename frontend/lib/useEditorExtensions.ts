@@ -97,9 +97,15 @@ export function useEditorExtensions({
   const [commentMarkEnabled] = useState(true);
   const [trackChangesEnabled] = useState(true);
   const [aiSuggestEnabled, setAiSuggestEnabled] = useState(false);
+  const collabDocIdRef = useRef<string | null>(null);
   const persistPreferencesRef = useRef<
     (overrides?: Partial<Record<string, boolean | string>>) => Promise<void>
   >(async () => undefined);
+  const onSaveStatusRef = useRef(onSaveStatus);
+
+  useEffect(() => {
+    onSaveStatusRef.current = onSaveStatus;
+  }, [onSaveStatus]);
 
   const {
     collabEnabled,
@@ -201,6 +207,65 @@ export function useEditorExtensions({
       .catch(() => undefined);
   }, [api, docId]);
 
+  // Keep collaboration provider lifecycle out of render so the extensions
+  // memo stays pure and the editor cannot loop on render-phase state writes.
+  useEffect(() => {
+    if ((!collabEnabled || !docId) && (provider || yDoc)) {
+      collabDocIdRef.current = null;
+      provider?.disconnect?.();
+      provider?.destroy?.();
+      yDoc?.destroy?.();
+      if (provider) setProvider(null);
+      if (yDoc) setYDoc(null);
+      return;
+    }
+
+    if (!collabEnabled || !docId) {
+      collabDocIdRef.current = null;
+      return;
+    }
+
+    if (collabDocIdRef.current && collabDocIdRef.current !== docId) {
+      provider?.disconnect?.();
+      provider?.destroy?.();
+      yDoc?.destroy?.();
+      collabDocIdRef.current = null;
+      if (provider) setProvider(null);
+      if (yDoc) setYDoc(null);
+      return;
+    }
+
+    if (collabDocIdRef.current === docId && yDoc && provider) {
+      return;
+    }
+
+    if (yDoc || provider) {
+      return;
+    }
+
+    const cursorUser = { name: "You", color: "#3b82f6" };
+    const doc = new Y.Doc();
+    const hocusProvider = new HocuspocusProvider({
+      url: `${API.replace(/^http/, "ws")}/collab`,
+      name: docId,
+      document: doc,
+      onDisconnect() {
+        onSaveStatusRef.current("offline");
+      },
+      onConnect() {
+        onSaveStatusRef.current("saved");
+        syncNowRef.current();
+      },
+    });
+    if (hocusProvider.awareness) {
+      hocusProvider.awareness.setLocalStateField("user", cursorUser);
+    }
+
+    collabDocIdRef.current = docId;
+    setYDoc(doc);
+    setProvider(hocusProvider as any);
+  }, [collabEnabled, docId, provider, setProvider, setYDoc, syncNowRef, yDoc]);
+
   // ── Toggle handlers ────────────────────────────────────────────────────────
   function handleToggleAiSuggest() {
     setAiSuggestEnabled((prev) => {
@@ -273,37 +338,12 @@ export function useEditorExtensions({
       );
     }
 
-    if (collabEnabled && docId) {
+    if (collabEnabled && docId && yDoc && provider) {
       const cursorUser = { name: "You", color: "#3b82f6" };
-      if (!yDoc) {
-        const doc = new Y.Doc();
-        const hocusProvider = new HocuspocusProvider({
-          url: `${API.replace(/^http/, "ws")}/collab`,
-          name: docId,
-          document: doc,
-          onDisconnect() {
-            onSaveStatus("offline");
-          },
-          onConnect() {
-            onSaveStatus("saved");
-            syncNowRef.current();
-          },
-        });
-        if (hocusProvider.awareness) {
-          hocusProvider.awareness.setLocalStateField("user", cursorUser);
-        }
-        setYDoc(doc);
-        setProvider(hocusProvider as any);
-        base.push(
-          Collaboration.configure({ document: doc }),
-          CollaborationCursor.configure({ provider: hocusProvider, user: cursorUser }),
-        );
-      } else if (yDoc && provider) {
-        base.push(
-          Collaboration.configure({ document: yDoc }),
-          CollaborationCursor.configure({ provider, user: cursorUser }),
-        );
-      }
+      base.push(
+        Collaboration.configure({ document: yDoc }),
+        CollaborationCursor.configure({ provider, user: cursorUser }),
+      );
     }
 
     if (headingLockEnabled && headingLockExtension) base.push(headingLockExtension());
@@ -321,7 +361,6 @@ export function useEditorExtensions({
     headingLockEnabled, headingLockExtension, indentationEnabled, indentationExtension,
     sectionNodeEnabled, sectionNodeExtension, markReviewEnabled, markReviewExtension,
     watermarkEnabled, watermarkExtension, watermarkText, commentMarkEnabled, trackChangesEnabled,
-    onSaveStatus, syncNowRef,
   ]);
 
   return {
