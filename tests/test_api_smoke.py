@@ -101,22 +101,21 @@ def test_template_create_and_get(client: TestClient, alice_headers: dict) -> Non
     assert resp.status_code == 200
 
 
-@pytest.mark.parametrize(
-    "template_name",
-    [
-        "doc_type::Manual / Handbook",
-        "doc_type::API Manual / API Reference",
-        "doc_type::Briefing / Slide Deck",
-    ],
-)
 def test_template_routes_support_names_with_slashes(
     client: TestClient,
     alice_headers: dict,
-    template_name: str,
 ) -> None:
-    client.get("/templates", headers=alice_headers)
-    encoded_name = quote(template_name, safe="")
+    # Create a template whose name contains a slash to exercise URL encoding.
+    template_name = "smoke/slash-test"
+    payload = {
+        "name": template_name,
+        "content": "<h1>Slash Test</h1>",
+        "metadata": {"label": "Slash Test", "format": "HTML", "type": "tiptap"},
+    }
+    create_resp = client.post("/templates", json=payload, headers=alice_headers)
+    assert create_resp.status_code in (200, 201, 409), create_resp.text
 
+    encoded_name = quote(template_name, safe="")
     resp = client.get(f"/templates/{encoded_name}", headers=alice_headers)
     assert resp.status_code == 200, resp.text
     assert resp.json()["name"] == template_name

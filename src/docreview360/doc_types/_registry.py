@@ -28,11 +28,6 @@ DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
         "Internal Coordination",
         "Final Issuance",
     ],
-    "Order / Directive": [
-        "Draft Development",
-        "Internal Coordination",
-        "Final Issuance",
-    ],
     "Policy": [
         "Draft Development",
         "Internal Coordination",
@@ -54,37 +49,9 @@ DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
         "Internal Coordination",
         "Final Issuance",
     ],
-    "Desk Guide": [
-        "Draft Development",
-        "Peer Review",
-        "Internal Coordination",
-        "Final Issuance",
-    ],
-    "Manual / Handbook": [
-        "Draft Development",
-        "Peer Review",
-        "Internal Coordination",
-        "Final Issuance",
-    ],
     "Report": [
         "Draft Development",
         "Peer Review",
-        "Final Issuance",
-    ],
-    "Audit Report": [
-        "Draft Development",
-        "Peer Review",
-        "Internal Coordination",
-        "Final Issuance",
-    ],
-    "After-Action Report": [
-        "Draft Development",
-        "Peer Review",
-        "Final Issuance",
-    ],
-    "Briefing / Slide Deck": [
-        "Draft Development",
-        "Internal Coordination",
         "Final Issuance",
     ],
     "Meeting Minutes": [
@@ -92,90 +59,11 @@ DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
         "Internal Coordination",
         "Final Issuance",
     ],
-    "Federal Register Notice": [
-        "Draft Development",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-        "Final Issuance",
-    ],
-    "Proposed Rule / NPRM": [
-        "Draft Development",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-        "Final Issuance",
-    ],
-    "Final Rule": [
-        "Draft Development",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-        "Final Issuance",
-    ],
-    "Supporting Statement (PRA)": [
-        "Draft Development",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-        "Final Issuance",
-    ],
-    "ICR": [
-        "Draft Development",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-        "Final Issuance",
-    ],
-    "Exemption / Waiver": [
-        "Draft Development",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-        "Final Issuance",
-    ],
-    "Special Conditions": [
-        "Draft Development",
-        "Internal Coordination",
-        "Public Comment / Proposed Rulemaking",
-        "Final Issuance",
-    ],
-    "FAQ": [
-        "Draft Development",
-        "Internal Review",
-        "Publication",
-    ],
-    "Letter / Correspondence": [
-        "Draft Development",
-        "Internal Review",
-        "Publication",
-    ],
-    "Web Content": [
-        "Draft Development",
-        "Internal Review",
-        "Publication",
-    ],
-    "Release Notes": [
-        "Draft Development",
-        "Peer Review",
-        "Release Candidate Review",
-        "General Availability",
-        "Maintenance / Revision Cycle",
-    ],
     "User Guide": [
         "Draft Development",
         "Peer Review",
         "Release Candidate Review",
         "General Availability",
-        "Maintenance / Revision Cycle",
-    ],
-    "API Manual / API Reference": [
-        "Draft Development",
-        "Peer Review",
-        "Release Candidate Review",
-        "General Availability",
-        "Maintenance / Revision Cycle",
-    ],
-    "README": [
-        "Draft Development",
-        "Peer Review",
-        "Release Candidate Review",
-        "General Availability",
-        "Maintenance / Revision Cycle",
     ],
 }
 
@@ -203,23 +91,6 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<h2>6. Contact</h2>"
         "<p>Questions about this AC should be directed to [office / contact information].</p>"
     ),
-    "Memorandum": (
-        "<h1>MEMORANDUM</h1>"
-        "<p><strong>DATE:</strong> [Date]</p>"
-        "<p><strong>TO:</strong> [Recipients]</p>"
-        "<p><strong>FROM:</strong> [Author / Office]</p>"
-        "<p><strong>SUBJECT:</strong> [Subject]</p>"
-        "<h2>Purpose</h2>"
-        "<p>[State the purpose of this memorandum.]</p>"
-        "<h2>Background</h2>"
-        "<p>[Provide relevant background information.]</p>"
-        "<h2>Discussion</h2>"
-        "<p>[Present the main points and analysis.]</p>"
-        "<h2>Action Required</h2>"
-        "<p>[Describe any actions required and deadlines.]</p>"
-        "<h2>Point of Contact</h2>"
-        "<p>[Contact information for questions.]</p>"
-    ),
     "Policy": (
         "<h1>[Policy Title]</h1>"
         "<p><strong>Policy Number:</strong> [Number]</p>"
@@ -240,23 +111,35 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<h2>7. Related Documents</h2>"
         "<p>[List related policies, regulations, or standards.]</p>"
     ),
-    "Order / Directive": (
-        "<h1>[Order / Directive Title]</h1>"
-        "<p><strong>Order Number:</strong> [Number]</p>"
-        "<p><strong>Effective Date:</strong> [Date]</p>"
-        "<p><strong>Issuing Authority:</strong> [Office]</p>"
+    "Guidance": (
+        "<h1>[Guidance Document Title]</h1>"
+        "<p><strong>Document Number:</strong> [Number]</p>"
+        "<p><strong>Date:</strong> [Date]</p>"
         "<h2>1. Purpose</h2>"
-        "<p>[State the purpose of this order or directive.]</p>"
-        "<h2>2. Authority</h2>"
-        "<p>[Cite the legal or regulatory authority under which this order is issued.]</p>"
-        "<h2>3. Applicability</h2>"
-        "<p>[Define the scope of persons or entities covered.]</p>"
-        "<h2>4. Requirements</h2>"
-        "<ol><li>[Requirement 1]</li><li>[Requirement 2]</li></ol>"
-        "<h2>5. Responsibilities</h2>"
-        "<ul><li><strong>[Role]:</strong> [Responsibility]</li></ul>"
-        "<h2>6. Cancellation</h2>"
-        "<p>[Identify any orders or directives this supersedes.]</p>"
+        "<p>[Describe the purpose and scope of this guidance.]</p>"
+        "<h2>2. Background</h2>"
+        "<p>[Provide context and regulatory background.]</p>"
+        "<h2>3. Guidance</h2>"
+        "<p>[Present the guidance clearly.]</p>"
+        "<h2>4. Questions</h2>"
+        "<p>[Contact information for questions about this guidance.]</p>"
+    ),
+    "Memorandum": (
+        "<h1>MEMORANDUM</h1>"
+        "<p><strong>DATE:</strong> [Date]</p>"
+        "<p><strong>TO:</strong> [Recipients]</p>"
+        "<p><strong>FROM:</strong> [Author / Office]</p>"
+        "<p><strong>SUBJECT:</strong> [Subject]</p>"
+        "<h2>Purpose</h2>"
+        "<p>[State the purpose of this memorandum.]</p>"
+        "<h2>Background</h2>"
+        "<p>[Provide relevant background information.]</p>"
+        "<h2>Discussion</h2>"
+        "<p>[Present the main points and analysis.]</p>"
+        "<h2>Action Required</h2>"
+        "<p>[Describe any actions required and deadlines.]</p>"
+        "<h2>Point of Contact</h2>"
+        "<p>[Contact information for questions.]</p>"
     ),
     "SOP": (
         "<h1>Standard Operating Procedure: [Title]</h1>"
@@ -299,33 +182,24 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<h2>Appendices</h2>"
         "<p>[List any supporting materials.]</p>"
     ),
-    "FAQ": (
-        "<h1>Frequently Asked Questions: [Topic]</h1>"
-        "<h2>General Questions</h2>"
-        "<h3>Q: [Question]</h3>"
-        "<p>A: [Answer]</p>"
-        "<h3>Q: [Question]</h3>"
-        "<p>A: [Answer]</p>"
-        "<h2>Technical Questions</h2>"
-        "<h3>Q: [Question]</h3>"
-        "<p>A: [Answer]</p>"
-        "<h2>Contact</h2>"
-        "<p>If your question is not answered here, contact [office / email].</p>"
-    ),
-    "Release Notes": (
-        "<h1>Release Notes — [Product Name] v[Version]</h1>"
-        "<p><strong>Release Date:</strong> [Date]</p>"
-        "<p><strong>Release Type:</strong> [Major / Minor / Patch]</p>"
-        "<h2>What's New</h2>"
-        "<ul><li>[New feature or enhancement]</li></ul>"
-        "<h2>Bug Fixes</h2>"
-        "<ul><li>[Bug fix description]</li></ul>"
-        "<h2>Known Issues</h2>"
-        "<ul><li>[Known issue and workaround if available]</li></ul>"
-        "<h2>Upgrade Notes</h2>"
-        "<p>[Describe any breaking changes or migration steps required.]</p>"
-        "<h2>Compatibility</h2>"
-        "<p>[List supported platforms, dependencies, or system requirements.]</p>"
+    "Meeting Minutes": (
+        "<h1>Meeting Minutes — [Meeting Title]</h1>"
+        "<p><strong>Date:</strong> [Date]</p>"
+        "<p><strong>Time:</strong> [Start Time] – [End Time]</p>"
+        "<p><strong>Location:</strong> [Location / Video Link]</p>"
+        "<p><strong>Facilitator:</strong> [Name]</p>"
+        "<p><strong>Note Taker:</strong> [Name]</p>"
+        "<h2>Attendees</h2>"
+        "<ul><li>[Name, Title]</li></ul>"
+        "<h2>Agenda</h2>"
+        "<ol><li>[Agenda Item 1]</li><li>[Agenda Item 2]</li></ol>"
+        "<h2>Discussion</h2>"
+        "<h3>[Agenda Item 1]</h3>"
+        "<p>[Summary of discussion.]</p>"
+        "<h2>Action Items</h2>"
+        "<ul><li><strong>[Owner]:</strong> [Action] — Due [Date]</li></ul>"
+        "<h2>Next Meeting</h2>"
+        "<p>[Date, time, and location of next meeting.]</p>"
     ),
     "User Guide": (
         "<h1>[Product Name] User Guide</h1>"
@@ -346,19 +220,6 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<p>[Resolution steps.]</p>"
         "<h2>Support</h2>"
         "<p>Contact [support channel] for assistance.</p>"
-    ),
-    "Guidance": (
-        "<h1>[Guidance Document Title]</h1>"
-        "<p><strong>Document Number:</strong> [Number]</p>"
-        "<p><strong>Date:</strong> [Date]</p>"
-        "<h2>1. Purpose</h2>"
-        "<p>[Describe the purpose and scope of this guidance.]</p>"
-        "<h2>2. Background</h2>"
-        "<p>[Provide context and regulatory background.]</p>"
-        "<h2>3. Guidance</h2>"
-        "<p>[Present the guidance clearly.]</p>"
-        "<h2>4. Questions</h2>"
-        "<p>[Contact information for questions about this guidance.]</p>"
     ),
 }
 

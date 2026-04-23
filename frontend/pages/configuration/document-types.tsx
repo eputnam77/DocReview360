@@ -42,32 +42,13 @@ interface SLAConfig {
 
 const GOVERNMENT_FIRST_STARTER_SET = [
   { id: "advisory_circular", label: "Advisory Circular", category: "government", is_active: true },
-  { id: "order_directive", label: "Order / Directive", category: "government", is_active: true },
   { id: "policy", label: "Policy", category: "government", is_active: true },
   { id: "guidance", label: "Guidance", category: "government", is_active: true },
   { id: "memorandum", label: "Memorandum", category: "government", is_active: true },
   { id: "sop", label: "SOP", category: "government", is_active: true },
-  { id: "desk_guide", label: "Desk Guide", category: "government", is_active: true },
-  { id: "manual_handbook", label: "Manual / Handbook", category: "government", is_active: true },
   { id: "report", label: "Report", category: "government", is_active: true },
-  { id: "audit_report", label: "Audit Report", category: "government", is_active: true },
-  { id: "after_action_report", label: "After-Action Report", category: "government", is_active: true },
-  { id: "briefing_slide_deck", label: "Briefing / Slide Deck", category: "government", is_active: true },
   { id: "meeting_minutes", label: "Meeting Minutes", category: "government", is_active: true },
-  { id: "federal_register_notice", label: "Federal Register Notice", category: "rulemaking", is_active: true },
-  { id: "proposed_rule_nprm", label: "Proposed Rule / NPRM", category: "rulemaking", is_active: true },
-  { id: "final_rule", label: "Final Rule", category: "rulemaking", is_active: true },
-  { id: "supporting_statement_pra", label: "Supporting Statement (PRA)", category: "rulemaking", is_active: true },
-  { id: "icr", label: "ICR", category: "rulemaking", is_active: true },
-  { id: "exemption_waiver", label: "Exemption / Waiver", category: "rulemaking", is_active: true },
-  { id: "special_conditions", label: "Special Conditions", category: "rulemaking", is_active: true },
-  { id: "faq", label: "FAQ", category: "comms", is_active: true },
-  { id: "letter_correspondence", label: "Letter / Correspondence", category: "comms", is_active: true },
-  { id: "web_content", label: "Web Content", category: "comms", is_active: true },
-  { id: "release_notes", label: "Release Notes", category: "technical", is_active: true },
   { id: "user_guide", label: "User Guide", category: "technical", is_active: true },
-  { id: "api_manual_api_reference", label: "API Manual / API Reference", category: "technical", is_active: true },
-  { id: "readme", label: "README", category: "technical", is_active: true },
 ] as const;
 const normalizeDocTypes = (items: unknown): DocType[] => {
   if (!Array.isArray(items)) return [];
