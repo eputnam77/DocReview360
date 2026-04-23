@@ -12,21 +12,20 @@ function src(relPath: string): string {
 describe("document-quality FSV host page", () => {
   const page = src("pages/tools/document-quality.tsx");
 
-  it("uses Federal Style Validator branding", () => {
-    expect(page).toContain("Federal Style Validator");
-    expect(page).toContain("Powered by Federal Style Validator");
-  });
-
-  it("checks backend status through /fsv/status", () => {
-    expect(page).toContain("/fsv/status");
-  });
-
   it("reads NEXT_PUBLIC_FSV_FRONTEND_URL", () => {
     expect(page).toContain("NEXT_PUBLIC_FSV_FRONTEND_URL");
   });
 
   it("embeds the standalone FSV frontend in an iframe", () => {
     expect(page).toContain("<iframe");
+    expect(page).toContain('title="Federal Style Validator"');
+  });
+
+  it("keeps the host page minimal so the FSV app owns the UI", () => {
+    expect(page).not.toContain("/fsv/status");
+    expect(page).not.toContain("Powered by Federal Style Validator");
+    expect(page).not.toContain("Open in new tab");
+    expect(page).not.toContain("Back to Tools configuration");
   });
 
   it("removes the legacy duplicated checker routes", () => {

@@ -14,6 +14,7 @@
     "lint:i18n": "node scripts/check-hardcoded-strings.mjs"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "^11.1.2",
     "@editorjs/delimiter": "^1.4.2",
     "@editorjs/editorjs": "^2.31.5",
     "@editorjs/header": "^2.8.8",
@@ -54,6 +55,7 @@
     "@tiptap/react": "^2.25.0",
     "@tiptap/starter-kit": "^2.25.0",
     "@tiptap/suggestion": "^2.26.1",
+    "ckeditor5": "^48.0.1",
     "clsx": "^2.1.1",
     "critters": "^0.0.25",
     "diff-match-patch": "^1.0.5",

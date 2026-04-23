@@ -4,6 +4,7 @@ from datetime import timedelta
 from docreview360 import auth
 from docreview360.api import app
 from docreview360.audit import clear_audit_log
+from docreview360.cache import clear_cache
 from docreview360.documents import (
     DocumentModel,
     autosave_document,
@@ -69,6 +70,35 @@ def test_import_and_edit_document() -> None:
     resp = client.get(f"/documents/{doc_id}/audit", headers={**headers, "X-User": "alice"})
     events = [e["event"] for e in resp.json()]
     assert events == ["created", "updated"]
+
+
+def test_list_documents_filters_by_project() -> None:
+    client = TestClient(app)
+    headers = _alice_headers()
+    first = import_document("doc-a.md", b"alpha", project="proj-a", user="alice")
+    second = import_document("doc-b.md", b"beta", project="proj-b", user="alice")
+    clear_cache()
+
+    resp = client.get("/documents?project=proj-a", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert [item["project"] for item in data["items"]] == ["proj-a"]
+    assert data["items"][0]["id"] == first.id
+    assert data["items"][0]["id"] != second.id
+
+
+def test_onlyoffice_backup_route_returns_stable_html() -> None:
+    client = TestClient(app)
+    headers = _alice_headers()
+    document = import_document("doc.md", b"# Heading", project="proj-onlyoffice", user="alice")
+    doc_id = document.id
+
+    backup = client.get(f"/onlyoffice/{doc_id}", headers=headers)
+    assert backup.status_code == 200
+    assert "OnlyOffice backup" in backup.text
+    assert "not configured in this environment yet" in backup.text
+    assert "Heading" in backup.text
 
 
 def test_autosave_document() -> None:

@@ -106,8 +106,9 @@ def test_project_approval_picker_accepts_invited_reviewers() -> None:
 def test_checker_embeds_standalone_fsv_frontend() -> None:
     checker_page = _project_file("frontend/pages/tools/document-quality.tsx")
     assert "NEXT_PUBLIC_FSV_FRONTEND_URL" in checker_page
-    assert "/fsv/status" in checker_page
     assert "<iframe" in checker_page
+    assert "Powered by Federal Style Validator" not in checker_page
+    assert "Open in new tab" not in checker_page
     assert "/documents/validate" not in checker_page
 
 

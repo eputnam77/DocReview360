@@ -37,6 +37,7 @@ const integrationOptions = {
     { label: "SQL Server", value: "sqlserver" },
   ],
   editor: [
+    { label: "CKEditor 5", value: "ckeditor5" },
     { label: "TipTap", value: "tiptap" },
     { label: "OnlyOffice", value: "onlyoffice" },
     { label: "XML", value: "xml" },
@@ -80,7 +81,7 @@ const SELECT_OPTIONS: Record<string, readonly { label: string; value: string }[]
 
 const DEFAULT_CONFIG: Record<string, string | number | boolean> = {
   database: "sqlite",
-  editor: "tiptap",
+  editor: "ckeditor5",
   cms: "none",
   auth: "oidc",
   host: "localhost",

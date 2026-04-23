@@ -267,7 +267,7 @@ class Config:
             raise OSError(f"Failed to write config to {path}") from exc
 
 
-def load_with_defaults(path: Path = CONFIG_FILE) -> Config:
+def load_with_defaults(path: Path | None = None) -> Config:
     """Return a :class:`Config` applying the full precedence hierarchy.
 
     Precedence (highest → lowest):
@@ -278,14 +278,15 @@ def load_with_defaults(path: Path = CONFIG_FILE) -> Config:
 
     When no YAML file is present the function constructs a ``Config`` from
     built-in defaults and env var overrides only, using sensible values for
-    required fields (``database="sqlite"``, ``editor="tiptap"``, ``auth="jwt"``).
+    required fields (``database="sqlite"``, ``editor="ckeditor5"``, ``auth="jwt"``).
     Use :meth:`Config.validate_startup` if you need to enforce that all required
     settings are explicitly provided.
     """
-    cfg = Config.load(path)
+    resolved_path = path or CONFIG_FILE
+    cfg = Config.load(resolved_path)
     if cfg is None:
         # No YAML file — build from built-in defaults then apply env overrides.
-        cfg = Config(database="sqlite", editor="tiptap", cms="none", auth="jwt")
+        cfg = Config(database="sqlite", editor="ckeditor5", cms="none", auth="jwt")
         cfg._apply_env_overrides()
     return cfg
 

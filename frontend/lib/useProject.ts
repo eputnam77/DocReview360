@@ -21,7 +21,7 @@ export function useProject(id?: string) {
         status: proj.status || "Draft",
         progress: proj.progress || 0,
         updated: proj.updated || proj.created || new Date().toISOString().split("T")[0],
-        editor: "tiptap",
+        editor: proj.editor || "ckeditor5",
         workflow: proj.workflow,
         currentPhaseId: proj.current_phase_id || proj.phase || null,
         nara_schedule_number: proj.nara_schedule_number ?? null,

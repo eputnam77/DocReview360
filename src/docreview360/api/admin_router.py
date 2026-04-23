@@ -854,7 +854,7 @@ async def get_config_endpoint(user: auth.User = Depends(require_role("admin"))) 
     """Return the current application configuration."""
     cfg = Config.load(CONFIG_FILE)
     if cfg is None:
-        cfg = Config(database="sqlite", editor="tiptap", cms="none", auth="oidc")
+        cfg = Config(database="sqlite", editor="ckeditor5", cms="none", auth="oidc")
     return ConfigPayload(**cfg.__dict__)
 
 

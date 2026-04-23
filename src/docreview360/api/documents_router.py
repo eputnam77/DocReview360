@@ -23,6 +23,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from .. import auth
@@ -345,6 +346,7 @@ async def import_tiptap_endpoint(
 async def list_documents_endpoint(
     skip: int = Query(0, ge=0, description="Number of documents to skip"),
     limit: int = Query(20, ge=1, le=200, description="Maximum documents to return"),
+    project: str | None = Query(None, description="Filter documents by project id"),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict:
     """Return imported documents with caching and pagination.
@@ -387,6 +389,8 @@ async def list_documents_endpoint(
         )
         if (cfg := Config.load(CONFIG_FILE)) and cfg.log_reads:
             log_event("read", entity_id="documents", count=len(docs_list))
+    if project is not None:
+        docs_list = [document for document in docs_list if document.project == project]
     page = PaginatedResponse.from_sequence(docs_list, skip=skip, limit=limit)
     return {
         "items": [d.model_dump(mode="json") if hasattr(d, "model_dump") else d for d in page.items],
@@ -394,6 +398,78 @@ async def list_documents_endpoint(
         "skip": page.skip,
         "limit": page.limit,
     }
+
+
+@router.get("/onlyoffice/{doc_id}", response_class=HTMLResponse)
+async def onlyoffice_document_fallback_endpoint(
+    doc_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> HTMLResponse:
+    """Serve a stable OnlyOffice fallback page instead of a bare 404."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+
+    body = f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OnlyOffice Backup</title>
+    <style>
+      body {{
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+      }}
+      .shell {{
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }}
+      .card {{
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+      }}
+      .header {{
+        padding: 18px 22px;
+        border-bottom: 1px solid #e2e8f0;
+      }}
+      .header p {{
+        margin: 8px 0 0;
+        color: #475569;
+        font-size: 14px;
+      }}
+      .content {{
+        padding: 22px;
+        min-height: 60vh;
+      }}
+      .content :first-child {{
+        margin-top: 0;
+      }}
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="card">
+        <div class="header">
+          <h1>OnlyOffice backup</h1>
+          <p>
+            A dedicated OnlyOffice document-server integration is not configured in this environment yet.
+            This fallback keeps the backup route stable while exposing the current document content.
+          </p>
+        </div>
+        <div class="content">{document.content}</div>
+      </div>
+    </div>
+  </body>
+</html>"""
+    return HTMLResponse(body)
 
 
 @router.get("/documents/public", response_model=list[DocumentModel])

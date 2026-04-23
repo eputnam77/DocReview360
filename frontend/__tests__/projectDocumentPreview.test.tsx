@@ -32,7 +32,7 @@ const {
     status: "In Progress",
     progress: 30,
     updated: "2024-01-01",
-    editor: "tiptap",
+    editor: "ckeditor5",
     currentPhaseId: "Review",
     workflow: "workflow-1",
   };
@@ -414,8 +414,9 @@ describe("Jump-to-location on inline feedback", () => {
     const jumpLinks = screen.getAllByTestId("jump-to-location");
     // Only the inline item should have a Jump button
     expect(jumpLinks).toHaveLength(1);
-    expect((jumpLinks[0] as HTMLAnchorElement).href).toContain("anchor=42:57");
+    expect((jumpLinks[0] as HTMLAnchorElement).href).toContain("anchor=42%3A57");
     expect((jumpLinks[0] as HTMLAnchorElement).href).toContain("projectId=proj-preview");
+    expect((jumpLinks[0] as HTMLAnchorElement).href).toContain("/editors/ckeditor5");
   });
 
   it("does not render Jump button for manual feedback items", async () => {

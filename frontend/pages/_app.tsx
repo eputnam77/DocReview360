@@ -8,6 +8,7 @@ import AppFooter from "@/components/AppFooter";
 import Sidebar from "../components/workflow/Sidebar";
 import ThemeProvider from "../components/ThemeProvider";
 import { useUserStore } from "../state/user";
+import "ckeditor5/ckeditor5.css";
 import "../styles/globals.css";
 import "../styles/tiptap.css";
 

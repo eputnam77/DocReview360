@@ -81,8 +81,8 @@ def test_project_approval_picker_accepts_invited_reviewers() -> None:
 def test_checker_embeds_standalone_fsv_frontend() -> None:
     checker_page = _project_file("frontend/pages/tools/document-quality.tsx")
     assert "NEXT_PUBLIC_FSV_FRONTEND_URL" in checker_page
-    assert "/fsv/status" in checker_page
     assert "<iframe" in checker_page
+    assert "Open in new tab" not in checker_page
     assert "/tools/checker" not in checker_page
 
 
@@ -114,6 +114,15 @@ def test_frontend_audit_views_use_api_audit_route() -> None:
     assert "/api/audit?entity_id=${id}" in project_page
     assert "/api/audit?${params.toString()}" in logs_page
     assert "/api/audit?${params.toString()}" in config_audit_page
+
+
+def test_document_quality_host_page_stays_minimal_for_embedded_fsv() -> None:
+    checker_page = _project_file("frontend/pages/tools/document-quality.tsx")
+    assert "NEXT_PUBLIC_FSV_FRONTEND_URL" in checker_page
+    assert "<iframe" in checker_page
+    assert "/fsv/status" not in checker_page
+    assert "Back to Tools configuration" not in checker_page
+    assert "Open in new tab" not in checker_page
 
 
 def test_tiptap_heading_lock_filters_locked_heading_transactions() -> None:

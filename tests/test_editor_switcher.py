@@ -9,6 +9,12 @@ def test_render_default_editor() -> None:
     assert "tiptap-editor" in html
 
 
+def test_render_ckeditor5_editor() -> None:
+    doc = DocumentModel(id="2", content="hi", editor="ckeditor5")
+    html = render_editor(doc)
+    assert "ckeditor5-editor" in html
+
+
 def test_render_switched_editor() -> None:
     # Use import_document to properly add the document to the dictionary
     doc = import_document("test_doc.md", b"hi")

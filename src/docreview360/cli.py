@@ -44,8 +44,8 @@ def _get_rbac_module():
 )
 @click.option(
     "--editor",
-    type=click.Choice(["tiptap", "onlyoffice", "prosemirror"], case_sensitive=False),
-    default="tiptap",
+    type=click.Choice(["ckeditor5", "tiptap", "onlyoffice", "prosemirror"], case_sensitive=False),
+    default="ckeditor5",
     show_default=True,
     prompt=True,
 )
@@ -111,7 +111,7 @@ def init(
     database:
         Selected database backend (postgres, mysql, sqlite).
     editor:
-        Preferred document editor (tiptap, onlyoffice, prosemirror).
+        Preferred document editor (ckeditor5, tiptap, onlyoffice, prosemirror).
     cms:
         CMS integration option (none, local, sharepoint, confluence, gdrive,
         box, s3).

@@ -7,9 +7,12 @@ import importlib
 
 from .documents import DocumentModel
 
-# Map editor names to ``module:class`` paths
+EDITOR_PLACEHOLDERS = {
+    "tiptap": "tiptap-editor",
+    "ckeditor5": "ckeditor5-editor",
+}
+
 EDITOR_PLUGINS = {
-    "tiptap": None,
     "onlyoffice": "docreview360.onlyoffice_editor:OnlyofficeConnector",
 }
 
@@ -23,11 +26,12 @@ def render_editor(document: DocumentModel) -> str:
     # trimming and lower‑casing the name we keep lookups user friendly and avoid
     # surprising ``ValueError`` exceptions.
     name = (document.editor or "tiptap").strip().lower()
+    placeholder = EDITOR_PLACEHOLDERS.get(name)
+    if placeholder is not None:
+        return f"<div id='{placeholder}' data-doc='{document.id}'></div>"
     target = EDITOR_PLUGINS.get(name)
     if target is None:
-        if name != "tiptap":
-            raise ValueError(f"unknown editor '{name}'")
-        return f"<div id='tiptap-editor' data-doc='{document.id}'></div>"
+        raise ValueError(f"unknown editor '{name}'")
     module_name, class_name = target.split(":")
     module = importlib.import_module(module_name)
     cls = getattr(module, class_name)

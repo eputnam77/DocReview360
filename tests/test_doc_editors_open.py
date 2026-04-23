@@ -8,6 +8,7 @@ from docreview360.onlyoffice_editor import OnlyofficeConnector
 def test_all_editors_open() -> None:
     doc = DocumentModel(id="1", content="hi")
     assert "tiptap-editor" in render_editor(doc)
+    assert "ckeditor5-editor" in render_editor(DocumentModel(id="2", content="hi", editor="ckeditor5"))
     assert "onlyoffice/1" in OnlyofficeConnector().open_document("1")
 
 

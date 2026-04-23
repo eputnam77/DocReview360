@@ -5,7 +5,7 @@ import { SectionErrorBoundary } from "../../components";
 // Lazy-load the full TipTap editor to defer the CPU cost of loading and
 // initialising 25+ ProseMirror extensions until the user navigates here.
 const TipTapEditorPage = dynamic(
-  () => import("../../components/TiptapEditorFull"),
+  () => import("../../components/TiptapEditorBasic"),
   { ssr: false, loading: () => <EditorSkeleton /> },
 );
 

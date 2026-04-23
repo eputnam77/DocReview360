@@ -17,7 +17,7 @@ type Config = {
 
 const DEFAULTS: Config = {
   database: "sqlite",
-  editor: "tiptap",
+  editor: "ckeditor5",
   cms: "none",
   auth: "oidc",
   host: "127.0.0.1",

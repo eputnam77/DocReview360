@@ -25,6 +25,23 @@ class SavedSearch:
 DEFAULT_PROJECT_ID = "demo-project"
 
 
+def _configured_project_editor() -> str:
+    """Return the configured primary project editor with a safe fallback."""
+    try:
+        from ..config import CONFIG_FILE, load_with_defaults
+
+        configured = (load_with_defaults(CONFIG_FILE).editor or "").strip().lower()
+    except Exception:
+        configured = ""
+    if configured in {"ckeditor5", "ckeditor", "cke5"}:
+        return "ckeditor5"
+    if configured == "tiptap":
+        return "tiptap"
+    if configured == "onlyoffice":
+        return "onlyoffice"
+    return "ckeditor5"
+
+
 class ProjectModel(BaseModel):
     """Representation of a project with assignment metadata."""
 
@@ -133,6 +150,11 @@ class ProjectModel(BaseModel):
                 else:
                     return 25
         return 0
+
+    @computed_field
+    def editor(self) -> str:
+        """Expose the configured primary editor for project edit routes."""
+        return _configured_project_editor()
 
     @model_validator(mode="after")
     def _ensure_requested_workflow(self) -> "ProjectModel":

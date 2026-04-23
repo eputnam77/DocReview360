@@ -22,7 +22,7 @@ const { stableProject, stableWorkflow, stableApprovals, stableReviewSummary } = 
     status: "In Progress",
     progress: 50,
     updated: "2024-01-01",
-    editor: "tiptap",
+    editor: "ckeditor5",
     currentPhaseId: "Review",
     workflow: "workflow-1",
   },
@@ -511,5 +511,31 @@ describe("ProjectDetailsPage", () => {
     expect(() => fireEvent.click(toggle)).not.toThrow();
 
     unmount();
+  });
+
+  it("Edit Document link routes to the configured editor (ckeditor5)", async () => {
+    renderPage();
+
+    await waitFor(() => {
+      const editLinks = document.querySelectorAll<HTMLAnchorElement>("a[href*='/editors/']");
+      expect(editLinks.length).toBeGreaterThan(0);
+      const firstLink = editLinks[0];
+      expect(firstLink.getAttribute("href")).toContain("/editors/ckeditor5");
+      expect(firstLink.getAttribute("href")).toContain("projectId=proj-1");
+    });
+  });
+
+  it("Edit Document link routes to tiptap when project editor is tiptap", async () => {
+    stableProject.editor = "tiptap";
+    renderPage();
+
+    await waitFor(() => {
+      const editLinks = document.querySelectorAll<HTMLAnchorElement>("a[href*='/editors/']");
+      expect(editLinks.length).toBeGreaterThan(0);
+      expect(editLinks[0].getAttribute("href")).toContain("/editors/tiptap");
+      expect(editLinks[0].getAttribute("href")).toContain("projectId=proj-1");
+    });
+
+    stableProject.editor = "ckeditor5";
   });
 });

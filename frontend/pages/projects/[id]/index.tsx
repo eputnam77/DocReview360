@@ -93,6 +93,7 @@ import { useReviewerManagement } from "@/lib/useReviewerManagement";
 import { useApprovalSigning } from "@/lib/useApprovalSigning";
 import { useFeedbackHandlers } from "@/lib/useFeedbackHandlers";
 import { useReviewLifecycle } from "@/lib/useReviewLifecycle";
+import { buildProjectEditorUrl } from "@/lib/editorRouting";
 
 // ---------------------------------------------------------------------------
 // 1 ▲ Utility helpers (types moved to @/components/project/_types)
@@ -604,7 +605,12 @@ export default function ProjectDetailsPage() {
     );
   if (!project) return <p className="p-4">Project not found.</p>;
 
-  const editorURL = `/editors/${project.editor ?? "tiptap"}?projectId=${project.id}`;
+  const editorURL = buildProjectEditorUrl(project.editor, project.id);
+  const readonlyEditorURL = buildProjectEditorUrl(project.editor, project.id, {
+    readonly: true,
+  });
+  const buildAnchorEditorURL = (anchor: string) =>
+    buildProjectEditorUrl(project.editor, project.id, { anchor });
 
   return (
     <>
@@ -638,7 +644,7 @@ export default function ProjectDetailsPage() {
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button asChild size="sm">
-                <Link href={`/editors/tiptap?projectId=${safeId}`}>
+                <Link href={editorURL}>
                   <FileEdit className="w-4 h-4 mr-1" /> Open Document
                 </Link>
               </Button>
@@ -1361,7 +1367,7 @@ export default function ProjectDetailsPage() {
                           </button>
                         </div>
                         <iframe
-                          src={`/editors/tiptap?projectId=${safeId}&readonly=1`}
+                          src={readonlyEditorURL}
                           title="Document preview"
                           className="w-full h-80 border-0 bg-white"
                           sandbox="allow-scripts allow-same-origin"
@@ -1618,7 +1624,7 @@ export default function ProjectDetailsPage() {
                 </button>
               </div>
               <iframe
-                src={`/editors/tiptap?projectId=${safeId}&readonly=1`}
+                src={readonlyEditorURL}
                 title="Document preview"
                 className="w-full h-80 border-0 bg-white"
                 sandbox="allow-scripts allow-same-origin"
@@ -1940,7 +1946,7 @@ export default function ProjectDetailsPage() {
                 </button>
               </div>
               <iframe
-                src={`/editors/tiptap?projectId=${safeId}&readonly=1`}
+                src={readonlyEditorURL}
                 title="Document preview"
                 className="w-full h-80 border-0 bg-white"
                 sandbox="allow-scripts allow-same-origin"
@@ -2123,7 +2129,7 @@ export default function ProjectDetailsPage() {
                             {/* Jump-to-location for inline feedback */}
                             {item.source === "inline" && item.range_anchor && (
                               <Link
-                                href={`/editors/tiptap?projectId=${safeId}&anchor=${item.range_anchor}`}
+                                href={buildAnchorEditorURL(item.range_anchor)}
                                 className="inline-flex items-center gap-1 mt-1 text-xs text-indigo-600 hover:underline"
                                 title="Jump to this location in the editor"
                                 data-testid="jump-to-location"
