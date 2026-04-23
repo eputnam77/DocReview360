@@ -104,7 +104,7 @@ export default function TiptapEditorBasic() {
 
   useEffect(() => {
     if (!resolvedDocId) {
-      if (!projectDocumentsLoading) {
+      if (!projectDocumentsLoading && router.isReady) {
         setLoadError(
           projectId
             ? "No document is attached to this project yet."
@@ -142,7 +142,7 @@ export default function TiptapEditorBasic() {
     return () => {
       cancelled = true;
     };
-  }, [api, editor, projectDocumentsLoading, projectId, resolvedDocId]);
+  }, [api, editor, projectDocumentsLoading, projectId, resolvedDocId, router.isReady]);
 
   useEffect(() => {
     if (!resolvedDocId) {

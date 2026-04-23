@@ -376,6 +376,42 @@ def import_document(
     return document
 
 
+def create_blank_document(
+    *,
+    project: Optional[str] = None,
+    user: Optional[str] = None,
+    title: str = "Untitled Document",
+) -> DocumentModel:
+    """Create an empty editable document and attach it to *project*."""
+    content = f"<h1>{title}</h1><p></p>"
+    doc_id = uuid4().hex
+    now = datetime.now(timezone.utc)
+    revision = DocumentRevision(
+        id=uuid4().hex,
+        timestamp=now,
+        content=content,
+        steps=None,
+        author=user or "",
+    )
+    document = DocumentModel(
+        id=doc_id,
+        content=content,
+        history=[revision],
+        number=next_document_number(project),
+        project=project,
+        user=user,
+        date=now,
+    )
+    with document_lock:
+        documents[doc_id] = document
+    from .. import search as search_module
+
+    search_module.add_document(document)
+    fts.index_document(doc_id, content)
+    log_audit_event(doc_id, "created", actor=user, project=project, filename="blank")
+    return document
+
+
 def get_document(doc_id: str) -> DocumentModel | None:
     """Return a document by id."""
     return documents.get(doc_id)

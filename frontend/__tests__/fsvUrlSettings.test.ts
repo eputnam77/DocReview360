@@ -1,15 +1,13 @@
 /**
- * Item 34 Phase 2 — FSV endpoint URL settings round-trip and editor consumption.
+ * Item 34 Phase 2 — FSV endpoint URL support and editor consumption.
  *
  * Verifies:
- * 1. Tools admin page correctly loads FSV URL from GET /admin/settings/fsv-url
- * 2. Tools admin page correctly saves FSV URL via PUT /admin/settings/fsv-url
- * 3. FSV URL input is controlled and reflects the stored value
- * 4. Editor (TiptapEditorFull.tsx) consumes the FSV proxy via /documents/preflight
+ * 1. Tools page no longer renders inline FSV admin settings
+ * 2. Editor (TiptapEditorFull.tsx) consumes the FSV proxy via /documents/preflight
  *    (the backend reads the configured FSV URL transparently)
- * 5. fsv_proxy.py get_fsv_url() checks env → settings.yaml fallback chain
- * 6. is_fsv_configured() is exported and gates FSV features
- * 7. Admin-only guard on settings endpoints
+ * 3. fsv_proxy.py get_fsv_url() checks env → settings.yaml fallback chain
+ * 4. is_fsv_configured() is exported and gates FSV features
+ * 5. Admin-only guard on settings endpoints
  */
 import { readFileSync } from "fs";
 import { join, resolve } from "path";
@@ -28,49 +26,30 @@ function backend(relPath: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tools admin page — FSV URL settings (frontend/pages/tools/index.tsx)
+// Tools page — FSV settings removed from this surface (frontend/pages/tools/index.tsx)
 // ---------------------------------------------------------------------------
 
-describe("Tools page — FSV URL settings round-trip", () => {
+describe("Tools page — inline FSV settings removed", () => {
   const tools = src("pages/tools/index.tsx");
 
-  it("fsvUrl state is declared", () => {
-    expect(tools).toContain("fsvUrl");
-    expect(tools).toContain("useState");
+  it("does not render the FSV service URL card", () => {
+    expect(tools).not.toContain("Federal Style Validator — Service URL");
+    expect(tools).not.toContain("/admin/settings/fsv-url");
   });
 
-  it("loads FSV URL from GET /admin/settings/fsv-url on mount", () => {
-    expect(tools).toContain("/admin/settings/fsv-url");
-    expect(tools).toMatch(/GET|authenticatedFetch.*fsv-url|fsv-url.*authenticatedFetch/s);
+  it("does not render the on-save validation controls", () => {
+    expect(tools).not.toContain("Federal Style Validator — On-Save Validation");
+    expect(tools).not.toContain("/admin/settings/auto-validation");
   });
 
-  it("saves FSV URL via PUT /admin/settings/fsv-url", () => {
-    expect(tools).toMatch(/PUT.*fsv-url|method.*PUT/s);
-    expect(tools).toContain("/admin/settings/fsv-url");
+  it("does not render the per-category FSV check toggles", () => {
+    expect(tools).not.toContain("Federal Style Validator — Check Categories");
+    expect(tools).not.toContain("/admin/settings/fsv-checks");
   });
 
-  it("PUT body includes url field", () => {
-    expect(tools).toContain('"url"');
-    expect(tools).toMatch(/body.*JSON\.stringify.*url|JSON\.stringify.*url/s);
-  });
-
-  it("fsvUrlInput state tracks user input", () => {
-    expect(tools).toContain("fsvUrlInput");
-  });
-
-  it("shows active FSV URL when configured", () => {
-    expect(tools).toContain("fsvUrl");
-    // Should render the configured URL somewhere
-    expect(tools).toMatch(/fsvUrl\s*&&|fsvUrl\s*\?/);
-  });
-
-  it("Save button is disabled when input matches stored value", () => {
-    // disabled when fsvUrlInput === fsvUrl
-    expect(tools).toMatch(/disabled.*fsvUrl|fsvUrlInput.*===.*fsvUrl/s);
-  });
-
-  it("references FEDERAL_STYLE_VALIDATOR_URL env var in UI or comments", () => {
-    expect(tools).toContain("FEDERAL_STYLE_VALIDATOR_URL");
+  it("still renders the top-level tool cards grid", () => {
+    expect(tools).toContain("ALL_TOOLS_ITEMS.map");
+    expect(tools).toContain("Document Quality Checker");
   });
 });
 

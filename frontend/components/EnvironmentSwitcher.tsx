@@ -2,12 +2,14 @@ import { useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Badge } from "./ui/badge";
 import { useEnvStore } from "@/state/environment";
+import { useUserStore } from "@/state/user";
 
 export default function EnvironmentSwitcher() {
   const { envs, current, load, switchEnv } = useEnvStore();
+  const username = useUserStore((s) => s.username);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (username) load();
+  }, [load, username]);
   return (
     <div className="flex items-center gap-2">
       <Select value={current?.name} onValueChange={switchEnv}>

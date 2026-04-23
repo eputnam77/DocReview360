@@ -9,6 +9,7 @@ from typing import Any
 from . import auth, rbac
 from .approvals import approvals
 from .doc_types import get_document_type, list_document_types
+from .documents import create_blank_document, list_documents
 from .phases import list_phases
 from .profile import update_preferences, update_profile_data
 from .search import ProjectModel, add_project, get_project
@@ -133,7 +134,15 @@ def seed_demo_data() -> None:
 
     for entry in DEMO_PROJECTS:
         project_id = entry["id"]
-        if get_project(project_id):
+        existing = get_project(project_id)
+        if existing:
+            # Project already exists — ensure it has at least one document.
+            if not any(d.project == project_id for d in list_documents()):
+                create_blank_document(
+                    project=project_id,
+                    user=existing.user,
+                    title=existing.name,
+                )
             continue
         doc_type_name, phases = _resolve_doc_type(entry.get("doc_type"))
         template = _resolve_workflow_template(doc_type_name)
@@ -152,3 +161,8 @@ def seed_demo_data() -> None:
             project.initial_phase = workflow.phase
             _assign_approvals_to_user(workflow.id, project.user or "")
         add_project(project)
+        create_blank_document(
+            project=project_id,
+            user=project.user,
+            title=project.name,
+        )

@@ -37,7 +37,7 @@ from ..approvals import build_approvals_summary_pdf
 from ..audit import log_audit_event
 from ..doc_types import get_document_type
 from ..doc_validation import score_plain_language
-from ..documents import DocumentModel, import_document, list_documents
+from ..documents import DocumentModel, create_blank_document, import_document, list_documents
 from ..logs import log_event
 from ..messages import render
 from ..project_preferences import (
@@ -512,6 +512,11 @@ async def create_project_endpoint(
             project.workflow = existing_workflow.id
             project.initial_phase = existing_workflow.phase
             add_project(project)
+            create_blank_document(
+                project=project.id,
+                user=project.user,
+                title=project.name or "Untitled Document",
+            )
             clear_cache()
             log_event(
                 "create_project",
@@ -534,6 +539,11 @@ async def create_project_endpoint(
         project.initial_phase = body.phase
 
     add_project(project)
+    create_blank_document(
+        project=project.id,
+        user=project.user,
+        title=project.name or "Untitled Document",
+    )
     clear_cache()
     log_event(
         "create_project",

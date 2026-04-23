@@ -112,6 +112,7 @@ from ..documents import (
 )
 from ..documents import (
     list_documents as list_docs,
+    create_blank_document,
 )
 from ..environment import current_environment, load_envs, switch_environment
 from ..exporter import export_document, set_guardrails
@@ -895,6 +896,26 @@ class SignatureProviderPayload(BaseModel):
     fallback: str | None = None
 
 
+def _backfill_project_documents() -> None:
+    """Ensure every persisted project has at least one document.
+
+    Documents are in-memory only and are lost on restart, so we re-create a
+    blank document for any project that has none when the server starts up.
+    """
+    from ..search import list_projects
+    doc_project_ids = {d.project for d in list_docs() if d.project}
+    for project in list_projects():
+        if project.id not in doc_project_ids:
+            try:
+                create_blank_document(
+                    project=project.id,
+                    user=project.user,
+                    title=project.name or "Untitled Document",
+                )
+            except Exception as exc:  # pragma: no cover - best-effort
+                _logger.warning("Failed to backfill document for project %s: %s", project.id, exc)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     # Startup: validate configuration eagerly so misconfigurations surface
@@ -930,6 +951,7 @@ async def _lifespan(app: FastAPI):
     schedule_archive_purge()
     warm_ml_sessions()
     seed_demo_data()
+    _backfill_project_documents()
     try:
         yield
     finally:
@@ -1185,7 +1207,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID", "X-Correlation-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID", "X-Correlation-ID", "X-User"],
     allow_origins=_resolve_cors_origins(os.getenv("DOCREVIEW360_ALLOW_ORIGINS")),
     allow_origin_regex=_resolve_cors_origin_regex(os.getenv("DOCREVIEW360_ALLOW_ORIGINS")),
 )

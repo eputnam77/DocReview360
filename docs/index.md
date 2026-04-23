@@ -21,6 +21,7 @@ If you are an end user (reviewer/author) using the web app, use the in-app help 
 - [Migration Policy](migration_policy.md)
 - [Data Retention and Deletion](data_retention_and_deletion.md)
 - [Supported Platforms](supported-platforms.md)
+- [Oxygen XML Web Author Integration](oxygen_xml_web_author.md)
 - [Architecture Decision Records](adr/0001-core-architecture.md)
 
 ## Product/release notes

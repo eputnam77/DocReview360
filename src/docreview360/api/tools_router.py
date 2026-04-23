@@ -878,3 +878,261 @@ async def accessibility_scan(
 
     result = scan_document_accessibility(content, doc_id=payload.document_id)
     return scan_result_to_dict(result)
+
+
+# ---------------------------------------------------------------------------
+# Document Quality — native file-upload / FSV-proxy endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/tools/document-quality")
+async def document_quality_upload(
+    doc_file: UploadFile = File(...),
+    doc_type: str = Form("Default"),
+    visibility_json: str = Form("{}"),
+    group_by: str = Form("category"),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Process a DOCX and return FSV-compatible findings.
+
+    Proxies to FSV when ``FEDERAL_STYLE_VALIDATOR_URL`` is set; otherwise
+    runs the internal preflight + style + readability checks and returns
+    findings in the same canonical shape.
+    """
+    data = await doc_file.read()
+    filename = doc_file.filename or "document.docx"
+
+    if is_fsv_configured():
+        base = (get_fsv_url() or "").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                files = {"doc_file": (filename, data, "application/octet-stream")}
+                form_data = {
+                    "doc_type": doc_type,
+                    "visibility_json": visibility_json,
+                    "group_by": group_by,
+                }
+                resp = await client.post(f"{base}/process", files=files, data=form_data)
+                resp.raise_for_status()
+                summary = resp.json()
+                result_id = summary.get("result_id")
+                canonical: dict[str, Any] = {}
+                if result_id:
+                    try:
+                        canon_resp = await client.get(f"{base}/results/{result_id}.json")
+                        canon_resp.raise_for_status()
+                        canonical = canon_resp.json()
+                    except Exception as _exc:
+                        _logger.warning("FSV canonical fetch failed: %s", _exc)
+                return {
+                    "result_id": result_id,
+                    "total_issues": summary.get("total_issues", 0),
+                    "issue_count_by_severity": summary.get("issue_count_by_severity", {}),
+                    "has_errors": summary.get("has_errors", False),
+                    "findings": canonical.get("findings", []),
+                    "document": canonical.get("document", {"path": filename, "type": doc_type}),
+                    "metadata": canonical.get("metadata", {}),
+                    "fun_facts": canonical.get("fun_facts", []),
+                    "source": "fsv",
+                }
+        except Exception as _exc:
+            _logger.warning("FSV document-quality proxy failed, using internal: %s", _exc)
+
+    # Internal path — extract text then validate
+    try:
+        conversion = convert_document_content(data, filename, "txt")
+        text = (
+            conversion.content
+            if isinstance(conversion.content, str)
+            else conversion.content.decode("utf-8", errors="replace")
+        )
+    except Exception as _exc:
+        _logger.warning("DOCX text extraction failed: %s", _exc)
+        text = data.decode("utf-8", errors="replace")
+
+    from ..doc_validation import score_plain_language, validate_style
+
+    preflight = _preflight_validate(text)
+    style_issues = validate_style(text, force=True)
+
+    findings: list[dict[str, Any]] = []
+
+    for issue in preflight.acronym_issues:
+        findings.append({
+            "id": f"ACR-{issue.acronym}",
+            "category": "acronym",
+            "severity": "warning",
+            "message": (
+                f"Acronym '{issue.acronym}' appears {issue.occurrences} time(s) without a definition"
+            ),
+            "location": None,
+        })
+
+    for issue in preflight.heading_issues:
+        findings.append({
+            "id": "HDG-STRUCT",
+            "category": "headings",
+            "severity": "warning",
+            "message": f"{issue.issue} — \"{issue.heading_text}\"",
+            "location": {"line": issue.line_number},
+        })
+
+    for issue in style_issues:
+        findings.append({
+            "id": "STYLE",
+            "category": "analysis",
+            "severity": "info",
+            "message": issue.suggestion,
+            "location": {"line": issue.line_number},
+        })
+
+    try:
+        pl = score_plain_language(text)
+        if pl.flesch_reading_ease < 60:
+            findings.append({
+                "id": "READ-EASE",
+                "category": "readability",
+                "severity": "warning" if pl.flesch_reading_ease < 30 else "info",
+                "message": (
+                    f"Flesch Reading Ease: {pl.flesch_reading_ease} ({pl.grade_level}). "
+                    f"{pl.recommendation}"
+                ),
+                "location": None,
+            })
+    except Exception:
+        pass
+
+    severity_counts: dict[str, int] = {"error": 0, "warning": 0, "info": 0}
+    for finding in findings:
+        sev = str(finding.get("severity", "info"))
+        if sev in severity_counts:
+            severity_counts[sev] += 1
+
+    return {
+        "result_id": None,
+        "total_issues": len(findings),
+        "issue_count_by_severity": severity_counts,
+        "has_errors": severity_counts["error"] > 0,
+        "findings": findings,
+        "document": {"path": filename, "type": doc_type},
+        "metadata": {},
+        "fun_facts": [],
+        "source": "internal",
+    }
+
+
+@router.get("/tools/document-quality/style-guide")
+async def document_quality_style_guide(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Proxy FSV style guide or return a placeholder when FSV is not configured."""
+    if is_fsv_configured():
+        base = (get_fsv_url() or "").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(f"{base}/style-guide")
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as _exc:
+            _logger.warning("FSV style-guide proxy failed: %s", _exc)
+    return {
+        "content": (
+            "# Style Guide\n\n"
+            "The full style guide is available when the FSV backend is connected.\n\n"
+            "Set `FEDERAL_STYLE_VALIDATOR_URL` in the backend environment to enable it."
+        )
+    }
+
+
+@router.get("/tools/document-quality/rules-reference")
+async def document_quality_rules_reference(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, str]:
+    """Proxy FSV rules reference or return a placeholder when FSV is not configured."""
+    if is_fsv_configured():
+        base = (get_fsv_url() or "").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(f"{base}/rules-reference")
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as _exc:
+            _logger.warning("FSV rules-reference proxy failed: %s", _exc)
+    return {
+        "content": (
+            "# Rules Reference\n\n"
+            "The full rules catalog is available when the FSV backend is connected.\n\n"
+            "Set `FEDERAL_STYLE_VALIDATOR_URL` in the backend environment to enable it."
+        )
+    }
+
+
+@router.get("/tools/document-quality/usage")
+async def document_quality_usage(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, Any]:
+    """Proxy FSV usage metrics or return empty stats when FSV is not configured."""
+    if is_fsv_configured():
+        base = (get_fsv_url() or "").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(f"{base}/usage")
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as _exc:
+            _logger.warning("FSV usage proxy failed: %s", _exc)
+    return {
+        "window_seconds": 0,
+        "window_started_at": "",
+        "window_ended_at": "",
+        "total_requests": 0,
+        "processed": 0,
+        "failed": 0,
+        "by_doc_type": {},
+        "by_severity": {},
+    }
+
+
+@router.get("/tools/document-quality/reports")
+async def document_quality_reports(
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[Any]:
+    """Proxy FSV recent reports or return an empty list when FSV is not configured."""
+    if is_fsv_configured():
+        base = (get_fsv_url() or "").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(f"{base}/reports")
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as _exc:
+            _logger.warning("FSV reports proxy failed: %s", _exc)
+    return []
+
+
+@router.get("/tools/document-quality/results/{result_id:path}")
+async def document_quality_result_download(
+    result_id: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> Response:
+    """Proxy FSV result file downloads (DOCX, PDF, JSON) when FSV is configured."""
+    if not is_fsv_configured():
+        raise HTTPException(status_code=404, detail="Result downloads require FSV backend")
+    ext = result_id.rsplit(".", 1)[-1] if "." in result_id else ""
+    if ext not in ("docx", "pdf", "json"):
+        raise HTTPException(status_code=400, detail="Invalid file type")
+    base = (get_fsv_url() or "").rstrip("/")
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            resp = await client.get(f"{base}/results/{result_id}")
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=exc.response.status_code, detail="FSV result not found"
+            ) from exc
+    ct = resp.headers.get("content-type", "application/octet-stream")
+    return Response(
+        content=resp.content,
+        media_type=ct,
+        headers={"Content-Disposition": f'attachment; filename="result.{ext}"'},
+    )

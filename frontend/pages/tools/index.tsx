@@ -2,19 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { authenticatedFetch } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import {
-    AlertCircle,
     BarChart3,
-    CheckCircle,
     FileCheck,
     FileCog,
     Settings,
-    SpellCheck,
     Stamp,
     ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
 
 // ---------------------------------------------------------------------------
 // Tool catalogue
@@ -149,17 +145,6 @@ export default function ToolsPage() {
   const [communityPlugins, setCommunityPlugins] = useState<Set<string>>(new Set());
   const [toggling, setToggling] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [autoValidationEnabled, setAutoValidationEnabled] = useState(true);
-  const [savingAutoValidation, setSavingAutoValidation] = useState(false);
-  const [fsvChecks, setFsvChecks] = useState<Record<string, boolean>>({});
-  const [fsvCategories, setFsvCategories] = useState<string[]>([]);
-  const [savingFsvCheck, setSavingFsvCheck] = useState<string | null>(null);
-  const [fsvUrl, setFsvUrl] = useState("");
-  const [fsvUrlInput, setFsvUrlInput] = useState("");
-  const [savingFsvUrl, setSavingFsvUrl] = useState(false);
-  // DR-FSV-12: Test connection state
-  const [testingFsvConnection, setTestingFsvConnection] = useState(false);
-  const [fsvConnectionStatus, setFsvConnectionStatus] = useState<"idle" | "ok" | "fail">("idle");
 
   const isAdmin = useUserStore((s) => s.isAdmin);
 
@@ -172,30 +157,6 @@ export default function ToolsPage() {
           setBuiltinStatus(await builtinRes.json());
         } else {
           setBuiltinStatus({ "document-quality": true, scdocbuilder: true });
-        }
-
-        // Fetch auto-validation setting
-        const avRes = await authenticatedFetch("/admin/settings/auto-validation");
-        if (avRes.ok) {
-          const avData = await avRes.json();
-          setAutoValidationEnabled(avData.enabled ?? true);
-        }
-
-        // Fetch per-check FSV settings
-        const fsvRes = await authenticatedFetch("/admin/settings/fsv-checks");
-        if (fsvRes.ok) {
-          const fsvData = await fsvRes.json();
-          setFsvChecks(fsvData.checks ?? {});
-          setFsvCategories(fsvData.categories ?? []);
-        }
-
-        // Fetch FSV URL setting
-        const fsvUrlRes = await authenticatedFetch("/admin/settings/fsv-url");
-        if (fsvUrlRes.ok) {
-          const urlData = await fsvUrlRes.json();
-          const url = urlData.url ?? "";
-          setFsvUrl(url);
-          setFsvUrlInput(url);
         }
 
         // Fetch marketplace plugin list to determine installed + community flags
@@ -246,104 +207,6 @@ export default function ToolsPage() {
     if (tool.isBuiltIn) return false;
     const required = tool.requiresPlugins ?? [];
     return required.length > 0 && required.every((p) => communityPlugins.has(p));
-  }
-
-  // Toggle auto-validation -------------------------------------------------------
-
-  async function toggleAutoValidation() {
-    setSavingAutoValidation(true);
-    try {
-      const res = await authenticatedFetch("/admin/settings/auto-validation", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: !autoValidationEnabled }),
-      });
-      if (res.ok) {
-        setAutoValidationEnabled(!autoValidationEnabled);
-        toast.success(`On-save validation ${!autoValidationEnabled ? "enabled" : "disabled"}.`);
-      } else {
-        toast.error("Failed to update setting.");
-      }
-    } catch {
-      toast.error("Failed to update setting.");
-    } finally {
-      setSavingAutoValidation(false);
-    }
-  }
-
-  // Toggle individual FSV check category ------------------------------------------
-
-  async function toggleFsvCheck(category: string) {
-    const newVal = !fsvChecks[category];
-    setSavingFsvCheck(category);
-    try {
-      const res = await authenticatedFetch("/admin/settings/fsv-checks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checks: { [category]: newVal } }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setFsvChecks(data.checks ?? { ...fsvChecks, [category]: newVal });
-        toast.success(`${formatCheckLabel(category)} ${newVal ? "enabled" : "disabled"}.`);
-      } else {
-        toast.error("Failed to update check setting.");
-      }
-    } catch {
-      toast.error("Failed to update check setting.");
-    } finally {
-      setSavingFsvCheck(null);
-    }
-  }
-
-  function formatCheckLabel(id: string): string {
-    return id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
-  // Save FSV URL ----------------------------------------------------------------
-
-  async function saveFsvUrl() {
-    setSavingFsvUrl(true);
-    try {
-      const res = await authenticatedFetch("/admin/settings/fsv-url", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: fsvUrlInput || null }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const saved = data.url ?? "";
-        setFsvUrl(saved);
-        setFsvUrlInput(saved);
-        toast.success(saved ? "FSV URL saved." : "FSV URL cleared.");
-      } else {
-        toast.error("Failed to save FSV URL.");
-      }
-    } catch {
-      toast.error("Failed to save FSV URL.");
-    } finally {
-      setSavingFsvUrl(false);
-    }
-  }
-
-  // DR-FSV-12: Test FSV connection --------------------------------------------------
-
-  async function testFsvConnection() {
-    setTestingFsvConnection(true);
-    setFsvConnectionStatus("idle");
-    try {
-      const res = await authenticatedFetch("/fsv/status");
-      if (res.ok) {
-        const data = await res.json();
-        setFsvConnectionStatus(data.reachable ? "ok" : "fail");
-      } else {
-        setFsvConnectionStatus("fail");
-      }
-    } catch {
-      setFsvConnectionStatus("fail");
-    } finally {
-      setTestingFsvConnection(false);
-    }
   }
 
   // Toggle built-in plugin -------------------------------------------------------
@@ -492,141 +355,6 @@ export default function ToolsPage() {
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-gray-900 mb-2">No tools available</h3>
           <p className="text-gray-500">Contact your administrator to enable tools.</p>
-        </div>
-      )}
-
-      {/* On-save auto-validation — admin panel, shown when Document Quality Checker is active */}
-      {isAdmin && builtinStatus["document-quality"] !== false && (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-2">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-indigo-500" />
-            Federal Style Validator — On-Save Validation
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            When enabled, the editor automatically runs a preflight validation pass after each
-            document save and stores the quality score against the document. Disable for document
-            types or workflows where FSV checks do not apply.
-          </p>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleAutoValidation}
-              disabled={savingAutoValidation}
-              className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40 ${
-                autoValidationEnabled
-                  ? "border-red-200 text-red-700 hover:bg-red-50"
-                  : "border-green-200 text-green-700 hover:bg-green-50"
-              }`}
-            >
-              {savingAutoValidation
-                ? "Saving…"
-                : autoValidationEnabled
-                ? "Disable on-save validation"
-                : "Enable on-save validation"}
-            </button>
-            <span className={`text-xs font-medium ${autoValidationEnabled ? "text-green-700" : "text-gray-500"}`}>
-              {autoValidationEnabled ? "Currently enabled" : "Currently disabled"}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* FSV service URL — admin only */}
-      {isAdmin && (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-indigo-500" />
-            Federal Style Validator — Service URL
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Set the base URL of a running FSV service instance. When configured, validation
-            endpoints proxy to FSV instead of using internal implementations. Leave blank to use
-            the built-in fallback or the <code>FEDERAL_STYLE_VALIDATOR_URL</code> environment variable.
-          </p>
-          <div className="flex items-center gap-2">
-            <input
-              type="url"
-              value={fsvUrlInput}
-              onChange={(e) => { setFsvUrlInput(e.target.value); setFsvConnectionStatus("idle"); }}
-              placeholder="http://localhost:8080"
-              className="flex-1 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-1.5 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            />
-            <button
-              onClick={saveFsvUrl}
-              disabled={savingFsvUrl || fsvUrlInput === fsvUrl}
-              className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-40"
-            >
-              {savingFsvUrl ? "Saving…" : "Save"}
-            </button>
-            {/* DR-FSV-12: Test connection */}
-            <button
-              onClick={testFsvConnection}
-              disabled={testingFsvConnection || !fsvUrlInput}
-              className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
-            >
-              {testingFsvConnection ? "Testing…" : "Test connection"}
-            </button>
-          </div>
-          {fsvUrl && (
-            <div className="text-xs text-green-600">
-              Active: <span className="font-mono">{fsvUrl}</span>
-            </div>
-          )}
-          {/* DR-FSV-12: Inline connection test result */}
-          {fsvConnectionStatus !== "idle" && (
-            <div
-              className={`flex items-center gap-1 text-xs font-medium ${
-                fsvConnectionStatus === "ok" ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {fsvConnectionStatus === "ok" ? (
-                <><CheckCircle className="h-3.5 w-3.5" /> Federal Style Validator is reachable</>
-              ) : (
-                <><AlertCircle className="h-3.5 w-3.5" /> Unreachable — check the URL and ensure FSV is running</>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Per-check FSV category configuration — admin only, shown when Document Quality Checker is active */}
-      {isAdmin && builtinStatus["document-quality"] !== false && fsvCategories.length > 0 && (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-indigo-500" />
-            Federal Style Validator — Check Categories
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Enable or disable individual validation check categories. Disabled categories are
-            skipped even when on-save validation is active.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {fsvCategories.map((category) => {
-              const enabled = fsvChecks[category] !== false;
-              const saving = savingFsvCheck === category;
-              return (
-                <div
-                  key={category}
-                  className="flex items-center justify-between rounded-md border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2"
-                >
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {formatCheckLabel(category)}
-                  </span>
-                  <button
-                    onClick={() => toggleFsvCheck(category)}
-                    disabled={saving}
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-40 ${
-                      enabled
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    }`}
-                    title={enabled ? "Click to disable" : "Click to enable"}
-                  >
-                    {saving ? "…" : enabled ? "Enabled" : "Disabled"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
     </div>

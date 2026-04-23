@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import os
 import secrets
 import time
 from pathlib import Path
@@ -116,13 +117,20 @@ async def _parse_password_grant(request: Request) -> _PasswordGrantBody:
     return payload
 
 
+def _cookie_secure() -> bool:
+    """Return True only in production — dev runs on plain HTTP so Secure would block cookies."""
+    env = os.getenv("DOCREVIEW360_ENV", "").strip().lower()
+    return env not in {"", "dev", "development", "test", "testing"}
+
+
 def _set_access_cookie(response: Response, token_resp: auth.Token) -> None:
     """Persist the current access token in the hardened cookie used by the UI."""
+    secure = _cookie_secure()
     response.set_cookie(
         "access_token",
         token_resp.access_token,
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite="lax",
         max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -130,7 +138,7 @@ def _set_access_cookie(response: Response, token_resp: auth.Token) -> None:
         "csrf_token",
         secrets.token_urlsafe(32),
         httponly=False,
-        secure=True,
+        secure=secure,
         samesite="lax",
         max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )

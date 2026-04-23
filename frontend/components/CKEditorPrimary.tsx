@@ -112,7 +112,7 @@ export default function CKEditorPrimary() {
 
   useEffect(() => {
     if (!resolvedDocId) {
-      if (!projectDocumentsLoading) {
+      if (!projectDocumentsLoading && router.isReady) {
         setLoadError(
           projectId
             ? "No document is attached to this project yet."
@@ -152,7 +152,7 @@ export default function CKEditorPrimary() {
     return () => {
       cancelled = true;
     };
-  }, [api, projectDocumentsLoading, projectId, resolvedDocId]);
+  }, [api, projectDocumentsLoading, projectId, resolvedDocId, router.isReady]);
 
   useEffect(() => {
     if (!resolvedDocId) {

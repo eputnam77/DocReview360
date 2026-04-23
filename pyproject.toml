@@ -88,7 +88,7 @@ docreview360 = "docreview360.cli:cli"
 
 # FedStyleValidator (Federal Style Validator) is optional; the core app
 # falls back to internal heuristics when the integration is unavailable.
-fedstylevalidator = ["fedstylevalidator>=0.1.0"]
+fedstylevalidator = ["fedstylevalidator>=0.1.1"]
 
 # tokenizer support for OpenAI / tiktoken
 tokenizer = ["tiktoken>=0.5.1"]
