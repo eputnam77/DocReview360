@@ -128,7 +128,7 @@ realtime = [
 # ML (kept optional so Windows installs don't fail when torch wheels aren't available)
 # PyTorch install matrix: https://pytorch.org/get-started/locally/
 ml = [
-  "torch==2.8.0",
+  "torch==2.11.0",
   "onnx==1.21.0",
 ]
 

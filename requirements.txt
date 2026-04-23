@@ -37,7 +37,7 @@ y-py==0.6.2
 ypy-websocket==0.12.4
 onnx==1.21.0
 onnxruntime==1.19.2
-torch==2.8.0
+torch==2.11.0
 
 # Note: docreview360 and FedStyleValidator (Federal Style Validator) are local packages and
 # cannot be audited.
