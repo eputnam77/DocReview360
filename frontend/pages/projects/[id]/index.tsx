@@ -774,233 +774,234 @@ export default function ProjectDetailsPage() {
                   leaveFrom="transform opacity-100 scale-100"
                   leaveTo="transform opacity-0 scale-95"
                 >
-                  <Card className="overflow-x-auto">
-                    <CardContent>
-                      <Table caption="Project details" className="min-w-[600px] text-sm">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>#</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Title</TableHead>
-                            <TableHead>Owner</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Updated</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell className="font-mono">
-                              {project.id}
-                            </TableCell>
-                            <TableCell>{project.number}</TableCell>
-                            <TableCell>{project.type}</TableCell>
-                            <TableCell>{project.title}</TableCell>
-                            <TableCell>{project.owner}</TableCell>
-                            <TableCell>{project.status}</TableCell>
-                            <TableCell>{project.updated}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
+                  <div className="space-y-4">
+                    <Card className="overflow-x-auto">
+                      <CardContent>
+                        <Table caption="Project details" className="min-w-[600px] text-sm">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>ID</TableHead>
+                              <TableHead>#</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Title</TableHead>
+                              <TableHead>Owner</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Updated</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell className="font-mono">
+                                {project.id}
+                              </TableCell>
+                              <TableCell>{project.number}</TableCell>
+                              <TableCell>{project.type}</TableCell>
+                              <TableCell>{project.title}</TableCell>
+                              <TableCell>{project.owner}</TableCell>
+                              <TableCell>{project.status}</TableCell>
+                              <TableCell>{project.updated}</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    {/* Project Lifecycle Status — Phase 7 */}
+                    {lifecycleRecord && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                            Project Lifecycle
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {PROJECT_LIFECYCLE_STATUSES.map((s) => {
+                              const currentIdx = PROJECT_LIFECYCLE_STATUSES.indexOf(displayLifecycleStatus);
+                              const thisIdx = PROJECT_LIFECYCLE_STATUSES.indexOf(s);
+                              const done = thisIdx < currentIdx;
+                              const active = thisIdx === currentIdx;
+                              return (
+                                <span
+                                  key={s}
+                                  data-testid={`project-lifecycle-${s}`}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-xs font-medium",
+                                    done ? "bg-green-100 text-green-700" :
+                                    active ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-400" :
+                                    "bg-gray-100 text-gray-400",
+                                  )}
+                                >
+                                  {s.replace(/_/g, " ")}
+                                </span>
+                              );
+                            })}
+                          </div>
+                          {lifecycleReviewHint && (
+                            <p className="text-xs text-indigo-600">{lifecycleReviewHint}</p>
+                          )}
+                          {canEdit && (() => {
+                            const nextMap: Record<string, string[]> = {
+                              draft: ["in_review"],
+                              in_review: ["reviewed", "draft"],
+                              reviewed: ["ready_for_publication", "in_review"],
+                              ready_for_publication: ["published", "reviewed"],
+                              published: ["submitted_to_records"],
+                              submitted_to_records: ["closed"],
+                              closed: [],
+                            };
+                            const nexts = nextMap[lifecycleRecord.status] ?? [];
+                            if (nexts.length === 0) return null;
+                            return (
+                              <div className="flex gap-2 flex-wrap pt-1">
+                                {nexts.map((s) => (
+                                  <Button
+                                    key={s}
+                                    size="sm"
+                                    variant={s === "published" || s === "submitted_to_records" || s === "closed" ? "default" : "outline"}
+                                    onClick={() => handleLifecycleTransition(s)}
+                                  >
+                                    → {s.replace(/_/g, " ")}
+                                  </Button>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                          {lifecycleRecord.published_ref && (
+                            <p className="text-xs text-gray-500">
+                              Published ref: <span className="font-mono">{lifecycleRecord.published_ref}</span>
+                              {lifecycleRecord.published_venue && ` · ${lifecycleRecord.published_venue}`}
+                              {lifecycleRecord.published_at && ` · ${lifecycleRecord.published_at}`}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* SLA Summary — Phase 8 */}
+                    <SlaTab>
+                    <SectionErrorBoundary label="SLA summary">
+                    {slaSummary && slaSummary.total > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-amber-500" />
+                              Review SLA Status
+                            </span>
+                            {canEdit && (
+                              <Button size="sm" variant="outline" onClick={handleRunSlaReminders}>
+                                Send SLA Reminders
+                              </Button>
+                            )}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex gap-4 flex-wrap text-sm">
+                            <span className="flex items-center gap-1 text-green-700">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              {slaSummary.on_track} on track
+                            </span>
+                            {slaSummary.due_soon > 0 && (
+                              <span className="flex items-center gap-1 text-amber-600">
+                                <Clock className="w-3.5 h-3.5" />
+                                {slaSummary.due_soon} due soon
+                              </span>
+                            )}
+                            {slaSummary.overdue > 0 && (
+                              <span className="flex items-center gap-1 text-red-600 font-semibold">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                {slaSummary.overdue} overdue
+                                {slaSummary.max_overdue_days > 0 && ` (max ${slaSummary.max_overdue_days}d)`}
+                              </span>
+                            )}
+                            {slaSummary.no_deadline > 0 && (
+                              <span className="text-gray-400">{slaSummary.no_deadline} no deadline</span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    </SectionErrorBoundary>
+                    </SlaTab>
+
+                    {/* Document Quality Scores — only shown when FSV is enabled (Item 34 Phase 4) */}
+                    {fsvEnabled && qualityScores && qualityScores.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base font-semibold">
+                            Document Quality Scores
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Document</TableHead>
+                                <TableHead>Quality</TableHead>
+                                <TableHead>Reading Level</TableHead>
+                                <TableHead>Flesch Score</TableHead>
+                                <TableHead>vs. Avg</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {qualityScores.map((ds) => {
+                                const pct = Math.round(ds.quality_score * 100);
+                                const color =
+                                  pct >= 80
+                                    ? "text-green-700 bg-green-50"
+                                    : pct >= 50
+                                      ? "text-amber-700 bg-amber-50"
+                                      : "text-red-700 bg-red-50";
+                                const avg = ds.doc_type_avg_score;
+                                const diff = avg != null ? ds.quality_score - avg : null;
+                                return (
+                                  <TableRow key={ds.document_id}>
+                                    <TableCell className="font-mono text-xs truncate max-w-[200px]">
+                                      {ds.document_id}
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className={cn("px-2 py-0.5 rounded text-sm font-semibold", color)}>
+                                        {pct}%
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                      {ds.plain_language_grade}
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                      {ds.flesch_reading_ease}
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                      {diff != null ? (
+                                        <span className={diff > 0.02 ? "text-green-600" : diff < -0.02 ? "text-red-600" : "text-gray-500"}>
+                                          {diff > 0.02 ? "▲" : diff < -0.02 ? "▼" : "="}{" "}
+                                          {avg != null ? `${Math.round(avg * 100)}% avg` : ""}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">—</span>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                          {qualityScores.some((ds) => ds.high_risk_terms.length > 0) && (
+                            <p className="mt-2 text-xs text-amber-600">
+                              ⚠ Some documents contain high-risk terms that may affect scoring.
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 </Transition>
               </>
             )}
           </Disclosure>
 
           <KpiCards stats={stats} />
-
-          {/* Project Lifecycle Status — Phase 7 */}
-          {lifecycleRecord && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                  Project Lifecycle
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-3 flex-wrap">
-                  {PROJECT_LIFECYCLE_STATUSES.map((s) => {
-                    const currentIdx = PROJECT_LIFECYCLE_STATUSES.indexOf(displayLifecycleStatus);
-                    const thisIdx = PROJECT_LIFECYCLE_STATUSES.indexOf(s);
-                    const done = thisIdx < currentIdx;
-                    const active = thisIdx === currentIdx;
-                    return (
-                      <span
-                        key={s}
-                        data-testid={`project-lifecycle-${s}`}
-                        className={cn(
-                          "px-2 py-0.5 rounded text-xs font-medium",
-                          done ? "bg-green-100 text-green-700" :
-                          active ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-400" :
-                          "bg-gray-100 text-gray-400",
-                        )}
-                      >
-                        {s.replace(/_/g, " ")}
-                      </span>
-                    );
-                  })}
-                </div>
-                {lifecycleReviewHint && (
-                  <p className="text-xs text-indigo-600">{lifecycleReviewHint}</p>
-                )}
-                {/* Lifecycle transition buttons for SME/admin */}
-                {canEdit && (() => {
-                  const nextMap: Record<string, string[]> = {
-                    draft: ["in_review"],
-                    in_review: ["reviewed", "draft"],
-                    reviewed: ["ready_for_publication", "in_review"],
-                    ready_for_publication: ["published", "reviewed"],
-                    published: ["submitted_to_records"],
-                    submitted_to_records: ["closed"],
-                    closed: [],
-                  };
-                  const nexts = nextMap[lifecycleRecord.status] ?? [];
-                  if (nexts.length === 0) return null;
-                  return (
-                    <div className="flex gap-2 flex-wrap pt-1">
-                      {nexts.map((s) => (
-                        <Button
-                          key={s}
-                          size="sm"
-                          variant={s === "published" || s === "submitted_to_records" || s === "closed" ? "default" : "outline"}
-                          onClick={() => handleLifecycleTransition(s)}
-                        >
-                          → {s.replace(/_/g, " ")}
-                        </Button>
-                      ))}
-                    </div>
-                  );
-                })()}
-                {lifecycleRecord.published_ref && (
-                  <p className="text-xs text-gray-500">
-                    Published ref: <span className="font-mono">{lifecycleRecord.published_ref}</span>
-                    {lifecycleRecord.published_venue && ` · ${lifecycleRecord.published_venue}`}
-                    {lifecycleRecord.published_at && ` · ${lifecycleRecord.published_at}`}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* SLA Summary — Phase 8 */}
-          <SlaTab>
-          <SectionErrorBoundary label="SLA summary">
-          {slaSummary && slaSummary.total > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-500" />
-                    Review SLA Status
-                  </span>
-                  {canEdit && (
-                    <Button size="sm" variant="outline" onClick={handleRunSlaReminders}>
-                      Send SLA Reminders
-                    </Button>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4 flex-wrap text-sm">
-                  <span className="flex items-center gap-1 text-green-700">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    {slaSummary.on_track} on track
-                  </span>
-                  {slaSummary.due_soon > 0 && (
-                    <span className="flex items-center gap-1 text-amber-600">
-                      <Clock className="w-3.5 h-3.5" />
-                      {slaSummary.due_soon} due soon
-                    </span>
-                  )}
-                  {slaSummary.overdue > 0 && (
-                    <span className="flex items-center gap-1 text-red-600 font-semibold">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      {slaSummary.overdue} overdue
-                      {slaSummary.max_overdue_days > 0 && ` (max ${slaSummary.max_overdue_days}d)`}
-                    </span>
-                  )}
-                  {slaSummary.no_deadline > 0 && (
-                    <span className="text-gray-400">{slaSummary.no_deadline} no deadline</span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          </SectionErrorBoundary>
-          </SlaTab>
-
-          {/* Document Quality Scores — only shown when FSV is enabled (Item 34 Phase 4) */}
-          {fsvEnabled && qualityScores && qualityScores.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">
-                  Document Quality Scores
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Document</TableHead>
-                      <TableHead>Quality</TableHead>
-                      <TableHead>Reading Level</TableHead>
-                      <TableHead>Flesch Score</TableHead>
-                      <TableHead>vs. Avg</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {qualityScores.map((ds) => {
-                      const pct = Math.round(ds.quality_score * 100);
-                      const color =
-                        pct >= 80
-                          ? "text-green-700 bg-green-50"
-                          : pct >= 50
-                            ? "text-amber-700 bg-amber-50"
-                            : "text-red-700 bg-red-50";
-                      const avg = ds.doc_type_avg_score;
-                      const diff = avg != null ? ds.quality_score - avg : null;
-                      return (
-                        <TableRow key={ds.document_id}>
-                          <TableCell className="font-mono text-xs truncate max-w-[200px]">
-                            {ds.document_id}
-                          </TableCell>
-                          <TableCell>
-                            <span className={cn("px-2 py-0.5 rounded text-sm font-semibold", color)}>
-                              {pct}%
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {ds.plain_language_grade}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {ds.flesch_reading_ease}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {diff != null ? (
-                              <span className={diff > 0.02 ? "text-green-600" : diff < -0.02 ? "text-red-600" : "text-gray-500"}>
-                                {diff > 0.02 ? "▲" : diff < -0.02 ? "▼" : "="}{" "}
-                                {avg != null ? `${Math.round(avg * 100)}% avg` : ""}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-                {qualityScores.some((ds) => ds.high_risk_terms.length > 0) && (
-                  <p className="mt-2 text-xs text-amber-600">
-                    ⚠ Some documents contain high-risk terms that may affect scoring.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           {/* Workflow & progress */}
           <div className="grid md:grid-cols-2 gap-6">
@@ -1037,103 +1038,6 @@ export default function ProjectDetailsPage() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Records Retention (NARA) — Phase 7 */}
-          {canEdit && (
-            <NaraTab>
-            <Disclosure>
-              {({ open }) => (
-                <>
-                  <Disclosure.Button className="w-full text-left">
-                    <h2 className="flex items-center gap-2 text-base font-semibold text-gray-700 dark:text-gray-300">
-                      <LayoutList className="w-4 h-4 text-indigo-500" />
-                      Records Retention (NARA){" "}
-                      {open ? (
-                        <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
-                      )}
-                    </h2>
-                  </Disclosure.Button>
-                  <Transition
-                    show={open}
-                    as={Fragment}
-                    enter="transition ease-out duration-100"
-                    enterFrom="transform opacity-0 scale-95"
-                    enterTo="transform opacity-100 scale-100"
-                    leave="transition ease-in duration-75"
-                    leaveFrom="transform opacity-100 scale-100"
-                    leaveTo="transform opacity-0 scale-95"
-                  >
-                    <Card>
-                      <CardContent className="pt-4 space-y-4">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          NARA records management metadata for this project. Required when
-                          submitting to federal records systems.
-                        </p>
-                        <div className="grid sm:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                              Schedule Number
-                            </label>
-                            <Input
-                              value={naraScheduleNumber}
-                              onChange={(e) => setNaraScheduleNumber(e.target.value)}
-                              placeholder="e.g. DAA-GRS-2017-0007"
-                              className="text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                              Disposition Authority
-                            </label>
-                            <Input
-                              value={naraDispositionAuthority}
-                              onChange={(e) => setNaraDispositionAuthority(e.target.value)}
-                              placeholder="e.g. N1-AU-04-18"
-                              className="text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                              Retention Period
-                            </label>
-                            <Input
-                              value={naraRetentionPeriod}
-                              onChange={(e) => setNaraRetentionPeriod(e.target.value)}
-                              placeholder="e.g. Permanent, 7 years after close"
-                              className="text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                              Record Series
-                            </label>
-                            <Input
-                              value={naraRecordSeries}
-                              onChange={(e) => setNaraRecordSeries(e.target.value)}
-                              placeholder="e.g. Policy Documents"
-                              className="text-sm"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end">
-                          <Button
-                            size="sm"
-                            onClick={handleSaveNara}
-                            disabled={savingNara}
-                          >
-                            {savingNara ? "Saving…" : "Save NARA Metadata"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Transition>
-                </>
-              )}
-            </Disclosure>
-            </NaraTab>
-          )}
 
           {/* Primary CTA + quality badge */}
           <div className="flex flex-col items-center gap-2">
@@ -2382,6 +2286,103 @@ export default function ProjectDetailsPage() {
             </Disclosure>
           )}
         </AuditTab>
+
+        {/* RECORDS RETENTION (NARA) — bottom of page, filled out late in lifecycle */}
+        {canEdit && (
+          <NaraTab>
+          <Disclosure>
+            {({ open }) => (
+              <>
+                <Disclosure.Button className="w-full text-left">
+                  <h2 className="flex items-center gap-2 text-base font-semibold text-gray-700 dark:text-gray-300">
+                    <LayoutList className="w-4 h-4 text-indigo-500" />
+                    Records Retention (NARA){" "}
+                    {open ? (
+                      <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
+                    )}
+                  </h2>
+                </Disclosure.Button>
+                <Transition
+                  show={open}
+                  as={Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <Card>
+                    <CardContent className="pt-4 space-y-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        NARA records management metadata for this project. Required when
+                        submitting to federal records systems.
+                      </p>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Schedule Number
+                          </label>
+                          <Input
+                            value={naraScheduleNumber}
+                            onChange={(e) => setNaraScheduleNumber(e.target.value)}
+                            placeholder="e.g. DAA-GRS-2017-0007"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Disposition Authority
+                          </label>
+                          <Input
+                            value={naraDispositionAuthority}
+                            onChange={(e) => setNaraDispositionAuthority(e.target.value)}
+                            placeholder="e.g. N1-AU-04-18"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Retention Period
+                          </label>
+                          <Input
+                            value={naraRetentionPeriod}
+                            onChange={(e) => setNaraRetentionPeriod(e.target.value)}
+                            placeholder="e.g. Permanent, 7 years after close"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Record Series
+                          </label>
+                          <Input
+                            value={naraRecordSeries}
+                            onChange={(e) => setNaraRecordSeries(e.target.value)}
+                            placeholder="e.g. Policy Documents"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          onClick={handleSaveNara}
+                          disabled={savingNara}
+                        >
+                          {savingNara ? "Saving…" : "Save NARA Metadata"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Transition>
+              </>
+            )}
+          </Disclosure>
+          </NaraTab>
+        )}
 
         {/* RECORDS SECTION — visible when submitted_to_records or closed (Phase 7) */}
         {lifecycleRecord && ["submitted_to_records", "closed", "published", "ready_for_publication"].includes(lifecycleRecord.status) && (
