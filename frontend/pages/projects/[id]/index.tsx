@@ -2294,8 +2294,8 @@ export default function ProjectDetailsPage() {
             {({ open }) => (
               <>
                 <Disclosure.Button className="w-full text-left">
-                  <h2 className="flex items-center gap-2 text-base font-semibold text-gray-700 dark:text-gray-300">
-                    <LayoutList className="w-4 h-4 text-indigo-500" />
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
+                    <LayoutList className="w-5 h-5 text-indigo-500" />
                     Records Retention (NARA){" "}
                     {open ? (
                       <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />

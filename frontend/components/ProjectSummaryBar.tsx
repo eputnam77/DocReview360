@@ -56,7 +56,7 @@ export default function ProjectSummaryBar({
         <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
           {project.status}
         </span>
-        <span className="hidden md:inline ml-4">Accountable: {project.owner}</span>
+        {/* <span className="hidden md:inline ml-4">Accountable: {project.owner}</span> */}
       </div>
       <div className="flex items-center gap-2">
         <div className="w-36 shrink-0">

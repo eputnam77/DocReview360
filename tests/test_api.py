@@ -185,7 +185,7 @@ def test_update_project_with_file_upload() -> None:
     # Update with file upload
     resp = client.put(
         "/projects/pedit-file",
-        data={"name": "File Updated Project", "user": "bob", "doc_type": "Policy Statement"},
+        data={"name": "File Updated Project", "user": "bob", "doc_type": "Policy"},
         files={"file": ("test_document.md", "This is test content", "text/markdown")},
         headers=hdrs,
     )
@@ -193,7 +193,7 @@ def test_update_project_with_file_upload() -> None:
     data = resp.json()
     assert data["name"] == "File Updated Project"
     assert data["user"] == "bob"
-    assert data["doc_type"] == "Policy Statement"
+    assert data["doc_type"] == "Policy"
 
     # Verify that a document was created for this project
     docs_resp = client.get("/documents", headers=hdrs)

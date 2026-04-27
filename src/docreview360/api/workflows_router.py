@@ -18,6 +18,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -1136,38 +1137,85 @@ async def delete_template_endpoint(
     return Response(status_code=204)
 
 
+def _html_to_xml_template(html: str, doc_type: str, name: str) -> bytes:
+    """Wrap an HTML template in a structured XML envelope suitable for data exchange."""
+    import html as _html_module
+    import re
+
+    escaped = _html_module.escape(html)
+    safe_type = re.sub(r"[^a-zA-Z0-9 /.()\-]", "", doc_type)
+    safe_name = re.sub(r"[^a-zA-Z0-9 /.()\-]", "", name)
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        "<document>\n"
+        "  <metadata>\n"
+        f"    <name>{_html_module.escape(safe_name)}</name>\n"
+        f"    <type>{_html_module.escape(safe_type)}</type>\n"
+        "  </metadata>\n"
+        "  <body>\n"
+        f"    <html><![CDATA[{html}]]></html>\n"
+        "  </body>\n"
+        "</document>\n"
+    )
+    return xml.encode("utf-8")
+
+
 @router.get("/templates/{name}/download", response_class=Response, name="download_template_endpoint")
 async def download_template_endpoint(
     name: str,
+    format: str | None = Query(None, description="Output format override: docx, xml, html, txt"),
     user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
-    """Download the latest template file."""
+    """Download the latest template file.
+
+    Use ?format=docx or ?format=xml to convert an HTML template on the fly.
+    """
     ver = get_latest_template(name)
     if not ver:
         raise HTTPException(status_code=404, detail="template not found")
     metadata = ver.metadata or {}
-    format_value = metadata.get("format") or metadata.get("type") or "txt"
-    format_lower = str(format_value).lower()
-    extension = {
-        "docx": "docx",
-        "word": "docx",
-        "html": "html",
-        "json": "json",
-        "xml": "xml",
-        "txt": "txt",
-        "md": "md",
-        "markdown": "md",
-    }.get(format_lower, format_lower)
-    content_type = {
-        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "html": "text/html",
-        "json": "application/json",
-        "xml": "application/xml",
-        "txt": "text/plain",
-        "md": "text/markdown",
-    }.get(extension, "application/octet-stream")
-    filename = metadata.get("filename") or f"{name}.{extension}"
+    stored_format = metadata.get("format") or metadata.get("type") or "txt"
+    stored_lower = str(stored_format).lower()
+
     raw = ver.content if isinstance(ver.content, bytes) else (ver.content or "").encode()
+    html_str = raw.decode("utf-8", errors="ignore")
+
+    requested = (format or stored_lower).lower()
+    doc_type_label = metadata.get("docType") or name
+
+    if requested in ("docx", "word") and stored_lower == "html":
+        from ..document_converter import _html_to_text, _text_to_docx_bytes
+
+        plain = _html_to_text(html_str)
+        raw = _text_to_docx_bytes(plain, title=doc_type_label)
+        extension, content_type = "docx", (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    elif requested == "xml" and stored_lower == "html":
+        raw = _html_to_xml_template(html_str, doc_type_label, name)
+        extension, content_type = "xml", "application/xml"
+    else:
+        format_lower = stored_lower
+        extension = {
+            "docx": "docx",
+            "word": "docx",
+            "html": "html",
+            "json": "json",
+            "xml": "xml",
+            "txt": "txt",
+            "md": "md",
+            "markdown": "md",
+        }.get(format_lower, format_lower)
+        content_type = {
+            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "html": "text/html",
+            "json": "application/json",
+            "xml": "application/xml",
+            "txt": "text/plain",
+            "md": "text/markdown",
+        }.get(extension, "application/octet-stream")
+
+    filename = metadata.get("filename") or f"{name}.{extension}"
     headers = {
         "Content-Disposition": f'attachment; filename="{filename}"',
         "Content-Length": str(len(raw)),
@@ -1247,9 +1295,10 @@ async def list_template_versions_endpoint(
 @router.get("/templates/{name:path}/download", response_class=Response, include_in_schema=False)
 async def download_template_endpoint_path(
     name: str,
+    format: str | None = Query(None),
     user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
-    return await download_template_endpoint(name, user)
+    return await download_template_endpoint(name, format, user)
 
 
 @router.post("/templates/{name:path}/approve", include_in_schema=False)

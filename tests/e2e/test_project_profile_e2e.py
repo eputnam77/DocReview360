@@ -67,7 +67,7 @@ def test_project_create_edit_review_and_tiptap_round_trip(
     doc_types = doc_types_resp.json()
     assert isinstance(doc_types, list) and doc_types
 
-    preferred = {"Advisory Circular", "Policy Statement", "Release Notes"}
+    preferred = {"Advisory Circular", "Policy", "Report"}
     selected_doc_type = next(
         (item for item in doc_types if item.get("name") in preferred),
         doc_types[0],

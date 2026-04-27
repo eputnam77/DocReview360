@@ -26,8 +26,8 @@ E2E_SEED_USERS = {
 E2E_DOC_TYPE = "E2E Test Document Type"
 E2E_DOC_TYPES = [
     "Advisory Circular",
-    "Policy Statement",
-    "Release Notes",
+    "Policy",
+    "Report",
     E2E_DOC_TYPE,
 ]
 E2E_PHASES = ["draft", "review", "approval"]

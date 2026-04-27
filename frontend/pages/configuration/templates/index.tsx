@@ -148,8 +148,10 @@ export default function TemplatesIndex() {
     }
   };
 
-    const handleDownload = (tpl: Template) => {
-      window.open(`${API}${buildTemplateUrlPath(tpl.id, "/download")}`, "_blank");
+    const handleDownload = (tpl: Template, fmt?: string) => {
+      const base = `${API}${buildTemplateUrlPath(tpl.id, "/download")}`;
+      const url = fmt ? `${base}?format=${fmt}` : base;
+      window.open(url, "_blank");
     };
 
   return (
@@ -209,18 +211,53 @@ export default function TemplatesIndex() {
                   </Button>
                 )}
               </TableCell>
-              <TableCell className="w-14">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="View or Download"
-                  aria-label="View or Download"
-                  onClick={() => handleDownload(t)}
-                >
-                  {t.format && ["DOCX", "HTML", "XML", "JSON", "TXT"].includes(t.format)
-                    ? <Download className="w-4 h-4" />
-                    : <Eye className="w-4 h-4" />}
-                </Button>
+              <TableCell className="w-36">
+                {t.format === "HTML" ? (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Download as HTML"
+                      aria-label="Download as HTML"
+                      onClick={() => handleDownload(t, "html")}
+                      className="px-1.5 text-xs"
+                    >
+                      HTML
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Download as Word DOCX"
+                      aria-label="Download as Word DOCX"
+                      onClick={() => handleDownload(t, "docx")}
+                      className="px-1.5 text-xs"
+                    >
+                      DOCX
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Download as XML"
+                      aria-label="Download as XML"
+                      onClick={() => handleDownload(t, "xml")}
+                      className="px-1.5 text-xs"
+                    >
+                      XML
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="View or Download"
+                    aria-label="View or Download"
+                    onClick={() => handleDownload(t)}
+                  >
+                    {t.format && ["DOCX", "XML", "JSON", "TXT"].includes(t.format)
+                      ? <Download className="w-4 h-4" />
+                      : <Eye className="w-4 h-4" />}
+                  </Button>
+                )}
               </TableCell>
               <TableCell className="w-14">
                 <Button variant="ghost" size="icon" asChild>
