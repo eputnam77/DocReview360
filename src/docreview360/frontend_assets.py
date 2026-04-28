@@ -6,13 +6,22 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-_SKIP_DIR_NAMES = {"node_modules", ".next", ".tmp", "__pycache__"}
+_SKIP_DIR_NAMES = {"node_modules", ".next", ".tmp", "__pycache__", "__tests__", "scripts"}
 _SKIP_FILE_NAMES = {".env.local"}
+_SKIP_RELATIVE_PATHS = {
+    Path("data/mock.js"),
+    Path("data/mock.ts"),
+    Path("public/sample.txt"),
+}
 _SKIP_SUFFIXES = {".db", ".sqlite", ".log", ".pyc", ".tmp", ".tsbuildinfo"}
 
 
-def _should_copy_file(path: Path) -> bool:
-    return path.name not in _SKIP_FILE_NAMES and path.suffix not in _SKIP_SUFFIXES
+def _should_copy_file(path: Path, relative_path: Path) -> bool:
+    return (
+        path.name not in _SKIP_FILE_NAMES
+        and path.suffix not in _SKIP_SUFFIXES
+        and relative_path not in _SKIP_RELATIVE_PATHS
+    )
 
 
 def _packaged_frontend_root() -> Path:
@@ -51,7 +60,7 @@ def extract_frontend_source(destination: Path, *, force: bool = False) -> Path:
         if source_path.is_dir():
             (destination / relative_path).mkdir(parents=True, exist_ok=True)
             continue
-        if not _should_copy_file(source_path):
+        if not _should_copy_file(source_path, relative_path):
             continue
         target_path = destination / relative_path
         target_path.parent.mkdir(parents=True, exist_ok=True)

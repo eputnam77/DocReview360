@@ -22,11 +22,17 @@ prune .dev
 prune frontend/node_modules
 prune frontend/.next
 prune frontend/.tmp
+prune frontend/__tests__
+prune frontend/scripts
 prune scripts
 prune docs
 prune artifacts
 prune .claude
 prune .git
+
+exclude frontend/data/mock.js
+exclude frontend/data/mock.ts
+exclude frontend/public/sample.txt
 
 # Exclude individual junk files
 global-exclude *.pyc
@@ -39,3 +45,4 @@ global-exclude node_modules
 global-exclude *.db
 global-exclude *.sqlite
 global-exclude *.tmp
+global-exclude *.tsbuildinfo

@@ -11,9 +11,9 @@ from __future__ import annotations
 import socket
 from contextlib import closing
 from types import ModuleType
-from typing import Dict, Optional, cast
+from typing import Any, Dict, Optional, cast
 
-from prometheus_client import Counter, Gauge, Histogram, start_http_server
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, start_http_server
 
 from .secrets import get_secret
 
@@ -24,73 +24,95 @@ except Exception:
 
 sentry_sdk: Optional[ModuleType] = cast(Optional[ModuleType], _sentry_sdk)
 
-REQUEST_COUNTER = Counter(
+
+def _get_or_create_metric(metric_type: Any, name: str, *args: Any, **kwargs: Any) -> Any:
+    """Return an existing Prometheus collector when this module is imported twice."""
+
+    existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
+    if existing is not None:
+        return existing
+    return metric_type(name, *args, **kwargs)
+
+
+REQUEST_COUNTER = _get_or_create_metric(
+    Counter,
     "docreview360_requests_total", "Number of HTTP requests processed by DocReview360"
 )
 
 # Verification metrics used by HTTP endpoints and background tasks.
-VERIFICATION_COUNTER = Counter(
+VERIFICATION_COUNTER = _get_or_create_metric(
+    Counter,
     "docreview360_verifications_total",
     "Number of document verification operations",
     ["source", "status"],
 )
-VERIFICATION_DURATION = Histogram(
+VERIFICATION_DURATION = _get_or_create_metric(
+    Histogram,
     "docreview360_verification_seconds",
     "Time spent performing document verifications",
     ["source"],
 )
 
 # Health status for signature providers: 1 indicates healthy, 0 unhealthy.
-PROVIDER_HEALTH = Gauge(
+PROVIDER_HEALTH = _get_or_create_metric(
+    Gauge,
     "docreview360_provider_health",
     "Health status of configured signature providers",
     ["provider"],
 )
 
 # Metrics tracking signature request issues and webhook delivery problems.
-SIGNATURE_FAILURES = Counter(
+SIGNATURE_FAILURES = _get_or_create_metric(
+    Counter,
     "docreview360_signature_failures_total",
     "Number of failed signature requests",
     ["provider", "reason"],
 )
-WEBHOOK_DELAY = Histogram(
+WEBHOOK_DELAY = _get_or_create_metric(
+    Histogram,
     "docreview360_webhook_delay_seconds",
     "Delay between provider event and webhook processing",
     ["provider"],
 )
-HASH_MISMATCHES = Counter(
+HASH_MISMATCHES = _get_or_create_metric(
+    Counter,
     "docreview360_webhook_hash_mismatch_total",
     "Number of webhook payloads failing signature validation",
     ["provider"],
 )
 
 # Metrics tracking approval artifact upload reliability.
-APPROVAL_UPLOAD_RETRIES = Counter(
+APPROVAL_UPLOAD_RETRIES = _get_or_create_metric(
+    Counter,
     "docreview360_approval_upload_retries_total",
     "Retry attempts and exhausted retries when uploading approval artifacts",
     ["status"],
 )
 
 # Metrics tracking corrupted audit log lines discarded during retention purges.
-AUDIT_CORRUPT_LINES_SKIPPED = Counter(
+AUDIT_CORRUPT_LINES_SKIPPED = _get_or_create_metric(
+    Counter,
     "docreview360_audit_corrupt_lines_skipped_total",
     "Number of corrupt audit log lines skipped during purge",
 )
 
 # Metrics tracking anomaly detection outcomes during verification.
-SIGNATURE_ANOMALIES = Counter(
+SIGNATURE_ANOMALIES = _get_or_create_metric(
+    Counter,
     "docreview360_signature_anomalies_total",
     "Signature anomaly detection outcomes",
     ["outcome"],
 )
 
 # Critic evaluation telemetry for latency distribution and anomaly tracking.
-CRITIC_LATENCY = Histogram(
+CRITIC_LATENCY = _get_or_create_metric(
+    Histogram,
     "docreview360_critic_latency_seconds",
     "Latency observed when evaluating critic models",
     ["critic"],
 )
-CRITIC_ANOMALY_EVENTS = Counter(
+CRITIC_ANOMALY_EVENTS = _get_or_create_metric(
+    Counter,
     "docreview360_critic_anomalies_total",
     "Anomalous critic outcomes grouped by critic and outcome type",
     ["critic", "outcome"],

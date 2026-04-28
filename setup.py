@@ -6,16 +6,24 @@ from pathlib import Path
 from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
 
-
 _REPO_ROOT = Path(__file__).resolve().parent
 _FRONTEND_SOURCE = _REPO_ROOT / "frontend"
-_SKIP_DIR_NAMES = {"node_modules", ".next", ".tmp", "__pycache__"}
+_SKIP_DIR_NAMES = {"node_modules", ".next", ".tmp", "__pycache__", "__tests__", "scripts"}
 _SKIP_FILE_NAMES = {".env.local"}
+_SKIP_RELATIVE_PATHS = {
+    Path("data/mock.js"),
+    Path("data/mock.ts"),
+    Path("public/sample.txt"),
+}
 _SKIP_SUFFIXES = {".db", ".sqlite", ".log", ".pyc", ".tmp", ".tsbuildinfo"}
 
 
-def _should_copy_file(path: Path) -> bool:
-    return path.name not in _SKIP_FILE_NAMES and path.suffix not in _SKIP_SUFFIXES
+def _should_copy_file(path: Path, relative_path: Path) -> bool:
+    return (
+        path.name not in _SKIP_FILE_NAMES
+        and path.suffix not in _SKIP_SUFFIXES
+        and relative_path not in _SKIP_RELATIVE_PATHS
+    )
 
 
 def _sync_frontend_bundle(destination: Path) -> None:
@@ -38,7 +46,7 @@ def _sync_frontend_bundle(destination: Path) -> None:
         if source_path.is_dir():
             (destination / relative_path).mkdir(parents=True, exist_ok=True)
             continue
-        if not _should_copy_file(source_path):
+        if not _should_copy_file(source_path, relative_path):
             continue
         target_path = destination / relative_path
         target_path.parent.mkdir(parents=True, exist_ok=True)
