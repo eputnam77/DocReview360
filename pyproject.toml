@@ -33,7 +33,7 @@ classifiers = [
 
 dependencies = [
   "Jinja2==3.1.6",
-  "pydantic==2.11.7",
+  "pydantic==2.13.3",
   "matplotlib==3.10.8",
   "fonttools==4.62.1",
   "Pillow==12.2.0",
@@ -41,7 +41,7 @@ dependencies = [
   "PyYAML==6.0.3",
   "zipp==3.19.1",
   "wikipedia==1.4.0",
-  "textstat==0.7.7",
+  "textstat==0.7.13",
   "textblob==0.19.0",
   "fastapi>=0.120.0",
   "python-multipart==0.0.26",
@@ -56,18 +56,18 @@ dependencies = [
   "python-magic-bin; platform_system == 'Windows'",
 
   "reportlab==4.4.10",
-  "celery==5.5.3",
+  "celery==5.6.3",
   "redis==6.2.0",
   "graphene==3.4.3",
   "prometheus-client==0.22.1",
-  "starlette>=0.49,<0.50",
+  "starlette>=0.49,<1.1",
   "uvicorn>=0.38.0",
   "pymysql==1.1.1",
   "python-dotenv==1.2.2",
   "bcrypt==4.2.0",
   "pyotp==2.9.0",
   "markdown-it-py==3.0.0",
-  "bleach==6.2.0",
+  "bleach==6.3.0",
 ]
 
 [project.urls]
@@ -94,7 +94,7 @@ fedstylevalidator = ["fedstylevalidator>=0.1.1"]
 tokenizer = ["tiktoken>=0.5.1"]
 
 # PostgreSQL support (LGPL-3.0 — kept optional so the core package is MIT-clean)
-postgres = ["psycopg[binary]==3.2.9"]
+postgres = ["psycopg[binary]==3.3.3"]
 
 # LDAP/Active Directory authentication (Item 37)
 ldap = ["ldap3>=2.9"]
@@ -128,7 +128,7 @@ realtime = [
 # ML (kept optional so Windows installs don't fail when torch wheels aren't available)
 # PyTorch install matrix: https://pytorch.org/get-started/locally/
 ml = [
-  "torch==2.8.0",
+  "torch==2.11.0",
   "onnx==1.21.0",
 ]
 
@@ -143,12 +143,12 @@ ml-mps = [
 ]
 
 ml-gpu = [
-  "onnxruntime-gpu==1.19.2 ; platform_system != 'Darwin'",
+  "onnxruntime-gpu==1.25.0 ; platform_system != 'Darwin'",
 ]
 
 # formatting & linting
-format = ["ruff>=0.5", "black>=24"]
-lint   = ["ruff>=0.5", "black>=24"]
+format = ["ruff>=0.5", "black>=26.3.1"]
+lint   = ["ruff>=0.5", "black>=26.3.1"]
 
 # static typing
 typing = ["mypy>=1.10"]

@@ -131,7 +131,7 @@ export default function TiptapEditorBasic() {
             ? document.content
             : "<p></p>";
         setEditorData(nextData);
-        editor?.commands.setContent(nextData, false);
+        editor?.commands.setContent(nextData, { emitUpdate: false });
       })
       .catch(() => {
         if (!cancelled) {
@@ -194,7 +194,7 @@ export default function TiptapEditorBasic() {
         ? revision.content
         : "<p></p>";
     setEditorData(nextData);
-    editor?.commands.setContent(nextData, false);
+    editor?.commands.setContent(nextData, { emitUpdate: false });
   }, [api, editor, resolvedDocId, selectedRevisionId]);
 
   if (projectDocumentsLoading && !explicitDocId) {
