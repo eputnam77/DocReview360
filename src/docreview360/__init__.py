@@ -68,6 +68,7 @@ __all__ = [
     "integrity",
     "integrations",
     "stubs",
+    "cache",
 ]
 
 

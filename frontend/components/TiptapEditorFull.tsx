@@ -8,6 +8,7 @@ import { createTiptapApi } from "@/lib/tiptapApi";
 import { useUserStore } from "@/state/user";
 import { generateDiffHtml } from "@/utils/diff";
 
+import { buildTemplateUrlPath } from "@/lib/templatePath";
 import { useEditorExtensions } from "@/lib/useEditorExtensions";
 import { useEditorSave } from "@/lib/useEditorSave";
 import { useEditorSuggestions } from "@/lib/useEditorSuggestions";
@@ -204,6 +205,9 @@ export default function TipTapEditorPage({ docId: docIdProp }: { docId?: string 
   function insertImage() {
     const url = prompt("Image URL?");
     if (url) editor?.chain().focus().setImage({ src: url }).run();
+  }
+  function handleViewTemplate(filename: string) {
+    router.push(buildTemplateUrlPath(filename));
   }
 
   if (!isClient || !editor) {

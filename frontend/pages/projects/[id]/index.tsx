@@ -1159,6 +1159,9 @@ export default function ProjectDetailsPage() {
                             Select a workflow on the project before adding required approvers.
                           </p>
                         )}
+                        <p className="text-xs text-gray-500">
+                          Approval assignee must be an existing DocReview360 user.
+                        </p>
                         {approvalActionError ? (
                           <p className="text-sm text-red-600 dark:text-red-400">{approvalActionError}</p>
                         ) : null}
