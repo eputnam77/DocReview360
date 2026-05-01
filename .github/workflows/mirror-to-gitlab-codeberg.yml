@@ -1,0 +1,68 @@
+name: Mirror to GitLab and Codeberg
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # Required configuration:
+      # Secrets:
+      #   - GITLAB_TOKEN: Personal/project/group access token with write access to the target GitLab repo.
+      #   - CODEBERG_TOKEN: Personal access token with write access to the target Codeberg repo.
+      # Variables (optional):
+      #   - GITLAB_NAMESPACE: GitLab user/group namespace. Defaults to github.repository_owner when unset.
+      #   - CODEBERG_NAMESPACE: Codeberg user/org namespace. Defaults to github.repository_owner when unset.
+      - name: Check out repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror all branches and tags to GitLab and Codeberg
+        shell: bash
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          GITLAB_NAMESPACE_VAR: ${{ vars.GITLAB_NAMESPACE }}
+          CODEBERG_NAMESPACE_VAR: ${{ vars.CODEBERG_NAMESPACE }}
+          DEFAULT_NAMESPACE: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+
+          GITLAB_NAMESPACE="${GITLAB_NAMESPACE_VAR:-$DEFAULT_NAMESPACE}"
+          CODEBERG_NAMESPACE="${CODEBERG_NAMESPACE_VAR:-$DEFAULT_NAMESPACE}"
+
+          if [[ -z "${GITLAB_TOKEN:-}" ]]; then
+            echo "Error: required secret GITLAB_TOKEN is not set." >&2
+            exit 1
+          fi
+          if [[ -z "${CODEBERG_TOKEN:-}" ]]; then
+            echo "Error: required secret CODEBERG_TOKEN is not set." >&2
+            exit 1
+          fi
+          if [[ -z "${GITLAB_NAMESPACE}" ]]; then
+            echo "Error: GITLAB namespace resolved to empty. Set vars.GITLAB_NAMESPACE or ensure github.repository_owner is available." >&2
+            exit 1
+          fi
+          if [[ -z "${CODEBERG_NAMESPACE}" ]]; then
+            echo "Error: CODEBERG namespace resolved to empty. Set vars.CODEBERG_NAMESPACE or ensure github.repository_owner is available." >&2
+            exit 1
+          fi
+
+          GITLAB_URL="https://oauth2:${GITLAB_TOKEN}@gitlab.com/${GITLAB_NAMESPACE}/${REPO_NAME}.git"
+          CODEBERG_URL="https://${CODEBERG_NAMESPACE}:${CODEBERG_TOKEN}@codeberg.org/${CODEBERG_NAMESPACE}/${REPO_NAME}.git"
+
+          git remote add gitlab "${GITLAB_URL}"
+          git remote add codeberg "${CODEBERG_URL}"
+
+          # --mirror makes destination refs match GitHub exactly (all branches, tags, and deletions).
+          git push --mirror gitlab
+          git push --mirror codeberg
