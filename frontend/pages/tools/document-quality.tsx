@@ -771,6 +771,24 @@ export default function DocumentQualityPage() {
     { key: "metrics", label: "Metrics" },
   ];
 
+  const fsvFrontendUrl = process.env.NEXT_PUBLIC_FSV_FRONTEND_URL;
+
+  if (fsvFrontendUrl) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50/60 via-slate-50 to-slate-100">
+        <div className="max-w-screen-xl mx-auto px-5 py-8 pb-12">
+          <iframe
+            src={fsvFrontendUrl}
+            className="w-full border-0 rounded-xl"
+            style={{ height: "calc(100vh - 6rem)" }}
+            title="Federal Style Validator"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/60 via-slate-50 to-slate-100">
       <div className="max-w-screen-xl mx-auto px-5 py-8 pb-12">

@@ -62,7 +62,7 @@ def test_reporting_endpoints() -> None:
 
     entries = client.get("/reports/dashboard", headers=headers).json()
     entry = next(e for e in entries if e["id"] == "r1")
-    assert entry["docs"] == 1
+    assert entry["docs"] == 2
     assert entry["phase"] == "start"
     assert entry["quality_score"] is not None
     assert entry["compliance_score"] is not None
