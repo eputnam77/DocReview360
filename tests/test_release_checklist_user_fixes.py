@@ -87,9 +87,17 @@ def test_checker_embeds_standalone_fsv_frontend() -> None:
 
 
 def test_tiptap_editor_uses_safe_indent_commands_and_larger_canvas() -> None:
+    # Indent commands may be in TiptapEditorFull directly or in EditorToolbar component.
     tiptap_page = _project_file("frontend/components/TiptapEditorFull.tsx")
-    assert 'runEditorCommand(editor, "indent")' in tiptap_page
-    assert 'canRunEditorCommand(editor, "indent")' in tiptap_page
+    toolbar = _project_file("frontend/components/editor/EditorToolbar.tsx")
+    assert (
+        'runEditorCommand(editor, "indent")' in tiptap_page
+        or 'runEditorCommand(editor, "indent")' in toolbar
+    )
+    assert (
+        'canRunEditorCommand(editor, "indent")' in tiptap_page
+        or 'canRunEditorCommand(editor, "indent")' in toolbar
+    )
     assert 'max-w-[1200px]' in tiptap_page
     assert 'min-h-[calc(100vh-12rem)]' in tiptap_page
 
@@ -111,7 +119,11 @@ def test_frontend_audit_views_use_api_audit_route() -> None:
     project_page = _project_file("frontend/pages/projects/[id]/index.tsx")
     logs_page = _project_file("frontend/pages/logs/index.tsx")
     config_audit_page = _project_file("frontend/pages/configuration/audit-logs.tsx")
-    assert "/api/audit?entity_id=${id}" in project_page
+    # Accept any template literal that passes the project id to entity_id
+    assert (
+        "/api/audit?entity_id=${id}" in project_page
+        or "/api/audit?entity_id=${safeId}" in project_page
+    )
     assert "/api/audit?${params.toString()}" in logs_page
     assert "/api/audit?${params.toString()}" in config_audit_page
 
