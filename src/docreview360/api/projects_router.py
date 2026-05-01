@@ -521,6 +521,8 @@ async def create_project_endpoint(
             log_event(
                 "create_project",
                 user_id=project.user,
+                entity_id=project.id,
+                entity_type="project",
                 project=project.id,
                 message=render(
                     "create_project", user=project.user or "", project_id=project.id
@@ -548,6 +550,8 @@ async def create_project_endpoint(
     log_event(
         "create_project",
         user_id=project.user,
+        entity_id=project.id,
+        entity_type="project",
         project=project.id,
         message=render("create_project", user=project.user or "", project_id=project.id),
     )
@@ -969,17 +973,45 @@ async def get_project_document_scores(
     if not project_docs:
         return []
 
+    def _is_blank_document(content: str) -> bool:
+        """Return True when the document contains only the initial blank template.
+
+        The blank template is <h1>{title}</h1><p></p>.  We detect this by
+        checking that after stripping all HTML the remaining content is only
+        a single block of text with no body paragraphs (no second <p> or <li>).
+        """
+        import re as _re
+        raw = content or ""
+        # Check for the exact pattern produced by create_blank_document:
+        # one heading tag followed only by empty block tags.
+        no_heading = _re.sub(r"<h[1-6][^>]*>.*?</h[1-6]>", "", raw, flags=_re.IGNORECASE | _re.DOTALL)
+        remaining = _re.sub(r"<[^>]+>", "", no_heading).strip()
+        if not remaining:
+            return True
+        # Fallback: very short stripped content (< 20 chars) is also blank.
+        stripped = _re.sub(r"<[^>]+>", "", raw).strip()
+        return len(stripped) < 20
+
     # Pre-compute quality assessments so we can derive per-type averages.
+    # Skip documents that are still blank (just created, no real content yet).
     assessments: list[tuple[DocumentModel, QualityAssessment]] = []
     for doc in project_docs:
+        if _is_blank_document(doc.content):
+            continue
         qa = quality_assessment(doc.content)
         assessments.append((doc, qa))
 
+    if not assessments:
+        return []
+
     # Build per-doc_type average scores across *all* documents (not just
     # this project) so each document can be compared against its type.
+    # Skip blank documents to avoid skewing the average.
     all_docs = list_documents()
     type_scores: dict[str | None, list[float]] = {}
     for d in all_docs:
+        if _is_blank_document(d.content):
+            continue
         dt = d.project and get_project(d.project)
         doc_type = dt.doc_type if dt else None
         qa = quality_assessment(d.content)

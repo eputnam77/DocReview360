@@ -33,6 +33,10 @@ export default function ConverterPage() {
         <select name="output_format" className="border p-2">
           <option value="pdf">PDF</option>
           <option value="html">HTML</option>
+          <option value="markdown">Markdown (.md)</option>
+          <option value="txt">Plain Text (.txt)</option>
+          <option value="docx">Word Document (.docx)</option>
+          <option value="confluence">Confluence Wiki</option>
         </select>
         <button type="submit" className="px-3 py-2 bg-indigo-600 text-white">
           Convert

@@ -747,7 +747,7 @@ export default function ProjectDetailsPage() {
 
         {/* OVERVIEW SECTION — Phase 6 */}
         <section id="overview" className="space-y-6">
-          <Disclosure defaultOpen>
+          <Disclosure>
             {({ open }) => (
               <>
                 <Disclosure.Button className="w-full text-left">
@@ -781,7 +781,7 @@ export default function ProjectDetailsPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>ID</TableHead>
-                              <TableHead>#</TableHead>
+                              <TableHead>Document Number</TableHead>
                               <TableHead>Type</TableHead>
                               <TableHead>Title</TableHead>
                               <TableHead>Owner</TableHead>
@@ -1082,7 +1082,8 @@ export default function ProjectDetailsPage() {
                   <div className="flex items-start justify-between gap-4 rounded-xl border bg-white/70 p-4 shadow-sm">
                     <div className="space-y-1">
                       <h2 className="flex items-center gap-2 text-lg font-semibold">
-                        <Users2 className="w-5 h-5" /> Approvals
+                        <Users2 className="w-5 h-5" /> Approvals{" "}
+                        {open ? "" : "(collapsed)"}
                       </h2>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         Workflow-driven required approvers for the current phase.
@@ -1200,7 +1201,8 @@ export default function ProjectDetailsPage() {
                   <div className="flex items-start justify-between gap-4 rounded-xl border bg-white/70 p-4 shadow-sm">
                     <div className="space-y-1">
                       <h2 className="flex items-center gap-2 text-lg font-semibold">
-                        <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence
+                        <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence{" "}
+                        {open ? "" : "(collapsed)"}
                       </h2>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         Optional reviewers added manually from user management for in-app concurrence.
@@ -1781,7 +1783,8 @@ export default function ProjectDetailsPage() {
                   <div className="flex items-start justify-between gap-4 rounded-xl border bg-white/70 p-4 shadow-sm">
                     <div className="space-y-1">
                       <h2 className="flex items-center gap-2 text-lg font-semibold">
-                        <MessageSquare className="w-5 h-5" /> Comments
+                        <MessageSquare className="w-5 h-5" /> Comments{" "}
+                        {open ? "" : "(collapsed)"}
                       </h2>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         Feedback threads, comments, and reviewer discussion.
@@ -2204,7 +2207,7 @@ export default function ProjectDetailsPage() {
 
         {/* HISTORY SECTION */}
         <AuditTab>
-          <Disclosure defaultOpen>
+          <Disclosure>
             {({ open }) => (
               <>
                 <Disclosure.Button className="w-full text-left">
@@ -2297,6 +2300,7 @@ export default function ProjectDetailsPage() {
                   <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
                     <LayoutList className="w-5 h-5 text-indigo-500" />
                     Records Retention (NARA){" "}
+                    {open ? "" : "(collapsed)"}
                     {open ? (
                       <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
                     ) : (

@@ -25,23 +25,37 @@ type RevisionMeta = {
 
 function ToolbarButton({
   label,
+  title,
   onClick,
   disabled = false,
+  active = false,
 }: {
   label: string;
+  title?: string;
   onClick: () => void;
   disabled?: boolean;
+  active?: boolean;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-700 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
+      title={title}
+      aria-label={title ?? label}
+      className={`rounded-md border px-2 py-1 text-sm hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50 ${
+        active
+          ? "border-indigo-400 bg-indigo-50 text-indigo-700 font-semibold"
+          : "border-slate-200 text-slate-700"
+      }`}
     >
       {label}
     </button>
   );
+}
+
+function ToolbarDivider() {
+  return <span className="mx-1 inline-block h-5 w-px bg-slate-200" aria-hidden />;
 }
 
 export default function TiptapEditorBasic() {
@@ -269,34 +283,75 @@ export default function TiptapEditorBasic() {
               )}
             </div>
             {!readonly && (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-1">
                 <ToolbarButton
-                  label="Bold"
+                  label="H1"
+                  title="Heading 1"
+                  active={editor.isActive("heading", { level: 1 })}
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                />
+                <ToolbarButton
+                  label="H2"
+                  title="Heading 2"
+                  active={editor.isActive("heading", { level: 2 })}
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                />
+                <ToolbarButton
+                  label="H3"
+                  title="Heading 3"
+                  active={editor.isActive("heading", { level: 3 })}
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                />
+                <ToolbarDivider />
+                <ToolbarButton
+                  label={<strong>B</strong> as unknown as string}
+                  title="Bold"
+                  active={editor.isActive("bold")}
                   onClick={() => editor.chain().focus().toggleBold().run()}
                 />
                 <ToolbarButton
-                  label="Italic"
+                  label={<em>I</em> as unknown as string}
+                  title="Italic"
+                  active={editor.isActive("italic")}
                   onClick={() => editor.chain().focus().toggleItalic().run()}
                 />
+                <ToolbarDivider />
                 <ToolbarButton
-                  label="Bullet list"
+                  label="•"
+                  title="Bulleted list"
+                  active={editor.isActive("bulletList")}
                   onClick={() => editor.chain().focus().toggleBulletList().run()}
                 />
                 <ToolbarButton
-                  label="Numbered list"
+                  label="1."
+                  title="Numbered list"
+                  active={editor.isActive("orderedList")}
                   onClick={() => editor.chain().focus().toggleOrderedList().run()}
                 />
                 <ToolbarButton
-                  label="Quote"
-                  onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                  label="→"
+                  title="Indent (increase list level)"
+                  onClick={() => editor.chain().focus().sinkListItem("listItem").run()}
+                  disabled={!editor.can().sinkListItem("listItem")}
                 />
                 <ToolbarButton
-                  label="Undo"
+                  label="←"
+                  title="Outdent (decrease list level)"
+                  onClick={() => editor.chain().focus().liftListItem("listItem").run()}
+                  disabled={!editor.can().liftListItem("listItem")}
+                />
+                <ToolbarDivider />
+                <ToolbarButton
+                  label="↩"
+                  title="Undo"
                   onClick={() => editor.chain().focus().undo().run()}
+                  disabled={!editor.can().undo()}
                 />
                 <ToolbarButton
-                  label="Redo"
+                  label="↪"
+                  title="Redo"
                   onClick={() => editor.chain().focus().redo().run()}
+                  disabled={!editor.can().redo()}
                 />
               </div>
             )}
