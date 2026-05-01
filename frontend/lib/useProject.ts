@@ -14,7 +14,7 @@ export function useProject(id?: string) {
       const proj = await res.json();
       return {
         id: proj.id,
-        number: proj.number || 1,
+        number: proj.document_number || proj.number || proj.id,
         type: proj.doc_type || "Unknown",
         title: proj.name || "Untitled",
         owner: proj.user || "Unknown",

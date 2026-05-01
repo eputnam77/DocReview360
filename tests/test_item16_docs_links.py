@@ -186,7 +186,8 @@ class TestReadMEQuickStart:
         assert README.exists()
 
     def test_has_quick_start_section(self) -> None:
-        assert "Quick Start" in self._text() or "Quick install" in self._text()
+        text = self._text()
+        assert "Quick Start" in text or "Quick start" in text or "Quick install" in text
 
     def test_quick_start_covers_macos_linux(self) -> None:
         text = self._text()

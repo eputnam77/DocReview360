@@ -108,16 +108,10 @@ class ProjectModel(BaseModel):
                 phase = wf.phase.lower()
                 if "draft" in phase or "initial" in phase:
                     return "Draft"
-                elif "review" in phase:
-                    return "In Progress"
-                elif "public comment" in phase:
-                    return "In Progress"
-                elif "approval" in phase or "final" in phase:
-                    return "Complete"
                 elif "overdue" in phase:
                     return "Overdue"
                 else:
-                    return wf.phase
+                    return "In Progress"
         return "Draft"
 
     @computed_field
@@ -132,21 +126,32 @@ class ProjectModel(BaseModel):
 
     @computed_field
     def progress(self) -> int:
-        """Calculate progress based on workflow status."""
+        """Calculate progress based on position within workflow phases."""
         if self.workflow:
             from ..workflows import get_workflow
 
             wf = get_workflow(self.workflow)
             if wf:
-                phase = wf.phase.lower()
+                phases = wf.phases
+                current = wf.phase
+                if phases and current in phases:
+                    idx = phases.index(current)
+                    total = len(phases)
+                    # Map position to 10–90% range so a single-phase
+                    # workflow at its only phase shows 10%, not 90%.
+                    if total == 1:
+                        return 10
+                    return int(10 + (idx / (total - 1)) * 80)
+                # Phase-name fallback when phases list is unavailable.
+                phase = current.lower()
                 if "draft" in phase or "initial" in phase:
                     return 10
                 elif "review" in phase:
-                    return 50
+                    return 40
                 elif "public comment" in phase:
-                    return 75
+                    return 60
                 elif "approval" in phase or "final" in phase:
-                    return 90
+                    return 75
                 else:
                     return 25
         return 0

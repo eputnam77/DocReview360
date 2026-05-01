@@ -53,6 +53,200 @@ DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE = _env_flag_enabled(
 )
 
 DEFAULT_WORKFLOW_TEMPLATES: Dict[str, List[ApprovalStep]] = {
+    "standard-document-review": [
+        ApprovalStep(
+            role="Technical Writer",
+            description="Technical review and initial drafting",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Editorial Reviewer",
+            description="Editorial review for clarity and style",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Manager",
+            description="Manager review and endorsement",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Legal/Policy Reviewer",
+            description="Legal and policy compliance review",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Approving Official",
+            description="Final approval before publication",
+            order=5,
+        ),
+        ApprovalStep(
+            role="Publication Coordinator",
+            description="Publication-readiness verification and release",
+            order=6,
+        ),
+    ],
+    "pre-coordination-review": [
+        ApprovalStep(
+            role="Writer",
+            description="Initial drafting and self-check",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Peer Reviewer",
+            description="Peer review for technical soundness",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Branch Liaison",
+            description="Confirms alignment with branch priorities",
+            order=3,
+        ),
+    ],
+    "fast-track-review": [
+        ApprovalStep(
+            role="Writer",
+            description="Drafts minor or urgent changes",
+            order=1,
+        ),
+        ApprovalStep(
+            role="SME",
+            description="Subject Matter Expert expedited review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Approving Official",
+            description="Final approval with documented justification",
+            order=3,
+        ),
+    ],
+    "single-branch-coordination": [
+        ApprovalStep(
+            role="SME",
+            description="Subject Matter Expert review",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Branch Manager",
+            description="Branch Manager review and approval",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Technical Writer",
+            description="Technical Writer final review",
+            order=3,
+        ),
+    ],
+    "multi-branch-coordination": [
+        ApprovalStep(
+            role="SME (Branch A)",
+            description="Branch A SME review",
+            order=1,
+        ),
+        ApprovalStep(
+            role="SME (Branch B)",
+            description="Branch B SME review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Branch Managers (A and B)",
+            description="Management approval from both branches",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Senior Technical Writer review",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Technical Writing Manager",
+            description="Technical Writing Manager final approval",
+            order=5,
+        ),
+    ],
+    "external-coordination": [
+        ApprovalStep(
+            role="Internal SME",
+            description="Internal subject matter expert review",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Public Affairs",
+            description="Communications and public affairs review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="External Partner",
+            description="External organization or partner review",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Technical Writer",
+            description="Incorporates external feedback",
+            order=4,
+        ),
+        ApprovalStep(
+            role="Approving Official",
+            description="Final internal approval",
+            order=5,
+        ),
+    ],
+    "requirements-intake-review": [
+        ApprovalStep(
+            role="Research Analyst",
+            description="Collects background data and stakeholder requirements",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Legal/Regulatory Reviewer",
+            description="Identifies statutory constraints",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Writer",
+            description="Creates annotated outline for downstream reviewers",
+            order=3,
+        ),
+    ],
+    "publication-readiness-and-distribution": [
+        ApprovalStep(
+            role="Technical Writer",
+            description="Prepares final publication package",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Approving Official",
+            description="Final publication approval",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Communications/Outreach",
+            description="Distributes to official channels",
+            order=3,
+        ),
+        ApprovalStep(
+            role="Records Management",
+            description="Archives final version and sends notifications",
+            order=4,
+        ),
+    ],
+    "post-publication-implementation": [
+        ApprovalStep(
+            role="Program Manager",
+            description="Notifies affected teams of publication",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Compliance Officer",
+            description="Confirms procedures and training updated",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Records Management",
+            description="Archives follow-up actions and closes workflow",
+            order=3,
+        ),
+    ],
+    # Legacy aliases kept for backward compatibility with existing projects
     "branch-coordination": [
         ApprovalStep(
             role="SME",
@@ -83,6 +277,23 @@ DEFAULT_WORKFLOW_TEMPLATES: Dict[str, List[ApprovalStep]] = {
             role="Technical Writing Manager",
             description="Technical Writing Manager final approval",
             order=6,
+        ),
+    ],
+    "fast-track-coordination": [
+        ApprovalStep(
+            role="Writer",
+            description="Drafts minor or urgent changes",
+            order=1,
+        ),
+        ApprovalStep(
+            role="SME",
+            description="Subject Matter Expert review",
+            order=2,
+        ),
+        ApprovalStep(
+            role="Senior Technical Writer",
+            description="Final review and approval",
+            order=3,
         ),
     ],
     "pre-coordination": [
@@ -117,50 +328,6 @@ DEFAULT_WORKFLOW_TEMPLATES: Dict[str, List[ApprovalStep]] = {
             role="Writer",
             description="Creates annotated outline for downstream reviewers",
             order=3,
-        ),
-    ],
-    "fast-track-coordination": [
-        ApprovalStep(
-            role="Writer",
-            description="Drafts minor or urgent changes",
-            order=1,
-        ),
-        ApprovalStep(
-            role="SME",
-            description="Subject Matter Expert review",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Senior Technical Writer",
-            description="Final review and approval",
-            order=3,
-        ),
-    ],
-    "multi-branch-coordination": [
-        ApprovalStep(
-            role="SME (Branch A)",
-            description="Branch A SME review",
-            order=1,
-        ),
-        ApprovalStep(
-            role="SME (Branch B)",
-            description="Branch B SME review",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Branch Managers (A and B)",
-            description="Management approval from both branches",
-            order=3,
-        ),
-        ApprovalStep(
-            role="Senior Technical Writer",
-            description="Senior Technical Writer review",
-            order=4,
-        ),
-        ApprovalStep(
-            role="Technical Writing Manager",
-            description="Technical Writing Manager final approval",
-            order=5,
         ),
     ],
     "external-partner-coordination": [
@@ -224,6 +391,39 @@ DEFAULT_WORKFLOW_TEMPLATES: Dict[str, List[ApprovalStep]] = {
             order=3,
         ),
     ],
+}
+
+
+DEFAULT_WORKFLOW_DESCRIPTIONS: Dict[str, str] = {
+    "standard-document-review": (
+        "Default review path for most documents before publication. Includes technical, editorial, "
+        "manager, legal/policy, approval, and publication-readiness steps as needed."
+    ),
+    "pre-coordination-review": (
+        "Informal early review to resolve major issues before formal coordination begins."
+    ),
+    "fast-track-review": (
+        "Expedited path with fewer reviewers, shorter due dates, and documented justification."
+    ),
+    "single-branch-coordination": (
+        "Review path limited to one branch or office."
+    ),
+    "multi-branch-coordination": (
+        "Review path requiring multiple branches, offices, or specialties."
+    ),
+    "external-coordination": (
+        "Review path involving outside organizations or external partners."
+    ),
+    "requirements-intake-review": (
+        "Used when the main work is collecting inputs, requirements, data, or source material "
+        "before review can begin."
+    ),
+    "publication-readiness-and-distribution": (
+        "Final publication package, distribution, archive, and notification workflow."
+    ),
+    "post-publication-implementation": (
+        "Tracks follow-up after publication."
+    ),
 }
 
 
@@ -295,7 +495,7 @@ def _build_default_template_definitions() -> Dict[str, WorkflowTemplateModel]:
         defaults[name] = WorkflowTemplateModel(
             id=name,
             name=name,
-            description=None,
+            description=DEFAULT_WORKFLOW_DESCRIPTIONS.get(name),
             steps=[
                 WorkflowTemplateStep(
                     role=step.role,

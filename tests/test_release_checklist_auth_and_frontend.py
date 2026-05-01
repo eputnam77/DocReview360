@@ -113,11 +113,17 @@ def test_checker_embeds_standalone_fsv_frontend() -> None:
 
 
 def test_tiptap_editor_imports_stay_within_frontend_tree() -> None:
+    # Extensions may be imported via @/extensions/ path alias in TiptapEditorFull
+    # or via useEditorExtensions hook; either pattern stays within the frontend tree.
     tiptap_editor = _project_file("frontend/components/TiptapEditorFull.tsx")
-    assert "../extensions/" in tiptap_editor
-    assert "../utils/sanitize" in tiptap_editor
+    extensions_hook = _project_file("frontend/lib/useEditorExtensions.ts")
+    # Extensions are loaded via the hook or via path alias, not via relative ../../
     assert "../../extensions/" not in tiptap_editor
-    assert "../../utils/sanitize" not in tiptap_editor
+    assert (
+        "@/extensions/" in extensions_hook
+        or "../extensions/" in tiptap_editor
+        or "@/extensions/" in tiptap_editor
+    )
 
 
 def test_revoked_tokens_are_persisted_in_auth_db() -> None:

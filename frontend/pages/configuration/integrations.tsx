@@ -40,12 +40,15 @@ const integrationOptions = {
     { label: "CKEditor 5", value: "ckeditor5" },
     { label: "TipTap", value: "tiptap" },
     { label: "OnlyOffice", value: "onlyoffice" },
+    { label: "Oxygen XML Web Author", value: "oxygen" },
     { label: "XML", value: "xml" },
     { label: "Word", value: "word" },
   ],
   signatureProviders: [
     { label: "Documenso", value: "documenso" },
-    { label: "Local", value: "local" },
+    { label: "DocuSign", value: "docusign" },
+    { label: "Initials (in-app)", value: "initials" },
+    { label: "Local (built-in)", value: "local" },
   ],
 } as const;
 

@@ -717,6 +717,7 @@ export default function DocumentTypesPage() {
   const changeDefaultTemplate = async (docTypeId: string, templateId: string) => {
     const docType = types.find((t) => t.id === docTypeId);
     if (!docType) return;
+    const effectiveTemplateId = templateId === "__none__" ? null : templateId || null;
     try {
       const res = await authenticatedFetch(`/document-types/${encodeURIComponent(docTypeId)}`, {
         method: "PUT",
@@ -725,7 +726,7 @@ export default function DocumentTypesPage() {
           name: docType.name,
           template: docType.template || `<h1>${docType.name}</h1>`,
           workflow: docType.phases || [],
-          default_workflow_template_id: templateId || null,
+          default_workflow_template_id: effectiveTemplateId,
         }),
       });
       if (!res.ok) throw new Error("Failed to update default workflow");
@@ -898,14 +899,14 @@ export default function DocumentTypesPage() {
                 </TableCell>
                 <TableCell className="min-w-[180px]">
                   <Select
-                    value={t.default_workflow_template_id || ""}
+                    value={t.default_workflow_template_id || "__none__"}
                     onValueChange={(val) => changeDefaultTemplate(t.id, val)}
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {templates.map((tpl) => (
                         <SelectItem key={tpl.id} value={tpl.id}>
                           {tpl.name}
