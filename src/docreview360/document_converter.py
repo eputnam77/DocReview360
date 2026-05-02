@@ -126,6 +126,40 @@ def _text_to_docx_bytes(text: str, title: str = "Document") -> bytes:
     return buf.getvalue()
 
 
+def _text_to_pdf_bytes(text: str, title: str = "Document") -> bytes:
+    """Convert plain text or Markdown-heading text to a PDF binary."""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+    styles = getSampleStyleSheet()
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, title=title)
+    story: list[Paragraph | Spacer] = []
+
+    for raw_line in text.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            story.append(Spacer(1, 8))
+            continue
+        heading_match = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+        if heading_match:
+            level = min(len(heading_match.group(1)), 3)
+            style = styles[f"Heading{level}"]
+            content = heading_match.group(2)
+        else:
+            style = styles["BodyText"]
+            content = stripped
+        story.append(Paragraph(content, style))
+        story.append(Spacer(1, 6))
+
+    if not story:
+        story.append(Paragraph(title, styles["Title"]))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
 def _pdf_to_text(data: bytes) -> str:
     """Extract text from a PDF binary using pypdf when available."""
     try:
@@ -394,8 +428,7 @@ def convert_document_content(
     ``.rtf``, ``.odt``, ``.epub``, ``.tex``.
 
     Supported output formats: ``markdown``/``md``, ``html``, ``txt``/``text``,
-    ``docx``/``word``, ``confluence``.  PDF output is not yet supported —
-    requests for PDF output return plain text with a warning.
+    ``docx``/``word``, ``pdf``, ``confluence``.
     """
     fmt = output_format.lower().strip()
     if fmt not in SUPPORTED_OUTPUT_FORMATS:
@@ -481,6 +514,11 @@ def convert_document_content(
         out_ext = ".docx"
         media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
+    elif fmt == "pdf":
+        out_content = _text_to_pdf_bytes(extracted, title=stem)
+        out_ext = ".pdf"
+        media = "application/pdf"
+
     elif fmt == "confluence":
         # Use the original HTML when available; otherwise convert from source first
         if _src_raw_html is not None:
@@ -492,11 +530,8 @@ def convert_document_content(
         out_content = convert_to_confluence(intermediate_html)
         out_ext, media = ".txt", "text/plain; charset=utf-8"
 
-    else:
-        # PDF output not yet implemented
-        _logger.warning("PDF output is not yet supported; returning plain text instead")
-        out_content = extracted
-        out_ext, media = ".txt", "text/plain; charset=utf-8"
+    else:  # pragma: no cover - fmt is already validated against SUPPORTED_OUTPUT_FORMATS.
+        raise ValueError(f"Unsupported output format {output_format!r}")
 
     return ConversionResult(
         content=out_content,

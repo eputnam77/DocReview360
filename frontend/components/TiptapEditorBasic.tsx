@@ -2,6 +2,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ReviewerComments from "@/components/ReviewerComments";
@@ -30,7 +31,7 @@ function ToolbarButton({
   disabled = false,
   active = false,
 }: {
-  label: string;
+  label: ReactNode;
   title?: string;
   onClick: () => void;
   disabled?: boolean;
@@ -304,13 +305,13 @@ export default function TiptapEditorBasic() {
                 />
                 <ToolbarDivider />
                 <ToolbarButton
-                  label={<strong>B</strong> as unknown as string}
+                  label={<strong>B</strong>}
                   title="Bold"
                   active={editor.isActive("bold")}
                   onClick={() => editor.chain().focus().toggleBold().run()}
                 />
                 <ToolbarButton
-                  label={<em>I</em> as unknown as string}
+                  label={<em>I</em>}
                   title="Italic"
                   active={editor.isActive("italic")}
                   onClick={() => editor.chain().focus().toggleItalic().run()}

@@ -3,6 +3,14 @@ import { authenticatedFetch } from "@/lib/api";
 
 const FALLBACK_FILE = "sample.pdf";
 
+export function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) {
+    return null;
+  }
+  const match = header.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export default function ConverterPage() {
   const [result, setResult] = useState<string | null>(null);
 
@@ -15,14 +23,25 @@ export default function ConverterPage() {
         body: formData,
       });
       if (res.ok) {
-        const data = await res.json();
-        setResult(data.filename);
+        const filename =
+          filenameFromContentDisposition(res.headers.get("content-disposition")) ??
+          FALLBACK_FILE;
+        const blob = await res.blob();
+        if (typeof window !== "undefined") {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          link.click();
+          window.URL.revokeObjectURL(url);
+        }
+        setResult(filename);
       } else {
-          setResult(FALLBACK_FILE);
-      }
-      } catch {
         setResult(FALLBACK_FILE);
       }
+    } catch {
+      setResult(FALLBACK_FILE);
+    }
   };
 
   return (

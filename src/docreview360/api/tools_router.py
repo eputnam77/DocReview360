@@ -334,7 +334,8 @@ async def convert_tool_endpoint(
 
     Accepts DOCX, Markdown, HTML, plain text, or PDF uploads and returns the
     converted file as a downloadable response.  Supported output formats:
-    ``markdown``, ``html``, ``txt``, ``docx``, ``word``.
+    ``markdown``, ``html``, ``txt``, ``docx``, ``word``, ``pdf``, and
+    ``confluence``.
     """
     data = await file.read()
     source_filename = file.filename or "document.txt"
@@ -723,7 +724,12 @@ async def get_share_link(
     raise HTTPException(status_code=404, detail="Share link not found")
 
 
-@router.delete("/share-links/{link_id}", status_code=204, response_class=Response, response_model=None)
+@router.delete(
+    "/share-links/{link_id}",
+    status_code=204,
+    response_class=Response,
+    response_model=None,
+)
 async def revoke_share_link(
     link_id: str,
     current_user: auth.User = Depends(auth.get_current_user),
@@ -963,7 +969,8 @@ async def document_quality_upload(
             "category": "acronym",
             "severity": "warning",
             "message": (
-                f"Acronym '{issue.acronym}' appears {issue.occurrences} time(s) without a definition"
+                f"Acronym '{issue.acronym}' appears {issue.occurrences} time(s) "
+                "without a definition"
             ),
             "location": None,
         })

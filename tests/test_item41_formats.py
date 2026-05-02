@@ -283,3 +283,24 @@ class TestConfluenceExport:
         """Unsupported output format raises ValueError."""
         with pytest.raises(ValueError, match="Unsupported output format"):
             convert_document_content(b"text", "doc.txt", "xlsxyz")
+
+
+class TestPdfExport:
+    def test_convert_document_content_pdf_output_returns_pdf_bytes(self) -> None:
+        """PDF output returns a downloadable PDF instead of falling back to text."""
+        result = convert_document_content(b"# Title\n\nBody text", "sample.md", "pdf")
+
+        assert result.output_format == "pdf"
+        assert result.filename == "sample_converted.pdf"
+        assert result.media_type == "application/pdf"
+        assert isinstance(result.content, bytes)
+        assert result.content.startswith(b"%PDF")
+
+    def test_pdf_output_does_not_log_unsupported_warning(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """PDF output is implemented and should not emit the old unsupported warning."""
+        convert_document_content(b"Body text", "sample.txt", "pdf")
+
+        assert "PDF output is not yet supported" not in caplog.text

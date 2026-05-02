@@ -10,7 +10,7 @@ cms: none
 database: postgres
 database_url: postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360
 debug: false
-editor: tiptap
+editor: ckeditor5
 filename_template: '{id}'
 host: 127.0.0.1
 inactivity_timeout_minutes: 30

@@ -481,6 +481,11 @@ describe("ProjectDetailsPage", () => {
     renderPage();
 
     await waitFor(() => {
+      expect(screen.getByRole("button", { name: /project details/i })).toBeDefined();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /project details/i }));
+
+    await waitFor(() => {
       expect(screen.getByTestId("project-lifecycle-reviewed").className).toContain("ring-1");
     });
     expect(screen.getByTestId("project-lifecycle-in_review").className).toContain("bg-green-100");

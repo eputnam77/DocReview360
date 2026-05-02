@@ -25,10 +25,12 @@ import {
   buildDocumentEditorUrl,
   buildProjectEditorUrl,
 } from "@/lib/editorRouting";
+import { resolveStarterContent } from "@/lib/starterContent";
 import { useProjectDocuments } from "@/lib/useDocuments";
 import { useEditorSave } from "@/lib/useEditorSave";
 import { useOfflineSync } from "@/lib/useOfflineSync";
 import { useUserStore } from "@/state/user";
+import sanitizeHtml from "@/utils/sanitize";
 
 type RevisionMeta = {
   id: string;
@@ -36,7 +38,7 @@ type RevisionMeta = {
   timestamp?: string;
 };
 
-const CKEDITOR_CONFIG: Record<string, unknown> = {
+export const CKEDITOR_CONFIG: Record<string, unknown> = {
   licenseKey: "GPL",
   plugins: [
     Essentials,
@@ -71,6 +73,29 @@ const CKEDITOR_CONFIG: Record<string, unknown> = {
     contentToolbar: ["tableColumn", "tableRow", "mergeTableCells"],
   },
 };
+
+type EditorDocumentPayload = {
+  content?: unknown;
+  version_number?: unknown;
+  history?: unknown[];
+  project?: unknown;
+  doc_type?: unknown;
+  docType?: unknown;
+  type?: unknown;
+};
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+export function isBlankEditorContent(html: string): boolean {
+  const stripped = html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped.length === 0;
+}
 
 function formatTimestamp(value?: string): string {
   if (!value) {
@@ -127,20 +152,64 @@ export default function CKEditorPrimary() {
 
     api.fetchDocument(resolvedDocId)
       .then((response) => (response.ok ? response.json() : null))
-      .then((document) => {
+      .then(async (document: EditorDocumentPayload | null) => {
         if (!document || cancelled) {
           if (!cancelled && !document) {
             setLoadError("Unable to load this document.");
           }
           return;
         }
-        const nextData =
+        let nextData =
           typeof document.content === "string" && document.content.trim().length > 0
             ? document.content
             : "<p></p>";
+        let contentSource = "document";
+        const sourceProjectId = projectId ?? readString(document.project);
+        if (isBlankEditorContent(nextData) && sourceProjectId) {
+          try {
+            const projectResponse = await api.fetchProject(sourceProjectId);
+            const project = projectResponse.ok ? await projectResponse.json() : null;
+            const docType =
+              readString(project?.doc_type) ??
+              readString(project?.docType) ??
+              readString(project?.type) ??
+              readString(document.doc_type) ??
+              readString(document.docType) ??
+              readString(document.type);
+            if (docType) {
+              const templatesResponse = await api.fetchTemplates();
+              const templates = templatesResponse.ok ? await templatesResponse.json() : [];
+              const starter = await resolveStarterContent(
+                docType,
+                (dt) => api.fetchStarterContent(dt),
+                sanitizeHtml,
+                Array.isArray(templates) ? templates : [],
+              );
+              if (starter.source === "starter") {
+                nextData = starter.html;
+                contentSource = "starter";
+              } else if (starter.source === "template") {
+                const templateResponse = await api.fetchTemplate(starter.templateId);
+                if (templateResponse.ok) {
+                  const template = await templateResponse.json();
+                  const sanitized = sanitizeHtml(template?.content || "");
+                  if (sanitized.trim().length > 0) {
+                    nextData = sanitized;
+                    contentSource = `template:${starter.templateId}`;
+                  }
+                }
+              }
+            }
+          } catch {
+            nextData = "<p></p>";
+          }
+        }
+        if (cancelled) {
+          return;
+        }
         setEditorData(nextData);
         setEditorVersionKey(
-          `${resolvedDocId}:${document.version_number ?? document.history?.length ?? "current"}`,
+          `${resolvedDocId}:${document.version_number ?? document.history?.length ?? "current"}:${contentSource}`,
         );
       })
       .catch(() => {

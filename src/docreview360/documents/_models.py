@@ -35,7 +35,7 @@ class DocumentModel(BaseModel):
     id: str
     content: str
     history: List[DocumentRevision] = Field(default_factory=list)
-    editor: str = "tiptap"
+    editor: str = "ckeditor5"
     number: int | None = None
     project: Optional[str] = None
     user: Optional[str] = None

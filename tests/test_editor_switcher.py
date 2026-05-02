@@ -1,4 +1,5 @@
 import pytest
+
 from docreview360.documents import DocumentModel, import_document, set_document_editor
 from docreview360.editor_switcher import render_editor
 
@@ -6,7 +7,7 @@ from docreview360.editor_switcher import render_editor
 def test_render_default_editor() -> None:
     doc = DocumentModel(id="1", content="hi")
     html = render_editor(doc)
-    assert "tiptap-editor" in html
+    assert "ckeditor5-editor" in html
 
 
 def test_render_ckeditor5_editor() -> None:
