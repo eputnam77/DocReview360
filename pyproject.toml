@@ -93,7 +93,7 @@ fedstylevalidator = ["fedstylevalidator>=0.1.1"]
 tokenizer = ["tiktoken>=0.5.1"]
 
 # PostgreSQL support (LGPL-3.0 — kept optional so the core package is MIT-clean)
-postgres = ["psycopg[binary]==3.3.3"]
+postgres = ["psycopg[binary]==3.3.4"]
 
 # LDAP/Active Directory authentication (Item 37)
 ldap = ["ldap3>=2.9"]
