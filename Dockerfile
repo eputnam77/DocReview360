@@ -13,7 +13,7 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # Stage 2: install Python runtime dependencies
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS python-deps
+FROM python:3.14-slim AS python-deps
 
 WORKDIR /build
 COPY pyproject.toml ./
@@ -24,7 +24,7 @@ RUN pip install --upgrade pip --no-cache-dir && \
 # ---------------------------------------------------------------------------
 # Stage 3: runtime image — non-root user, minimal surface
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ARG VERSION=0.1.2
 ARG VCS_REF=unknown
