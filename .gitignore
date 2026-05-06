@@ -103,4 +103,18 @@ frontend/pages__backup_js_*
 # Developer notes and internal scripts
 push-after-fix.ps1
 tatus
-.claude/worktrees/
+
+# Claude Code tooling (internal, not needed for contributors)
+.claude/
+.claudeignore
+
+# Internal dev planning docs (PRD, ADRs, agent notes)
+.dev/
+
+# Internal backup tool config
+.backupignore
+
+# Internal notes and checklists (not for public)
+ai-notes.md
+RELEASE_CHECKLIST.md
+SECURITY_REVIEW.md
