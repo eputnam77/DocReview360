@@ -16,7 +16,7 @@ services:
     ports:
       - "9200:9200"
   redis:
-    image: redis:7
+    image: redis:8
     ports:
       - "6379:6379"
   web:

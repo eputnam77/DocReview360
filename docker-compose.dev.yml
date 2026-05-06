@@ -24,7 +24,7 @@ services:
   # Set CELERY_BROKER_URL=memory:// in the `web` service to skip Redis entirely.
   # ---------------------------------------------------------------------------
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     ports:
       - "6379:6379"
     healthcheck:
