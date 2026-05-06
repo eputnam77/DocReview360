@@ -5,6 +5,9 @@ build/
 
 # Environment
 .env
+.env.*
+!.env.example
+!frontend/.env.example
 .venv/
 venv/
 
@@ -45,14 +48,18 @@ Thumbs.db
 *.db
 
 # Frontend build
+node_modules/
 frontend/node_modules/
 frontend/build/
 .hypothesis/
 frontend/.next/
+frontend/.env.local
+frontend/tsconfig.tsbuildinfo
 uv.lock
 
 # Archive storage (generated content)
 archive_store/
+artifacts/
 
 # Runtime and test temp (logs, pytest cache, checker downloads)
 .tmp/
@@ -104,3 +111,4 @@ frontend/pages__backup_js_*
 push-after-fix.ps1
 tatus
 .claude/worktrees/
+.claude/settings.local.json

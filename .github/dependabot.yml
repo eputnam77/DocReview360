@@ -39,6 +39,22 @@ updates:
           - "cypress*"
           - "playwright*"
 
+  # Docker base images in Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  # Service images in Docker Compose manifests
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

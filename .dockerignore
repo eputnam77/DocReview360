@@ -27,6 +27,8 @@ __pycache__/
 # Local tooling caches
 .venv/
 venv/
+.env
+.env.*
 .mypy_cache/
 .ruff_cache/
 .pyre/

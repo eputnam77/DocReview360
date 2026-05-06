@@ -18,7 +18,7 @@ jobs:
       #   - GITLAB_NAMESPACE: GitLab user/group namespace. Defaults to github.repository_owner when unset.
       #   - CODEBERG_NAMESPACE: Codeberg user/org namespace. Defaults to github.repository_owner when unset.
       - name: Check out repository (full history)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
