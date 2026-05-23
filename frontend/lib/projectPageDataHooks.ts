@@ -219,15 +219,15 @@ export function useProjectDocumentScores(id: string | undefined) {
   });
 }
 
-export function useProjectVersionHistory(id: string | undefined) {
+export function useProjectVersionHistory(documentId: string | undefined) {
   return useQuery<VersionEntry[]>({
-    queryKey: ["document-versions", id],
+    queryKey: ["document-versions", documentId],
     queryFn: async () => {
-      if (!id) return [];
-      const res = await authenticatedFetch(`/documents/${id}/versions`);
+      if (!documentId) return [];
+      const res = await authenticatedFetch(`/documents/${documentId}/versions`);
       return res.ok ? res.json() : [];
     },
-    enabled: !!id,
+    enabled: !!documentId,
     staleTime: 60_000,
   });
 }

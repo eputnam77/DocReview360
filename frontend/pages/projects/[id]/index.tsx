@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/useProject";
 import { usePhases } from "@/lib/usePhases";
 import { useApprovals } from "@/lib/useApprovals";
+import { useComments } from "@/lib/useComments";
+import { useProjectDocuments } from "@/lib/useDocuments";
 import { useProjectReviewers } from "@/lib/useProjectReviewers";
 import { useReviewSummary } from "@/lib/useReviewSummary";
 import { ApprovalsTab, AuditTab, FeedbackTab, LifecycleTab, NaraTab, SlaTab } from "@/components/project";
@@ -119,6 +121,13 @@ const PROJECT_LIFECYCLE_STATUSES = [
   "closed",
 ] as const;
 
+function formatDisplayLabel(value?: string | null): string {
+  if (!value) return "";
+  return value
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 // ----------------------------------------------------------------------------
 // 4 ▲ Main component
 // ----------------------------------------------------------------------------
@@ -201,6 +210,9 @@ export default function ProjectDetailsPage() {
   );
   const queryClient = useQueryClient();
   const { reviewers, addReviewer, updateReviewer, removeReviewer } = useProjectReviewers(projectData?.id);
+  const { data: projectDocuments = [] } = useProjectDocuments(projectData?.id);
+  const primaryDocumentId = projectDocuments[0]?.id;
+  const { comments: anchoredComments } = useComments(primaryDocumentId);
 
   // ── Secondary queries + derived state (useProjectPageData) ────────────
   const {
@@ -242,6 +254,7 @@ export default function ProjectDetailsPage() {
     username,
     approvals,
     approvalsForPhase,
+    primaryDocumentId,
     project,
     workflow,
     reviewCountData,
@@ -259,6 +272,9 @@ export default function ProjectDetailsPage() {
   );
 
   const requiredApprovalCount = requiredApprovalsForPhase.length;
+  const openAnchoredComments = anchoredComments.filter((comment) => comment.status === "open").length;
+  const totalOpenComments = (feedbackProgress?.open ?? 0) + openAnchoredComments;
+  const totalCommentItems = (feedbackProgress?.total ?? 0) + anchoredComments.length;
 
   // ── Sync primary queries → local state ───────────────────────────────
   useEffect(() => {
@@ -637,7 +653,7 @@ export default function ProjectDetailsPage() {
                   You have been asked to review this project.
                 </p>
                 <p className="text-sm text-indigo-600 dark:text-indigo-400">
-                  Status: <strong>{ma.status.replace(/_/g, " ")}</strong>
+                  Status: <strong>{formatDisplayLabel(ma.status)}</strong>
                   {ma.due_date && ` · Due: ${new Date(ma.due_date).toLocaleDateString()}`}
                 </p>
               </div>
@@ -850,7 +866,7 @@ export default function ProjectDetailsPage() {
                                     "bg-gray-100 text-gray-400",
                                   )}
                                 >
-                                  {s.replace(/_/g, " ")}
+                                  {formatDisplayLabel(s)}
                                 </span>
                               );
                             })}
@@ -879,7 +895,7 @@ export default function ProjectDetailsPage() {
                                     variant={s === "published" || s === "submitted_to_records" || s === "closed" ? "default" : "outline"}
                                     onClick={() => handleLifecycleTransition(s)}
                                   >
-                                    → {s.replace(/_/g, " ")}
+                                    → {formatDisplayLabel(s)}
                                   </Button>
                                 ))}
                               </div>
@@ -1261,7 +1277,7 @@ export default function ProjectDetailsPage() {
                           {signaturesPreviewOpen ? (
                             <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
                           ) : (
-                            <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
+                            <><PanelRightOpen className="w-4 h-4 mr-1" /> Show preview</>
                           )}
                         </Button>
                         {canEdit && assignments.filter((a) => !["replaced","concurred","signed","declined","non_concurred"].includes(a.status)).length > 0 && (
@@ -1403,7 +1419,7 @@ export default function ProjectDetailsPage() {
                               "px-2 py-0.5 rounded text-xs font-semibold",
                               statusColors[a.status] ?? "bg-gray-100 text-gray-600",
                             )}>
-                              {a.status.replace(/_/g, " ")}
+                              {formatDisplayLabel(a.status)}
                             </span>
                           </TableCell>
                           <TableCell className="text-xs text-gray-500">
@@ -1513,7 +1529,7 @@ export default function ProjectDetailsPage() {
         {/* SIGNATURES SECTION — Phase 4/6 */}
         {false && (
           <>
-        <section id="signatures" className="space-y-6">
+        <section id="legacy-signatures" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <CheckCircle2 className="w-5 h-5" /> Reviewer Sign-off &amp; Concurrence
@@ -1528,7 +1544,7 @@ export default function ProjectDetailsPage() {
               {signaturesPreviewOpen ? (
                 <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
               ) : (
-                <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
+                <><PanelRightOpen className="w-4 h-4 mr-1" /> Show preview</>
               )}
             </Button>
           </div>
@@ -1611,7 +1627,7 @@ export default function ProjectDetailsPage() {
                           "px-2 py-0.5 rounded text-xs font-semibold",
                           statusColors[a.status] ?? "bg-gray-100 text-gray-600",
                         )}>
-                          {a.status.replace(/_/g, " ")}
+                          {formatDisplayLabel(a.status)}
                         </span>
 
                         {a.signed_at && (
@@ -1701,7 +1717,7 @@ export default function ProjectDetailsPage() {
           )}
         </section>
 
-        <section id="approvals" className="space-y-6">
+        <section id="legacy-approvals" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <Users2 className="w-5 h-5" /> Approvals
@@ -1812,7 +1828,7 @@ export default function ProjectDetailsPage() {
                     </div>
                     <div className="flex items-center gap-3 text-sm text-gray-500">
                       <span>
-                        {feedbackProgress?.open ?? 0} open / {feedbackProgress?.total ?? 0} total
+                        {totalOpenComments} open / {totalCommentItems} total
                       </span>
                       {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </div>
@@ -1842,16 +1858,8 @@ export default function ProjectDetailsPage() {
                           {feedbackPreviewOpen ? (
                             <><PanelRightClose className="w-4 h-4 mr-1" /> Hide Preview</>
                           ) : (
-                            <><PanelRightOpen className="w-4 h-4 mr-1" /> Preview Doc</>
+                            <><PanelRightOpen className="w-4 h-4 mr-1" /> Show preview</>
                           )}
-                        </Button>
-                        <Button asChild variant="outline" size="sm">
-                          <Link
-                            href={`/projects/${safeId}#feedback`}
-                            title="Jump to the Feedback tab for this project"
-                          >
-                            Open review workspace
-                          </Link>
                         </Button>
                       </div>
                     </div>
@@ -1920,7 +1928,7 @@ export default function ProjectDetailsPage() {
                           : "bg-white text-gray-600 border-gray-300 hover:border-indigo-400",
                       )}
                     >
-                      {icons[t]} {t.replace(/_/g, " ")}
+                      {icons[t]} {formatDisplayLabel(t)}
                     </button>
                   );
                 })}
@@ -1928,7 +1936,7 @@ export default function ProjectDetailsPage() {
               <div className="flex gap-2">
                 <input
                   className="flex-1 rounded border px-3 py-2 text-sm"
-                  placeholder={`Add a ${newFeedbackType.replace(/_/g, " ")}…`}
+                  placeholder={`Add a ${formatDisplayLabel(newFeedbackType).toLowerCase()}...`}
                   value={newFeedbackText}
                   onChange={(e) => setNewFeedbackText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePostFeedback(); } }}
@@ -1971,7 +1979,7 @@ export default function ProjectDetailsPage() {
                     : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300",
                 )}
               >
-                {t === "all" ? "All types" : t.replace(/_/g, " ")}
+                {t === "all" ? "All types" : formatDisplayLabel(t)}
               </button>
             ))}
             <div className="ml-auto flex gap-2">
@@ -2043,7 +2051,7 @@ export default function ProjectDetailsPage() {
                                 {item.status}
                               </span>
                               <span className="text-xs text-gray-400">
-                                {item.feedback_type.replace(/_/g, " ")}
+                                {formatDisplayLabel(item.feedback_type)}
                               </span>
                               {item.phase && (
                                 <span className="text-xs text-gray-400 italic">{item.phase}</span>
@@ -2207,11 +2215,17 @@ export default function ProjectDetailsPage() {
                           = general reviewer input (see comments above).
                         </span>
                       </p>
-                      <ReviewerComments
-                        docId={project.id}
-                        currentUser={username ?? ""}
-                        canDispose={canEdit}
-                      />
+                      {primaryDocumentId ? (
+                        <ReviewerComments
+                          docId={primaryDocumentId}
+                          currentUser={username ?? ""}
+                          canDispose={canEdit}
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-400 py-2">
+                          No document record is attached to this project yet.
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 </Transition>
@@ -2426,7 +2440,7 @@ export default function ProjectDetailsPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Lifecycle Status</p>
-                    <p className="font-semibold mt-0.5">{lifecycleRecord.status.replace(/_/g, " ")}</p>
+                    <p className="font-semibold mt-0.5">{formatDisplayLabel(lifecycleRecord.status)}</p>
                   </div>
                   {lifecycleRecord.published_ref && (
                     <div>

@@ -96,6 +96,13 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
+class DocumentUpdateRequest(BaseModel):
+    """Minimal payload accepted by the document editor save path."""
+
+    content: str
+    priority: int | None = None
+
+
 def _is_admin_user(user: auth.User) -> bool:
     return has_role(user.username, "admin")
 
@@ -673,7 +680,7 @@ async def verify_signature_endpoint(
 @router.put("/documents/{doc_id}", response_model=DocumentModel)
 async def update_document_endpoint(
     doc_id: str,
-    document: DocumentModel,
+    document: DocumentUpdateRequest,
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> DocumentModel:
     """Update a document's content and save the previous version."""

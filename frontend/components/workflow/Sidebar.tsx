@@ -1,7 +1,7 @@
 // frontend/components/workflow/Sidebar.tsx
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkle,
   Ticket,
@@ -50,6 +50,7 @@ const DEFAULT_SUPPORT_URL = "/docs/";
 
 export default function Sidebar() {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const [logoFailed, setLogoFailed] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -127,6 +128,11 @@ export default function Sidebar() {
   const NAV = [...STATIC_NAV, dashboardNav];
 
   const showLogo = Boolean(brandingLogoUrl) && !logoFailed;
+  const isActiveRoute = (href: string) => {
+    if (href === "/") return pathname === href;
+    const pathOnly = href.split("#", 1)[0];
+    return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
+  };
 
   return (
     <aside
@@ -157,7 +163,7 @@ export default function Sidebar() {
 
       <nav className="flex flex-col gap-1 px-2">
         {NAV.map((item) => (
-          <NavItem key={item.label} {...item} />
+          <NavItem key={item.label} {...item} active={isActiveRoute(item.href)} />
         ))}
       </nav>
 
@@ -165,7 +171,7 @@ export default function Sidebar() {
 
       <div className="space-y-1 px-2">
         {SECONDARY.map((item) => (
-          <NavItem key={item.label} {...item} />
+          <NavItem key={item.label} {...item} active={isActiveRoute(item.href)} />
         ))}
 
         {/* Collapsible Help & Support section */}
@@ -191,26 +197,31 @@ export default function Sidebar() {
               label="Documentation"
               href={docsUrl}
               external={docsUrl.startsWith("http")}
+              active={!docsUrl.startsWith("http") && isActiveRoute(docsUrl)}
             />
             <NavItem
               icon={<Rocket className="h-4 w-4" />}
               label="Getting Started"
               href="/help#getting-started"
+              active={pathname === "/help"}
             />
             <NavItem
               icon={<Keyboard className="h-4 w-4" />}
               label="Keyboard Shortcuts"
               href="/help#shortcuts"
+              active={pathname === "/help"}
             />
             <NavItem
               icon={<Code2 className="h-4 w-4" />}
               label="API Reference"
               href="/api-docs"
+              active={isActiveRoute("/api-docs")}
             />
             <NavItem
               icon={<Info className="h-4 w-4" />}
               label="About"
               href="/about"
+              active={isActiveRoute("/about")}
             />
             {supportUrl && (
               <NavItem
@@ -218,6 +229,7 @@ export default function Sidebar() {
                 label="Contact Support"
                 href={supportUrl}
                 external={supportUrl.startsWith("http")}
+                active={!supportUrl.startsWith("http") && isActiveRoute(supportUrl)}
               />
             )}
           </div>
@@ -227,7 +239,7 @@ export default function Sidebar() {
       <hr className="my-4 border-border" />
 
       <div className="px-2">
-        <NavItem {...PROFILE} />
+        <NavItem {...PROFILE} active={isActiveRoute(PROFILE.href)} />
       </div>
 
       {isAdmin && (
@@ -238,6 +250,7 @@ export default function Sidebar() {
               icon={<Settings className="h-4 w-4" />}
               label="Configuration"
               href="/configuration"
+              active={isActiveRoute("/configuration")}
             />
           </div>
         </>

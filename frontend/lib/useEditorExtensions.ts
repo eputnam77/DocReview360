@@ -97,6 +97,7 @@ export function useEditorExtensions({
   const [commentMarkEnabled] = useState(true);
   const [trackChangesEnabled] = useState(true);
   const [aiSuggestEnabled, setAiSuggestEnabled] = useState(false);
+  const [preferenceProjectId, setPreferenceProjectId] = useState<string | undefined>();
   const collabDocIdRef = useRef<string | null>(null);
   const persistPreferencesRef = useRef<
     (overrides?: Partial<Record<string, boolean | string>>) => Promise<void>
@@ -106,6 +107,27 @@ export function useEditorExtensions({
   useEffect(() => {
     onSaveStatusRef.current = onSaveStatus;
   }, [onSaveStatus]);
+
+  useEffect(() => {
+    if (!docId) {
+      setPreferenceProjectId(undefined);
+      return;
+    }
+    let cancelled = false;
+    api.fetchDocument(docId)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((document) => {
+        if (cancelled) return;
+        const projectId = typeof document?.project === "string" ? document.project : "";
+        setPreferenceProjectId(projectId.trim() || docId);
+      })
+      .catch(() => {
+        if (!cancelled) setPreferenceProjectId(docId);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, docId]);
 
   const {
     collabEnabled,
@@ -157,7 +179,7 @@ export function useEditorExtensions({
   // ── Preference persistence ─────────────────────────────────────────────────
   const persistPreferences = useCallback(
     async (overrides: Partial<Record<string, boolean | string>> = {}) => {
-      if (!docId) return;
+      if (!preferenceProjectId) return;
       const prefs = {
         lint: lintEnabled,
         collab: collabEnabled,
@@ -171,13 +193,13 @@ export function useEditorExtensions({
         ...overrides,
       };
       try {
-        await api.savePreferences(docId, prefs);
+        await api.savePreferences(preferenceProjectId, prefs);
       } catch (err) {
         console.error("Failed to save preferences", err);
       }
     },
     [
-      api, docId, lintEnabled, collabEnabled, aiSuggestEnabled,
+      api, preferenceProjectId, lintEnabled, collabEnabled, aiSuggestEnabled,
       headingLockEnabled, indentationEnabled, sectionNodeEnabled,
       markReviewEnabled, watermarkEnabled, watermarkText,
     ],
@@ -187,8 +209,8 @@ export function useEditorExtensions({
 
   // ── Load preferences on mount ──────────────────────────────────────────────
   useEffect(() => {
-    if (!docId) return;
-    api.fetchPreferences(docId)
+    if (!preferenceProjectId) return;
+    api.fetchPreferences(preferenceProjectId)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
@@ -205,7 +227,7 @@ export function useEditorExtensions({
         }
       })
       .catch(() => undefined);
-  }, [api, docId]);
+  }, [api, preferenceProjectId]);
 
   // Keep collaboration provider lifecycle out of render so the extensions
   // memo stays pure and the editor cannot loop on render-phase state writes.

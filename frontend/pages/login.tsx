@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import Link from "next/link";
 import { API, setStoredAccessToken } from "@/lib/api";
 import { useUserStore } from "@/state/user";
@@ -81,10 +82,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center
-                    bg-gradient-to-b from-gray-50 to-gray-100
-                    dark:from-gray-950 dark:to-gray-900">
-      <Card className="w-full max-w-md mx-4 shadow-2xl">
+    <>
+      <Head>
+        <title>Sign in to DocReview360</title>
+      </Head>
+      <div className="min-h-screen flex items-center justify-center
+                      bg-gradient-to-b from-gray-50 to-gray-100
+                      dark:from-gray-950 dark:to-gray-900">
+        <Card className="w-full max-w-md mx-4 shadow-2xl">
         <CardHeader className="space-y-1 text-center">
           <h1 className="sr-only">{t("login.title")}</h1>
           <LogIn className="mx-auto h-10 w-10 text-indigo-600" aria-hidden="true" />
@@ -157,7 +162,8 @@ export default function LoginPage() {
             </p>
           </form>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 }

@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { authenticatedFetch, getStoredAccessToken } from "@/lib/api";
+import { API, authenticatedFetch, getStoredAccessToken } from "@/lib/api";
 import { useUserStore } from "@/state/user";
 import SeverityBadge, { SeverityLegend } from "@/components/SeverityBadge";
 
@@ -33,13 +33,6 @@ function EntityLink({
   type?: string;
   fallback?: string;
 }) {
-  const [exists, setExists] = useState<boolean | null>(null);
-  useEffect(() => {
-    if (!id || !type) return;
-    authenticatedFetch(`/${type}/${id}`, { method: "HEAD" })
-      .then((r) => setExists(r.ok))
-      .catch(() => setExists(false));
-  }, [id, type]);
   if (!id || !type) {
     return fallback ? (
       <span className="text-gray-400">{fallback}</span>
@@ -47,14 +40,31 @@ function EntityLink({
       <span className="text-gray-400">—</span>
     );
   }
-  if (exists === false) {
-    return <span className="text-gray-400">Entity not found</span>;
+  const normalizedType = type.toLowerCase();
+  const href =
+    normalizedType === "project" || normalizedType === "projects"
+      ? `/projects/${encodeURIComponent(id)}`
+      : normalizedType === "approval" || normalizedType === "approvals"
+        ? `/reviews/${encodeURIComponent(id)}`
+        : null;
+  if (!href) {
+    return <span className="text-gray-700">{id}</span>;
   }
   return (
-    <Link href={`/${type}/${id}`} className="text-blue-600 hover:underline">
+    <Link href={href} className="text-blue-600 hover:underline">
       {id}
     </Link>
   );
+}
+
+
+function buildLogsWebSocketUrl(token: string | null): string {
+  const apiUrl = new URL(API, window.location.origin);
+  apiUrl.protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+  apiUrl.pathname = "/ws/logs";
+  apiUrl.search = "";
+  if (token) apiUrl.searchParams.set("token", token);
+  return apiUrl.toString();
 }
 
 
@@ -99,11 +109,8 @@ export default function LiveLogsPage() {
   // Stream new log entries over a WebSocket for real-time updates
   useEffect(() => {
     if (!allowed) return;
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
     const token = getStoredAccessToken();
-    const wsUrl = new URL(`${wsProtocol}://${window.location.host}/ws/logs`);
-    if (token) wsUrl.searchParams.set("token", token);
-    const socket = new WebSocket(wsUrl.toString());
+    const socket = new WebSocket(buildLogsWebSocketUrl(token));
     socket.onmessage = (event) => {
       try {
         const entry = JSON.parse(event.data) as LogEntry;

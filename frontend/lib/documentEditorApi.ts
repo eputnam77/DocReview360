@@ -5,16 +5,16 @@ export function createDocumentEditorApi(
   fetcher: typeof authenticatedFetch = authenticatedFetch,
 ) {
   return {
-    fetchPreferences: (docId: string) =>
-      fetcher(`${API}/projects/${docId}/preferences`),
+    fetchPreferences: (projectId: string) =>
+      fetcher(`${API}/projects/${projectId}/preferences`),
     fetchDocument: (docId: string) =>
       fetcher(`${API}/documents/${docId}`),
     fetchProject: (projectId: string) =>
       fetcher(`${API}/projects/${projectId}`),
     listProjectDocuments: (projectId: string) =>
       fetcher(`${API}/documents?project=${encodeURIComponent(projectId)}`),
-    savePreferences: (docId: string, prefs: Record<string, unknown>) =>
-      fetcher(`${API}/projects/${docId}/preferences`, {
+    savePreferences: (projectId: string, prefs: Record<string, unknown>) =>
+      fetcher(`${API}/projects/${projectId}/preferences`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(prefs),

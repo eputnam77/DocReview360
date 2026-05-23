@@ -165,6 +165,7 @@ interface UseProjectPageDataInput {
   username: string | undefined;
   approvals: Approval[];
   approvalsForPhase: Approval[];
+  primaryDocumentId?: string;
   project: Project | null;
   workflow: Workflow | null;
   reviewCountData: { count?: number } | null | undefined;
@@ -177,6 +178,7 @@ export function useProjectPageData(
     username,
     approvals: _approvals,
     approvalsForPhase,
+    primaryDocumentId,
     project: _project,
     workflow: _workflow,
     reviewCountData: _reviewCountData,
@@ -195,7 +197,7 @@ export function useProjectPageData(
   } = useProjectReviewCycleData(id);
   const { feedbackItemsQuery, feedbackProgressQuery, notifLogQuery } = useProjectFeedbackData(id);
   const qualityScoresQuery = useProjectDocumentScores(id);
-  const versionsQuery = useProjectVersionHistory(id);
+  const versionsQuery = useProjectVersionHistory(primaryDocumentId);
   const fsvEnabledQuery = useProjectFSVStatus();
 
   const { data: userOptions = [] } = userOptionsQuery;

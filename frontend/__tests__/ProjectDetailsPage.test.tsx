@@ -8,6 +8,7 @@ import { Disclosure, Transition } from "@headlessui/react";
 import { useUserStore } from "@/state/user";
 
 const approvalTableSpy = vi.fn();
+const reviewerCommentsSpy = vi.fn();
 const routerPushMock = vi.fn();
 
 // Stable mock data — new objects on every mock call cause useEffect([dep])
@@ -78,6 +79,31 @@ const { defaultLifecycleRecord, signFailure, authenticatedFetchMock } = vi.hoist
     }
     if (url === "/projects/proj-1/feedback") {
       return { ok: true, json: async () => ({ items: [], total: 0, skip: 0, limit: 20 }) };
+    }
+    if (url === "/documents?project=proj-1") {
+      return { ok: true, json: async () => ({ items: [{ id: "doc-1", project: "proj-1", content: "" }] }) };
+    }
+    if (url === "/documents/doc-1/comments") {
+      return {
+        ok: true,
+        json: async () => [
+          {
+            id: "comment-1",
+            document: "doc-1",
+            user: "alice",
+            text: "Anchored editor comment",
+            raw_text: "Anchored editor comment",
+            mentions: [],
+            parent: null,
+            created: "2024-01-01T00:00:00Z",
+            tags: [],
+            status: "open",
+          },
+        ],
+      };
+    }
+    if (url === "/documents/doc-1/versions") {
+      return { ok: true, json: async () => [] };
     }
     if (url === "/projects/proj-1/review-summary") {
       return { ok: true, json: async () => ({ ...reviewSummaryState }) };
@@ -201,7 +227,10 @@ vi.mock("@/components", async () => {
     KpiCards: () => React.createElement("div", null),
     PhaseAdvanceModal: () => React.createElement("div", null),
     WorkflowTimeline: () => React.createElement("div", { "data-testid": "workflow-timeline" }),
-    ReviewerComments: () => React.createElement("div", { "data-testid": "reviewer-comments" }),
+    ReviewerComments: (props: Record<string, unknown>) => {
+      reviewerCommentsSpy(props);
+      return React.createElement("div", { "data-testid": "reviewer-comments" });
+    },
     UserPicker: () => React.createElement("div", { "data-testid": "user-picker" }),
     HelpTooltip: ({ children }: React.PropsWithChildren) => React.createElement("span", null, children),
     SectionErrorBoundary: ({ children }: React.PropsWithChildren) => React.createElement(React.Fragment, null, children),
@@ -380,6 +409,7 @@ async function openApprovalsSection() {
 describe("ProjectDetailsPage", () => {
   beforeEach(() => {
     approvalTableSpy.mockClear();
+    reviewerCommentsSpy.mockClear();
     authenticatedFetchMock.mockClear();
     routerPushMock.mockReset();
     localStorage.clear();
@@ -435,6 +465,31 @@ describe("ProjectDetailsPage", () => {
       reviewerToggle.compareDocumentPosition(commentsToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.queryByTestId("approval-table")).toBeNull();
+  });
+
+  it("uses the project document id for anchored comments and version history", async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(authenticatedFetchMock).toHaveBeenCalledWith("/documents?project=proj-1");
+    });
+    await waitFor(() => {
+      expect(authenticatedFetchMock).toHaveBeenCalledWith("/documents/doc-1/comments");
+    });
+    await waitFor(() => {
+      expect(authenticatedFetchMock).toHaveBeenCalledWith("/documents/doc-1/versions");
+    });
+
+    expect(screen.getByTestId("comments-section-toggle").textContent).toContain("1 open / 1 total");
+
+    fireEvent.click(screen.getByTestId("comments-section-toggle"));
+    fireEvent.click(screen.getByRole("button", { name: /anchored comments/i }));
+
+    await waitFor(() => {
+      expect(reviewerCommentsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ docId: "doc-1", currentUser: "alice" }),
+      );
+    });
   });
 
   it("routes approval signing through the local documenso page when the backend returns an unsupported local path", async () => {

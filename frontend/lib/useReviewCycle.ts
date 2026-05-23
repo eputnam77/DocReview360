@@ -10,10 +10,8 @@ import { useQuery } from "@tanstack/react-query";
 import { authenticatedFetch } from "./api";
 import { useProjectReviewers } from "./useProjectReviewers";
 import { useApprovals } from "./useApprovals";
-import { useComments } from "./useComments";
 import { useReviewSummary } from "./useReviewSummary";
 import type { Approval } from "./useApprovals";
-import type { Comment } from "./useComments";
 import type { ReviewSummary } from "@/types";
 
 // -------------------------------------------------------------------------
@@ -97,6 +95,18 @@ export interface ReviewCycleResult {
 export function useReviewCycle(projectId: string): ReviewCycleResult {
   // --- Sub-queries ---
 
+  const projectQuery = useQuery<{ workflow?: string | null }>({
+    queryKey: ["project", projectId, "review-cycle"],
+    enabled: !!projectId,
+    queryFn: async () => {
+      if (!projectId) return {};
+      const res = await authenticatedFetch(`/projects/${projectId}`);
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
   // Reviewer lifecycle assignments (richer than the simple reviewers list)
   const assignmentsQuery = useQuery<ReviewerAssignment[]>({
     queryKey: ["assignments", projectId],
@@ -124,19 +134,9 @@ export function useReviewCycle(projectId: string): ReviewCycleResult {
   // the backend scope them to the project via the assignments endpoint.
   // Since useApprovals requires a workflow id and we may not have it here,
   // we fetch approvals separately via a direct query keyed by projectId.
-  const approvalsQuery = useQuery<Approval[]>({
-    queryKey: ["project-approvals", projectId],
-    enabled: !!projectId,
-    queryFn: async () => {
-      if (!projectId) return [];
-      // Fetch all approvals for this project's workflow(s)
-      const res = await authenticatedFetch(`/approvals?project=${encodeURIComponent(projectId)}`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
-    },
-    staleTime: 30_000,
-  });
+  const workflowId =
+    typeof projectQuery.data?.workflow === "string" ? projectQuery.data.workflow : undefined;
+  const approvalsQuery = useApprovals({ workflow: workflowId });
 
   // Review summary (count of submitted reviews)
   const reviewSummaryQuery = useReviewSummary(projectId);
@@ -160,19 +160,21 @@ export function useReviewCycle(projectId: string): ReviewCycleResult {
   // -------------------------------------------------------------------------
 
   const reviewers = assignmentsQuery.data ?? [];
-  const approvals = approvalsQuery.data ?? [];
+  const approvals = approvalsQuery.approvals ?? [];
   const feedbackItems = feedbackQuery.data ?? [];
   const reviewSummary: ReviewSummary = reviewSummaryQuery.data ?? { count: 0 };
 
   const isLoading =
+    projectQuery.isLoading ||
     assignmentsQuery.isLoading ||
     approvalsQuery.isLoading ||
     reviewSummaryQuery.isLoading ||
     feedbackQuery.isLoading;
 
   const isError =
+    projectQuery.isError ||
     assignmentsQuery.isError ||
-    approvalsQuery.isError ||
+    !!approvalsQuery.error ||
     reviewSummaryQuery.isError ||
     feedbackQuery.isError;
 

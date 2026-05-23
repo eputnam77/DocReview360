@@ -170,9 +170,9 @@ async def set_project_config_endpoint(
     project_id: str,
     key: str,
     payload: ConfigValuePayload,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
-    """Set a project-level config override."""
+    """Set a project-level config override (admin only)."""
     with get_db().orm_session() as db:
         set_project_config(db, project_id, key, payload.value, updated_by=current_user.username)
         return {"project_id": project_id, "key": key, "value": payload.value}
@@ -182,9 +182,9 @@ async def set_project_config_endpoint(
 async def delete_project_config_endpoint(
     project_id: str,
     key: str,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
-    """Delete a project-level config override."""
+    """Delete a project-level config override (admin only)."""
     with get_db().orm_session() as db:
         deleted = delete_project_config(db, project_id, key)
         if not deleted:
@@ -352,9 +352,9 @@ async def set_document_custom_fields(
     doc_id: str,
     org_id: str,
     fields: dict[str, Any],
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
-    """Set custom field values for a document."""
+    """Set custom field values for a document (admin only)."""
     with get_db().orm_session() as db:
         defns = list_field_definitions(db, org_id, entity_type="document")
         defn_map = {d.field_name: d for d in defns}
@@ -393,9 +393,9 @@ async def set_project_custom_fields(
     project_id: str,
     org_id: str,
     fields: dict[str, Any],
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
-    """Set custom field values for a project."""
+    """Set custom field values for a project (admin only)."""
     with get_db().orm_session() as db:
         defns = list_field_definitions(db, org_id, entity_type="project")
         defn_map = {d.field_name: d for d in defns}
