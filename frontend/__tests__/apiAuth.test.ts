@@ -59,6 +59,8 @@ describe("authenticatedFetch auth headers", () => {
 
   it("returns a synthetic 503 response when fetch rejects", async () => {
     vi.mocked(global.fetch).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const response = await authenticatedFetch("/projects");
 
@@ -66,5 +68,11 @@ describe("authenticatedFetch auth headers", () => {
     await expect(response.json()).resolves.toEqual({
       detail: "Network error: unable to reach the API server",
     });
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Network error fetching"),
+    );
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 });

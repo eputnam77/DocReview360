@@ -33,7 +33,7 @@ const mapApproval = (approval: RawApproval): Approval => ({
   reviewer: approval.reviewer,
   email: approval.reviewer,
   // Cast API state string to the known union; unknown values fall back to "pending"
-  state: (["pending", "approved", "overdue", "rejected"].includes(approval.state)
+  state: (["future", "pending", "approved", "overdue", "rejected"].includes(approval.state)
     ? approval.state
     : "pending") as Approval["state"],
   dueAt: approval.due_at ?? new Date().toISOString().split("T")[0],

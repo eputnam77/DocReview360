@@ -796,3 +796,235 @@ Traceback (most recent call last):
   File "C:\dev\DocReview360\src\docreview360\auth\_models.py", line 254, in validate
     raise PasswordPolicyError(" ".join(errors))
 docreview360.auth._models.PasswordPolicyError: Password must differ from the previously used password. Password must differ from your last 1 password(s).
+INFO:docreview360.oidc_client:Revoked oldest session 2559390b-f223-484b-bfff-3192fae1d817 for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 6ef94e4d-736e-4bf6-b980-5ba89c568728 for user 'alice' (concurrent limit 5)
+ERROR:asyncio:Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\ericp\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\ericp\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+INFO:docreview360.oidc_client:Revoked oldest session 6e7efc99-afa4-4e10-99b9-d13b28347a84 for user 'alice' (concurrent limit 5)
+INFO:fedstylevalidator.core.cli:Processing document of type: Other, group_by: category
+INFO:fedstylevalidator.core.utils.terminology_utils:Initialized TerminologyManager
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.readability_checks:Initialized ReadabilityChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.processing:Detected MIME type: text/plain
+INFO:fedstylevalidator.core.processing:Reading file: C:\Users\ericp\AppData\Local\Temp\tmpt4_uh857.txt
+INFO:fedstylevalidator.processing:Running document checks (text file)
+INFO:fedstylevalidator.core.cli:Formatting results
+WARNING:fedstylevalidator.core.processing:[DIAG] Fallback triggered: per_check_results is None. Using 'ALL' grouping.
+INFO:fedstylevalidator.core.cli:Document processing completed successfully
+INFO:docreview360.oidc_client:Revoked oldest session fc3ada56-97de-414e-8490-6bd3e5856a9e for user 'alice' (concurrent limit 5)
+INFO:fedstylevalidator.core.cli:Processing document of type: Other, group_by: category
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.readability_checks:Initialized ReadabilityChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.processing:Detected MIME type: text/plain
+INFO:fedstylevalidator.core.processing:Reading file: C:\Users\ericp\AppData\Local\Temp\tmp1vnuaspx.txt
+INFO:fedstylevalidator.processing:Running document checks (text file)
+INFO:fedstylevalidator.core.cli:Formatting results
+WARNING:fedstylevalidator.core.processing:[DIAG] Fallback triggered: per_check_results is None. Using 'ALL' grouping.
+INFO:fedstylevalidator.core.cli:Document processing completed successfully
+INFO:fedstylevalidator.core.cli:Processing document of type: Other, group_by: category
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.readability_checks:Initialized ReadabilityChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.processing:Detected MIME type: text/plain
+INFO:fedstylevalidator.core.processing:Reading file: C:\Users\ericp\AppData\Local\Temp\tmpuvf5vo0_.txt
+INFO:fedstylevalidator.processing:Running document checks (text file)
+INFO:fedstylevalidator.core.cli:Formatting results
+WARNING:fedstylevalidator.core.processing:[DIAG] Fallback triggered: per_check_results is None. Using 'ALL' grouping.
+INFO:fedstylevalidator.core.cli:Document processing completed successfully
+INFO:docreview360.oidc_client:Revoked oldest session d5712345-0fc4-4608-89cc-db992c5fbccf for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 6d9b00c9-37ea-458e-860d-43068455fb14 for user 'alice' (concurrent limit 5)
+WARNING:docreview360.approvals.core:Failed to link approval 'ea366ed038f04b789646a2610bef4a19' to document '98e83e5180d14011bd216585a51b8430': 'document not found'
+WARNING:docreview360.approvals.core:Failed to link approval '4779468b55e3432d97c67044c3a289f5' to document '98e83e5180d14011bd216585a51b8430': 'document not found'
+WARNING:docreview360.approvals.core:Failed to link approval 'f4adb2afebd745aab67a32aabc75f2c2' to document '98e83e5180d14011bd216585a51b8430': 'document not found'
+WARNING:docreview360.approvals.core:Failed to link approval '5e194f9f74d1492a9b1bf396c0da00e0' to document '98e83e5180d14011bd216585a51b8430': 'document not found'
+WARNING:docreview360.approvals.core:Failed to link approval '3bdf6f0fc74f4b76bc5cb07926704787' to document '98e83e5180d14011bd216585a51b8430': 'document not found'
+WARNING:docreview360.approvals.core:Failed to link approval 'a0b2d10748e4455886c0001a05468684' to document '98e83e5180d14011bd216585a51b8430': 'document not found'
+INFO:docreview360.oidc_client:Revoked oldest session b6db2dad-ddd5-42cf-b593-3b1ecdb966e0 for user 'alice' (concurrent limit 5)
+WARNING:docreview360.approvals.core:Failed to link approval '9f0f330f0c0b425680197e8d18c27572' to document '98e83e5180d14011bd216585a51b8430': 'document not found'
+ERROR:asyncio:Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\ericp\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\ericp\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+INFO:docreview360.oidc_client:Revoked oldest session 1feb013c-4810-4e98-954d-3f6a176a08db for user 'alice' (concurrent limit 5)
+INFO:fedstylevalidator.core.cli:Processing document of type: Other, group_by: category
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.readability_checks:Initialized ReadabilityChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.processing:Detected MIME type: text/plain
+INFO:fedstylevalidator.core.processing:Reading file: C:\Users\ericp\AppData\Local\Temp\tmpj7nlina6.txt
+INFO:fedstylevalidator.processing:Running document checks (text file)
+INFO:fedstylevalidator.core.cli:Formatting results
+WARNING:fedstylevalidator.core.processing:[DIAG] Fallback triggered: per_check_results is None. Using 'ALL' grouping.
+INFO:fedstylevalidator.core.cli:Document processing completed successfully
+INFO:docreview360.oidc_client:Revoked oldest session a63f567c-9939-48cc-80d8-435b48b5739b for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 12a16aac-8b72-473d-92f1-2d3619cced04 for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session db05e207-c820-4ce1-afa3-6fcf60d5a7c8 for user 'alice' (concurrent limit 5)
+INFO:fedstylevalidator.core.cli:Processing document of type: Other, group_by: category
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.readability_checks:Initialized ReadabilityChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.processing:Detected MIME type: text/plain
+INFO:fedstylevalidator.core.processing:Reading file: C:\Users\ericp\AppData\Local\Temp\tmpnbloh142.txt
+INFO:fedstylevalidator.processing:Running document checks (text file)
+INFO:fedstylevalidator.core.cli:Formatting results
+WARNING:fedstylevalidator.core.processing:[DIAG] Fallback triggered: per_check_results is None. Using 'ALL' grouping.
+INFO:fedstylevalidator.core.cli:Document processing completed successfully
+INFO:docreview360.oidc_client:Revoked oldest session f03dc561-2aab-49db-be83-816442bfef8c for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 9ef766df-4885-41f3-8d1a-d8b98d4d090e for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session ad30db70-c0fa-4abf-a9cf-4dfd29d7b9ba for user 'bob' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session a8113f4a-25b0-40c5-95c8-2b8a418341aa for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session db655bd3-b904-477c-ab41-b4140310cfb2 for user 'bob' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 2ee2718f-5537-4550-b9d1-283d4fcbffbd for user 'bob' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 7cd04432-29f8-4c74-ab1f-4de10c0177e0 for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 98c63c23-1ae8-4ff8-9a27-aea8c25379c0 for user 'bob' (concurrent limit 5)
+INFO:fedstylevalidator.core.cli:Processing document of type: Other, group_by: category
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.readability_checks:Initialized ReadabilityChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.heading_checks:Initialized HeadingChecks with pattern cache
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.terminology_checks:Initialized TerminologyChecks with terminology manager
+INFO:fedstylevalidator.core.checks.acronym_checks:Initialized AcronymChecker
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.accessibility_checks:Initialized AccessibilityChecks
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized DocumentTitleFormatCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.core.checks.reference_checks:Initialized TableFigureReferenceCheck
+INFO:fedstylevalidator.processing:Detected MIME type: text/plain
+INFO:fedstylevalidator.core.processing:Reading file: C:\Users\ericp\AppData\Local\Temp\tmpq0x2zrsy.txt
+INFO:fedstylevalidator.processing:Running document checks (text file)
+INFO:fedstylevalidator.core.cli:Formatting results
+WARNING:fedstylevalidator.core.processing:[DIAG] Fallback triggered: per_check_results is None. Using 'ALL' grouping.
+INFO:fedstylevalidator.core.cli:Document processing completed successfully
+INFO:docreview360.oidc_client:Revoked oldest session 5c284dd8-32bd-4176-8654-80173969d65e for user 'alice' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 2f7e1365-6910-4438-9691-a9a0d934a75e for user 'bob' (concurrent limit 5)
+INFO:docreview360.oidc_client:Revoked oldest session 8393fff1-dc4a-48a2-b87c-b897fa08a24f for user 'alice' (concurrent limit 5)
+ERROR:asyncio:Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\ericp\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\ericp\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+INFO:docreview360.oidc_client:Revoked oldest session ca1d36c8-07f7-4466-b9ee-a96f3e818987 for user 'bob' (concurrent limit 5)
+ERROR:docreview360.api.public_router:Failed to load branding configuration: <built-in method commit of sqlite3.Connection object at 0x00000211EEE771F0> returned NULL without setting an exception
+Traceback (most recent call last):
+  File "C:\dev\DocReview360\src\docreview360\api\public_router.py", line 126, in get_branding_config_status
+    with get_db().orm_session() as db:
+         ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ericp\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "C:\dev\DocReview360\src\docreview360\database.py", line 155, in orm_session
+    db.commit()
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1320, in commit
+    trans.commit()
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2628, in commit
+    self._do_commit()
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2733, in _do_commit
+    self._connection_commit_impl()
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2704, in _connection_commit_impl
+    self.connection._commit_impl()
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1143, in _commit_impl
+    self._handle_dbapi_exception(e, None, None, None, None)
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2354, in _handle_dbapi_exception
+    raise exc_info[1].with_traceback(exc_info[2])
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1141, in _commit_impl
+    self.engine.dialect.do_commit(self.connection)
+  File "C:\dev\DocReview360\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 706, in do_commit
+    dbapi_connection.commit()
+SystemError: <built-in method commit of sqlite3.Connection object at 0x00000211EEE771F0> returned NULL without setting an exception
+INFO:docreview360.oidc_client:Revoked oldest session 16d31c7c-e7f6-4303-a3e8-23cada72f4fc for user 'alice' (concurrent limit 5)

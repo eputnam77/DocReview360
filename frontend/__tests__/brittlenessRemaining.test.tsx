@@ -108,4 +108,125 @@ describe("Remaining brittleness findings", () => {
 
     expect(screen.getByTestId("approval-table-virtualized")).toBeTruthy();
   });
+
+  it("does not mark reviewer sign-off as phase-ready while approvals are incomplete", () => {
+    const projectPage = page("projects", "[id]", "index.tsx");
+    expect(projectPage).toContain(
+      "Reviewer Sign-off Complete - Required Approvals Pending",
+    );
+    expect(projectPage).toContain("disabled={!canAdvance}");
+    expect(projectPage).toContain(
+      "All required approvals must be complete before advancing",
+    );
+  });
+
+  it("shows username approvers even when reviewer equals role", () => {
+    render(
+      <ApprovalTable
+        approvals={[
+          {
+            id: "approval-alice",
+            reviewer: "alice",
+            email: "alice@example.com",
+            state: "pending",
+            dueAt: null,
+            signedAt: null,
+            required: true,
+            role: "alice",
+            description: "Review Approval",
+          } as any,
+        ]}
+        currentUser="bob"
+        canEdit
+        reviewerOptions={["alice", "bob"]}
+        handlers={{
+          onAssign: vi.fn(),
+          onSign: vi.fn(),
+          onReject: vi.fn(),
+          onSignInitials: vi.fn(),
+          onReset: vi.fn(),
+          onRemove: vi.fn(),
+          onBulkReminder: vi.fn(),
+          onHistory: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Unassigned")).toBeNull();
+    expect(screen.getAllByText("alice").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps workflow role placeholders unassigned even when they appear as options", () => {
+    render(
+      <ApprovalTable
+        approvals={[
+          {
+            id: "approval-sme",
+            reviewer: "SME",
+            email: "sme@example.com",
+            state: "pending",
+            dueAt: null,
+            signedAt: null,
+            required: true,
+            role: "SME",
+            description: "Subject Matter Expert review and validation",
+          } as any,
+        ]}
+        currentUser="bob"
+        canEdit
+        reviewerOptions={["alice", "bob", "SME"]}
+        handlers={{
+          onAssign: vi.fn(),
+          onSign: vi.fn(),
+          onReject: vi.fn(),
+          onSignInitials: vi.fn(),
+          onReset: vi.fn(),
+          onRemove: vi.fn(),
+          onBulkReminder: vi.fn(),
+          onHistory: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Unassigned")).toBeTruthy();
+  });
+
+  it("renders future approvals without exposing approval actions", () => {
+    render(
+      <ApprovalTable
+        approvals={[
+          {
+            id: "approval-future",
+            reviewer: "alice",
+            email: "alice@example.com",
+            state: "future",
+            dueAt: null,
+            signedAt: null,
+            required: true,
+            role: "Technical Writer",
+            description: "Future sequential approval",
+          } as any,
+        ]}
+        currentUser="alice"
+        canEdit
+        reviewerOptions={["alice", "bob"]}
+        handlers={{
+          onAssign: vi.fn(),
+          onSign: vi.fn(),
+          onReject: vi.fn(),
+          onSignInitials: vi.fn(),
+          onReset: vi.fn(),
+          onRemove: vi.fn(),
+          onBulkReminder: vi.fn(),
+          onHistory: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(screen.getByText("future")).toBeTruthy();
+    expect(
+      screen.getByText((text) => text.includes("Future 1") && text.includes("Pending 0")),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+  });
 });

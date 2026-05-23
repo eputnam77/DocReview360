@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from docreview360 import auth
+from docreview360 import auth, rbac
 from docreview360.api import app
 from fastapi.testclient import TestClient
 
@@ -14,7 +14,18 @@ def _alice_headers() -> dict[str, str]:
         )
     except Exception:
         pass
+    rbac.add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _user_headers(username: str) -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(username, "Password!1Secure")
+    except Exception:
+        pass
+    rbac.set_user_roles(username, ["user"])
+    token = auth.create_access_token({"sub": username}, timedelta(minutes=30))
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -28,7 +39,7 @@ def test_sign_approval_flow() -> None:
     ).json()
     appr = client.post(
         "/approvals",
-        json={"workflow": wf["id"], "reviewer": "jane"},
+        json={"workflow": wf["id"], "reviewer": "alice"},
         headers=hdrs,
     ).json()
 
@@ -53,7 +64,7 @@ def test_sign_approval_duplicate_returns_conflict() -> None:
     ).json()
     appr = client.post(
         "/approvals",
-        json={"workflow": wf["id"], "reviewer": "jane"},
+        json={"workflow": wf["id"], "reviewer": "alice"},
         headers=hdrs,
     ).json()
 
@@ -65,3 +76,22 @@ def test_sign_approval_duplicate_returns_conflict() -> None:
 
     resp2 = client.post(f"/approvals/{appr['id']}/sign", headers=hdrs)
     assert resp2.status_code == 409
+
+
+def test_sign_approval_requires_assigned_reviewer() -> None:
+    client = TestClient(app)
+    hdrs = _alice_headers()
+    wf = client.post(
+        "/workflows",
+        json={"project": "p44", "phases": ["draft", "signed"]},
+        headers=hdrs,
+    ).json()
+    appr = client.post(
+        "/approvals",
+        json={"workflow": wf["id"], "reviewer": "alice"},
+        headers=hdrs,
+    ).json()
+
+    resp = client.post(f"/approvals/{appr['id']}/sign", headers=_user_headers("mallory"))
+
+    assert resp.status_code == 403

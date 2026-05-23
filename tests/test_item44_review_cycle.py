@@ -327,6 +327,30 @@ class TestAssignmentAPI:
         assert start_resp.status_code == 200
         assert start_resp.json()["status"] == "reviewing"
 
+    def test_assignment_action_rejects_wrong_project_path(self) -> None:
+        client = TestClient(app)
+        hdrs = _alice_headers()
+        bob_hdrs = _bob_headers()
+        project_id = self._create_project(client, hdrs)
+        other_project_id = self._create_project(client, hdrs)
+        create_resp = client.post(
+            f"/projects/{project_id}/assignments",
+            json={"reviewer": "bob"},
+            headers=hdrs,
+        )
+        assert create_resp.status_code == 201
+        aid = create_resp.json()["id"]
+
+        start_resp = client.post(
+            f"/projects/{other_project_id}/assignments/{aid}/start",
+            headers=bob_hdrs,
+        )
+
+        assert start_resp.status_code == 404
+        original_resp = client.get(f"/projects/{project_id}/assignments", headers=hdrs)
+        assert original_resp.status_code == 200
+        assert original_resp.json()["items"][0]["status"] == "invited"
+
     def test_submit_transitions_to_feedback_submitted(self) -> None:
         client = TestClient(app)
         hdrs = _alice_headers()

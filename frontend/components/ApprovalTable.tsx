@@ -44,6 +44,10 @@ function classNames(...classes: (string | false | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
+function isLikelyUsername(value: string) {
+  return /^[a-z0-9._-]+$/.test(value);
+}
+
 function RowMenu({ children }: { children: React.ReactNode }) {
   return (
     <Menu as="div" className="relative inline-block text-left">
@@ -163,6 +167,7 @@ export default function ApprovalTable({
       total: filtered.length,
       required: 0,
       approved: 0,
+      future: 0,
       pending: 0,
       overdue: 0,
       rejected: 0,
@@ -170,6 +175,7 @@ export default function ApprovalTable({
     filtered.forEach((a) => {
       if (a.required) acc.required++;
       if (a.state === "approved") acc.approved++;
+      else if (a.state === "future") acc.future++;
       else if (a.state === "pending") acc.pending++;
       else if (a.state === "overdue") acc.overdue++;
       else if (a.state === "rejected") acc.rejected++;
@@ -177,10 +183,14 @@ export default function ApprovalTable({
     return acc;
   }, [filtered]);
 
-  const isUnassigned = (a: Approval) => !a.reviewer || a.reviewer === a.role;
+  const isUnassigned = (a: Approval) =>
+    !a.reviewer ||
+    (a.reviewer === a.role && !isLikelyUsername(a.reviewer));
 
   const renderRow = (a: Approval) => {
     const unassigned = isUnassigned(a);
+    const canActOnApproval =
+      currentUser === a.reviewer && a.state !== "approved" && a.state !== "future";
     return (
       <TableRow key={a.id} id={`approval-${a.id}`} className="group">
         <TableCell>
@@ -266,6 +276,8 @@ export default function ApprovalTable({
               "px-2 py-0.5 rounded-full text-xs font-semibold capitalize flex items-center gap-1",
               a.state === "approved" &&
                 "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+              a.state === "future" &&
+                "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
               a.state === "pending" &&
                 "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
               a.state === "overdue" &&
@@ -275,6 +287,7 @@ export default function ApprovalTable({
             )}
           >
             {a.state === "approved" && <Icon.CheckCircle2 className="w-3 h-3" />}
+            {a.state === "future" && <Icon.Clock className="w-3 h-3" />}
             {a.state === "pending" && <Icon.Clock className="w-3 h-3" />}
             {a.state === "overdue" && <Icon.AlertTriangle className="w-3 h-3" />}
             {a.state === "rejected" && <Icon.XCircle className="w-3 h-3" />}
@@ -290,7 +303,7 @@ export default function ApprovalTable({
         <TableCell>{a.required ? "Yes" : "No"}</TableCell>
         <TableCell className="text-right">
           {/* Prominent Approve button for the assigned approver */}
-          {currentUser === a.reviewer && a.state !== "approved" && (
+          {canActOnApproval && (
             <>
               <Button
                 size="sm"
@@ -348,7 +361,7 @@ export default function ApprovalTable({
                 </button>
               )}
             </Menu.Item>
-            {currentUser === a.reviewer && (
+            {canActOnApproval && (
               <Menu.Item as={Fragment}>
                 {({ active, close }) => (
                   <button
@@ -367,7 +380,7 @@ export default function ApprovalTable({
                 )}
               </Menu.Item>
             )}
-            {currentUser === a.reviewer && onReject && a.state !== "rejected" && (
+            {canActOnApproval && onReject && a.state !== "rejected" && (
               <Menu.Item as={Fragment}>
                 {({ active, close }) => (
                   <button
@@ -386,7 +399,7 @@ export default function ApprovalTable({
                 )}
               </Menu.Item>
             )}
-            {currentUser === a.reviewer && a.state !== "approved" && (
+            {canActOnApproval && (
               <Menu.Item as={Fragment}>
                 {({ active, close }) => (
                   <button
@@ -492,6 +505,7 @@ export default function ApprovalTable({
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="all">All Statuses</option>
+          <option value="future">Future</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="overdue">Overdue</option>
@@ -573,7 +587,7 @@ export default function ApprovalTable({
                 <TableCell />
                 <TableCell className="font-medium" colSpan={3}>Total: {totals.total}</TableCell>
                 <TableCell className="text-xs">
-                  Pending {totals.pending} · Approved {totals.approved} · Overdue {totals.overdue} · Rejected {totals.rejected}
+                  Future {totals.future} | Pending {totals.pending} | Approved {totals.approved} | Overdue {totals.overdue} | Rejected {totals.rejected}
                 </TableCell>
                 <TableCell />
                 <TableCell>{totals.approved}</TableCell>
@@ -609,7 +623,7 @@ export default function ApprovalTable({
             {VirtualizedRow}
           </List>
           <div className="border-t px-4 py-3 text-xs text-gray-600">
-            Pending {totals.pending} Â· Approved {totals.approved} Â· Overdue {totals.overdue} Â· Rejected {totals.rejected}
+            Future {totals.future} | Pending {totals.pending} | Approved {totals.approved} | Overdue {totals.overdue} | Rejected {totals.rejected}
           </div>
         </div>
       )}

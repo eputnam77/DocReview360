@@ -34,24 +34,24 @@ describe("DocumentQualityPage", () => {
     vi.unstubAllEnvs();
   });
 
-  it("renders the standalone FSV iframe without DocReview360 wrapper controls", () => {
+  it("renders the configured FSV iframe with a built-in fallback action", () => {
     vi.stubEnv("NEXT_PUBLIC_FSV_FRONTEND_URL", "https://fsv.example.com/embed");
 
     render(<DocumentQualityPage />);
 
     const frame = screen.getByTitle("Federal Style Validator");
     expect(frame.getAttribute("src")).toBe("https://fsv.example.com/embed");
-    expect(screen.queryByText("Powered by Federal Style Validator")).toBeNull();
-    expect(screen.queryByRole("link", { name: /open in new tab/i })).toBeNull();
+    expect(screen.getByRole("link", { name: "Open standalone" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Use built-in validator" })).toBeDefined();
   });
 
-  it("shows a minimal configuration fallback when the standalone frontend URL is missing", () => {
+  it("shows the built-in validator when the standalone frontend URL is missing", () => {
     vi.stubEnv("NEXT_PUBLIC_FSV_FRONTEND_URL", "");
 
     render(<DocumentQualityPage />);
 
-    expect(screen.getByRole("heading", { name: "FSV frontend is not configured" })).toBeDefined();
-    expect(screen.getByText(/NEXT_PUBLIC_FSV_FRONTEND_URL/)).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Federal Style Validator" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Run validation" })).toBeDefined();
     expect(screen.queryByTitle("Federal Style Validator")).toBeNull();
   });
 });

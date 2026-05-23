@@ -92,6 +92,13 @@ def _get_assignment_or_404(assignment_id: str) -> ReviewAssignmentModel:
     return a
 
 
+def _get_project_assignment_or_404(project_id: str, assignment_id: str) -> ReviewAssignmentModel:
+    assignment = _get_assignment_or_404(assignment_id)
+    if assignment.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return assignment
+
+
 def _require_project_access(project, current_user: auth.User) -> None:
     """Allow access if user passes standard project access OR is an assignment reviewer."""
     from .projects_router import _is_admin_user
@@ -276,7 +283,7 @@ async def update_project_assignment(
     """Update mutable fields (currently: due_date) on an assignment."""
     project = _get_project_or_404(project_id)
     _require_manage_access(project, current_user)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     updates: dict[str, Any] = {}
     if body.due_date is not None:
         updates["due_date"] = body.due_date.isoformat()
@@ -293,7 +300,7 @@ async def start_assignment(
 ) -> dict:
     """Reviewer acknowledges the assignment; transitions status to 'reviewing'."""
     _get_project_or_404(project_id)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.reviewer != current_user.username:
         raise HTTPException(
             status_code=403, detail="Only the assigned reviewer can start the review"
@@ -323,7 +330,7 @@ async def submit_assignment(
 ) -> dict:
     """Reviewer marks feedback done; transitions to 'feedback_submitted'."""
     project = _get_project_or_404(project_id)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.reviewer != current_user.username:
         raise HTTPException(
             status_code=403, detail="Only the assigned reviewer can submit feedback"
@@ -361,7 +368,7 @@ async def concur_assignment(
 ) -> dict:
     """Reviewer concurs; transitions to 'concurred'."""
     project = _get_project_or_404(project_id)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.reviewer != current_user.username:
         raise HTTPException(status_code=403, detail="Only the assigned reviewer can concur")
     result = transition_status(assignment_id, "concurred", ts_field="signed_at")
@@ -401,7 +408,7 @@ async def concur_assignment_with_comments(
     before transitioning the assignment to 'concurred'.
     """
     project = _get_project_or_404(project_id)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.reviewer != current_user.username:
         raise HTTPException(status_code=403, detail="Only the assigned reviewer can concur")
     # Persist the reviewer's closing comment
@@ -450,7 +457,7 @@ async def request_concurrence(
     """
     project = _get_project_or_404(project_id)
     _require_manage_access(project, current_user)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.status in TERMINAL_STATUSES:
         raise HTTPException(
             status_code=409,
@@ -477,7 +484,7 @@ async def non_concur_assignment(
 ) -> dict:
     """Reviewer does not concur; requires a written reason."""
     project = _get_project_or_404(project_id)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.reviewer != current_user.username:
         raise HTTPException(status_code=403, detail="Only the assigned reviewer can non-concur")
     result = _update_fields(assignment_id, status="non_concurred", replacement_reason=body.reason)
@@ -594,7 +601,7 @@ async def get_assignment_eligibility(
     """Check whether a reviewer is eligible to concur (all feedback terminal)."""
     project = _get_project_or_404(project_id)
     _require_project_access(project, current_user)
-    _get_assignment_or_404(assignment_id)
+    _get_project_assignment_or_404(project_id, assignment_id)
     from ..concurrence_gate import check_concurrence_eligibility
 
     result = check_concurrence_eligibility(project_id, assignment_id)
@@ -613,7 +620,7 @@ async def sign_assignment_internally(
     Transitions assignment to 'signed' and stamps signed_at.
     """
     project = _get_project_or_404(project_id)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.reviewer != current_user.username:
         raise HTTPException(status_code=403, detail="Only the assigned reviewer can sign")
     if assignment.status not in ("concurred", "feedback_submitted", "reviewing", "invited"):
@@ -691,7 +698,7 @@ async def remind_reviewer(
     """Send a manual reminder notification to a reviewer about their pending assignment."""
     project = _get_project_or_404(project_id)
     _require_manage_access(project, current_user)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.status in TERMINAL_STATUSES:
         raise HTTPException(
             status_code=409,
@@ -712,7 +719,7 @@ async def delete_project_assignment(
     """Remove an assignment.  Only valid for 'invited' status with no feedback submitted."""
     project = _get_project_or_404(project_id)
     _require_manage_access(project, current_user)
-    assignment = _get_assignment_or_404(assignment_id)
+    assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.status != "invited":
         raise HTTPException(
             status_code=409,

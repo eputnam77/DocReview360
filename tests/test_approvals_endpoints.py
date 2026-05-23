@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from docreview360 import auth
+from docreview360 import auth, rbac
 from docreview360.api import app
 from fastapi.testclient import TestClient
 
@@ -14,7 +14,18 @@ def _alice_headers() -> dict[str, str]:
         )
     except Exception:
         pass
+    rbac.add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _user_headers(username: str) -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(username, "Password!1Secure")
+    except Exception:
+        pass
+    rbac.set_user_roles(username, ["user"])
+    token = auth.create_access_token({"sub": username}, timedelta(minutes=30))
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -63,3 +74,25 @@ def test_approval_reminders_and_deletion() -> None:
 
     get_resp = client.get(f"/approvals/{approval_id}", headers=hdrs)
     assert get_resp.status_code == 404
+
+
+def test_approval_reminders_require_authentication() -> None:
+    client = TestClient(app)
+
+    resp = client.post("/approvals/remind", json={"ids": []})
+
+    assert resp.status_code == 401
+
+
+def test_direct_approval_update_requires_assigned_reviewer_or_admin() -> None:
+    client = TestClient(app)
+    workflow_id = _create_workflow(client, "proj-update-guard")
+    approval_id = _create_approval(client, workflow_id, reviewer="alice")
+
+    resp = client.put(
+        f"/approvals/{approval_id}",
+        json={"state": "rejected"},
+        headers=_user_headers("mallory"),
+    )
+
+    assert resp.status_code == 403

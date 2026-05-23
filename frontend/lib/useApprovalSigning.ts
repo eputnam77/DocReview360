@@ -154,6 +154,9 @@ export function useApprovalSigning({
   }, [approvals, username, setApprovals]);
 
   const signApprovalByInitials = useCallback(async (aid: string, initials: string) => {
+    const existing = approvals.find((a) => a.id === aid);
+    if (existing?.state === "approved") { toast.error("Approval already completed."); return; }
+    if (existing?.reviewer !== username) { toast.error("You are not assigned to this approval."); return; }
     try {
       const res = await authenticatedFetch(`/approvals/${aid}/sign-initials`, {
         method: "POST",
@@ -171,7 +174,7 @@ export function useApprovalSigning({
     } catch {
       toast.error("Failed to sign with initials");
     }
-  }, [setApprovals]);
+  }, [approvals, username, setApprovals]);
 
   const resetApprovalLocal = useCallback(async (aid: string) => {
     removeLocalStorage(`approval-${aid}`);

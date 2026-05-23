@@ -16,7 +16,18 @@ def _alice_headers() -> dict[str, str]:
         )
     except Exception:
         pass
+    rbac.add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _user_headers(username: str) -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(username, "Password!1Secure")
+    except Exception:
+        pass
+    rbac.set_user_roles(username, ["user"])
+    token = auth.create_access_token({"sub": username}, timedelta(minutes=30))
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -79,6 +90,12 @@ def test_workflow_template_crud_and_persistence() -> None:
     updated = res.json()
     assert updated["id"] == "Custom Flow v2"
     assert updated["description"] == "Updated description"
+    with db_store.get_db().session() as conn:
+        old_row = conn.execute(
+            text("SELECT 1 FROM workflow_template_records WHERE id = :id"),
+            {"id": "Custom Flow"},
+        ).fetchone()
+    assert old_row is None
 
     workflows.reset_workflow_templates(keep_file=True)
     res = client.get("/workflow-templates/Custom%20Flow%20v2", headers=hdrs)
@@ -90,6 +107,18 @@ def test_workflow_template_crud_and_persistence() -> None:
     assert res.status_code == 204
     res = client.get("/workflow-templates/Custom%20Flow%20v2", headers=hdrs)
     assert res.status_code == 404
+    workflows.reset_workflow_templates(keep_file=True)
+    res = client.get("/workflow-templates/Custom%20Flow%20v2", headers=hdrs)
+    assert res.status_code == 404
+
+
+def test_workflow_template_writes_require_admin() -> None:
+    client = TestClient(app)
+    payload = _custom_template_payload("User Flow")
+
+    res = client.post("/workflow-templates", json=payload, headers=_user_headers("eve"))
+
+    assert res.status_code == 403
 
 
 def test_custom_template_used_for_project_workflow() -> None:

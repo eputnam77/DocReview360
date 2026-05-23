@@ -13,6 +13,7 @@ from .. import auth
 from ..comments import add_comment, list_comments, render_comment_for_response
 from ..documents import list_documents
 from ..search import get_project
+from .projects_router import _enforce_project_access
 
 _logger = logging.getLogger(__name__)
 
@@ -33,20 +34,15 @@ def _resolve_document_id(project_id: str, document_id: Optional[str]) -> str:
     """Return a valid document ID for ``project_id``.
 
     If ``document_id`` is provided and belongs to the project, it is returned
-    unchanged.  Otherwise the first document found for the project is used as a
-    fallback so that a stale or missing ``document_id`` never produces a
-    ``Document Not Found`` error.
+    unchanged.  Missing document IDs may fall back to the first project
+    document, but stale explicit IDs are rejected instead of silently attaching
+    the comment to a different document.
     """
     docs = [d for d in list_documents() if d.project == project_id]
     if document_id:
-        # Verify it belongs to this project
         if any(d.id == document_id for d in docs):
             return document_id
-        _logger.warning(
-            "document_id %r not found in project %r; falling back to first available document",
-            document_id,
-            project_id,
-        )
+        raise HTTPException(status_code=404, detail="Document not found in project")
     if docs:
         return docs[0].id
     # No document at all — use project_id as a synthetic key so comments are
@@ -69,6 +65,7 @@ async def create_project_comment(
     project = get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
 
     doc_id = _resolve_document_id(project_id, body.document_id)
 
@@ -118,6 +115,7 @@ async def list_project_comments(
     project = get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
 
     docs = [d for d in list_documents() if d.project == project_id]
     # Collect all document IDs to query, including the synthetic project_id key
@@ -170,6 +168,7 @@ async def export_comments_docx(
     project = get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    _enforce_project_access(project, current_user)
 
     docs = [d for d in list_documents() if d.project == project_id]
 

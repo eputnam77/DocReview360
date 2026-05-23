@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from docreview360 import auth, comments
+from docreview360 import auth, comments, rbac
 from docreview360.api import app
 from fastapi.testclient import TestClient
 
@@ -16,6 +16,16 @@ def _alice_headers() -> dict[str, str]:
     except Exception:
         pass
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _user_headers(username: str) -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(username, "Password!1Secure")
+    except Exception:
+        pass
+    rbac.set_user_roles(username, ["user"])
+    token = auth.create_access_token({"sub": username}, timedelta(minutes=30))
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -87,3 +97,28 @@ def test_get_comments_returns_inline_and_feedback_source_comments() -> None:
     labels = {item["source_label"] for item in body["items"]}
     assert "Anchored" in labels  # "inline" source maps to "Anchored" label
     assert "Feedback" in labels
+
+
+def test_comments_require_project_access() -> None:
+    client = TestClient(app)
+    _create_project(client, "proj-comments-private")
+
+    resp = client.get(
+        "/comments/proj-comments-private",
+        headers=_user_headers("mallory-comments"),
+    )
+
+    assert resp.status_code == 403
+
+
+def test_stale_document_id_is_not_silently_reassigned() -> None:
+    client = TestClient(app)
+    _create_project(client, "proj-comments-stale-doc")
+
+    resp = client.post(
+        "/comments/proj-comments-stale-doc",
+        json={"text": "Wrong document", "document_id": "missing-doc"},
+        headers=_alice_headers(),
+    )
+
+    assert resp.status_code == 404

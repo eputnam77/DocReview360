@@ -24,7 +24,7 @@ export default function EditWorkflowPage() {
   const [required, setRequired] = useState(true);
 
   useEffect(() => {
-    authenticatedFetch('/workflows/roles')
+    authenticatedFetch('/workflow_roles')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data)) {

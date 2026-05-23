@@ -43,7 +43,7 @@ export interface Approval {
   id: string;
   reviewer: string;
   email: string;
-  state: "pending" | "approved" | "overdue" | "rejected";
+  state: "future" | "pending" | "approved" | "overdue" | "rejected";
   dueAt: string;
   signedAt?: string;
   comments?: string;

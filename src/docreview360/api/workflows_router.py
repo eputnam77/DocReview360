@@ -106,6 +106,28 @@ _logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _require_approval_reviewer(approval: ApprovalModel, user: auth.User) -> None:
+    """Ensure approval actions are performed by the assigned reviewer."""
+    if approval.reviewer != user.username:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not the assigned approver for this approval.",
+        )
+
+
+def _require_approval_update_access(
+    approval: ApprovalModel,
+    user: auth.User,
+    target_state: str | None,
+) -> None:
+    """Allow admins to manage approvals and reviewers to complete their own."""
+    if has_role(user.username, "admin"):
+        return
+    if approval.reviewer == user.username and target_state in {"approved", "rejected"}:
+        return
+    raise HTTPException(status_code=403, detail="Forbidden")
+
+
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
@@ -708,7 +730,7 @@ async def list_workflow_templates_endpoint(
 async def create_workflow_template_endpoint(
     body: WorkflowTemplatePayload = Body(...),
     x_user: str | None = Header(None),
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> WorkflowTemplateResponse:
     """Create a workflow template."""
     try:
@@ -738,7 +760,7 @@ async def update_workflow_template_endpoint(
     template_id: str,
     body: WorkflowTemplatePayload = Body(...),
     x_user: str | None = Header(None),
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> WorkflowTemplateResponse:
     """Update workflow template by id."""
     try:
@@ -755,7 +777,7 @@ async def update_workflow_template_endpoint(
 async def delete_workflow_template_endpoint(
     template_id: str,
     x_user: str | None = Header(None),
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> Response:
     """Delete workflow template by id."""
     try:
@@ -778,6 +800,16 @@ async def create_workflow_endpoint(
 ) -> WorkflowModel:
     """Create a new workflow."""
     return create_workflow(workflow.project, workflow.phases, mode=workflow.mode)
+
+
+@router.get("/workflows/roles", response_model=list[str])
+@log_call
+async def list_workflow_roles_alias_endpoint(
+    x_user: str | None = Header(None),
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> list[str]:
+    """Return all unique workflow roles for older frontend callers."""
+    return list_roles()
 
 
 @router.get("/workflows/{wf_id}", response_model=WorkflowModel)
@@ -921,6 +953,10 @@ async def update_approval_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> ApprovalModel:
     """Update approval state and signature."""
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    _require_approval_update_access(approval, current_user, body.state)
     try:
         return await update_approval_state(
             approval_id,
@@ -938,7 +974,7 @@ async def update_approval_endpoint(
 @log_call
 async def delete_approval_endpoint(
     approval_id: str,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> ApprovalModel:
     """Delete an approval by id."""
     try:
@@ -952,7 +988,7 @@ async def delete_approval_endpoint(
 async def assign_approval_endpoint(
     approval_id: str,
     body: ApprovalAssign = Body(...),
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> ApprovalModel:
     """Assign a specific user to an existing approval role.
 
@@ -975,13 +1011,14 @@ async def sign_approval_endpoint(
     approval = get_approval(approval_id)
     if approval is None:
         raise HTTPException(status_code=404, detail="Approval not found")
+    _require_approval_reviewer(approval, current_user)
     wf = get_workflow(approval.workflow)
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return_to = f"/projects/{wf.project}"
     doc_id = approval.document_id or wf.project
     try:
-        url = send_for_signature(approval_id, doc_id, approval.reviewer, return_to)
+        url = send_for_signature(approval_id, doc_id, current_user.username, return_to)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
@@ -1008,6 +1045,7 @@ async def sign_initials_endpoint(
     approval = get_approval(approval_id)
     if approval is None:
         raise HTTPException(status_code=404, detail="Approval not found")
+    _require_approval_reviewer(approval, current_user)
     try:
         return await update_approval_state(
             approval_id,

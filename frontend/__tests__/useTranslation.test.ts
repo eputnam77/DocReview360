@@ -40,7 +40,7 @@ Object.defineProperty(globalThis, "localStorage", {
 });
 
 import { authenticatedFetch } from "@/lib/api";
-import { _buildNested, _dotGet } from "@/lib/useTranslation";
+import { _buildNested, _dotGet, _mergeTranslationStrings } from "@/lib/useTranslation";
 
 const mockFetch = vi.mocked(authenticatedFetch);
 
@@ -181,6 +181,43 @@ describe("t() resolution contract — direct utility composition", () => {
     const strings = { "nav.dashboard": "Nested wins" };
     const t = makeLookup(strings);
     expect(t("nav.dashboard")).toBe("Nested wins");
+  });
+});
+
+describe("_mergeTranslationStrings - public bundle plus API overrides", () => {
+  it("keeps bundled strings when the API response is partial", () => {
+    expect(
+      _mergeTranslationStrings(
+        {
+          "projects.title": "Projects",
+          "dashboard.assigned": "Assigned",
+        },
+        {
+          "nav.projects": "Projects",
+        },
+      ),
+    ).toEqual({
+      "projects.title": "Projects",
+      "dashboard.assigned": "Assigned",
+      "nav.projects": "Projects",
+    });
+  });
+
+  it("lets API terminology override bundled labels", () => {
+    expect(
+      _mergeTranslationStrings(
+        {
+          "nav.projects": "Projects",
+          "projects.title": "Projects",
+        },
+        {
+          "nav.projects": "Cases",
+        },
+      ),
+    ).toEqual({
+      "nav.projects": "Cases",
+      "projects.title": "Projects",
+    });
   });
 });
 

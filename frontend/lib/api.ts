@@ -114,9 +114,10 @@ export async function authenticatedFetch(
   } catch (error) {
     // Network-level failures (backend down, DNS error, connection refused)
     // return a synthetic 503 instead of throwing.  Every caller already
-    // checks `res.ok`, so they handle this gracefully — and no uncaught
+    // checks `res.ok`, so they handle this gracefully -- and no uncaught
     // TypeError crashes the page.
-    console.error(`Network error fetching ${fullUrl}:`, error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Network error fetching ${fullUrl}: ${message}`);
     return new Response(
       JSON.stringify({ detail: "Network error: unable to reach the API server" }),
       { status: 503, statusText: "Service Unavailable", headers: { "Content-Type": "application/json" } },

@@ -77,6 +77,22 @@ const SEVERITY_LEVELS = [
 // Helpers
 // ---------------------------------------------------------------------------
 
+export function normalizeExternalUrl(value: string | undefined): string | null {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+export function resolveFsvFrontendUrl(): string | null {
+  return normalizeExternalUrl(process.env.NEXT_PUBLIC_FSV_FRONTEND_URL);
+}
+
 function normalizeSeverity(value: string | undefined): "error" | "warning" | "info" {
   const v = (value || "info").toLowerCase();
   if (v === "error" || v === "warning") return v;
@@ -771,12 +787,44 @@ export default function DocumentQualityPage() {
     { key: "metrics", label: "Metrics" },
   ];
 
-  const fsvFrontendUrl = process.env.NEXT_PUBLIC_FSV_FRONTEND_URL;
+  const fsvFrontendUrl = resolveFsvFrontendUrl();
+  const [showEmbeddedFsv, setShowEmbeddedFsv] = useState(Boolean(fsvFrontendUrl));
 
-  if (fsvFrontendUrl) {
+  if (fsvFrontendUrl && showEmbeddedFsv) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50/60 via-slate-50 to-slate-100">
         <div className="max-w-screen-xl mx-auto px-5 py-8 pb-12">
+          <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">
+                  Document Validation
+                </p>
+                <h1 className="text-2xl font-bold text-slate-900">Federal Style Validator</h1>
+                <p className="mt-1 max-w-2xl text-sm text-slate-500">
+                  Showing the configured standalone FSV frontend. If the embedded app is blank
+                  or unavailable, continue with the built-in validator.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={fsvFrontendUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  Open standalone
+                </a>
+                <button
+                  type="button"
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                  onClick={() => setShowEmbeddedFsv(false)}
+                >
+                  Use built-in validator
+                </button>
+              </div>
+            </div>
+          </div>
           <iframe
             src={fsvFrontendUrl}
             className="w-full border-0 rounded-xl"

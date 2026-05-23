@@ -115,7 +115,7 @@ describe("useApprovals any-type removal regression", () => {
 
   it("mapApproval returns correctly typed Approval with state cast", () => {
     // The mapper must cast the API state string to the known union.
-    expect(hook).toMatch(/\["pending", "approved", "overdue", "rejected"\]/);
+    expect(hook).toMatch(/\["future", "pending", "approved", "overdue", "rejected"\]/);
   });
 });
 

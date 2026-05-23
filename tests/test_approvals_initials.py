@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 import pytest
-from docreview360 import auth
+from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.approvals import approvals
 from fastapi.testclient import TestClient
@@ -18,7 +18,18 @@ def _alice_headers() -> dict[str, str]:
         )
     except Exception:
         pass
+    rbac.add_role("alice", "admin")
     token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _user_headers(username: str) -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(username, "Password!1Secure")
+    except Exception:
+        pass
+    rbac.set_user_roles(username, ["user"])
+    token = auth.create_access_token({"sub": username}, timedelta(minutes=30))
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -153,6 +164,21 @@ class TestSignInitialsNotFound:
             "/approvals/any-id/sign-initials", json={}, headers=_alice_headers()
         )
         assert resp.status_code == 422
+
+
+class TestSignInitialsAuthorization:
+    def test_wrong_reviewer_cannot_sign_initials(self) -> None:
+        client = TestClient(app)
+        wf_id = _create_workflow(client)
+        aid = _create_approval(client, wf_id, reviewer="alice")
+
+        resp = client.post(
+            f"/approvals/{aid}/sign-initials",
+            json={"initials": "ML"},
+            headers=_user_headers("mallory"),
+        )
+
+        assert resp.status_code == 403
 
 
 class TestSignInitialsIdempotency:

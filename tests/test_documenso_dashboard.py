@@ -42,7 +42,7 @@ def test_dashboard_updates_after_signature() -> None:
     ).json()
     appr = client.post(
         "/approvals",
-        json={"workflow": wf["id"], "reviewer": "bob", "doc_id": doc["id"]},
+        json={"workflow": wf["id"], "reviewer": "alice", "doc_id": doc["id"]},
         headers=hdrs,
     ).json()
     sig = client.post(f"/approvals/{appr['id']}/sign", headers=hdrs).json()["id"]

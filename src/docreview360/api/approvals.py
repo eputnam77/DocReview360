@@ -187,7 +187,10 @@ async def verify_hash_endpoint(
 
 @router.post("/approvals/remind")
 @log_call
-async def remind_approvals_endpoint(body: ReminderRequest) -> dict[str, list[str]]:
+async def remind_approvals_endpoint(
+    body: ReminderRequest,
+    _user: auth.User = Depends(auth.get_current_user),
+) -> dict[str, list[str]]:
     """Trigger reminder events for pending approvals."""
     ids = [aid for aid in body.ids if aid]
     return remind_approvals(ids)

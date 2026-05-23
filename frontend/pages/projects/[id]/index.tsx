@@ -713,21 +713,38 @@ export default function ProjectDetailsPage() {
             <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
             <div className="flex-1">
               <p className="font-semibold text-green-800 dark:text-green-200">
-                All Reviews Complete — Ready for Next Phase
+                {canAdvance
+                  ? "All Reviews Complete - Ready for Next Phase"
+                  : "Reviewer Sign-off Complete - Required Approvals Pending"}
               </p>
               {reviewSummary.has_non_concurrence && (
                 <p className="text-sm text-amber-600">
                   Note: one or more reviewers did not concur. Review their non-concurrence before advancing.
                 </p>
               )}
+              {!canAdvance && (
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Complete all required workflow approvals before advancing this phase.
+                </p>
+              )}
             </div>
             {canEdit && (
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => setShowPhaseDialog(true)} className="bg-green-600 hover:bg-green-700">
+                <Button
+                  size="sm"
+                  onClick={() => setShowPhaseDialog(true)}
+                  disabled={!canAdvance}
+                  title={
+                    canAdvance
+                      ? "Advance to the next workflow phase"
+                      : "All required approvals must be complete before advancing"
+                  }
+                  className="bg-green-600 hover:bg-green-700 disabled:opacity-60"
+                >
                   Advance Phase
                 </Button>
                 <HelpTooltip
-                  content="Advancing the phase moves the project to the next workflow stage. All reviewers must have submitted their feedback before you can advance. Non-concurrences should be addressed first."
+                  content="Advancing the phase moves the project to the next workflow stage. All reviewers and required workflow approvers must be complete before you can advance. Non-concurrences should be addressed first."
                   href="/help#phases"
                 />
               </div>

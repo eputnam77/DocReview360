@@ -527,7 +527,7 @@ def _sync_workflow_templates_from_definitions() -> None:
 
 
 def _save_templates_to_db() -> None:
-    """Upsert all current workflow template definitions into the DB."""
+    """Synchronize current workflow template definitions into the DB."""
     try:
         from sqlalchemy import text as _text
 
@@ -535,6 +535,7 @@ def _save_templates_to_db() -> None:
 
         db = get_db()
         with db.session() as conn:
+            current_ids = set(workflow_template_definitions)
             for template in workflow_template_definitions.values():
                 conn.execute(
                     _text(
@@ -548,6 +549,13 @@ def _save_templates_to_db() -> None:
                         "data": json.dumps(template.model_dump()),
                     },
                 )
+            rows = conn.execute(_text("SELECT id FROM workflow_template_records")).fetchall()
+            for (template_id,) in rows:
+                if template_id not in current_ids:
+                    conn.execute(
+                        _text("DELETE FROM workflow_template_records WHERE id = :id"),
+                        {"id": template_id},
+                    )
     except Exception as exc:  # pragma: no cover - best effort
         _logger.warning("Failed to save templates to DB: %s", exc)
 

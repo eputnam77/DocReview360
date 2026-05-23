@@ -103,6 +103,13 @@ export function _buildNested(flat: Record<string, string>): Record<string, unkno
   return result;
 }
 
+export function _mergeTranslationStrings(
+  baseStrings: Record<string, string>,
+  overrideStrings: Record<string, string> | undefined,
+): Record<string, string> {
+  return { ...baseStrings, ...(overrideStrings ?? {}) };
+}
+
 export interface UseTranslationResult {
   /** Translate a dot-notation key, returning fallback (or the key itself) when not found. */
   t: (key: string, fallback?: string) => string;
@@ -143,15 +150,19 @@ export function useTranslation(options?: { orgId?: string }): UseTranslationResu
         ? `/i18n/terminology/${locale}?org_id=${encodeURIComponent(orgId)}`
         : `/i18n/translations/${locale}`;
       const empty = _emptyTranslations(locale);
+      const publicStrings = await _loadPublicLocaleStrings(locale);
       try {
         const res = await authenticatedFetch(url);
         if (res.ok) {
-          return res.json() as Promise<TranslationsResponse>;
+          const remote = (await res.json()) as TranslationsResponse;
+          return {
+            ...remote,
+            strings: _mergeTranslationStrings(publicStrings, remote.strings),
+          };
         }
       } catch {
         // Fall through to the public locale bundle for logged-out pages.
       }
-      const publicStrings = await _loadPublicLocaleStrings(locale);
       if (Object.keys(publicStrings).length === 0) {
         return empty;
       }
