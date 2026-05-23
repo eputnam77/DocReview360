@@ -1,0 +1,47 @@
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+[browser] Failed to load environments 403 Forbidden (state/environment.ts:24:17)
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+[browser] Failed to load environments 403 Forbidden (state/environment.ts:24:17)
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select
+4 rules skipped due to selector errors:
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(saturation-pointer) -> Pseudo-elements are not supported by css-select
+  .ck.ck-color-selector .ck-color-picker-fragment .ck.ck-color-picker .hex-color-picker::part(hue-pointer) -> Pseudo-elements are not supported by css-select

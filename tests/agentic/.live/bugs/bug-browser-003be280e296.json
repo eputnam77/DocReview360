@@ -1,0 +1,72 @@
+{
+  "actual": "reviewer setup failed: 500 {\"error\":\"internal_error\",\"message\":\"An unexpected error occurred\",\"trace_id\":\"3db595185f534f319ec0a97d376dc025\",\"status_code\":500,\"details\":null}",
+  "api_traces": [
+    {
+      "actor": "bob",
+      "actual_status": 200,
+      "expected_statuses": [
+        200
+      ],
+      "method": "POST",
+      "path": "/token",
+      "request_json": null,
+      "response_json": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJib2IiLCJleHAiOjE3Nzk1Mzg3MzMsImlzcyI6ImFnZW50aWMtbGl2ZS1pc3N1ZXIiLCJhdWQiOiJhZ2VudGljLWxpdmUtYXVkaWVuY2UiLCJqdGkiOiJkODRhZDZiNGE4NDZiMjVhYjNjN2I5ZjE4ZmYzOTJkYSIsImdlbiI6MH0.g3CIKy3AgflL_YlD_5v_sqTLPtp8bRJkvdFnWiyKUBw",
+        "expires_in": 1800,
+        "refresh_token": "q-AyHebT_p4tLoVtHkWEVxxOpQiMdf2cJaiSWDJlFNTdL9furRSGgdnkwlfu8q7Y",
+        "token_type": "bearer"
+      }
+    },
+    {
+      "actor": "bob",
+      "actual_status": 409,
+      "expected_statuses": [
+        201,
+        409,
+        422
+      ],
+      "method": "POST",
+      "path": "/users",
+      "request_json": null,
+      "response_json": {
+        "details": null,
+        "error": "conflict",
+        "message": "User already exists",
+        "status_code": 409,
+        "trace_id": "447fdcfac35c4b0dac88f9760bd52da0"
+      }
+    },
+    {
+      "actor": "bob",
+      "actual_status": 500,
+      "expected_statuses": [
+        200
+      ],
+      "method": "PUT",
+      "path": "/users/agentic-browser-reviewer",
+      "request_json": null,
+      "response_json": {
+        "details": null,
+        "error": "internal_error",
+        "message": "An unexpected error occurred",
+        "status_code": 500,
+        "trace_id": "3db595185f534f319ec0a97d376dc025"
+      }
+    }
+  ],
+  "created_at": "2026-05-23T11:48:54.974019+00:00",
+  "expected": "Browser agent should seed a document, open CKEditor, edit content, and approve the final document.",
+  "id": "bug-browser-003be280e296",
+  "log_excerpt": null,
+  "repro_steps": [
+    "bob: POST /token -> 200",
+    "bob: POST /users -> 409",
+    "bob: PUT /users/agentic-browser-reviewer -> 500"
+  ],
+  "run_id": "watch-local-6",
+  "screenshot_paths": [
+    "tests\\agentic\\bug-reports\\watch-local-6-browser-failure.png"
+  ],
+  "severity": "high",
+  "title": "Browser CKEditor workflow failed: BrowserAgentError"
+}

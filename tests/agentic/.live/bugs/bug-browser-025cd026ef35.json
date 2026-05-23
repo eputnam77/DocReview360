@@ -1,0 +1,72 @@
+{
+  "actual": "reviewer setup failed: 403 {\"error\": \"forbidden\", \"message\": \"Forbidden\", \"trace_id\": \"30efce969b684f8d9455e36804a3006b\", \"status_code\": 403, \"details\": null}",
+  "api_traces": [
+    {
+      "actor": "alice",
+      "actual_status": 200,
+      "expected_statuses": [
+        200
+      ],
+      "method": "POST",
+      "path": "/token",
+      "request_json": null,
+      "response_json": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3OTUzODYzMiwiaXNzIjoiYWdlbnRpYy1saXZlLWlzc3VlciIsImF1ZCI6ImFnZW50aWMtbGl2ZS1hdWRpZW5jZSIsImp0aSI6ImIyYmNhMGE3MjY4MmUxNjE2NmNkZjE1NzMyZGVkYmQ0IiwiZ2VuIjowfQ.fHPhtRdyk0hCK1TwDqI7esLMat3RJJWs49WXju6y_DQ",
+        "expires_in": 1800,
+        "refresh_token": "H053FxPV47bCULTlNt4e5i05ds52_PbwY2m_A_Oiw-4kPNwc1pKal9iuPppLtfL0",
+        "token_type": "bearer"
+      }
+    },
+    {
+      "actor": "alice",
+      "actual_status": 403,
+      "expected_statuses": [
+        201,
+        409,
+        422
+      ],
+      "method": "POST",
+      "path": "/users",
+      "request_json": null,
+      "response_json": {
+        "details": null,
+        "error": "forbidden",
+        "message": "Forbidden",
+        "status_code": 403,
+        "trace_id": "c81d6af6d47a42ae900627d216b62884"
+      }
+    },
+    {
+      "actor": "alice",
+      "actual_status": 403,
+      "expected_statuses": [
+        200
+      ],
+      "method": "PUT",
+      "path": "/users/agentic-browser-reviewer",
+      "request_json": null,
+      "response_json": {
+        "details": null,
+        "error": "forbidden",
+        "message": "Forbidden",
+        "status_code": 403,
+        "trace_id": "30efce969b684f8d9455e36804a3006b"
+      }
+    }
+  ],
+  "created_at": "2026-05-23T11:47:13.264547+00:00",
+  "expected": "Browser agent should seed a document, open CKEditor, edit content, and approve the final document.",
+  "id": "bug-browser-025cd026ef35",
+  "log_excerpt": null,
+  "repro_steps": [
+    "alice: POST /token -> 200",
+    "alice: POST /users -> 403",
+    "alice: PUT /users/agentic-browser-reviewer -> 403"
+  ],
+  "run_id": "watch-local-4",
+  "screenshot_paths": [
+    "tests\\agentic\\bug-reports\\watch-local-4-browser-failure.png"
+  ],
+  "severity": "high",
+  "title": "Browser CKEditor workflow failed: BrowserAgentError"
+}

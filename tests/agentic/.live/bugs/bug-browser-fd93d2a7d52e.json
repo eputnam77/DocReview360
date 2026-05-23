@@ -1,0 +1,232 @@
+{
+  "actual": "Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for get_by_role(\"button\", name=re.compile(r\"sign in|log in\", re.IGNORECASE))\n",
+  "api_traces": [
+    {
+      "actor": "bob",
+      "actual_status": 200,
+      "expected_statuses": [
+        200
+      ],
+      "method": "POST",
+      "path": "/token",
+      "request_json": null,
+      "response_json": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJib2IiLCJleHAiOjE3Nzk1Mzg2NjQsImlzcyI6ImFnZW50aWMtbGl2ZS1pc3N1ZXIiLCJhdWQiOiJhZ2VudGljLWxpdmUtYXVkaWVuY2UiLCJqdGkiOiIxNDUwYjY0YTA4N2NhY2MzMTZlNDIwOTBiNzYyNTQ4NSIsImdlbiI6MH0.Ny0k7ZgYTcJ2zLqujyFZQ5ebzL6zftgrKtZnofB2raw",
+        "expires_in": 1800,
+        "refresh_token": "A8eUMrpMo6Qq5dkX2C06W5MsblWhvdJRIFZmZnYm2fUavH9yd8iLa40A012P_o65",
+        "token_type": "bearer"
+      }
+    },
+    {
+      "actor": "bob",
+      "actual_status": 201,
+      "expected_statuses": [
+        201,
+        409,
+        422
+      ],
+      "method": "POST",
+      "path": "/users",
+      "request_json": null,
+      "response_json": {
+        "active": true,
+        "roles": [
+          "reviewer",
+          "user"
+        ],
+        "username": "agentic-browser-reviewer"
+      }
+    },
+    {
+      "actor": "browser-admin",
+      "actual_status": 201,
+      "expected_statuses": [
+        201,
+        409
+      ],
+      "method": "POST",
+      "path": "/projects",
+      "request_json": null,
+      "response_json": {
+        "created": "2026-05-23T11:47:45.733147Z",
+        "created_at": "2026-05-23T11:47:45.733147Z",
+        "current_phase_id": null,
+        "description": null,
+        "doc_type": null,
+        "document_number": "agentic-browser-watch-local-5",
+        "editor": "ckeditor5",
+        "id": "agentic-browser-watch-local-5",
+        "initial_phase": null,
+        "name": "Watchable Browser Agent Review",
+        "nara_disposition_authority": null,
+        "nara_record_series": null,
+        "nara_retention_period": null,
+        "nara_schedule_number": null,
+        "number": 2,
+        "org_id": null,
+        "phase": null,
+        "priority": 0,
+        "progress": 0,
+        "requested_workflow": null,
+        "reviewers": [],
+        "status": "Draft",
+        "temp_until": null,
+        "temp_user": null,
+        "title": "Watchable Browser Agent Review",
+        "type": "Unknown",
+        "updated": "2026-05-23T11:47:45.733147Z",
+        "user": "bob",
+        "workflow": null
+      }
+    },
+    {
+      "actor": "browser-admin",
+      "actual_status": 201,
+      "expected_statuses": [
+        201
+      ],
+      "method": "POST",
+      "path": "/workflows",
+      "request_json": null,
+      "response_json": {
+        "approval_roles": [
+          "SME",
+          "Front Line Manager",
+          "Product Policy Manager",
+          "Technical Writer",
+          "Senior Technical Writer",
+          "Technical Writing Manager"
+        ],
+        "approval_sequence": [
+          "SME",
+          "Front Line Manager",
+          "Product Policy Manager",
+          "Technical Writer",
+          "Senior Technical Writer",
+          "Technical Writing Manager"
+        ],
+        "approval_steps": [
+          {
+            "description": "Subject Matter Expert review and validation",
+            "order": 1,
+            "required": true,
+            "role": "SME"
+          },
+          {
+            "description": "Front Line Manager approval",
+            "order": 2,
+            "required": true,
+            "role": "Front Line Manager"
+          },
+          {
+            "description": "Product Policy Manager review and approval",
+            "order": 3,
+            "required": true,
+            "role": "Product Policy Manager"
+          },
+          {
+            "description": "Technical Writer review and editing",
+            "order": 4,
+            "required": true,
+            "role": "Technical Writer"
+          },
+          {
+            "description": "Senior Technical Writer review and approval",
+            "order": 5,
+            "required": true,
+            "role": "Senior Technical Writer"
+          },
+          {
+            "description": "Technical Writing Manager final approval",
+            "order": 6,
+            "required": true,
+            "role": "Technical Writing Manager"
+          }
+        ],
+        "callback_url": null,
+        "document": null,
+        "id": "9152b1d8603340dea6164c52ab84375e",
+        "mode": "sequential",
+        "phase": "draft",
+        "phases": [
+          "draft",
+          "review",
+          "approval"
+        ],
+        "project": "agentic-browser-watch-local-5",
+        "reviewers": [],
+        "template": "branch-coordination"
+      }
+    },
+    {
+      "actor": "browser-admin",
+      "actual_status": 201,
+      "expected_statuses": [
+        201
+      ],
+      "method": "POST",
+      "path": "/documents/import",
+      "request_json": null,
+      "response_json": {
+        "approval_ids": [],
+        "content": "# DocReview360 API\n\nBrowser agent seed document.",
+        "date": "2026-05-23T11:47:46.032036Z",
+        "editor": "ckeditor5",
+        "frozen": false,
+        "history": [
+          {
+            "author": "bob",
+            "content": "# DocReview360 API\n\nBrowser agent seed document.",
+            "id": "8042e7c6154f43ba967ed38cbb0e3192",
+            "steps": null,
+            "timestamp": "2026-05-23T11:47:46.032036Z",
+            "yjs_updates": null
+          }
+        ],
+        "id": "9ccbcb5adde94441b22bbb1beeec70cd",
+        "ingestion_hash": "830d6e2c390f59c2b95e4620055097505bc83e34a8382abe5da40994d5646a71",
+        "last_quality_date": null,
+        "last_quality_score": null,
+        "number": 2,
+        "plain_language_grade": null,
+        "priority": null,
+        "project": "agentic-browser-watch-local-5",
+        "public_copy": false,
+        "source_document_id": null,
+        "user": "bob",
+        "version_number": 1
+      }
+    },
+    {
+      "actor": "browser-admin",
+      "actual_status": 200,
+      "expected_statuses": [
+        200
+      ],
+      "method": "POST",
+      "path": "/projects/agentic-browser-watch-local-5/reviewers",
+      "request_json": null,
+      "response_json": [
+        "agentic-browser-reviewer"
+      ]
+    }
+  ],
+  "created_at": "2026-05-23T11:48:19.249338+00:00",
+  "expected": "Browser agent should seed a document, open CKEditor, edit content, and approve the final document.",
+  "id": "bug-browser-fd93d2a7d52e",
+  "log_excerpt": null,
+  "repro_steps": [
+    "bob: POST /token -> 200",
+    "bob: POST /users -> 201",
+    "browser-admin: POST /projects -> 201",
+    "browser-admin: POST /workflows -> 201",
+    "browser-admin: POST /documents/import -> 201",
+    "browser-admin: POST /projects/agentic-browser-watch-local-5/reviewers -> 200"
+  ],
+  "run_id": "watch-local-5",
+  "screenshot_paths": [
+    "tests\\agentic\\bug-reports\\watch-local-5-browser-failure.png"
+  ],
+  "severity": "high",
+  "title": "Browser CKEditor workflow failed: TimeoutError"
+}
