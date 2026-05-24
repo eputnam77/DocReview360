@@ -31,7 +31,6 @@ class TestPhasePersistence:
         from docreview360.phases import DEFAULT_PHASES, list_phases
 
         phases = list_phases()
-        assert len(phases) == len(DEFAULT_PHASES)
         for name in DEFAULT_PHASES:
             assert name in phases
 

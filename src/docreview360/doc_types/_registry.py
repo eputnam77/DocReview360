@@ -332,6 +332,27 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
         ).one_or_none()
 
         if existing is not None:
+            existing_workflow = (
+                existing.workflow
+                if isinstance(existing.workflow, list)
+                else json.loads(existing.workflow or "[]")
+            )
+            existing_dtid = (
+                existing.default_workflow_template_id
+                if hasattr(existing, "default_workflow_template_id")
+                else getattr(existing, "default_template_id", None)
+            )
+            if (
+                existing.template == doc_type.template
+                and existing_workflow == doc_type.workflow
+                and existing_dtid == doc_type.default_workflow_template_id
+            ):
+                return DocumentTypeModel(
+                    name=existing.name,
+                    template=existing.template,
+                    workflow=existing_workflow,
+                    default_workflow_template_id=existing_dtid,
+                )
             raise ValueError(f"Document type '{doc_type.name}' already exists")
 
         conn.execute(

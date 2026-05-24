@@ -26,11 +26,13 @@ def test_phase_crud() -> None:
     assert resp.status_code == 200
     baseline = set(resp.json())
 
-    resp = client.post("/phases", json={"name": "Draft"}, headers=hdrs)
+    # Use a name not in conftest's _COMMON_TEST_PHASES seed list
+    new_phase = "TestCrudPhase"
+    resp = client.post("/phases", json={"name": new_phase}, headers=hdrs)
     assert resp.status_code == 201
-    assert "Draft" in resp.json()
+    assert new_phase in resp.json()
 
-    resp = client.delete("/phases/Draft", headers=hdrs)
+    resp = client.delete(f"/phases/{new_phase}", headers=hdrs)
     assert resp.status_code == 204
 
     resp = client.get("/phases")

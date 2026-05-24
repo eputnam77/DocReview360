@@ -122,6 +122,15 @@ emit_lock = asyncio.Lock()
 
 async def emit(entry: LogEntry) -> None:
     """Dispatch ``entry`` to all registered connectors respecting order."""
+    global emit_lock
+    # asyncio.Lock binds to the first event loop that acquires it.  If code
+    # using asyncio.run() ran before this call (which creates a temporary loop
+    # that is then closed), the global lock is bound to the old closed loop.
+    # Detect this by checking the internal _loop attribute and recreate the
+    # lock on a loop mismatch so the current running loop can acquire it.
+    running_loop = asyncio.get_running_loop()
+    if getattr(emit_lock, "_loop", None) not in (None, running_loop):
+        emit_lock = asyncio.Lock()
     async with emit_lock:
         results = await asyncio.gather(
             *(c.emit(entry) for c in list(connectors)),

@@ -11,6 +11,7 @@ Covers:
 """
 from __future__ import annotations
 
+import contextlib
 import re
 from pathlib import Path
 
@@ -152,7 +153,8 @@ class TestArtifactReport:
         assert artifacts.exists()
         if created:
             artifacts.rmdir()
-            artifacts.parent.rmdir()
+            with contextlib.suppress(OSError):
+                artifacts.parent.rmdir()
 
     def test_report_filename_pattern(self) -> None:
         """Report files should match release-shepherd-<timestamp>.md pattern."""
