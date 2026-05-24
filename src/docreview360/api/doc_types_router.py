@@ -50,6 +50,9 @@ async def create_document_type(
     from sqlalchemy.exc import IntegrityError as _SAIntegrityError
 
     _validate_default_workflow_template(doc_type.default_workflow_template_id)
+    from ..doc_types import get_document_type as _get_doc_type
+    if _get_doc_type(doc_type.name) is not None:
+        raise HTTPException(status_code=409, detail=f"Document type '{doc_type.name}' already exists")
     try:
         if not doc_type.workflow:
             from ..doc_types import DEFAULT_DOC_TYPE_PHASES
