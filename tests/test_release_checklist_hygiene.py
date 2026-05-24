@@ -55,7 +55,7 @@ def test_gitignore_covers_local_release_artifacts() -> None:
     required_entries = [
         ".e2e-debug/",
         ".e2e-debug-webpack/",
-        ".pytest_tmp/",
+        ".pytest_tmp",
         "worker_state.json",
         "workflow_templates.json",
         "workflow_templates.json.lock",
