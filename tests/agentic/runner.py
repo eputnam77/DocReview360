@@ -48,10 +48,13 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(REPO_ROOT / "tests"))
 
 _configure_local_environment()
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("docreview360.cache").setLevel(logging.ERROR)
-logging.getLogger("docreview360.approvals.core").setLevel(logging.ERROR)
-logging.getLogger("docreview360.search._indexing").setLevel(logging.ERROR)
+
+_NOISY_LOGGERS: list[tuple[str, int]] = [
+    ("httpx", logging.WARNING),
+    ("docreview360.cache", logging.ERROR),
+    ("docreview360.approvals.core", logging.ERROR),
+    ("docreview360.search._indexing", logging.ERROR),
+]
 
 
 def run_agentic_suite(
@@ -69,19 +72,26 @@ def run_agentic_suite(
     from agentic.scenarios import run_document_review_scenario
     from docreview360.api import app
 
-    resolved_run_id = run_id or uuid4().hex[:10]
-    config = AgenticRunConfig(
-        run_id=resolved_run_id,
-        bug_report_dir=bug_report_dir or Path(__file__).parent / "bug-reports",
-        max_steps=max_steps,
-    )
-    orchestrator = OrchestratorAgent(client=TestClient(app), config=config)
-    return [
-        orchestrator.run(
-            name="document-review-workflow",
-            scenario=run_document_review_scenario,
+    saved_levels = [(name, logging.getLogger(name).level) for name, _ in _NOISY_LOGGERS]
+    for name, level in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(level)
+    try:
+        resolved_run_id = run_id or uuid4().hex[:10]
+        config = AgenticRunConfig(
+            run_id=resolved_run_id,
+            bug_report_dir=bug_report_dir or Path(__file__).parent / "bug-reports",
+            max_steps=max_steps,
         )
-    ]
+        orchestrator = OrchestratorAgent(client=TestClient(app), config=config)
+        return [
+            orchestrator.run(
+                name="document-review-workflow",
+                scenario=run_document_review_scenario,
+            )
+        ]
+    finally:
+        for name, level in saved_levels:
+            logging.getLogger(name).setLevel(level)
 
 
 def run_browser_suite(

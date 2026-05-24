@@ -19,7 +19,7 @@ from docreview360.api.documents_router import (
 )
 from docreview360.cms import fetch_from_cms, save_to_cms
 from docreview360.config import Config
-from docreview360.documents import DocumentModel, import_document
+from docreview360.documents import DocumentModel, import_document, set_document_editor
 from docreview360.sharepoint import SharePointClient
 
 
@@ -84,6 +84,7 @@ async def test_update_endpoint_calls_save(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_revision_endpoint_calls_save(monkeypatch) -> None:
     doc = import_document("doc.md", b"start")
+    set_document_editor(doc.id, "tiptap")
     cfg = Config(database="sqlite", editor="tiptap", cms=" sharepoint ", auth="oidc")
 
     monkeypatch.setattr(Config, "load", lambda path: cfg)
