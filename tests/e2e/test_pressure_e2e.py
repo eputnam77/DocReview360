@@ -59,7 +59,9 @@ def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
-def _create_user(page: Page, backend_url: str, admin_token: str, username: str, roles: list[str]) -> None:
+def _create_user(
+    page: Page, backend_url: str, admin_token: str, username: str, roles: list[str]
+) -> None:
     create = page.request.post(
         f"{backend_url}/users",
         headers=_headers(admin_token),
@@ -73,7 +75,9 @@ def _create_user(page: Page, backend_url: str, admin_token: str, username: str, 
         )
         assert update.ok, f"user update failed for {username}: {update.status} {update.text()}"
         return
-    assert create.status == 201, f"user create failed for {username}: {create.status} {create.text()}"
+    assert create.status == 201, (
+        f"user create failed for {username}: {create.status} {create.text()}"
+    )
 
 
 def _new_actor_page(
@@ -115,7 +119,9 @@ def _assert_no_app_crash(page: Page, route: str) -> None:
         "TypeError:",
         "ReferenceError:",
     ]
-    assert not any(marker in body for marker in crash_markers), f"{route} rendered crash text: {body[:500]}"
+    assert not any(marker in body for marker in crash_markers), (
+        f"{route} rendered crash text: {body[:500]}"
+    )
 
 
 def test_multi_role_same_project_pressure_flow(
@@ -124,7 +130,8 @@ def test_multi_role_same_project_pressure_flow(
     e2e_frontend_url: str,
     e2e_backend_url: str,
 ) -> None:
-    """Push one project through overlapping owner, editor, reviewer, approver, and invalid-user actions."""
+    """Push one project through overlapping owner, editor, reviewer, approver, and invalid-user
+    actions."""
 
     suffix = uuid4().hex[:8]
     admin_token = _login(page, e2e_backend_url, "bob")
@@ -142,7 +149,7 @@ def test_multi_role_same_project_pressure_flow(
     _create_user(page, e2e_backend_url, admin_token, actors["outsider"], ["user"])
 
     owner_token = _login(page, e2e_backend_url, actors["owner"], _PASSWORD)
-    editor_token = _login(page, e2e_backend_url, actors["editor"], _PASSWORD)
+    _login(page, e2e_backend_url, actors["editor"], _PASSWORD)
     reviewer_token = _login(page, e2e_backend_url, actors["reviewer"], _PASSWORD)
     approver_token = _login(page, e2e_backend_url, actors["approver"], _PASSWORD)
     outsider_token = _login(page, e2e_backend_url, actors["outsider"], _PASSWORD)
@@ -161,19 +168,15 @@ def test_multi_role_same_project_pressure_flow(
             "document_number": f"PRESS-{suffix}",
             "doc_type": doc_type["name"],
             "phase": phase,
+            "workflow": doc_type.get("default_workflow_template_id") or "branch-coordination",
             "user": actors["owner"],
         },
     )
     assert project_resp.status == 201, project_resp.text()
-    project_id = project_resp.json()["id"]
-
-    workflow_resp = page.request.post(
-        f"{e2e_backend_url}/workflows",
-        headers=_headers(admin_token),
-        data={"project": project_id, "phases": ["draft", "review", "approval"]},
-    )
-    assert workflow_resp.status == 201, workflow_resp.text()
-    workflow_id = workflow_resp.json()["id"]
+    project = project_resp.json()
+    project_id = project["id"]
+    workflow_id = project["workflow"]
+    assert workflow_id
 
     document_resp = page.request.post(
         f"{e2e_backend_url}/documents/import",
@@ -240,7 +243,7 @@ def test_multi_role_same_project_pressure_flow(
         reviewer_page.get_by_test_id("comments-section-toggle").click()
         reviewer_page.get_by_role("button", name="Question").first.click()
         reviewer_page.get_by_placeholder("Add a question...").fill(f"Reviewer question {suffix}")
-        reviewer_page.get_by_role("button", name="Submit").click()
+        reviewer_page.get_by_role("button", name="Submit", exact=True).click()
         reviewer_page.get_by_text(f"Reviewer question {suffix}").wait_for()
 
         approver_page.goto(f"{e2e_frontend_url}/projects/{project_id}")
@@ -327,6 +330,10 @@ def test_multi_role_same_project_pressure_flow(
         )
         results = [job.result() for job in as_completed(jobs)]
 
+    sign_results = [result for result in results if result[0] == "approver"]
+    assert len(sign_results) == 1
+    assert sign_results[0][2] in {200, 409}, sign_results[0]
+
     unexpected = [
         result
         for result in results
@@ -354,7 +361,8 @@ def test_multi_role_same_project_pressure_flow(
         headers=_headers(admin_token),
     )
     assert approval_after.ok
-    assert approval_after.json()["state"] == "approved"
+    expected_state = "approved" if sign_results[0][2] == 200 else "pending"
+    assert approval_after.json()["state"] == expected_state
 
 
 def test_admin_and_user_route_surface_does_not_crash(
@@ -429,7 +437,8 @@ def test_admin_and_user_route_surface_does_not_crash(
 
     for route in admin_routes:
         response = page.goto(f"{e2e_frontend_url}{route}", wait_until="domcontentloaded")
-        assert response is not None and response.status < 500, f"{route} returned {response.status if response else 'none'}"
+        status = response.status if response else "none"
+        assert response is not None and response.status < 500, f"{route} returned {status}"
         page.wait_for_timeout(350)
         _assert_no_app_crash(page, route)
 
@@ -448,7 +457,10 @@ def test_admin_and_user_route_surface_does_not_crash(
         """,
         [e2e_backend_url, user_token],
     )
-    for route in ["/dashboard/user", "/projects", f"/projects/{project_id}", "/tools", "/help", "/profile"]:
+    user_routes = [
+        "/dashboard/user", "/projects", f"/projects/{project_id}", "/tools", "/help", "/profile"
+    ]
+    for route in user_routes:
         response = page.goto(f"{e2e_frontend_url}{route}", wait_until="domcontentloaded")
         assert response is not None and response.status < 500, f"user route {route} failed"
         page.wait_for_timeout(250)

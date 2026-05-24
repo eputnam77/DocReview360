@@ -64,6 +64,7 @@ artifacts/
 # Runtime and test temp (logs, pytest cache, checker downloads)
 .tmp/
 .e2e-runs/
+.live-run/
 test-results/
 playwright-report/
 

@@ -150,6 +150,8 @@ class GoogleDriveClient:
                 return resp.read()
         except HTTPError as exc:
             raise GoogleDriveError(f"Download failed: {exc.code} {exc.reason}") from exc
+        except URLError as exc:
+            raise GoogleDriveError(f"Cannot reach Google Drive API: {exc.reason}") from exc
 
     def export_google_doc(self, file_id: str, mime_type: str = "text/plain") -> bytes:
         """Export a Google Docs/Sheets/Slides file to a non-Google MIME type.
@@ -167,6 +169,8 @@ class GoogleDriveClient:
                 return resp.read()
         except HTTPError as exc:
             raise GoogleDriveError(f"Export failed: {exc.code} {exc.reason}") from exc
+        except URLError as exc:
+            raise GoogleDriveError(f"Cannot reach Google Drive API: {exc.reason}") from exc
 
     # ------------------------------------------------------------------
     # Upload
@@ -200,7 +204,8 @@ class GoogleDriveClient:
         body += content
         body += f"\r\n--{boundary}--".encode()
 
-        url = f"{DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields=id,name,mimeType,size,modifiedTime,parents,webViewLink"
+        fields = "id,name,mimeType,size,modifiedTime,parents,webViewLink"
+        url = f"{DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields={fields}"
         req = Request(
             url,
             data=body,
@@ -216,9 +221,12 @@ class GoogleDriveClient:
         except HTTPError as exc:
             raise GoogleDriveError(f"Upload failed: {exc.code} {exc.reason}") from exc
 
-    def update_file(self, file_id: str, content: bytes, mime_type: str = "application/octet-stream") -> DriveFile:
+    def update_file(
+        self, file_id: str, content: bytes, mime_type: str = "application/octet-stream"
+    ) -> DriveFile:
         """Replace the content of an existing Drive file."""
-        url = f"{DRIVE_UPLOAD_BASE}/files/{file_id}?uploadType=media&fields=id,name,mimeType,size,modifiedTime"
+        fields = "id,name,mimeType,size,modifiedTime"
+        url = f"{DRIVE_UPLOAD_BASE}/files/{file_id}?uploadType=media&fields={fields}"
         req = Request(
             url,
             data=content,

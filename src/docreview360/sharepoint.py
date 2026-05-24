@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, cast
@@ -16,6 +17,8 @@ from .ml.onnx_infer import metadata_to_context
 from .quality import QUALITY_FLAG_NAMES, quality_assessment, quality_model_metadata
 from .reviewer_model import ReviewerModel
 from .secrets import get_secret
+
+_logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .ml.torch_models import TinyCritic
@@ -212,7 +215,7 @@ class SharePointClient:
             self.set_properties(item_id, metadata)
         except Exception as e:
             # We don't want metadata failures to block main flow
-            print(f"Warning: Failed to set SharePoint metadata for {item_id}: {e}")
+            _logger.warning("Failed to set SharePoint metadata for %s: %s", item_id, e)
 
         return item_id, score, approval_ids
 

@@ -70,7 +70,12 @@ def _json_req(
 
 
 def _pw_login(page: Page, backend_url: str, username: str, password: str = "password") -> str:
-    """POST /token and return Bearer token; stores it in localStorage for page auth."""
+    """POST /token and return Bearer token.
+
+    Playwright's request context keeps the auth cookies set by /token, which is
+    the same auth path the UI now uses. Avoid writing localStorage from
+    about:blank because modern browsers reject origin storage there.
+    """
     resp = page.request.post(
         f"{backend_url}/token",
         form={"username": username, "password": password},
@@ -78,16 +83,6 @@ def _pw_login(page: Page, backend_url: str, username: str, password: str = "pass
     assert resp.ok, f"login failed for {username}: {resp.status} {resp.text()}"
     token = resp.json()["access_token"]
     assert token
-    page.evaluate(
-        """
-        ([backendUrl, accessToken]) => {
-          window.__DOCREVIEW360_API_BASE = backendUrl;
-          localStorage.setItem("docreview360_api_base", backendUrl);
-          localStorage.setItem("access_token", accessToken);
-        }
-        """,
-        [backend_url, token],
-    )
     return token
 
 
@@ -176,7 +171,7 @@ def test_complete_ui_route_surface(  # noqa: C901
         data={
             "name": f"Deep Stress Workflow {uuid4().hex[:6]}",
             "description": "Stress test workflow",
-            "steps": json.dumps([{"role": "reviewer", "required": True}]),
+            "steps": [{"role": "reviewer", "required": True}],
         },
     )
     workflow_template_id: str | None = None
@@ -288,7 +283,7 @@ def test_complete_ui_route_surface(  # noqa: C901
             crash_routes.append(str(exc)[:200])
 
     # Now sweep a subset as alice (reviewer) to catch role-based rendering crashes
-    alice_token = _pw_login(page, e2e_backend_url, "alice")  # noqa: F841 — token stored in localStorage
+    _pw_login(page, e2e_backend_url, "alice")
     reviewer_routes = [
         "/dashboard",
         "/dashboard/user",
@@ -407,7 +402,7 @@ def test_concurrent_multiuser_same_project_ui(
         # Owner posts a comment
         owner_page.get_by_test_id("comments-section-toggle").click()
         owner_page.get_by_placeholder("Add a comment...").fill(f"Owner note {suffix}")
-        owner_page.get_by_role("button", name="Submit").click()
+        owner_page.get_by_role("button", name="Submit", exact=True).click()
         owner_page.get_by_text(f"Owner note {suffix}").wait_for(timeout=8_000)
 
         # Reviewer reads the project and posts a question
@@ -415,7 +410,7 @@ def test_concurrent_multiuser_same_project_ui(
         reviewer_page.get_by_test_id("comments-section-toggle").click()
         reviewer_page.get_by_role("button", name="Question").first.click()
         reviewer_page.get_by_placeholder("Add a question...").fill(f"Reviewer question {suffix}")
-        reviewer_page.get_by_role("button", name="Submit").click()
+        reviewer_page.get_by_role("button", name="Submit", exact=True).click()
         reviewer_page.get_by_text(f"Reviewer question {suffix}").wait_for(timeout=8_000)
 
         # Approver views feedback section (no crash)
@@ -464,7 +459,11 @@ def test_configuration_full_round_trip(
     dt_resp = page.request.post(
         f"{e2e_backend_url}/document-types",
         headers=_headers(admin_token),
-        data={"name": new_dt, "phases": [new_phase, "review", "approved"]},
+        data={
+            "name": new_dt,
+            "template": f"<h1>{new_dt}</h1>",
+            "workflow": [new_phase, "review", "approved"],
+        },
     )
     assert dt_resp.status == 201, dt_resp.text()
 
@@ -493,14 +492,14 @@ def test_configuration_full_round_trip(
         data={
             "name": f"StressWorkflow-{suffix}",
             "description": "Stress test",
-            "steps": json.dumps([{"role": "reviewer", "required": True}]),
+            "steps": [{"role": "reviewer", "required": True}],
         },
     )
     assert wt_resp.status in (200, 201), wt_resp.text()
     wt_id = wt_resp.json().get("id")
 
     page.goto(f"{e2e_frontend_url}/configuration/workflows", wait_until="domcontentloaded")
-    page.get_by_text(f"StressWorkflow-{suffix}").wait_for(timeout=8_000)
+    page.get_by_role("link", name=f"StressWorkflow-{suffix}", exact=True).wait_for(timeout=8_000)
     _assert_no_crash(page, "/configuration/workflows")
 
     if wt_id:
@@ -512,9 +511,9 @@ def test_configuration_full_round_trip(
     config_resp = page.request.get(f"{e2e_backend_url}/config", headers=_headers(admin_token))
     assert config_resp.ok
     config = config_resp.json()
-    original_org = config.get("org_name", "DocReview360")
+    original_company = config.get("branding_company_name", "DocReview360")
     stress_org = f"StressOrg-{suffix}"
-    config["org_name"] = stress_org
+    config["branding_company_name"] = stress_org
     put_resp = page.request.put(
         f"{e2e_backend_url}/config",
         headers={**_headers(admin_token)},
@@ -522,15 +521,13 @@ def test_configuration_full_round_trip(
     )
     assert put_resp.ok, put_resp.text()
 
-    # Verify branding page renders the org name
+    # Verify branding page renders the configured company name
     page.goto(f"{e2e_frontend_url}/configuration/branding", wait_until="domcontentloaded")
     page.wait_for_timeout(600)
-    body = page.locator("body").inner_text(timeout=6_000)
-    # the org name should be in an input value or visible text
-    assert stress_org in body or page.locator(f"input[value='{stress_org}']").count() > 0
+    assert page.get_by_label("Company Name").input_value(timeout=6_000) == stress_org
 
-    # Restore original org name
-    config["org_name"] = original_org
+    # Restore original company name
+    config["branding_company_name"] = original_company
     page.request.put(
         f"{e2e_backend_url}/config",
         headers={**_headers(admin_token)},
@@ -621,7 +618,8 @@ def test_tools_with_real_documents(
     page.wait_for_timeout(600)
     _assert_no_crash(page, "/tools/document-quality")
     body = page.locator("body").inner_text(timeout=6_000)
-    assert any(kw in body for kw in ("Quality", "Upload", "Headings", "Source", "document")), \
+    keywords = ("Quality", "Validation", "Validator", "Upload", "Headings", "Source", "document")
+    assert any(kw in body for kw in keywords), \
         f"Document quality page seems broken. Body:\n{body[:400]}"
 
     # Document analysis — navigate and verify it loads
@@ -789,8 +787,8 @@ def test_audit_log_filter_ui(
         _assert_no_crash(page, "audit-logs filtered by severity")
 
     # Also verify via API that audit log returns entries
-    audit_resp = page.request.get(f"{e2e_backend_url}/audit", headers=_headers(admin_token))
-    assert audit_resp.ok, f"GET /audit failed: {audit_resp.status}"
+    audit_resp = page.request.get(f"{e2e_backend_url}/api/audit", headers=_headers(admin_token))
+    assert audit_resp.ok, f"GET /api/audit failed: {audit_resp.status}"
     audit_data = audit_resp.json()
     items = audit_data if isinstance(audit_data, list) else audit_data.get("items", audit_data.get("logs", []))  # noqa: E501
     assert isinstance(items, list), f"Expected list of audit entries, got {type(items)}"
@@ -1041,7 +1039,7 @@ def test_edge_cases_inputs_and_api(
 # ---------------------------------------------------------------------------
 
 
-def test_high_concurrency_api_writes(
+def test_high_concurrency_api_writes(  # noqa: C901
     page: Page,
     e2e_frontend_url: str,
     e2e_backend_url: str,
@@ -1058,7 +1056,8 @@ def test_high_concurrency_api_writes(
     phase = (dt.get("phases") or dt.get("workflow") or ["draft"])[0]
 
     # Create users for the concurrency test
-    for i in range(4):
+    reviewer_count = 15
+    for i in range(reviewer_count):
         _json_req(
             "POST", f"{e2e_backend_url}/users", token=admin_token,
             payload={"username": f"conc-{suffix}-{i}", "password": _PASSWORD,
@@ -1077,6 +1076,18 @@ def test_high_concurrency_api_writes(
     )
     assert status == 201, f"Project creation failed: {proj_data}"
     project_id = proj_data["id"]
+
+    for i in range(reviewer_count):
+        reviewer_status, reviewer_body = _json_req(
+            "POST",
+            f"{e2e_backend_url}/projects/{project_id}/reviewers",
+            token=admin_token,
+            payload={"reviewer": f"conc-{suffix}-{i}"},
+        )
+        assert reviewer_status in (200, 201), (
+            f"Reviewer assignment failed for conc-{suffix}-{i}: "
+            f"{reviewer_status} {reviewer_body}"
+        )
 
     # Import a document
     doc_req_data = (
@@ -1105,7 +1116,7 @@ def test_high_concurrency_api_writes(
 
     # Get tokens for all actors
     tokens: list[str] = [admin_token]
-    for i in range(4):
+    for i in range(reviewer_count):
         _, tok_data = _json_req("POST", f"{e2e_backend_url}/token",
                                 form={"username": f"conc-{suffix}-{i}", "password": _PASSWORD})
         tokens.append(tok_data["access_token"])

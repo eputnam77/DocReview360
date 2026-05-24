@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FixedSizeList as List } from "react-window";
 
 type Comment = {
   id: string;
@@ -110,26 +109,6 @@ export default function ReviewWorkspacePage() {
   }, [filtered, page, pageSize]);
 
   const pageCount = Math.ceil(filtered.length / pageSize);
-
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const d = paged[index];
-    return (
-      <TableRow
-        key={d.id}
-        onClick={() => setSelected(d.id)}
-        className={selected === d.id ? "bg-gray-100" : undefined}
-        style={style}
-      >
-        <TableCell>{d.reviewer}</TableCell>
-        <TableCell>{d.routing}</TableCell>
-        <TableCell>{d.pagePara}</TableCell>
-        <TableCell className="max-w-xs truncate">{d.comment}</TableCell>
-        <TableCell className="max-w-xs truncate">{d.change}</TableCell>
-        <TableCell>{d.decision}</TableCell>
-        <TableCell>{d.disposition}</TableCell>
-      </TableRow>
-    );
-  };
 
   const unique = {
     phases: Array.from(new Set(comments.map((c) => c.phase))),
@@ -302,25 +281,31 @@ export default function ReviewWorkspacePage() {
                     <TableHead>Disposition</TableHead>
                   </TableRow>
                 </TableHeader>
-                {paged.length > 0 ? (
-                  <List
-                    height={Math.min(400, paged.length * 48)}
-                    itemCount={paged.length}
-                    itemSize={48}
-                    width="100%"
-                    outerElementType={TableBody as any}
-                  >
-                    {Row}
-                  </List>
-                ) : (
-                  <TableBody>
+                <TableBody>
+                  {paged.length > 0 ? (
+                    paged.map((d) => (
+                      <TableRow
+                        key={d.id}
+                        onClick={() => setSelected(d.id)}
+                        className={selected === d.id ? "bg-gray-100" : undefined}
+                      >
+                        <TableCell>{d.reviewer}</TableCell>
+                        <TableCell>{d.routing}</TableCell>
+                        <TableCell>{d.pagePara}</TableCell>
+                        <TableCell className="max-w-xs truncate">{d.comment}</TableCell>
+                        <TableCell className="max-w-xs truncate">{d.change}</TableCell>
+                        <TableCell>{d.decision}</TableCell>
+                        <TableCell>{d.disposition}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
                         No comments found
                       </TableCell>
                     </TableRow>
-                  </TableBody>
-                )}
+                  )}
+                </TableBody>
               </Table>
               {pageCount > 1 && (
                 <div className="flex justify-end items-center gap-2 mt-2 text-sm">
