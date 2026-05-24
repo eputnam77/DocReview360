@@ -12,6 +12,17 @@ import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/api";
 
+async function getErrorMessage(res: Response, fallback: string): Promise<string> {
+  const payload = await res.json().catch(() => null);
+  if (payload && typeof payload === "object") {
+    const message = (payload as { detail?: unknown; message?: unknown }).message;
+    const detail = (payload as { detail?: unknown; message?: unknown }).detail;
+    if (typeof message === "string" && message.trim()) return message;
+    if (typeof detail === "string" && detail.trim()) return detail;
+  }
+  return fallback;
+}
+
 export default function EditWorkflowPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -69,9 +80,16 @@ export default function EditWorkflowPage() {
   }, [id, router.isReady]);
 
   const addStep = () => {
+    const trimmedRole = role.trim();
+    if (!trimmedRole) return;
     setSteps([
       ...steps,
-      { id: "s" + (Math.random() * 10000).toFixed(0), role, user, required },
+      {
+        id: "s" + crypto.randomUUID(),
+        role: trimmedRole,
+        user: user.trim(),
+        required,
+      },
     ]);
     setRole(roles[0] ?? "");
     setUser("");
@@ -97,10 +115,14 @@ export default function EditWorkflowPage() {
       const res = await authenticatedFetch(`/workflow-templates/${wfId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, steps }),
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || undefined,
+          steps,
+        }),
       });
       if (!res.ok) {
-        throw new Error("Failed to update workflow template");
+        throw new Error(await getErrorMessage(res, "Failed to update workflow template"));
       }
       const updated = await res.json();
       toast.success("Workflow updated.");
@@ -130,8 +152,7 @@ export default function EditWorkflowPage() {
             <Input
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Description"
-              required
+              placeholder="Description (optional)"
             />
           </div>
           <form
@@ -236,7 +257,7 @@ export default function EditWorkflowPage() {
             <Button
               size="lg"
               onClick={handleSave}
-              disabled={!name || !description || steps.length === 0}
+              disabled={!name.trim() || steps.length === 0}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               Update Workflow

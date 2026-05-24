@@ -74,6 +74,32 @@ def _update_role_permissions(role: str, permissions: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 
+@router.get("/rbac/role-permissions/{role}", response_model=RolePermissionSummary)
+async def get_role_permissions_endpoint(
+    role: str,
+    current_user: auth.User = Depends(auth.get_current_user),
+) -> RolePermissionSummary:
+    """Return permissions for a specific role."""
+    normalized_role = role.strip().lower()
+    if not normalized_role:
+        raise HTTPException(status_code=400, detail="Role required")
+    current = rbac.get_role_permissions()
+    defaults = getattr(rbac, "_DEFAULT_ROLE_PERMISSIONS", {})
+    all_roles = set(defaults) | set(current)
+    if normalized_role not in all_roles:
+        raise HTTPException(status_code=404, detail=f"Role '{normalized_role}' not found")
+    perms = sorted(current.get(normalized_role, set()))
+    default_perms = sorted(defaults.get(normalized_role, set()))
+    return RolePermissionSummary(
+        role=normalized_role,
+        permissions=perms,
+        count=len(perms),
+        default_permissions=default_perms,
+        default_count=len(default_perms),
+        is_default=set(perms) == set(default_perms),
+    )
+
+
 @router.put("/rbac/role-permissions/{role}", response_model=RolePermissionSummary)
 async def update_role_permissions_endpoint(
     role: str,

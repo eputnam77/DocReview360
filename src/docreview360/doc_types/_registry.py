@@ -332,10 +332,7 @@ def add_document_type(doc_type: DocumentTypeModel | dict[str, Any]) -> DocumentT
         ).one_or_none()
 
         if existing is not None:
-            existing_model = _row_to_model(existing)
-            if existing_model.model_dump() != doc_type.model_dump():
-                raise ValueError(f"Document type '{doc_type.name}' already exists")
-            return existing_model
+            raise ValueError(f"Document type '{doc_type.name}' already exists")
 
         conn.execute(
             _text(

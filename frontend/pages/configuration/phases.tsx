@@ -219,9 +219,11 @@ export default function PhasesPage() {
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         const detail =
-          typeof payload?.detail === "string" && payload.detail.trim()
-            ? payload.detail
-            : "Failed to update phase workflow";
+          (typeof payload?.message === "string" && payload.message.trim())
+            ? payload.message
+            : (typeof payload?.detail === "string" && payload.detail.trim())
+              ? payload.detail
+              : "Failed to update phase workflow";
         toast.error(detail);
         return;
       }
@@ -283,8 +285,8 @@ export default function PhasesPage() {
       if (response.ok) {
         setPhases(phases.filter((p) => p.id !== showDeleteDialog));
       } else {
-        const error = await response.json();
-        toast.error(`Error: ${String(error?.detail ?? "Failed to delete phase")}`);
+        const error = await response.json().catch(() => ({}));
+        toast.error(String(error?.message || error?.detail || "Failed to delete phase"));
       }
     } catch {
       toast.error("Error deleting phase");

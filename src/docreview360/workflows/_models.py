@@ -45,7 +45,14 @@ class WorkflowTemplatePayload(BaseModel):
     def _ensure_name(cls, value: str) -> str:
         if not isinstance(value, str) or not value.strip():
             raise ValueError("Workflow template name is required")
-        return value.strip()
+        cleaned = value.strip()
+        if len(cleaned) > 200:
+            raise ValueError("Workflow template name must not exceed 200 characters")
+        if any(c in cleaned for c in ("<", ">", '"', "'", "&")):
+            raise ValueError(
+                "Workflow template name may not contain HTML special characters (< > \" ' &)"
+            )
+        return cleaned
 
     @field_validator("steps")
     @classmethod

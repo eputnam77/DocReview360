@@ -379,9 +379,7 @@ class TestReplacementDeletion:
         )
         assert resp.status_code == 400
         error = resp.json()
-        assert "Replacement document type 'Test Doc Type' not found" in (
-            error.get("detail") or error.get("message", "")
-        )
+        assert "different" in (error.get("detail") or error.get("message", "")).lower()
 
     def test_cascade_effects(self) -> None:
         """Test that deletion with replacement properly cascades to all affected entities."""

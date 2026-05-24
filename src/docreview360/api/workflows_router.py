@@ -38,7 +38,7 @@ from ..approvals import (
     update_approval_state,
 )
 from ..audit import log_audit_event
-from ..doc_types import list_document_types
+from ..doc_types import list_document_types, update_document_type
 from ..email_templates import (
     create_template as create_email_template,
 )
@@ -227,6 +227,13 @@ class PhaseModel(BaseModel):
     """Simple phase schema."""
 
     name: str = Field(min_length=1, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Phase name must not be blank or whitespace-only")
+        return v
 
 
 class PhaseWorkflowLinkModel(BaseModel):
@@ -489,8 +496,18 @@ async def create_phase_endpoint(
     body: PhaseModel,
     _user: auth.User = Depends(require_role("admin")),
 ) -> list[str]:
-    """Create a new project phase (admin only)."""
-    add_phase(body.name)
+    """Create a new project phase (admin only). Returns 409 if name already exists."""
+    from sqlalchemy.exc import IntegrityError as _SAIntegrityError
+
+    phase_name = body.name.strip()
+    existing = list_phases()
+    if phase_name in existing:
+        raise HTTPException(status_code=409, detail=f"Phase '{phase_name}' already exists")
+    try:
+        add_phase(phase_name)
+    except _SAIntegrityError:
+        # Two concurrent requests passed the pre-check; treat as duplicate
+        raise HTTPException(status_code=409, detail=f"Phase '{phase_name}' already exists")
     return list_phases()
 
 
@@ -555,25 +572,36 @@ async def rename_phase_endpoint(
     _user: auth.User = Depends(require_role("admin")),
 ) -> list[str]:
     """Rename a phase and propagate changes to workflows (admin only)."""
+    new_name = body.name.strip()
     phases_list = list_phases()
     if name not in phases_list:
         raise HTTPException(status_code=404, detail=f"Phase '{name}' not found")
+    if new_name != name and new_name in phases_list:
+        raise HTTPException(
+            status_code=409, detail=f"Phase '{new_name}' already exists"
+        )
 
     try:
-        rename_phase(name, body.name)
+        rename_phase(name, new_name)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        if "UNIQUE" in str(exc) or "IntegrityError" in type(exc).__name__:
+            raise HTTPException(
+                status_code=409, detail=f"Phase '{new_name}' already exists"
+            ) from exc
+        raise
 
     all_workflows = list_workflows()
     for wf in all_workflows:
-        wf.phases = [body.name if p == name else p for p in wf.phases]
+        wf.phases = [new_name if p == name else p for p in wf.phases]
         if wf.phase == name:
-            wf.phase = body.name
+            wf.phase = new_name
 
     from ..search import projects
     for proj in projects.values():
         if getattr(proj, "initial_phase", None) == name:
-            proj.initial_phase = body.name
+            proj.initial_phase = new_name
 
     return list_phases()
 
@@ -702,7 +730,7 @@ async def delete_phase_sla_endpoint(
 @router.get("/phases/{name}/sla/status", response_model=dict[str, Any])
 async def evaluate_phase_sla_endpoint(
     name: str,
-    elapsed_days: int,
+    elapsed_days: int = Query(..., ge=0),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Evaluate the SLA status for a phase given elapsed days."""
@@ -737,6 +765,9 @@ async def create_workflow_template_endpoint(
         template = create_workflow_template(body)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    log_audit_event(template.id, "workflow_template_created", actor=current_user.username)
+    from ..logs import log_event as _log_event
+    _log_event("workflow_template_created", user_id=current_user.username, entity_id=template.id, entity_type="workflow_template")
     return _serialize_workflow_template(template)
 
 
@@ -765,10 +796,23 @@ async def update_workflow_template_endpoint(
     """Update workflow template by id."""
     try:
         template = update_workflow_template(template_id, body)
+        if template.id != template_id:
+            for phase in list_phases_detail():
+                if phase.get("workflow_template_id") == template_id:
+                    set_phase_workflow_template(str(phase["name"]), template.id)
+            for doc_type in list_document_types():
+                if doc_type.default_workflow_template_id == template_id:
+                    update_document_type(
+                        doc_type.name,
+                        doc_type.model_copy(update={"default_workflow_template_id": template.id}),
+                    )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    log_audit_event(template_id, "workflow_template_updated", actor=current_user.username)
+    from ..logs import log_event as _log_event
+    _log_event("workflow_template_updated", user_id=current_user.username, entity_id=template_id, entity_type="workflow_template")
     return _serialize_workflow_template(template)
 
 
@@ -779,11 +823,39 @@ async def delete_workflow_template_endpoint(
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(require_role("admin")),
 ) -> Response:
-    """Delete workflow template by id."""
+    """Delete workflow template by id. Returns 409 if in use by phases or document types."""
+    template = get_workflow_template(template_id)
+    if template is None:
+        raise HTTPException(status_code=404, detail="Workflow template not found")
+
+    dependents: list[str] = []
+    for phase in list_phases_detail():
+        if phase.get("workflow_template_id") == template_id:
+            dependents.append(f"phase '{phase['name']}'")
+    for dt in list_document_types():
+        if dt.default_workflow_template_id == template_id:
+            dependents.append(f"document type '{dt.name}'")
+    for wf in list_workflows():
+        if wf.template == template_id:
+            dependents.append(f"workflow '{wf.id}'")
+
+    if dependents:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Workflow template '{template_id}' is in use by: "
+                + ", ".join(dependents)
+                + ". Remove these references before deleting."
+            ),
+        )
+
     try:
         delete_workflow_template(template_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    log_audit_event(template_id, "workflow_template_deleted", actor=current_user.username)
+    from ..logs import log_event as _log_event
+    _log_event("workflow_template_deleted", user_id=current_user.username, entity_id=template_id, entity_type="workflow_template")
     return Response(status_code=204)
 
 
@@ -796,9 +868,21 @@ async def delete_workflow_template_endpoint(
 async def create_workflow_endpoint(
     workflow: WorkflowCreate = Body(...),
     x_user: str | None = Header(None),
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> WorkflowModel:
-    """Create a new workflow."""
+    """Create a new workflow (admin only).
+
+    Validates that every phase in the request body exists in the phases DB
+    so callers cannot create orphaned workflow instances that reference
+    non-existent phases.
+    """
+    known_phases = set(list_phases())
+    unknown = [p for p in workflow.phases if p not in known_phases]
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown phase(s): {unknown}. Create them first via POST /phases.",
+        )
     return create_workflow(workflow.project, workflow.phases, mode=workflow.mode)
 
 
@@ -887,11 +971,34 @@ async def advance_workflow_endpoint(
     x_user: str | None = Header(None),
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowModel:
-    """Advance workflow to the next phase."""
+    """Advance workflow to the next phase. Returns 409 if already at final phase."""
     try:
         return advance_workflow(wf_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/workflows/{wf_id}", status_code=204, response_class=Response, response_model=None)
+async def delete_workflow_endpoint(
+    wf_id: str,
+    current_user: auth.User = Depends(require_role("admin")),
+) -> Response:
+    """Delete a workflow instance (admin only).
+
+    This removes the workflow record and its DB entry.  Active approvals
+    referencing this workflow are NOT automatically cleaned up — callers
+    should ensure no in-progress reviews exist before deleting.
+    """
+    from ..workflows import delete_workflow
+
+    try:
+        delete_workflow(wf_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    log_audit_event(wf_id, "workflow_deleted", actor=current_user.username)
+    return Response(status_code=204)
 
 
 # ---------------------------------------------------------------------------

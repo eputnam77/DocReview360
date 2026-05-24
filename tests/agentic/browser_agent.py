@@ -299,10 +299,18 @@ def _create_workflow(
     backend_url: str,
     headers: dict[str, str],
 ) -> dict[str, Any]:
+    workflow_phases = ["draft", "review", "approval"]
+    # Ensure phases exist before workflow creation (POST /workflows validates phase existence)
+    for phase in workflow_phases:
+        page.request.post(
+            f"{backend_url}/phases",
+            headers=_json_headers(headers),
+            data=json.dumps({"name": phase}),
+        )
     response = page.request.post(
         f"{backend_url}/workflows",
         headers=_json_headers(headers),
-        data=json.dumps({"project": state.project_id, "phases": ["draft", "review", "approval"]}),
+        data=json.dumps({"project": state.project_id, "phases": workflow_phases}),
     )
     _record_trace(state, "browser-admin", "POST", "/workflows", (201,), response)
     if not response.ok:

@@ -41,6 +41,9 @@ def _alice_headers() -> dict[str, str]:
 def test_approval_lifecycle() -> None:
     client = TestClient(app)
     hdrs = _alice_headers()
+    # Ensure phases exist before creating the workflow (POST /workflows validates phase existence)
+    for phase in ("draft", "review"):
+        client.post("/phases", json={"name": phase}, headers=hdrs)
     # create a workflow first
     wf_resp = client.post(
         "/workflows",
@@ -80,6 +83,7 @@ def test_approval_lifecycle() -> None:
 def test_due_date_updates() -> None:
     client = TestClient(app)
     hdrs = _alice_headers()
+    client.post("/phases", json={"name": "draft"}, headers=hdrs)
     wf = client.post(
         "/workflows",
         json={"project": "p2", "phases": ["draft"]},

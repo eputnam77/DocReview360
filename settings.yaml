@@ -130,7 +130,7 @@ profile_bob:
   - user
   - reviewer
   phone: +1 (415) 555-0118
-  picture: ''
+  picture: https://example.com/avatar-bob-ui-524.png
   shorthand: BC
   timeZone: America/Chicago
   twoFA: false
@@ -402,6 +402,9 @@ projectprefs_qa-proj-20260201-062447:
   watermark_text: QA watermark
 rbac:
   roles:
+    editor:
+    - read
+    - update
     qa_role:
     - read
 secrets:

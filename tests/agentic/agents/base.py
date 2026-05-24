@@ -53,6 +53,9 @@ class CreatorAgent(Agent):
     def create_workflow(self, state: ScenarioState, phases: list[str]) -> dict[str, Any]:
         if state.project_id is None:
             raise ValueError("project_id is required before creating a workflow")
+        # Ensure all phases exist in the DB before creating the workflow
+        for phase in phases:
+            self.session.request("POST", "/phases", json={"name": phase}, expected=(201, 409))
         response = self.session.request(
             "POST",
             "/workflows",

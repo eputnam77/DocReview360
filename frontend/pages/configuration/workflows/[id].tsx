@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
 import { useRouter } from "next/router";
 import {
   Card, CardHeader, CardTitle, CardContent,
@@ -77,8 +78,12 @@ export default function WorkflowDetailPage() {
                 const res = await authenticatedFetch(`/workflow-templates/${workflow.id}`, {
                   method: "DELETE",
                 });
-                if (res.ok) {
+                if (res.ok || res.status === 204) {
+                  toast.success("Workflow template deleted.");
                   router.push("/configuration/workflows");
+                } else {
+                  const err = await res.json().catch(() => ({ message: "Failed to delete workflow template" }));
+                  toast.error(err.message || err.detail || "Failed to delete workflow template");
                 }
               }}
             >

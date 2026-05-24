@@ -37,13 +37,14 @@ function ToolbarButton({
   disabled?: boolean;
   active?: boolean;
 }) {
+  const ariaLabel = title ?? (typeof label === "string" ? label : undefined);
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
       title={title}
-      aria-label={title ?? label}
+      aria-label={ariaLabel}
       className={`rounded-md border px-2 py-1 text-sm hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50 ${
         active
           ? "border-indigo-400 bg-indigo-50 text-indigo-700 font-semibold"

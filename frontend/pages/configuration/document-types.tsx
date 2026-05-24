@@ -294,8 +294,8 @@ function SLAPanel({
         toast.success(`SLA saved for ${docTypeId}`);
         onSaved?.(saved);
       } else {
-        const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-        toast.error(`Failed to save SLA: ${err.detail ?? res.statusText}`);
+        const err = await res.json().catch(() => ({}));
+        toast.error(`Failed to save SLA: ${err.message || err.detail || res.statusText || "Unknown error"}`);
       }
     } catch {
       toast.error("Failed to save SLA");
@@ -547,9 +547,10 @@ export default function DocumentTypesPage() {
 
   const addType = async () => {
     if (!newName.trim()) return;
+    const trimmedName = newName.trim();
     const body = {
-      name: newName.trim(),
-      template: `<h1>${newName.trim()}</h1>`,
+      name: trimmedName,
+      template: `<h1>${trimmedName}</h1>`,
       workflow: []
     };
     try {
@@ -560,13 +561,14 @@ export default function DocumentTypesPage() {
       });
       if (r.ok) {
         await refetchDocumentTypes();
+        setNewName("");
       } else {
-        toast.error("Failed to add document type");
+        const err = await r.json().catch(() => ({ message: "Failed to add document type" }));
+        toast.error(err.message || err.detail || "Failed to add document type");
       }
-    } catch {
-      toast.error("Failed to add document type");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add document type");
     }
-    setNewName("");
   };
 
   const addGovernmentStarterSet = async () => {
@@ -665,8 +667,8 @@ export default function DocumentTypesPage() {
       if (response.ok) {
         await refetchDocumentTypes();
       } else {
-        const error = await response.json();
-        toast.error(`Error: ${error.detail}`);
+        const error = await response.json().catch(() => ({}));
+        toast.error(error.message || error.detail || `Delete failed (${response.status})`);
       }
     } catch (error) {
       console.error("Error deleting document type:", error);
@@ -690,22 +692,30 @@ export default function DocumentTypesPage() {
 
   const saveEdit = async (id: string) => {
     if (!editName.trim()) return;
-    const body = { name: editName.trim() };
+    const existing = types.find((t) => t.id === id);
+    if (!existing) return;
+    const body = {
+      name: editName.trim(),
+      template: existing.template || `<h1>${editName.trim()}</h1>`,
+      workflow: existing.phases || [],
+      default_workflow_template_id: existing.default_workflow_template_id || null,
+    };
     try {
-      const res = await authenticatedFetch(`/document-types/${id}`, {
+      const res = await authenticatedFetch(`/document-types/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        throw new Error("Failed to update document type");
+        const err = await res.json().catch(() => ({ message: "Failed to update document type" }));
+        throw new Error(err.message || err.detail || "Failed to update document type");
       }
       await refetchDocumentTypes();
       setEditingId(null);
       setEditName("");
       return;
-    } catch {
-      toast.error("Failed to update document type");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update document type");
     }
   };
 
@@ -729,10 +739,13 @@ export default function DocumentTypesPage() {
           default_workflow_template_id: effectiveTemplateId,
         }),
       });
-      if (!res.ok) throw new Error("Failed to update default workflow");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Failed to update default workflow" }));
+        throw new Error(err.message || err.detail || "Failed to update default workflow");
+      }
       await refetchDocumentTypes();
-    } catch {
-      toast.error("Failed to update default workflow");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update default workflow");
     }
   };
 
@@ -751,14 +764,16 @@ export default function DocumentTypesPage() {
           name: docType.name,
           template: docType.template || `<h1>${docType.name}</h1>`,
           workflow: updatedPhases,
+          default_workflow_template_id: docType.default_workflow_template_id || null,
         }),
       });
       if (!res.ok) {
-        throw new Error("Failed to update document type phases");
+        const err = await res.json().catch(() => ({ message: "Failed to update document type phases" }));
+        throw new Error(err.message || err.detail || "Failed to update document type phases");
       }
       await refetchDocumentTypes();
-    } catch {
-      toast.error("Failed to update document type phases");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update document type phases");
     }
   };
 

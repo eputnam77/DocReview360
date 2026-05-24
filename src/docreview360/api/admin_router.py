@@ -68,6 +68,7 @@ class ProfilePayload(BaseModel):
     twoFA: bool | None = None
     theme: Literal["system", "light", "dark"] | None = None
     reduce_motion: bool | None = None
+    password: str | None = None
 
 
 class UserStatusPayload(BaseModel):
@@ -586,6 +587,18 @@ async def update_profile(
 ) -> dict[str, Any]:
     """Persist profile preference updates."""
     payload = body.model_dump()
+    password = payload.pop("password", None)
+    if isinstance(password, str):
+        password = password.strip()
+        if password:
+            try:
+                auth._get_user_repository().create_user(
+                    current_user.username,
+                    password,
+                    active=current_user.active,
+                )
+            except auth.PasswordPolicyError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
     preference_keys = {"theme", "reduce_motion"}
     prefs = {k: v for k, v in payload.items() if k in preference_keys and v is not None}
     profile_updates = {

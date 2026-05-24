@@ -129,3 +129,19 @@ def test_cookie_auth_requires_csrf_header(fresh_auth: auth) -> None:
     ok_response = client.get("/me", headers={"X-CSRF-Token": "expected"})
     assert ok_response.status_code == 200
     assert ok_response.json() == {"username": "alice"}
+
+
+def test_demo_default_password_does_not_override_changed_password(tmp_path) -> None:
+    auth.configure_user_repository(tmp_path / "users.db")
+    defaults = auth.DEMO_USER_DEFAULTS["bob"]
+    auth.USER_REPOSITORY.create_user(
+        "bob",
+        defaults["password"],
+        otp_secret=defaults.get("otp_secret"),
+    )
+
+    changed_password = "ChangedDemoPass123!"
+    auth.USER_REPOSITORY.create_user("bob", changed_password)
+
+    assert auth.authenticate_user("bob", defaults["password"]) is None
+    assert auth.authenticate_user("bob", changed_password) is not None

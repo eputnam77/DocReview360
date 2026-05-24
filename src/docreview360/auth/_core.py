@@ -103,20 +103,6 @@ def authenticate_user(username: str, password: str) -> User | None:
     if repo.is_locked(record):
         return None
     if not UserRepository.verify_password(password, record.password_hash):
-        demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if (
-            demo_defaults
-            and password == demo_defaults.get("password")
-            and _allow_demo_seed()
-        ):
-            repo._seed_user(
-                username,
-                password,
-                otp_secret=record.otp_secret,
-                active=bool(record.active),
-            )
-            repo.reset_failures(username)
-            return User(username=username, active=True)
         repo.record_failure(username)
         return None
     repo.reset_failures(username)
@@ -125,8 +111,6 @@ def authenticate_user(username: str, password: str) -> User | None:
 
 def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
     """Return ``User`` if credentials, OTP match, and user is active."""
-    from . import DEMO_USER_DEFAULTS, SEED_DEMO_USERS
-
     if not username or not password or not otp:
         return None
     repo = _get_user_repository()
@@ -136,17 +120,8 @@ def authenticate_mfa(username: str, password: str, otp: str) -> User | None:
     if repo.is_locked(record):
         return None
     if not UserRepository.verify_password(password, record.password_hash):
-        demo_defaults = DEMO_USER_DEFAULTS.get(username)
-        if SEED_DEMO_USERS and demo_defaults and password == demo_defaults.get("password"):
-            repo._seed_user(
-                username,
-                password,
-                otp_secret=record.otp_secret,
-                active=bool(record.active),
-            )
-        else:
-            repo.record_failure(username)
-            return None
+        repo.record_failure(username)
+        return None
     if not UserRepository.verify_otp(record.otp_secret, otp):
         return None
     repo.reset_failures(username)

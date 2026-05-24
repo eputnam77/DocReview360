@@ -56,9 +56,11 @@ def _isolated_state(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     db_store.reset_db(f"sqlite:///{app_db}")
     monkeypatch.setattr(workflows, "DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE", True)
     workflows.reset_workflow_templates()
+    workflows.workflows.clear()
     yield
     db_store.reset_db(None)
     workflows.reset_workflow_templates()
+    workflows.workflows.clear()
 
 
 def test_workflow_template_crud_and_persistence() -> None:
@@ -145,3 +147,104 @@ def test_custom_template_used_for_project_workflow() -> None:
     assert wf_data["template"] == "Project Flow"
     roles = [step["role"] for step in wf_data["approval_steps"]]
     assert roles == ["Reviewer", "Approver"]
+
+
+def test_document_type_default_workflow_template_must_exist() -> None:
+    client = TestClient(app)
+    hdrs = _alice_headers()
+
+    res = client.post(
+        "/document-types",
+        json={
+            "name": "Stale Default Doc",
+            "template": "<h1>Stale</h1>",
+            "workflow": ["Draft Development"],
+            "default_workflow_template_id": "missing-template",
+        },
+        headers=hdrs,
+    )
+
+    assert res.status_code == 400
+    assert "Default workflow template not found" in res.json()["message"]
+
+
+def test_workflow_template_rename_updates_phase_and_document_type_links() -> None:
+    client = TestClient(app)
+    hdrs = _alice_headers()
+
+    res = client.post(
+        "/workflow-templates",
+        json=_custom_template_payload("Linked Flow"),
+        headers=hdrs,
+    )
+    assert res.status_code == 201
+
+    res = client.post(
+        "/document-types",
+        json={
+            "name": "Linked Doc",
+            "template": "<h1>Linked</h1>",
+            "workflow": ["Draft Development"],
+            "default_workflow_template_id": "Linked Flow",
+        },
+        headers=hdrs,
+    )
+    assert res.status_code == 201
+
+    res = client.put(
+        "/phases/Draft%20Development/workflow-template",
+        json={"workflow_template_id": "Linked Flow"},
+        headers=hdrs,
+    )
+    assert res.status_code == 200
+
+    res = client.put(
+        "/workflow-templates/Linked%20Flow",
+        json=_custom_template_payload("Linked Flow v2"),
+        headers=hdrs,
+    )
+    assert res.status_code == 200
+    assert res.json()["id"] == "Linked Flow v2"
+
+    doc_type = client.get("/document-types/Linked%20Doc", headers=hdrs).json()
+    assert doc_type["default_workflow_template_id"] == "Linked Flow v2"
+
+    phase_config = client.get("/phases/config", headers=hdrs).json()
+    linked_phase = next(item for item in phase_config if item["name"] == "Draft Development")
+    assert linked_phase["workflow_template_id"] == "Linked Flow v2"
+
+
+def test_workflow_template_delete_blocks_active_workflows() -> None:
+    client = TestClient(app)
+    hdrs = _alice_headers()
+
+    res = client.post(
+        "/workflow-templates",
+        json=_custom_template_payload("Active Flow"),
+        headers=hdrs,
+    )
+    assert res.status_code == 201
+
+    project = client.post(
+        "/projects",
+        json={"name": "Active Flow Project", "phase": "Draft Development", "workflow": "Active Flow"},
+        headers=hdrs,
+    )
+    assert project.status_code == 201
+
+    res = client.delete("/workflow-templates/Active%20Flow", headers=hdrs)
+
+    assert res.status_code == 409
+    assert "workflow" in res.json()["message"]
+
+
+def test_phase_create_rejects_whitespace_duplicate() -> None:
+    client = TestClient(app)
+    hdrs = _alice_headers()
+
+    res = client.post("/phases", json={"name": " Human Review "}, headers=hdrs)
+    assert res.status_code == 201
+
+    res = client.post("/phases", json={"name": "Human Review"}, headers=hdrs)
+
+    assert res.status_code == 409

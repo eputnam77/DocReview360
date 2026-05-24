@@ -363,6 +363,7 @@ class TestWorkflows:
         assert resp.status_code == 404
 
     def test_create_workflow(self, client: TestClient, alice: dict) -> None:
+        client.post("/phases", json={"name": "Draft"}, headers=alice)
         payload = {"project": "cov-proj-wf", "phases": ["Draft"], "mode": "sequential"}
         resp = client.post("/workflows", json=payload, headers=alice)
         assert resp.status_code in (200, 201), resp.text
@@ -383,6 +384,7 @@ class TestWorkflows:
 
 class TestApprovals:
     def test_create_approval(self, client: TestClient, alice: dict) -> None:
+        client.post("/phases", json={"name": "Draft"}, headers=alice)
         # First create a workflow to attach
         wf_payload = {"project": "cov-approval-proj", "phases": ["Draft"]}
         wf_resp = client.post("/workflows", json=wf_payload, headers=alice)

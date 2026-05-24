@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "@/components/ui/card";
@@ -17,7 +18,22 @@ import { cn } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/api";
 
+const NONE_USER_VALUE = "__none__";
+
+async function getErrorMessage(res: Response, fallback: string): Promise<string> {
+  const payload = await res.json().catch(() => null);
+  if (payload && typeof payload === "object") {
+    // App uses ErrorResponse envelope with "message" key; FastAPI uses "detail"
+    const message = (payload as { detail?: unknown; message?: unknown }).message;
+    const detail = (payload as { detail?: unknown; message?: unknown }).detail;
+    if (typeof message === "string" && message.trim()) return message;
+    if (typeof detail === "string" && detail.trim()) return detail;
+  }
+  return fallback;
+}
+
 export default function NewWorkflowPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<any[]>([]);
@@ -68,10 +84,16 @@ export default function NewWorkflowPage() {
 
 
   const addStep = () => {
-    if (!role.trim()) return;
+    const trimmedRole = role.trim();
+    if (!trimmedRole) return;
     setSteps([
       ...steps,
-      { id: "s" + (Math.random() * 10000).toFixed(0), role, user, required },
+      {
+        id: "s" + crypto.randomUUID(),
+        role: trimmedRole,
+        user: user.trim(),
+        required,
+      },
     ]);
     setRole("");
     setUser("");
@@ -89,7 +111,11 @@ export default function NewWorkflowPage() {
   };
 
   const handleSave = async () => {
-    const payload = { name, description, steps };
+    const payload = {
+      name: name.trim(),
+      description: description.trim() || undefined,
+      steps,
+    };
     let createdTemplateId = "";
 
     try {
@@ -99,7 +125,7 @@ export default function NewWorkflowPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        throw new Error("Failed to save workflow");
+        throw new Error(await getErrorMessage(res, "Failed to save workflow"));
       }
       const created = await res.json();
       createdTemplateId =
@@ -109,15 +135,17 @@ export default function NewWorkflowPage() {
       return;
     }
 
+    const attachmentFailures: string[] = [];
     for (const docType of docTypesSelected) {
       try {
         const res = await authenticatedFetch(`/document-types/${encodeURIComponent(docType)}`);
         if (!res.ok) {
+          attachmentFailures.push(docType);
           continue;
         }
 
         const doc = await res.json();
-        await authenticatedFetch(`/document-types/${encodeURIComponent(docType)}`, {
+        const updateRes = await authenticatedFetch(`/document-types/${encodeURIComponent(docType)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -125,12 +153,23 @@ export default function NewWorkflowPage() {
             default_workflow_template_id: createdTemplateId,
           }),
         });
+        if (!updateRes.ok) {
+          attachmentFailures.push(docType);
+        }
       } catch {
-        // ignore errors in development
+        attachmentFailures.push(docType);
       }
     }
 
+    if (attachmentFailures.length > 0) {
+      toast.error(
+        `Workflow saved, but attachment failed for: ${attachmentFailures.join(", ")}.`,
+      );
+      return;
+    }
+
     toast.success("Workflow saved.");
+    void router.push("/configuration/workflows");
   };
 
   if (isLoading) {
@@ -263,12 +302,15 @@ export default function NewWorkflowPage() {
                 <label htmlFor="user" className="block mb-1 text-sm font-medium">
                   User <span className="text-gray-400">(optional)</span>
                 </label>
-                <Select value={user} onValueChange={setUser}>
+                <Select
+                  value={user || NONE_USER_VALUE}
+                  onValueChange={(value) => setUser(value === NONE_USER_VALUE ? "" : value)}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Assign user or leave blank" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value={NONE_USER_VALUE}>None</SelectItem>
                     {users.map((u) => (
                       <SelectItem key={u} value={u}>
                         {u}
@@ -368,7 +410,7 @@ export default function NewWorkflowPage() {
             <Button
               size="lg"
               onClick={handleSave}
-              disabled={!name || !description || steps.length === 0}
+              disabled={!name.trim() || steps.length === 0}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               Save Workflow

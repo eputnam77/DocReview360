@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import sys
+import threading
 from datetime import datetime, timezone
 from typing import Callable, Dict, List
 from uuid import uuid4
@@ -37,6 +38,12 @@ else:
 
 # Registered callbacks mimicking agileagents bot webhooks
 bot_callbacks: list[Callable[[WorkflowModel], None]] = []
+
+# Reentrant lock protecting all mutations to the workflows registry.  CPython's
+# GIL makes individual dict operations safe but compound read-modify-write
+# sequences (advance, assign, etc.) need explicit protection so concurrent
+# requests cannot interleave and produce torn state.
+_workflow_lock = threading.RLock()
 
 
 def _load_bot_callbacks_once() -> None:
@@ -176,7 +183,8 @@ def create_workflow(
         approval_sequence=approval_sequence,
         mode=mode,
     )
-    workflows[wf_id] = workflow
+    with _workflow_lock:
+        workflows[wf_id] = workflow
     _persist_workflow(workflow)
 
     from ..approvals import create_approval
@@ -225,22 +233,57 @@ def register_callback_url(wf_id: str, url: str) -> WorkflowModel:
 
 def assign_reviewer(wf_id: str, user: str) -> WorkflowModel:
     """Assign a reviewer to the workflow."""
-    workflow = workflows[wf_id]
-    if user not in workflow.reviewers:
-        workflow.reviewers.append(user)
+    with _workflow_lock:
+        workflow = workflows[wf_id]
+        if user not in workflow.reviewers:
+            workflow.reviewers.append(user)
     return workflow
 
 
-def advance_workflow(wf_id: str) -> WorkflowModel:
-    """Move the workflow to the next phase."""
-    workflow = workflows[wf_id]
+def delete_workflow(wf_id: str) -> None:
+    """Remove a workflow from the registry and the DB.
+
+    Raises:
+        KeyError: if the workflow does not exist.
+    """
+    with _workflow_lock:
+        if wf_id not in workflows:
+            raise KeyError(f"Workflow '{wf_id}' not found")
+        del workflows[wf_id]
     try:
-        idx = workflow.phases.index(workflow.phase)
-    except ValueError as exc:
-        raise KeyError(f"Unknown phase '{workflow.phase}'") from exc
-    if idx + 1 >= len(workflow.phases):
-        workflow.phase = workflow.phases[-1]
-    else:
+        from sqlalchemy import text as _text
+
+        from ..db_store import get_db
+
+        db = get_db()
+        with db.session() as conn:
+            conn.execute(
+                _text("DELETE FROM workflow_instance_records WHERE id = :id"),
+                {"id": wf_id},
+            )
+    except Exception as exc:  # pragma: no cover - best effort
+        _logger.warning("Failed to delete workflow %r from DB: %s", wf_id, exc)
+
+
+def advance_workflow(wf_id: str) -> WorkflowModel:
+    """Move the workflow to the next phase.
+
+    Raises:
+        KeyError: workflow not found or current phase not in phases list.
+        ValueError: workflow is already at its final phase.
+    """
+    with _workflow_lock:
+        workflow = workflows.get(wf_id)
+        if workflow is None:
+            raise KeyError(f"Workflow '{wf_id}' not found")
+        try:
+            idx = workflow.phases.index(workflow.phase)
+        except ValueError as exc:
+            raise KeyError(f"Unknown phase '{workflow.phase}'") from exc
+        if idx + 1 >= len(workflow.phases):
+            raise ValueError(
+                f"Workflow '{wf_id}' is already at its final phase '{workflow.phase}'"
+            )
         workflow.phase = workflow.phases[idx + 1]
     _persist_workflow(workflow)
     for cb in bot_callbacks:

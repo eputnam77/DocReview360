@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil, Trash } from "lucide-react";
 import { authenticatedFetch } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 // --- System role choices, update as needed ---
 const ROLE_CHOICES = [
@@ -30,6 +31,7 @@ interface User {
   id: string;
   username: string;
   roles: string[]; // Now supports multiple roles
+  active: boolean;
 }
 
 interface RolePermissionSummary {
@@ -57,15 +59,20 @@ interface ImportResult {
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newActive, setNewActive] = useState(true);
   const [newRoles, setNewRoles] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rolePermissions, setRolePermissions] = useState<RolePermissionSummary[]>([]);
   const [editName, setEditName] = useState("");
   const [editRoles, setEditRoles] = useState<string[]>([]);
+  const [editActive, setEditActive] = useState(true);
+  const [editPassword, setEditPassword] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const rolePermissionMap = React.useMemo(() => {
     const mapping = new Map<string, RolePermissionSummary>();
@@ -81,15 +88,52 @@ export default function UserManagementPage() {
       : typeof u.role === "string"
         ? [u.role]
         : [],
+    active: u.active !== false,
   });
+
+  const responseMessage = async (resp: Response, fallback: string) => {
+    try {
+      const data = await resp.json();
+      // App uses ErrorResponse envelope with "message" key; fallback to FastAPI's "detail"
+      const msg = data?.message;
+      if (typeof msg === "string" && msg.trim()) return msg;
+      const detail = data?.detail;
+      if (typeof detail === "string") {
+        return detail;
+      }
+      if (Array.isArray(detail)) {
+        return detail.map((item) => item?.msg || String(item)).join("; ");
+      }
+    } catch {
+      // fall through to text
+    }
+    try {
+      const text = await resp.text();
+      return text || fallback;
+    } catch {
+      return fallback;
+    }
+  };
 
   const loadUsers = async () => {
     try {
       const resp = await authenticatedFetch(`/users`);
+      if (resp.status === 401 || resp.status === 403) {
+        setLoadError("Administrator access is required to manage users.");
+        setUsers([]);
+        return;
+      }
+      if (!resp.ok) {
+        setLoadError(await responseMessage(resp, "Failed to load users."));
+        setUsers([]);
+        return;
+      }
       const data = resp.ok ? await resp.json() : [];
+      setLoadError(null);
       setUsers(Array.isArray(data) ? data.map(normalizeUser) : []);
     } catch (error) {
       console.error("Failed to load users", error);
+      setLoadError("Failed to load users.");
       setUsers([]);
     }
   };
@@ -112,6 +156,10 @@ export default function UserManagementPage() {
 
   const addUser = async () => {
     if (!newName.trim()) return;
+    if (!newPassword.trim()) {
+      toast.error("Enter an initial password for this user.");
+      return;
+    }
     try {
       const resp = await authenticatedFetch(`/users`, {
         method: "POST",
@@ -119,35 +167,46 @@ export default function UserManagementPage() {
         body: JSON.stringify({
           username: newName.trim(),
           roles: newRoles.length ? newRoles : [],
+          password: newPassword,
+          active: newActive,
         }),
       });
       if (!resp.ok) {
-        console.error("Failed to add user");
+        toast.error(await responseMessage(resp, "Failed to add user."));
         return;
       }
       const created = normalizeUser(await resp.json());
       setUsers([...users, created]);
       setNewName("");
+      setNewPassword("");
+      setNewActive(true);
       setNewRoles([]);
+      toast.success(`Created ${created.username}.`);
     } catch (error) {
       console.error("Failed to add user", error);
+      toast.error("Failed to add user.");
     }
   };
 
   const removeUser = async (id: string) => {
     const target = users.find((u) => u.id === id);
     if (!target) return;
+    if (!window.confirm(`Delete user ${target.username}? This cannot be undone.`)) {
+      return;
+    }
     try {
       const resp = await authenticatedFetch(`/users/${encodeURIComponent(target.username)}`, {
         method: "DELETE",
       });
       if (!resp.ok) {
-        console.error("Failed to remove user");
+        toast.error(await responseMessage(resp, "Failed to remove user."));
         return;
       }
       setUsers(users.filter((u) => u.id !== id));
+      toast.success(`Deleted ${target.username}.`);
     } catch (error) {
       console.error("Failed to remove user", error);
+      toast.error("Failed to remove user.");
     }
   };
 
@@ -155,6 +214,8 @@ export default function UserManagementPage() {
     setEditingId(u.id);
     setEditName(u.username);
     setEditRoles(u.roles || []);
+    setEditActive(u.active !== false);
+    setEditPassword("");
   };
 
   const saveEdit = async (id: string) => {
@@ -168,10 +229,12 @@ export default function UserManagementPage() {
         body: JSON.stringify({
           username: editName.trim(),
           roles: editRoles,
+          active: editActive,
+          ...(editPassword.trim() ? { password: editPassword } : {}),
         }),
       });
       if (!resp.ok) {
-        console.error("Failed to update user");
+        toast.error(await responseMessage(resp, "Failed to update user."));
         return;
       }
       const updated = normalizeUser(await resp.json());
@@ -179,8 +242,12 @@ export default function UserManagementPage() {
       setEditingId(null);
       setEditName("");
       setEditRoles([]);
+      setEditActive(true);
+      setEditPassword("");
+      toast.success(`Updated ${updated.username}.`);
     } catch (error) {
       console.error("Failed to update user", error);
+      toast.error("Failed to update user.");
     }
   };
 
@@ -188,6 +255,8 @@ export default function UserManagementPage() {
     setEditingId(null);
     setEditName("");
     setEditRoles([]);
+    setEditActive(true);
+    setEditPassword("");
   };
 
   const importUsers = async () => {
@@ -205,14 +274,14 @@ export default function UserManagementPage() {
         body: formData,
       });
       if (!resp.ok) {
-        const text = await resp.text();
-        setImportMessage(text || "Import failed.");
+        setImportMessage(await responseMessage(resp, "Import failed."));
         return;
       }
       const data = (await resp.json()) as ImportResult;
       setImportResult(data);
       setImportFile(null);
       void loadUsers();
+      toast.success("Import complete.");
     } catch (error) {
       console.error("Failed to import users", error);
       setImportMessage("Import failed. Check the server logs for details.");
@@ -231,6 +300,15 @@ export default function UserManagementPage() {
           user&#39;s access and permissions within the system.
         </div>
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {loadError}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -329,6 +407,14 @@ export default function UserManagementPage() {
           onChange={(e) => setNewName(e.target.value)}
           className="max-w-xs"
         />
+        <Input
+          placeholder="Initial password"
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          className="max-w-xs"
+          autoComplete="new-password"
+        />
         <div>
           <label className="block text-xs font-semibold mb-1">Role(s)</label>
           <select
@@ -347,6 +433,14 @@ export default function UserManagementPage() {
             ))}
           </select>
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={newActive}
+            onChange={(e) => setNewActive(e.target.checked)}
+          />
+          Active
+        </label>
         <Button type="submit" size="sm">
           Add
         </Button>
@@ -356,6 +450,7 @@ export default function UserManagementPage() {
           <TableRow>
             <TableHead>Username</TableHead>
             <TableHead>Roles</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Edit</TableHead>
             <TableHead>Remove</TableHead>
           </TableRow>
@@ -365,11 +460,21 @@ export default function UserManagementPage() {
             <TableRow key={u.id}>
               <TableCell className="min-w-[150px]">
                 {editingId === u.id ? (
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="h-8"
-                  />
+                  <div className="space-y-2">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="h-8"
+                    />
+                    <Input
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      className="h-8"
+                      type="password"
+                      placeholder="New password"
+                      autoComplete="new-password"
+                    />
+                  </div>
                 ) : (
                   u.username
                 )}
@@ -404,6 +509,22 @@ export default function UserManagementPage() {
                     .join(", ")
                 ) : (
                   <span className="text-gray-400">--</span>
+                )}
+              </TableCell>
+              <TableCell className="w-28">
+                {editingId === u.id ? (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={editActive}
+                      onChange={(e) => setEditActive(e.target.checked)}
+                    />
+                    Active
+                  </label>
+                ) : (
+                  <span className={u.active ? "text-green-700" : "text-red-600"}>
+                    {u.active ? "Active" : "Inactive"}
+                  </span>
                 )}
               </TableCell>
               <TableCell className="w-28">
@@ -443,7 +564,7 @@ export default function UserManagementPage() {
           ))}
           {users.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-gray-400 py-6">
+              <TableCell colSpan={5} className="text-center text-gray-400 py-6">
                 No users defined.
               </TableCell>
             </TableRow>

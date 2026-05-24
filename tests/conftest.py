@@ -182,15 +182,32 @@ def _reset_document_types() -> Generator[None, None, None]:
     Each test gets its own SQLAlchemy engine backed by a private in-memory
     SQLite database (StaticPool keeps the connection alive for the engine's
     lifetime).  This guarantees no data leaks between tests.
+
+    Common short-name phases (draft, review, approval, signed, done, etc.) are
+    also seeded here so that workflow-creation tests don't need to pre-seed them
+    individually.  The DEFAULT_PHASES list (formal policy phases) is kept
+    unchanged for production use.
     """
 
     from docreview360.db_store import reset_db
     from docreview360.doc_types import reset_document_types
-    from docreview360.phases import reset_phases
+    from docreview360.phases import add_phase, reset_phases
+
+    _COMMON_TEST_PHASES = [
+        "draft", "review", "approval", "done", "signed",
+        "Draft", "Review", "Approval", "Done",
+        "start", "end",
+        "Draft Development",  # also in DEFAULT_PHASES — add_phase is idempotent via INSERT OR IGNORE
+    ]
 
     reset_db("sqlite+pysqlite:///:memory:")
     reset_document_types(seed=True)
     reset_phases()
+    for _phase in _COMMON_TEST_PHASES:
+        try:
+            add_phase(_phase)
+        except Exception:
+            pass
     yield
     reset_db(None)
 

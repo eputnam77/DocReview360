@@ -172,7 +172,16 @@ export default function ProfilePage() {
     }).catch(() => null);
 
     if (!resp || !resp.ok) {
-      toast.error(t("profile.save_failed", "Failed to save profile"));
+      let message = t("profile.save_failed", "Failed to save profile");
+      try {
+        const data = await resp?.json();
+        if (typeof data?.detail === "string") {
+          message = data.detail;
+        }
+      } catch {
+        // keep the generic localized message
+      }
+      toast.error(message);
       return;
     }
 

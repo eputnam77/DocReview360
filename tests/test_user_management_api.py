@@ -56,6 +56,33 @@ def test_user_management_crud(tmp_path: Path) -> None:
     assert "charlotte" not in usernames
 
 
+def test_profile_update_changes_password(tmp_path: Path) -> None:
+    auth.configure_user_repository(tmp_path / "users.db")
+    rbac.configure_role_repository(tmp_path / "roles.db")
+    settings_manager.SETTINGS_FILE = tmp_path / "settings.yaml"
+    client = TestClient(app)
+
+    old_password = "OldProfilePass123!"
+    new_password = "NewProfilePass456!"
+    auth.USER_REPOSITORY.create_user("bob", old_password)
+    token = auth.create_access_token({"sub": "bob"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.put(
+        "/profile",
+        json={
+            "displayName": "Bob Profile",
+            "email": "bob.profile@example.com",
+            "password": new_password,
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["displayName"] == "Bob Profile"
+    assert auth.authenticate_user("bob", old_password) is None
+    assert auth.authenticate_user("bob", new_password) is not None
+
+
 def test_user_import_csv_creates_updates_and_profiles(tmp_path: Path) -> None:
     auth.configure_user_repository(tmp_path / "users.db")
     rbac.configure_role_repository(tmp_path / "roles.db")

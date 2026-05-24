@@ -80,7 +80,7 @@ document_types.json
 # E2E debug artifacts
 .e2e-debug/
 .e2e-debug-webpack/
-.pytest_tmp/
+.pytest_tmp*/
 
 # Runtime JSON state stores
 worker_state.json

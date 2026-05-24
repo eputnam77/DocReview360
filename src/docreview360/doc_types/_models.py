@@ -11,10 +11,17 @@ from pydantic import BaseModel, Field, ValidationError, computed_field, field_va
 class DocumentTypeModel(BaseModel):
     """Schema for document types with optional default template linkage."""
 
-    name: str
+    name: str = Field(min_length=1, max_length=200)
     template: str
     workflow: List[str] = Field(default_factory=list)
     default_workflow_template_id: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Document type name must not be blank or whitespace-only")
+        return v
 
     @computed_field(return_type=str)
     def id(self) -> str:  # noqa: A003

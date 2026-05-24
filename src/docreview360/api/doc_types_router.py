@@ -18,14 +18,22 @@ from ..doc_types import (
     list_document_types,
     update_document_type,
 )
+from ..audit import log_audit_event
+from ..logs import log_event
 from ..rbac import require_role
 from ..search import list_projects, update_project
+from ..workflows import get_workflow_template
 
 router = APIRouter()
 
 
 class _PhasesUpdateRequest(BaseModel):
     phases: list[str]
+
+
+def _validate_default_workflow_template(template_id: str | None) -> None:
+    if template_id and get_workflow_template(template_id) is None:
+        raise HTTPException(status_code=400, detail="Default workflow template not found")
 
 
 # ---------------------------------------------------------------------------
@@ -39,14 +47,22 @@ async def create_document_type(
     _user: auth.User = Depends(require_role("admin")),
 ) -> DocumentTypeModel:
     """Create a new document type (admin only)."""
+    from sqlalchemy.exc import IntegrityError as _SAIntegrityError
+
+    _validate_default_workflow_template(doc_type.default_workflow_template_id)
     try:
         if not doc_type.workflow:
             from ..doc_types import DEFAULT_DOC_TYPE_PHASES
             workflow = DEFAULT_DOC_TYPE_PHASES.get(doc_type.name, ["Draft Development"])
             doc_type = doc_type.model_copy(update={"workflow": workflow})
         add_document_type(doc_type)
+    except _SAIntegrityError:
+        raise HTTPException(status_code=409, detail=f"Document type '{doc_type.name}' already exists") from None
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        status = 409 if "already exists" in str(exc) else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    log_audit_event(doc_type.name, "doc_type_created", actor=_user.username)
+    log_event("doc_type_created", user_id=_user.username, entity_id=doc_type.name, entity_type="document_type")
     return doc_type
 
 
@@ -101,13 +117,17 @@ async def update_document_type_endpoint(
     _user: auth.User = Depends(require_role("admin")),
 ) -> DocumentTypeModel:
     """Replace an existing document type (admin only)."""
+    _validate_default_workflow_template(doc_type.default_workflow_template_id)
     try:
         if not doc_type.workflow:
             existing = get_document_type(name)
             if existing is None:
                 raise KeyError(f"Document type '{name}' not found")
             doc_type = doc_type.model_copy(update={"workflow": list(existing.workflow)})
-        return update_document_type(name, doc_type)
+        updated = update_document_type(name, doc_type)
+        log_audit_event(name, "doc_type_updated", actor=_user.username)
+        log_event("doc_type_updated", user_id=_user.username, entity_id=name, entity_type="document_type")
+        return updated
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -211,7 +231,8 @@ async def delete_document_type_endpoint(
         if replacement:
             if replacement == name:
                 raise HTTPException(
-                    status_code=400, detail=f"Replacement document type '{replacement}' not found"
+                    status_code=400,
+                    detail="Replacement document type must be different from the one being deleted",
                 )
             replacement_doc_type = get_document_type(replacement)
             if not replacement_doc_type:
@@ -231,4 +252,6 @@ async def delete_document_type_endpoint(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    log_audit_event(name, "doc_type_deleted", actor=_user.username)
+    log_event("doc_type_deleted", user_id=_user.username, entity_id=name, entity_type="document_type")
     return Response(status_code=204)

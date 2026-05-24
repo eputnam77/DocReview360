@@ -31,6 +31,8 @@ def test_reporting_endpoints() -> None:
     )
     assert resp.status_code == 201
 
+    for phase in ("start", "end"):
+        client.post("/phases", json={"name": phase}, headers=headers)
     resp = client.post("/workflows", json={"project": "r1", "phases": ["start", "end"]}, headers=headers)
     assert resp.status_code == 201
     wf_id = resp.json()["id"]
