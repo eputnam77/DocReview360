@@ -451,6 +451,8 @@ def main() -> int:
             ]
 
         pytest_cmd = [
+            sys.executable,
+            "-m",
             "pytest",
             "tests/e2e",
             "-m",

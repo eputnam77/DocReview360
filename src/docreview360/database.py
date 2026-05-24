@@ -101,22 +101,25 @@ class Database:
             raise ValueError("Database URL must be provided")
         self.url = url
         if url.startswith("sqlite"):
-            # ``StaticPool`` gives each in-memory SQLite database its own
-            # dedicated connection that remains alive for the lifetime of the
-            # engine.  Keeping a reference to a checked out connection caused
-            # subsequent calls to ``engine.connect()`` (e.g. via ``inspect``)
-            # to create a *new* in-memory database, yielding an empty schema.
-            # Instead we create an initial connection and immediately return it
-            # to the pool; the pool retains it keeping the database alive while
-            # ensuring future ``connect()`` calls reuse the same connection.
-            if url == "sqlite:///:memory:":
-                url = "sqlite+pysqlite:///:memory:"
             connect_args = {"check_same_thread": False}
-            self._engine = create_engine(url, connect_args=connect_args, poolclass=StaticPool)
-            # initialize the pool connection and return it so the database
-            # persists but no connection remains checked out
-            with self._engine.connect() as _:
-                pass
+            if url in {"sqlite:///:memory:", "sqlite+pysqlite:///:memory:"}:
+                # ``StaticPool`` gives each in-memory SQLite database its own
+                # dedicated connection that remains alive for the lifetime of
+                # the engine. File-backed SQLite should use SQLAlchemy's normal
+                # pool so concurrent web requests do not share one DB-API
+                # connection across threads.
+                url = "sqlite+pysqlite:///:memory:"
+                self._engine = create_engine(
+                    url,
+                    connect_args=connect_args,
+                    poolclass=StaticPool,
+                )
+                # Initialize the pool connection and return it so the database
+                # persists but no connection remains checked out.
+                with self._engine.connect() as _:
+                    pass
+            else:
+                self._engine = create_engine(url, connect_args=connect_args)
         else:
             pool_size = int(os.environ.get("DOCREVIEW360_DB_POOL_SIZE", "10"))
             max_overflow = int(os.environ.get("DOCREVIEW360_DB_MAX_OVERFLOW", "20"))

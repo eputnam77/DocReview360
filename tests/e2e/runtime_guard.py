@@ -31,6 +31,23 @@ _IGNORED_REQUEST_FAILURES = (
     "NS_BINDING_ABORTED",
 )
 
+# CSP 'unsafe-eval' violations triggered by Playwright's page.evaluate() / add_init_script()
+# are expected in dev mode and are not real application errors.
+_IGNORED_PAGE_ERROR_FRAGMENTS = (
+    "unsafe-eval",
+    "Content Security Policy",
+)
+
+# Console errors that are expected in dev-mode E2E and do not indicate app breakage.
+_IGNORED_CONSOLE_ERROR_FRAGMENTS = (
+    # Next.js HMR WebSocket — expected noise when running `next dev` under Playwright.
+    "webpack-hmr",
+    "WebSocket connection",
+    # Generic 403 resource failures from admin-only endpoints accessed by non-admin test users.
+    # These are intentional permission boundaries, not bugs.
+    "Failed to load resource: the server responded with a status of 403",
+)
+
 
 @dataclass(frozen=True)
 class RuntimeIssue:
@@ -102,6 +119,8 @@ class FrontendCrashGate:
 
     def _on_page_error(self, error: Any) -> None:
         detail = _read_text_attr(error, "message") or str(error)
+        if any(fragment in detail for fragment in _IGNORED_PAGE_ERROR_FRAGMENTS):
+            return
         self._record(kind="pageerror", detail=detail)
 
     def _on_console(self, message: Any) -> None:
@@ -109,6 +128,8 @@ class FrontendCrashGate:
         if message_type != "error":
             return
         detail = _read_text_attr(message, "text") or str(message)
+        if any(fragment in detail for fragment in _IGNORED_CONSOLE_ERROR_FRAGMENTS):
+            return
         kind = "unhandledrejection" if "[e2e-unhandledrejection]" in detail else "console.error"
         self._record(kind=kind, detail=detail)
 

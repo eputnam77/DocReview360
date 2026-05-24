@@ -10,7 +10,7 @@ from .test_project_profile_e2e import _auth_headers, _login
 pytestmark = [pytest.mark.e2e, pytest.mark.e2e_smoke]
 
 
-def _first_doc_type_and_phase(page: Page, backend_url: str, headers: dict[str, str]) -> tuple[str, str]:
+def _first_doc_type_and_phase(page: Page, backend_url: str, headers: dict[str, str]) -> tuple[str, str]:  # noqa: E501
     doc_types_resp = page.request.get(f"{backend_url}/document-types", headers=headers)
     assert doc_types_resp.ok
     doc_types = doc_types_resp.json()
@@ -34,12 +34,12 @@ def _create_project(
     resp = page.request.post(
         f"{backend_url}/projects",
         headers=headers,
-        json={
+        data={
             "name": name,
             "document_number": document_number,
             "doc_type": doc_type,
             "phase": phase,
-            "user": "alice",
+            "user": "bob",
         },
     )
     assert resp.status == 201
@@ -51,7 +51,7 @@ def test_project_edit_document_route_follows_editor_config(
     e2e_frontend_url: str,
     e2e_backend_url: str,
 ) -> None:
-    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    _login(page, e2e_frontend_url, e2e_backend_url, "bob")
     headers = _auth_headers(page)
     config_resp = page.request.get(f"{e2e_backend_url}/config", headers=headers)
     assert config_resp.ok

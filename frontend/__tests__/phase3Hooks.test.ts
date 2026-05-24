@@ -423,7 +423,13 @@ describe("useFeedbackHandlers — structure", () => {
   });
 
   it("handlePostFeedback guards against empty text", () => {
-    expect(src).toContain("!newFeedbackText.trim()");
+    expect(src).toContain("const text = newFeedbackText.trim()");
+    expect(src).toContain("!text");
+  });
+
+  it("handlePostFeedback guards against duplicate in-flight submissions", () => {
+    expect(src).toContain("postFeedbackInFlight");
+    expect(src).toContain("postFeedbackInFlight.current");
   });
 
   it("handlePostFeedback POSTs to /projects/:id/feedback", () => {

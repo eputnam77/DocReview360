@@ -35,7 +35,7 @@ def test_user_import_csv_via_ui(
     e2e_backend_url: str,
     tmp_path,
 ) -> None:
-    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    _login(page, e2e_frontend_url, e2e_backend_url, "bob")
 
     run_suffix = uuid4().hex[:8]
     username = f"e2e_import_{run_suffix}"
@@ -65,7 +65,7 @@ def test_user_add_manual_via_ui(
     e2e_frontend_url: str,
     e2e_backend_url: str,
 ) -> None:
-    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    _login(page, e2e_frontend_url, e2e_backend_url, "bob")
 
     run_suffix = uuid4().hex[:8]
     username = f"e2e_manual_{run_suffix}"

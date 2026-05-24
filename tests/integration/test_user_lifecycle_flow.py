@@ -135,3 +135,28 @@ def test_user_lifecycle_from_config_to_workflow(tmp_path) -> None:
     sign_payload = sign_resp.json()
     assert sign_payload.get("id")
     assert sign_payload.get("url")
+
+
+def test_admin_user_update_rejects_reused_password_without_500(tmp_path) -> None:
+    settings_manager.SETTINGS_FILE = tmp_path / "settings.yaml"
+    auth.configure_user_repository(tmp_path / "users.db")
+    rbac.configure_role_repository(tmp_path / "roles.db")
+    client = TestClient(app)
+    admin_headers = _admin_headers()
+
+    username = f"user_{uuid4().hex[:8]}"
+    create_resp = client.post(
+        "/users",
+        headers=admin_headers,
+        json={"username": username, "roles": ["user"], "password": _STRONG_PASSWORD},
+    )
+    assert create_resp.status_code == 201
+
+    update_resp = client.put(
+        f"/users/{username}",
+        headers=admin_headers,
+        json={"password": _STRONG_PASSWORD},
+    )
+
+    assert update_resp.status_code == 400
+    assert "previously used password" in update_resp.json()["message"]

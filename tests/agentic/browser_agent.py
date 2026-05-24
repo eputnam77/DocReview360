@@ -223,7 +223,7 @@ def _login_through_visible_form(
     page.goto(f"{frontend_url}/login")
     page.get_by_label("Username").fill(username)
     page.get_by_label("Password").fill(password)
-    page.locator("form button[type='submit']").click(force=True)
+    page.get_by_role("button", name="Sign In").click(force=True)
     page.wait_for_url(f"{frontend_url}/projects")
 
 
@@ -251,7 +251,6 @@ def _ensure_reviewer(
         f"{backend_url}/users/{config.reviewer_username}",
         headers=_json_headers(headers),
         data=json.dumps({
-            "password": config.reviewer_password,
             "roles": ["reviewer", "user"],
             "active": True,
         }),

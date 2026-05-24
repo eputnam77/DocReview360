@@ -14,7 +14,7 @@ from .approvals import approvals, reset_approvals
 from .doc_types import DocumentTypeModel, add_document_type, reset_document_types
 from .documents import DocumentModel, documents
 from .phases import add_phase, reset_phases
-from .search import ProjectModel, _reset_state_for_testing, add_project
+from .search import ProjectModel, _reset_state_for_testing, add_project, add_project_reviewer
 from .template_manager import reset_template_store
 from .workflows import create_workflow, reset_workflow_templates
 
@@ -75,7 +75,7 @@ def reset_e2e_state() -> None:
     )
 
     reset_template_store()
-    reset_document_types()
+    reset_document_types(seed=False)
     reset_phases()
     reset_workflow_templates()
     reviews.reset_reviews()
@@ -140,6 +140,7 @@ def seed_e2e_data() -> Dict[str, Any]:
     project.workflow = workflow.id
     project.initial_phase = workflow.phase
     add_project(project)
+    add_project_reviewer(project.id, "alice")
 
     # Seed a placeholder document to keep document-related views consistent.
     documents[project.id] = DocumentModel(

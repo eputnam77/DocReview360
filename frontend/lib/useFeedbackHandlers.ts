@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/api";
 
@@ -38,14 +38,17 @@ export function useFeedbackHandlers({
   const [feedbackTypeFilter, setFeedbackTypeFilter] = useState("all");
   const [feedbackStatusFilter, setFeedbackStatusFilter] = useState("all");
   const [feedbackShowMyOnly, setFeedbackShowMyOnly] = useState(false);
+  const postFeedbackInFlight = useRef(false);
 
   const handlePostFeedback = async () => {
-    if (!newFeedbackText.trim()) return;
+    const text = newFeedbackText.trim();
+    if (!text || postFeedbackInFlight.current) return;
+    postFeedbackInFlight.current = true;
     try {
       const res = await authenticatedFetch(`/projects/${id}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: newFeedbackText, feedback_type: newFeedbackType }),
+        body: JSON.stringify({ text, feedback_type: newFeedbackType }),
       });
       if (!res.ok) throw new Error("Failed");
       setNewFeedbackText("");
@@ -54,6 +57,8 @@ export function useFeedbackHandlers({
       toast.success("Feedback submitted.");
     } catch {
       toast.error("Failed to submit feedback.");
+    } finally {
+      postFeedbackInFlight.current = false;
     }
   };
 

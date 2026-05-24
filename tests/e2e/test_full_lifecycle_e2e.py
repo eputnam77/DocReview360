@@ -42,6 +42,16 @@ def _auth_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _document_items(payload: object) -> list[dict]:
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict):
+        items = payload.get("items", [])
+        if isinstance(items, list):
+            return [item for item in items if isinstance(item, dict)]
+    return []
+
+
 # ---------------------------------------------------------------------------
 # Core smoke test — full lifecycle in a single test function
 # ---------------------------------------------------------------------------
@@ -100,7 +110,7 @@ def test_full_document_lifecycle(
             "user": "alice",
         },
     )
-    assert import_resp.ok, f"POST /documents/import failed: {import_resp.status} {import_resp.text()}"
+    assert import_resp.ok, f"POST /documents/import failed: {import_resp.status} {import_resp.text()}"  # noqa: E501
     document = import_resp.json()
     doc_id: str = document["id"]
     assert doc_id
@@ -112,14 +122,14 @@ def test_full_document_lifecycle(
     assert get_doc_resp.ok
     existing_doc = get_doc_resp.json()
 
-    updated_doc = {**existing_doc, "content": "# Lifecycle Test\n\nUpdated content after review edits."}
+    updated_doc = {**existing_doc, "content": "# Lifecycle Test\n\nUpdated content after review edits."}  # noqa: E501
     update_resp = page.request.put(
         f"{e2e_backend_url}/documents/{doc_id}",
         headers={**headers, "Content-Type": "application/json"},
         data=updated_doc,
     )
-    assert update_resp.ok, f"PUT /documents/{doc_id} failed: {update_resp.status} {update_resp.text()}"
-    assert update_resp.json()["content"] == "# Lifecycle Test\n\nUpdated content after review edits."
+    assert update_resp.ok, f"PUT /documents/{doc_id} failed: {update_resp.status} {update_resp.text()}"  # noqa: E501
+    assert update_resp.json()["content"] == "# Lifecycle Test\n\nUpdated content after review edits."  # noqa: E501
 
     # ------------------------------------------------------------------
     # Step 4 – Add a reviewer comment on the document
@@ -136,7 +146,6 @@ def test_full_document_lifecycle(
     assert comment_resp.ok, f"POST /documents/{doc_id}/comments failed: {comment_resp.status}"
     comment = comment_resp.json()
     assert comment["text"] == "Reviewed and ready for approval."
-    comment_id: str = comment["id"]
 
     # Verify the comment appears in the list
     list_comments_resp = page.request.get(
@@ -149,7 +158,6 @@ def test_full_document_lifecycle(
     # ------------------------------------------------------------------
     # Step 5 – Create a project review entry
     # ------------------------------------------------------------------
-    workflow_id = e2e_seed_data["project"]["workflow_id"]
     review_resp = page.request.post(
         f"{e2e_backend_url}/projects/{project_id}/reviews",
         headers={**headers, "Content-Type": "application/json"},
@@ -177,7 +185,7 @@ def test_full_document_lifecycle(
             "description": "Lifecycle test approval",
         },
     )
-    assert approval_resp.ok, f"POST /approvals failed: {approval_resp.status} {approval_resp.text()}"
+    assert approval_resp.ok, f"POST /approvals failed: {approval_resp.status} {approval_resp.text()}"  # noqa: E501
     approval = approval_resp.json()
     approval_id: str = approval["id"]
     assert approval_id
@@ -220,7 +228,7 @@ def test_full_document_lifecycle(
         headers={**headers, "Content-Type": "application/json"},
         data={},
     )
-    assert archive_resp.ok, f"POST /archive/{doc_id} failed: {archive_resp.status} {archive_resp.text()}"
+    assert archive_resp.ok, f"POST /archive/{doc_id} failed: {archive_resp.status} {archive_resp.text()}"  # noqa: E501
     archive = archive_resp.json()
     assert archive["document_id"] == doc_id
 
@@ -310,7 +318,7 @@ def test_lifecycle_edit_document(
     # Get a document in the project
     docs_resp = page.request.get(f"{e2e_backend_url}/documents", headers=headers)
     assert docs_resp.ok
-    project_docs = [d for d in docs_resp.json() if d.get("project") == project_id]
+    project_docs = [d for d in _document_items(docs_resp.json()) if d.get("project") == project_id]
     assert project_docs, "No documents found for the seeded project"
     doc = project_docs[0]
     doc_id = doc["id"]
@@ -338,7 +346,7 @@ def test_lifecycle_comment(
     project_id = e2e_seed_data["project"]["id"]
     docs_resp = page.request.get(f"{e2e_backend_url}/documents", headers=headers)
     assert docs_resp.ok
-    project_docs = [d for d in docs_resp.json() if d.get("project") == project_id]
+    project_docs = [d for d in _document_items(docs_resp.json()) if d.get("project") == project_id]
     assert project_docs
     doc_id = project_docs[0]["id"]
 
@@ -399,7 +407,7 @@ def test_lifecycle_sign(
     project_id = e2e_seed_data["project"]["id"]
     docs_resp = page.request.get(f"{e2e_backend_url}/documents", headers=headers)
     assert docs_resp.ok
-    project_docs = [d for d in docs_resp.json() if d.get("project") == project_id]
+    project_docs = [d for d in _document_items(docs_resp.json()) if d.get("project") == project_id]
     assert project_docs
     doc_id = project_docs[0]["id"]
 
@@ -430,7 +438,7 @@ def test_lifecycle_archive(
     project_id = e2e_seed_data["project"]["id"]
     docs_resp = page.request.get(f"{e2e_backend_url}/documents", headers=headers)
     assert docs_resp.ok
-    project_docs = [d for d in docs_resp.json() if d.get("project") == project_id]
+    project_docs = [d for d in _document_items(docs_resp.json()) if d.get("project") == project_id]
     assert project_docs
     doc_id = project_docs[0]["id"]
 

@@ -189,7 +189,7 @@ def _is_valid_branding_href(value: str) -> bool:
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
-def _normalize_branding_logo_url(value: str | None) -> str | None:
+def _normalize_branding_logo_url(value: str | None) -> str | None:  # noqa: C901
     """Validate and normalize an optional branding logo URL or data URL."""
     import base64
     import binascii
@@ -224,7 +224,6 @@ def _normalize_branding_logo_url(value: str | None) -> str | None:
     parsed = urlparse(candidate)
     if parsed.scheme not in {"http", "https"}:
         raise ValueError("branding_logo_url must use https/http or data URL")
-    ext = Path(parsed.path or "").suffix.lower() if False else ""
     from pathlib import Path as _Path
     ext = _Path(parsed.path or "").suffix.lower()
     if ext not in _ALLOWED_BRANDING_LOGO_EXTENSIONS:
@@ -323,7 +322,7 @@ async def list_users_endpoint(
 
 @router.post("/users/import", response_model=UserImportResult)
 @router.post("/api/users/import", response_model=UserImportResult)
-async def import_users_endpoint(
+async def import_users_endpoint(  # noqa: C901
     request: Request,
     file: UploadFile | None = File(default=None),
     user: auth.User = Depends(require_role("admin")),
@@ -502,7 +501,10 @@ async def create_user_endpoint(
     if repo.get_user(username):
         raise HTTPException(status_code=409, detail="User already exists")
     password = body.password or _generate_password()
-    repo.create_user(username, password, active=body.active)
+    try:
+        repo.create_user(username, password, active=body.active)
+    except auth.PasswordPolicyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if body.roles:
         rbac.set_user_roles(username, body.roles, actor="system", context={"source": "api"})
     return _user_summary(username)
@@ -531,7 +533,10 @@ async def update_user_endpoint(
         rbac.set_user_roles(username, [], actor="system", context={"source": "api"})
         username = target_username
     if body.password:
-        repo.create_user(username, body.password, active=record.active)
+        try:
+            repo.create_user(username, body.password, active=record.active)
+        except auth.PasswordPolicyError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     if body.active is not None:
         repo.set_active(username, body.active)
     if body.roles is not None:
@@ -592,7 +597,7 @@ async def update_profile(
         else get_profile_data(current_user.username)
     )
     updated_prefs = (
-        update_preferences(current_user.username, prefs) if prefs else get_preferences(current_user.username)
+        update_preferences(current_user.username, prefs) if prefs else get_preferences(current_user.username)  # noqa: E501
     )
     theme = updated_prefs.get("theme", "system")
     if theme not in {"system", "light", "dark"}:
@@ -1378,7 +1383,7 @@ async def get_fsv_url_setting(
     return {
         "url": get_fsv_url(),
         "configured": is_fsv_configured(),
-        "source": "env" if __import__("os").environ.get("FEDERAL_STYLE_VALIDATOR_URL") else "settings",
+        "source": "env" if __import__("os").environ.get("FEDERAL_STYLE_VALIDATOR_URL") else "settings",  # noqa: E501
     }
 
 

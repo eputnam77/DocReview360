@@ -53,6 +53,7 @@ function buildFrameSrc() {
 
 const connectSrc = buildConnectSrc();
 const frameSrc = buildFrameSrc();
+const isDev = process.env.NODE_ENV !== "production" || process.env.DOCREVIEW360_E2E_MODE === "1";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -76,7 +77,9 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
+              isDev
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",

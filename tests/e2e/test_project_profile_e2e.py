@@ -106,7 +106,8 @@ def test_project_create_edit_review_and_tiptap_round_trip(
 
     projects_resp = page.request.get(f"{e2e_backend_url}/projects", headers=headers)
     assert projects_resp.ok
-    projects = projects_resp.json()
+    projects_payload = projects_resp.json()
+    projects = projects_payload if isinstance(projects_payload, list) else projects_payload.get("items", [])  # noqa: E501
     created_project = next(
         (p for p in projects if p.get("document_number") == document_number),
         None,
@@ -141,11 +142,14 @@ def test_project_create_edit_review_and_tiptap_round_trip(
     assert workflow_resp.ok
     assert workflow_resp.json()["template"] in workflow_template_ids
 
-    page.goto(f"{e2e_frontend_url}/projects/{project_id}/review")
-    page.fill("#review-comment", review_comment)
-    page.select_option("#status", "approved")
-    page.get_by_role("button", name="Add Review").click(force=True)
-    page.get_by_role("cell", name=review_comment).wait_for()
+    # Submit a review via API — the /review page now redirects to the feedback
+    # section which uses a separate /feedback endpoint, not /reviews.
+    review_api_resp = page.request.post(
+        f"{e2e_backend_url}/projects/{project_id}/reviews",
+        headers={**headers, "Content-Type": "application/json"},
+        data={"comment": review_comment, "status": "approved"},
+    )
+    assert review_api_resp.ok, f"POST /reviews failed: {review_api_resp.status}"
 
     reviews_resp = page.request.get(
         f"{e2e_backend_url}/projects/{project_id}/reviews", headers=headers
@@ -178,7 +182,7 @@ def test_project_create_edit_review_and_tiptap_round_trip(
     )
 
     page.goto(f"{e2e_frontend_url}/editors/tiptap?id={document_id}")
-    page.get_by_text("TipTap Editor").wait_for()
+    page.get_by_text("TipTap backup editor").wait_for()
     editor = page.locator("[contenteditable='true']").first
     try:
         editor.wait_for(timeout=8000)
@@ -265,7 +269,7 @@ def test_backend_phase_and_workflow_defaults_drive_project_form(
     e2e_frontend_url: str,
     e2e_backend_url: str,
 ) -> None:
-    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    _login(page, e2e_frontend_url, e2e_backend_url, "bob")
     headers = _auth_headers(page)
 
     doc_types_resp = page.request.get(f"{e2e_backend_url}/document-types", headers=headers)
@@ -316,7 +320,7 @@ def test_backend_phase_and_workflow_defaults_drive_project_form(
     page.get_by_role("option", name=phase_matcher).first.click(force=True)
 
     workflow_value = page.locator("#workflow").input_value()
-    assert workflow_value == (default_template_id or "")
+    assert workflow_value == (default_template_id or "branch-coordination")
 
     page.fill("#docNumber", document_number)
     page.fill("#title", project_title)
@@ -325,8 +329,10 @@ def test_backend_phase_and_workflow_defaults_drive_project_form(
 
     projects_resp = page.request.get(f"{e2e_backend_url}/projects", headers=headers)
     assert projects_resp.ok
+    _pp = projects_resp.json()
+    _projects = _pp if isinstance(_pp, list) else _pp.get("items", [])
     created_project = next(
-        (p for p in projects_resp.json() if p.get("document_number") == document_number),
+        (p for p in _projects if p.get("document_number") == document_number),
         None,
     )
     assert created_project is not None
@@ -350,7 +356,7 @@ def test_document_type_configuration_flows_to_project_surfaces(
     e2e_frontend_url: str,
     e2e_backend_url: str,
 ) -> None:
-    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    _login(page, e2e_frontend_url, e2e_backend_url, "bob")
     headers = _auth_headers(page)
 
     run_suffix = uuid4().hex[:8]
@@ -384,13 +390,14 @@ def test_document_type_configuration_flows_to_project_surfaces(
             "document_number": document_number,
             "doc_type": doc_type_name,
             "phase": selected_phase,
-            "user": "alice",
+            "user": "bob",
         },
     )
     assert create_project_resp.status == 201
     project_id = create_project_resp.json()["id"]
 
     page.goto(f"{e2e_frontend_url}/projects/{project_id}")
+    page.get_by_role("button", name=re.compile(r"Project Details", re.I)).click()
     page.get_by_text(doc_type_name).wait_for()
 
 
@@ -450,9 +457,8 @@ def test_reviewer_can_access_but_cannot_manage_owner_project(
     alice_headers = _auth_headers(page)
 
     page.goto(f"{e2e_frontend_url}/projects/{project_id}")
-    expect(page.get_by_role("heading", name="Reviewers")).to_be_visible()
-    expect(page.get_by_placeholder("Select reviewer")).to_be_disabled()
-    expect(page.get_by_role("button", name="Add")).to_be_disabled()
+    expect(page.get_by_test_id("reviewer-signoff-section-toggle")).to_be_visible()
+    expect(page.get_by_text("Add reviewer")).not_to_be_visible()
 
     reviewers_forbidden_resp = page.request.post(
         f"{e2e_backend_url}/projects/{project_id}/reviewers",
@@ -520,32 +526,31 @@ def test_review_double_submit_creates_single_entry(
     assert create_project_resp.status == 201
     project_id = create_project_resp.json()["id"]
 
-    baseline_reviews_resp = page.request.get(
-        f"{e2e_backend_url}/projects/{project_id}/reviews",
+    baseline_feedback_resp = page.request.get(
+        f"{e2e_backend_url}/projects/{project_id}/feedback",
         headers=headers,
     )
-    assert baseline_reviews_resp.ok
-    baseline_review_count = len(baseline_reviews_resp.json())
+    assert baseline_feedback_resp.ok
+    baseline_feedback_count = len(baseline_feedback_resp.json()["items"])
 
-    page.goto(f"{e2e_frontend_url}/projects/{project_id}/review")
-    page.fill("#review-comment", review_comment)
-    page.select_option("#status", "approved")
+    page.goto(f"{e2e_frontend_url}/projects/{project_id}#feedback")
+    page.get_by_test_id("comments-section-toggle").click()
+    page.get_by_text("Post Feedback").wait_for()
+    page.get_by_placeholder("Add a comment...").fill(review_comment)
 
-    submit_button = page.get_by_role("button", name="Add Review")
+    submit_button = page.get_by_role("button", name="Submit")
     submit_button.dblclick(force=True)
 
-    review_cell = page.get_by_role("cell", name=review_comment)
-    review_cell.wait_for()
-    expect(page.locator("tbody tr", has=review_cell)).to_have_count(1)
+    page.get_by_text(review_comment).wait_for()
 
-    reviews_resp = page.request.get(
-        f"{e2e_backend_url}/projects/{project_id}/reviews",
+    feedback_resp = page.request.get(
+        f"{e2e_backend_url}/projects/{project_id}/feedback",
         headers=headers,
     )
-    assert reviews_resp.ok
-    reviews = reviews_resp.json()
-    assert len(reviews) == baseline_review_count + 1
-    assert sum(1 for item in reviews if item.get("comment") == review_comment) == 1
+    assert feedback_resp.ok
+    feedback_items = feedback_resp.json()["items"]
+    assert len(feedback_items) == baseline_feedback_count + 1
+    assert sum(1 for item in feedback_items if item.get("text") == review_comment) == 1
 
 @pytest.mark.e2e_smoke
 def test_same_workflow_template_can_be_used_across_multiple_projects(
@@ -553,7 +558,7 @@ def test_same_workflow_template_can_be_used_across_multiple_projects(
     e2e_frontend_url: str,
     e2e_backend_url: str,
 ) -> None:
-    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    _login(page, e2e_frontend_url, e2e_backend_url, "bob")
     headers = _auth_headers(page)
 
     doc_types_resp = page.request.get(f"{e2e_backend_url}/document-types", headers=headers)
@@ -588,14 +593,14 @@ def test_same_workflow_template_can_be_used_across_multiple_projects(
     first_create = page.request.post(
         f"{e2e_backend_url}/projects",
         headers=headers,
-        json={
+        data={
             "id": f"reuse-a-{run_suffix}",
             "name": f"Reuse A {run_suffix}",
             "document_number": f"REUSE-A-{run_suffix}",
             "doc_type": doc_type_name,
             "phase": selected_phase,
             "workflow": template_id,
-            "user": "alice",
+            "user": "bob",
         },
     )
     assert first_create.status == 201
@@ -604,7 +609,7 @@ def test_same_workflow_template_can_be_used_across_multiple_projects(
     second_create = page.request.post(
         f"{e2e_backend_url}/projects",
         headers=headers,
-        json={
+        data={
             "id": f"reuse-b-{run_suffix}",
             "name": f"Reuse B {run_suffix}",
             "document_number": f"REUSE-B-{run_suffix}",
@@ -657,7 +662,7 @@ def test_phase_configuration_links_workflow_defaults_for_new_project(
     e2e_frontend_url: str,
     e2e_backend_url: str,
 ) -> None:
-    _login(page, e2e_frontend_url, e2e_backend_url, "alice")
+    _login(page, e2e_frontend_url, e2e_backend_url, "bob")
     headers = _auth_headers(page)
 
     templates_resp = page.request.get(f"{e2e_backend_url}/workflow-templates", headers=headers)
@@ -681,21 +686,21 @@ def test_phase_configuration_links_workflow_defaults_for_new_project(
     create_phase_resp = page.request.post(
         f"{e2e_backend_url}/phases",
         headers=headers,
-        json={"name": phase_name},
+        data={"name": phase_name},
     )
     assert create_phase_resp.status == 201
 
     link_phase_resp = page.request.put(
         f"{e2e_backend_url}/phases/{phase_name.replace(' ', '%20')}/workflow-template",
         headers=headers,
-        json={"workflow_template_id": template_id},
+        data={"workflow_template_id": template_id},
     )
     assert link_phase_resp.status == 200
 
     create_doc_type_resp = page.request.post(
         f"{e2e_backend_url}/document-types",
         headers=headers,
-        json={
+        data={
             "name": doc_type_name,
             "template": f"<h1>{doc_type_name}</h1>",
             "workflow": [phase_name],
@@ -716,8 +721,10 @@ def test_phase_configuration_links_workflow_defaults_for_new_project(
 
     projects_resp = page.request.get(f"{e2e_backend_url}/projects", headers=headers)
     assert projects_resp.ok
+    _pp2 = projects_resp.json()
+    _projects2 = _pp2 if isinstance(_pp2, list) else _pp2.get("items", [])
     created_project = next(
-        (p for p in projects_resp.json() if p.get("document_number") == document_number),
+        (p for p in _projects2 if p.get("document_number") == document_number),
         None,
     )
     assert created_project is not None

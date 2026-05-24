@@ -217,12 +217,23 @@ class TestConnectionPooling:
     """Database.__init__ must read pool settings from env vars."""
 
     def test_pool_defaults_used_without_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Constructing with sqlite uses StaticPool, not the pool vars path."""
+        """Constructing with in-memory sqlite uses StaticPool, not the pool vars path."""
         from docreview360.database import Database
 
         db = Database("sqlite+pysqlite:///:memory:")
-        # SQLite uses StaticPool so pool vars don't apply — just verify no crash.
+        # In-memory SQLite uses StaticPool so pool vars don't apply — just verify no crash.
         assert db._engine is not None
+
+    def test_file_sqlite_uses_normal_pool_for_concurrent_requests(
+        self, tmp_path: Path
+    ) -> None:
+        """File-backed sqlite should not share one StaticPool connection across threads."""
+        from docreview360.database import Database
+        from sqlalchemy.pool import StaticPool
+
+        db = Database(f"sqlite:///{(tmp_path / 'app.db').as_posix()}")
+
+        assert not isinstance(db._engine.pool, StaticPool)
 
     def test_pool_env_vars_are_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """The non-SQLite branch must read pool settings from environment."""

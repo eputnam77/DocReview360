@@ -37,4 +37,4 @@ def test_dashboard_route_loads_after_login(
     page.goto(f"{e2e_frontend_url}/dashboard")
     page.wait_for_url(f"{e2e_frontend_url}/dashboard")
     page.get_by_role("heading", name="Dashboard").wait_for()
-    page.get_by_text("Assigned to Me").wait_for()
+    page.get_by_text("Assigned to Me", exact=True).first.wait_for()

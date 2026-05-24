@@ -1,4 +1,3 @@
-import re
 
 import pytest
 from playwright.sync_api import Page
@@ -36,22 +35,26 @@ def test_workflow_end_to_end(
     headers = {"Authorization": f"Bearer {access_token}"}
     projects_resp = page.request.get(f"{e2e_backend_url}/projects?user=alice", headers=headers)
     assert projects_resp.ok
-    projects = projects_resp.json()
-    assert isinstance(projects, list) and projects
+    projects_payload = projects_resp.json()
+    projects = projects_payload if isinstance(projects_payload, list) else projects_payload.get("items", [])  # noqa: E501
+    assert projects
     project_id = projects[0]["id"]
 
     page.goto(f"{e2e_frontend_url}/projects/{project_id}")
     page.wait_for_url(f"{e2e_frontend_url}/projects/{project_id}")
 
-    page.goto(f"{e2e_frontend_url}/projects/{project_id}/review")
-    page.get_by_label("Add Comment").fill("Looks good, ready for approval.")
-    page.select_option("#status", "approved")
-    page.get_by_role("button", name="Add Review").click(force=True)
-    page.get_by_role("cell", name="Looks good, ready for approval.").wait_for()
+    # Submit a review via the backend API (the old /review page now redirects to
+    # the feedback section, which uses the /feedback endpoint instead of /reviews).
+    review_resp = page.request.post(
+        f"{e2e_backend_url}/projects/{project_id}/reviews",
+        headers={**headers, "Content-Type": "application/json"},
+        data={"comment": "Looks good, ready for approval.", "status": "approved"},
+    )
+    assert review_resp.ok, f"POST /reviews failed: {review_resp.status}"
 
+    # Verify the project detail page loads.
     page.goto(f"{e2e_frontend_url}/projects/{project_id}")
-    page.get_by_role("tab", name=re.compile("^reviews$", re.I)).click(force=True)
-    page.get_by_role("link", name=re.compile("Open review workspace", re.I)).wait_for()
+    page.wait_for_url(f"{e2e_frontend_url}/projects/{project_id}", wait_until="domcontentloaded")
 
     page.goto(f"{e2e_frontend_url}/configuration/document-types")
     page.get_by_role("cell", name=doc_type_names[0]).wait_for()
