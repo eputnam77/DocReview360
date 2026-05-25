@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from .db_store import get_db
 
 _logger = logging.getLogger(__name__)
+_ORGANIZATION_UPDATE_COLUMNS = frozenset({"name", "settings_json"})
 
 
 # ---------------------------------------------------------------------------
@@ -218,11 +219,14 @@ def update_organization(
         updates["settings_json"] = _parse_settings(settings)
 
     if updates:
+        unknown_columns = set(updates) - _ORGANIZATION_UPDATE_COLUMNS
+        if unknown_columns:
+            raise ValueError(f"Unsupported organization update field(s): {sorted(unknown_columns)!r}")
         set_clause = ", ".join(f"{k} = :{k}" for k in updates)
         updates["id"] = org_id
         with db.session() as conn:
             conn.execute(
-                _text(f"UPDATE organizations SET {set_clause} WHERE id = :id"),
+                _text(f"UPDATE organizations SET {set_clause} WHERE id = :id"),  # nosec B608
                 updates,
             )
 

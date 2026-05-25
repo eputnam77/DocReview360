@@ -19,6 +19,15 @@ from .db_store import get_db
 FEEDBACK_STATUSES = ("open", "accepted", "rejected", "resolved")
 FEEDBACK_TYPES = ("comment", "question", "suggestion", "non_concurrence")
 TERMINAL_FEEDBACK_STATUSES = frozenset({"accepted", "rejected", "resolved"})
+_UPDATE_COLUMNS = frozenset(
+    {
+        "status",
+        "disposition_by",
+        "disposition_at",
+        "disposition_reason",
+        "question_satisfied",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -278,11 +287,14 @@ def get_feedback_item(item_id: str) -> Optional[FeedbackItem]:
 def _update_fields(item_id: str, **kwargs: Any) -> FeedbackItem:
     """Apply field updates to a feedback item row."""
     _ensure_table()
+    unknown_columns = set(kwargs) - _UPDATE_COLUMNS
+    if unknown_columns:
+        raise ValueError(f"Unsupported feedback update field(s): {sorted(unknown_columns)!r}")
     set_clause = ", ".join(f"{k} = :{k}" for k in kwargs)
     db = get_db()
     with db.session() as conn:
         conn.execute(
-            _text(f"UPDATE feedback_items SET {set_clause} WHERE id = :item_id"),
+            _text(f"UPDATE feedback_items SET {set_clause} WHERE id = :item_id"),  # nosec B608
             {"item_id": item_id, **kwargs},
         )
     result = get_feedback_item(item_id)
@@ -345,19 +357,20 @@ def get_feedback_progress(project_id: str, *, phase: Optional[str] = None) -> Fe
     independently.
     """
     _ensure_table()
-    conditions = ["project_id = :project_id", "parent_id IS NULL"]
     params: dict[str, Any] = {"project_id": project_id}
     if phase:
-        conditions.append("phase = :phase")
         params["phase"] = phase
 
-    where = " AND ".join(conditions)
     db = get_db()
     with db.session() as conn:
+        query = (
+            "SELECT status, feedback_type FROM feedback_items "
+            "WHERE project_id = :project_id AND parent_id IS NULL"
+        )
+        if phase:
+            query += " AND phase = :phase"
         rows = conn.execute(
-            _text(
-                f"SELECT status, feedback_type FROM feedback_items WHERE {where}"
-            ),
+            _text(query),
             params,
         ).fetchall()
 

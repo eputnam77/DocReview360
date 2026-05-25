@@ -19,7 +19,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -49,6 +49,11 @@ class ConfluenceClient:
     api_token: str
     space_key: str = ""
 
+    def __post_init__(self) -> None:
+        parsed = urlparse(self.base_url)
+        if parsed.scheme not in {"http", "https"}:
+            raise ValueError("Confluence base URL must use http or https")
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -77,7 +82,7 @@ class ConfluenceClient:
             headers["Content-Type"] = "application/json"
         req = Request(url, data=data, headers=headers, method=method)
         try:
-            with urlopen(req, timeout=30) as resp:
+            with _urlopen_http(req, timeout=30) as resp:
                 body = resp.read()
                 return json.loads(body) if body else {}
         except HTTPError as exc:
@@ -202,6 +207,14 @@ class ConfluenceClient:
 
 class ConfluenceError(RuntimeError):
     """Raised when a Confluence API call fails."""
+
+
+def _urlopen_http(req: Request, *, timeout: int):
+    parsed = urlparse(req.full_url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ConfluenceError("Confluence request URL must use http or https")
+    # URL scheme is validated above.
+    return urlopen(req, timeout=timeout)  # nosec B310
 
 
 def client_from_env() -> ConfluenceClient:

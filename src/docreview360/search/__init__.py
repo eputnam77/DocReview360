@@ -62,6 +62,10 @@ project_lock = threading.Lock()
 saved_search_lock = threading.Lock()
 counter_lock = threading.Lock()
 index_lock = threading.Lock()
+# Serialises the check-then-create approval sequence in add_project_reviewer
+# so concurrent adds for the same reviewer can't both pass the "no approval yet"
+# check and create duplicate approvals.
+_approval_sync_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -200,19 +204,20 @@ def add_project_reviewer(project_id: str, reviewer: str) -> ProjectModel:
 
     if project.workflow:
         assign_reviewer(project.workflow, reviewer)
-        workflow = get_workflow(project.workflow)
-        approvals = list_approvals(project.workflow)
-        if not any(a.reviewer == reviewer for a in approvals):
-            doc_id = workflow.document if workflow and workflow.document else project.workflow
-            phase_id = workflow.phase if workflow else None
-            create_approval(
-                project.workflow,
-                reviewer,
-                doc_id,
-                description="Reviewer",
-                phase_id=phase_id,
-                role="Reviewer",
-            )
+        with _approval_sync_lock:
+            workflow = get_workflow(project.workflow)
+            approvals = list_approvals(project.workflow)
+            if not any(a.reviewer == reviewer for a in approvals):
+                doc_id = workflow.document if workflow and workflow.document else project.workflow
+                phase_id = workflow.phase if workflow else None
+                create_approval(
+                    project.workflow,
+                    reviewer,
+                    doc_id,
+                    description="Reviewer",
+                    phase_id=phase_id,
+                    role="Reviewer",
+                )
     return project
 
 

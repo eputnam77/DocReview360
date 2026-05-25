@@ -23,7 +23,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 DRIVE_API_BASE = "https://www.googleapis.com/drive/v3"
@@ -32,6 +32,14 @@ DRIVE_UPLOAD_BASE = "https://www.googleapis.com/upload/drive/v3"
 
 class GoogleDriveError(RuntimeError):
     """Raised when a Google Drive API call fails."""
+
+
+def _urlopen_https(req: Request, *, timeout: int):
+    parsed = urlparse(req.full_url)
+    if parsed.scheme != "https":
+        raise GoogleDriveError("Google Drive request URL must use https")
+    # URL scheme is validated above.
+    return urlopen(req, timeout=timeout)  # nosec B310
 
 
 @dataclass
@@ -87,7 +95,7 @@ class GoogleDriveClient:
             data = payload
         req = Request(url, data=data, headers=headers, method=method)
         try:
-            with urlopen(req, timeout=60) as resp:
+            with _urlopen_https(req, timeout=60) as resp:
                 body = resp.read()
                 return json.loads(body) if body else {}
         except HTTPError as exc:
@@ -143,10 +151,10 @@ class GoogleDriveClient:
 
     def download_file(self, file_id: str) -> bytes:
         """Download a binary file and return its raw bytes."""
-        url = f"{DRIVE_API_BASE}/files/{file_id}?alt=media"
+        url = f"{DRIVE_API_BASE}/files/{quote(file_id, safe='')}?alt=media"
         req = Request(url, headers={"Authorization": f"Bearer {self.access_token}"})
         try:
-            with urlopen(req, timeout=120) as resp:
+            with _urlopen_https(req, timeout=120) as resp:
                 return resp.read()
         except HTTPError as exc:
             raise GoogleDriveError(f"Download failed: {exc.code} {exc.reason}") from exc
@@ -162,10 +170,11 @@ class GoogleDriveClient:
         - ``"application/vnd.openxmlformats-officedocument.wordprocessingml.document"`` — DOCX
         - ``"text/csv"`` — CSV (Sheets)
         """
-        url = f"{DRIVE_API_BASE}/files/{file_id}/export?mimeType={mime_type}"
+        query = urlencode({"mimeType": mime_type})
+        url = f"{DRIVE_API_BASE}/files/{quote(file_id, safe='')}/export?{query}"
         req = Request(url, headers={"Authorization": f"Bearer {self.access_token}"})
         try:
-            with urlopen(req, timeout=120) as resp:
+            with _urlopen_https(req, timeout=120) as resp:
                 return resp.read()
         except HTTPError as exc:
             raise GoogleDriveError(f"Export failed: {exc.code} {exc.reason}") from exc
@@ -205,7 +214,8 @@ class GoogleDriveClient:
         body += f"\r\n--{boundary}--".encode()
 
         fields = "id,name,mimeType,size,modifiedTime,parents,webViewLink"
-        url = f"{DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields={fields}"
+        query = urlencode({"uploadType": "multipart", "fields": fields})
+        url = f"{DRIVE_UPLOAD_BASE}/files?{query}"
         req = Request(
             url,
             data=body,
@@ -216,7 +226,7 @@ class GoogleDriveClient:
             method="POST",
         )
         try:
-            with urlopen(req, timeout=120) as resp:
+            with _urlopen_https(req, timeout=120) as resp:
                 return _parse_file(json.loads(resp.read()))
         except HTTPError as exc:
             raise GoogleDriveError(f"Upload failed: {exc.code} {exc.reason}") from exc
@@ -226,7 +236,8 @@ class GoogleDriveClient:
     ) -> DriveFile:
         """Replace the content of an existing Drive file."""
         fields = "id,name,mimeType,size,modifiedTime"
-        url = f"{DRIVE_UPLOAD_BASE}/files/{file_id}?uploadType=media&fields={fields}"
+        query = urlencode({"uploadType": "media", "fields": fields})
+        url = f"{DRIVE_UPLOAD_BASE}/files/{quote(file_id, safe='')}?{query}"
         req = Request(
             url,
             data=content,
@@ -237,7 +248,7 @@ class GoogleDriveClient:
             method="PATCH",
         )
         try:
-            with urlopen(req, timeout=120) as resp:
+            with _urlopen_https(req, timeout=120) as resp:
                 return _parse_file(json.loads(resp.read()))
         except HTTPError as exc:
             raise GoogleDriveError(f"Update failed: {exc.code} {exc.reason}") from exc

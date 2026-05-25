@@ -73,7 +73,7 @@ services:
   # Frontend — Next.js dev server with hot-reload
   # ---------------------------------------------------------------------------
   frontend:
-    image: node:18-alpine
+    image: node:20-alpine
     working_dir: /app/frontend
     command: sh -c "npm install --legacy-peer-deps && npm run dev"
     volumes:

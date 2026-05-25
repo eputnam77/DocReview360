@@ -110,6 +110,15 @@ def _get_item_or_404(item_id: str) -> FeedbackItem:
     return item
 
 
+def _project_display(project) -> str:
+    doc_number = (getattr(project, "document_number", None) or getattr(project, "id", "")).strip()
+    project_id = getattr(project, "id", "")
+    project_name = getattr(project, "name", "Untitled project")
+    if doc_number and doc_number != project_id:
+        return f"'{project_name}' ({doc_number}; id {project_id})"
+    return f"'{project_name}' (id {project_id})"
+
+
 def _require_project_access(project, current_user: auth.User) -> None:
     """Allow access if user passes standard project access OR is an assignment reviewer."""
     from .projects_router import _is_admin_user
@@ -223,9 +232,15 @@ async def create_project_feedback(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         feedback_id=item.id,
         feedback_type=item.feedback_type,
         assignment_id=item.assignment_id,
+        message=(
+            f"{current_user.username} submitted {item.feedback_type} feedback "
+            f"on project {_project_display(project)}"
+        ),
     )
     _emit_webhook("feedback.submitted", {
         "project_id": project_id,
@@ -265,10 +280,16 @@ async def disposition_feedback_item(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         feedback_id=item_id,
         feedback_type=item.feedback_type,
         disposition=body.status,
         reason=body.reason,
+        message=(
+            f"{current_user.username} marked {item.feedback_type} feedback {item_id} "
+            f"as {body.status} on project {_project_display(project)}"
+        ),
     )
     return updated.model_dump()
 
@@ -295,8 +316,14 @@ async def reply_to_project_feedback(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         feedback_id=item_id,
         reply_id=reply.id,
+        message=(
+            f"{current_user.username} replied to feedback {item_id} on project "
+            f"{_project_display(project)}"
+        ),
     )
     return reply.model_dump()
 
@@ -308,7 +335,7 @@ async def mark_feedback_question_satisfied(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict:
     """Reviewer marks a 'question' type item as satisfied."""
-    _get_project_or_404(project_id)
+    project = _get_project_or_404(project_id)
     item = _get_item_or_404(item_id)
     if item.project_id != project_id:
         raise HTTPException(status_code=404, detail="Feedback item not found")
@@ -317,6 +344,19 @@ async def mark_feedback_question_satisfied(
     if current_user.username != item.reviewer:
         raise HTTPException(status_code=403, detail="Only the original reviewer can mark this satisfied")
     updated = mark_question_satisfied(item_id)
+    log_event(
+        "feedback.question_satisfied",
+        user_id=current_user.username,
+        entity_id=project_id,
+        entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
+        feedback_id=item_id,
+        message=(
+            f"{current_user.username} marked question feedback {item_id} as "
+            f"satisfied on project {_project_display(project)}"
+        ),
+    )
     return updated.model_dump()
 
 
@@ -366,7 +406,13 @@ async def archive_project_phase_feedback(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         phase=body.phase,
         archived_count=count,
+        message=(
+            f"{current_user.username} archived {count} open feedback item(s) "
+            f"for phase {body.phase} on project {_project_display(project)}"
+        ),
     )
     return {"archived": count, "phase": body.phase}

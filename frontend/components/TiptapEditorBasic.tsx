@@ -42,6 +42,7 @@ function ToolbarButton({
     <button
       type="button"
       disabled={disabled}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       title={title}
       aria-label={ariaLabel}

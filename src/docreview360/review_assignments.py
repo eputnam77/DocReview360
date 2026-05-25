@@ -27,6 +27,16 @@ REVIEW_ASSIGNMENT_STATUSES = (
     "replaced",
 )
 TERMINAL_STATUSES = frozenset({"concurred", "non_concurred", "signed", "declined", "replaced"})
+_UPDATE_COLUMNS = frozenset(
+    {
+        "status",
+        "started_at",
+        "completed_at",
+        "signed_at",
+        "replaced_by",
+        "replacement_reason",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -218,11 +228,14 @@ def get_assignment(assignment_id: str) -> Optional[ReviewAssignmentModel]:
 def _update_fields(assignment_id: str, **kwargs: Any) -> ReviewAssignmentModel:
     """Apply arbitrary field updates to an assignment row."""
     _ensure_table()
+    unknown_columns = set(kwargs) - _UPDATE_COLUMNS
+    if unknown_columns:
+        raise ValueError(f"Unsupported assignment update field(s): {sorted(unknown_columns)!r}")
     set_clause = ", ".join(f"{k} = :{k}" for k in kwargs)
     db = get_db()
     with db.session() as conn:
         conn.execute(
-            _text(f"UPDATE review_assignments SET {set_clause} WHERE id = :assignment_id"),
+            _text(f"UPDATE review_assignments SET {set_clause} WHERE id = :assignment_id"),  # nosec B608
             {"assignment_id": assignment_id, **kwargs},
         )
     result = get_assignment(assignment_id)
@@ -236,12 +249,44 @@ def transition_status(
     new_status: str,
     *,
     ts_field: Optional[str] = None,
+    from_status: Optional[str] = None,
 ) -> ReviewAssignmentModel:
-    """Transition an assignment to *new_status*, optionally stamping a timestamp field."""
+    """Transition an assignment to *new_status*, optionally stamping a timestamp field.
+
+    When *from_status* is provided the UPDATE is conditional: only rows still in
+    that status are touched, preventing a race between concurrent callers (e.g.
+    replace vs. start) from producing an inconsistent final state.  A
+    ``KeyError`` is raised if the row no longer exists or has already moved on.
+    """
     now = datetime.now(UTC).isoformat()
     kwargs: dict[str, Any] = {"status": new_status}
     if ts_field:
         kwargs[ts_field] = now
+
+    if from_status is not None:
+        # Atomic check-and-set: only update if still in the expected status.
+        _ensure_table()
+        set_clause = ", ".join(f"{k} = :{k}" for k in kwargs)
+        db = get_db()
+        with db.session() as conn:
+            result = conn.execute(
+                _text(  # nosec B608
+                    f"UPDATE review_assignments SET {set_clause} "
+                    f"WHERE id = :assignment_id AND status = :from_status"
+                ),
+                {"assignment_id": assignment_id, "from_status": from_status, **kwargs},
+            )
+            if result.rowcount == 0:
+                current = get_assignment(assignment_id)
+                if current is None:
+                    raise KeyError(f"Assignment {assignment_id!r} not found")
+                # Already in target status (idempotent) or raced to another status.
+                return current
+        result2 = get_assignment(assignment_id)
+        if result2 is None:
+            raise KeyError(f"Assignment {assignment_id!r} not found")
+        return result2
+
     return _update_fields(assignment_id, **kwargs)
 
 
@@ -252,21 +297,37 @@ def replace_assignment(
     *,
     due_date: Optional[datetime] = None,
 ) -> tuple[ReviewAssignmentModel, ReviewAssignmentModel]:
-    """Replace an assignment and create a new one for the replacement reviewer."""
+    """Replace an assignment and create a new one for the replacement reviewer.
+
+    Uses a conditional UPDATE (WHERE status NOT IN terminal) so a concurrent
+    ``start`` or ``concur`` that races with this call cannot leave the original
+    assignment in a non-replaced state.
+    """
     original = get_assignment(assignment_id)
     if original is None:
         raise KeyError(f"Assignment {assignment_id!r} not found")
+    if original.status in TERMINAL_STATUSES:
+        raise ValueError(
+            f"Cannot replace assignment in terminal status '{original.status}'"
+        )
     new_assignment = create_assignment(
         original.project_id, replacement_reviewer, due_date=due_date
     )
-    _update_fields(
-        assignment_id,
-        status="replaced",
-        replaced_by=new_assignment.id,
-        replacement_reason=reason,
-    )
+    # Atomically mark as replaced only if not already in a terminal state.
+    _ensure_table()
+    db = get_db()
+    terminal_list = ", ".join(f"'{s}'" for s in TERMINAL_STATUSES)
+    with db.session() as conn:
+        conn.execute(
+            _text(  # nosec B608
+                f"UPDATE review_assignments "
+                f"SET status = 'replaced', replaced_by = :new_id, replacement_reason = :reason "
+                f"WHERE id = :id AND status NOT IN ({terminal_list})"
+            ),
+            {"id": assignment_id, "new_id": new_assignment.id, "reason": reason},
+        )
     updated_original = get_assignment(assignment_id)
-    assert updated_original is not None  # noqa: S101 — guaranteed by _update_fields
+    assert updated_original is not None  # noqa: S101 — guaranteed by DB row existence
     return updated_original, new_assignment
 
 

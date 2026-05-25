@@ -120,7 +120,7 @@ services:
 
   # ── nginx reverse proxy ─────────────────────────────────────────────────────
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.29-alpine
     restart: unless-stopped
     ports:
       - "80:80"

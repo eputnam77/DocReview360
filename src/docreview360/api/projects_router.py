@@ -39,7 +39,6 @@ from ..doc_types import get_document_type
 from ..doc_validation import score_plain_language
 from ..documents import DocumentModel, create_blank_document, import_document, list_documents
 from ..logs import log_event
-from ..messages import render
 from ..project_preferences import (
     ProjectPreferences,
     get_project_preferences,
@@ -202,6 +201,43 @@ def _resolve_workflow_template(
             return phase_default_template
 
     return "branch-coordination"
+
+
+def _project_display(project: ProjectModel) -> str:
+    """Return a compact project label suitable for busy audit feeds."""
+    doc_number = (project.document_number or project.id or "").strip()
+    if doc_number and doc_number != project.id:
+        return f"'{project.name}' ({doc_number}; id {project.id})"
+    return f"'{project.name}' (id {project.id})"
+
+
+def _log_project_activity(
+    action: str,
+    project: ProjectModel,
+    *,
+    actor: str,
+    message: str,
+    **details: object,
+) -> None:
+    """Write a project-scoped audit event with consistent identifying context."""
+    context = {
+        "project": project.id,
+        "project_id": project.id,
+        "project_name": project.name,
+        "document_number": project.document_number,
+        "owner": project.user,
+        "phase": project.initial_phase,
+        "workflow": project.workflow,
+        "message": message,
+    }
+    context.update(details)
+    log_event(
+        action,
+        user_id=actor,
+        entity_id=project.id,
+        entity_type="project",
+        **context,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -389,6 +425,23 @@ def _update_workflow_phase(
         wf_model.phase = body.phase
         if body.phase not in wf_model.phases:
             wf_model.phases.append(body.phase)
+        # Emit a specific phase_transitioned audit event so dashboards can
+        # track progress without navigating into each project.
+        if old_phase != body.phase and project_id and archived_by:
+            try:
+                _log_project_activity(
+                    "phase_transitioned",
+                    updated_project,
+                    actor=archived_by,
+                    message=(
+                        f"{archived_by} advanced project {_project_display(updated_project)} "
+                        f"from phase '{old_phase or 'none'}' to '{body.phase}'"
+                    ),
+                    old_phase=old_phase,
+                    new_phase=body.phase,
+                )
+            except Exception:
+                pass  # best-effort; never block phase advance
         # Auto-archive open feedback from the previous phase on phase advance
         if old_phase and old_phase != body.phase and project_id and archived_by:
             try:
@@ -518,15 +571,17 @@ async def create_project_endpoint(
                 title=project.name or "Untitled Document",
             )
             clear_cache()
-            log_event(
+            _log_project_activity(
                 "create_project",
-                user_id=project.user,
-                entity_id=project.id,
-                entity_type="project",
-                project=project.id,
-                message=render(
-                    "create_project", user=project.user or "", project_id=project.id
+                project,
+                actor=current_user.username,
+                message=(
+                    f"{current_user.username} created project {_project_display(project)} "
+                    f"for owner {project.user or 'unassigned'} in phase "
+                    f"{project.initial_phase or 'not set'}"
                 ),
+                owner=project.user,
+                created_by=current_user.username,
             )
             _emit_webhook("project.created", {"project_id": project.id, "user": project.user})
             return project
@@ -547,13 +602,17 @@ async def create_project_endpoint(
         title=project.name or "Untitled Document",
     )
     clear_cache()
-    log_event(
+    _log_project_activity(
         "create_project",
-        user_id=project.user,
-        entity_id=project.id,
-        entity_type="project",
-        project=project.id,
-        message=render("create_project", user=project.user or "", project_id=project.id),
+        project,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} created project {_project_display(project)} "
+            f"for owner {project.user or 'unassigned'} in phase "
+            f"{project.initial_phase or 'not set'}"
+        ),
+        owner=project.user,
+        created_by=current_user.username,
     )
     _emit_webhook("project.created", {"project_id": project.id, "user": project.user})
     return project
@@ -603,6 +662,16 @@ async def add_project_reviewer_endpoint(
         project = add_project_reviewer(project_id, reviewer)
     except KeyError:
         raise HTTPException(status_code=404, detail="Project not found")
+    _log_project_activity(
+        "reviewer_added",
+        project,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} added reviewer {reviewer} to project "
+            f"{_project_display(project)}"
+        ),
+        reviewer=reviewer,
+    )
     return list(project.reviewers)
 
 
@@ -626,6 +695,17 @@ async def update_project_reviewer_endpoint(
         project = update_project_reviewer(project_id, reviewer, new_reviewer)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    _log_project_activity(
+        "reviewer_updated",
+        project,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} changed reviewer {reviewer} to {new_reviewer} "
+            f"on project {_project_display(project)}"
+        ),
+        old_reviewer=reviewer,
+        reviewer=new_reviewer,
+    )
     return list(project.reviewers)
 
 
@@ -644,6 +724,16 @@ async def remove_project_reviewer_endpoint(
         project = remove_project_reviewer(project_id, reviewer)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    _log_project_activity(
+        "reviewer_removed",
+        project,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} removed reviewer {reviewer} from project "
+            f"{_project_display(project)}"
+        ),
+        reviewer=reviewer,
+    )
     return list(project.reviewers)
 
 
@@ -686,6 +776,19 @@ async def create_project_review(
     }
     review = ReviewModel(**review_data)
     add_review(review)
+    _log_project_activity(
+        "review_submitted",
+        project,
+        actor=reviewer,
+        message=(
+            f"{reviewer} submitted {body.status} review for project "
+            f"{_project_display(project)}"
+        ),
+        reviewer=reviewer,
+        review_id=review.id,
+        review_status=body.status,
+        phase_id=body.phase_id,
+    )
     return review
 
 
@@ -710,7 +813,15 @@ async def update_project_endpoint(  # noqa: C901
         if existing_project is None:
             raise HTTPException(status_code=404, detail="Project not found")
         _enforce_project_manage_access(existing_project, current_user)
+        previous_name = existing_project.name
+        previous_owner = existing_project.user
+        previous_doc_type = existing_project.doc_type
+        previous_phase = existing_project.initial_phase
         previous_workflow_id = existing_project.workflow
+        previous_nara_schedule = existing_project.nara_schedule_number
+        previous_nara_disposition = existing_project.nara_disposition_authority
+        previous_nara_retention = existing_project.nara_retention_period
+        previous_nara_series = existing_project.nara_record_series
         body, workflow_provided = await _parse_update_body(request)
 
         nara_schedule_number: str | None = None
@@ -797,6 +908,38 @@ async def update_project_endpoint(  # noqa: C901
             await _import_uploaded_file(file, project_id, project_user)
 
         clear_cache()
+        changed_fields: dict[str, dict[str, str | None]] = {}
+        comparisons = {
+            "name": (previous_name, updated_project.name),
+            "owner": (previous_owner, updated_project.user),
+            "document_type": (previous_doc_type, updated_project.doc_type),
+            "phase": (previous_phase, updated_project.initial_phase),
+            "workflow": (previous_workflow_id, updated_project.workflow),
+            "nara_schedule_number": (previous_nara_schedule, updated_project.nara_schedule_number),
+            "nara_disposition_authority": (previous_nara_disposition, updated_project.nara_disposition_authority),
+            "nara_retention_period": (previous_nara_retention, updated_project.nara_retention_period),
+            "nara_record_series": (previous_nara_series, updated_project.nara_record_series),
+        }
+        for field, (before, after) in comparisons.items():
+            if before != after:
+                changed_fields[field] = {"from": before, "to": after}
+        if file:
+            changed_fields["document_upload"] = {
+                "from": None,
+                "to": file.filename or "uploaded_document",
+            }
+        if changed_fields:
+            changed_names = ", ".join(sorted(changed_fields))
+            _log_project_activity(
+                "update_project",
+                updated_project,
+                actor=current_user.username,
+                message=(
+                    f"{current_user.username} updated {changed_names} on project "
+                    f"{_project_display(updated_project)}"
+                ),
+                changed_fields=changed_fields,
+            )
         return updated_project
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -819,11 +962,15 @@ async def delete_project_endpoint(
     except KeyError:
         raise HTTPException(status_code=404, detail="Project not found") from None
     clear_cache()
-    log_event(
+    _log_project_activity(
         "delete_project",
-        user_id=removed.user,
-        project=removed.id,
-        message=render("delete_project", user=removed.user or "", project_id=removed.id),
+        removed,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} deleted project {_project_display(removed)} "
+            f"owned by {removed.user or 'unassigned'}"
+        ),
+        deleted_owner=removed.user,
     )
     return removed
 
@@ -854,10 +1001,23 @@ async def update_priority_endpoint(
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     _enforce_project_manage_access(project, current_user)
+    previous_priority = project.priority
     try:
-        return set_project_priority(project_id, body.priority)
+        updated = set_project_priority(project_id, body.priority)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    _log_project_activity(
+        "project_priority_updated",
+        updated,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} changed priority for project "
+            f"{_project_display(updated)} from {previous_priority} to {body.priority}"
+        ),
+        previous_priority=previous_priority,
+        priority=body.priority,
+    )
+    return updated
 
 
 @router.post("/projects/{project_id}/temporary", response_model=ProjectModel)
@@ -872,9 +1032,21 @@ async def temporary_assign_endpoint(
     _enforce_project_manage_access(project, current_user)
     assigned_user = _resolve_requested_user(body.user, current_user)
     try:
-        return assign_temporary(project_id, assigned_user, body.until)
+        updated = assign_temporary(project_id, assigned_user, body.until)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    _log_project_activity(
+        "project_temporary_assigned",
+        updated,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} temporarily assigned project "
+            f"{_project_display(updated)} to {assigned_user} until {body.until.isoformat()}"
+        ),
+        temporary_user=assigned_user,
+        temporary_until=body.until.isoformat(),
+    )
+    return updated
 
 
 @router.get("/projects/{project_id}/preferences", response_model=ProjectPreferences)
@@ -901,7 +1073,17 @@ async def update_project_preferences_endpoint(
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     _enforce_project_manage_access(project, current_user)
-    return update_project_preferences(project_id, body.model_dump())
+    updated = update_project_preferences(project_id, body.model_dump())
+    _log_project_activity(
+        "project_preferences_updated",
+        project,
+        actor=current_user.username,
+        message=(
+            f"{current_user.username} updated editor preferences for project "
+            f"{_project_display(project)}"
+        ),
+    )
+    return updated
 
 
 @router.get("/projects/{project_id}/approvals/pdf")

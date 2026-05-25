@@ -371,9 +371,10 @@ def load_critic(path: str | Path) -> TinyCritic:
         import pickle
 
         with open(Path(path), "rb") as fh:
-            payload = pickle.load(fh)
+            # Legacy local model fallback when torch is absent.
+            payload = pickle.load(fh)  # nosec B301
     else:
-        payload = torch.load(Path(path), map_location="cpu")
+        payload = torch.load(Path(path), map_location="cpu", weights_only=True)
     config = CriticConfig(**payload["config"])
     critic = TinyCritic(config)
     critic.load_state_dict(payload["state_dict"])

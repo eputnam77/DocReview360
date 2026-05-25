@@ -116,7 +116,7 @@ def verify_certificate_status(  # noqa: C901
                 status = cached[0]
             else:
                 builder = ocsp.OCSPRequestBuilder()
-                builder = builder.add_certificate(cert, issuer, hashes.SHA1())
+                builder = builder.add_certificate(cert, issuer, hashes.SHA256())
                 req = builder.build()
                 if fetcher is None:
                     resp = httpx.post(

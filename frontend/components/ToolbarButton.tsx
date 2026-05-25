@@ -15,6 +15,7 @@ export function toolbarButton(
       className={`p-2 rounded ${active ? 'bg-indigo-100' : ''} ${
         disabled ? 'opacity-50 cursor-not-allowed' : ''
       }`}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={command}
       title={title}
       disabled={disabled}

@@ -89,6 +89,7 @@ export default function LiveLogsPage() {
 
   useEffect(() => {
     if (!allowed) return;
+    let cancelled = false;
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => {
       if (v) params.append(k, v as string);
@@ -100,10 +101,16 @@ export default function LiveLogsPage() {
     })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: LogEntry[]) => {
+        if (cancelled) return;
         setLogs((prev) => (page === 0 ? data : [...prev, ...data]));
         setHasMore(data.length === PAGE_SIZE);
       })
-      .catch(() => setLogs([]));
+      .catch(() => {
+        if (!cancelled) setLogs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [allowed, username, filters, page]);
 
   // Stream new log entries over a WebSocket for real-time updates

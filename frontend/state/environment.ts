@@ -28,7 +28,7 @@ export const useEnvStore = create<EnvState>((set) => ({
       const data = await response.json();
       set({ current: data.current ?? undefined, envs: data.envs });
     } catch (error) {
-      console.error("Unable to load environments", error);
+      console.warn("Unable to load environments", error);
     }
   },
   switchEnv: async (name: string) => {
@@ -41,7 +41,7 @@ export const useEnvStore = create<EnvState>((set) => ({
 
       set((state) => ({ current: state.envs[name] }));
     } catch (error) {
-      console.error("Unable to switch environment", error);
+      console.warn("Unable to switch environment", error);
     }
   },
 }));

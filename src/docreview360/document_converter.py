@@ -205,8 +205,10 @@ def _odt_to_text(data: bytes) -> str:
     ODT files are ZIP archives containing ``content.xml``.  The text
     content is extracted by stripping XML tags from that entry.
     """
-    import xml.etree.ElementTree as ET
     import zipfile
+
+    from defusedxml import ElementTree as DET
+    from defusedxml.common import DefusedXmlException
 
     try:
         with zipfile.ZipFile(BytesIO(data)) as zf:
@@ -218,8 +220,8 @@ def _odt_to_text(data: bytes) -> str:
         return ""
 
     try:
-        root = ET.fromstring(xml_bytes)
-    except ET.ParseError as exc:
+        root = DET.fromstring(xml_bytes)
+    except (DET.ParseError, DefusedXmlException) as exc:
         _logger.debug("Failed to parse ODT content.xml: %s", exc)
         return ""
 

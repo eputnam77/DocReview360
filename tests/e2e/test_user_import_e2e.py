@@ -69,13 +69,24 @@ def test_user_add_manual_via_ui(
 
     run_suffix = uuid4().hex[:8]
     username = f"e2e_manual_{run_suffix}"
+    password = "Password!1234"
 
     page.goto(f"{e2e_frontend_url}/configuration/user-management")
 
     page.get_by_placeholder("Username").fill(username)
+    page.get_by_placeholder("Initial password").fill(password)
     role_select = page.locator("select[multiple]")
     role_select.select_option(["reviewer"])
     page.get_by_role("button", name="Add").click(force=True)
 
     row = page.locator("tr", has_text=username)
     expect(row).to_contain_text("Reviewer")
+
+    token_resp = page.request.post(
+        f"{e2e_backend_url}/token",
+        form={"username": username, "password": password},
+    )
+    assert token_resp.ok, (
+        f"Expected newly-created manual user to be login-ready, "
+        f"got {token_resp.status}: {token_resp.text()}"
+    )

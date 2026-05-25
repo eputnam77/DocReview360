@@ -8,6 +8,7 @@ import hmac
 import json
 import logging
 import os
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -89,6 +90,7 @@ AUDIT_LOG_SCHEMA: Dict[str, Any] = AuditLogEntry.model_json_schema()
 
 _AUDIT_LOG_PATH = Path(__file__).with_name("audit.log")
 _AUDIT_ANCHOR_PATH = _AUDIT_LOG_PATH.with_suffix(".anchor")
+_AUDIT_WRITE_LOCK = threading.Lock()
 
 DEFAULT_AUDIT_LOG_SETTINGS: Dict[str, int] = {
     "retention_days": 365 * 7,
@@ -177,16 +179,17 @@ def log_audit_event(
     data_without_hash = {k: v for k, v in data.items() if k != "hash"}
     entry.hash = _compute_hash(data_without_hash, effective_secret)
     data["hash"] = entry.hash
-    _AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with _AUDIT_LOG_PATH.open("a", encoding="utf-8") as fh:
-        # ``_compute_hash`` serialises using ``default=str`` so it gracefully
-        # handles non-JSON-native types like ``datetime`` in the ``context``.
-        # When persisting the entry we previously called ``json.dumps`` without
-        # this option which meant the log function succeeded in computing the
-        # hash but then crashed trying to write the event if the context
-        # contained such objects.  Use the same ``default=str`` behaviour so the
-        # log remains writable for any data that can be hashed above.
-        fh.write(json.dumps(data, default=str) + "\n")
+    with _AUDIT_WRITE_LOCK:
+        _AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _AUDIT_LOG_PATH.open("a", encoding="utf-8") as fh:
+            # ``_compute_hash`` serialises using ``default=str`` so it gracefully
+            # handles non-JSON-native types like ``datetime`` in the ``context``.
+            # When persisting the entry we previously called ``json.dumps`` without
+            # this option which meant the log function succeeded in computing the
+            # hash but then crashed trying to write the event if the context
+            # contained such objects.  Use the same ``default=str`` behaviour so the
+            # log remains writable for any data that can be hashed above.
+            fh.write(json.dumps(data, default=str) + "\n")
     return entry
 
 
@@ -601,10 +604,15 @@ def humanize_audit_action(
 ) -> str:
     """Return a human-readable description of an audit event.
 
-    Falls back to a title-cased version of the action name when no template
-    matches, so unknown events are still somewhat readable.
+    Uses the rich ``message`` field from ``details`` when available, since it
+    already contains project name + doc number context.  Falls back to a
+    title-cased version of the action name when no template matches.
     """
     details = details or {}
+    # Prefer the pre-built message which already includes project name and doc number.
+    if details.get("message"):
+        return str(details["message"])
+
     user = user_id or details.get("user_id") or "Unknown user"
     entity = entity_id or details.get("entity_id") or details.get("project_id") or ""
     project = details.get("project_id") or entity

@@ -139,6 +139,22 @@ class TestOdtToText:
         result = _odt_to_text(buf.getvalue())
         assert result == ""
 
+    def test_odt_rejects_xml_entity_expansion(self) -> None:
+        """_odt_to_text rejects entity expansion in ODT XML content."""
+        xml = b"""<?xml version="1.0"?>
+<!DOCTYPE foo [
+<!ENTITY xxe "expanded">
+]>
+<document-content xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
+  <text:p>&xxe;</text:p>
+</document-content>
+"""
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("content.xml", xml)
+
+        assert _odt_to_text(buf.getvalue()) == ""
+
 
 # ---------------------------------------------------------------------------
 # EPUB

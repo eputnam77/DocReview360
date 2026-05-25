@@ -99,6 +99,15 @@ def _get_project_assignment_or_404(project_id: str, assignment_id: str) -> Revie
     return assignment
 
 
+def _project_display(project: Any) -> str:
+    doc_number = (getattr(project, "document_number", None) or getattr(project, "id", "")).strip()
+    project_id = getattr(project, "id", "")
+    project_name = getattr(project, "name", "Untitled project")
+    if doc_number and doc_number != project_id:
+        return f"'{project_name}' ({doc_number}; id {project_id})"
+    return f"'{project_name}' (id {project_id})"
+
+
 def _require_project_access(project, current_user: auth.User) -> None:
     """Allow access if user passes standard project access OR is an assignment reviewer."""
     from .projects_router import _is_admin_user
@@ -259,8 +268,15 @@ async def create_project_assignment(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
+        doc_type=getattr(project, "doc_type", None),
         reviewer=assignment.reviewer,
         assignment_id=assignment.id,
+        message=(
+            f"{current_user.username} assigned reviewer {assignment.reviewer} "
+            f"to project {_project_display(project)}"
+        ),
     )
     _emit_webhook(
         "review.assigned",
@@ -299,7 +315,7 @@ async def start_assignment(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict:
     """Reviewer acknowledges the assignment; transitions status to 'reviewing'."""
-    _get_project_or_404(project_id)
+    project = _get_project_or_404(project_id)
     assignment = _get_project_assignment_or_404(project_id, assignment_id)
     if assignment.reviewer != current_user.username:
         raise HTTPException(
@@ -309,15 +325,22 @@ async def start_assignment(
         raise HTTPException(
             status_code=409, detail=f"Cannot start from status '{assignment.status}'"
         )
-    result = transition_status(assignment_id, "reviewing", ts_field="started_at")
+    result = transition_status(assignment_id, "reviewing", ts_field="started_at", from_status="invited")
     log_event(
         "review.status_changed",
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         assignment_id=assignment_id,
+        reviewer=assignment.reviewer,
         old_status="invited",
         new_status="reviewing",
+        message=(
+            f"{current_user.username} started review assignment {assignment_id} "
+            f"for project {_project_display(project)}"
+        ),
     )
     return result.model_dump()
 
@@ -346,8 +369,15 @@ async def submit_assignment(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
+        doc_type=getattr(project, "doc_type", None),
         assignment_id=assignment_id,
         reviewer=assignment.reviewer,
+        message=(
+            f"{current_user.username} submitted feedback for review assignment "
+            f"{assignment_id} on project {_project_display(project)}"
+        ),
     )
     _emit_webhook(
         "review.submitted",
@@ -379,9 +409,16 @@ async def concur_assignment(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
+        doc_type=getattr(project, "doc_type", None),
         assignment_id=assignment_id,
         reviewer=assignment.reviewer,
         outcome="concurred",
+        message=(
+            f"{current_user.username} concurred on review assignment {assignment_id} "
+            f"for project {_project_display(project)}"
+        ),
     )
     _emit_webhook(
         "review.completed",
@@ -429,9 +466,15 @@ async def concur_assignment_with_comments(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         assignment_id=assignment_id,
         reviewer=assignment.reviewer,
         outcome="concurred_with_comments",
+        message=(
+            f"{current_user.username} concurred with comments on review assignment "
+            f"{assignment_id} for project {_project_display(project)}"
+        ),
     )
     _emit_webhook(
         "review.completed",
@@ -469,8 +512,14 @@ async def request_concurrence(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         assignment_id=assignment_id,
         reviewer=assignment.reviewer,
+        message=(
+            f"{current_user.username} requested concurrence from {assignment.reviewer} "
+            f"for project {_project_display(project)}"
+        ),
     )
     return {"ok": True, "assignment_id": assignment_id}
 
@@ -494,10 +543,16 @@ async def non_concur_assignment(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         assignment_id=assignment_id,
         reviewer=assignment.reviewer,
         new_status="non_concurred",
         reason=body.reason,
+        message=(
+            f"{current_user.username} non-concurred on review assignment {assignment_id} "
+            f"for project {_project_display(project)}"
+        ),
     )
     return result.model_dump()
 
@@ -522,10 +577,17 @@ async def replace_project_assignment(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
+        doc_type=getattr(project, "doc_type", None),
         original_assignment_id=assignment_id,
         original_reviewer=original.reviewer,
         replacement_reviewer=body.replacement_reviewer,
         reason=body.reason,
+        message=(
+            f"{current_user.username} replaced reviewer {original.reviewer} with "
+            f"{body.replacement_reviewer} on project {_project_display(project)}"
+        ),
     )
     return {"original": original.model_dump(), "replacement": new_assignment.model_dump()}
 
@@ -584,10 +646,17 @@ async def mark_assignments_viewed(
                 user_id=current_user.username,
                 entity_id=project_id,
                 entity_type="project",
+                project_id=project_id,
+                project_name=project.name,
                 assignment_id=a.id,
+                reviewer=a.reviewer,
                 old_status="invited",
                 new_status="reviewing",
                 trigger="view",
+                message=(
+                    f"{current_user.username} opened project {_project_display(project)} "
+                    f"and started review assignment {a.id}"
+                ),
             )
     return {"started": started}
 
@@ -641,9 +710,15 @@ async def sign_assignment_internally(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         assignment_id=assignment_id,
         reviewer=assignment.reviewer,
         outcome="signed",
+        message=(
+            f"{current_user.username} signed internal review assignment {assignment_id} "
+            f"for project {_project_display(project)}"
+        ),
     )
     _emit_webhook(
         "review.completed",
@@ -732,8 +807,14 @@ async def delete_project_assignment(
         user_id=current_user.username,
         entity_id=project_id,
         entity_type="project",
+        project_id=project_id,
+        project_name=project.name,
         assignment_id=assignment_id,
         reviewer=reviewer,
+        message=(
+            f"{current_user.username} removed invited reviewer {reviewer} from "
+            f"project {_project_display(project)}"
+        ),
     )
     return Response(status_code=204)
 
