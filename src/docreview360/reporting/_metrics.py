@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from typing import Iterable, Mapping
 
 from ..approvals import approvals
@@ -17,6 +18,9 @@ _SANITIZE_RE = re.compile(r"[^a-z0-9]+")
 _PROJECT_METRICS: dict[str | None, CriticAggregate] = {}
 _ROUTING_LATENCY: dict[str, int] = {}
 _ROUTING_METADATA: dict[str, str] | None = None
+# Serialises all mutations to the module-level metric dicts so concurrent
+# quality/compliance recording from parallel requests never interleaves writes.
+_METRICS_LOCK = threading.Lock()
 
 
 def _format_optional(value: float | None) -> str:
@@ -29,6 +33,7 @@ def _sanitize_column(label: str) -> str:
 
 
 def _get_metric_bucket(key: str | None) -> CriticAggregate:
+    # Caller must hold _METRICS_LOCK.
     bucket = _PROJECT_METRICS.get(key)
     if bucket is None:
         bucket = CriticAggregate()
@@ -45,11 +50,11 @@ def _resolve_project_id(document_id: str | None) -> str | None:
     for approval in approvals.values():
         if approval.document_id == document_id:
             workflow = workflows.get(approval.workflow)
-            if workflow:
-                return workflow.project
+            if workflow and workflow.project:
+                return str(workflow.project)
     for workflow in workflows.values():
-        if workflow.document == document_id:
-            return workflow.project
+        if workflow.document == document_id and workflow.project:
+            return str(workflow.project)
     return None
 
 
@@ -94,11 +99,12 @@ def record_quality_score(
     if project_id is not None:
         targets.append(project_id)
     targets.append(None)
-    for key in targets:
-        bucket = _get_metric_bucket(key)
-        bucket.quality.add(score)
-        if payload:
-            bucket.quality_metadata = dict(payload)
+    with _METRICS_LOCK:
+        for key in targets:
+            bucket = _get_metric_bucket(key)
+            bucket.quality.add(score)
+            if payload:
+                bucket.quality_metadata = dict(payload)
 
 
 def record_compliance_score(
@@ -110,26 +116,30 @@ def record_compliance_score(
     if project_id is not None:
         targets.append(project_id)
     targets.append(None)
-    for key in targets:
-        bucket = _get_metric_bucket(key)
-        bucket.compliance.add(probability)
-        if payload:
-            bucket.compliance_metadata = dict(payload)
+    with _METRICS_LOCK:
+        for key in targets:
+            bucket = _get_metric_bucket(key)
+            bucket.compliance.add(probability)
+            if payload:
+                bucket.compliance_metadata = dict(payload)
 
 
 def record_routing_snapshot(
     latency: Mapping[str, int], metadata: Mapping[str, str] | None = None
 ) -> None:
     global _ROUTING_METADATA
-    _ROUTING_LATENCY.clear()
-    for label, value in latency.items():
-        _ROUTING_LATENCY[str(label)] = int(value)
-    if metadata:
-        _ROUTING_METADATA = {k: str(v) for k, v in metadata.items()}
+    new_latency = {str(label): int(value) for label, value in latency.items()}
+    new_metadata = {k: str(v) for k, v in metadata.items()} if metadata else None
+    with _METRICS_LOCK:
+        _ROUTING_LATENCY.clear()
+        _ROUTING_LATENCY.update(new_latency)
+        if new_metadata is not None:
+            _ROUTING_METADATA = new_metadata
 
 
 def reset_metrics_for_testing() -> None:
-    _PROJECT_METRICS.clear()
-    _ROUTING_LATENCY.clear()
-    global _ROUTING_METADATA
-    _ROUTING_METADATA = None
+    with _METRICS_LOCK:
+        _PROJECT_METRICS.clear()
+        _ROUTING_LATENCY.clear()
+        global _ROUTING_METADATA
+        _ROUTING_METADATA = None

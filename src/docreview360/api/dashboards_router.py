@@ -229,6 +229,7 @@ async def export_logs_endpoint(
         f"{e.entity_id or ''},{e.severity},{e.ip_address or ''},{json.dumps(e.details)}"
         for e in entries
     ]
+    content: str | bytes
     if fmt == "csv":
         lines = [
             f"# Generated at: {metadata['generated_at']}",
@@ -291,7 +292,8 @@ async def recently_active_users(
     from ..logs import query_logs
 
     since = datetime.now(timezone.utc) - timedelta(days=max(1, days))
-    recent_logs = query_logs(start=since, limit=None)
+    # Cap at 10 000 entries to prevent memory exhaustion on a busy instance.
+    recent_logs = query_logs(start=since, limit=10_000)
 
     activity: dict[str, dict[str, Any]] = {}
     for entry in recent_logs:
@@ -314,8 +316,8 @@ async def recently_active_users(
         from ..profile import get_profile_data
         from ..rbac import get_roles
     except ImportError:
-        get_roles = lambda u: []  # noqa: E731
-        get_profile_data = lambda u: {}  # noqa: E731
+        get_roles = lambda username: set()  # noqa: E731
+        get_profile_data = lambda user: {}  # noqa: E731
 
     result: list[RecentlyActiveUser] = []
     for username, info in ranked:

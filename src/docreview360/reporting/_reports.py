@@ -9,7 +9,7 @@ from typing import Any
 
 from ..approvals import approvals
 from ..documents import documents
-from ..search import ProjectModel, _expire_temp_assignment, add_project, list_projects, projects
+from ..search import _expire_temp_assignment, list_projects, projects
 from ..status import internal_status
 from ..workflows import workflows
 from ._metrics import (
@@ -45,12 +45,17 @@ def compile_check_report(results: dict[str, Any]) -> tuple[bytes, bytes]:
     return html, pdf
 
 
-def reviewer_workload_dashboard() -> list[ReviewerWorkload]:
+def reviewer_workload_dashboard() -> list[ReviewerWorkload]:  # noqa: C901
     """Return per-reviewer workload metrics across all approvals."""
     from ..review_assignments import TERMINAL_STATUSES, list_assignments
 
+    # Snapshot shared dicts to avoid RuntimeError if concurrent writes modify
+    # them while we iterate.
+    approvals_snap = list(approvals.values())
+    projects_snap = list(projects.values())
+
     stats: dict[str, dict[str, int]] = {}
-    for approval in approvals.values():
+    for approval in approvals_snap:
         reviewer = approval.reviewer
         if reviewer not in stats:
             stats[reviewer] = {"pending": 0, "approved": 0, "overdue": 0, "rejected": 0}
@@ -64,10 +69,15 @@ def reviewer_workload_dashboard() -> list[ReviewerWorkload]:
         elif state in {"rejected", "denied"}:
             stats[reviewer]["rejected"] += 1
 
+    # Count active project engagements per reviewer. Use a set of (user, project_id)
+    # pairs to avoid double-counting a user who is both the project owner and an
+    # active reviewer on the same project.
     project_counts: dict[str, int] = {}
-    for proj in projects.values():
+    for proj in projects_snap:
+        seen: set[str] = set()
         if proj.user:
             project_counts[proj.user] = project_counts.get(proj.user, 0) + 1
+            seen.add(proj.user)
         try:
             assignments = list_assignments(proj.id)
         except Exception:
@@ -75,7 +85,10 @@ def reviewer_workload_dashboard() -> list[ReviewerWorkload]:
         for assignment in assignments:
             if assignment.status in TERMINAL_STATUSES:
                 continue
-            project_counts[assignment.reviewer] = project_counts.get(assignment.reviewer, 0) + 1
+            reviewer = assignment.reviewer
+            if reviewer not in seen:
+                project_counts[reviewer] = project_counts.get(reviewer, 0) + 1
+                seen.add(reviewer)
 
     for reviewer in project_counts:
         stats.setdefault(
@@ -105,9 +118,14 @@ def document_aging_metrics() -> DocumentAgingReport:
     """Compute aging metrics for all documents in the system."""
 
     now = datetime.now(timezone.utc)
+    # Snapshot shared dicts before iterating to avoid RuntimeError from
+    # concurrent modifications.
+    approvals_snap = list(approvals.values())
+    documents_snap = list(documents.values())
+
     pending_doc_ids: set[str] = set()
     overdue_doc_ids: set[str] = set()
-    for approval in approvals.values():
+    for approval in approvals_snap:
         if approval.state == "pending":
             pending_doc_ids.add(approval.document_id)
         elif approval.state == "overdue":
@@ -115,7 +133,7 @@ def document_aging_metrics() -> DocumentAgingReport:
 
     entries: list[DocumentAgingEntry] = []
     age_values: list[int] = []
-    for doc in documents.values():
+    for doc in documents_snap:
         age_days: int | None = None
         if doc.date is not None:
             created = doc.date
@@ -151,9 +169,7 @@ def document_aging_metrics() -> DocumentAgingReport:
 
 def generate_summary() -> SummaryReport:
     """Return counts of key objects."""
-
-    if "demo" not in projects:
-        add_project(ProjectModel(id="demo", name="Demo Project"))
+    # Snapshot sizes atomically — never mutate global state on a read path.
     return SummaryReport(
         projects=len(projects),
         documents=len(documents),
@@ -162,31 +178,52 @@ def generate_summary() -> SummaryReport:
     )
 
 
-def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
+def dashboard_data(user: str | None = None) -> list[DashboardEntry]:  # noqa: C901
     """Return per-project dashboard metrics."""
+
+    # Snapshot all shared dicts before iterating so that concurrent project/
+    # approval/workflow writes cannot cause RuntimeError mid-iteration.
+    projects_snap = list(projects.values())
+    documents_snap = list(documents.values())
+    approvals_snap = list(approvals.values())
+    workflows_snap = list(workflows.values())
+
+    # Expire temporary assignments on a copy of the list — never inside an
+    # active dict iteration.
+    for project in projects_snap:
+        _expire_temp_assignment(project)
 
     data: list[DashboardEntry] = []
     routing_snapshot = _routing_latency_snapshot()
     visible_project_ids = {project.id for project in list_projects(user)} if user else None
-    for project in projects.values():
-        _expire_temp_assignment(project)
+
+    # Build lookup maps to avoid O(N²) per-project scans.
+    wf_by_project: dict[str, Any] = {}
+    for wf in workflows_snap:
+        if wf.project and wf.project not in wf_by_project:
+            wf_by_project[wf.project] = wf
+
+    docs_by_project: dict[str, int] = {}
+    for d in documents_snap:
+        if d.project:
+            docs_by_project[d.project] = docs_by_project.get(d.project, 0) + 1
+
+    pending_by_wf: dict[str, int] = {}
+    overdue_by_wf: dict[str, int] = {}
+    for a in approvals_snap:
+        if a.state == "pending":
+            pending_by_wf[a.workflow] = pending_by_wf.get(a.workflow, 0) + 1
+        elif a.state == "overdue":
+            overdue_by_wf[a.workflow] = overdue_by_wf.get(a.workflow, 0) + 1
+
+    for project in projects_snap:
         if visible_project_ids is not None and project.id not in visible_project_ids:
             continue
-        doc_count = sum(1 for d in documents.values() if d.project == project.id)
-        wf = next((w for w in workflows.values() if w.project == project.id), None)
-        pending = sum(
-            1
-            for a in approvals.values()
-            if wf is not None and a.workflow == wf.id and a.state == "pending"
-        )
-        overdue = sum(
-            1
-            for a in approvals.values()
-            if wf is not None and a.workflow == wf.id and a.state == "overdue"
-        )
+        wf = wf_by_project.get(project.id)
         metrics = _PROJECT_METRICS.get(project.id)
         quality_avg = metrics.quality.average() if metrics else None
         compliance_avg = metrics.compliance.average() if metrics else None
+        wf_id = wf.id if wf else None
         data.append(
             DashboardEntry(
                 id=project.id,
@@ -195,9 +232,9 @@ def dashboard_data(user: str | None = None) -> list[DashboardEntry]:
                 doc_type=project.doc_type,
                 phase=wf.phase if wf else None,
                 status=project.status,
-                docs=doc_count,
-                pending_approvals=pending,
-                overdue_approvals=overdue,
+                docs=docs_by_project.get(project.id, 0),
+                pending_approvals=pending_by_wf.get(wf_id, 0) if wf_id else 0,
+                overdue_approvals=overdue_by_wf.get(wf_id, 0) if wf_id else 0,
                 quality_score=quality_avg,
                 compliance_score=compliance_avg,
                 routing_latency=routing_snapshot.copy(),
@@ -233,14 +270,19 @@ def widget_counts(user: str | None = None) -> WidgetMetrics:
         scoped_projects = list_projects()
         project_ids = {project.id for project in scoped_projects}
         assigned = sum(1 for p in scoped_projects if p.user or p.temp_user)
-        active = sum(1 for p in scoped_projects if p.temp_user) + _active_assignment_count(project_ids)
+        active = (
+            sum(1 for p in scoped_projects if p.temp_user) + _active_assignment_count(project_ids)
+        )
         pending = sum(1 for a in approvals.values() if a.state == "pending")
         metrics = _PROJECT_METRICS.get(None)
     else:
         scoped_projects = list_projects(user)
         project_ids = {project.id for project in scoped_projects}
         assigned = len(scoped_projects)
-        active = sum(1 for p in scoped_projects if p.temp_user == user) + _active_assignment_count(project_ids, user)
+        active = (
+            sum(1 for p in scoped_projects if p.temp_user == user)
+            + _active_assignment_count(project_ids, user)
+        )
         pending = sum(
             1 for a in approvals.values() if a.state == "pending" and a.reviewer == user
         )
@@ -332,9 +374,13 @@ def workload_data() -> dict[str, int]:
     from ..review_assignments import TERMINAL_STATUSES, list_assignments
 
     counts: dict[str, int] = {}
-    for p in projects.values():
+    for p in list(projects.values()):
+        # Track which users have already been counted for this project to avoid
+        # double-counting an owner who also holds an active review assignment.
+        seen: set[str] = set()
         if p.user:
             counts[p.user] = counts.get(p.user, 0) + 1
+            seen.add(p.user)
         try:
             assignments = list_assignments(p.id)
         except Exception:
@@ -342,7 +388,9 @@ def workload_data() -> dict[str, int]:
         for assignment in assignments:
             if assignment.status in TERMINAL_STATUSES:
                 continue
-            counts[assignment.reviewer] = counts.get(assignment.reviewer, 0) + 1
+            if assignment.reviewer not in seen:
+                counts[assignment.reviewer] = counts.get(assignment.reviewer, 0) + 1
+                seen.add(assignment.reviewer)
     return counts
 
 
@@ -406,16 +454,42 @@ def user_dashboard(user: str) -> dict[str, Any]:
 def manager_dashboard() -> dict[str, Any]:
     """Return workload overview and project metrics for managers."""
 
-    return {"workload": workload_data(), "projects": dashboard_data(), "quality": avg_quality_score()}
+    return {
+        "workload": workload_data(),
+        "projects": dashboard_data(),
+        "quality": avg_quality_score(),
+    }
 
 
 def admin_dashboard() -> dict[str, Any]:
     """Return system health metrics and summary for administrators."""
 
-    return {"summary": generate_summary(), "status": internal_status(), "quality": avg_quality_score()}
+    return {
+        "summary": generate_summary(),
+        "status": internal_status(),
+        "quality": avg_quality_score(),
+    }
 
 
-def analytics_dashboard(
+def _to_aware_dt(value: Any) -> datetime | None:
+    """Parse a datetime value and ensure it is UTC-aware."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    elif isinstance(value, datetime):
+        dt = value
+    else:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def analytics_dashboard(  # noqa: C901
     start_date: datetime | None = None,
     end_date: datetime | None = None,
 ) -> dict[str, Any]:
@@ -432,67 +506,69 @@ def analytics_dashboard(
     _start = start_date or (now - timedelta(days=30))
     _end = end_date or now
 
+    # Snapshot all shared dicts up-front to avoid RuntimeError from concurrent
+    # modifications and to ensure a consistent view across all metrics.
+    documents_snap = list(documents.values())
+    approvals_snap = list(approvals.values())
+    workflows_snap = list(workflows.values())
+    projects_snap = list(projects.values())
+
+    # Build O(1) lookup maps so inner loops are O(1) instead of O(N).
+    wf_by_id = {wf.id: wf for wf in workflows_snap}
+    proj_by_workflow = {p.workflow: p for p in projects_snap if p.workflow}
+
     # ---- document_stats ------------------------------------------------
-    total_docs = len(documents)
+    total_docs = len(documents_snap)
     by_status: dict[str, int] = {}
     by_type: dict[str, int] = {}
     age_values: list[float] = []
-    for doc in documents.values():
+    for doc in documents_snap:
         status_key = getattr(doc, "status", None) or "unknown"
         by_status[status_key] = by_status.get(status_key, 0) + 1
         type_key = getattr(doc, "doc_type", None) or "unknown"
         by_type[type_key] = by_type.get(type_key, 0) + 1
         if doc.date is not None:
-            created = doc.date
-            if created.tzinfo is None:
-                created = created.replace(tzinfo=timezone.utc)
-            age_values.append((now - created).total_seconds() / 86400)
+            created = _to_aware_dt(doc.date)
+            if created:
+                age_values.append((now - created).total_seconds() / 86400)
     avg_age = round(sum(age_values) / len(age_values), 1) if age_values else 0.0
 
     # ---- review_stats --------------------------------------------------
-    total_reviews = len(approvals)
+    total_reviews = len(approvals_snap)
     completion_days: list[float] = []
     on_time_count = 0
-    for a in approvals.values():
+    approved_count = 0
+    for a in approvals_snap:
+        if a.state == "approved":
+            approved_count += 1
         if a.state == "approved" and a.signed_at:
-            signed_dt = (
-                datetime.fromisoformat(str(a.signed_at))
-                if isinstance(a.signed_at, str)
-                else a.signed_at
-            )
-            if signed_dt.tzinfo is None:
-                signed_dt = signed_dt.replace(tzinfo=timezone.utc)
+            signed_dt = _to_aware_dt(a.signed_at)
+            if signed_dt is None:
+                continue
             if a.deadline:
-                deadline_dt = (
-                    datetime.fromisoformat(str(a.deadline))
-                    if isinstance(a.deadline, str)
-                    else a.deadline
-                )
-                if deadline_dt.tzinfo is None:
-                    deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
-                if signed_dt <= deadline_dt:
+                deadline_dt = _to_aware_dt(a.deadline)
+                if deadline_dt and signed_dt <= deadline_dt:
                     on_time_count += 1
-            for wf in workflows.values():
-                if wf.id == a.workflow:
-                    for proj in projects.values():
-                        if proj.workflow == wf.id and proj.created:
-                            created_dt = proj.created
-                            if created_dt.tzinfo is None:
-                                created_dt = created_dt.replace(tzinfo=timezone.utc)
-                            delta = (signed_dt - created_dt).total_seconds() / 86400
-                            if delta >= 0:
-                                completion_days.append(delta)
-                            break
-                    break
-    approved_count = sum(1 for a in approvals.values() if a.state == "approved")
-    avg_completion = round(sum(completion_days) / len(completion_days), 1) if completion_days else 0.0
+            # O(1) lookup: workflow → project (was O(N²) nested loop)
+            wf = wf_by_id.get(a.workflow)
+            if wf:
+                proj = proj_by_workflow.get(wf.id)
+                if proj and proj.created:
+                    created_dt = _to_aware_dt(proj.created)
+                    if created_dt:
+                        delta = (signed_dt - created_dt).total_seconds() / 86400
+                        if delta >= 0:
+                            completion_days.append(delta)
+    avg_completion = (
+        round(sum(completion_days) / len(completion_days), 1) if completion_days else 0.0
+    )
     on_time_rate = round(on_time_count / approved_count, 3) if approved_count else 0.0
 
     # ---- user_activity -------------------------------------------------
     from ..logs import query_logs
 
     thirty_days_ago = now - timedelta(days=30)
-    recent_logs = query_logs(start=thirty_days_ago, end=now)
+    recent_logs = query_logs(start=thirty_days_ago, end=now, limit=10_000)
     active_users_set: set[str] = set()
     for entry in recent_logs:
         if entry.user_id:
@@ -509,17 +585,18 @@ def analytics_dashboard(
     # ---- phase_throughput ----------------------------------------------
     phase_throughput: list[dict[str, Any]] = []
     phase_counts: dict[str, list[float]] = {}
-    for wf in workflows.values():
+    # O(1) project lookup instead of O(N) inner scan
+    proj_by_id = {p.id: p for p in projects_snap}
+    for wf in workflows_snap:
         if wf.phase:
             if wf.phase not in phase_counts:
                 phase_counts[wf.phase] = []
             if wf.project:
-                proj = next((p for p in projects.values() if p.id == wf.project), None)
+                proj = proj_by_id.get(wf.project)
                 if proj and proj.created:
-                    created_dt = proj.created
-                    if created_dt.tzinfo is None:
-                        created_dt = created_dt.replace(tzinfo=timezone.utc)
-                    phase_counts[wf.phase].append((now - created_dt).total_seconds() / 86400)
+                    created_dt = _to_aware_dt(proj.created)
+                    if created_dt:
+                        phase_counts[wf.phase].append((now - created_dt).total_seconds() / 86400)
     for phase, days_list in sorted(phase_counts.items()):
         avg_days = round(sum(days_list) / len(days_list), 1) if days_list else 0.0
         phase_throughput.append({"phase": phase, "avg_days": avg_days, "count": len(days_list)})
@@ -608,39 +685,51 @@ def analytics_export(
 def executive_summary() -> dict[str, Any]:
     """Return a high-level summary dashboard for leadership."""
 
-    total_projects = len(projects)
-    active_projects = sum(1 for p in projects.values() if p.status not in {"archived", "closed"})
+    # Snapshot shared dicts before iterating.
+    approvals_snap = list(approvals.values())
+    workflows_snap = list(workflows.values())
+    projects_snap = list(projects.values())
+    documents_snap = list(documents.values())
 
-    total_approvals = len(approvals)
-    approved_count = sum(1 for a in approvals.values() if a.state == "approved")
-    pending_count = sum(1 for a in approvals.values() if a.state == "pending")
-    overdue_count = sum(1 for a in approvals.values() if a.state == "overdue")
+    total_projects = len(projects_snap)
+    active_projects = sum(
+        True
+        for p in projects_snap
+        if p.status not in {"archived", "closed"}  # type: ignore[comparison-overlap]
+    )
+
+    total_approvals = len(approvals_snap)
+    approved_count = sum(1 for a in approvals_snap if a.state == "approved")
+    pending_count = sum(1 for a in approvals_snap if a.state == "pending")
+    overdue_count = sum(1 for a in approvals_snap if a.state == "overdue")
     approval_rate = (approved_count / total_approvals * 100) if total_approvals else 0.0
 
     phase_distribution: dict[str, int] = {}
-    for wf in workflows.values():
+    for wf in workflows_snap:
         if wf.phase:
             phase_distribution[wf.phase] = phase_distribution.get(wf.phase, 0) + 1
 
-    total_documents = len(documents)
+    total_documents = len(documents_snap)
 
+    # O(1) workflow lookup to find which projects have overdue approvals.
+    wf_by_id = {wf.id: wf for wf in workflows_snap}
     projects_with_overdue: set[str] = set()
-    for approval in approvals.values():
+    for approval in approvals_snap:
         if approval.state == "overdue":
-            for wf in workflows.values():
-                if wf.id == approval.workflow and wf.project:
-                    projects_with_overdue.add(wf.project)
+            wf = wf_by_id.get(approval.workflow)
+            if wf and wf.project:
+                projects_with_overdue.add(wf.project)
 
     now = datetime.now(timezone.utc)
-    recently_created = sum(
-        1
-        for a in approvals.values()
-        if a.state == "pending"
-        and a.deadline
-        and datetime.fromisoformat(str(a.deadline)).replace(tzinfo=timezone.utc) > now
-        and datetime.fromisoformat(str(a.deadline)).replace(tzinfo=timezone.utc)
-        < now + timedelta(days=7)
-    )
+    seven_days = now + timedelta(days=7)
+    recently_created = 0
+    for a in approvals_snap:
+        if a.state == "pending" and a.deadline:
+            # Use _to_aware_dt so already-aware deadline strings are handled
+            # correctly — .replace(tzinfo=...) would discard existing tz info.
+            deadline_dt = _to_aware_dt(a.deadline)
+            if deadline_dt and now < deadline_dt < seven_days:
+                recently_created += 1
 
     return {
         "generated_at": now.isoformat(),
