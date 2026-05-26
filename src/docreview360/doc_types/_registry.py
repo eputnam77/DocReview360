@@ -23,47 +23,41 @@ _logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 DEFAULT_DOC_TYPE_PHASES: Dict[str, List[str]] = {
-    "Advisory Circular": [
-        "Draft Development",
-        "Internal Coordination",
-        "Final Issuance",
-    ],
     "Policy": [
-        "Draft Development",
-        "Internal Coordination",
-        "Final Issuance",
+        "Draft",
+        "Legal Review",
+        "Final Approval",
+        "Published",
     ],
-    "Guidance": [
-        "Draft Development",
-        "Internal Coordination",
-        "Final Issuance",
+    "Standard Operating Procedure": [
+        "Draft",
+        "Peer Review",
+        "Final Approval",
+        "Published",
     ],
     "Memorandum": [
-        "Draft Development",
-        "Internal Coordination",
-        "Final Issuance",
-    ],
-    "SOP": [
-        "Draft Development",
-        "Peer Review",
-        "Internal Coordination",
-        "Final Issuance",
+        "Draft",
+        "Final Approval",
+        "Published",
     ],
     "Report": [
-        "Draft Development",
+        "Draft",
         "Peer Review",
-        "Final Issuance",
+        "Legal Review",
+        "Final Approval",
+        "Published",
+    ],
+    "Guidance Document": [
+        "Draft",
+        "Peer Review",
+        "Legal Review",
+        "Final Approval",
+        "Published",
     ],
     "Meeting Minutes": [
-        "Draft Development",
-        "Internal Coordination",
-        "Final Issuance",
-    ],
-    "User Guide": [
-        "Draft Development",
-        "Peer Review",
-        "Release Candidate Review",
-        "General Availability",
+        "Draft",
+        "Final Approval",
+        "Published",
     ],
 }
 
@@ -74,23 +68,6 @@ DEFAULT_DOC_TYPE_NAMES = list(DEFAULT_DOC_TYPE_PHASES.keys())
 # ---------------------------------------------------------------------------
 
 DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
-    "Advisory Circular": (
-        "<h1>Advisory Circular [AC Number]: [Title]</h1>"
-        "<h2>1. Purpose</h2>"
-        "<p>This advisory circular (AC) provides guidance on [topic]. "
-        "It is issued under [authority].</p>"
-        "<h2>2. Applicability</h2>"
-        "<p>This AC applies to [scope / affected parties].</p>"
-        "<h2>3. Background</h2>"
-        "<p>[Provide context and background for why this guidance is needed.]</p>"
-        "<h2>4. Guidance</h2>"
-        "<h3>4.1 [Subtopic]</h3>"
-        "<p>[Guidance text.]</p>"
-        "<h2>5. Related Documents</h2>"
-        "<p>[List related regulations, orders, or guidance documents.]</p>"
-        "<h2>6. Contact</h2>"
-        "<p>Questions about this AC should be directed to [office / contact information].</p>"
-    ),
     "Policy": (
         "<h1>[Policy Title]</h1>"
         "<p><strong>Policy Number:</strong> [Number]</p>"
@@ -111,17 +88,22 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<h2>7. Related Documents</h2>"
         "<p>[List related policies, regulations, or standards.]</p>"
     ),
-    "Guidance": (
+    "Guidance Document": (
         "<h1>[Guidance Document Title]</h1>"
         "<p><strong>Document Number:</strong> [Number]</p>"
         "<p><strong>Date:</strong> [Date]</p>"
+        "<p><strong>Issuing Office:</strong> [Office Name]</p>"
         "<h2>1. Purpose</h2>"
         "<p>[Describe the purpose and scope of this guidance.]</p>"
         "<h2>2. Background</h2>"
-        "<p>[Provide context and regulatory background.]</p>"
-        "<h2>3. Guidance</h2>"
-        "<p>[Present the guidance clearly.]</p>"
-        "<h2>4. Questions</h2>"
+        "<p>[Provide context and regulatory or statutory background.]</p>"
+        "<h2>3. Applicability</h2>"
+        "<p>[Define who this guidance applies to — agencies, programs, or individuals.]</p>"
+        "<h2>4. Guidance</h2>"
+        "<p>[Present the guidance clearly, with numbered sections as needed.]</p>"
+        "<h2>5. Effective Date</h2>"
+        "<p>[State the effective date and any superseded documents.]</p>"
+        "<h2>6. Contact</h2>"
         "<p>[Contact information for questions about this guidance.]</p>"
     ),
     "Memorandum": (
@@ -141,11 +123,12 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<h2>Point of Contact</h2>"
         "<p>[Contact information for questions.]</p>"
     ),
-    "SOP": (
+    "Standard Operating Procedure": (
         "<h1>Standard Operating Procedure: [Title]</h1>"
         "<p><strong>SOP Number:</strong> [Number]</p>"
         "<p><strong>Version:</strong> [Version]</p>"
         "<p><strong>Effective Date:</strong> [Date]</p>"
+        "<p><strong>Review Date:</strong> [Date]</p>"
         "<h2>1. Purpose</h2>"
         "<p>[Describe what this SOP accomplishes and why it is needed.]</p>"
         "<h2>2. Scope</h2>"
@@ -159,7 +142,7 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<h2>6. Safety / Compliance Notes</h2>"
         "<p>[List any safety precautions or compliance requirements.]</p>"
         "<h2>7. References</h2>"
-        "<p>[List related documents or standards.]</p>"
+        "<p>[List related regulations, directives, or standards.]</p>"
     ),
     "Report": (
         "<h1>[Report Title]</h1>"
@@ -200,26 +183,6 @@ DEFAULT_DOC_TYPE_TEMPLATES: Dict[str, str] = {
         "<ul><li><strong>[Owner]:</strong> [Action] — Due [Date]</li></ul>"
         "<h2>Next Meeting</h2>"
         "<p>[Date, time, and location of next meeting.]</p>"
-    ),
-    "User Guide": (
-        "<h1>[Product Name] User Guide</h1>"
-        "<p><strong>Version:</strong> [Version]</p>"
-        "<p><strong>Last Updated:</strong> [Date]</p>"
-        "<h2>Introduction</h2>"
-        "<p>[Brief overview of the product and this guide's purpose.]</p>"
-        "<h2>Getting Started</h2>"
-        "<h3>Prerequisites</h3>"
-        "<ul><li>[Prerequisite]</li></ul>"
-        "<h3>Installation</h3>"
-        "<ol><li>[Step 1]</li><li>[Step 2]</li></ol>"
-        "<h2>Core Features</h2>"
-        "<h3>[Feature Name]</h3>"
-        "<p>[Description and instructions for the feature.]</p>"
-        "<h2>Troubleshooting</h2>"
-        "<h3>[Common Issue]</h3>"
-        "<p>[Resolution steps.]</p>"
-        "<h2>Support</h2>"
-        "<p>Contact [support channel] for assistance.</p>"
     ),
 }
 

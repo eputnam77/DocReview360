@@ -218,11 +218,11 @@ def main() -> None:
         items = by_label.get(label, [])
         if not items:
             continue
-        print(f"\n{'─'*60}")
+        print(f"\n{'-'*60}")
         print(f"  [{label.upper()}] — {len(items)} occurrence(s)")
-        print("─"*60)
+        print('-'*60)
         for rel, lineno, lbl, matched in items[:50]:  # cap at 50 per category
-            print(f"  {rel}:{lineno}  →  {matched!r}")
+            print(f"  {rel}:{lineno}  ->  {matched!r}")
         if len(items) > 50:
             print(f"  ... and {len(items) - 50} more")
 
@@ -230,11 +230,11 @@ def main() -> None:
     for label, items in sorted(by_label.items()):
         if label in label_order:
             continue
-        print(f"\n{'─'*60}")
+        print(f"\n{'-'*60}")
         print(f"  [{label.upper()}] — {len(items)} occurrence(s)")
-        print("─"*60)
+        print('-'*60)
         for rel, lineno, lbl, matched in items[:50]:
-            print(f"  {rel}:{lineno}  →  {matched!r}")
+            print(f"  {rel}:{lineno}  ->  {matched!r}")
 
     print(f"\n{'='*60}")
     print(f"SUMMARY: {len(all_findings)} total finding(s) across {len(by_label)} categories.")

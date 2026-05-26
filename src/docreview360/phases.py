@@ -19,15 +19,11 @@ from .models import Phase, PhaseWorkflowLink
 # (e.g. tests, e2e_seed) can reference the canonical list without importing
 # the migration file directly.
 DEFAULT_PHASES: List[str] = [
-    "Beta Documentation Review",
-    "Draft Development",
-    "Final Issuance",
-    "General Availability",
-    "Internal Coordination",
-    "Maintenance / Revision Cycle",
+    "Draft",
     "Peer Review",
-    "Public Comment / Proposed Rulemaking",
-    "Release Candidate Review",
+    "Legal Review",
+    "Final Approval",
+    "Published",
 ]
 
 

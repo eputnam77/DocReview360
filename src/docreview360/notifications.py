@@ -24,6 +24,32 @@ TEMPLATES: Dict[str, Template] = {
     "default": Template("{subject}", "{body}"),
     "due_reminder": Template("{item} due {due_date}", "Due {due_date}: {item}."),
     "completion_notice": Template("{item} complete", "Completed: {item}."),
+    # Government document review templates
+    "assignment": Template(
+        "Document Assigned for Review: {item}",
+        "You have been assigned to review the following document: {item}.\n\n"
+        "Please complete your review by the due date provided in the system.",
+    ),
+    "review-due": Template(
+        "Review Due: {item}",
+        "A reminder that your review of '{item}' is due on {due_date}.\n\n"
+        "Please log in and complete your review before the deadline.",
+    ),
+    "approval-request": Template(
+        "Approval Required: {item}",
+        "The document '{item}' has completed all required reviews and is awaiting your approval.\n\n"
+        "Please log in to review the final document and provide your approval decision.",
+    ),
+    "approved": Template(
+        "Document Approved: {item}",
+        "The document '{item}' has been approved and is now published.\n\n"
+        "All stakeholders have been notified. The document is available in the system.",
+    ),
+    "revision-needed": Template(
+        "Revision Requested: {item}",
+        "A reviewer has requested revisions to '{item}'.\n\n"
+        "Please log in to review the feedback and revise the document accordingly.",
+    ),
 }
 # store sent emails for inspection in tests
 sent_emails: List[dict[str, str]] = []

@@ -198,27 +198,17 @@ class TestProjectCreationAuditLog:
 
 
 EXPECTED_CANONICAL_TEMPLATES = [
-    "standard-document-review",
-    "pre-coordination-review",
-    "fast-track-review",
-    "single-branch-coordination",
-    "multi-branch-coordination",
-    "external-coordination",
-    "requirements-intake-review",
-    "publication-readiness-and-distribution",
-    "post-publication-implementation",
+    "standard-review",
+    "fast-track",
+    "sop-review",
+    "inter-agency-coordination",
 ]
 
 EXPECTED_DESCRIPTIONS = {
-    "standard-document-review": "Default review path",
-    "pre-coordination-review": "Informal early review",
-    "fast-track-review": "Expedited path",
-    "single-branch-coordination": "Review path limited to one branch",
-    "multi-branch-coordination": "Review path requiring multiple branches",
-    "external-coordination": "Review path involving outside organizations",
-    "requirements-intake-review": "collecting inputs",
-    "publication-readiness-and-distribution": "publication package",
-    "post-publication-implementation": "follow-up after publication",
+    "standard-review": "Full review path",
+    "fast-track": "Expedited",
+    "sop-review": "operating procedures",
+    "inter-agency-coordination": "coordination across",
 }
 
 

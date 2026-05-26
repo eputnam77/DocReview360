@@ -132,11 +132,11 @@ class TestWorkflowTemplatesEndpoint:
 class TestCuratedStarterTemplates:
     """Verify that bootstrapped doc types have curated HTML templates."""
 
-    def test_advisory_circular_template_is_not_placeholder(self) -> None:
+    def test_guidance_document_template_is_not_placeholder(self) -> None:
         from docreview360.doc_types import get_document_type
-        dt = get_document_type("Advisory Circular")
+        dt = get_document_type("Guidance Document")
         assert dt is not None
-        # Should have real content, not the bare `<h1>Advisory Circular</h1>` placeholder
+        # Should have real content, not a bare placeholder
         assert dt.template is not None
         assert "<h2>" in dt.template, "Curated template should have section headings"
 
@@ -154,7 +154,7 @@ class TestCuratedStarterTemplates:
 
     def test_sop_template_has_procedure_steps(self) -> None:
         from docreview360.doc_types import get_document_type
-        dt = get_document_type("SOP")
+        dt = get_document_type("Standard Operating Procedure")
         assert dt is not None
         assert "Procedure" in (dt.template or "")
 

@@ -180,18 +180,18 @@ def check_document_upload(client: object, project_id: str, headers: dict) -> str
 
     # 400 with a detail message means the endpoint is reachable but input invalid
     if status == 400 and "detail" in body:
-        ok("Documents", "POST /documents/tiptap reachable → 400 (input validation working)")
+        ok("Documents", "POST /documents/tiptap reachable -> 400 (input validation working)")
         return None
 
     # 422 means the endpoint exists but input was wrong format
     if status == 422:
-        ok("Documents", "POST /documents/tiptap reachable → 422 (schema validation active)")
+        ok("Documents", "POST /documents/tiptap reachable -> 422 (schema validation active)")
         return None
 
     # Check that the documents list endpoint works
     list_status, list_body = _get(client, "/documents", headers=headers)
     if list_status == 200:
-        ok("Documents", f"GET /documents reachable → 200 ({len(list_body) if isinstance(list_body, list) else '?'} docs)")
+        ok("Documents", f"GET /documents reachable -> 200 ({len(list_body) if isinstance(list_body, list) else '?'} docs)")
     else:
         note("Documents", "MEDIUM", f"GET /documents: HTTP {list_status}")
 
@@ -223,7 +223,7 @@ def check_approval_flow(client: object, project_id: str, headers: dict) -> None:
     if status2 in (200, 201):
         ok("Approvals", f"Approval created: HTTP {status2}")
     elif status2 in (404, 422):
-        ok("Approvals", f"POST /approvals → {status2} (expected in fresh env — no real workflow)")
+        ok("Approvals", f"POST /approvals -> {status2} (expected in fresh env — no real workflow)")
     else:
         note("Approvals", "MEDIUM", f"Approval request: HTTP {status2} — {str(body2)[:80]}")
 
@@ -251,24 +251,24 @@ def check_error_handling(client: object, headers: dict) -> None:
     # 404 on non-existent resource
     status, body = _get(client, "/projects/nonexistent-uuid-99999", headers=headers)
     if status == 404:
-        ok("Errors", "GET /projects/invalid-id → 404 (correct)")
+        ok("Errors", "GET /projects/invalid-id -> 404 (correct)")
         if "detail" in body or "error" in body or "message" in str(body):
             ok("Errors", "404 response has detail/message field")
         else:
             note("Errors", "LOW", "404 response has no detail/message — empty error body")
     elif status == 200:
-        note("Errors", "MEDIUM", "GET /projects/nonexistent → 200 — should be 404")
+        note("Errors", "MEDIUM", "GET /projects/nonexistent -> 200 — should be 404")
     else:
-        ok("Errors", f"GET /projects/nonexistent → {status}")
+        ok("Errors", f"GET /projects/nonexistent -> {status}")
 
     # 401 on unauthenticated request
     status2, body2 = _get(client, "/projects")
     if status2 == 401:
-        ok("Errors", "GET /projects without auth → 401 (correct)")
+        ok("Errors", "GET /projects without auth -> 401 (correct)")
     elif status2 == 200:
-        note("Errors", "MEDIUM", "GET /projects without auth → 200 — endpoint may be unauthenticated")
+        note("Errors", "MEDIUM", "GET /projects without auth -> 200 — endpoint may be unauthenticated")
     else:
-        ok("Errors", f"GET /projects without auth → {status2}")
+        ok("Errors", f"GET /projects without auth -> {status2}")
 
 
 # ---------------------------------------------------------------------------

@@ -25,12 +25,12 @@ E2E_SEED_USERS = {
 
 E2E_DOC_TYPE = "E2E Test Document Type"
 E2E_DOC_TYPES = [
-    "Advisory Circular",
     "Policy",
     "Report",
+    "Memorandum",
     E2E_DOC_TYPE,
 ]
-E2E_PHASES = ["draft", "review", "approval"]
+E2E_PHASES = ["Draft", "Peer Review", "Legal Review", "Final Approval", "Published"]
 E2E_PROJECT_ID = "e2e-project-001"
 
 
@@ -123,7 +123,7 @@ def seed_e2e_data() -> Dict[str, Any]:
             name=doc_type_name,
             template=f"<h1>{doc_type_name} Template</h1>",
             workflow=E2E_PHASES,
-            default_workflow_template_id="branch-coordination",
+            default_workflow_template_id="standard-review",
         )
         add_document_type(doc_type)
 

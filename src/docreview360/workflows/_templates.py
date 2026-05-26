@@ -53,197 +53,93 @@ DOCREVIEW360_ENABLE_WORKFLOW_TEMPLATE_PERSISTENCE = _env_flag_enabled(
 )
 
 DEFAULT_WORKFLOW_TEMPLATES: Dict[str, List[ApprovalStep]] = {
-    "standard-document-review": [
+    # ---- Primary government document review workflows ----
+    "standard-review": [
         ApprovalStep(
-            role="Technical Writer",
-            description="Technical review and initial drafting",
+            role="Author / Program Analyst",
+            description="Drafts the document and performs initial self-review",
             order=1,
         ),
         ApprovalStep(
-            role="Editorial Reviewer",
-            description="Editorial review for clarity and style",
+            role="Subject Matter Expert",
+            description="Reviews for technical accuracy and completeness",
             order=2,
         ),
         ApprovalStep(
-            role="Manager",
-            description="Manager review and endorsement",
+            role="Legal / Policy Counsel",
+            description="Reviews for regulatory compliance and legal sufficiency",
             order=3,
         ),
         ApprovalStep(
-            role="Legal/Policy Reviewer",
-            description="Legal and policy compliance review",
+            role="Division Director",
+            description="Management endorsement before final signature",
             order=4,
         ),
         ApprovalStep(
             role="Approving Official",
-            description="Final approval before publication",
+            description="Final signature authority and publication approval",
             order=5,
         ),
+    ],
+    "fast-track": [
         ApprovalStep(
-            role="Publication Coordinator",
-            description="Publication-readiness verification and release",
-            order=6,
+            role="Author",
+            description="Drafts the document with urgency notation",
+            order=1,
+        ),
+        ApprovalStep(
+            role="Approving Official",
+            description="Expedited final approval with documented justification",
+            order=2,
         ),
     ],
-    "pre-coordination-review": [
+    "sop-review": [
         ApprovalStep(
-            role="Writer",
-            description="Initial drafting and self-check",
+            role="Process Owner",
+            description="Drafts the procedure and verifies operational accuracy",
             order=1,
         ),
         ApprovalStep(
             role="Peer Reviewer",
-            description="Peer review for technical soundness",
+            description="Reviews for technical soundness and practicality",
             order=2,
         ),
         ApprovalStep(
-            role="Branch Liaison",
-            description="Confirms alignment with branch priorities",
+            role="Supervisor / Branch Chief",
+            description="Operational review and unit-level approval",
             order=3,
-        ),
-    ],
-    "fast-track-review": [
-        ApprovalStep(
-            role="Writer",
-            description="Drafts minor or urgent changes",
-            order=1,
-        ),
-        ApprovalStep(
-            role="SME",
-            description="Subject Matter Expert expedited review",
-            order=2,
         ),
         ApprovalStep(
             role="Approving Official",
-            description="Final approval with documented justification",
-            order=3,
+            description="Final approval and effective-date assignment",
+            order=4,
         ),
     ],
-    "single-branch-coordination": [
+    "inter-agency-coordination": [
         ApprovalStep(
-            role="SME",
-            description="Subject Matter Expert review",
+            role="Lead Author",
+            description="Drafts the document and coordinates internal review",
             order=1,
         ),
         ApprovalStep(
-            role="Branch Manager",
-            description="Branch Manager review and approval",
+            role="Internal Legal / Policy Reviewer",
+            description="Reviews for internal regulatory compliance",
             order=2,
         ),
         ApprovalStep(
-            role="Technical Writer",
-            description="Technical Writer final review",
-            order=3,
-        ),
-    ],
-    "multi-branch-coordination": [
-        ApprovalStep(
-            role="SME (Branch A)",
-            description="Branch A SME review",
-            order=1,
-        ),
-        ApprovalStep(
-            role="SME (Branch B)",
-            description="Branch B SME review",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Branch Managers (A and B)",
-            description="Management approval from both branches",
+            role="External Agency Liaison",
+            description="Coordinates review with external agency or department",
             order=3,
         ),
         ApprovalStep(
-            role="Senior Technical Writer",
-            description="Senior Technical Writer review",
+            role="Public Affairs Officer",
+            description="Reviews for communications impact and public messaging",
             order=4,
         ),
         ApprovalStep(
-            role="Technical Writing Manager",
-            description="Technical Writing Manager final approval",
+            role="Approving Official",
+            description="Final interagency approval and publication authorization",
             order=5,
-        ),
-    ],
-    "external-coordination": [
-        ApprovalStep(
-            role="Internal SME",
-            description="Internal subject matter expert review",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Public Affairs",
-            description="Communications and public affairs review",
-            order=2,
-        ),
-        ApprovalStep(
-            role="External Partner",
-            description="External organization or partner review",
-            order=3,
-        ),
-        ApprovalStep(
-            role="Technical Writer",
-            description="Incorporates external feedback",
-            order=4,
-        ),
-        ApprovalStep(
-            role="Approving Official",
-            description="Final internal approval",
-            order=5,
-        ),
-    ],
-    "requirements-intake-review": [
-        ApprovalStep(
-            role="Research Analyst",
-            description="Collects background data and stakeholder requirements",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Legal/Regulatory Reviewer",
-            description="Identifies statutory constraints",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Writer",
-            description="Creates annotated outline for downstream reviewers",
-            order=3,
-        ),
-    ],
-    "publication-readiness-and-distribution": [
-        ApprovalStep(
-            role="Technical Writer",
-            description="Prepares final publication package",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Approving Official",
-            description="Final publication approval",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Communications/Outreach",
-            description="Distributes to official channels",
-            order=3,
-        ),
-        ApprovalStep(
-            role="Records Management",
-            description="Archives final version and sends notifications",
-            order=4,
-        ),
-    ],
-    "post-publication-implementation": [
-        ApprovalStep(
-            role="Program Manager",
-            description="Notifies affected teams of publication",
-            order=1,
-        ),
-        ApprovalStep(
-            role="Compliance Officer",
-            description="Confirms procedures and training updated",
-            order=2,
-        ),
-        ApprovalStep(
-            role="Records Management",
-            description="Archives follow-up actions and closes workflow",
-            order=3,
         ),
     ],
     # Legacy aliases kept for backward compatibility with existing projects
@@ -395,35 +291,30 @@ DEFAULT_WORKFLOW_TEMPLATES: Dict[str, List[ApprovalStep]] = {
 
 
 DEFAULT_WORKFLOW_DESCRIPTIONS: Dict[str, str] = {
-    "standard-document-review": (
-        "Default review path for most documents before publication. Includes technical, editorial, "
-        "manager, legal/policy, approval, and publication-readiness steps as needed."
+    "standard-review": (
+        "Full review path for most government documents. Includes author, subject matter expert, "
+        "legal/policy counsel, division director, and approving official."
     ),
-    "pre-coordination-review": (
-        "Informal early review to resolve major issues before formal coordination begins."
+    "fast-track": (
+        "Expedited two-step path for time-sensitive or low-risk documents. "
+        "Author drafts; approving official signs with documented justification."
     ),
-    "fast-track-review": (
-        "Expedited path with fewer reviewers, shorter due dates, and documented justification."
+    "sop-review": (
+        "Standard review path for operating procedures. Includes process owner, peer reviewer, "
+        "supervisor, and approving official."
     ),
-    "single-branch-coordination": (
-        "Review path limited to one branch or office."
+    "inter-agency-coordination": (
+        "Review path for documents requiring coordination across agencies or departments. "
+        "Includes internal legal review, external agency liaison, and public affairs."
     ),
-    "multi-branch-coordination": (
-        "Review path requiring multiple branches, offices, or specialties."
-    ),
-    "external-coordination": (
-        "Review path involving outside organizations or external partners."
-    ),
-    "requirements-intake-review": (
-        "Used when the main work is collecting inputs, requirements, data, or source material "
-        "before review can begin."
-    ),
-    "publication-readiness-and-distribution": (
-        "Final publication package, distribution, archive, and notification workflow."
-    ),
-    "post-publication-implementation": (
-        "Tracks follow-up after publication."
-    ),
+    # Descriptions for legacy aliases
+    "branch-coordination": "Legacy alias — use standard-review for new projects.",
+    "fast-track-coordination": "Legacy alias — use fast-track for new projects.",
+    "pre-coordination": "Legacy alias — use standard-review for new projects.",
+    "requirements-data-gathering": "Legacy alias — use standard-review for new projects.",
+    "external-partner-coordination": "Legacy alias — use inter-agency-coordination for new projects.",
+    "publication-distribution": "Legacy alias — use standard-review for new projects.",
+    "implementation-tracking": "Legacy alias — use standard-review for new projects.",
 }
 
 

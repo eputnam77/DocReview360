@@ -194,10 +194,15 @@ def _reset_document_types() -> Generator[None, None, None]:
     from docreview360.phases import add_phase, reset_phases
 
     _COMMON_TEST_PHASES = [
+        # Short-name test phases for workflow-creation tests
         "draft", "review", "approval", "done", "signed",
         "Draft", "Review", "Approval", "Done",
         "start", "end",
-        "Draft Development",  # also in DEFAULT_PHASES — add_phase is idempotent via INSERT OR IGNORE
+        # Backward-compat: old phase names used by some existing tests
+        "Draft Development", "Final Issuance", "Internal Coordination",
+        "Peer Review", "General Availability", "Release Candidate Review",
+        # New government phases (seeded by reset_phases() via DEFAULT_PHASES, added here for safety)
+        "Legal Review", "Final Approval", "Published",
     ]
 
     reset_db("sqlite+pysqlite:///:memory:")

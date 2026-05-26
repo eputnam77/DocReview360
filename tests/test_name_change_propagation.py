@@ -181,7 +181,7 @@ class TestNameChangePropagation:
         # Create workflow
         workflow_data = {
             "project": "test-project",
-            "phases": ["Internal Coordination", "Public Comment / Proposed Rulemaking"],
+            "phases": ["Draft", "Legal Review"],
         }
 
         resp = client.post("/workflows", json=workflow_data, headers=hdrs)
@@ -192,8 +192,8 @@ class TestNameChangePropagation:
         project_data = {
             "id": "test-project",
             "name": "Test Project",
-            "doc_type": "Advisory Circular",
-            "phase": "Internal Coordination",
+            "doc_type": "Policy",
+            "phase": "Draft",
             "workflow": workflow["id"],
         }
 

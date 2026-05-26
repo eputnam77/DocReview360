@@ -1,14 +1,14 @@
 # Performance Baseline (v0.1)
 
-Measured at (UTC): 2026-05-25T14:00:04.707162Z
+Measured at (UTC): 2026-05-26T10:45:12.829489Z
 
 ## Metrics
 
-- API cold start (TestClient health probe): `1.7346s`
-- 50-page document import+load time: `0.0342s`
-- Approval state transition latency (pending -> rejected): `0.0098s`
-- Concurrency (10 simultaneous reviewers): `0.0846s` total, `8.46ms` average transition
-- Concurrency (25 simultaneous reviewers): `0.2258s` total, `9.03ms` average transition
+- API cold start (TestClient health probe): `1.8683s`
+- 50-page document import+load time: `0.0319s`
+- Approval state transition latency (pending -> rejected): `0.0058s`
+- Concurrency (10 simultaneous reviewers): `0.0562s` total, `5.62ms` average transition
+- Concurrency (25 simultaneous reviewers): `0.1452s` total, `5.81ms` average transition
 
 ## Notes
 
