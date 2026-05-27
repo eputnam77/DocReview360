@@ -8,8 +8,8 @@
     "start": "next start",
     "test": "vitest run --config vitest.config.js",
     "verify": "npm run test && npm run build",
-    "lint:no-raw-fetch": "bash scripts/check-raw-fetch.sh",
-    "lint:no-api-proxy": "bash scripts/check-no-api-proxy.sh",
+    "lint:no-raw-fetch": "node scripts/check-raw-fetch.mjs",
+    "lint:no-api-proxy": "node scripts/check-no-api-proxy.mjs",
     "lint:api-fetch": "node ../scripts/check-api-fetch-pattern.mjs",
     "lint:i18n": "node scripts/check-hardcoded-strings.mjs"
   },
