@@ -12,6 +12,8 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+const AUTO_VALIDATION_SETTINGS_PATH = "/admin/settings/" + "auto-validation";
+
 // ---------------------------------------------------------------------------
 // Tool catalogue
 // ---------------------------------------------------------------------------
@@ -143,6 +145,7 @@ export default function ToolsPage() {
   const [builtinStatus, setBuiltinStatus] = useState<Record<string, boolean>>({});
   const [installedPlugins, setInstalledPlugins] = useState<Set<string>>(new Set());
   const [communityPlugins, setCommunityPlugins] = useState<Set<string>>(new Set());
+  const [autoValidationEnabled, setAutoValidationEnabled] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -172,6 +175,12 @@ export default function ToolsPage() {
           }
           setInstalledPlugins(installed);
           setCommunityPlugins(community);
+        }
+
+        const autoValidationRes = await authenticatedFetch(AUTO_VALIDATION_SETTINGS_PATH);
+        if (autoValidationRes.ok) {
+          const setting: { enabled?: boolean } = await autoValidationRes.json();
+          setAutoValidationEnabled(setting.enabled ?? true);
         }
       } catch {
         setBuiltinStatus({ "document-quality": true, scdocbuilder: true });
@@ -221,6 +230,23 @@ export default function ToolsPage() {
       });
       if (res.ok) {
         setBuiltinStatus((prev) => ({ ...prev, [pluginId]: !currentlyEnabled }));
+      }
+    } finally {
+      setToggling(null);
+    }
+  }
+
+  async function toggleAutoValidation(currentlyEnabled: boolean) {
+    setToggling("auto-validation");
+    const enabled = !currentlyEnabled;
+    try {
+      const res = await authenticatedFetch(AUTO_VALIDATION_SETTINGS_PATH, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (res.ok) {
+        setAutoValidationEnabled(enabled);
       }
     } finally {
       setToggling(null);
@@ -317,6 +343,25 @@ export default function ToolsPage() {
                           : isEnabled
                           ? "Disable"
                           : "Enable"}
+                        </button>
+                    )}
+
+                    {isAdmin && tool.id === "document-quality" && (
+                      <button
+                        onClick={() => toggleAutoValidation(autoValidationEnabled)}
+                        disabled={toggling === "auto-validation"}
+                        className={`inline-block rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+                          autoValidationEnabled
+                            ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                        } disabled:opacity-40`}
+                        aria-pressed={autoValidationEnabled}
+                      >
+                        {toggling === "auto-validation"
+                          ? "Saving..."
+                          : autoValidationEnabled
+                          ? "On-save checks on"
+                          : "On-save checks off"}
                       </button>
                     )}
 

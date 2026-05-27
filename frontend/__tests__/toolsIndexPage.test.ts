@@ -142,6 +142,29 @@ describe("Tools index — Enable/Disable toggle", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Admin-only on-save validation toggle for Document Quality
+// ---------------------------------------------------------------------------
+
+describe("Tools index — on-save validation toggle", () => {
+  it("loads the persisted auto-validation setting", () => {
+    expect(page).toContain("autoValidationEnabled");
+    expect(page).toContain("setAutoValidationEnabled");
+  });
+
+  it("updates auto-validation via an admin-only PUT action", () => {
+    expect(page).toContain("toggleAutoValidation");
+    expect(page).toMatch(/method:\s*"PUT"/);
+    expect(page).toContain('tool.id === "document-quality"');
+  });
+
+  it("renders clear on/off labels with pressed state", () => {
+    expect(page).toContain("On-save checks on");
+    expect(page).toContain("On-save checks off");
+    expect(page).toContain("aria-pressed={autoValidationEnabled}");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getStatus logic
 // ---------------------------------------------------------------------------
 
