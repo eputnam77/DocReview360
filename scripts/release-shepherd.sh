@@ -33,22 +33,23 @@ echo "$$" > "${LOCKFILE}"
 mkdir -p "${ARTIFACTS_DIR}"
 
 # ── Find first unchecked item ─────────────────────────────────────────────────
-# Match lines of the form: - [ ] <item text>
+# Match lines of the form: - [ ] <item text>. A no-match result is expected
+# when the checklist is complete, but read errors must fail loudly.
 SELECTED_LINE=""
 SELECTED_LINENO=""
+if [ ! -r "${CHECKLIST}" ]; then
+    echo "ERROR: Checklist is not readable: ${CHECKLIST}" >&2
+    exit 2
+fi
 
-while IFS= read -r line; do
-    SELECTED_LINENO=$((SELECTED_LINENO + 1))
-    if [[ "${line}" =~ ^[[:space:]]*-[[:space:]]\[[[:space:]]\][[:space:]](.+)$ ]]; then
-        SELECTED_LINE="${BASH_REMATCH[1]}"
-        break
-    fi
-done < <(grep -n '^\s*- \[ \]' "${CHECKLIST}" | head -1)
-
-# Re-do: simpler extraction
-SELECTED_LINE=""
-SELECTED_LINENO=""
-GREP_RESULT="$(grep -n '^\s*- \[ \]' "${CHECKLIST}" | head -1 || true)"
+GREP_RESULT="$(
+    awk '
+        /^[[:space:]]*-[[:space:]]\[[[:space:]]\][[:space:]]/ {
+            print FNR ":" $0
+            exit
+        }
+    ' "${CHECKLIST}"
+)"
 
 if [ -z "${GREP_RESULT}" ]; then
     echo "No unchecked items found in ${CHECKLIST}. All done!"

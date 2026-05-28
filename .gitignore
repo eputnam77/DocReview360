@@ -63,10 +63,23 @@ artifacts/
 
 # Runtime and test temp (logs, pytest cache, checker downloads)
 .tmp/
+.tmp*/
 .e2e-runs/
 .live-run/
 test-results/
 playwright-report/
+pytest-cache-files-*/
+
+# Local agent/dependency probe temp directories
+.codex_*/
+.codex*/
+.uv-cache/
+tmp/
+tmp*/
+temp/
+temp*/
+*.tmp/
+*.temp/
 
 # Filelock advisory lock files (transient, created at runtime)
 *.lock

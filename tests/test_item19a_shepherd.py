@@ -91,6 +91,11 @@ class TestShepherdSource:
         text = self._text()
         assert "No unchecked items" in text or "All done" in text
 
+    def test_no_blanket_success_on_scan_failure(self) -> None:
+        text = self._text()
+        assert "|| true" not in text
+        assert "Checklist is not readable" in text
+
     def test_report_written_to_artifacts_dir(self) -> None:
         text = self._text()
         assert "release-shepherd-" in text
@@ -123,7 +128,7 @@ class TestFirstUncheckedItemSelection:
     def test_checklist_still_has_unchecked_items(self) -> None:
         """Script should not produce 'No unchecked items' output right now."""
         text = CHECKLIST.read_text(encoding="utf-8")
-        unchecked = [l for l in text.splitlines() if self.GREP_PATTERN.match(l)]
+        unchecked = [line for line in text.splitlines() if self.GREP_PATTERN.match(line)]
         assert len(unchecked) > 0, "Checklist has no unchecked items — shepherd would exit early"
 
     def test_first_unchecked_item_is_extractable(self) -> None:

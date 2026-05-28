@@ -174,3 +174,13 @@ describe("check-api-fetch-pattern.mjs — relative paths are clean", () => {
     expect(result.status).toBe(0);
   });
 });
+
+describe("check-api-fetch-pattern.mjs — scan failures", () => {
+  it("fails loudly when the frontend scan root cannot be read", () => {
+    const result = runScript({
+      DOCREVIEW360_FRONTEND_DIR: join(FRONTEND_DIR, ".missing-source-root"),
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("CHECK_API_FETCH_SCAN_FAILED");
+  });
+});

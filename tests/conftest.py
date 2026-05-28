@@ -29,7 +29,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import tempfile
 from pathlib import Path
 from typing import Generator
 from uuid import uuid4
@@ -45,25 +44,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR / "src"))
 sys.path.insert(0, str(BASE_DIR))
 
-
-def _configure_test_tempdir() -> None:
-    """Ensure pytest temp directories are writable for this workspace."""
-
-    try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            probe_file = Path(temp_dir) / "probe.txt"
-            probe_file.write_text("ok", encoding="utf-8")
-        return
-    except Exception:
-        fallback = BASE_DIR / ".tmp" / f"pytest-{uuid4().hex}"
-        fallback.mkdir(parents=True, exist_ok=True)
-        os.environ["TMPDIR"] = str(fallback)
-        os.environ["TEMP"] = str(fallback)
-        os.environ["TMP"] = str(fallback)
-        tempfile.tempdir = str(fallback)
-
-
-_configure_test_tempdir()
+from pytest_preflight import configure_test_tempdir, validate_test_environment  # noqa: E402
 
 os.environ.setdefault("DOCREVIEW360_SECRET_KEY", "test-secret")
 os.environ.setdefault("DOCREVIEW360_ALGORITHM", "HS256")
@@ -168,6 +149,8 @@ def pytest_pyfunc_call(pyfuncitem: pytest.Function) -> bool | None:
 def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers used throughout the tests."""
 
+    validate_test_environment()
+    configure_test_tempdir(BASE_DIR)
     config.addinivalue_line("markers", "asyncio: run test as async")
 
 

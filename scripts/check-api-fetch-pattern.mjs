@@ -24,14 +24,16 @@
  */
 
 import { readFileSync, readdirSync, statSync } from "fs";
-import { join, relative } from "path";
+import { join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 // Resolve paths relative to the repo root (scripts/ is one level below root)
 const REPO_ROOT = join(__dirname, "..");
-const FRONTEND_DIR = join(REPO_ROOT, "frontend");
+const FRONTEND_DIR = process.env.DOCREVIEW360_FRONTEND_DIR
+  ? resolve(process.env.DOCREVIEW360_FRONTEND_DIR)
+  : join(REPO_ROOT, "frontend");
 
 /** Directories to scan, relative to FRONTEND_DIR */
 const SCAN_DIRS = ["lib", "components", "state", "utils", "pages"];
@@ -54,18 +56,39 @@ const FORBIDDEN = [
   ],
 ];
 
+function fail(code, message, detail) {
+  console.error(`${code}: ${message}`);
+  if (detail) {
+    console.error(`  ${detail}`);
+  }
+  process.exit(2);
+}
+
 /** Recursively collect .ts / .tsx files under a directory */
 function collectFiles(dir) {
   const results = [];
   let entries;
   try {
     entries = readdirSync(dir);
-  } catch {
-    return results; // directory may not exist in all environments
+  } catch (error) {
+    fail(
+      "CHECK_API_FETCH_SCAN_FAILED",
+      `Unable to read ${relative(REPO_ROOT, dir)}.`,
+      error instanceof Error ? error.message : String(error),
+    );
   }
   for (const entry of entries) {
     const full = join(dir, entry);
-    const stat = statSync(full);
+    let stat;
+    try {
+      stat = statSync(full);
+    } catch (error) {
+      fail(
+        "CHECK_API_FETCH_STAT_FAILED",
+        `Unable to inspect ${relative(REPO_ROOT, full)}.`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     if (stat.isDirectory()) {
       // Skip node_modules and hidden directories
       if (entry === "node_modules" || entry.startsWith(".")) continue;
@@ -87,7 +110,16 @@ for (const scanDir of SCAN_DIRS) {
     if (EXEMPTIONS.has(file)) continue;
 
     const relPath = relative(REPO_ROOT, file);
-    const content = readFileSync(file, "utf8");
+    let content;
+    try {
+      content = readFileSync(file, "utf8");
+    } catch (error) {
+      fail(
+        "CHECK_API_FETCH_READ_FAILED",
+        `Unable to read ${relPath}.`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     const lines = content.split("\n");
 
     for (const [description, pattern] of FORBIDDEN) {

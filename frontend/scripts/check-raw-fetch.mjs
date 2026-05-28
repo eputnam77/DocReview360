@@ -2,27 +2,50 @@
 // SPDX-License-Identifier: MIT
 
 import { readFileSync, readdirSync, statSync } from "fs";
-import { join, relative } from "path";
+import { join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const SCRIPT_DIR = fileURLToPath(new URL(".", import.meta.url));
-const FRONTEND_DIR = join(SCRIPT_DIR, "..");
+const FRONTEND_DIR = process.env.DOCREVIEW360_FRONTEND_DIR
+  ? resolve(process.env.DOCREVIEW360_FRONTEND_DIR)
+  : join(SCRIPT_DIR, "..");
 const PAGES_DIR = join(FRONTEND_DIR, "pages");
 const SOURCE_EXTENSIONS = /\.(ts|tsx)$/;
 const RAW_API_FETCH = /\bfetch\s*\(\s*(["'`])\s*\/api\//;
+
+function fail(code, message, detail) {
+  console.error(`${code}: ${message}`);
+  if (detail) {
+    console.error(`  ${detail}`);
+  }
+  process.exit(2);
+}
 
 function collectFiles(dir) {
   const files = [];
   let entries;
   try {
     entries = readdirSync(dir);
-  } catch {
-    return files;
+  } catch (error) {
+    fail(
+      "CHECK_RAW_FETCH_SCAN_FAILED",
+      "Unable to read the pages directory.",
+      error instanceof Error ? error.message : String(error),
+    );
   }
 
   for (const entry of entries) {
     const fullPath = join(dir, entry);
-    const stat = statSync(fullPath);
+    let stat;
+    try {
+      stat = statSync(fullPath);
+    } catch (error) {
+      fail(
+        "CHECK_RAW_FETCH_STAT_FAILED",
+        `Unable to inspect ${relative(FRONTEND_DIR, fullPath)}.`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     if (stat.isDirectory()) {
       if (entry === "node_modules" || entry === ".next" || entry.startsWith(".")) {
         continue;
@@ -40,7 +63,16 @@ let violations = 0;
 
 for (const file of collectFiles(PAGES_DIR)) {
   const relPath = relative(FRONTEND_DIR, file);
-  const lines = readFileSync(file, "utf8").split("\n");
+  let lines;
+  try {
+    lines = readFileSync(file, "utf8").split("\n");
+  } catch (error) {
+    fail(
+      "CHECK_RAW_FETCH_READ_FAILED",
+      `Unable to read ${relPath}.`,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 
   lines.forEach((line, index) => {
     if (!RAW_API_FETCH.test(line)) {
