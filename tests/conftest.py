@@ -56,7 +56,18 @@ os.environ.setdefault("DOCREVIEW360_OIDC_EXPIRE_MINUTES", "30")
 os.environ.setdefault("DOCREVIEW360_REQUIRE_MFA", "0")
 os.environ.setdefault("DOCREVIEW360_MAX_FAILED_ATTEMPTS", "5")
 os.environ.setdefault("DOCREVIEW360_LOCKOUT_SECONDS", "300")
-os.environ.setdefault("DOCREVIEW360_USER_DB", str(Path("tests") / "docreview360_users.db"))
+# Use a per-session temporary auth user DB instead of an untracked file inside
+# the repo (tests/docreview360_users.db).  A repo-local file persisted between
+# runs, so users and password history accumulated across invocations — masking
+# tests that fail to create a user (a prior run had left one behind) and risking
+# password-reuse rejections on re-create.  Setting this *before* docreview360.auth
+# is imported ensures the module-level USER_REPOSITORY is created against this
+# path, so tests that ``from docreview360.auth import USER_REPOSITORY`` capture
+# the same object the application resolves via _get_user_repository().
+import tempfile as _tempfile  # noqa: E402
+
+_SESSION_USER_DB = str(Path(_tempfile.mkdtemp(prefix="dr360-users-")) / "docreview360_users.db")
+os.environ["DOCREVIEW360_USER_DB"] = _SESSION_USER_DB
 os.environ.setdefault("DOCREVIEW360_RBAC_DB", str(Path("tests") / "docreview360_roles.db"))
 os.environ.setdefault("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
 os.environ.setdefault("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
@@ -109,7 +120,7 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCREVIEW360_REQUIRE_MFA", "0")
     monkeypatch.setenv("DOCREVIEW360_MAX_FAILED_ATTEMPTS", "5")
     monkeypatch.setenv("DOCREVIEW360_LOCKOUT_SECONDS", "300")
-    monkeypatch.setenv("DOCREVIEW360_USER_DB", str(Path("tests") / "docreview360_users.db"))
+    monkeypatch.setenv("DOCREVIEW360_USER_DB", _SESSION_USER_DB)
     monkeypatch.setenv("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
     monkeypatch.setenv("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
     monkeypatch.setenv("DOCREVIEW360_OIDC_TOKEN_ISSUER", "test-oidc-issuer")
@@ -237,25 +248,26 @@ def _reset_role_permissions(
 
 
 @pytest.fixture(scope="session")
-def _session_user_db(tmp_path_factory: pytest.TempPathFactory) -> str:
-    """One fresh auth user DB per test session (matches a clean CI checkout).
+def _canonical_user_repository():
+    """Capture the canonical session ``USER_REPOSITORY`` object.
 
-    Previously the user store lived at an untracked ``tests/docreview360_users.db``
-    that survived between runs, so users — and their password history — piled up
-    across invocations.  That masked bugs (a test that fails to create a user
-    still "worked" because a prior run had left one behind) and could even make
-    legitimate re-creates fail on the password-reuse check.  A per-session tmp DB
-    starts empty every run like CI does, while remaining shared within the
-    session so tests that depend on a user created by an earlier test still pass.
+    ``docreview360.auth`` builds ``USER_REPOSITORY`` at import time against
+    ``_SESSION_USER_DB`` (set above before any import).  Capturing that object
+    once lets ``_reset_user_repository`` restore the *same instance* between
+    tests, so the object that tests import by value
+    (``from docreview360.auth import USER_REPOSITORY``) stays identical to the
+    one the application resolves via ``_get_user_repository()``.
     """
-    return str(tmp_path_factory.mktemp("auth") / "users.db")
+    from docreview360 import auth
+
+    return auth.USER_REPOSITORY
 
 
 @pytest.fixture(autouse=True)
 def _reset_user_repository(
-    _set_env: None, _session_user_db: str, monkeypatch: pytest.MonkeyPatch
+    _set_env: None, _canonical_user_repository, monkeypatch: pytest.MonkeyPatch
 ) -> Generator[None, None, None]:
-    """Re-bind the auth user repository to the session DB before each test.
+    """Restore the canonical auth user repository before each test.
 
     The user store, unlike RBAC/search/settings, had no per-test reset.  Several
     tests (e.g. ``tests/agentic/test_agentic_harness.py``) call
@@ -271,16 +283,18 @@ def _reset_user_repository(
     only reproduced on a clean checkout.
 
     Depending on ``_set_env`` guarantees this runs *after* the environment is
-    reset.  ``configure_user_repository`` sets ``DOCREVIEW360_USER_DB`` and
-    rebuilds the global so that ``auth.USER_REPOSITORY`` and
-    ``_get_user_repository()`` always agree on an absolute, existing path.  This
-    mirrors ``_reset_role_permissions`` for RBAC and makes auth state
-    deterministic regardless of test order.
+    reset.  Rebinding ``auth.USER_REPOSITORY`` to the captured canonical object
+    (rather than building a new one) keeps object identity stable: with
+    ``DOCREVIEW360_USER_DB`` pointed back at the session path,
+    ``_get_user_repository()`` reuses this same instance, and tests that imported
+    ``USER_REPOSITORY`` by value still mutate the repository the app reads.
+    Mirrors ``_reset_role_permissions`` for RBAC; makes auth state deterministic
+    regardless of test order.
     """
     from docreview360 import auth
 
-    monkeypatch.setenv("DOCREVIEW360_USER_DB", _session_user_db)
-    auth.configure_user_repository(_session_user_db)
+    monkeypatch.setenv("DOCREVIEW360_USER_DB", _SESSION_USER_DB)
+    auth.USER_REPOSITORY = _canonical_user_repository
     yield
 
 
@@ -349,6 +363,34 @@ def _isolate_settings(
     import docreview360.settings_manager as _sm
 
     monkeypatch.setattr(_sm, "SETTINGS_FILE", settings_dir / "settings.yaml")
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _isolate_watchlist(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """Redirect watchlist.WATCHLIST_FILE to an isolated per-test path.
+
+    ``watchlist.WATCHLIST_FILE`` defaults to ``watchlist.json`` inside the source
+    package, so any test that toggles a watcher without overriding
+    ``DOCREV_WATCHLIST_FILE`` writes into the tracked source file, leaving the
+    working tree dirty and leaking watchers across tests/runs.  Point it at a
+    fresh temp file and reset the in-memory cache so writes stay isolated.
+    """
+    try:
+        watch_dir = tmp_path_factory.mktemp("watchlist")
+    except PermissionError:
+        fallback_root = BASE_DIR / ".tmp" / "pytest"
+        fallback_root.mkdir(parents=True, exist_ok=True)
+        watch_dir = fallback_root / f"watchlist-{uuid4().hex}"
+        watch_dir.mkdir(parents=True, exist_ok=True)
+
+    import docreview360.watchlist as _wl
+
+    monkeypatch.setenv("DOCREV_WATCHLIST_FILE", str(watch_dir / "watchlist.json"))
+    monkeypatch.setattr(_wl, "WATCHLIST_FILE", watch_dir / "watchlist.json")
+    monkeypatch.setattr(_wl, "_watchlist", {})
     yield
 
 
