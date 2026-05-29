@@ -33,6 +33,37 @@ def _assert_mapping(actual: dict[str, float], expected: dict[str, float]) -> Non
         assert actual[key] == pytest.approx(value, rel=1e-6, abs=1e-6)
 
 
+def _assert_json_close(actual: object, expected: object, *, path: str) -> None:
+    """Assert two JSON structures are equal, allowing tiny float drift.
+
+    ONNX inference scores are not bit-identical across CPUs / onnxruntime
+    builds, so an exact ``==`` on regenerated fixtures is environment-fragile.
+    Structure, keys, strings, ints and bools must match exactly; only float
+    leaves are compared with the same ``rel=1e-6`` tolerance the sibling golden
+    tests use.  This still catches formula drift (e.g. a 5% score change) and
+    any metadata/string change while staying stable across machines.
+    """
+
+    if isinstance(expected, bool) or isinstance(actual, bool):
+        assert actual == expected, f"{path}: {actual!r} != {expected!r}"
+    elif isinstance(expected, float) or isinstance(actual, float):
+        assert actual == pytest.approx(expected, rel=1e-6, abs=1e-9), (
+            f"{path}: {actual!r} != {expected!r}"
+        )
+    elif isinstance(expected, dict):
+        assert isinstance(actual, dict), f"{path}: expected dict, got {type(actual)}"
+        assert set(actual) == set(expected), f"{path}: keys {set(actual)} != {set(expected)}"
+        for key in expected:
+            _assert_json_close(actual[key], expected[key], path=f"{path}/{key}")
+    elif isinstance(expected, list):
+        assert isinstance(actual, list), f"{path}: expected list, got {type(actual)}"
+        assert len(actual) == len(expected), f"{path}: length {len(actual)} != {len(expected)}"
+        for index, (a_item, e_item) in enumerate(zip(actual, expected)):
+            _assert_json_close(a_item, e_item, path=f"{path}[{index}]")
+    else:
+        assert actual == expected, f"{path}: {actual!r} != {expected!r}"
+
+
 def test_compliance_fixture_matches_runtime() -> None:
     fixture = _load_fixture("compliance.json")
     text = fixture["input"]["text"]  # type: ignore[index]
@@ -107,6 +138,6 @@ def test_fixture_regeneration_is_idempotent(tmp_path: Path) -> None:
         expected_model = original_data.get("model")
         if isinstance(expected_model, dict) and not expected_model:
             regenerated["model"] = {}
-        assert regenerated == original_data
+        _assert_json_close(regenerated, original_data, path=name)
         if isinstance(expected_model, dict) and expected_model.get("sha256"):
             assert regenerated["model"]["sha256"] == expected_model["sha256"]

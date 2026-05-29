@@ -282,11 +282,28 @@ class TestDocTypePersistence:
 
         from docreview360.db_store import reset_db as _reset
 
+        # Phases seeded by migration 008 on a fresh database.  This is the actual
+        # boot-path default; phases.DEFAULT_PHASES is a separate construct used by
+        # the in-memory reset_phases() helper and the formal-workflow tests, and
+        # is intentionally NOT the same set (there is no single product-wide
+        # default phase taxonomy — each org/doc type defines its own process).
+        migration_seeded_phases = {
+            "Beta Documentation Review",
+            "Draft Development",
+            "Final Issuance",
+            "General Availability",
+            "Internal Coordination",
+            "Maintenance / Revision Cycle",
+            "Peer Review",
+            "Public Comment / Proposed Rulemaking",
+            "Release Candidate Review",
+        }
+
         db_path = tmp_path / "fresh.db"
         _reset(f"sqlite:///{db_path}")
         try:
             from docreview360.doc_types import DEFAULT_DOC_TYPE_NAMES, list_document_types
-            from docreview360.phases import DEFAULT_PHASES, list_phases
+            from docreview360.phases import list_phases
 
             # Without any JSON files the DB is seeded automatically
             doc_type_names = [dt.name for dt in list_document_types()]
@@ -294,7 +311,9 @@ class TestDocTypePersistence:
 
             for name in DEFAULT_DOC_TYPE_NAMES:
                 assert name in doc_type_names, f"Expected default doc type: {name}"
-            for name in DEFAULT_PHASES:
-                assert name in phase_names, f"Expected default phase: {name}"
+            # A fresh DB must come up with its migration-seeded phases present.
+            assert phase_names, "Expected a freshly-migrated DB to seed default phases"
+            for name in migration_seeded_phases:
+                assert name in phase_names, f"Expected migration-seeded phase: {name}"
         finally:
             _reset(None)

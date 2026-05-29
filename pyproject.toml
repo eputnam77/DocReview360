@@ -40,13 +40,15 @@ dependencies = [
   "PyYAML==6.0.3",
   "defusedxml==0.7.1",
   "zipp==3.19.1",
-  "wikipedia==1.4.0",
   "textstat==0.7.13",
   "textblob==0.19.0",
   "fastapi>=0.120.0",
   "python-multipart==0.0.29",
   "SQLAlchemy==2.0.41",
   "httpx==0.28.1",
+  # Used directly by docreview360.sharepoint; previously satisfied only
+  # transitively via the (now-removed) wikipedia dependency.
+  "requests==2.32.4",
   "python-jose[cryptography]==3.5.0",
   "python-docx==1.2.0",
 

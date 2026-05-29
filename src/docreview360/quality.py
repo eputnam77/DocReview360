@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass
 from functools import lru_cache
@@ -17,15 +17,24 @@ from .ml.features import FANN_FEATURE_NAMES, quality_features
 from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session
 from .ml.onnx_infer import infer as onnx_infer
 
+_logger = logging.getLogger(__name__)
+
 _HIGH_RISK_TERMS: set[str] = set()
 _HIGH_RISK_PENALTY: float = 0.9  # Multiply score by this if risky terms are present
 
 _MODEL_PATH = Path(__file__).resolve().parent / "models" / "quality_critic.onnx"
 
+# quality_assessment() falls back to a heuristic scorer when the ONNX critic
+# cannot be loaded/run.  The fallback runs on *every* assessment, so logging the
+# failure on each call would flood the logs; instead we warn once per process so
+# a genuinely broken or missing model is observable without spam.
+_FALLBACK_WARNED = False
+
 
 def _file_sha256(path: Path) -> str:
     try:
         from .ml._hashing import file_sha256
+
         return file_sha256(path)
     except FileNotFoundError:
         return ""
@@ -163,7 +172,17 @@ def quality_assessment(text: str, *, doc_type: str | None = None) -> QualityAsse
         raw_score = float(np.clip(score_arr.reshape(-1)[0], 0.0, 1.0))
         flags_tuple = tuple(float(v) for v in flags_arr.reshape(-1))
         score = raw_score
-    except Exception:
+    except Exception as exc:
+        global _FALLBACK_WARNED
+        if not _FALLBACK_WARNED:
+            _FALLBACK_WARNED = True
+            _logger.warning(
+                "Quality ONNX critic unavailable at %s (%s: %s); using heuristic "
+                "fallback scorer. This is logged once per process.",
+                _MODEL_PATH,
+                type(exc).__name__,
+                exc,
+            )
         fallback = _fallback_quality_assessment(text, doc_type)
         raw_score = fallback.raw_score
         flags_tuple = fallback.flags

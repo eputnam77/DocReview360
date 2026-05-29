@@ -31,15 +31,15 @@ from fastapi.testclient import TestClient
 # ---------------------------------------------------------------------------
 
 
+_TEST_PASSWORD = "Password!1Secure"  # policy-compliant password for non-demo test users
+
+
 def _make_headers(username: str, password: str | None = None, *, admin: bool = False) -> dict[str, str]:
-    """Create a user (best-effort) and return a bearer-token header dict."""
-    try:
-        auth.USER_REPOSITORY.create_user(
-            username,
-            password or "password",
-        )
-    except Exception:
-        pass
+    """Create a user and return a bearer-token header dict."""
+    auth.USER_REPOSITORY.create_user(
+        username,
+        password or _TEST_PASSWORD,
+    )
     if admin:
         from docreview360 import rbac
         rbac.add_role(username, "admin")
@@ -78,10 +78,12 @@ def _bob_headers() -> dict[str, str]:
 
 def _charlie_headers() -> dict[str, str]:
     """Replacement reviewer user."""
-    try:
-        auth.USER_REPOSITORY.create_user("charlie", "password")
-    except Exception:
-        pass
+    # ``charlie`` is not a demo user, so the password must satisfy the password
+    # policy (>= 12 chars, mixed classes).  Using a weak "password" here used to
+    # be silently swallowed by a bare except, leaving charlie uncreated; the test
+    # only passed because a prior test had leaked an active charlie into the
+    # shared user DB.  create_user upserts, so a re-run will not raise.
+    auth.USER_REPOSITORY.create_user("charlie", _TEST_PASSWORD)
     token = auth.create_access_token({"sub": "charlie"}, timedelta(minutes=60))
     return {"Authorization": f"Bearer {token}"}
 

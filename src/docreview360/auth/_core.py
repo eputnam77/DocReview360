@@ -40,8 +40,14 @@ def _get_user_repository() -> UserRepository:
         # Module not yet fully initialized — fall back to a temporary repo
         return UserRepository(str(current_path))
 
+    # Reuse the existing repository whenever it already points at the configured
+    # path.  The file itself may not exist yet (SQLite creates it lazily on the
+    # first write); gating reuse on ``current_path.exists()`` caused a fresh
+    # repository object to be built on every call until the DB was written, which
+    # diverged ``auth.USER_REPOSITORY`` from the object returned here and broke
+    # callers that captured ``USER_REPOSITORY`` by reference.
     repo = getattr(auth_mod, "USER_REPOSITORY", None)
-    if repo is not None and repo._path.resolve() == current_path and current_path.exists():
+    if repo is not None and repo._path.resolve() == current_path:
         return repo
 
     lock = getattr(auth_mod, "_USER_REPOSITORY_LOCK", None)
@@ -52,7 +58,7 @@ def _get_user_repository() -> UserRepository:
 
     with lock:
         repo = getattr(auth_mod, "USER_REPOSITORY", None)
-        if repo is None or repo._path.resolve() != current_path or not current_path.exists():
+        if repo is None or repo._path.resolve() != current_path:
             new_repo = UserRepository(str(current_path))
             setattr(auth_mod, "USER_REPOSITORY", new_repo)
             return new_repo

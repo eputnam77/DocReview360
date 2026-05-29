@@ -78,9 +78,21 @@ def run_baseline_measurement(threshold_pct: float) -> dict[str, float] | None:
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_json = str(Path(tmpdir) / "perf.json")
+        # Direct the markdown report to the temp dir as well.  Without an explicit
+        # --output-md the baseline script defaults to docs/performance_baseline.md
+        # and would overwrite the committed baseline this check is meant to compare
+        # against — a destructive side-effect that also left the working tree dirty.
+        output_md = str(Path(tmpdir) / "perf.md")
         try:
             result = subprocess.run(
-                [sys.executable, str(BASELINE_SCRIPT), "--output-json", output_json],
+                [
+                    sys.executable,
+                    str(BASELINE_SCRIPT),
+                    "--output-json",
+                    output_json,
+                    "--output-md",
+                    output_md,
+                ],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),
