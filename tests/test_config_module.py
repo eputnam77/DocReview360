@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-from docreview360.config import Config
+
+from docreview360.config import Config, load_with_defaults
 
 
 def test_config_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -55,3 +56,13 @@ def test_config_rejects_prod_alias_env(
 
     with pytest.raises(ValueError, match="DOCREVIEW360_ENV must be set to 'production'"):
         Config.load(path)
+
+
+def test_load_with_defaults_rejects_prod_alias_without_yaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing_path = tmp_path / "missing.yaml"
+    monkeypatch.setenv("DOCREVIEW360_ENV", "prod")
+
+    with pytest.raises(ValueError, match="DOCREVIEW360_ENV must be set to 'production'"):
+        load_with_defaults(missing_path)

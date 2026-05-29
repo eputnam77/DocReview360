@@ -282,6 +282,7 @@ def load_with_defaults(path: Path | None = None) -> Config:
     Use :meth:`Config.validate_startup` if you need to enforce that all required
     settings are explicitly provided.
     """
+    _normalized_environment()
     resolved_path = path or CONFIG_FILE
     cfg = Config.load(resolved_path)
     if cfg is None:

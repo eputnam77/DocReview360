@@ -33,6 +33,23 @@ _INSECURE_PLACEHOLDERS = {
     "insecure",
     "password",
 }
+_SAFE_ENVS = {"", "dev", "development", "test", "testing"}
+
+
+def _current_environment(errors: list[str] | None = None) -> str:
+    """Return normalized environment and reject ambiguous production aliases."""
+
+    env = os.getenv("DOCREVIEW360_ENV", "").strip().lower()
+    prod_alias_error = "DOCREVIEW360_ENV must be set to 'production' for production mode"
+    if env == "prod" and errors is not None and prod_alias_error not in errors:
+        errors.append(prod_alias_error)
+    return env
+
+
+def _is_production_like(env: str) -> bool:
+    """Return whether ``env`` should use production validation rules."""
+
+    return env not in _SAFE_ENVS
 
 
 class ConfigValidationError(Exception):
@@ -46,8 +63,8 @@ class ConfigValidationError(Exception):
 
 def _check_secret_key(errors: list[str]) -> None:
     """Validate DOCREVIEW360_SECRET_KEY strength."""
-    env = os.getenv("DOCREVIEW360_ENV", "prod").lower()
-    if env in ("dev", "development", "test"):
+    env = _current_environment(errors)
+    if not _is_production_like(env):
         return  # relaxed rules in non-production
 
     key = os.getenv("DOCREVIEW360_SECRET_KEY", "")
@@ -67,8 +84,8 @@ def _check_secret_key(errors: list[str]) -> None:
 
 def _check_debug_off_in_production(errors: list[str]) -> None:
     """Ensure debug mode is not enabled in production."""
-    env = os.getenv("DOCREVIEW360_ENV", "prod").lower()
-    if env in ("dev", "development", "test"):
+    env = _current_environment(errors)
+    if not _is_production_like(env):
         return
     debug_val = os.getenv("DOCREVIEW360_DEBUG", "0").lower()
     if debug_val in ("1", "true", "yes"):
@@ -78,22 +95,34 @@ def _check_debug_off_in_production(errors: list[str]) -> None:
 
 
 def _check_cors_origins(errors: list[str]) -> None:
-    """Warn when CORS origins are set to the wildcard '*' in production."""
-    env = os.getenv("DOCREVIEW360_ENV", "prod").lower()
-    if env in ("dev", "development", "test"):
+    """Ensure production CORS origins are explicit and match runtime config."""
+    env = _current_environment(errors)
+    if not _is_production_like(env):
         return
-    origins = os.getenv("DOCREVIEW360_CORS_ORIGINS", "")
-    if origins.strip() == "*":
+    allow_origins = os.getenv("DOCREVIEW360_ALLOW_ORIGINS", "")
+    legacy_origins = os.getenv("DOCREVIEW360_CORS_ORIGINS", "")
+    configured_origins = [allow_origins, legacy_origins]
+
+    if not any(origin.strip() for origin in allow_origins.split(",")):
         errors.append(
-            "DOCREVIEW360_CORS_ORIGINS='*' is not safe for production; "
+            "DOCREVIEW360_ALLOW_ORIGINS must be set to at least one explicit origin "
+            "in production environments"
+        )
+
+    if any(
+        "*" in {origin.strip() for origin in origins.split(",")}
+        for origins in configured_origins
+    ):
+        errors.append(
+            "CORS allowlist DOCREVIEW360_ALLOW_ORIGINS='*' is not safe for production; "
             "specify explicit allowed origins"
         )
 
 
 def _check_database_url(errors: list[str]) -> None:
     """Ensure DATABASE_URL is set when not using the default SQLite fallback."""
-    env = os.getenv("DOCREVIEW360_ENV", "prod").lower()
-    if env in ("dev", "development", "test"):
+    env = _current_environment(errors)
+    if not _is_production_like(env):
         return
     db_url = os.getenv("DOCREVIEW360_DATABASE_URL", "")
     if not db_url:

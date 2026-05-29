@@ -8,6 +8,7 @@ jobs:
   backend:
     name: Backend quality gate
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - name: Set up Python
@@ -42,6 +43,7 @@ jobs:
   frontend:
     name: Frontend unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: frontend
@@ -63,6 +65,7 @@ jobs:
   e2e-smoke:
     name: E2E smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs:
       - backend
       - frontend
@@ -112,6 +115,7 @@ jobs:
   e2e-full:
     name: E2E full
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     needs:
       - backend
       - frontend

@@ -39,6 +39,12 @@ def test_resolve_cors_origins_accepts_explicit_allowlist() -> None:
     )
     assert origins == ["https://a.example", "https://b.example"]
 
+
+def test_resolve_cors_origins_rejects_wildcard_in_production() -> None:
+    with pytest.raises(RuntimeError, match="must not include '\\*'"):
+        _resolve_cors_origins("*", environment="production")
+
+
 def test_resolve_cors_origins_rejects_prod_alias() -> None:
     with pytest.raises(RuntimeError, match="DOCREVIEW360_ENV must be set to 'production'"):
         _resolve_cors_origins(None, environment="prod")

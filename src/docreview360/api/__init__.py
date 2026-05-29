@@ -257,6 +257,14 @@ from .public_router import router as public_router
 load_dotenv()
 
 WORKER_STATE_FILE = Path(os.getenv("DOCREVIEW360_WORKER_STATE", "worker_state.json"))
+_SAFE_STARTUP_VALIDATOR_ENVS = {"", "dev", "development", "test", "testing"}
+
+
+def _fail_on_startup_validator_error(environment: str | None = None) -> bool:
+    """Return whether unexpected startup validator errors should abort startup."""
+
+    normalized_env = (environment or os.getenv("DOCREVIEW360_ENV", "")).strip().lower()
+    return normalized_env not in _SAFE_STARTUP_VALIDATOR_ENVS
 
 
 def _env_int(name: str, default: int) -> int:
@@ -936,6 +944,12 @@ async def _lifespan(app: FastAPI):
         _logger.critical("Startup config validation error: %s", _cv_err)
         raise ValueError(str(_cv_err)) from _cv_err
     except Exception as _cv_misc:  # pragma: no cover — best effort
+        if _fail_on_startup_validator_error():
+            _logger.critical(
+                "Startup config validator raised unexpected error: %s",
+                _cv_misc,
+            )
+            raise
         _logger.warning("Startup config validator raised unexpected error: %s", _cv_misc)
 
     # Restore persisted state from DB
@@ -1169,15 +1183,21 @@ _LOCAL_CORS_ORIGIN_REGEX = r"^https?://[^/]+:(?:3000|5173|8000)$"
 def _resolve_cors_origins(allowed_origins: str | None, environment: str | None = None) -> list[str]:
     """Return allowed CORS origins with production-safe defaults."""
 
-    if allowed_origins:
-        origins = [o.strip() for o in allowed_origins.split(",") if o.strip()]
-        if origins:
-            return origins
-        raise RuntimeError("DOCREVIEW360_ALLOW_ORIGINS must include at least one origin.")
-
     normalized_env = (environment or os.getenv("DOCREVIEW360_ENV", "")).strip().lower()
     if normalized_env == "prod":
         raise RuntimeError("DOCREVIEW360_ENV must be set to 'production' for production mode.")
+
+    if allowed_origins:
+        origins = [o.strip() for o in allowed_origins.split(",") if o.strip()]
+        if origins:
+            if normalized_env not in _SAFE_CORS_ENVS and "*" in origins:
+                raise RuntimeError(
+                    "DOCREVIEW360_ALLOW_ORIGINS must not include '*' in "
+                    "production-like environments."
+                )
+            return origins
+        raise RuntimeError("DOCREVIEW360_ALLOW_ORIGINS must include at least one origin.")
+
     if normalized_env in _SAFE_CORS_ENVS:
         return list(_LOCAL_CORS_ORIGINS)
 
