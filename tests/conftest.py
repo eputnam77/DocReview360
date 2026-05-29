@@ -236,11 +236,26 @@ def _reset_role_permissions(
         pass
 
 
+@pytest.fixture(scope="session")
+def _session_user_db(tmp_path_factory: pytest.TempPathFactory) -> str:
+    """One fresh auth user DB per test session (matches a clean CI checkout).
+
+    Previously the user store lived at an untracked ``tests/docreview360_users.db``
+    that survived between runs, so users — and their password history — piled up
+    across invocations.  That masked bugs (a test that fails to create a user
+    still "worked" because a prior run had left one behind) and could even make
+    legitimate re-creates fail on the password-reuse check.  A per-session tmp DB
+    starts empty every run like CI does, while remaining shared within the
+    session so tests that depend on a user created by an earlier test still pass.
+    """
+    return str(tmp_path_factory.mktemp("auth") / "users.db")
+
+
 @pytest.fixture(autouse=True)
 def _reset_user_repository(
-    _set_env: None, monkeypatch: pytest.MonkeyPatch
+    _set_env: None, _session_user_db: str, monkeypatch: pytest.MonkeyPatch
 ) -> Generator[None, None, None]:
-    """Re-bind the auth user repository to the canonical path before each test.
+    """Re-bind the auth user repository to the session DB before each test.
 
     The user store, unlike RBAC/search/settings, had no per-test reset.  Several
     tests (e.g. ``tests/agentic/test_agentic_harness.py``) call
@@ -264,9 +279,8 @@ def _reset_user_repository(
     """
     from docreview360 import auth
 
-    user_db = str(BASE_DIR / "tests" / "docreview360_users.db")
-    monkeypatch.setenv("DOCREVIEW360_USER_DB", user_db)
-    auth.configure_user_repository(user_db)
+    monkeypatch.setenv("DOCREVIEW360_USER_DB", _session_user_db)
+    auth.configure_user_repository(_session_user_db)
     yield
 
 
