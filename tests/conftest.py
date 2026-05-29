@@ -68,6 +68,15 @@ import tempfile as _tempfile  # noqa: E402
 
 _SESSION_USER_DB = str(Path(_tempfile.mkdtemp(prefix="dr360-users-")) / "docreview360_users.db")
 os.environ["DOCREVIEW360_USER_DB"] = _SESSION_USER_DB
+
+# Point the watchlist at a per-session temp file *before* docreview360.watchlist
+# is imported.  Its module-level WATCHLIST_FILE otherwise defaults to
+# src/docreview360/watchlist.json (a tracked source file), so any test that
+# toggles a watcher — including via the API router, which captures the original
+# module's toggle_watch even after tests reimport the module — would mutate the
+# repo.  A module-level env guarantees every import resolves a non-source path.
+_SESSION_WATCHLIST = str(Path(_tempfile.mkdtemp(prefix="dr360-watch-")) / "watchlist.json")
+os.environ["DOCREV_WATCHLIST_FILE"] = _SESSION_WATCHLIST
 os.environ.setdefault("DOCREVIEW360_RBAC_DB", str(Path("tests") / "docreview360_roles.db"))
 os.environ.setdefault("DOCREVIEW360_TOKEN_ISSUER", "test-issuer")
 os.environ.setdefault("DOCREVIEW360_TOKEN_AUDIENCE", "test-audience")
