@@ -237,6 +237,40 @@ def _reset_role_permissions(
 
 
 @pytest.fixture(autouse=True)
+def _reset_user_repository(
+    _set_env: None, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """Re-bind the auth user repository to the canonical path before each test.
+
+    The user store, unlike RBAC/search/settings, had no per-test reset.  Several
+    tests (e.g. ``tests/agentic/test_agentic_harness.py``) call
+    ``auth.configure_user_repository(tmp_path/...)`` which repoints the
+    module-level ``USER_REPOSITORY`` at a per-test ``tmp_path`` that pytest
+    deletes at teardown.  Because ``conftest`` only restored the *environment
+    variable* (via ``_set_env``) and not the ``USER_REPOSITORY`` object, the
+    next test was left with a global pointing at a now-deleted directory.  Test
+    helpers that call ``auth.USER_REPOSITORY.create_user(...)`` directly then
+    wrote to that stale repository, while token creation/verification resolved a
+    *different* repository through ``_get_user_repository()`` — so freshly
+    created users vanished and requests 401'd in an order-dependent way that
+    only reproduced on a clean checkout.
+
+    Depending on ``_set_env`` guarantees this runs *after* the environment is
+    reset.  ``configure_user_repository`` sets ``DOCREVIEW360_USER_DB`` and
+    rebuilds the global so that ``auth.USER_REPOSITORY`` and
+    ``_get_user_repository()`` always agree on an absolute, existing path.  This
+    mirrors ``_reset_role_permissions`` for RBAC and makes auth state
+    deterministic regardless of test order.
+    """
+    from docreview360 import auth
+
+    user_db = str(BASE_DIR / "tests" / "docreview360_users.db")
+    monkeypatch.setenv("DOCREVIEW360_USER_DB", user_db)
+    auth.configure_user_repository(user_db)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _reset_approvals() -> Generator[None, None, None]:
     """Reset in-memory approval state between tests.
 
