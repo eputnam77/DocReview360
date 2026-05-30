@@ -9,9 +9,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping
 
-import numpy as np
-
 from .features import compliance_features
+
+try:  # pragma: no cover - optional dependency in slim installs
+    import numpy as np
+except Exception:  # pragma: no cover - fallback path when NumPy is absent
+    np = None  # type: ignore[assignment]
 
 try:  # pragma: no cover - optional dependency
     from . import onnx_infer as _onnx
@@ -126,10 +129,11 @@ def model_path() -> Path:
     return Path(__file__).resolve().parent / "assets" / MODEL_FILENAME
 
 
-def _feature_vector(features: Mapping[str, float]) -> np.ndarray:
-    return np.array(
-        [[float(features.get(name, 0.0)) for name in MODEL_FEATURE_ORDER]], dtype=np.float32
-    )
+def _feature_vector(features: Mapping[str, float]) -> Any:
+    values = [[float(features.get(name, 0.0)) for name in MODEL_FEATURE_ORDER]]
+    if np is None:
+        return values
+    return np.array(values, dtype=np.float32)
 
 
 def _sigmoid(value: float) -> float:
@@ -158,8 +162,8 @@ def _rule_violations(features: Mapping[str, float]) -> list[str]:
     return failing
 
 
-def _run_model(vector: np.ndarray) -> tuple[float | None, str]:
-    if _onnx is not None:
+def _run_model(vector: Any) -> tuple[float | None, str]:
+    if _onnx is not None and np is not None:
         try:
             session = _onnx.get_session(model_path())
             outputs = _onnx.infer(session, {"input": vector})
@@ -171,7 +175,10 @@ def _run_model(vector: np.ndarray) -> tuple[float | None, str]:
             model = ComplianceMLP()
             model.eval()
             with torch.no_grad():
-                inputs = torch.from_numpy(vector)
+                if np is not None and hasattr(vector, "shape"):
+                    inputs = torch.from_numpy(vector)
+                else:
+                    inputs = torch.tensor(vector, dtype=torch.float32)
                 outputs = model(inputs)
             return float(outputs.reshape(-1)[0].item()), "onnx"
         except Exception as exc:

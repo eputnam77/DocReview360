@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFil
 from pydantic import BaseModel
 
 from .. import auth
+from ..access_control import enforce_project_id_access, is_admin_user
 from ..doc_types import (
     DocumentTypeModel,
     add_document_type,
@@ -205,6 +206,15 @@ async def check_document_type_usage_endpoint(
 
     projects = list_projects()
     projects_using_doc_type = [p for p in projects if p.doc_type == name]
+    if not is_admin_user(current_user):
+        visible_projects = []
+        for project in projects_using_doc_type:
+            try:
+                enforce_project_id_access(project.id, current_user)
+                visible_projects.append(project)
+            except HTTPException:
+                continue
+        projects_using_doc_type = visible_projects
 
     return {
         "name": name,

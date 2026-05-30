@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hmac
 import uuid
 from datetime import datetime, timezone
 from typing import AsyncIterator, Optional
@@ -12,6 +13,7 @@ from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 from .. import auth
+from ..access_control import enforce_document_id_access, enforce_project_access
 from ..approvals import (
     ApprovalModel,
     SignedApprovalImmutableError,
@@ -57,6 +59,14 @@ def _safe_redirect_path(target: str) -> str | None:
     return target
 
 
+def _authorized_approval(approval_id: str, user: auth.User) -> ApprovalModel:
+    approval = get_approval(approval_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    enforce_document_id_access(approval.document_id, user)
+    return approval
+
+
 @router.get("/approvals/return")
 @log_call
 async def approval_return(
@@ -65,6 +75,7 @@ async def approval_return(
     approval: str = Query(...),
     certificate_url: Optional[str] = None,
     signed_at: Optional[str] = None,
+    return_token: Optional[str] = Query(None),
     next: Optional[str] = Query(None),
 ):
     """Process provider return parameters for completed signatures."""
@@ -73,6 +84,12 @@ async def approval_return(
     request.state.trace_id = trace_id
     token = TRACE_ID.set(trace_id)
     try:
+        if next:
+            safe_next = _safe_redirect_path(next)
+            if safe_next is None:
+                raise HTTPException(status_code=400, detail="invalid redirect target")
+        else:
+            safe_next = None
         appr = get_approval(approval)
         if appr is None or appr.signature_id != signature:
             log_event(
@@ -82,6 +99,11 @@ async def approval_return(
                 doc_id=appr.document_id if appr else None,
             )
             raise HTTPException(status_code=404, detail="Approval not found")
+        expected_return_token = (appr.provider_metadata or {}).get("return_token")
+        if not isinstance(expected_return_token, str) or not return_token:
+            raise HTTPException(status_code=400, detail="invalid signature return token")
+        if not hmac.compare_digest(expected_return_token, return_token):
+            raise HTTPException(status_code=400, detail="invalid signature return token")
         log_event(
             "approval_return_received",
             approval_id=approval,
@@ -104,10 +126,7 @@ async def approval_return(
             )
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if next:
-            safe_next = _safe_redirect_path(next)
-            if safe_next is None:
-                raise HTTPException(status_code=400, detail="invalid redirect target")
+        if safe_next:
             return RedirectResponse(safe_next)
         return {"status": "processed"}
     finally:
@@ -120,6 +139,7 @@ async def approval_history_endpoint(
     user: auth.User = Depends(require_permission("view_audit_log")),
 ):
     """Return audit history for ``approval_id``."""
+    _authorized_approval(approval_id, user)
     try:
         history = get_approval_history(approval_id)
     except KeyError as exc:
@@ -134,6 +154,7 @@ async def download_signed_document(
     user: auth.User = Depends(require_permission("read")),
 ) -> Response:
     """Download the document associated with ``approval_id``."""
+    _authorized_approval(approval_id, user)
     try:
         data = get_signed_document(approval_id)
     except KeyError as exc:
@@ -148,9 +169,7 @@ async def approval_pdf_endpoint(
     user: auth.User = Depends(require_permission("read")),
 ) -> Response:
     """Download a combined PDF for ``approval_id``."""
-    appr = get_approval(approval_id)
-    if appr is None:
-        raise HTTPException(status_code=404, detail="Approval not found")
+    appr = _authorized_approval(approval_id, user)
     try:
         data = build_approval_pdf(approval_id)
     except KeyError as exc:
@@ -177,6 +196,7 @@ async def verify_hash_endpoint(
     user: auth.User = Depends(require_permission("verification_override")),
 ) -> dict[str, bool]:
     """Verify stored document hash for ``approval_id``."""
+    _authorized_approval(approval_id, user)
     try:
         data = get_signed_document(approval_id)
     except KeyError as exc:
@@ -202,7 +222,26 @@ async def dashboard_approvals_endpoint(
     user: auth.User = Depends(require_permission("view_audit_log")),
 ) -> list[dict[str, object]]:
     """Return approval dashboard data."""
-    return approval_dashboard()
+    rows = approval_dashboard()
+    visible: list[dict[str, object]] = []
+    for row in rows:
+        approval_id = row.get("id")
+        if not isinstance(approval_id, str):
+            continue
+        try:
+            _authorized_approval(approval_id, user)
+        except HTTPException:
+            continue
+        provider_metadata = row.get("provider_metadata")
+        if isinstance(provider_metadata, dict) and "return_token" in provider_metadata:
+            row = dict(row)
+            row["provider_metadata"] = {
+                key: value
+                for key, value in provider_metadata.items()
+                if key != "return_token"
+            }
+        visible.append(row)
+    return visible
 
 
 @router.get("/documents/{doc_id}/verify-signature/stream")
@@ -212,6 +251,7 @@ async def verify_signature_stream(
     user: auth.User = Depends(require_permission("verification_override")),
 ) -> StreamingResponse:
     """Stream signature verification details for ``doc_id``."""
+    enforce_document_id_access(doc_id, user)
     providers_input: str | list[str] | None = provider
     if provider and "," in provider:
         providers_input = [p.strip() for p in provider.split(",") if p.strip()]
@@ -278,6 +318,12 @@ async def project_approval_approve_endpoint(
     project = get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    enforce_project_access(project, current_user)
+    from ..workflows import get_workflow
+
+    wf = get_workflow(approval.workflow)
+    if wf is not None and wf.project != project_id:
+        raise HTTPException(status_code=404, detail="Approval not found")
 
     if approval.reviewer != current_user.username:
         raise HTTPException(

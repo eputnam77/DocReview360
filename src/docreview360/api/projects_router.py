@@ -533,9 +533,13 @@ async def create_project_endpoint(
     if body.user is not None or not _is_admin_user(current_user):
         body.user = _resolve_requested_user(body.user, current_user)
 
-    # Auto-assign the creator's org when no org_id is explicitly given
+    user_org_id = _get_user_org_id(current_user.username)
+    # Auto-assign the creator's org when no org_id is explicitly given.
+    # Non-admins may not choose another tenant's organization ID.
     if body.org_id is None:
-        body.org_id = _get_user_org_id(current_user.username)
+        body.org_id = user_org_id
+    elif not _is_admin_user(current_user) and body.org_id != user_org_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
 
     if body.id is None or (isinstance(body.id, str) and not body.id.strip()):
         from ..search import search_index

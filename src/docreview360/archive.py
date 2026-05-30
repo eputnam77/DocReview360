@@ -243,7 +243,11 @@ def purge_archives(
 
 def schedule_archive_purge() -> None:
     """Configure periodic purging of expired archive records."""
-    from .celery_app import app
+    try:
+        from .celery_app import app
+    except ModuleNotFoundError as exc:
+        _logger.info("Archive purge scheduling skipped; worker extra is not installed: %s", exc)
+        return
 
     settings = load_settings()
     cfg = settings.get("archive", {})

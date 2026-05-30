@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import logging
 import os
+import secrets
 from datetime import datetime, timezone
 from functools import lru_cache
 from io import BytesIO
@@ -21,7 +22,6 @@ from ..integrations.registry import get_provider
 from ..integrations.signature import get_default_providers
 from ..logs import log_event, log_verification_failure
 from ..ml.features import SIGNATURE_ANOMALY_FEATURE_NAMES, signature_features
-from ..ml.signature_anomaly import score_signature_anomaly
 from ..monitoring import (
     APPROVAL_UPLOAD_RETRIES,
     SIGNATURE_ANOMALIES,
@@ -29,6 +29,26 @@ from ..monitoring import (
     VERIFICATION_DURATION,
 )
 from ..provider_store import set_provider_health
+
+try:
+    from ..ml.signature_anomaly import score_signature_anomaly
+except ModuleNotFoundError:
+
+    class _SignatureAnomalyMetadata(NamedTuple):
+        version: str | None
+        sha256: str
+        path: str
+        custom_metadata: Mapping[str, str]
+
+    def score_signature_anomaly(
+        features: list[float] | tuple[float, ...],
+    ) -> tuple[float, _SignatureAnomalyMetadata]:
+        return 0.0, _SignatureAnomalyMetadata(
+            version=None,
+            sha256="",
+            path="",
+            custom_metadata={"source": "heuristic"},
+        )
 
 _logger = logging.getLogger(__name__)
 
@@ -543,7 +563,11 @@ def send_for_signature(  # noqa: C901
 
     if return_url is None:
         return_url = os.getenv("SIGNATURE_RETURN_URL")
-    callback = f"/approvals/return?approval={approval_id}"
+    return_token = secrets.token_urlsafe(24)
+    provider_metadata = dict(approval.provider_metadata or {})
+    provider_metadata["return_token"] = return_token
+    approval.provider_metadata = provider_metadata
+    callback = f"/approvals/return?approval={approval_id}&return_token={quote(return_token)}"
     if return_url:
         callback += f"&next={quote(return_url)}"
 
@@ -564,7 +588,7 @@ def send_for_signature(  # noqa: C901
             )
             approval.signature_provider = name
             approval.signature_id = sig_id
-            approval.provider_metadata = meta
+            approval.provider_metadata = {**meta, "return_token": return_token}
             _record_signature_content_hash(
                 approval,
                 signature_id=sig_id,

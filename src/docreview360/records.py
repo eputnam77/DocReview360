@@ -6,16 +6,17 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from .sharepoint import SharePointClient
+if TYPE_CHECKING:
+    from .sharepoint import SharePointClient
 
 
 def sync_to_sharepoint(
     src: str | Path = "archives",
     dest: str | Path | None = None,
     *,
-    client: Optional[SharePointClient] = None,
+    client: "SharePointClient | None" = None,
 ) -> int:
     """Upload files from ``src`` to SharePoint or copy to ``dest``.
 

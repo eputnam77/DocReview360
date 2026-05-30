@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import logging
 import mimetypes
 import re
@@ -383,7 +384,8 @@ def create_blank_document(
     title: str = "Untitled Document",
 ) -> DocumentModel:
     """Create an empty editable document and attach it to *project*."""
-    content = f"<h1>{title}</h1><p></p>"
+    safe_title = html.escape(title, quote=True)
+    content = f"<h1>{safe_title}</h1><p></p>"
     doc_id = uuid4().hex
     now = datetime.now(timezone.utc)
     revision = DocumentRevision(

@@ -1,11 +1,14 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
 from docreview360 import api as api_mod
 from docreview360 import auth
 from docreview360 import config as conf_mod
+from docreview360 import oidc_client
 from docreview360.config import Config
 from fastapi.testclient import TestClient
+from jose import jwt
 
 
 def test_users_me_endpoint(monkeypatch) -> None:
@@ -17,7 +20,27 @@ def test_users_me_endpoint(monkeypatch) -> None:
     Config(database="sqlite", editor="tiptap", cms="none", auth="oidc").save(cfg_path)
 
     client = TestClient(api_mod.app)
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
     token = auth.create_access_token({"sub": "alice"})
+    claims = jwt.decode(
+        token,
+        auth.SECRET_KEY,
+        algorithms=[auth.ALGORITHM],
+        audience=auth.TOKEN_AUDIENCE,
+        issuer=auth.TOKEN_ISSUER,
+    )
+    oidc_client.create_user_session(
+        "alice",
+        claims["jti"],
+        datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
     client.cookies.set("access_token", token)
     csrf_token = "csrf-test-token"
     client.cookies.set("csrf_token", csrf_token)

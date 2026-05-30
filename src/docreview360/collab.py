@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Dict, Set
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 try:  # pragma: no cover - exercised indirectly in fallback test
     from y_py import YDoc, encode_state_as_update
@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover - behaviour validated via fallback test
 else:
     YPY_AVAILABLE = True
 
+from .access_control import authenticate_bearer_token, enforce_document_id_access
 from .documents import documents, update_document
 
 router = APIRouter()
@@ -26,12 +27,33 @@ MISSING_DEPENDENCY_MESSAGE = (
 )
 
 
+def _websocket_token(websocket: WebSocket) -> str | None:
+    token = websocket.query_params.get("token")
+    if token:
+        return token
+    auth_header = websocket.headers.get("authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        return auth_header[7:].strip()
+    return None
+
+
 @router.websocket("/collab/{doc_id}")
 async def collab_endpoint(websocket: WebSocket, doc_id: str) -> None:
     """Minimal Yjs-compatible websocket relay."""
 
     if not YPY_AVAILABLE:
         await websocket.close(code=1013, reason=MISSING_DEPENDENCY_MESSAGE)
+        return
+
+    raw_token = _websocket_token(websocket)
+    if not raw_token:
+        await websocket.close(code=1008)
+        return
+    try:
+        user = authenticate_bearer_token(raw_token)
+        enforce_document_id_access(doc_id, user)
+    except HTTPException:
+        await websocket.close(code=1008)
         return
 
     await websocket.accept()

@@ -117,12 +117,21 @@ async def saml_login(request: Request) -> Any:
         raise HTTPException(status_code=404, detail="SAML authentication is not enabled")
 
     try:
-        redirect_url, _req_id = saml_auth.build_auth_request()
+        redirect_url, req_id = saml_auth.build_auth_request()
     except RuntimeError as exc:
         _logger.error("SAML login initiation failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return RedirectResponse(redirect_url, status_code=302)
+    response = RedirectResponse(redirect_url, status_code=302)
+    response.set_cookie(
+        "saml_request_id",
+        req_id,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="lax",
+        max_age=600,
+    )
+    return response
 
 
 @router.post("/acs")
@@ -141,7 +150,11 @@ async def saml_acs(
     if not saml_auth.saml_enabled():
         raise HTTPException(status_code=404, detail="SAML authentication is not enabled")
 
-    attributes = saml_auth.process_saml_response(SAMLResponse)
+    request_id = request.cookies.get("saml_request_id")
+    if not request_id:
+        raise HTTPException(status_code=400, detail="Missing SAML request correlation")
+
+    attributes = saml_auth.process_saml_response(SAMLResponse, request_id=request_id)
     if attributes is None:
         _logger.warning("SAML ACS: response validation failed")
         raise HTTPException(status_code=401, detail="SAML response validation failed")
@@ -171,7 +184,9 @@ async def saml_acs(
         except Exception as exc:  # noqa: BLE001
             _logger.warning("Could not assign SAML roles to %r: %s", username, exc)
 
-    return _issue_jwt_and_redirect(username, auth_method="saml", request=request)
+    response = _issue_jwt_and_redirect(username, auth_method="saml", request=request)
+    response.delete_cookie("saml_request_id")
+    return response
 
 
 @router.get("/metadata")

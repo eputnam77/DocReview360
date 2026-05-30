@@ -194,8 +194,11 @@ def send_slack_notification(webhook_url: str, message: str) -> Dict[str, str]:
     as ``{"error": "..."}`` rather than raised so a failing webhook never
     interrupts application flow.
     """
-    if not isinstance(webhook_url, str) or not webhook_url.startswith("https://"):
-        raise ValueError("webhook_url must be an https:// URL")
+    if not isinstance(webhook_url, str):
+        raise ValueError("webhook_url must be a public https:// URL")
+    from .url_safety import validate_public_https_url
+
+    validate_public_https_url(webhook_url)
     if not isinstance(message, str) or not message.strip():
         raise ValueError("message is required")
 
@@ -220,8 +223,11 @@ def send_teams_notification(webhook_url: str, message: str) -> Dict[str, str]:
     how-to/add-incoming-webhook).  The minimal payload that renders a text message
     is an Adaptive Card body attached to a ``message`` activity.
     """
-    if not isinstance(webhook_url, str) or not webhook_url.startswith("https://"):
-        raise ValueError("webhook_url must be an https:// URL")
+    if not isinstance(webhook_url, str):
+        raise ValueError("webhook_url must be a public https:// URL")
+    from .url_safety import validate_public_https_url
+
+    validate_public_https_url(webhook_url)
     if not isinstance(message, str) or not message.strip():
         raise ValueError("message is required")
 
@@ -258,8 +264,11 @@ def send_webhook_notification(webhook_url: str, event: str, **context: str) -> D
     Useful for custom integrations that are not Slack or Teams.  The body is
     ``{"event": "<event>", **context}`` as a JSON object.
     """
-    if not isinstance(webhook_url, str) or not webhook_url.startswith("https://"):
-        raise ValueError("webhook_url must be an https:// URL")
+    if not isinstance(webhook_url, str):
+        raise ValueError("webhook_url must be a public https:// URL")
+    from .url_safety import validate_public_https_url
+
+    validate_public_https_url(webhook_url)
     if not event or not event.strip():
         raise ValueError("event is required")
 
@@ -308,8 +317,10 @@ def save_user_notification_preference(
             f"Invalid channel '{preferred_channel}'. "
             f"Valid values: {sorted(VALID_NOTIFICATION_CHANNELS)}"
         )
-    if webhook_url is not None and not webhook_url.startswith("https://"):
-        raise ValueError("webhook_url must be an https:// URL")
+    if webhook_url is not None:
+        from .url_safety import validate_public_https_url
+
+        validate_public_https_url(webhook_url)
 
     import os
 

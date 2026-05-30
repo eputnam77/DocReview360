@@ -15,37 +15,10 @@ from sqlalchemy.orm import Session as _OrmSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from .db_urls import default_url
 from .models import Base
 
-
-def default_url(database: str) -> str:
-    """Return a default SQLAlchemy URL for the given backend.
-
-    The ``database`` argument is treated case-insensitively and accepts common
-    synonyms (e.g. ``"postgresql"``).
-    """
-
-    # ``database`` values coming from environment variables or user input may
-    # include incidental whitespace (e.g. ``" postgres "``).  The previous
-    # implementation lowercased the value but didn't strip spaces which caused
-    # otherwise valid backend names to be rejected.  Normalise by trimming
-    # surrounding whitespace before the comparison so common variants resolve
-    # correctly.
-    db = database.strip().lower()
-    if db in {"sqlite", "sqlite3"}:
-        return "sqlite:///docreview360.db"
-    if db in {"postgres", "postgresql"}:
-        return "postgresql+psycopg://docreview360:docreview360@localhost:5432/docreview360"
-    if db in {"mysql"}:
-        return "mysql+pymysql://docreview360:docreview360@localhost:3306/docreview360"
-    if db in {"mssql", "sqlserver", "mssql+pyodbc"}:
-        return (
-            "mssql+pyodbc://docreview360:docreview360@localhost:1433/docreview360"
-            "?driver=ODBC+Driver+17+for+SQL+Server"
-        )
-    if db in {"oracle", "oracledb"}:
-        return "oracle+oracledb://docreview360:docreview360@localhost:1521/docreview360"
-    raise ValueError(f"Unsupported database '{database}'")
+__all__ = ["Database", "default_url"]
 
 
 def _parse_sql_statements(file: Path) -> list[str]:

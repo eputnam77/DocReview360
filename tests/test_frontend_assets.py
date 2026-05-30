@@ -10,10 +10,10 @@ from docreview360.cli import cli
 from docreview360.frontend_assets import extract_frontend_source, frontend_source_root
 
 
-def test_frontend_source_root_points_to_frontend_tree() -> None:
+def test_frontend_source_root_points_to_built_bundle() -> None:
     root = frontend_source_root()
     assert (root / "package.json").exists()
-    assert (root / "pages").exists()
+    assert (root / "BUILD_ID").exists() or (root / "static").exists()
 
 
 def test_extract_frontend_source_copies_expected_files(tmp_path: Path) -> None:
@@ -21,9 +21,10 @@ def test_extract_frontend_source_copies_expected_files(tmp_path: Path) -> None:
     extract_frontend_source(target)
 
     assert (target / "package.json").exists()
-    assert (target / "pages" / "index.tsx").exists()
+    assert (target / "BUILD_ID").exists() or (target / "static").exists()
     assert not (target / "node_modules").exists()
-    assert not (target / ".next").exists()
+    assert not (target / "cache").exists()
+    assert not (target / "server").exists()
 
 
 def test_extract_frontend_source_rejects_non_empty_destination(tmp_path: Path) -> None:

@@ -872,7 +872,7 @@ async def get_config_endpoint(user: auth.User = Depends(require_role("admin"))) 
     """Return the current application configuration."""
     cfg = Config.load(CONFIG_FILE)
     if cfg is None:
-        cfg = Config(database="sqlite", editor="ckeditor5", cms="none", auth="oidc")
+        cfg = Config(database="sqlite", editor="tiptap", cms="none", auth="local")
     return ConfigPayload(**cfg.__dict__)
 
 
@@ -1388,9 +1388,9 @@ class _FsvUrlRequest(BaseModel):
 
 @router.get("/admin/settings/fsv-url")
 async def get_fsv_url_setting(
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, object]:
-    """Return the currently configured FSV base URL (admin or authenticated user)."""
+    """Return the currently configured FSV base URL. Requires admin role."""
     from ..fsv_proxy import get_fsv_url, is_fsv_configured
 
     return {

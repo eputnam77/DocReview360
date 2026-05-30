@@ -33,22 +33,14 @@ classifiers = [
 dependencies = [
   "Jinja2==3.1.6",
   "pydantic==2.13.3",
-  "matplotlib==3.10.9",
-  "fonttools==4.62.1",
-  "Pillow==12.2.0",
   "click==8.1.8",
   "PyYAML==6.0.3",
   "defusedxml==0.7.1",
   "zipp==3.19.1",
-  "textstat==0.7.13",
-  "textblob==0.19.0",
   "fastapi>=0.120.0",
   "python-multipart==0.0.29",
   "SQLAlchemy==2.0.41",
   "httpx==0.28.1",
-  # Used directly by docreview360.sharepoint; previously satisfied only
-  # transitively via the (now-removed) wikipedia dependency.
-  "requests==2.32.4",
   "python-jose[cryptography]==3.5.0",
   "python-docx==1.2.0",
 
@@ -58,13 +50,9 @@ dependencies = [
   "python-magic-bin; platform_system == 'Windows'",
 
   "reportlab==4.4.10",
-  "celery==5.6.3",
-  "redis==6.2.0",
-  "graphene==3.4.3",
   "prometheus-client==0.22.1",
   "starlette>=0.49,<1.1",
   "uvicorn>=0.38.0",
-  "pymysql==1.1.3",
   "python-dotenv==1.2.2",
   "bcrypt==4.2.0",
   "pyotp==2.9.0",
@@ -98,6 +86,9 @@ tokenizer = ["tiktoken>=0.5.1"]
 # PostgreSQL support (LGPL-3.0 — kept optional so the core package is MIT-clean)
 postgres = ["psycopg[binary]==3.3.4"]
 
+# MySQL support via PyMySQL.
+mysql = ["pymysql==1.1.3"]
+
 # LDAP/Active Directory authentication (Item 37)
 ldap = ["ldap3>=2.9"]
 
@@ -116,6 +107,27 @@ mssql = ["pyodbc>=5.0"]
 # Oracle Database support (Item 38 Phase 2)
 oracle = ["oracledb>=2.0"]
 
+# Async worker stack for scheduled/background jobs.
+worker = [
+  "celery==5.6.3",
+  "redis==6.2.0",
+]
+
+graphql = ["graphene==3.4.3"]
+
+cms-sharepoint = ["requests==2.32.4"]
+
+document-analysis = [
+  "textstat==0.7.13",
+  "textblob==0.19.0",
+]
+
+charts = [
+  "matplotlib==3.10.9",
+  "fonttools==4.62.1",
+  "Pillow==12.2.0",
+]
+
 # OpenTelemetry tracing (Item 39 Phase 2)
 otel = [
   "opentelemetry-sdk>=1.24",
@@ -130,22 +142,63 @@ realtime = [
 # ML (kept optional so Windows installs don't fail when torch wheels aren't available)
 # PyTorch install matrix: https://pytorch.org/get-started/locally/
 ml = [
+  "numpy>=1.26",
   "torch==2.11.0",
   "onnx==1.21.0",
+  "onnxruntime==1.25.1 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
 ]
 
 # Choose ONE runtime extra depending on target.
 # ONNX Runtime install docs: https://onnxruntime.ai/docs/install/
 ml-cpu = [
+  "numpy>=1.26",
   "onnxruntime==1.25.1 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
 ]
 
 ml-mps = [
+  "numpy>=1.26",
   "onnxruntime==1.25.1 ; platform_system == 'Darwin' and platform_machine == 'arm64'",
 ]
 
 ml-gpu = [
+  "numpy>=1.26",
   "onnxruntime-gpu==1.25.0 ; platform_system != 'Darwin'",
+]
+
+enterprise-auth = [
+  "ldap3>=2.9",
+  "python3-saml>=1.16",
+  "webauthn>=2.0",
+]
+
+full = [
+  "psycopg[binary]==3.3.4",
+  "pymysql==1.1.3",
+  "pyodbc>=5.0",
+  "oracledb>=2.0",
+  "celery==5.6.3",
+  "redis==6.2.0",
+  "graphene==3.4.3",
+  "requests==2.32.4",
+  "textstat==0.7.13",
+  "textblob==0.19.0",
+  "matplotlib==3.10.9",
+  "fonttools==4.62.1",
+  "Pillow==12.2.0",
+  "ldap3>=2.9",
+  "python3-saml>=1.16",
+  "webauthn>=2.0",
+  "alembic>=1.14",
+  "opentelemetry-sdk>=1.24",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.24",
+  "y-py>=0.6,<0.8",
+  "ypy-websocket>=0.12,<0.14",
+  "numpy>=1.26",
+  "torch==2.11.0",
+  "onnx==1.21.0",
+  "onnxruntime==1.25.1 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "fedstylevalidator>=0.1.1",
+  "tiktoken>=0.5.1",
 ]
 
 # formatting & linting
@@ -198,15 +251,19 @@ dev = [
   "ldap3>=2.9",
   "python3-saml>=1.16",
   "webauthn>=2.0",
+  "numpy>=1.26",
+  "onnx==1.21.0",
+  "onnxruntime==1.25.1",
+  "celery==5.6.3",
+  "redis==6.2.0",
+  "graphene==3.4.3",
 ]
 
 # ──────────────────────────── package discovery ───────────────────────────────
-# NOTE: The PyPI wheel bundles a curated copy of the Next.js frontend source under
-# ``docreview360/frontend_src`` so alpha users can extract and test the UI from an
-# installed package. The source distribution also includes the repository-level
-# ``frontend/`` tree with generated artefacts pruned out. Use
-# ``docreview360 frontend extract <path>`` after installation when you need a local
-# working copy to run ``npm install`` and the frontend test/build commands.
+# NOTE: Release wheels copy a built frontend artifact into
+# ``docreview360/frontend_static`` when a frontend build exists at packaging time.
+# The base wheel intentionally avoids frontend source, node_modules, Next.js
+# caches, runtime databases, and optional ML assets.
 [tool.setuptools]
 
 [tool.setuptools.package-dir]
@@ -221,7 +278,7 @@ exclude = ["tests*", ".dev*", "docreview360.scripts*"]
 "docreview360.iac_templates" = ["*.tf"]
 "docreview360"               = ["py.typed", "*.json"]
 "docreview360.migrations"    = ["*.sql"]
-"docreview360.ml.assets"     = ["*.onnx", "*.pt", "*.pkl"]
+"docreview360.frontend_static" = ["**/*"]
 
 # ───────────────────────────── code style tools ───────────────────────────────
 [tool.black]

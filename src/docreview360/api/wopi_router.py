@@ -19,8 +19,13 @@ from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse, PlainTextResponse
-from jose import JWTError, jwt
 
+from .. import auth
+from ..access_control import (
+    authenticate_bearer_token,
+    enforce_document_id_access,
+    enforce_document_id_manage_access,
+)
 from ..documents import get_document
 from ..wopi import (
     WOPICheckFileInfo,
@@ -59,34 +64,18 @@ _WOPI_OFFICE_EXTS = [
 # ---------------------------------------------------------------------------
 
 
-def _validate_access_token(access_token: str) -> str:
+def _validate_access_token(access_token: str) -> auth.User:
     """Validate a WOPI access token (JWT) and return the username.
 
     Raises ``HTTP 401`` on any validation failure.
     """
-    from .. import auth as _auth_mod
-
     try:
-        payload = jwt.decode(
-            access_token,
-            _auth_mod.SECRET_KEY,
-            algorithms=[_auth_mod.ALGORITHM],
-            audience=_auth_mod.TOKEN_AUDIENCE,
-            issuer=_auth_mod.TOKEN_ISSUER,
-        )
-    except JWTError as exc:
+        return authenticate_bearer_token(access_token)
+    except HTTPException as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid WOPI access token",
         ) from exc
-
-    username: str | None = payload.get("sub")
-    if not username:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid WOPI access token",
-        )
-    return username
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +90,8 @@ def wopi_check_file_info(
 ) -> dict:
     """Return WOPI CheckFileInfo metadata for the requested document."""
     user = _validate_access_token(access_token)
-    info: WOPICheckFileInfo = get_wopi_file_info(file_id, user)
+    enforce_document_id_access(file_id, user)
+    info: WOPICheckFileInfo = get_wopi_file_info(file_id, user.username)
     return dataclasses.asdict(info)
 
 
@@ -116,7 +106,8 @@ def wopi_get_file(
     access_token: str = Query(..., description="WOPI JWT access token"),
 ) -> Response:
     """Return the raw bytes of the document content (WOPI GetFile)."""
-    _validate_access_token(access_token)
+    user = _validate_access_token(access_token)
+    enforce_document_id_access(file_id, user)
     doc = get_document(file_id)
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -149,6 +140,7 @@ async def wopi_put_file(
     (zero-length file case).
     """
     user = _validate_access_token(access_token)
+    enforce_document_id_manage_access(file_id, user)
     doc = get_document(file_id)
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -165,7 +157,7 @@ async def wopi_put_file(
             )
 
     body = await request.body()
-    put_file_contents(file_id, body, user)
+    put_file_contents(file_id, body, user.username)
     doc_after = get_document(file_id)
     version = str(doc_after.version_number) if doc_after else "1"
     return JSONResponse(
@@ -198,6 +190,7 @@ def wopi_file_operation(
     * ``GET_LOCK``     — return the current lock token (no-op otherwise)
     """
     user = _validate_access_token(access_token)
+    enforce_document_id_manage_access(file_id, user)
     override = x_wopi_override.upper().strip()
 
     if override == _OVERRIDE_GET_LOCK:
@@ -214,7 +207,7 @@ def wopi_file_operation(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="X-WOPI-Lock header required for LOCK",
             )
-        set_wopi_lock(file_id, x_wopi_lock, user)
+        set_wopi_lock(file_id, x_wopi_lock, user.username)
         return Response(status_code=200, headers={"X-WOPI-Lock": x_wopi_lock})
 
     if override == _OVERRIDE_UNLOCK:

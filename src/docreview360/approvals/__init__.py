@@ -33,14 +33,32 @@ from .core import (
     reset_approvals,
 )
 
-# routing: Celery tasks, ML scoring, reviewer assignment
-from .routing import (
-    _escalation_task,
-    _reminder_task,
-    _resolve_pending_approval,
-    run_confirmed_action,
-    submit_draft_for_approval,
-)
+# routing: Celery tasks, ML scoring, reviewer assignment.  Optional in the slim
+# install so importing core approvals does not require Celery/ML dependencies.
+try:
+    from .routing import (
+        _escalation_task,
+        _reminder_task,
+        _resolve_pending_approval,
+        run_confirmed_action,
+        submit_draft_for_approval,
+    )
+except ModuleNotFoundError:
+    _reminder_task = None
+    _escalation_task = None
+    _resolve_pending_approval = None
+
+    def run_confirmed_action(confirm: bool, action: object | None = None) -> bool:
+        if confirm and callable(action):
+            action()
+            return True
+        return bool(confirm)
+
+    def submit_draft_for_approval(*args: object, **kwargs: object) -> object:
+        raise RuntimeError(
+            "ML-assisted approval routing requires an optional install. "
+            "Run: pip install \"docreview360[worker,ml-cpu]\""
+        )
 
 # signatures: signature logic, PDF building, verification
 from .signatures import (

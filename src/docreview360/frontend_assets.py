@@ -1,19 +1,30 @@
 # SPDX-License-Identifier: MIT
-"""Helpers for accessing the bundled frontend source tree."""
+"""Helpers for accessing the bundled frontend build artifact."""
 
 from __future__ import annotations
 
 import shutil
 from pathlib import Path
 
-_SKIP_DIR_NAMES = {"node_modules", ".next", ".tmp", "__pycache__", "__tests__", "scripts"}
+_SKIP_DIR_NAMES = {
+    "node_modules",
+    ".tmp",
+    "__pycache__",
+    "__tests__",
+    "scripts",
+    "cache",
+    "dev",
+    "diagnostics",
+    "server",
+    "types",
+}
 _SKIP_FILE_NAMES = {".env.local"}
 _SKIP_RELATIVE_PATHS = {
     Path("data/mock.js"),
     Path("data/mock.ts"),
     Path("public/sample.txt"),
 }
-_SKIP_SUFFIXES = {".db", ".sqlite", ".log", ".pyc", ".tmp", ".tsbuildinfo"}
+_SKIP_SUFFIXES = {".db", ".sqlite", ".log", ".map", ".pyc", ".tmp", ".tsbuildinfo"}
 
 
 def _should_copy_file(path: Path, relative_path: Path) -> bool:
@@ -25,24 +36,36 @@ def _should_copy_file(path: Path, relative_path: Path) -> bool:
 
 
 def _packaged_frontend_root() -> Path:
-    return Path(__file__).resolve().parent / "frontend_src"
+    return Path(__file__).resolve().parent / "frontend_static"
 
 
-def _repo_frontend_root() -> Path:
-    return Path(__file__).resolve().parents[2] / "frontend"
+def _repo_frontend_build_roots() -> tuple[Path, ...]:
+    root = Path(__file__).resolve().parents[2] / "frontend"
+    return (
+        root / "out",
+        root / ".next" / "standalone",
+        root / ".next",
+    )
+
+
+def _has_frontend_payload(path: Path) -> bool:
+    ignored = {"__init__.py", "README.txt", "__pycache__"}
+    return any(child.name not in ignored for child in path.iterdir())
 
 
 def frontend_source_root() -> Path:
-    """Return the available frontend source tree for this install."""
+    """Return the available built frontend bundle for this install."""
 
-    for candidate in (_packaged_frontend_root(), _repo_frontend_root()):
-        if (candidate / "package.json").exists():
+    for candidate in (_packaged_frontend_root(), *_repo_frontend_build_roots()):
+        if candidate.exists() and _has_frontend_payload(candidate):
             return candidate
-    raise FileNotFoundError("DocReview360 frontend source is not available in this installation")
+    raise FileNotFoundError(
+        "DocReview360 built frontend assets are not available in this installation"
+    )
 
 
 def extract_frontend_source(destination: Path, *, force: bool = False) -> Path:
-    """Copy the bundled frontend source tree to ``destination``."""
+    """Copy the bundled frontend build artifact to ``destination``."""
 
     source = frontend_source_root()
     if destination.exists():

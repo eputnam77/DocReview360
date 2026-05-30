@@ -4,22 +4,36 @@ DocReview360 is a document review app with a FastAPI backend, a React frontend, 
 
 ## Alpha release
 
-The current PyPI release is an alpha package. It includes the Python backend, the `docreview360` CLI, and a bundled copy of the Next.js frontend source for alpha testing.
+The current PyPI release is an alpha package. The base install is the lightweight
+web review app: FastAPI backend, `docreview360` CLI, SQLite support, TipTap
+authoring/review, core notifications, reviewer management, and the packaged
+frontend build asset when release artifacts are built with a frontend bundle.
+ML, async workers, enterprise auth, production database drivers, and advanced
+editor/collaboration paths are optional extras.
 
 ```bash
 python -m pip install --pre docreview360
-python -m pip install --pre "docreview360[fedstylevalidator]"
-docreview360 frontend extract ./docreview360-frontend
+docreview360 init
+docreview360 migrate
+docreview360 serve
 ```
 
-Use the `fedstylevalidator` extra when you want the published Federal Style Validator package from PyPI.
+Add runtime capabilities later with extras, then configure them in the frontend
+Configuration area:
+
+```bash
+python -m pip install --pre "docreview360[postgres]"
+python -m pip install --pre "docreview360[ml-cpu]"
+python -m pip install --pre "docreview360[full]"
+docreview360 capabilities
+```
 
 ## Quick start
 
 Requirements:
 
 - Python 3.11 or 3.12
-- Node 18+ for the frontend
+- Node 18+ for frontend source development
 - `uv` recommended for environment management
 
 Backend:
@@ -58,16 +72,28 @@ For the full setup flow, see [docs/getting_started.md](docs/getting_started.md).
 
 ## Install options
 
+Install the lightweight web app from PyPI:
+
+```bash
+python -m pip install --pre docreview360
+docreview360 init
+docreview360 migrate
+docreview360 serve
+```
+
+Install optional runtime capabilities:
+
+```bash
+python -m pip install --pre "docreview360[postgres]"
+python -m pip install --pre "docreview360[worker]"
+python -m pip install --pre "docreview360[ml-cpu]"
+python -m pip install --pre "docreview360[saml]"
+```
+
 Install from source for full-stack development:
 
 ```bash
 uv pip install -e ".[dev,test,security]"
-```
-
-Install the alpha package from PyPI:
-
-```bash
-python -m pip install --pre docreview360
 ```
 
 Need a plain `venv` flow instead of `uv`? See [docs/getting_started.md](docs/getting_started.md).

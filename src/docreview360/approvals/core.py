@@ -305,7 +305,6 @@ def create_approval(  # noqa: C901
     """Create a pending approval for the given workflow and reviewer."""
     from uuid import uuid4
 
-    from ..celery_app import app
     from .signatures import _hash_document_bytes
 
     if doc_id is None:
@@ -411,11 +410,21 @@ def create_approval(  # noqa: C901
         ),
     )
     if reminder_at:
-        app.tasks["docreview360.approval_reminder"].apply_async((approval_id,), eta=reminder_at)
+        try:
+            from ..celery_app import app
+
+            app.tasks["docreview360.approval_reminder"].apply_async((approval_id,), eta=reminder_at)
+        except Exception as exc:
+            _logger.info("Approval reminder scheduling skipped: %s", exc)
     if escalate_to and escalation_at:
-        app.tasks["docreview360.approval_escalation"].apply_async(
-            (approval_id, escalate_to), eta=escalation_at
-        )
+        try:
+            from ..celery_app import app
+
+            app.tasks["docreview360.approval_escalation"].apply_async(
+                (approval_id, escalate_to), eta=escalation_at
+            )
+        except Exception as exc:
+            _logger.info("Approval escalation scheduling skipped: %s", exc)
     return approval
 
 

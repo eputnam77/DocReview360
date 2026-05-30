@@ -25,12 +25,15 @@ def _alice_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_load_with_defaults_uses_runtime_config_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_load_with_defaults_uses_runtime_config_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     cfg_path = tmp_path / "docreview360.yaml"
     monkeypatch.setattr(conf_mod, "CONFIG_FILE", cfg_path)
 
     loaded = load_with_defaults()
-    assert loaded.editor == "ckeditor5"
+    assert loaded.editor == "tiptap"
 
     Config(database="sqlite", editor="tiptap", cms="none", auth="oidc").save(cfg_path)
     loaded_after_write = load_with_defaults()

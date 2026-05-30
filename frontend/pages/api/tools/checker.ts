@@ -17,6 +17,11 @@ const CHECKER_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 const DOWNLOAD_TTL_MS = 10 * 60 * 1000;
 const PRIVATE_DOWNLOAD_DIR = path.join(os.tmpdir(), "docreview360-checker-downloads");
 const ALLOWED_EXTENSIONS = new Set([".doc", ".docx"]);
+const API_BASE = (
+  process.env.DOCREVIEW360_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  "http://localhost:8000"
+).replace(/\/$/, "");
 const downloadTokens = new Map<string, { path: string; filename: string; expiresAt: number }>();
 
 function sanitizeFilename(filename: string): string {
@@ -44,6 +49,21 @@ function buildDownloadToken(filePath: string, filename: string): string {
     expiresAt: Date.now() + DOWNLOAD_TTL_MS,
   });
   return token;
+}
+
+async function requireAuthenticated(req: NextApiRequest): Promise<boolean> {
+  const authorization = req.headers.authorization;
+  if (!authorization || !authorization.toLowerCase().startsWith("bearer ")) {
+    return false;
+  }
+  try {
+    const response = await fetch(`${API_BASE}/me`, {
+      headers: { Authorization: authorization },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -76,6 +96,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+  if (!(await requireAuthenticated(req))) {
+    res.status(401).json({ error: "Unauthorized" });
     return;
   }
 

@@ -278,7 +278,7 @@ def load_with_defaults(path: Path | None = None) -> Config:
 
     When no YAML file is present the function constructs a ``Config`` from
     built-in defaults and env var overrides only, using sensible values for
-    required fields (``database="sqlite"``, ``editor="ckeditor5"``, ``auth="jwt"``).
+    required fields (``database="sqlite"``, ``editor="tiptap"``, ``auth="local"``).
     Use :meth:`Config.validate_startup` if you need to enforce that all required
     settings are explicitly provided.
     """
@@ -287,7 +287,7 @@ def load_with_defaults(path: Path | None = None) -> Config:
     cfg = Config.load(resolved_path)
     if cfg is None:
         # No YAML file — build from built-in defaults then apply env overrides.
-        cfg = Config(database="sqlite", editor="ckeditor5", cms="none", auth="jwt")
+        cfg = Config(database="sqlite", editor="tiptap", cms="none", auth="local")
         cfg._apply_env_overrides()
     return cfg
 

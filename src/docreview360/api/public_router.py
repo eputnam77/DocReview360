@@ -150,7 +150,7 @@ def get_branding_config_status() -> dict[str, str | bool | None]:
 def branding_payload_from_config(cfg: Config | None) -> BrandingPayload:
     """Build safe branding and release metadata for UI shell rendering."""
 
-    active_cfg = cfg or Config(database="sqlite", editor="ckeditor5", cms="none", auth="oidc")
+    active_cfg = cfg or Config(database="sqlite", editor="tiptap", cms="none", auth="local")
     try:
         logo_url = _normalize_branding_logo_url(active_cfg.branding_logo_url)
     except ValueError:

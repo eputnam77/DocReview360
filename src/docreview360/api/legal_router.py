@@ -83,7 +83,7 @@ async def create_hold(
 @router.get("/legal/holds")
 async def list_holds(
     status: str | None = None,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> list[dict[str, Any]]:
     """List legal holds, optionally filtered by status."""
     with get_db().orm_session() as db:
@@ -94,7 +94,7 @@ async def list_holds(
 @router.get("/legal/holds/{hold_id}")
 async def get_hold(
     hold_id: str,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Get details for a legal hold including its document list."""
     with get_db().orm_session() as db:
@@ -162,7 +162,7 @@ async def release_legal_hold(
 @router.get("/documents/{doc_id}/holds")
 async def get_document_holds_endpoint(
     doc_id: str,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """List active legal holds on a document."""
     with get_db().orm_session() as db:

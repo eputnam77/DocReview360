@@ -335,7 +335,26 @@ class SandboxedPluginLoader:
             raise ImportError(f"Cannot find plugin module {manifest.module_path!r}")
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
-        spec.loader.exec_module(module)  # type: ignore[union-attr]
+        violations: list[str] = []
+        evicted: dict[str, Any] = {}
+        blocker: _BlockingImporter | None = None
+        if manifest.sandbox_mode in {"restricted", "subprocess"} and not manifest.trusted:
+            for mod_name in list(sys.modules):
+                base = mod_name.split(".")[0]
+                if base in _EVICT_MODULES or mod_name in _EVICT_MODULES:
+                    evicted[mod_name] = sys.modules.pop(mod_name)
+            blocker = _BlockingImporter(_BLOCKED_MODULES, violations)
+            sys.meta_path.insert(0, blocker)
+        try:
+            spec.loader.exec_module(module)  # type: ignore[union-attr]
+        finally:
+            if blocker is not None:
+                sys.meta_path[:] = [f for f in sys.meta_path if f is not blocker]
+                sys.modules.update(evicted)
+        if violations:
+            raise ImportError(
+                f"Plugin {name!r} imported blocked module(s): {', '.join(sorted(set(violations)))}"
+            )
         self._modules[name] = module
         _logger.info("Loaded plugin %r from %r (sandbox=%r)", name, manifest.module_path, manifest.sandbox_mode)
         return module

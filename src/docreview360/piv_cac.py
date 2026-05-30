@@ -30,6 +30,13 @@ def _ocsp_check_enabled() -> bool:
     return os.getenv("DOCREVIEW360_PIV_OCSP_CHECK", "false").strip().lower() in _TRUE_VALUES
 
 
+def _trust_client_cert_headers() -> bool:
+    return (
+        os.getenv("DOCREVIEW360_TRUST_CLIENT_CERT_HEADERS", "false").strip().lower()
+        in _TRUE_VALUES
+    )
+
+
 def _default_roles() -> list[str]:
     """Return default roles to assign PIV-authenticated users."""
     raw = os.getenv("DOCREVIEW360_PIV_DEFAULT_ROLES", "viewer")
@@ -164,21 +171,24 @@ def _check_revocation(cert_pem: str) -> bool:
             ocsp_urls = []
 
         if not ocsp_urls:
-            _logger.debug("PIV: no OCSP URL in AIA extension; skipping revocation check")
-            return True
+            _logger.warning("PIV: no OCSP URL in AIA extension; rejecting certificate")
+            return False
 
         # Build minimal OCSP request (requires issuer cert — skip if unavailable)
         # In production, the issuer cert would be loaded from a trust store.
-        # For now, we log a warning and permit the request.
-        _logger.warning(
-            "PIV OCSP check enabled but issuer cert not configured via "
-            "DOCREVIEW360_PIV_ISSUER_CERT_PEM; permitting request"
-        )
-        return True
+        issuer_cert = os.getenv("DOCREVIEW360_PIV_ISSUER_CERT_PEM")
+        if not issuer_cert:
+            _logger.warning(
+                "PIV OCSP check enabled but issuer cert not configured via "
+                "DOCREVIEW360_PIV_ISSUER_CERT_PEM; rejecting certificate"
+            )
+            return False
+        _logger.warning("PIV OCSP issuer validation is not implemented; rejecting certificate")
+        return False
 
     except Exception as exc:
-        _logger.warning("PIV revocation check failed (permitting): %s", exc)
-        return True
+        _logger.warning("PIV revocation check failed (rejecting): %s", exc)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +244,8 @@ def extract_cert_from_headers(headers: dict[str, str]) -> str | None:
     Nginx: ``X-SSL-CERT`` or ``X-Client-Cert`` (URL-encoded or raw PEM).
     Apache mod_ssl: ``SSL_CLIENT_CERT``.
     """
+    if not _trust_client_cert_headers():
+        return None
     for header in ("x-client-cert", "x-ssl-cert", "ssl-client-cert", "x-forwarded-client-cert"):
         value = headers.get(header)
         if not value:

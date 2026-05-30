@@ -15,7 +15,7 @@ from ..audit import humanize_audit_action
 from ..config import CONFIG_FILE, Config
 from ..dashboard_prefs import get_visibility, set_visibility
 from ..logs import LogEntry, log_event, query_logs
-from ..rbac import has_permission, require_any_role, require_role
+from ..rbac import has_permission, has_role, require_any_role, require_role
 from ..reporting import (
     DashboardEntry,
     DocumentAgingReport,
@@ -52,6 +52,29 @@ def require_audit_access(current_user: auth.User = Depends(auth.get_current_user
         return current_user.username
     log_event("audit_log_access", user_id=current_user.username, status="denied")
     raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _is_admin_user(user: auth.User) -> bool:
+    return has_role(user.username, "admin")
+
+
+def _require_admin(user: auth.User) -> None:
+    if not _is_admin_user(user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _resolve_dashboard_user(
+    requested_user: str | None,
+    current_user: auth.User,
+    *,
+    allow_admin_global: bool = False,
+) -> str | None:
+    if allow_admin_global and not requested_user and _is_admin_user(current_user):
+        return None
+    candidate = requested_user or current_user.username
+    if candidate != current_user.username and not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return candidate
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +372,7 @@ async def get_summary_report(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> SummaryReport:
     """Return counts of projects, documents, workflows, and approvals."""
+    _require_admin(current_user)
     return generate_summary()
 
 
@@ -357,6 +381,7 @@ async def get_metrics_summary(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> SummaryReport:
     """Alias for :func:`get_summary_report` used by dashboards."""
+    _require_admin(current_user)
     return generate_summary()
 
 
@@ -365,6 +390,7 @@ async def get_summary_csv(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """Return the summary report as CSV."""
+    _require_admin(current_user)
     return Response(reporting.summary_csv(), media_type="text/csv")
 
 
@@ -374,6 +400,7 @@ async def throughput_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[reporting.ThroughputEntry]:
     """Return approval throughput data."""
+    _require_admin(current_user)
     return reporting.throughput_data(days)
 
 
@@ -383,6 +410,7 @@ async def throughput_csv_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """CSV export of :func:`throughput_endpoint`."""
+    _require_admin(current_user)
     return Response(reporting.throughput_csv(days), media_type="text/csv")
 
 
@@ -391,6 +419,7 @@ async def workload_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, int]:
     """Return workload counts per user."""
+    _require_admin(current_user)
     return reporting.workload_data()
 
 
@@ -399,6 +428,7 @@ async def workload_csv_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """CSV export of :func:`workload_endpoint`."""
+    _require_admin(current_user)
     return Response(reporting.workload_csv(), media_type="text/csv")
 
 
@@ -408,7 +438,7 @@ async def get_dashboard_data(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[DashboardEntry]:
     """Return per-project data for dashboard widgets."""
-    return dashboard_data(x_user)
+    return dashboard_data(_resolve_dashboard_user(x_user, current_user, allow_admin_global=True))
 
 
 @router.get("/reports/document-aging", response_model=DocumentAgingReport)
@@ -416,6 +446,7 @@ async def document_aging_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> DocumentAgingReport:
     """Return document aging metrics across all documents."""
+    _require_admin(current_user)
     return document_aging_metrics()
 
 
@@ -429,7 +460,7 @@ async def user_dashboard_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Return dashboard data for the authenticated user, including quality KPI."""
-    effective_user = x_user or current_user.username
+    effective_user = _resolve_dashboard_user(x_user, current_user)
     return user_dashboard(effective_user)
 
 
@@ -439,7 +470,7 @@ async def get_widget_counts(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WidgetMetrics:
     """Return assignment and approval counts for dashboard widgets."""
-    return widget_counts(x_user or current_user.username)
+    return widget_counts(_resolve_dashboard_user(x_user, current_user))
 
 
 @router.get("/dashboard/doc-types", response_model=dict[str, int])
@@ -447,6 +478,7 @@ async def doc_type_counts_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, int]:
     """Return active project counts grouped by document type."""
+    _require_admin(current_user)
     return reporting.doc_type_counts()
 
 
@@ -460,7 +492,7 @@ async def get_visibility_endpoint(
     The response includes legacy boolean fields (``stats``, ``status``,
     ``activity``, ``logs``) plus a ``widgets`` list of visible widget IDs.
     """
-    effective_user = x_user or current_user.username
+    effective_user = _resolve_dashboard_user(x_user, current_user)
     return get_visibility(effective_user)
 
 
@@ -476,7 +508,7 @@ async def update_visibility_endpoint(
     Returns the merged result including both the boolean flags and the
     ``widgets`` list.
     """
-    effective_user = x_user or current_user.username
+    effective_user = _resolve_dashboard_user(x_user, current_user)
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     return set_visibility(effective_user, data)
 

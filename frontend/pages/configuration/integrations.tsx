@@ -17,9 +17,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { authenticatedFetch } from "@/lib/api";
-import { Pencil, Trash } from "lucide-react";
+import { CheckCircle2, CircleAlert, Package, Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+
+type Capability = {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+  core: boolean;
+  installed: boolean;
+  configured: boolean;
+  install_extra?: string | null;
+  blockers: string[];
+};
+
+type CapabilitiesResponse = {
+  capabilities: Capability[];
+  summary?: {
+    total: number;
+    installed: number;
+    core_ready: boolean;
+  };
+};
 
 const CMS_OPTIONS = [
   { label: "None", value: "none" },
@@ -51,6 +72,27 @@ const integrationOptions = {
     { label: "Local (built-in)", value: "local" },
   ],
 } as const;
+
+const OPTION_CAPABILITIES: Record<string, Record<string, string>> = {
+  database: {
+    sqlite: "sqlite",
+    postgres: "postgres",
+    mysql: "mysql",
+    sqlserver: "mssql",
+  },
+  editor: {
+    tiptap: "tiptap_editor",
+    ckeditor5: "ckeditor_editor",
+    onlyoffice: "onlyoffice_editor",
+    oxygen: "oxygen_editor",
+  },
+  auth: {
+    saml: "saml",
+  },
+  cms: {
+    sharepoint: "sharepoint",
+  },
+};
 
 const SETTING_DESCRIPTIONS: Record<string, string> = {
   database: "The backend database used by the app.",
@@ -84,9 +126,9 @@ const SELECT_OPTIONS: Record<string, readonly { label: string; value: string }[]
 
 const DEFAULT_CONFIG: Record<string, string | number | boolean> = {
   database: "sqlite",
-  editor: "ckeditor5",
+  editor: "tiptap",
   cms: "none",
-  auth: "oidc",
+  auth: "local",
   host: "localhost",
   port: 8000,
   debug: false,
@@ -109,6 +151,8 @@ export default function IntegrationsPage() {
   const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
   const [aiKeyLast4, setAiKeyLast4] = useState<string | null>(null);
   const [aiKeySaving, setAiKeySaving] = useState(false);
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [capabilityError, setCapabilityError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -116,11 +160,20 @@ export default function IntegrationsPage() {
       authenticatedFetch(`/signature-provider`).then((r) =>
         r.ok ? r.json() : { primary: "documenso", fallback: "local" },
       ),
+      authenticatedFetch(`/config/capabilities`).then((r) =>
+        r.ok ? r.json() : { capabilities: [] },
+      ),
     ])
-      .then(([cfg, prov]) => {
+      .then(([cfg, prov, caps]: [
+        Record<string, string | number | boolean>,
+        { primary: string; fallback: string },
+        CapabilitiesResponse,
+      ]) => {
         setConfig(Object.keys(cfg || {}).length ? cfg : DEFAULT_CONFIG);
         setPrimaryProvider(prov.primary);
         setFallbackProvider(prov.fallback);
+        setCapabilities(Array.isArray(caps.capabilities) ? caps.capabilities : []);
+        setCapabilityError(null);
       })
       .catch((err) => {
         console.error("Failed to fetch integrations", err);
@@ -129,6 +182,7 @@ export default function IntegrationsPage() {
         setPrimaryProvider("documenso");
         setFallbackProvider("local");
         setLoadError("Failed to load integration settings; using defaults.");
+        setCapabilityError("Runtime capability status is unavailable.");
       });
   }, []);
 
@@ -147,6 +201,11 @@ export default function IntegrationsPage() {
   }, []);
 
   const update = (key: string, value: string | number | boolean) => {
+    const capability = getCapabilityForValue(key, value);
+    if (capability && !capability.installed) {
+      toast.error(capabilityInstallText(capability));
+      return;
+    }
     if (key === "database" && config.database !== value) {
       const confirmed = window.confirm(
         "Switching the database may remove existing content. Continue?",
@@ -211,6 +270,42 @@ export default function IntegrationsPage() {
     opts: readonly { label: string; value: string }[],
     value: string | number | boolean | null | undefined,
   ) => opts.find((opt) => opt.value === String(value))?.label || String(value ?? "");
+
+  const capabilityById = capabilities.reduce<Record<string, Capability>>((acc, item) => {
+    acc[item.id] = item;
+    return acc;
+  }, {});
+
+  const getCapabilityForValue = (
+    key: string,
+    value: string | number | boolean | null | undefined,
+  ) => {
+    const id = OPTION_CAPABILITIES[key]?.[String(value)];
+    return id ? capabilityById[id] : null;
+  };
+
+  const capabilityInstallText = (capability: Capability) => {
+    if (capability.installed) {
+      return capability.configured ? "Configured" : "Available";
+    }
+    if (capability.install_extra) {
+      return `Install docreview360[${capability.install_extra}]`;
+    }
+    return capability.blockers[0] || "Unavailable";
+  };
+
+  const capabilityBadgeClass = (capability: Capability) =>
+    capability.installed
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-amber-200 bg-amber-50 text-amber-800";
+
+  const selectedDatabaseCapability = getCapabilityForValue(
+    "database",
+    config.database,
+  );
+  const selectedEditorCapability = getCapabilityForValue("editor", config.editor);
+  const selectedCmsCapability = getCapabilityForValue("cms", config.cms);
+  const capabilityGroups = ["database", "editor", "ml", "auth", "cms", "runtime"];
 
   const extraIntegrations = [
     {
@@ -286,12 +381,21 @@ export default function IntegrationsPage() {
             </SelectTrigger>
             <SelectContent>
               {integrationOptions.database.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
+                <SelectItem
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={getCapabilityForValue("database", opt.value)?.installed === false}
+                >
                   {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {selectedDatabaseCapability && !selectedDatabaseCapability.installed && (
+            <p className="text-xs text-amber-700">
+              {capabilityInstallText(selectedDatabaseCapability)}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label>Document Editor</Label>
@@ -304,12 +408,21 @@ export default function IntegrationsPage() {
             </SelectTrigger>
             <SelectContent>
               {integrationOptions.editor.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
+                <SelectItem
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={getCapabilityForValue("editor", opt.value)?.installed === false}
+                >
                   {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {selectedEditorCapability && !selectedEditorCapability.installed && (
+            <p className="text-xs text-amber-700">
+              {capabilityInstallText(selectedEditorCapability)}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label>CMS Integration</Label>
@@ -319,12 +432,21 @@ export default function IntegrationsPage() {
             </SelectTrigger>
             <SelectContent>
               {CMS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
+                <SelectItem
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={getCapabilityForValue("cms", opt.value)?.installed === false}
+                >
                   {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {selectedCmsCapability && !selectedCmsCapability.installed && (
+            <p className="text-xs text-amber-700">
+              {capabilityInstallText(selectedCmsCapability)}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label>Signature Provider</Label>
@@ -406,6 +528,51 @@ export default function IntegrationsPage() {
             </li>
           ))}
         </ul>
+      </div>
+      <div className="pt-6 space-y-3">
+        <div className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-gray-600" />
+          <h2 className="text-lg font-semibold">Runtime Capabilities</h2>
+        </div>
+        {capabilityError && (
+          <p className="text-sm text-amber-700">{capabilityError}</p>
+        )}
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {capabilities
+            .filter((capability) => capabilityGroups.includes(capability.category))
+            .map((capability) => (
+              <div
+                key={capability.id}
+                className="rounded border border-gray-200 p-3 text-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium">{capability.label}</div>
+                    <div className="text-xs text-gray-500">{capability.category}</div>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${capabilityBadgeClass(
+                      capability,
+                    )}`}
+                  >
+                    {capability.installed ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <CircleAlert className="h-3.5 w-3.5" />
+                    )}
+                    {capability.configured
+                      ? "Configured"
+                      : capabilityInstallText(capability)}
+                  </span>
+                </div>
+                {capability.blockers.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    {capability.blockers[0]}
+                  </p>
+                )}
+              </div>
+            ))}
+        </div>
       </div>
       <div className="pt-6 space-y-3 max-w-lg">
         <h2 className="text-lg font-semibold">AI Rewrite</h2>

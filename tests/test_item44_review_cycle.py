@@ -537,6 +537,11 @@ class TestUserSearch:
         resp = client.get("/users/search")
         assert resp.status_code in (401, 403)
 
+    def test_search_requires_admin(self) -> None:
+        client = TestClient(app)
+        resp = client.get("/users/search?q=alice", headers=_bob_headers())
+        assert resp.status_code == 403
+
 
 # ---------------------------------------------------------------------------
 # CommentModel new fields

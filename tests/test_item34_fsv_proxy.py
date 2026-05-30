@@ -54,6 +54,16 @@ def _alice_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _user_headers(username: str) -> dict[str, str]:
+    password = auth.DEMO_USER_DEFAULTS.get(username, {}).get("password", "Str0ngPassword!234")
+    try:
+        auth.USER_REPOSITORY.create_user(username, password, active=True)
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": username}, timedelta(minutes=30))
+    return {"Authorization": f"Bearer {token}"}
+
+
 # ---------------------------------------------------------------------------
 # Unit tests: is_fsv_configured()
 # ---------------------------------------------------------------------------
@@ -209,6 +219,31 @@ class TestFsvStatusEndpoint:
         data = resp.json()
         assert data["configured"] is True
         assert data["reachable"] is True
+
+
+class TestAdminFsvUrlSettingEndpoint:
+    """Tests for admin-only FSV URL settings."""
+
+    def test_fsv_url_setting_requires_admin(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FEDERAL_STYLE_VALIDATOR_URL", "http://internal-fsv:8080")
+        from docreview360 import rbac
+
+        rbac.remove_role("bob", "admin")
+
+        resp = client.get(
+            "/admin/settings/fsv-url",
+            headers=_user_headers("bob"),
+        )
+
+        assert resp.status_code == 403
+
+    def test_fsv_url_setting_admin_can_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FEDERAL_STYLE_VALIDATOR_URL", "http://internal-fsv:8080")
+
+        resp = client.get("/admin/settings/fsv-url", headers=_alice_headers())
+
+        assert resp.status_code == 200
+        assert resp.json()["url"] == "http://internal-fsv:8080"
 
 
 # ---------------------------------------------------------------------------

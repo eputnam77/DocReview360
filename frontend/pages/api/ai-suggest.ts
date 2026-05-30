@@ -3,6 +3,26 @@ import type { NextApiRequest, NextApiResponse } from "next";
 type Data = { suggestion: string } | { error: string };
 
 const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "openrouter/auto"; // Prefer free/auto models on OpenRouter
+const API_BASE = (
+  process.env.DOCREVIEW360_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  "http://localhost:8000"
+).replace(/\/$/, "");
+
+async function requireAuthenticated(req: NextApiRequest): Promise<boolean> {
+  const authorization = req.headers.authorization;
+  if (!authorization || !authorization.toLowerCase().startsWith("bearer ")) {
+    return false;
+  }
+  try {
+    const response = await fetch(`${API_BASE}/me`, {
+      headers: { Authorization: authorization },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,6 +31,9 @@ export default async function handler(
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  if (!(await requireAuthenticated(req))) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {

@@ -9,13 +9,9 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Sequence
-
-import numpy as np
+from typing import Any, Sequence
 
 from .ml.features import FANN_FEATURE_NAMES, quality_features
-from .ml.onnx_infer import ModelMetadata, get_model_metadata, get_session
-from .ml.onnx_infer import infer as onnx_infer
 
 _logger = logging.getLogger(__name__)
 
@@ -31,6 +27,16 @@ _MODEL_PATH = Path(__file__).resolve().parent / "models" / "quality_critic.onnx"
 _FALLBACK_WARNED = False
 
 
+@dataclass(frozen=True)
+class ModelMetadata:
+    """Small metadata shape used even when optional ONNX dependencies are absent."""
+
+    path: Path
+    sha256: str
+    version: str | None
+    custom_metadata: dict[str, str]
+
+
 def _file_sha256(path: Path) -> str:
     try:
         from .ml._hashing import file_sha256
@@ -40,9 +46,28 @@ def _file_sha256(path: Path) -> str:
         return ""
 
 
-try:
-    _MODEL_METADATA = get_model_metadata(_MODEL_PATH)
-except Exception:
+def _load_model_metadata() -> ModelMetadata:
+    try:
+        from .ml.onnx_infer import get_model_metadata
+
+        metadata = get_model_metadata(_MODEL_PATH)
+        return ModelMetadata(
+            path=metadata.path,
+            sha256=metadata.sha256,
+            version=metadata.version,
+            custom_metadata=dict(metadata.custom_metadata),
+        )
+    except Exception:
+        return ModelMetadata(
+            path=_MODEL_PATH,
+            sha256=_file_sha256(_MODEL_PATH),
+            version=None,
+            custom_metadata={},
+        )
+
+
+_MODEL_METADATA = _load_model_metadata()
+if not isinstance(_MODEL_METADATA, ModelMetadata):
     _MODEL_METADATA = ModelMetadata(
         path=_MODEL_PATH,
         sha256=_file_sha256(_MODEL_PATH),
@@ -127,7 +152,9 @@ def high_risk_warnings(text: str) -> list[str]:
     return list(_high_risk_warnings_cached(text))
 
 
-def _feature_vector(text: str, doc_type: str | None) -> np.ndarray:
+def _feature_vector(text: str, doc_type: str | None) -> Any:
+    import numpy as np
+
     payload = quality_features(text)
     legacy = payload["legacy"]["fann"]
     features = np.array([legacy[name] for name in FANN_FEATURE_NAMES], dtype=np.float32)
@@ -166,6 +193,11 @@ def quality_assessment(text: str, *, doc_type: str | None = None) -> QualityAsse
     """Run the ONNX critic returning score, raw score and flag vector."""
 
     try:
+        import numpy as np
+
+        from .ml.onnx_infer import get_session
+        from .ml.onnx_infer import infer as onnx_infer
+
         session = get_session(_MODEL_PATH)
         features = _feature_vector(text, doc_type)
         score_arr, flags_arr = onnx_infer(session, {"features": features})
@@ -198,7 +230,7 @@ def quality_model_metadata() -> "ModelMetadata":
     global _MODEL_METADATA
     if not _MODEL_METADATA.sha256:
         try:
-            _MODEL_METADATA = get_model_metadata(_MODEL_PATH)
+            _MODEL_METADATA = _load_model_metadata()
         except Exception:
             if not _MODEL_METADATA.sha256:
                 _MODEL_METADATA = ModelMetadata(

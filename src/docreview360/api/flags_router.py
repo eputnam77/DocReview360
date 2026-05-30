@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import auth
+from ..access_control import is_admin_user
 from ..db_store import get_db
 from ..feature_flags import BUILT_IN_FLAGS, delete_flag, is_flag_enabled, list_flags, set_flag
 from ..rbac import require_role
@@ -29,6 +30,8 @@ async def list_all_flags(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[dict[str, Any]]:
     """List all feature flags with their effective state."""
+    if org_id is not None and not is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     with get_db().orm_session() as db:
         return list_flags(db, org_id=org_id, user_id=current_user.username)
 
@@ -50,6 +53,8 @@ async def get_flag(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Get the effective state of a single feature flag."""
+    if org_id is not None and not is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     with get_db().orm_session() as db:
         enabled = is_flag_enabled(db, flag_name, org_id=org_id, user_id=current_user.username)
         return {

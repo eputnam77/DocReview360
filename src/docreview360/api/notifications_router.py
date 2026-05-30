@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from .. import auth
 from ..models import VALID_NOTIFICATION_CHANNELS
 from ..rbac import require_role
+from ..url_safety import validate_public_https_url
 
 _logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def _save_notification_settings(settings: NotificationSettings) -> None:
 
 @router.get("/notifications/settings", response_model=NotificationSettings)
 async def get_notification_settings(
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> NotificationSettings:
     """Return the current notification channel settings."""
     return _load_notification_settings()
@@ -72,11 +73,11 @@ async def update_notification_settings(
         ("teams_webhook_url", body.teams_webhook_url),
         ("webhook_url", body.webhook_url),
     ]:
-        if url is not None and not url.startswith("https://"):
-            raise HTTPException(
-                status_code=422,
-                detail=f"{field_name} must be an https:// URL",
-            )
+        if url is not None:
+            try:
+                validate_public_https_url(url)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=f"{field_name}: {exc}") from exc
 
     try:
         _save_notification_settings(body)
@@ -170,8 +171,11 @@ async def update_my_notification_preference(
                 f"Valid values: {sorted(VALID_NOTIFICATION_CHANNELS)}"
             ),
         )
-    if body.webhook_url is not None and not body.webhook_url.startswith("https://"):
-        raise HTTPException(status_code=422, detail="webhook_url must be an https:// URL")
+    if body.webhook_url is not None:
+        try:
+            validate_public_https_url(body.webhook_url)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     from ..notifications import save_user_notification_preference
 
     try:
@@ -237,8 +241,11 @@ async def update_user_pref(
                 f"Valid values: {sorted(VALID_NOTIFICATION_CHANNELS)}"
             ),
         )
-    if body.webhook_url is not None and not body.webhook_url.startswith("https://"):
-        raise HTTPException(status_code=422, detail="webhook_url must be an https:// URL")
+    if body.webhook_url is not None:
+        try:
+            validate_public_https_url(body.webhook_url)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
         pref = save_user_notification_preference(
             username,

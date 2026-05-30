@@ -39,7 +39,7 @@ def _configured_project_editor() -> str:
         return "tiptap"
     if configured == "onlyoffice":
         return "onlyoffice"
-    return "ckeditor5"
+    return "tiptap"
 
 
 class ProjectModel(BaseModel):

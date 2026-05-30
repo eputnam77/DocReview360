@@ -25,7 +25,7 @@ def render_editor(document: DocumentModel) -> str:
     # ``" OnlyOffice "`` failed to resolve even though the plugin exists.  By
     # trimming and lower‑casing the name we keep lookups user friendly and avoid
     # surprising ``ValueError`` exceptions.
-    name = (document.editor or "ckeditor5").strip().lower()
+    name = (document.editor or "tiptap").strip().lower()
     placeholder = EDITOR_PLACEHOLDERS.get(name)
     if placeholder is not None:
         return f"<div id='{placeholder}' data-doc='{document.id}'></div>"

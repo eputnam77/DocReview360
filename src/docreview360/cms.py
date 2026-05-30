@@ -5,14 +5,16 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import TYPE_CHECKING, Optional, Protocol
 
 from .config import Config
 from .documents import DocumentModel
 from .exporter import export_document
 from .object_storage import download_file, upload_file
 from .settings_manager import load_settings
-from .sharepoint import SharePointClient, client_from_env
+
+if TYPE_CHECKING:
+    from .sharepoint import SharePointClient
 
 
 class CMSBackend(Protocol):
@@ -31,7 +33,7 @@ class CMSBackend(Protocol):
 class SharePointBackend:
     """SharePoint-backed CMS client."""
 
-    client: SharePointClient
+    client: "SharePointClient"
     name: str = "sharepoint"
 
     def upload(self, filename: str, data: bytes) -> str:
@@ -85,7 +87,7 @@ def _cms_name(config: Config) -> str:
 def get_cms_backend(
     *,
     config: Config,
-    client: Optional[SharePointClient] = None,
+    client: Optional["SharePointClient"] = None,
 ) -> CMSBackend | None:
     """Return a CMS backend instance for the configured CMS."""
 
@@ -93,6 +95,13 @@ def get_cms_backend(
     if not name or name == "none":
         return None
     if name == "sharepoint":
+        try:
+            from .sharepoint import client_from_env
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "SharePoint CMS requires an optional install. "
+                "Run: pip install \"docreview360[cms-sharepoint]\""
+            ) from exc
         return SharePointBackend(client or client_from_env())
     if name in DEFAULT_CMS_BUCKETS:
         return FileCMSBackend(name=name, bucket=_resolve_cms_bucket(name))
@@ -104,7 +113,7 @@ def save_to_cms(
     *,
     config: Config,
     fmt: str = "markdown",
-    client: Optional[SharePointClient] = None,
+    client: Optional["SharePointClient"] = None,
 ) -> str | None:
     """Persist ``document`` to the configured CMS.
 
@@ -143,7 +152,7 @@ def fetch_from_cms(
     item_id: str,
     *,
     config: Config,
-    client: Optional[SharePointClient] = None,
+    client: Optional["SharePointClient"] = None,
 ) -> bytes | None:
     """Fetch document bytes from the configured CMS."""
 

@@ -16,9 +16,9 @@ Interactive wizard that generates `docreview360.yaml`.
 | ------ | ----------- |
 | `--database [postgres|mysql|sqlite]` | Choose the database backend. |
 | `--database-url TEXT` | SQLAlchemy connection string. |
-| `--editor [tiptap]` | Select the document editor (TipTap by default). |
+| `--editor [ckeditor5|tiptap|onlyoffice|prosemirror]` | Select the document editor. TipTap is the lightweight default. |
 | `--cms [none|local|sharepoint|confluence|gdrive]` | CMS integration option. |
-| `--auth [oidc]` | Authentication provider. |
+| `--auth [local|oidc|login.gov|auth0|pivcac|keycloak|okta|azure-ad|saml]` | Authentication provider. |
 | `--host TEXT` | API host address. |
 | `--port INTEGER` | API port number. |
 | `--debug / --no-debug` | Toggle debug mode. |
@@ -36,12 +36,34 @@ If `--database-url` is omitted the wizard uses driver-specific defaults:
 ## migrate
 
 ```
-docreview360 migrate [export|import] PATH
+docreview360 migrate [OPTIONS]
+docreview360 migrate export PATH
+docreview360 migrate import PATH
 ```
 
-Export or import an entire instance for migration. The command writes a gzip
-archive containing documents, logs and document types which can be restored on
-another environment.
+With no subcommand, apply database migrations to the configured database. The
+`export` and `import` subcommands move an entire instance between environments
+using a gzip archive containing documents, logs and document types.
+
+## serve
+
+```
+docreview360 serve [--host HOST] [--port PORT] [--reload/--no-reload]
+```
+
+Start the core web API. The frontend build asset is packaged into release
+wheels; source checkouts can still run the Next.js development server
+separately.
+
+## capabilities
+
+```
+docreview360 capabilities
+```
+
+Show which runtime capabilities are installed, configured, or need an optional
+extra such as `docreview360[postgres]`, `docreview360[worker]`, or
+`docreview360[ml-cpu]`.
 
 ## logs
 

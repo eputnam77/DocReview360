@@ -30,9 +30,10 @@ class TestManifestIn:
         text = MANIFEST.read_text(encoding="utf-8")
         assert "prune .dev" in text
 
-    def test_grafts_frontend(self) -> None:
+    def test_prunes_frontend_source(self) -> None:
         text = MANIFEST.read_text(encoding="utf-8")
-        assert "graft frontend" in text
+        assert "prune frontend" in text
+        assert "graft frontend" not in text
 
     def test_prunes_frontend_generated_dirs(self) -> None:
         text = MANIFEST.read_text(encoding="utf-8")
@@ -85,16 +86,43 @@ class TestPyprojectPackageData:
 
     def test_frontend_bundle_note_present(self) -> None:
         text = self._text()
-        assert "docreview360 frontend extract" in text
+        assert "frontend_static" in text
 
     def test_tests_excluded_from_packages(self) -> None:
         text = self._text()
         # packages.find must exclude tests
         assert 'exclude = ["tests*"' in text or 'exclude = ["tests' in text
 
-    def test_ml_assets_included(self) -> None:
+    def test_ml_assets_excluded_from_base_package(self) -> None:
         text = self._text()
-        assert "ml" in text.lower() and (".onnx" in text or "onnx" in text.lower())
+        assert '"docreview360.ml.assets"' not in text
+        assert '"docreview360.frontend_static"' in text
+
+    def test_base_dependencies_exclude_optional_runtime_stacks(self) -> None:
+        import tomllib
+
+        data = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+        deps = [dep.lower() for dep in data["project"]["dependencies"]]
+        optional_roots = (
+            "numpy",
+            "torch",
+            "onnx",
+            "onnxruntime",
+            "celery",
+            "redis",
+            "pymysql",
+            "graphene",
+            "requests",
+        )
+        assert not any(dep.startswith(optional_roots) for dep in deps)
+
+    def test_full_extra_preserves_optional_runtime_stacks(self) -> None:
+        import tomllib
+
+        data = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+        full = "\n".join(data["project"]["optional-dependencies"]["full"]).lower()
+        for expected in ("celery", "redis", "numpy", "torch", "onnxruntime"):
+            assert expected in full
 
 
 class TestSupportedPlatformsDoc:

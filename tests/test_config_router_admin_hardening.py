@@ -4,6 +4,8 @@ from datetime import timedelta
 
 from docreview360 import auth, rbac
 from docreview360.api import app
+from docreview360.documents import DocumentModel, documents
+from docreview360.search import ProjectModel, add_project, get_project
 from fastapi.testclient import TestClient
 
 
@@ -27,6 +29,8 @@ def _user_headers() -> dict[str, str]:
 def test_project_config_writes_require_admin() -> None:
     client = TestClient(app)
     user_headers = _user_headers()
+    if get_project("proj-1") is None:
+        add_project(ProjectModel(id="proj-1", name="Config Project", user="config-user"))
 
     denied = client.put(
         "/config/project/proj-1/ui.items_per_page",
@@ -58,6 +62,11 @@ def test_project_config_writes_require_admin() -> None:
 def test_document_custom_field_value_writes_require_admin() -> None:
     client = TestClient(app)
     admin_headers = _admin_headers()
+    documents["doc-hardening"] = DocumentModel(
+        id="doc-hardening",
+        content="",
+        user="config-user",
+    )
     create_field = client.post(
         "/orgs/org-hardening/fields",
         json={
@@ -96,6 +105,10 @@ def test_document_custom_field_value_writes_require_admin() -> None:
 def test_project_custom_field_value_writes_require_admin() -> None:
     client = TestClient(app)
     admin_headers = _admin_headers()
+    if get_project("proj-hardening") is None:
+        add_project(
+            ProjectModel(id="proj-hardening", name="Hardening Project", user="config-user")
+        )
     create_field = client.post(
         "/orgs/org-hardening/fields",
         json={

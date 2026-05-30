@@ -1,4 +1,4 @@
-from docreview360.database import default_url
+from docreview360.db_urls import default_url
 
 
 def test_default_url_postgres() -> None:

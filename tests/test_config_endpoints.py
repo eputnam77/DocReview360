@@ -3,11 +3,25 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
+
 from docreview360 import api as api_mod
 from docreview360 import auth
 from docreview360 import config as conf_mod
 from docreview360.config import Config
-from fastapi.testclient import TestClient
+
+
+def _alice_headers() -> dict[str, str]:
+    try:
+        auth.USER_REPOSITORY.create_user(
+            "alice",
+            auth.DEMO_USER_DEFAULTS["alice"]["password"],
+            otp_secret=auth.DEMO_USER_DEFAULTS["alice"].get("otp_secret"),
+        )
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"})
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_get_and_update_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -28,8 +42,7 @@ def test_get_and_update_config(monkeypatch: pytest.MonkeyPatch) -> None:
         auth="oidc",
     ).save(cfg_path)
     client = TestClient(api_mod.app)
-    token = auth.create_access_token({"sub": "alice"})
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = _alice_headers()
 
     resp = client.get("/config", headers=headers)
     assert resp.status_code == 200
@@ -55,8 +68,13 @@ def test_get_and_update_config(monkeypatch: pytest.MonkeyPatch) -> None:
     assert updated.branding_company_name == "Acme Reviews"
     assert updated.branding_logo_url == "https://example.com/logo.png"
 
+    capabilities_resp = client.get("/config/capabilities", headers=headers)
+    assert capabilities_resp.status_code == 200
+    capabilities = capabilities_resp.json()["capabilities"]
+    assert any(item["id"] == "core_review" for item in capabilities)
 
-def test_get_config_defaults_to_ckeditor5_when_file_missing(
+
+def test_get_config_defaults_to_tiptap_when_file_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cfg_dir = Path(".tmp") / f"config-defaults-{uuid4().hex}"
@@ -69,12 +87,11 @@ def test_get_config_defaults_to_ckeditor5_when_file_missing(
         monkeypatch.setattr(_admin_router_mod, "CONFIG_FILE", cfg_path)
 
     client = TestClient(api_mod.app)
-    token = auth.create_access_token({"sub": "alice"})
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = _alice_headers()
 
     resp = client.get("/config", headers=headers)
     assert resp.status_code == 200
-    assert resp.json()["editor"] == "ckeditor5"
+    assert resp.json()["editor"] == "tiptap"
 
 
 def test_update_config_rejects_invalid_branding_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -89,8 +106,7 @@ def test_update_config_rejects_invalid_branding_payload(monkeypatch: pytest.Monk
 
     Config(database="sqlite", editor="tiptap", cms="none", auth="oidc").save(cfg_path)
     client = TestClient(api_mod.app)
-    token = auth.create_access_token({"sub": "alice"})
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = _alice_headers()
 
     payload = {
         "database": "sqlite",
@@ -141,6 +157,8 @@ def test_config_and_signature_provider_require_admin() -> None:
 
     assert client.get("/config").status_code == 401
     assert client.get("/config", headers=headers).status_code == 403
+    assert client.get("/config/capabilities").status_code == 401
+    assert client.get("/config/capabilities", headers=headers).status_code == 403
     assert client.put("/config", headers=headers, json=payload).status_code == 403
     assert client.get("/signature-provider", headers=headers).status_code == 403
     assert (

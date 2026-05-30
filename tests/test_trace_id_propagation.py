@@ -20,6 +20,7 @@ def test_trace_id_propagates_to_logs_and_provider(monkeypatch) -> None:
         document_id="d1",
         signature="s1",
         signature_provider="prov",
+        provider_metadata={"return_token": "return-token"},
     )
     approvals[appr.id] = appr
 
@@ -42,7 +43,7 @@ def test_trace_id_propagates_to_logs_and_provider(monkeypatch) -> None:
     client = TestClient(app)
     resp = client.get(
         "/approvals/return",
-        params={"signature": "s1", "approval": "a1"},
+        params={"signature": "s1", "approval": "a1", "return_token": "return-token"},
     )
     assert resp.status_code == 200
     assert seen_in_logs and seen_in_logs[0] is not None

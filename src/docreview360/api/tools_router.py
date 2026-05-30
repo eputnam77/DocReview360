@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import secrets as _secrets_mod
 from datetime import datetime
 from typing import Any
@@ -24,6 +25,11 @@ from fastapi import (
 from pydantic import BaseModel
 
 from .. import auth
+from ..access_control import (
+    enforce_document_id_access,
+    enforce_document_id_manage_access,
+    enforce_project_id_manage_access,
+)
 from ..accessibility import scan_document_accessibility, scan_result_to_dict
 from ..ai_assist import rewrite_text, summarize_text
 from ..cache import cache_get, cache_set
@@ -58,6 +64,9 @@ _logger = logging.getLogger(__name__)
 router = APIRouter()
 router.include_router(doc_types_router)
 
+TOOLS_UPLOAD_MAX_BYTES = 10 * 1024 * 1024
+_SAFE_FSV_RESULT_ID = re.compile(r"^[A-Za-z0-9_.-]{1,200}$")
+
 
 class AccessibilityScanPayload(BaseModel):
     document_id: str
@@ -90,6 +99,13 @@ def _request_source(request: Request) -> str:
     if request.client and request.client.host:
         return request.client.host
     return "unknown"
+
+
+async def _read_limited_upload(file: UploadFile, limit: int = TOOLS_UPLOAD_MAX_BYTES) -> bytes:
+    data = await file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(status_code=413, detail="Uploaded file is too large")
+    return data
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +152,8 @@ async def get_ai_key_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, str | bool | None]:
     """Return whether the AI rewrite key is configured."""
+    if not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     key = get_secret("openai")
     return {"configured": bool(key), "last4": key[-4:] if key else None}
 
@@ -146,6 +164,8 @@ async def update_ai_key_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, str | bool | None]:
     """Store the AI rewrite key in settings."""
+    if not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     key = payload.key.strip() if payload.key else ""
     update_secret("openai", key or None)
     return {"configured": bool(key), "last4": key[-4:] if key else None}
@@ -200,6 +220,10 @@ async def search_documents(
     """Return documents matching a full text query with basic caching."""
     import docreview360.api as _api_mod
     _api_mod._SEARCH_RATE_LIMITER.enforce(f"search:{current_user.username}:{_request_source(request)}")
+    if project is not None:
+        from ..access_control import enforce_project_id_access
+
+        enforce_project_id_access(project, current_user)
     requested_user = user
     if user is not None:
         requested_user = _resolve_requested_user(user, current_user)
@@ -288,6 +312,8 @@ async def search_stats_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, int]:
     """Return counts of executed search queries."""
+    if not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     return search_stats()
 
 
@@ -337,7 +363,7 @@ async def convert_tool_endpoint(
     ``markdown``, ``html``, ``txt``, ``docx``, ``word``, ``pdf``, and
     ``confluence``.
     """
-    data = await file.read()
+    data = await _read_limited_upload(file)
     source_filename = file.filename or "document.txt"
     try:
         result = convert_document_content(data, source_filename, output_format)
@@ -374,6 +400,8 @@ async def document_preflight_endpoint(
     the internal implementation is used and the result includes
     ``"source": "internal"``.
     """
+    if body.document_id:
+        enforce_document_id_manage_access(body.document_id, current_user)
     # --- FSV proxy path ---
     if is_fsv_configured():
         try:
@@ -459,6 +487,9 @@ async def unified_validate_endpoint(
     types where regulatory or quality checks don't apply.
     """
     import asyncio
+
+    if body.document_id:
+        enforce_document_id_manage_access(body.document_id, current_user)
 
     run_all = not body.checks
     run_preflight = run_all or "preflight" in body.checks
@@ -684,6 +715,10 @@ async def create_share_link(
         raise HTTPException(status_code=422, detail="resource_type must be 'project' or 'document'")
     if body.permission not in ("read", "comment"):
         raise HTTPException(status_code=422, detail="permission must be 'read' or 'comment'")
+    if body.resource_type == "project":
+        enforce_project_id_manage_access(body.resource_id, current_user)
+    else:
+        enforce_document_id_manage_access(body.resource_id, current_user)
 
     expires_at = None
     if body.expires_at:
@@ -858,7 +893,11 @@ async def fsv_status_endpoint(
                 reachable = resp.is_success
         except Exception:
             reachable = False
-    return {"configured": configured, "url": fsv_url, "reachable": reachable}
+    return {
+        "configured": configured,
+        "url": fsv_url if _is_admin_user(current_user) else None,
+        "reachable": reachable,
+    }
 
 
 @router.post("/tools/accessibility-scan")
@@ -872,6 +911,8 @@ async def accessibility_scan(
     from the database.  Returns a scan result with violations, passes, and a score.
     """
     content = payload.content or ""
+    if payload.document_id:
+        enforce_document_id_access(payload.document_id, current_user)
     if not content and payload.document_id:
         # Attempt to load from DB
         try:
@@ -905,7 +946,7 @@ async def document_quality_upload(
     runs the internal preflight + style + readability checks and returns
     findings in the same canonical shape.
     """
-    data = await doc_file.read()
+    data = await _read_limited_upload(doc_file)
     filename = doc_file.filename or "document.docx"
 
     if is_fsv_configured():
@@ -1079,6 +1120,8 @@ async def document_quality_usage(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Proxy FSV usage metrics or return empty stats when FSV is not configured."""
+    if not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     if is_fsv_configured():
         base = (get_fsv_url() or "").rstrip("/")
         try:
@@ -1105,6 +1148,8 @@ async def document_quality_reports(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[Any]:
     """Proxy FSV recent reports or return an empty list when FSV is not configured."""
+    if not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     if is_fsv_configured():
         base = (get_fsv_url() or "").rstrip("/")
         try:
@@ -1123,8 +1168,14 @@ async def document_quality_result_download(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> Response:
     """Proxy FSV result file downloads (DOCX, PDF, JSON) when FSV is configured."""
+    if not _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
     if not is_fsv_configured():
         raise HTTPException(status_code=404, detail="Result downloads require FSV backend")
+    if "/" in result_id or "\\" in result_id or ".." in result_id:
+        raise HTTPException(status_code=400, detail="Invalid result id")
+    if not _SAFE_FSV_RESULT_ID.fullmatch(result_id):
+        raise HTTPException(status_code=400, detail="Invalid result id")
     ext = result_id.rsplit(".", 1)[-1] if "." in result_id else ""
     if ext not in ("docx", "pdf", "json"):
         raise HTTPException(status_code=400, detail="Invalid file type")

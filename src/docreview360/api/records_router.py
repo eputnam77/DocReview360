@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from .. import auth
+from ..access_control import enforce_project_access
 from ..project_lifecycle import (
     PROJECT_LIFECYCLE_STATUSES,
     get_lifecycle,
@@ -67,7 +68,8 @@ async def get_project_lifecycle(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict:
     """Return the current lifecycle status of a project."""
-    _get_project_or_404(project_id)
+    project = _get_project_or_404(project_id)
+    enforce_project_access(project, current_user)
     record = get_lifecycle(project_id)
     return record.model_dump(mode="json")
 

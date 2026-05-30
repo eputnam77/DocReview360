@@ -6,16 +6,12 @@ include LICENSE
 include pyproject.toml
 include setup.py
 
-# Include runtime source tree
-recursive-include src/docreview360 *.py *.json *.html *.sql *.tf *.onnx
-
-# Include the frontend source tree for source distributions so pip can rebuild a
-# wheel with the bundled alpha UI without checking out the repository.
-graft frontend
+# Include runtime source tree. Optional ML model artifacts and frontend source
+# are intentionally excluded from the source distribution.
+recursive-include src/docreview360 *.py *.json *.html *.sql *.tf *.txt
 
 # Explicitly exclude things that must NOT ship in sdist
-# NOTE: The source distribution includes the frontend source tree, but generated
-# build artefacts and local runtime state are pruned below.
+# NOTE: The source distribution does not include the frontend source tree.
 prune src/docreview360/scripts
 prune tests
 prune .dev
@@ -24,6 +20,7 @@ prune frontend/.next
 prune frontend/.tmp
 prune frontend/__tests__
 prune frontend/scripts
+prune frontend
 prune scripts
 prune docs
 prune artifacts
@@ -46,3 +43,6 @@ global-exclude *.db
 global-exclude *.sqlite
 global-exclude *.tmp
 global-exclude *.tsbuildinfo
+global-exclude *.onnx
+global-exclude *.pt
+global-exclude *.pkl

@@ -272,7 +272,10 @@ def test_saml_sp_login_and_acs_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         saml_router_module.saml_auth,
         "process_saml_response",
-        lambda response: {"attributes": {"roles": ["auditor"]}, "name_id": "saml-user"},
+        lambda response, request_id=None: {
+            "attributes": {"roles": ["auditor"]},
+            "name_id": "saml-user",
+        },
     )
     monkeypatch.setattr(saml_router_module.saml_auth, "extract_username", lambda attributes: "saml-user")
     monkeypatch.setattr(saml_router_module.saml_auth, "extract_roles", lambda attributes: ["auditor"])

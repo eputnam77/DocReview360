@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from .. import auth
+from ..access_control import enforce_document_id_access, enforce_project_id_access
 from ..custom_fields import (
     create_field_definition,
     delete_field_definition,
@@ -74,6 +75,18 @@ class CustomFieldCreate(BaseModel):
     sort_order: int = 0
 
 
+@router.get("/capabilities")
+@router.get("/config/capabilities")
+async def get_capabilities(
+    current_user: auth.User = Depends(require_role("admin")),
+) -> dict[str, object]:
+    """Return installed and optional runtime capabilities for admin UI state."""
+
+    from ..capabilities import capabilities_payload
+
+    return capabilities_payload()
+
+
 def _defn_to_dict(defn: Any) -> dict[str, Any]:
     return {
         "id": defn.id,
@@ -120,7 +133,7 @@ async def get_system_config(
 @router.get("/config/org/{org_id}")
 async def get_org_config(
     org_id: str,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Return merged config for an organization."""
     with get_db().orm_session() as db:
@@ -161,6 +174,7 @@ async def get_project_config(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Return merged config for a project (system → org → project)."""
+    enforce_project_id_access(project_id, current_user)
     with get_db().orm_session() as db:
         return get_project_config_all(db, project_id, org_id=org_id)
 
@@ -201,7 +215,7 @@ async def delete_project_config_endpoint(
 async def list_org_workflows(
     org_id: str,
     doc_type: str | None = None,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> list[dict[str, Any]]:
     """List custom workflow templates for an organization."""
     with get_db().orm_session() as db:
@@ -236,7 +250,7 @@ async def create_org_workflow(
 async def get_org_workflow(
     org_id: str,
     name: str,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Get a specific custom workflow template."""
     with get_db().orm_session() as db:
@@ -286,7 +300,7 @@ async def delete_org_workflow(
 async def list_org_fields(
     org_id: str,
     entity_type: str | None = None,
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> list[dict[str, Any]]:
     """List custom field definitions for an organization."""
     with get_db().orm_session() as db:
@@ -342,6 +356,7 @@ async def get_document_custom_fields(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Get custom field values for a document."""
+    enforce_document_id_access(doc_id, current_user)
     with get_db().orm_session() as db:
         values = get_field_values(db, entity_id=doc_id, org_id=org_id, entity_type="document")
         return {"document_id": doc_id, "fields": values}
@@ -383,6 +398,7 @@ async def get_project_custom_fields(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Get custom field values for a project."""
+    enforce_project_id_access(project_id, current_user)
     with get_db().orm_session() as db:
         values = get_field_values(db, entity_id=project_id, org_id=org_id, entity_type="project")
         return {"project_id": project_id, "fields": values}

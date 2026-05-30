@@ -5,14 +5,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
-from celery.schedules import crontab
+try:
+    from celery.schedules import crontab
+except ModuleNotFoundError:  # pragma: no cover - optional worker extra
+    crontab = None  # type: ignore[assignment]
 from cryptography.fernet import Fernet
 
 from .auth import keycloak_mfa_login
 from .backup_utils import create_backup
-from .celery_app import app
+
+try:
+    from .celery_app import app
+except ModuleNotFoundError:  # pragma: no cover - optional worker extra
+    app = None  # type: ignore[assignment]
 
 
 def encrypt_backup(path: str | Path, data: str = "", key: bytes | None = None) -> bytes:
@@ -33,7 +40,7 @@ def import_realm_file(path: str) -> Dict[str, Any]:
     data = json.loads(target.read_text())
     if "realm" not in data:
         raise ValueError("invalid realm export")
-    return cast(Dict[str, Any], data)
+    return data
 
 
 def enforce_mfa_login(username: str, password: str, otp: str) -> str:
@@ -51,11 +58,17 @@ def secure_backup(path: str) -> str:
     return str(backup)
 
 
-app.task(name="docreview360.secure_backup")(secure_backup)
+if app is not None:
+    app.task(name="docreview360.secure_backup")(secure_backup)
 
 
 def enable_fedramp_backup(path: str) -> None:
     """Schedule encrypted daily backups required by FedRAMP."""
+    if app is None or crontab is None:
+        raise RuntimeError(
+            "FedRAMP backup scheduling requires an optional install. "
+            "Run: pip install \"docreview360[worker]\""
+        )
     app.conf.beat_schedule = app.conf.get("beat_schedule", {})
     app.conf.beat_schedule["fedramp_backup"] = {
         "task": "docreview360.secure_backup",

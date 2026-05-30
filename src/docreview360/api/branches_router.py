@@ -11,6 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from .. import auth
+from ..access_control import (
+    enforce_document_id_access_if_known,
+    enforce_document_id_manage_access_if_known,
+)
 from ..db_store import get_db
 from ..models import Document, DocumentBranch, DocumentVersion
 
@@ -68,13 +72,17 @@ async def create_branch(
         doc = db.query(Document).filter(Document.id == doc_id).first()
         if doc is None:
             raise HTTPException(status_code=404, detail="Document not found")
+        enforce_document_id_access_if_known(doc_id, current_user)
 
         # Optionally seed content from a specific revision
         snapshot = payload.content_snapshot
         if snapshot is None and payload.source_revision_id is not None:
             rev = (
                 db.query(DocumentVersion)
-                .filter(DocumentVersion.id == payload.source_revision_id)
+                .filter(
+                    DocumentVersion.id == payload.source_revision_id,
+                    DocumentVersion.document_id == doc_id,
+                )
                 .first()
             )
             if rev is None:
@@ -107,6 +115,7 @@ async def list_branches(
         doc = db.query(Document).filter(Document.id == doc_id).first()
         if doc is None:
             raise HTTPException(status_code=404, detail="Document not found")
+        enforce_document_id_access_if_known(doc_id, current_user)
         branches = (
             db.query(DocumentBranch)
             .filter(DocumentBranch.document_id == doc_id)
@@ -124,6 +133,10 @@ async def get_branch(
 ) -> dict[str, Any]:
     """Get details for a specific branch."""
     with get_db().orm_session() as db:
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        enforce_document_id_access_if_known(doc_id, current_user)
         branch = (
             db.query(DocumentBranch)
             .filter(DocumentBranch.id == branch_id, DocumentBranch.document_id == doc_id)
@@ -143,6 +156,10 @@ async def update_branch_content(
 ) -> dict[str, Any]:
     """Update the working content of an open branch."""
     with get_db().orm_session() as db:
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        enforce_document_id_manage_access_if_known(doc_id, current_user)
         branch = (
             db.query(DocumentBranch)
             .filter(DocumentBranch.id == branch_id, DocumentBranch.document_id == doc_id)
@@ -168,6 +185,10 @@ async def merge_branch(
 ) -> dict[str, Any]:
     """Merge a branch back into the document, creating a new DocumentVersion."""
     with get_db().orm_session() as db:
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        enforce_document_id_manage_access_if_known(doc_id, current_user)
         branch = (
             db.query(DocumentBranch)
             .filter(DocumentBranch.id == branch_id, DocumentBranch.document_id == doc_id)
@@ -181,10 +202,6 @@ async def merge_branch(
             raise HTTPException(status_code=409, detail="Branch is closed and cannot be merged")
         if not branch.content_snapshot:
             raise HTTPException(status_code=422, detail="Branch has no content to merge")
-
-        doc = db.query(Document).filter(Document.id == doc_id).first()
-        if doc is None:
-            raise HTTPException(status_code=404, detail="Document not found")
 
         # Determine final content
         if payload.merge_strategy == "append":
@@ -221,6 +238,10 @@ async def close_branch(
 ) -> dict[str, Any]:
     """Close/abandon a branch without merging."""
     with get_db().orm_session() as db:
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        enforce_document_id_manage_access_if_known(doc_id, current_user)
         branch = (
             db.query(DocumentBranch)
             .filter(DocumentBranch.id == branch_id, DocumentBranch.document_id == doc_id)

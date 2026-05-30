@@ -40,7 +40,8 @@ def _emit_webhook(event: str, data: dict) -> None:
         _logger.error("lifecycle webhook emission failed for event %r: %s", event, exc, exc_info=exc)
 
 
-from ..approvals import verify_document_signature
+from ..access_control import enforce_document_manage_access
+from ..approvals import get_approval, get_approval_by_signature, verify_document_signature
 from ..archive import (
     ArchiveRecord,
     get_archive,
@@ -133,6 +134,32 @@ def _enforce_document_access(document: DocumentModel, current_user: auth.User) -
             if current_user.username in project.reviewers:
                 return
     raise HTTPException(status_code=403, detail="Forbidden")
+
+
+_signature_document_ids: dict[str, str] = {}
+
+
+def _enforce_signature_access(
+    signature_id: str,
+    current_user: auth.User,
+    *,
+    mutate: bool = False,
+) -> None:
+    """Ensure ``current_user`` may inspect or mutate a signature request."""
+
+    approval = get_approval_by_signature(signature_id)
+    doc_id = approval.document_id if approval is not None else _signature_document_ids.get(signature_id)
+    if doc_id is None:
+        if _is_admin_user(current_user):
+            return
+        raise HTTPException(status_code=404, detail="Signature not found")
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if mutate:
+        enforce_document_manage_access(document, current_user)
+    else:
+        _enforce_document_access(document, current_user)
 
 
 def _request_source(request: Request) -> str:
@@ -417,7 +444,9 @@ async def onlyoffice_document_fallback_endpoint(
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
     _enforce_document_access(document, current_user)
+    import html as _html
 
+    safe_content = _html.escape(document.content or "")
     body = f"""<!doctype html>
 <html lang="en">
   <head>
@@ -455,6 +484,7 @@ async def onlyoffice_document_fallback_endpoint(
       .content {{
         padding: 22px;
         min-height: 60vh;
+        white-space: pre-wrap;
       }}
       .content :first-child {{
         margin-top: 0;
@@ -471,7 +501,7 @@ async def onlyoffice_document_fallback_endpoint(
             This fallback keeps the backup route stable while exposing the current document content.
           </p>
         </div>
-        <div class="content">{document.content}</div>
+        <pre class="content">{safe_content}</pre>
       </div>
     </div>
   </body>
@@ -643,6 +673,7 @@ async def create_phase_snapshot_endpoint(
     document = get_document(doc_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     from ..audit_snapshots import capture_phase_snapshot
 
     return capture_phase_snapshot(
@@ -660,6 +691,10 @@ async def verify_signature_endpoint(
     user: auth.User = Depends(require_permission("verification_override")),
 ) -> dict[str, object]:
     """Validate the digital signatures associated with ``doc_id``."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, user)
     log_event(
         "verification_override",
         user_id=user.username,
@@ -1103,14 +1138,28 @@ async def sign_document(
     """Create a signature request for ``doc_id`` using the active provider."""
     import docreview360.api as _api_mod
 
-    _api_mod._SIGNATURE_RATE_LIMITER.enforce(f"sign:{user}:{_request_source(request)}")
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
+    signer = _resolve_requested_user(user, current_user)
+    if approval:
+        approval_model = get_approval(approval)
+        if approval_model is None or approval_model.document_id != doc_id:
+            raise HTTPException(status_code=404, detail="Approval not found")
+        if workflow and approval_model.workflow != workflow:
+            raise HTTPException(status_code=400, detail="Approval does not belong to workflow")
+        if approval_model.reviewer != signer and not _is_admin_user(current_user):
+            raise HTTPException(status_code=403, detail="Forbidden")
+    _api_mod._SIGNATURE_RATE_LIMITER.enforce(f"sign:{signer}:{_request_source(request)}")
     provider = get_provider()
     sig_id, url, _meta = provider.request_signature(
         doc_id,
-        user,
+        signer,
         workflow_id=workflow,
         approval_id=approval,
     )
+    _signature_document_ids[sig_id] = doc_id
     if getattr(provider, "name", None) != "documenso":
         register_stub_signature(sig_id, workflow)
     return {"id": sig_id, "url": url}
@@ -1122,6 +1171,7 @@ async def complete_sign(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> None:
     """Mark a signature request as completed."""
+    _enforce_signature_access(sig_id, current_user, mutate=True)
     provider = get_provider()
     if getattr(provider, "name", None) == "documenso":
         complete_signature(sig_id)
@@ -1142,6 +1192,7 @@ async def get_sign_status(
     user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, str]:
     """Return signature status."""
+    _enforce_signature_access(sig_id, user)
     status = signature_status(sig_id)
     return {"status": status}
 
@@ -1161,6 +1212,7 @@ async def get_ltv_package_endpoint(
     from ..approvals.signatures import get_ltv_package
     from ..integrations.signature.lts import serialize_ltv_package
 
+    _enforce_signature_access(signature_id, current_user)
     pkg = get_ltv_package(signature_id)
     if pkg is None:
         raise HTTPException(status_code=404, detail="LTV package not found for this signature")
@@ -1183,6 +1235,10 @@ async def get_document_version_history(
     ``author``, and ``content_length`` (byte count) without transferring
     full content for every revision.
     """
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     try:
         return get_version_history(doc_id)
     except KeyError as exc:
@@ -1201,6 +1257,10 @@ async def restore_version(
     operation is reversible.  Returns HTTP 404 if the document or revision is
     not found, and HTTP 409 if the document is frozen.
     """
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    enforce_document_manage_access(document, current_user)
     try:
         return restore_document_version(doc_id, revision_id, author=current_user.username)
     except FrozenDocumentError as exc:
@@ -1219,6 +1279,10 @@ async def freeze_doc(
     Once frozen, any attempt to update content returns HTTP 409.  Typically
     called automatically at approval stage to lock the reviewed version.
     """
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    enforce_document_manage_access(document, current_user)
     try:
         return freeze_document(doc_id)
     except KeyError as exc:
@@ -1231,6 +1295,10 @@ async def unfreeze_doc(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> DocumentModel:
     """Lift the freeze on a document, allowing content changes again."""
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    enforce_document_manage_access(document, current_user)
     try:
         return unfreeze_document(doc_id)
     except KeyError as exc:
@@ -1309,6 +1377,10 @@ async def diff_revisions_endpoint(
 
     Returns 404 if the document or either revision is not found.
     """
+    document = get_document(doc_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _enforce_document_access(document, current_user)
     try:
         return diff_document_revisions(doc_id, revision_id_a, revision_id_b)
     except KeyError as exc:

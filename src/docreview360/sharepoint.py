@@ -7,21 +7,23 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, cast
+from typing import TYPE_CHECKING, Any, List, cast
 
-import requests  # type: ignore[import-untyped]
+try:
+    import requests  # type: ignore[import-untyped]
+except ModuleNotFoundError:  # pragma: no cover - optional SharePoint extra
+    requests = None  # type: ignore[assignment]
 
 from .approvals import create_approval, submit_draft_for_approval
 from .ml.features import routing_features
-from .ml.onnx_infer import metadata_to_context
 from .quality import QUALITY_FLAG_NAMES, quality_assessment, quality_model_metadata
-from .reviewer_model import ReviewerModel
 from .secrets import get_secret
 
 _logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .ml.torch_models import TinyCritic
+    from .reviewer_model import ReviewerModel
 
 _GRAPH_URL = "https://graph.microsoft.com/v1.0"
 _DEFAULT_TIMEOUT_SECONDS = 15.0
@@ -45,6 +47,23 @@ def _request_timeout_seconds() -> float:
 _REQUEST_TIMEOUT_SECONDS = _request_timeout_seconds()
 
 
+def _requests_module() -> Any:
+    if requests is None:
+        raise RuntimeError(
+            "SharePoint integration requires an optional install. "
+            "Run: pip install \"docreview360[cms-sharepoint]\""
+        )
+    return requests
+
+
+def _model_metadata_context() -> dict[str, object]:
+    try:
+        from .ml.onnx_infer import metadata_to_context
+    except ModuleNotFoundError:
+        return {}
+    return metadata_to_context(quality_model_metadata())
+
+
 @dataclass
 class SharePointClient:
     """Minimal SharePoint client supporting upload, download, metadata, and versioning."""
@@ -58,8 +77,9 @@ class SharePointClient:
 
     def upload_file(self, path: str, data: bytes) -> str:
         """Upload ``data`` to ``path`` returning the created item id."""
+        http = _requests_module()
         url = f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/root:/{path}:/content"
-        response = requests.put(
+        response = http.put(
             url,
             headers=self._headers(),
             data=data,
@@ -74,8 +94,9 @@ class SharePointClient:
 
     def download_file(self, item_id: str) -> bytes:
         """Return the bytes of the file ``item_id``."""
+        http = _requests_module()
         url = f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/items/{item_id}/content"
-        response = requests.get(
+        response = http.get(
             url,
             headers=self._headers(),
             timeout=_REQUEST_TIMEOUT_SECONDS,
@@ -85,8 +106,9 @@ class SharePointClient:
 
     def list_versions(self, item_id: str) -> List[str]:
         """Return version identifiers for ``item_id``."""
+        http = _requests_module()
         url = f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/items/{item_id}/versions"
-        response = requests.get(
+        response = http.get(
             url,
             headers=self._headers(),
             timeout=_REQUEST_TIMEOUT_SECONDS,
@@ -103,13 +125,14 @@ class SharePointClient:
 
     def set_properties(self, item_id: str, properties: dict[str, str]) -> None:
         """Update SharePoint item metadata properties."""
+        http = _requests_module()
         url = (
             f"{_GRAPH_URL}/sites/{self.site_id}/drives/{self.drive_id}/"
             f"items/{item_id}/listItem/fields"
         )
         headers = self._headers()
         headers["Content-Type"] = "application/json"
-        response = requests.patch(
+        response = http.patch(
             url,
             headers=headers,
             json=properties,
@@ -142,7 +165,7 @@ class SharePointClient:
         text = data.decode("utf-8", errors="ignore")
         assessment = quality_assessment(text)
         score = assessment.score
-        model_summary = metadata_to_context(quality_model_metadata())
+        model_summary = _model_metadata_context()
         routing = routing_features(text, {"workflow": workflow} if workflow else None)["features"]
         scoring_metadata: dict[str, object] = {
             "approval_likelihood": score,

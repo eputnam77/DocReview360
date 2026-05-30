@@ -15,6 +15,7 @@ import pytest
 from docreview360 import api_keys as api_keys_mod
 from docreview360 import auth, rbac
 from docreview360.api import app
+from docreview360.documents import create_blank_document
 from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
@@ -38,6 +39,20 @@ def _token(username: str) -> str:
 def _headers(username: str, role: str | None = None) -> dict[str, str]:
     _ensure_user(username, role=role)
     return {"Authorization": f"Bearer {_token(username)}"}
+
+
+def _create_project(client: TestClient, headers: dict[str, str], project_id: str) -> str:
+    resp = client.post(
+        "/projects",
+        json={"id": project_id, "name": project_id},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+
+def _create_document(username: str, *, project: str | None = None) -> str:
+    return create_blank_document(project=project, user=username).id
 
 
 @pytest.fixture()
@@ -210,18 +225,41 @@ class TestApiKeyModule:
 class TestShareLinks:
     def test_create_share_link(self, client: TestClient) -> None:
         h = _headers("sl_creator", role="user")
+        project_id = _create_project(client, h, "proj-123")
         resp = client.post(
             "/share-links",
-            json={"resource_type": "project", "resource_id": "proj-123"},
+            json={"resource_type": "project", "resource_id": project_id},
             headers=h,
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["resource_type"] == "project"
-        assert data["resource_id"] == "proj-123"
+        assert data["resource_id"] == project_id
         assert "token" in data
         assert "url" in data
         assert data["permission"] == "read"
+
+    def test_create_share_link_rejects_unknown_resource(self, client: TestClient) -> None:
+        h = _headers("sl_unknown", role="user")
+        resp = client.post(
+            "/share-links",
+            json={"resource_type": "project", "resource_id": "missing-project"},
+            headers=h,
+        )
+        assert resp.status_code == 404
+
+    def test_create_share_link_rejects_unowned_resource(self, client: TestClient) -> None:
+        _headers("sl_owner", role="user")
+        other_headers = _headers("sl_other", role="user")
+        doc_id = _create_document("sl_owner")
+
+        resp = client.post(
+            "/share-links",
+            json={"resource_type": "document", "resource_id": doc_id},
+            headers=other_headers,
+        )
+
+        assert resp.status_code == 403
 
     def test_create_share_link_unauthenticated(self, client: TestClient) -> None:
         resp = client.post(
@@ -250,16 +288,17 @@ class TestShareLinks:
 
     def test_get_share_link_by_id(self, client: TestClient) -> None:
         h = _headers("sl_getter", role="user")
+        doc_id = _create_document("sl_getter")
         create_resp = client.post(
             "/share-links",
-            json={"resource_type": "document", "resource_id": "doc-42"},
+            json={"resource_type": "document", "resource_id": doc_id},
             headers=h,
         )
         link_id = create_resp.json()["id"]
 
         resp = client.get(f"/share-links/{link_id}", headers=h)
         assert resp.status_code == 200
-        assert resp.json()["resource_id"] == "doc-42"
+        assert resp.json()["resource_id"] == doc_id
 
     def test_get_share_link_not_found(self, client: TestClient) -> None:
         h = _headers("sl_nf", role="user")
@@ -268,9 +307,10 @@ class TestShareLinks:
 
     def test_revoke_share_link(self, client: TestClient) -> None:
         h = _headers("sl_revoker2", role="user")
+        project_id = _create_project(client, h, "p99")
         create_resp = client.post(
             "/share-links",
-            json={"resource_type": "project", "resource_id": "p99"},
+            json={"resource_type": "project", "resource_id": project_id},
             headers=h,
         )
         link_id = create_resp.json()["id"]
@@ -286,9 +326,10 @@ class TestShareLinks:
 
     def test_resolve_share_link_public(self, client: TestClient) -> None:
         h = _headers("sl_pub", role="user")
+        project_id = _create_project(client, h, "pub-proj")
         create_resp = client.post(
             "/share-links",
-            json={"resource_type": "project", "resource_id": "pub-proj"},
+            json={"resource_type": "project", "resource_id": project_id},
             headers=h,
         )
         token = create_resp.json()["token"]
@@ -297,7 +338,7 @@ class TestShareLinks:
         assert pub_resp.status_code == 200
         data = pub_resp.json()
         assert data["resource_type"] == "project"
-        assert data["resource_id"] == "pub-proj"
+        assert data["resource_id"] == project_id
         assert data["permission"] == "read"
 
     def test_resolve_unknown_token(self, client: TestClient) -> None:
@@ -306,9 +347,10 @@ class TestShareLinks:
 
     def test_share_link_comment_permission(self, client: TestClient) -> None:
         h = _headers("sl_commenter", role="user")
+        doc_id = _create_document("sl_commenter")
         resp = client.post(
             "/share-links",
-            json={"resource_type": "document", "resource_id": "d99", "permission": "comment"},
+            json={"resource_type": "document", "resource_id": doc_id, "permission": "comment"},
             headers=h,
         )
         assert resp.status_code == 201

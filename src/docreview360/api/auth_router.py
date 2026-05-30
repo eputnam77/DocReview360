@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from .. import auth, oidc_client
 from ..logs import log_event
 from ..messages import render
+from ..rbac import require_role
 
 _logger = logging.getLogger(__name__)
 
@@ -251,12 +252,12 @@ async def read_current_user(current_user: auth.User = Depends(auth.get_current_u
 async def search_users(
     q: str = Query(default="", description="Search term (username prefix / substring)"),
     limit: int = Query(default=10, ge=1, le=50, description="Maximum results to return"),
-    current_user: auth.User = Depends(auth.get_current_user),
+    current_user: auth.User = Depends(require_role("admin")),
 ) -> list[dict]:
     """Typeahead user search across username.
 
     Returns up to *limit* matching users with username, display_name, and active flag.
-    Accessible to all authenticated users; used by the UserPicker component.
+    Restricted to admins to avoid broad user enumeration.
     """
     repo = auth._get_user_repository()
     all_users = repo.list_users()

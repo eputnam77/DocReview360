@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from fastapi import (
+    APIRouter,
     Depends,
     Body,
     FastAPI,
@@ -46,6 +47,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -227,7 +229,27 @@ from ..workflows import (
     list_roles,
 )
 from .approvals import router as approvals_router
-from .ml import router as ml_router, warm_ml_sessions
+try:
+    from .ml import router as ml_router, warm_ml_sessions
+except ModuleNotFoundError as _ml_import_error:
+    ml_router = APIRouter(prefix="/ml", tags=["machine-learning"])
+    _ML_IMPORT_ERROR = _ml_import_error
+
+    @ml_router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+    async def _ml_not_installed(path: str) -> None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Machine-learning features are not installed. "
+                "Run: pip install \"docreview360[ml-cpu]\""
+            ),
+        )
+
+    def warm_ml_sessions() -> None:
+        _logger.info(
+            "Skipping ML warm-up because optional ML dependencies are not installed: %s",
+            _ML_IMPORT_ERROR,
+        )
 from .webhooks import router as webhooks_router, _load_subscribers_from_db
 from .auth_router import router as auth_router
 from .admin_router import router as admin_router
@@ -1922,35 +1944,26 @@ async def dashboard_stream(websocket: WebSocket) -> None:
 async def logs_stream(websocket: WebSocket) -> None:
     """Stream log events to connected clients with access control."""
 
-    from jose import JWTError, jwt as _jwt
-
-    user = websocket.headers.get("x-user") or websocket.query_params.get("user")
-
-    # Accept a Bearer token passed as a query parameter (set by the frontend).
-    # When present, decode it to identify the user; this supersedes the x-user header.
     raw_token = websocket.query_params.get("token")
-    if raw_token:
-        try:
-            payload = _jwt.decode(
-                raw_token,
-                auth.SECRET_KEY,
-                algorithms=[auth.ALGORITHM],
-                audience=auth.TOKEN_AUDIENCE,
-                issuer=auth.TOKEN_ISSUER,
-            )
-            token_user: str | None = payload.get("sub")
-            if token_user:
-                user = token_user
-        except JWTError:
-            await websocket.close(code=1008)
-            return
+    auth_header = websocket.headers.get("authorization")
+    if not raw_token and auth_header and auth_header.lower().startswith("bearer "):
+        raw_token = auth_header[7:].strip()
+    if not raw_token:
+        await websocket.close(code=1008)
+        return
 
-    # Allow anonymous connections for simple dashboards and tests.  If a user
-    # identifier is supplied we still honour permission checks, but omitting the
-    # header no longer results in an immediate 1008 policy-violation close which
-    # previously broke ``test_log_websocket``.  This keeps the endpoint usable in
-    # lightweight environments while retaining optional access control.
-    if user and not has_permission(user, "view_audit_log"):
+    try:
+        user = _authenticate_websocket_token(raw_token)
+    except HTTPException:
+        await websocket.close(code=1008)
+        return
+
+    requested_user = websocket.query_params.get("user")
+    if requested_user and requested_user != user:
+        await websocket.close(code=1008)
+        return
+
+    if not rbac.has_permission(user, "view_audit_log"):
         log_event("audit_log_ws_access", user_id=user, status="denied")
         await websocket.close(code=1008)
         return
@@ -1984,3 +1997,48 @@ async def logs_stream(websocket: WebSocket) -> None:
 #   GET /share-links/{link_id}
 #   DELETE /share-links/{link_id}
 #   GET /share/{token}
+
+
+def _safe_frontend_file(root: Path, requested_path: str) -> Path | None:
+    candidate = (root / requested_path).resolve()
+    root_resolved = root.resolve()
+    if candidate == root_resolved or root_resolved not in candidate.parents:
+        return None
+    if candidate.is_file():
+        return candidate
+    return None
+
+
+def _mount_frontend_bundle() -> None:
+    try:
+        from ..frontend_assets import frontend_source_root
+
+        root = frontend_source_root()
+    except FileNotFoundError:
+        _logger.info("No packaged frontend bundle found; serving API routes only")
+        return
+
+    next_assets = root / "_next"
+    if next_assets.is_dir():
+        app.mount("/_next", StaticFiles(directory=next_assets), name="frontend-next")
+    next_static = root / "static"
+    if next_static.is_dir():
+        app.mount("/_next/static", StaticFiles(directory=next_static), name="frontend-next-static")
+
+    index = root / "index.html"
+    if not index.is_file():
+        return
+
+    @app.get("/", include_in_schema=False)
+    async def _serve_frontend_index() -> FileResponse:
+        return FileResponse(index)
+
+    @app.get("/{frontend_path:path}", include_in_schema=False)
+    async def _serve_frontend_path(frontend_path: str) -> FileResponse:
+        requested = _safe_frontend_file(root, frontend_path)
+        if requested is not None:
+            return FileResponse(requested)
+        return FileResponse(index)
+
+
+_mount_frontend_bundle()

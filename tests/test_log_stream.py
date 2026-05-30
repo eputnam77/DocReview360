@@ -1,4 +1,5 @@
 import pytest
+from datetime import timedelta
 from docreview360 import auth, rbac
 from docreview360.api import app
 from docreview360.api import ml as ml_module
@@ -25,9 +26,18 @@ def _patch_current_user(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(app.dependency_overrides, ml_module._enforce_rate_limit, _allow_rate_limit)
 
 
+def _ws_logs_path() -> str:
+    try:
+        auth.create_user("alice", "password")
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
+    return f"/ws/logs?token={token}"
+
+
 def test_log_websocket() -> None:
     client = TestClient(app)
-    with client.websocket_connect("/ws/logs") as ws:
+    with client.websocket_connect(_ws_logs_path()) as ws:
         log_event("test", user_id="alice")
         data = ws.receive_json()
         assert data["action"] == "test"
@@ -36,7 +46,7 @@ def test_log_websocket() -> None:
 
 def test_critic_output_log_stream() -> None:
     client = TestClient(app)
-    with client.websocket_connect("/ws/logs") as ws:
+    with client.websocket_connect(_ws_logs_path()) as ws:
 
         def emit_event() -> None:
             log_event(

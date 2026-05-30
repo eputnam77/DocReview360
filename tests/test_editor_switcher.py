@@ -7,7 +7,7 @@ from docreview360.editor_switcher import render_editor
 def test_render_default_editor() -> None:
     doc = DocumentModel(id="1", content="hi")
     html = render_editor(doc)
-    assert "ckeditor5-editor" in html
+    assert "tiptap-editor" in html
 
 
 def test_render_ckeditor5_editor() -> None:

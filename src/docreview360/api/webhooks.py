@@ -20,6 +20,7 @@ from ..logs import log_call
 from ..monitoring import HASH_MISMATCHES, WEBHOOK_DELAY
 from ..rbac import require_role
 from ..secrets import get_secret
+from ..url_safety import validate_public_https_url
 
 router = APIRouter()
 
@@ -180,6 +181,13 @@ def _dispatch(event: str, payload: Dict[str, object]) -> None:
     delivery_id = secrets.token_hex(16)
 
     for url, signing_secret, row_id in _subscribers.get(event, []):
+        try:
+            validate_public_https_url(url)
+        except ValueError as exc:
+            _logger.warning("Skipping unsafe webhook URL %s: %s", url, exc)
+            if row_id:
+                _update_delivery_stats(row_id, False)
+            continue
         headers: dict[str, str] = {
             "Content-Type": "application/json",
             "X-DocReview360-Event": event,
@@ -256,6 +264,10 @@ async def subscribe_webhook(
     last_id = 0
     for event in sub.events:
         url_str = str(sub.url)
+        try:
+            validate_public_https_url(url_str)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         row_id = _add_subscriber_to_db(event, url_str, signing_secret)
         _subscribers.setdefault(event, []).append((url_str, signing_secret, row_id))
         added_events.append(event)

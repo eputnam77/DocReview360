@@ -3,16 +3,53 @@
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
+from types import ModuleType
+from typing import Any
 
 import click
 import yaml
 
-from . import ml
 from .config import CONFIG_FILE, Config
-from .database import default_url
-from .frontend_assets import extract_frontend_source, frontend_source_root
+from .db_urls import default_url
 from .settings_manager import SETTINGS_FILE, load_settings
+
+
+class _LazyModule:
+    """Proxy a module import until a command actually needs it."""
+
+    def __init__(self, module_name: str) -> None:
+        object.__setattr__(self, "_module_name", module_name)
+        object.__setattr__(self, "_module", None)
+
+    def _load(self) -> ModuleType:
+        module = object.__getattribute__(self, "_module")
+        if module is None:
+            module_name = object.__getattribute__(self, "_module_name")
+            module = importlib.import_module(module_name)
+            object.__setattr__(self, "_module", module)
+        return module
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._load(), name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name.startswith("_"):
+            object.__setattr__(self, name, value)
+            return
+        setattr(self._load(), name, value)
+
+
+ml = _LazyModule("docreview360.ml")
+
+
+def _load_frontend_assets() -> ModuleType:
+    return importlib.import_module("docreview360.frontend_assets")
+
+
+def _missing_extra_message(feature: str, extra: str) -> str:
+    return f"{feature} requires an optional install. Run: pip install \"docreview360[{extra}]\""
 
 
 @click.group()
@@ -35,6 +72,8 @@ def _get_rbac_module():
 @click.option(
     "--database",
     type=click.Choice(["postgres", "mysql", "sqlite"], case_sensitive=False),
+    default="sqlite",
+    show_default=True,
     prompt=True,
 )
 @click.option(
@@ -45,7 +84,7 @@ def _get_rbac_module():
 @click.option(
     "--editor",
     type=click.Choice(["ckeditor5", "tiptap", "onlyoffice", "prosemirror"], case_sensitive=False),
-    default="ckeditor5",
+    default="tiptap",
     show_default=True,
     prompt=True,
 )
@@ -71,10 +110,11 @@ def _get_rbac_module():
             "okta",
             "azure-ad",
             "saml",
+            "local",
         ],
         case_sensitive=False,
     ),
-    default="oidc",
+    default="local",
     show_default=True,
     prompt=True,
 )
@@ -116,8 +156,8 @@ def init(
         CMS integration option (none, local, sharepoint, confluence, gdrive,
         box, s3).
     auth:
-        Authentication provider (oidc, login.gov, auth0, pivcac, keycloak,
-        okta, azure-ad, saml).
+        Authentication provider (local, oidc, login.gov, auth0, pivcac,
+        keycloak, okta, azure-ad, saml).
     seed:
         When ``True`` a sample Advisory Circular markdown file is created.
     """
@@ -150,24 +190,41 @@ def init(
         raise click.ClickException(f"Failed to write config: {exc}") from exc
 
 
-@cli.group()
-def migrate() -> None:
-    """Export or import instance data for migration."""
-    return None
+@cli.group(invoke_without_command=True)
+@click.option(
+    "--migrations-path",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory of SQL migrations to apply. Defaults to packaged migrations.",
+)
+@click.pass_context
+def migrate(ctx: click.Context, migrations_path: Path | None) -> None:
+    """Apply database migrations, or export/import instance data."""
+
+    if ctx.invoked_subcommand is not None:
+        return
+    cfg = Config.load() or Config(database="sqlite", editor="tiptap", cms="none", auth="jwt")
+    database_url = cfg.database_url or default_url(cfg.database)
+    try:
+        from .database import Database
+    except ModuleNotFoundError as exc:
+        raise click.ClickException(_missing_extra_message("Database migration", "full")) from exc
+    db = Database(database_url)
+    db.migrate(migrations_path)
+    click.echo(f"Applied migrations using {database_url}")
 
 
 @cli.group()
 def frontend() -> None:
-    """Inspect or extract the bundled frontend source tree."""
+    """Inspect or extract the bundled frontend build assets."""
 
     return None
 
 
 @frontend.command("path")
 def frontend_path() -> None:
-    """Print the directory containing the bundled frontend source."""
-
-    click.echo(str(frontend_source_root()))
+    """Print the directory containing the bundled frontend build assets."""
+    frontend_assets = _load_frontend_assets()
+    click.echo(str(frontend_assets.frontend_source_root()))
 
 
 @frontend.command("extract")
@@ -178,13 +235,49 @@ def frontend_path() -> None:
     help="Allow extracting into a non-empty destination directory.",
 )
 def frontend_extract(destination: Path, force: bool) -> None:
-    """Copy the bundled frontend source tree into ``DESTINATION``."""
+    """Copy the bundled frontend build assets into ``DESTINATION``."""
 
     try:
-        target = extract_frontend_source(destination, force=force)
+        frontend_assets = _load_frontend_assets()
+        target = frontend_assets.extract_frontend_source(destination, force=force)
     except (FileExistsError, FileNotFoundError, NotADirectoryError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"Extracted frontend to {target}")
+
+
+@cli.command()
+@click.option("--host", default=None, help="Host to bind. Defaults to config or 127.0.0.1.")
+@click.option("--port", type=int, default=None, help="Port to bind. Defaults to config or 8000.")
+@click.option("--reload/--no-reload", default=False, show_default=True)
+def serve(host: str | None, port: int | None, reload: bool) -> None:
+    """Start the DocReview360 API server."""
+
+    cfg = Config.load() or Config(database="sqlite", editor="tiptap", cms="none", auth="jwt")
+    bind_host = host or cfg.host
+    bind_port = port or cfg.port
+    try:
+        import uvicorn
+    except ModuleNotFoundError as exc:
+        raise click.ClickException(_missing_extra_message("API server", "full")) from exc
+    uvicorn.run("docreview360.api:app", host=bind_host, port=bind_port, reload=reload)
+
+
+@cli.command()
+def capabilities() -> None:
+    """Show installed and optional runtime capabilities."""
+
+    from .capabilities import list_capabilities
+
+    for capability in list_capabilities():
+        if capability.installed:
+            state = "configured" if capability.configured else "available"
+        elif capability.install_extra:
+            state = f"requires [{capability.install_extra}]"
+        else:
+            state = "unavailable"
+        click.echo(f"{capability.id}: {state}")
+        for blocker in capability.blockers:
+            click.echo(f"  - {blocker}")
 
 
 @cli.group(name="ml")
@@ -199,7 +292,6 @@ def ml_group() -> None:
 @click.argument("output", type=click.Path(dir_okay=False, path_type=Path))
 @click.option(
     "--critic",
-    type=click.Choice(sorted(ml.critic_builders.keys())),
     default="clarity",
     show_default=True,
     help="Critic architecture to train.",
@@ -245,6 +337,16 @@ def ml_train(
             "--min-accuracy must be between 0 and 1", param_hint="--min-accuracy"
         )
 
+    try:
+        available_critics = sorted(ml.critic_builders.keys())
+    except ModuleNotFoundError as exc:
+        raise click.ClickException(_missing_extra_message("ML training", "ml")) from exc
+    if critic not in available_critics:
+        raise click.BadParameter(
+            f"Unknown critic '{critic}'. Choose one of: {', '.join(available_critics)}",
+            param_hint="--critic",
+        )
+
     extra_metadata = {key: value for key, value in metadata}
     try:
         result = ml.train_critic_from_csv(
@@ -283,6 +385,8 @@ def ml_benchmark(model: Path, runs: int, batch_size: int) -> None:
 
     try:
         result = ml.benchmark_onnx_cpu(model, runs=runs, batch_size=batch_size)
+    except ModuleNotFoundError as exc:
+        raise click.ClickException(_missing_extra_message("ML benchmarking", "ml-cpu")) from exc
     except ValueError as exc:
         raise click.BadParameter(str(exc)) from exc
     except Exception as exc:  # pragma: no cover - defensive
@@ -316,6 +420,8 @@ def validate(ml_models: tuple[Path, ...]) -> None:
     for model_path in ml_models:
         try:
             summary = ml.summarize_model(model_path)
+        except ModuleNotFoundError as exc:
+            raise click.ClickException(_missing_extra_message("ML validation", "ml-cpu")) from exc
         except Exception as exc:  # pragma: no cover - defensive
             raise click.ClickException(str(exc)) from exc
         click.echo(ml.format_model_summary(summary))

@@ -172,8 +172,10 @@ def build_auth_request(request_id: str | None = None) -> tuple[str, str]:
     settings = get_saml_settings()
     saml_auth = OneLogin_Saml2_Auth(req_dict, settings)
 
-    req_id = request_id or secrets.token_urlsafe(16)
     redirect_url = saml_auth.login(return_to=None, force_authn=False, is_passive=False)
+    req_id = getattr(saml_auth, "get_last_request_id", lambda: None)()
+    if not req_id:
+        req_id = request_id or secrets.token_urlsafe(16)
 
     return str(redirect_url), req_id
 

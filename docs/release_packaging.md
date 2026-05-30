@@ -63,24 +63,29 @@ Sigstore users can substitute an equivalent tag-signing + verification process, 
 
 ## PyPI Wheel and Sdist
 
-### Frontend source is included in the PyPI package
+### Frontend build assets are included in the wheel
 
-The PyPI wheel bundles a curated copy of the Next.js frontend source under
-`docreview360/frontend_src`. The source distribution also includes the repository
-`frontend/` tree with generated artefacts removed. Alpha users can extract the
-bundled source and run the usual Node workflow locally:
+The base PyPI wheel is the lightweight web app, not a frontend-source archive.
+Release builds copy the first available built frontend artifact from
+`frontend/out`, `frontend/.next/standalone`, or `frontend/.next` into
+`docreview360/frontend_static`. The source distribution excludes the repository
+`frontend/` tree. Build the frontend before creating release artifacts:
 
 ```bash
-docreview360 frontend extract ./docreview360-frontend
-cd ./docreview360-frontend
+cd frontend
 npm install --legacy-peer-deps
 npm run build
+cd ..
+python -m build
 ```
+
+`docreview360 frontend extract` is retained as an inspection/support command for
+the packaged build asset. It is not the normal IT setup path.
 
 ### What IS included in the wheel and sdist
 
-The PyPI distribution contains the Python backend package plus the frontend source
-bundle used for alpha testing:
+The PyPI distribution contains the core Python web app plus the packaged
+frontend build asset:
 
 | Content | Notes |
 |---|---|
@@ -90,18 +95,18 @@ bundle used for alpha testing:
 | `src/docreview360/**/*.sql` | Schema migration scripts |
 | `src/docreview360/**/*.tf` | IaC template assets packaged with the backend |
 | `src/docreview360/py.typed` | PEP 561 type marker |
-| `src/docreview360/ml/assets/*.onnx` | Packaged ONNX inference models |
-| `docreview360/frontend_src/**` | Bundled frontend source exposed via `docreview360 frontend extract` |
+| `docreview360/frontend_static/**` | Bundled frontend build asset exposed via `docreview360 frontend extract` |
 | `README.md`, `LICENSE`, `pyproject.toml` | Top-level release metadata (sdist only) |
 
 **Excluded generated/runtime artefacts:**
 
 - `tests/`, `docs/`, `scripts/`, `.dev/`, `.claude/` — dev/CI-only
-- `frontend/node_modules/`, `frontend/.next/`, `frontend/.tmp/` — generated frontend artefacts
+- `frontend/`, `frontend/node_modules/`, `frontend/.next/`, `frontend/.tmp/` - frontend source and generated caches in sdist
 - `*.db`, `*.sqlite` — runtime state
 - `*.log`, `*.tmp` — transient files
 - `*.lock`, `.env`, `.env.*` — environment-specific secrets / lock files
 - `node_modules/`, `__pycache__/`, `*.pyc` — generated artefacts
+- `*.onnx`, `*.pt`, `*.pkl` - optional ML artifacts
 
 ### How to build and inspect artifacts
 

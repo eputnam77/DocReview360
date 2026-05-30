@@ -1,4 +1,6 @@
 import pytest
+from datetime import timedelta
+from docreview360 import auth
 from docreview360.api import app
 from docreview360.documents import DocumentModel, documents
 from fastapi.testclient import TestClient
@@ -10,13 +12,18 @@ from y_py import YDoc, apply_update, encode_state_as_update
 def test_yjs_collaboration_real_time() -> None:
     doc_id = "doc1"
     # Seed empty document
-    documents[doc_id] = DocumentModel(id=doc_id, content="")
+    documents[doc_id] = DocumentModel(id=doc_id, content="", user="alice")
+    try:
+        auth.create_user("alice", "password")
+    except Exception:
+        pass
+    token = auth.create_access_token({"sub": "alice"}, timedelta(minutes=30))
 
     client = TestClient(app)
 
     with (
-        client.websocket_connect(f"/collab/{doc_id}") as ws1,
-        client.websocket_connect(f"/collab/{doc_id}") as ws2,
+        client.websocket_connect(f"/collab/{doc_id}?token={token}") as ws1,
+        client.websocket_connect(f"/collab/{doc_id}?token={token}") as ws2,
     ):
         # Initialize local YDocs with server state
         doc1, doc2 = YDoc(), YDoc()

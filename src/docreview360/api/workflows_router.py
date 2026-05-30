@@ -26,6 +26,12 @@ from fastapi import (
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .. import auth
+from ..access_control import (
+    enforce_document_id_access,
+    enforce_project_id_access,
+    enforce_project_id_manage_access,
+    is_admin_user,
+)
 from ..approvals import (
     ApprovalModel,
     SignedApprovalImmutableError,
@@ -126,6 +132,40 @@ def _require_approval_update_access(
     if approval.reviewer == user.username and target_state in {"approved", "rejected"}:
         return
     raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _enforce_workflow_access(wf: WorkflowModel, user: auth.User) -> None:
+    try:
+        enforce_project_id_access(wf.project, user)
+    except HTTPException as exc:
+        if exc.status_code == 404 and is_admin_user(user):
+            return
+        raise
+
+
+def _enforce_workflow_manage_access(wf: WorkflowModel, user: auth.User) -> None:
+    try:
+        enforce_project_id_manage_access(wf.project, user)
+    except HTTPException as exc:
+        if exc.status_code == 404 and is_admin_user(user):
+            return
+        raise
+
+
+def _enforce_approval_access(approval: ApprovalModel, user: auth.User) -> None:
+    if approval.reviewer == user.username:
+        return
+    wf = get_workflow(approval.workflow)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    _enforce_workflow_access(wf, user)
+
+
+def _enforce_template_visible(template: Any, user: auth.User) -> None:
+    if is_admin_user(user):
+        return
+    if not template.approved or template.retired:
+        raise HTTPException(status_code=404, detail="template not found")
 
 
 # ---------------------------------------------------------------------------
@@ -618,10 +658,23 @@ async def check_phase_usage_endpoint(
 
     all_wfs = list_workflows()
     workflows_using_phase = [w for w in all_wfs if name in w.phases]
+    if not is_admin_user(current_user):
+        visible_workflows: list[WorkflowModel] = []
+        for wf in workflows_using_phase:
+            try:
+                _enforce_workflow_access(wf, current_user)
+                visible_workflows.append(wf)
+            except HTTPException:
+                continue
+        workflows_using_phase = visible_workflows
 
     from ..search import list_projects as _list_projects
     projects_using_phase = []
     for project in _list_projects():
+        try:
+            enforce_project_id_access(project.id, current_user)
+        except HTTPException:
+            continue
         if project.workflow:
             workflow = get_workflow(project.workflow)
             if workflow and name in workflow.phases:
@@ -907,6 +960,7 @@ async def get_workflow_endpoint(
     wf = get_workflow(wf_id)
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
+    _enforce_workflow_access(wf, current_user)
     return wf
 
 
@@ -918,7 +972,24 @@ async def list_workflows_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[WorkflowModel]:
     """Return workflows optionally filtered by project."""
-    return list_workflows(project, bootstrap=True)
+    if project is not None:
+        try:
+            enforce_project_id_access(project, current_user)
+        except HTTPException as exc:
+            if exc.status_code != 404 or not is_admin_user(current_user):
+                raise
+        return list_workflows(project, bootstrap=True)
+    workflows_list = list_workflows(project, bootstrap=True)
+    if is_admin_user(current_user):
+        return workflows_list
+    visible: list[WorkflowModel] = []
+    for wf in workflows_list:
+        try:
+            _enforce_workflow_access(wf, current_user)
+            visible.append(wf)
+        except HTTPException:
+            continue
+    return visible
 
 
 @router.get("/workflow_roles", response_model=list[str])
@@ -943,6 +1014,7 @@ async def start_workflow_endpoint(
     wf = get_workflow(wf_id)
     if wf is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
+    _enforce_workflow_manage_access(wf, current_user)
     if title is None or not title.strip():
         title = wf.project or f"workflow-{wf_id}"
     data = await file.read() if file else None
@@ -958,6 +1030,10 @@ async def assign_reviewer_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowModel:
     """Assign a reviewer to a workflow."""
+    wf = get_workflow(wf_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    _enforce_workflow_manage_access(wf, current_user)
     try:
         return assign_reviewer(wf_id, body.user)
     except KeyError as exc:
@@ -972,6 +1048,10 @@ async def advance_workflow_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> WorkflowModel:
     """Advance workflow to the next phase. Returns 409 if already at final phase."""
+    wf = get_workflow(wf_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    _enforce_workflow_manage_access(wf, current_user)
     try:
         return advance_workflow(wf_id)
     except ValueError as exc:
@@ -1012,6 +1092,12 @@ async def create_approval_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> ApprovalModel:
     """Create an approval for a workflow."""
+    wf = get_workflow(body.workflow)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    _enforce_workflow_manage_access(wf, current_user)
+    if body.doc_id:
+        enforce_document_id_access(body.doc_id, current_user)
     return create_approval(
         body.workflow,
         body.reviewer,
@@ -1036,7 +1122,23 @@ async def list_approvals_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> list[ApprovalModel]:
     """Return approvals optionally filtered by workflow and phase."""
-    return list_approvals(workflow, phase)
+    if workflow is not None:
+        wf = get_workflow(workflow)
+        if wf is None:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        _enforce_workflow_access(wf, current_user)
+        return list_approvals(workflow, phase)
+    approvals_list = list_approvals(workflow, phase)
+    if is_admin_user(current_user):
+        return approvals_list
+    visible: list[ApprovalModel] = []
+    for approval in approvals_list:
+        try:
+            _enforce_approval_access(approval, current_user)
+            visible.append(approval)
+        except HTTPException:
+            continue
+    return visible
 
 
 @router.get("/approvals/{approval_id}", response_model=ApprovalModel)
@@ -1049,6 +1151,7 @@ async def get_approval_endpoint(
     approval = get_approval(approval_id)
     if approval is None:
         raise HTTPException(status_code=404, detail="Approval not found")
+    _enforce_approval_access(approval, current_user)
     return approval
 
 
@@ -1063,6 +1166,7 @@ async def update_approval_endpoint(
     approval = get_approval(approval_id)
     if approval is None:
         raise HTTPException(status_code=404, detail="Approval not found")
+    _enforce_approval_access(approval, current_user)
     _require_approval_update_access(approval, current_user, body.state)
     try:
         return await update_approval_state(
@@ -1217,6 +1321,7 @@ async def get_template_endpoint(
     ver = get_latest_template(name)
     if not ver:
         raise HTTPException(status_code=404, detail="template not found")
+    _enforce_template_visible(ver, user)
     data: dict[str, Any] = {
         "id": name,
         "name": name,
@@ -1318,6 +1423,7 @@ async def download_template_endpoint(
     ver = get_latest_template(name)
     if not ver:
         raise HTTPException(status_code=404, detail="template not found")
+    _enforce_template_visible(ver, user)
     metadata = ver.metadata or {}
     stored_format = metadata.get("format") or metadata.get("type") or "txt"
     stored_lower = str(stored_format).lower()
@@ -1412,6 +1518,10 @@ async def list_template_locks_endpoint(
     current_user: auth.User = Depends(auth.get_current_user),
 ) -> dict[str, Any]:
     """Return all phases that currently lock template *name*."""
+    ver = get_latest_template(name)
+    if not ver:
+        raise HTTPException(status_code=404, detail="template not found")
+    _enforce_template_visible(ver, current_user)
     phases = get_template_phase_locks(name)
     return {"template": name, "locked_phases": phases}
 
@@ -1425,6 +1535,10 @@ async def list_template_versions_endpoint(
     versions = list_template_versions(name)
     if not versions:
         raise HTTPException(status_code=404, detail=f"Template '{name}' not found")
+    if not is_admin_user(current_user):
+        versions = [v for v in versions if v.approved and not v.retired]
+        if not versions:
+            raise HTTPException(status_code=404, detail=f"Template '{name}' not found")
     return [
         {
             "version": v.version,
