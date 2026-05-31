@@ -11,6 +11,10 @@ A schema-breaking change requires a MAJOR version bump.
 
 ## [Unreleased]
 
+---
+
+## [0.1.3a1] - 2026-05-31
+
 ### Added
 
 - **TipTap plugin architecture** (`frontend/extensions/registry.ts`): immutable `PLUGIN_REGISTRY` manifest with semver compatibility checker, `PLUGIN_CONTRACT` constants, and Vitest CI tests ensuring no core patching.
