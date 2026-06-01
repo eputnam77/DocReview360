@@ -162,7 +162,7 @@ ml-mps = [
 
 ml-gpu = [
   "numpy>=1.26",
-  "onnxruntime-gpu==1.25.0 ; platform_system != 'Darwin'",
+  "onnxruntime-gpu==1.26.0 ; platform_system != 'Darwin'",
 ]
 
 enterprise-auth = [
