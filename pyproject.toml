@@ -110,7 +110,7 @@ oracle = ["oracledb>=2.0"]
 # Async worker stack for scheduled/background jobs.
 worker = [
   "celery==5.6.3",
-  "redis==6.2.0",
+  "redis==8.0.0",
 ]
 
 graphql = ["graphene==3.4.3"]
@@ -177,7 +177,7 @@ full = [
   "pyodbc>=5.0",
   "oracledb>=2.0",
   "celery==5.6.3",
-  "redis==6.2.0",
+  "redis==8.0.0",
   "graphene==3.4.3",
   "requests==2.32.4",
   "textstat==0.7.13",
@@ -255,7 +255,7 @@ dev = [
   "onnx==1.21.0",
   "onnxruntime==1.25.1",
   "celery==5.6.3",
-  "redis==6.2.0",
+  "redis==8.0.0",
   "graphene==3.4.3",
 ]
 

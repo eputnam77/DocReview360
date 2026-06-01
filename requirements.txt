@@ -23,7 +23,7 @@ python-jose[cryptography]==3.5.0
 python-docx==1.2.0
 python-magic==0.4.27
 celery==5.6.3
-redis==6.2.0
+redis==8.0.0
 graphene==3.4.3
 prometheus-client==0.22.1
 uvicorn>=0.38.0
