@@ -145,14 +145,14 @@ ml = [
   "numpy>=1.26",
   "torch==2.11.0",
   "onnx==1.21.0",
-  "onnxruntime==1.25.1 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "onnxruntime==1.26.0 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
 ]
 
 # Choose ONE runtime extra depending on target.
 # ONNX Runtime install docs: https://onnxruntime.ai/docs/install/
 ml-cpu = [
   "numpy>=1.26",
-  "onnxruntime==1.25.1 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "onnxruntime==1.26.0 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
 ]
 
 ml-mps = [
@@ -196,7 +196,7 @@ full = [
   "numpy>=1.26",
   "torch==2.11.0",
   "onnx==1.21.0",
-  "onnxruntime==1.25.1 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "onnxruntime==1.26.0 ; platform_system != 'Darwin' or platform_machine != 'arm64'",
   "fedstylevalidator>=0.1.1",
   "tiktoken>=0.5.1",
 ]
