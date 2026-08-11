@@ -100,7 +100,7 @@ frontend build asset:
 
 **Excluded generated/runtime artefacts:**
 
-- `tests/`, `docs/`, `scripts/`, `.dev/`, `.claude/` — dev/CI-only
+- `tests/`, `docs/`, `scripts/`, `.claude/` — dev/CI-only
 - `frontend/`, `frontend/node_modules/`, `frontend/.next/`, `frontend/.tmp/` - frontend source and generated caches in sdist
 - `*.db`, `*.sqlite` — runtime state
 - `*.log`, `*.tmp` — transient files

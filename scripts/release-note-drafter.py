@@ -160,32 +160,7 @@ def check_changelog() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. Scan checklist for recently completed items
-# ---------------------------------------------------------------------------
-
-def collect_checklist_changes() -> list[str]:
-    section("Recently Completed Checklist Items")
-
-    checklist = REPO_ROOT / "RELEASE_CHECKLIST.md"
-    if not checklist.exists():
-        note("Checklist", "LOW", "RELEASE_CHECKLIST.md not found")
-        return []
-
-    text = checklist.read_text(encoding="utf-8")
-    today = None
-
-    # Look for items marked done with a recent date
-    recent_items = []
-    for line in text.splitlines():
-        if re.search(r"\[x\].*\(20\d\d-\d\d-\d\d\)", line):
-            recent_items.append(line.strip())
-
-    ok("Checklist", f"Found {len(recent_items)} completed checklist item(s)")
-    return recent_items[-20:]  # Last 20 completed
-
-
-# ---------------------------------------------------------------------------
-# 5. Draft the release notes
+# 4. Draft the release notes
 # ---------------------------------------------------------------------------
 
 def draft_release_notes(
@@ -311,10 +286,8 @@ def main() -> None:
 
     commits = collect_commits(args.since)
     categories = categorize_commits(commits) if commits else {}
-    checklist_items = collect_checklist_changes()
-
     output_path = Path(args.output) if args.output else None
-    draft_release_notes(categories, checklist_items, args.since, output_path)
+    draft_release_notes(categories, [], args.since, output_path)
 
     check_changelog()
     print_summary()

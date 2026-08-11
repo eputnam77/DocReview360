@@ -126,7 +126,6 @@ PLACEHOLDER_PATTERNS = [
 
 # These occurrences are acceptable (code examples, tests, ADRs describing old state)
 PLACEHOLDER_ALLOWLIST = {
-    "RELEASE_CHECKLIST.md",
     "docs/websocket_proxy_guide.md",  # example.com in nginx config examples
     "docs/audit_log_schema.md",       # example.com in example cert URL
     "docs/api_overview.md",           # example.com in webhook example
@@ -163,7 +162,6 @@ def check_placeholders() -> None:
 GPL_ALLOWLIST = {
     "docs/licenses.md",          # mentions LGPL dependencies — expected
     "docs/licenses-report.md",   # mentions LGPL/GPL transitive deps — expected
-    "RELEASE_CHECKLIST.md",
 }
 
 

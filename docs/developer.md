@@ -1,93 +1,117 @@
-# Developer Guide
+# Developer guide
 
-This short guide explains how to run the project in a local environment.
+Set up a development environment, then extend DocReview360 with migrations, plugins, and document types.
 
-## Prerequisites
+For first-run setup, see [Get started](getting_started.md). This page covers what you need to contribute code.
 
-Install [`uv`](https://github.com/astral-sh/uv) and [`Poetry`](https://python-poetry.org/) with `pip` or `pipx`:
+## Set up your environment
 
 ```bash
-pip install uv poetry
-# or
-pipx install uv poetry
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -e ".[dev,test,security]"
+pre-commit install
 ```
 
-1. **Create and activate a virtual environment**
+Python 3.11 and 3.12 are supported. 3.13 is not.
 
-   ```bash
-   uv venv 3.12
-   source 3.12/bin/activate
-   ```
+## Set authentication secrets
 
-2. **Install development tools**
+In development, DocReview360 falls back to safe defaults and logs a `RuntimeWarning` for each unset value. Set these to silence the warnings and to match production behavior:
 
-  ```bash
-  poetry install --with dev
-  poetry sync --with dev
-  uv pip install -r pyproject.toml --extra dev
-  pre-commit install
-  ```
+```bash
+export DOCREVIEW360_ENV=dev
+export DOCREVIEW360_SECRET_KEY=your-secret
+export DOCREVIEW360_ALGORITHM=HS256
+export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
+export DOCREVIEW360_TOKEN_ISSUER=docreview360.local
+export DOCREVIEW360_TOKEN_AUDIENCE=docreview360-users
+export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
+export DOCREVIEW360_OIDC_ALGORITHM=HS256
+export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
+export DOCREVIEW360_OIDC_TOKEN_ISSUER=docreview360-oidc.local
+export DOCREVIEW360_OIDC_TOKEN_AUDIENCE=docreview360-oidc
+```
 
-3. **Set authentication secrets**
+Set `DOCREVIEW360_ENV` to any value other than `dev` or `test` and missing secrets become a startup failure instead of a warning. Treat that as production.
 
-   ```bash
-   export DOCREVIEW360_SECRET_KEY=your-secret
-   export DOCREVIEW360_ALGORITHM=HS256
-   export DOCREVIEW360_ACCESS_EXPIRE_MINUTES=30
-   export DOCREVIEW360_TOKEN_ISSUER=docreview360.local
-   export DOCREVIEW360_TOKEN_AUDIENCE=docreview360-users
-   export DOCREVIEW360_OIDC_SECRET_KEY=your-oidc-secret
-   export DOCREVIEW360_OIDC_ALGORITHM=HS256
-   export DOCREVIEW360_OIDC_EXPIRE_MINUTES=30
-   export DOCREVIEW360_OIDC_TOKEN_ISSUER=docreview360-oidc.local
-   export DOCREVIEW360_OIDC_TOKEN_AUDIENCE=docreview360-oidc
-   # Treat any non-dev/test value (for example "production") as production.
-   # When set, missing secrets trigger a startup failure instead of a warning.
-   export DOCREVIEW360_ENV=dev
-   # Optional: DOCREVIEW360_SIGNATURE_SECRET for digital signatures
-   # Cookie-based auth requires an X-CSRF-Token header that matches the csrf_token cookie.
-   ```
+Cookie-based auth requires an `X-CSRF-Token` header matching the `csrf_token` cookie.
 
-4. **Testing**
+See [Environment variables](environment_variables.md) for the complete list.
 
-  Run code checks and tests:
+## Run the checks
 
-  ```bash
-  pre-commit run --all-files
-  pytest --cov=src
-  ```
+```bash
+pre-commit run --all-files
+pytest --cov=src
+```
 
-5. **End-to-end testing (with Playwright)**
+The full command set is in [Testing and quality](testing_and_quality.md).
 
-  ```bash
-  playwright install
-  E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke python scripts/run_e2e.py
-  ```
+## Project layout
 
-## Database Migrations
+| Path | Contents |
+| --- | --- |
+| `src/docreview360/` | Backend and CLI: FastAPI, SQLAlchemy, Celery, ML |
+| `src/docreview360/api/` | Route definitions |
+| `frontend/` | Next.js app: `pages/`, `components/`, `extensions/` |
+| `tests/` | pytest suite |
+| `migrations/` | Raw SQL migrations |
+| `scripts/` | Development and release tooling |
 
-The :class:`docreview360.database.Database` class supports raw SQL migrations. Place
-``.sql`` files in the repository-level ``migrations/`` directory or provide a custom path to
-:py:meth:`Database.migrate`. Each file is executed once and recorded in the
-``schema_versions`` table.
+`src/docreview360/api/__init__.py` is very large. Search it rather than opening it whole.
 
-For release discipline requirements (forward-only policy, rollback approach,
-supported engines, and SemVer rules for schema changes), see
-[`docs/migration_policy.md`](migration_policy.md).
+## Database migrations
 
-## Working with plugins
+The `docreview360.database.Database` class applies raw SQL migrations. Put `.sql` files in the repository-level `migrations/` directory, or pass a custom path to `Database.migrate()`.
 
-Plugins can be registered at runtime using the REST API.  Send a JSON body
-containing ``{"module": "my_package.my_plugin"}`` to ``POST /plugins`` and the
-module's ``register`` function will be invoked with the global registry.  Plugins
-may also be enabled or disabled via ``PUT /plugins/{name}/enable`` or
-``PUT /plugins/{name}/disable``.
+Each file runs once and is recorded in the `schema_versions` table. Migrations are forward-only.
 
-## Document type management
+```bash
+docreview360 migrate                                  # apply packaged migrations
+docreview360 migrate --migrations-path ./migrations   # apply your own
+```
 
-Administrators can create document types through the API.  Export existing types
-using :func:`docreview360.doc_types.export_document_types` and re-import them with
-:func:`docreview360.doc_types.import_document_types` to share configurations between
-instances.
+For the forward-only policy, rollback approach, supported engines, and SemVer rules for schema changes, see [Migration policy](migration_policy.md).
 
+## Move data between instances
 
+```bash
+docreview360 migrate export backup.gz
+docreview360 migrate import backup.gz
+```
+
+## Write a plugin
+
+Register a plugin at runtime through the REST API. Send the module path and DocReview360 calls its `register` function with the global registry:
+
+```bash
+curl -X POST http://127.0.0.1:8000/plugins \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"module": "my_package.my_plugin"}'
+```
+
+Enable or disable a registered plugin:
+
+```
+PUT /plugins/{name}/enable
+PUT /plugins/{name}/disable
+```
+
+Your module must expose a `register(registry)` function.
+
+## Share document types
+
+Administrators create document types through the API. To copy a configuration between instances, export it and re-import it:
+
+- `docreview360.doc_types.export_document_types()`
+- `docreview360.doc_types.import_document_types()`
+
+## Related pages
+
+- [Testing and quality](testing_and_quality.md)
+- [API overview](api_overview.md)
+- [CLI reference](cli.md)
+- [Release packaging](release_packaging.md)
+- [Architecture decisions](adr/0001-core-architecture.md)

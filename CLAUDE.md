@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Project rules for Claude Code. Full architecture details: `docs/`, `.dev/ADRs/`.
+Project rules for Claude Code. Full architecture details: `docs/`, `docs/adr/`.
 
 ## Commands
 

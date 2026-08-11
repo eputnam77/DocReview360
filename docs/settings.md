@@ -1,63 +1,61 @@
-# settings.yaml — Production-Safe Configuration Reference
+# Settings reference
 
-`settings.yaml` is loaded at startup and stores runtime configuration for
-DocReview360. This document describes each significant key, its safe default,
-and flags values that **operators must override** before going to production.
+`settings.yaml` holds runtime configuration and is loaded at startup. This page describes the keys that matter, their defaults, and what you must change before production.
 
----
+Environment variables override `settings.yaml`. Set secrets there, not in the file.
 
-## Required overrides before production
+## Override these before production
 
-| Key | Default in settings.yaml | Risk | Action required |
-|-----|--------------------------|------|-----------------|
-| `secrets.encryption-primary` | Base64-encoded placeholder key | Weak/demo key — protects data at rest | **Generate a unique 32-byte key** and store it in a vault or environment variable; never commit real key material to source control. |
-| `notifications.slack_webhook_url` | `https://hooks.slack.com/test123` | Hardcoded test webhook — leaks notifications to wrong channel | Replace with your real Slack webhook URL or remove the key. |
-| `signature_provider_primary` | `sandbox` | Signatures are not legally binding in sandbox mode | Set to `documenso` (or another provider) for production signing. |
+Three defaults are unsafe outside development.
 
----
+| Key | Default | Why it matters | What to do |
+| --- | --- | --- | --- |
+| `secrets.encryption-primary` | Placeholder key | A demo key protects nothing at rest | Generate a unique 32-byte key. Store it in a vault or environment variable. Never commit real key material. |
+| `notifications.slack_webhook_url` | `https://hooks.slack.com/test123` | Notifications go to the wrong channel | Replace with your webhook URL, or remove the key. |
+| `signature_provider_primary` | `sandbox` | Sandbox signatures are not legally binding | Set to `documenso` or another provider. |
 
-## Safe defaults (no action required)
+Also confirm `DOCREVIEW360_ENV` is **not** set to `dev` or `test` in production. Those values seed the demo accounts `alice/password` and `bob/password`.
+
+## Defaults you can keep
 
 | Key | Default | Notes |
-|-----|---------|-------|
-| `audit_log.retention_days` | `2555` (~7 years) | Appropriate for federal compliance. Reduce only if regulations permit. |
-| `audit_log.purge_interval_minutes` | `1440` (daily) | Safe. Adjust to match your operational cadence. |
-| `security.encryption_at_rest.enabled` | `true` | Encryption is on by default. Do not disable in production. |
-| `security.encryption_at_rest.required_for` | `[archive, backup]` | Ensures archive and backup payloads are encrypted. Extend to include `secrets` for additional protection. |
-| `signature_verification.interval_minutes` | `60` | Reasonable polling interval. |
-| `signature_verification.scope` | `approved` | Only re-verifies approved documents. |
-| `notifications.email_enabled` | `false` | Email notifications are off by default. Configure SMTP before enabling. |
-| `notifications.teams_enabled` | `false` | Microsoft Teams notifications are off by default. |
-| `fsv_check_categories.*` | Mixed | Review enabled checks match your style requirements. |
+| --- | --- | --- |
+| `audit_log.retention_days` | `2555` (~7 years) | Suitable for federal compliance. Reduce only if your regulations allow. |
+| `audit_log.purge_interval_minutes` | `1440` (daily) | Adjust to match your operational cadence. |
+| `security.encryption_at_rest.enabled` | `true` | Leave on in production. |
+| `security.encryption_at_rest.required_for` | `[archive, backup]` | Add `secrets` for broader coverage. |
+| `signature_verification.interval_minutes` | `60` | Polling interval for re-verification. |
+| `signature_verification.scope` | `approved` | Only approved documents are re-verified. |
+| `notifications.email_enabled` | `false` | Configure SMTP before enabling. |
+| `notifications.teams_enabled` | `false` | Microsoft Teams notifications are off. |
+| `fsv_check_categories.*` | Mixed | Review which style checks match your requirements. |
 
----
+## Environment variable overrides
 
-## Environment variables that override settings.yaml
-
-The following environment variables take precedence over `settings.yaml` values.
-Set them in your deployment platform rather than storing credentials in the file.
-
-For the full reference, see [Environment Variables](environment_variables.md).
+These take precedence over `settings.yaml`. Set them in your deployment platform.
 
 | Variable | Purpose |
-|----------|---------|
+| --- | --- |
 | `DOCREVIEW360_ENV` | Set to `production` to enforce secret validation and disable demo seeding. |
-| `SIGNATURE_PROVIDER` | Overrides `signature_provider_primary` (`sandbox` or `documenso`). |
+| `DOCREVIEW360_SECRET_KEY` | JWT signing secret. Must be strong and random in production. |
+| `DOCREVIEW360_DATABASE_URL` | Database connection string. |
+| `SIGNATURE_PROVIDER` | Overrides `signature_provider_primary`. |
 | `DOCREVIEW360_ML_MODEL_DIR` | Path to the packaged ONNX model directory. |
-| `DOCREVIEW360_DATABASE_URL` | Database connection string (SQLite path or Postgres URL). |
-| `DOCREVIEW360_SECRET_KEY` | JWT signing secret — must be a strong random value in production. |
-| `OPENAI_KEY` | OpenAI API token (used when no vault is configured). |
-| `SHAREPOINT_TOKEN` | SharePoint bearer token (used when no vault is configured). |
+| `OPENAI_KEY` | OpenAI API token, when no vault is configured. |
+| `SHAREPOINT_TOKEN` | SharePoint bearer token, when no vault is configured. |
 
----
+For the complete list, see [Environment variables](environment_variables.md).
 
-## Unsafe patterns to avoid
+## Avoid these
 
-- Do **not** commit a `settings.yaml` that contains real encryption keys,
-  webhook URLs, or API tokens to source control.
-- Do **not** leave `signature_provider_primary: sandbox` in production; sandbox
-  signatures are not legally binding.
-- Do **not** disable `security.encryption_at_rest.enabled` in production
-  environments that handle regulated documents.
-- The demo credentials (`alice/password`, `bob/password`) are seeded only when
-  `DOCREVIEW360_ENV=dev`. Ensure this variable is **not** set in production.
+- Committing a `settings.yaml` that contains real encryption keys, webhook URLs, or API tokens.
+- Leaving `signature_provider_primary: sandbox` in production.
+- Disabling `security.encryption_at_rest.enabled` where you handle regulated documents.
+- Setting `DOCREVIEW360_ENV=dev` in production, which seeds demo accounts with known passwords.
+
+## Related pages
+
+- [Environment variables](environment_variables.md)
+- [RBAC configuration](rbac_configuration.md)
+- [Key rotation](security/key-rotation.md)
+- [Data retention and deletion](data_retention_and_deletion.md)

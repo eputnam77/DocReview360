@@ -76,7 +76,7 @@ notifications:
   webhook_enabled: false
 prefs_alice:
   locale: en
-  theme: dark
+  theme: light
 prefs_bob:
   locale: fr
   theme: light

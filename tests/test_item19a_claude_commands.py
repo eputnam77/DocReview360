@@ -23,7 +23,6 @@ COMMANDS_DIR = REPO_ROOT / ".claude" / "commands"
 EXPECTED_COMMANDS = [
     "triage-failure.md",
     "docs-drift.md",
-    "checklist-next.md",
     "packaging-audit.md",
 ]
 
@@ -60,11 +59,6 @@ class TestCommandFormat:
 
     HEADING_RE = re.compile(r"^#\s+/\S+")
 
-    def test_checklist_next_has_heading(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        first_line = text.strip().splitlines()[0]
-        assert self.HEADING_RE.match(first_line), f"Bad heading: {first_line!r}"
-
     def test_triage_failure_has_heading(self) -> None:
         text = (COMMANDS_DIR / "triage-failure.md").read_text(encoding="utf-8")
         first_line = text.strip().splitlines()[0]
@@ -86,18 +80,6 @@ class TestCommandFormat:
 # ---------------------------------------------------------------------------
 
 class TestCommandContent:
-    def test_checklist_next_references_checklist(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        assert "RELEASE_CHECKLIST.md" in text
-
-    def test_checklist_next_has_steps(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        assert "## Steps" in text or "Steps" in text
-
-    def test_checklist_next_references_pytest(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        assert "pytest" in text
-
     def test_triage_failure_references_failing_test(self) -> None:
         text = (COMMANDS_DIR / "triage-failure.md").read_text(encoding="utf-8")
         assert "fail" in text.lower() or "test" in text.lower()
@@ -122,25 +104,3 @@ class TestCommandContent:
     def test_packaging_audit_references_pypi(self) -> None:
         text = (COMMANDS_DIR / "packaging-audit.md").read_text(encoding="utf-8")
         assert "PyPI" in text or "pypi" in text.lower() or "publish" in text.lower()
-
-
-# ---------------------------------------------------------------------------
-# Hard guardrails verification — checklist-next guardrails
-# ---------------------------------------------------------------------------
-
-class TestChecklistNextGuardrails:
-    def test_has_guardrails_section(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        assert "guardrail" in text.lower() or "guard" in text.lower()
-
-    def test_blocks_pypi_publish(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        assert "PyPI" in text
-
-    def test_blocks_docker_push(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        assert "Docker" in text or "docker" in text.lower()
-
-    def test_requires_pre_commit(self) -> None:
-        text = (COMMANDS_DIR / "checklist-next.md").read_text(encoding="utf-8")
-        assert "pre-commit" in text

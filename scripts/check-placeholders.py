@@ -53,11 +53,8 @@ PLACEHOLDER_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 
 # Files/dirs to skip for GPL check specifically (license history, etc.)
 GPL_SKIP_PATHS = {
-    "RELEASE_CHECKLIST.md",   # mentions "stale GPL references" legitimately
-    "MEMORY.md",
     "CLAUDE.md",
-    "CLAUDE_CODE_UPDATES.md",
-    "ai-notes.md",
+    "AGENTS.md",
     "docs/licenses-report.md",
     "scripts/check-placeholders.py",  # this file itself
 }
@@ -146,8 +143,17 @@ def check_version_consistency(pkg_version: str) -> list[Finding]:
         REPO_ROOT / "helm" / "docreview360" / "Chart.yaml",
         REPO_ROOT / "helm" / "docreview360" / "values.yaml",
     ]
-    # Pattern: a version-like string near "version" that differs from pkg_version
-    version_pattern = re.compile(r'(?:version|Version)\s*[=:]\s*["\']?(\d+\.\d+\.\d+)["\']?')
+    # Pattern: a version-like string near "version" that differs from pkg_version.
+    # The trailing group captures PEP 440 / SemVer prerelease suffixes ("0.1.3a1",
+    # "0.1.3-a1") so prerelease versions are compared in full rather than truncated
+    # to their numeric release segment.
+    version_pattern = re.compile(
+        r'(?:version|Version)\s*[=:]\s*["\']?(\d+\.\d+\.\d+[0-9A-Za-z.\-]*?)["\']?\s*$'
+    )
+
+    def _normalize(version: str) -> str:
+        """Treat SemVer '0.1.3-a1' and PEP 440 '0.1.3a1' as the same version."""
+        return version.replace("-", "").replace("_", "").lower()
 
     for fpath in key_files:
         if not fpath.exists():
@@ -158,7 +164,7 @@ def check_version_consistency(pkg_version: str) -> list[Finding]:
             m = version_pattern.search(line)
             if m:
                 found_ver = m.group(1)
-                if found_ver != pkg_version:
+                if _normalize(found_ver) != _normalize(pkg_version):
                     findings.append((
                         rel, lineno, "version-mismatch",
                         f"found {found_ver!r}, expected {pkg_version!r}"

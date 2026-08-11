@@ -1,38 +1,69 @@
-# DocReview360 Documentation
+# DocReview360 documentation
 
-This documentation set is primarily for **administrators, deployers, and developers** who run and maintain DocReview360.
+DocReview360 routes documents through drafting, review, approval, and publication, and keeps an audit trail of every step.
 
-If you are an end user (reviewer/author) using the web app, use the in-app help page at `/help` from the sidebar (**Help & Support**).
+This documentation is for administrators, deployers, and developers. If you review or author documents in the web app, open **Help & Support** in the sidebar instead.
 
-## Start here (admin/operator path)
+## Get started
 
-1. [Getting Started](getting_started.md) — local setup and first run.
-2. [Deployment](deployment.md) — production deployment options.
-3. [Security key rotation](security/key-rotation.md) and [security patch flow](security/patch-flow.md).
-4. [Disaster Recovery](disaster_recovery.md) — backup and restore runbook.
-5. [RBAC Configuration](rbac_configuration.md) — role and permission controls.
-6. [Observability](observability.md) — metrics, logging, and monitoring.
+| I want to | Go to |
+| --- | --- |
+| Run DocReview360 on my machine | [Get started](getting_started.md) |
+| Deploy to production | [Deployment](deployment.md) |
+| Work through a realistic example | [Usage scenarios](scenarios.md) |
+| Contribute code | [Developer guide](developer.md) |
 
-## Technical references
+## What DocReview360 does
 
-- [CLI Reference](cli.md)
-- [API Overview](api_overview.md)
-- [Developer Guide](developer.md)
-- [Migration Policy](migration_policy.md)
-- [Data Retention and Deletion](data_retention_and_deletion.md)
-- [Supported Platforms](supported-platforms.md)
-- [Oxygen XML Web Author Integration](oxygen_xml_web_author.md)
-- [Architecture Decision Records](adr/0001-core-architecture.md)
+Authors draft in a rich-text editor with autosave and revision history. Reviewers comment inline. Approvers sign off in the order the workflow defines. Every action lands in a hash-chained audit log.
 
-## Product/release notes
+![Project list showing documents, types, and review status](images/projects.png)
 
-- [CHANGELOG](changelog.md) is the source of truth for shipped versions and release history.
+Core capabilities:
 
-## About documentation ownership
+- **Projects and documents** — import DOCX, PDF, HTML, or Markdown; track revisions with SHA-256 hashes.
+- **Workflows and approvals** — sequential or parallel phases, reminders, escalations, and digital signatures.
+- **Roles and permissions** — role-based access control enforced on every endpoint.
+- **Audit and compliance** — tamper-evident logs, retention policies, and export controls.
+- **Document quality** — validate documents against federal writing standards.
 
-- `docs/` is focused on administrator and operational guidance.
-- End-user how-to content should live in the frontend help experience (`frontend/pages/help.tsx`) so it ships with the product UI.
+## Configure
+
+| Topic | Description |
+| --- | --- |
+| [Environment variables](environment_variables.md) | Secrets, database paths, and runtime flags. |
+| [Settings reference](settings.md) | Everything in `settings.yaml`. |
+| [RBAC configuration](rbac_configuration.md) | Roles, permissions, and assignment. |
+| [Approval assignments](approval_assignments.md) | How approvers are chosen per phase. |
+
+## Operate
+
+| Topic | Description |
+| --- | --- |
+| [Observability](observability.md) | Metrics, logs, and monitoring. |
+| [Disaster recovery](disaster_recovery.md) | Backup and restore runbook. |
+| [Key rotation](security/key-rotation.md) | Rotate signing and encryption keys. |
+| [Patch flow](security/patch-flow.md) | Triage and ship dependency fixes. |
+| [Data retention and deletion](data_retention_and_deletion.md) | Retention windows and purge jobs. |
+| [Migration policy](migration_policy.md) | Schema change rules. |
+| [Air-gap deployment](air_gap_deployment.md) | Install without internet access. |
+| [Blue-green deployment](blue_green_deployment.md) | Release without downtime. |
+
+## Reference
+
+| Topic | Description |
+| --- | --- |
+| [CLI reference](cli.md) | Every `docreview360` command. |
+| [API overview](api_overview.md) | Authentication, endpoints, and versioning. |
+| [Architecture decisions](adr/0001-core-architecture.md) | Why the system is built this way. |
+| [Supported platforms](supported-platforms.md) | Tested operating systems and versions. |
+| [Testing and quality](testing_and_quality.md) | Test suites, coverage gates, and scans. |
+| [Changelog](changelog.md) | Shipped versions and release history. |
+
+## Where content lives
+
+Administrator and operator guidance belongs in `docs/`. End-user how-to content belongs in the in-app help page (`frontend/pages/help.tsx`) so it ships with the UI.
 
 ## License
 
-This project is released under the MIT License. See `LICENSE` for details.
+DocReview360 is released under the MIT License. See [`LICENSE`](https://github.com/eputnam77/DocReview360/blob/main/LICENSE).

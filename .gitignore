@@ -61,6 +61,9 @@ uv.lock
 archive_store/
 artifacts/
 
+# Tamper-proof audit hash chains (generated at runtime)
+tamper_proof_store/
+
 # Runtime and test temp (logs, pytest cache, checker downloads)
 .tmp/
 .tmp*/

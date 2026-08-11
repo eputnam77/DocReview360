@@ -2,7 +2,6 @@
 """Item 20 — Security and compliance checks.
 
 Tests:
-  - SECURITY_REVIEW.md has required sections (Step 1-5, threat model, findings)
   - SECURITY.md references real security checks (Bandit, pip-audit, npm audit)
   - CI workflows actually run bandit and pip-audit
   - verify_audit_log_chain is exported and callable
@@ -18,46 +17,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC = REPO_ROOT / "src" / "docreview360"
 SECURITY_MD = REPO_ROOT / "SECURITY.md"
-SECURITY_REVIEW_MD = REPO_ROOT / "SECURITY_REVIEW.md"
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 NIGHTLY_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "nightly-tests.yml"
-
-
-# ---------------------------------------------------------------------------
-# SECURITY_REVIEW.md completeness
-# ---------------------------------------------------------------------------
-
-class TestSecurityReviewMd:
-    def test_file_exists(self) -> None:
-        assert SECURITY_REVIEW_MD.exists(), "SECURITY_REVIEW.md not found"
-
-    def test_has_threat_model_section(self) -> None:
-        text = SECURITY_REVIEW_MD.read_text(encoding="utf-8-sig")
-        assert "Threat Model" in text or "threat model" in text.lower()
-
-    def test_has_attack_paths(self) -> None:
-        text = SECURITY_REVIEW_MD.read_text(encoding="utf-8-sig")
-        assert "attack path" in text.lower() or "IDOR" in text or "SSRF" in text
-
-    def test_has_automated_scans_section(self) -> None:
-        text = SECURITY_REVIEW_MD.read_text(encoding="utf-8-sig")
-        assert "Automated" in text or "bandit" in text.lower() or "scan" in text.lower()
-
-    def test_has_assets_section(self) -> None:
-        text = SECURITY_REVIEW_MD.read_text(encoding="utf-8-sig")
-        assert "Assets" in text or "asset" in text.lower()
-
-    def test_has_trust_boundaries(self) -> None:
-        text = SECURITY_REVIEW_MD.read_text(encoding="utf-8-sig")
-        assert "Trust" in text or "trust boundary" in text.lower()
-
-    def test_mentions_upload_surface(self) -> None:
-        text = SECURITY_REVIEW_MD.read_text(encoding="utf-8-sig")
-        assert "upload" in text.lower() or "Upload" in text
-
-    def test_mentions_auth_session(self) -> None:
-        text = SECURITY_REVIEW_MD.read_text(encoding="utf-8-sig")
-        assert "JWT" in text or "session" in text.lower()
 
 
 # ---------------------------------------------------------------------------
