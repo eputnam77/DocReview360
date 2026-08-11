@@ -26,9 +26,11 @@ class TestManifestIn:
         text = MANIFEST.read_text(encoding="utf-8")
         assert "prune tests" in text
 
-    def test_prune_dev(self) -> None:
+    def test_prunes_generated_stores(self) -> None:
+        # Runtime archive and audit-chain output must never ship in an sdist.
         text = MANIFEST.read_text(encoding="utf-8")
-        assert "prune .dev" in text
+        assert "prune archive_store" in text
+        assert "prune tamper_proof_store" in text
 
     def test_prunes_frontend_source(self) -> None:
         text = MANIFEST.read_text(encoding="utf-8")

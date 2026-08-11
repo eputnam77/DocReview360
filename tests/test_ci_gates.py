@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-AGENTS = (ROOT / ".dev" / "AGENTS.md").read_text(encoding="utf-8")
+AGENTS = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 
 

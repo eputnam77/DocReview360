@@ -29,9 +29,11 @@ python -m pip install --pre "docreview360[full]"       # everything
 
 Run `docreview360 capabilities` to see what is installed.
 
-## Run from source
+## Quick start
 
 Requires Python 3.11 or 3.12 (3.13 is not supported) and Node.js 18+.
+
+macOS and Linux:
 
 ```bash
 git clone https://github.com/eputnam77/DocReview360.git
@@ -40,6 +42,18 @@ uv venv --python 3.12
 source .venv/bin/activate
 uv pip install -e ".[dev,test,security]"
 DOCREVIEW360_ENV=dev python -m uvicorn docreview360.api:app --reload --port 8000
+```
+
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/eputnam77/DocReview360.git
+cd DocReview360
+uv venv --python 3.12
+.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev,test,security]"
+$env:DOCREVIEW360_ENV="dev"
+python -m uvicorn docreview360.api:app --reload --port 8000
 ```
 
 In a second terminal:
