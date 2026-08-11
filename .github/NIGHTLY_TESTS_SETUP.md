@@ -1,18 +1,19 @@
 # Nightly Test Workflows - Quick Start
 
-## What Was Created
+## Overview
 
-I've set up a **GitHub Actions workflow** for nightly testing of DocReview360:
+A **GitHub Actions workflow** provides nightly testing for DocReview360.
+
+> **Note:** the `Nightly Tests` workflow is currently disabled in repository
+> settings. Re-enable it under Actions before relying on the schedule below.
 
 ### Nightly Tests Workflow (`nightly-tests.yml`)
-- ✅ Runs tests every night at 2:00 AM EST (7:00 AM UTC)
-- ✅ Tests both backend (Python/Pytest) and frontend (Node.js/Vitest)
-- ✅ Runs security scans (Bandit, pip-audit)
-- ✅ Creates a PR with failure details if tests fail
-- ✅ No AI required - just documentation of failures
-- ✅ Ready to use immediately
+- Runs tests every night at 2:00 AM EST (7:00 AM UTC)
+- Tests both backend (Python/Pytest) and frontend (Node.js/Vitest)
+- Runs security scans (Bandit, pip-audit)
+- Creates a PR with failure details if tests fail
 
-## Files Created
+## Files
 
 ```
 .github/
@@ -24,11 +25,11 @@ I've set up a **GitHub Actions workflow** for nightly testing of DocReview360:
 
 ## Quick Setup
 
-**No setup needed!** Just push these files and the workflow will:
+No additional configuration is required. Once the workflow is enabled under
+repository Actions settings, it will:
 - Run automatically every night at 2 AM EST
 - Test backend, frontend, and security scans
 - Create PRs when tests fail
-- Work immediately
 
 ## How It Works
 
