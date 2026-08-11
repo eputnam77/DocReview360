@@ -1,15 +1,15 @@
-# Testing and Quality
+# Testing and quality
 
-Use this page for local checks before you commit, package, or release.
+Run these checks locally before you commit, package, or release.
 
-## Install development tools
+## Install the tooling
 
 ```bash
 uv pip install -e ".[dev,test,security]"
 pre-commit install
 ```
 
-## Run the standard local checks
+## Before every pull request
 
 ```bash
 pre-commit run --all-files
@@ -18,85 +18,61 @@ bandit -r src -lll --skip B101
 python scripts/run-pip-audit.py
 ```
 
-## Lint, format, and type checks
+Then run the end-to-end command that matches your change scope, described below.
 
-`pre-commit run --all-files` runs the standard repository checks, including:
+## What each check covers
 
-- Ruff
-- Black
-- Mypy
-- Bandit
-- mdformat
-- Codespell
+| Command | Covers |
+| --- | --- |
+| `pre-commit run --all-files` | Ruff, Black, Mypy, Bandit, mdformat, Codespell |
+| `pytest --cov=src` | Unit and integration tests with coverage |
+| `bandit -r src -lll --skip B101` | Python code security scan |
+| `python scripts/run-pip-audit.py` | Dependency vulnerability scan |
 
-Use this command before opening a pull request.
+Run a single test with `pytest tests/test_approvals.py::test_foo`.
 
-## Unit tests and coverage
+Release target: **90% branch coverage** (`--cov-fail-under=90`).
 
-```bash
-pytest --cov=src
-```
+## End-to-end tests
 
-Release target: `90%` branch coverage.
-
-## Security scans
-
-Code scan:
+Install browsers once:
 
 ```bash
-bandit -r src -lll --skip B101
+playwright install
 ```
 
-Dependency scan:
+Then pick the scope you need:
 
-```bash
-python scripts/run-pip-audit.py
-```
+| Scope | Command |
+| --- | --- |
+| Everything available locally | `python scripts/run_e2e.py` |
+| Pre-merge smoke gate | `E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke python scripts/run_e2e.py` |
+| Full release gate | `E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_full python scripts/run_e2e.py` |
 
-## End-to-end checks
+E2E tests need backend and frontend dependencies installed locally.
 
-Full suite:
-
-```bash
-python scripts/run_e2e.py
-```
-
-Smoke gate:
-
-```bash
-E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_smoke python scripts/run_e2e.py
-```
-
-Full release gate:
-
-```bash
-E2E_REQUIRE_PLAYWRIGHT=1 E2E_TEST_MARK=e2e_full python scripts/run_e2e.py
-```
-
-Prerequisites:
-
-- `playwright install`
-- Backend and frontend dependencies available locally
-
-Keep artifacts for debugging:
+To keep artifacts for debugging:
 
 ```bash
 KEEP_E2E_ARTIFACTS=1 python scripts/run_e2e.py
 ```
 
-Artifacts are written under `.e2e-runs/<run-id>/`.
+Artifacts land in `.e2e-runs/<run-id>/`.
 
-## Suggested workflow
+## Frontend tests
 
-1. Run `pre-commit run --all-files`.
-2. Run `pytest --cov=src`.
-3. Run `bandit -r src -lll --skip B101`.
-4. Run `python scripts/run-pip-audit.py`.
-5. Run the appropriate E2E command for your change scope.
+```bash
+cd frontend
+npm test
+npm run build
+```
+
+Run both after any frontend change.
 
 ## Related pages
 
-- [Getting Started](getting_started.md)
-- [Developer Guide](developer.md)
-- [E2E Guide](e2e.md)
-- [Release Packaging](release_packaging.md)
+- [Get started](getting_started.md)
+- [Developer guide](developer.md)
+- [E2E guide](e2e.md)
+- [Test determinism](test_determinism.md)
+- [Release packaging](release_packaging.md)

@@ -1,158 +1,204 @@
-# API Overview
+# API overview
 
-DocReview360 exposes a JSON API that lets you manage projects, documents and approvals. The interactive documentation is available at `/docs` once the server is running. Below is a short summary of the main endpoints.
+DocReview360 exposes a JSON REST API for projects, documents, workflows, and approvals.
+
+Interactive documentation is at `/docs` once the server is running. This page covers authentication and the endpoints you are most likely to need.
+
+## Authenticate
+
+Request a token, then send it as a bearer token on every call.
+
+```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/token \
+  -d "username=alice&password=password" | jq -r .access_token)
+
+curl http://127.0.0.1:8000/projects -H "Authorization: Bearer $TOKEN"
+```
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /token` | Issue a JWT access token |
+| `POST /oidc/token` | Issue an OpenID Connect token |
+| `GET /me` | Return the authenticated user |
+| `GET /oidc/me` | Return user details for the OIDC flow |
+
+Cookie-based auth is also supported. It requires an `X-CSRF-Token` header matching the `csrf_token` cookie.
+
+## Versioning
+
+Endpoints are available unprefixed. Versioned aliases exist at `/api/v1/*` and behave identically. See [API versioning](api_versioning.md) for the deprecation policy.
 
 ## Projects
-- `GET /projects` – list all projects
-- `POST /projects` – create a new project
-- `GET /projects/{project_id}` – retrieve a single project
-- `GET /projects/{project_id}/workflow` – get the project's workflow
-- `PUT /projects/{project_id}/priority` – update project priority
-- `POST /projects/{project_id}/temporary` – assign a temporary user
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /projects` | List projects |
+| `POST /projects` | Create a project |
+| `GET /projects/{project_id}` | Retrieve a project |
+| `GET /projects/{project_id}/workflow` | Get the project's workflow |
+| `PUT /projects/{project_id}/priority` | Update priority |
+| `POST /projects/{project_id}/temporary` | Assign a temporary user |
 
 ## Documents
-- `POST /documents/import` – import a file
-- `POST /documents/tiptap` – import content from the TipTap editor (set `link_duplicates=true` to reuse an existing match)
-- `GET /documents` – list documents
-- `GET /documents/{doc_id}` – get a document
-- `PUT /documents/{doc_id}` – update content
-- `POST /documents/{doc_id}/comments` – add a comment
-- `GET /documents/{doc_id}/comments` – list comments
-- `GET /documents/{doc_id}/export` – export to Markdown, plain text, HTML, DOCX, PDF, JSON, or XML
 
-## Archive
-- `POST /archive/{doc_id}` – archive a document in multiple formats
-- `GET /archive` – list archived files
-- `GET /archive/{archive_id}` – retrieve a single archive
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /documents/import` | Import a file |
+| `POST /documents/tiptap` | Import TipTap editor content. Set `link_duplicates=true` to reuse an existing match |
+| `GET /documents` | List documents |
+| `GET /documents/{doc_id}` | Retrieve a document |
+| `PUT /documents/{doc_id}` | Update content |
+| `POST /documents/{doc_id}/comments` | Add a comment |
+| `GET /documents/{doc_id}/comments` | List comments |
+| `GET /documents/{doc_id}/export` | Export to Markdown, text, HTML, DOCX, PDF, JSON, or XML |
 
-## Search
-- `GET /search` – run a query
-- `POST /search/saved` – save a search
-- `GET /search/saved` – list saved searches
-- `GET /search/export` – download results as JSON or CSV
-- `GET /search/stats` – return query counts
+## Workflows and approvals
 
-## Workflows and Approvals
-- `POST /workflows` – create a workflow
-- `GET /workflows/{wf_id}` – retrieve a workflow
-- `POST /workflows/{wf_id}/assign` – assign a reviewer
-- `POST /workflows/{wf_id}/advance` – move to the next step
-- `POST /approvals` – request approval
-- `GET /approvals` – list approvals
-- `GET /approvals/{approval_id}` – retrieve an approval
-- `PUT /approvals/{approval_id}` – update approval state
-- `POST /approvals/{approval_id}/sign` – start a signature request
-
-## Document Types
-- `POST /document-types` – create a type
-- `GET /document-types` – list types
-- `GET /document-types/export` – download all types as JSON
-- `POST /document-types/import` – replace types from a JSON file
-- `GET /document-types/{name}` – retrieve a type by name
-- `PUT /document-types/{name}` – update a type
-- `DELETE /document-types/{name}` – remove a type
-
-## AI Helpers
-- `GET /ai/key` – check whether the AI rewrite key is configured
-- `PUT /ai/key` – store or clear the AI rewrite key
-- `POST /ai/rewrite` – rewrite provided text
-- `POST /ai/summarize` – return a one sentence summary
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /workflows` | Create a workflow |
+| `GET /workflows/{wf_id}` | Retrieve a workflow |
+| `POST /workflows/{wf_id}/assign` | Assign a reviewer |
+| `POST /workflows/{wf_id}/advance` | Move to the next step |
+| `POST /approvals` | Request approval |
+| `GET /approvals` | List approvals |
+| `GET /approvals/{approval_id}` | Retrieve an approval |
+| `PUT /approvals/{approval_id}` | Update approval state |
+| `POST /approvals/{approval_id}/sign` | Start a signature request |
 
 ## Signatures
-- `POST /sign/{doc_id}` – create a Documenso signature request
-- `POST /sign/{sig_id}/complete` – mark a signature as signed
-- `GET /sign/{sig_id}` – check signature status
-- `POST /approvals/{approval_id}/sign` – sign a workflow approval
-- `POST /hooks/documenso` – webhook for signature callbacks
-- `GET /documents/{doc_id}/verify-signature` – validate document signatures
-- `GET /documents/{doc_id}/verify-signature/stream` – stream verification progress
 
-### Streaming verification example
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /sign/{doc_id}` | Create a signature request |
+| `POST /sign/{sig_id}/complete` | Mark a signature as signed |
+| `GET /sign/{sig_id}` | Check signature status |
+| `GET /documents/{doc_id}/verify-signature` | Validate document signatures |
+| `GET /documents/{doc_id}/verify-signature/stream` | Stream verification progress |
+| `POST /hooks/documenso` | Receive Documenso callbacks. Registered only when `SIGNATURE_PROVIDER=documenso` |
 
-JavaScript clients can consume the server-sent event stream:
+### Stream verification progress
+
+Verification can take a while, so results stream as server-sent events.
 
 ```javascript
 const evt = new EventSource('/documents/123/verify-signature/stream');
-evt.onmessage = (e) => {
-  console.log(JSON.parse(e.data));
-};
+evt.onmessage = (e) => console.log(JSON.parse(e.data));
 ```
-
-Python's `requests` library can also read the stream:
 
 ```python
 import requests
 
-with requests.get('http://localhost:8000/documents/123/verify-signature/stream', stream=True) as r:
+url = "http://127.0.0.1:8000/documents/123/verify-signature/stream"
+with requests.get(url, stream=True) as r:
     for line in r.iter_lines():
         if line:
             print(line.decode())
 ```
 
+## Search
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /search` | Run a query |
+| `POST /search/saved` | Save a search |
+| `GET /search/saved` | List saved searches |
+| `GET /search/export` | Download results as JSON or CSV |
+| `GET /search/stats` | Return query counts |
+
+## Document types
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /document-types` | List types |
+| `POST /document-types` | Create a type |
+| `GET /document-types/{name}` | Retrieve a type |
+| `PUT /document-types/{name}` | Update a type |
+| `DELETE /document-types/{name}` | Remove a type |
+| `GET /document-types/export` | Download all types as JSON |
+| `POST /document-types/import` | Replace types from JSON |
+
+## Archive
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /archive/{doc_id}` | Archive a document in multiple formats |
+| `GET /archive` | List archived files |
+| `GET /archive/{archive_id}` | Retrieve an archive |
+
+## Reporting and logs
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /logs` | Retrieve event logs |
+| `GET /api/audit` | Dashboard alias for `/logs` |
+| `GET /reports/summary` | Counts of projects, documents, and approvals |
+| `GET /reports/summary.csv` | Download the summary report |
+| `GET /reports/dashboard` | Per-project dashboard data |
+| `GET /dashboard/widgets` | Assignment and approval counts |
+| `GET /dashboard/doc-types` | Active project counts by document type |
+| `GET /metrics/summary` | Prometheus-style metrics |
+
 ## Webhooks
-- `POST /webhooks/subscribe` – register a callback URL for events
 
-Clients subscribe by posting:
+Register a callback URL to receive events:
 
-```json
-{
-  "url": "https://example.com/hooks",
-  "events": ["verification.completed"]
-}
+```bash
+curl -X POST http://127.0.0.1:8000/webhooks/subscribe \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/hooks", "events": ["verification.completed"]}'
 ```
 
-### `verification.completed`
-After each verification run the server POSTs:
+After each verification run, DocReview360 posts:
 
 ```json
 {
   "event": "verification.completed",
-  "payload": {
-    "doc_id": "123",
-    "status": "pass",
-    "details": []
-  }
+  "payload": { "doc_id": "123", "status": "pass", "details": [] }
 }
 ```
 
 ## Plugins
-- `GET /plugins` – list registered plugins
-- `POST /plugins` – load plugins from a module
-- `PUT /plugins/{name}/enable` – enable a plugin
-- `PUT /plugins/{name}/disable` – disable a plugin
-- `DELETE /plugins/{name}` – unregister a plugin
 
-## Logs and Reporting
-- `GET /logs` – retrieve event logs
-- `GET /api/audit` – alias for `/logs` used by the dashboard
-- `GET /reports/summary` – counts of projects, documents and approvals
-- `GET /metrics/summary` – Prometheus style metrics
-- `GET /reports/summary.csv` – download the summary report
-- `GET /reports/dashboard` – per-project dashboard data
-- `GET /dashboard/widgets` – assignment and approval counts
-- `GET /dashboard/doc-types` – active project counts by document type
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /plugins` | List registered plugins |
+| `POST /plugins` | Load plugins from a module |
+| `PUT /plugins/{name}/enable` | Enable a plugin |
+| `PUT /plugins/{name}/disable` | Disable a plugin |
+| `DELETE /plugins/{name}` | Unregister a plugin |
 
-## Configuration and Status
-- `GET /config` – return the current configuration
-- `PUT /config` – update and persist settings
-- `GET /status/public` – minimal health data
-- `GET /status/internal` – extended status for administrators
+## AI helpers
 
-## Authentication
-- `POST /token` – issue a JWT access token
-- `POST /oidc/token` – issue an OpenID Connect token
-- `GET /me` – retrieve the authenticated user
-- `GET /oidc/me` – user details for the OIDC flow
-Authentication uses the returned token as `Bearer <token>` in the
-`Authorization` header.
+Optional and off by default.
 
-## Admin
-- `GET /admin/panel` – simple admin-only check
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /ai/key` | Check whether the rewrite key is configured |
+| `PUT /ai/key` | Store or clear the rewrite key |
+| `POST /ai/rewrite` | Rewrite text |
+| `POST /ai/summarize` | Return a one-sentence summary |
+
+## Configuration and status
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /config` | Return the current configuration |
+| `PUT /config` | Update and persist settings |
+| `GET /status/public` | Minimal health data |
+| `GET /status/internal` | Extended status for administrators |
+| `GET /admin/panel` | Admin-only access check |
 
 ## WebSockets
-- `WS /ws/dashboard` – live dashboard statistics
-- `WS /ws/logs` – stream log events
+
+| Endpoint | Purpose |
+| --- | --- |
+| `WS /ws/dashboard` | Live dashboard statistics |
+| `WS /ws/logs` | Stream log events |
+
+WebSocket routes do not appear in the OpenAPI schema. For reverse-proxy configuration, see the [WebSocket proxy guide](websocket_proxy_guide.md).
 
 ## GraphQL
-Read-only queries are available via a small GraphQL layer. See
-[`CHANGELOG.md`](changelog.md) for release history and API evolution notes.
+
+A small read-only GraphQL layer is available with the `graphql` extra.
