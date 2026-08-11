@@ -1,12 +1,14 @@
-# Deploying DocReview360
+# Deploy DocReview360
 
-This quick note explains how to run the container on common free-tier platforms.
-The image expects a `PORT` environment variable supplied by the host.
+Run DocReview360 in production: set the required environment variables, manage secrets, configure encryption, and deploy the ONNX model.
+
+The container reads the `PORT` variable supplied by the host. The Dockerfile installs backend and frontend dependencies and builds the Next.js UI, so the image runs on most platforms without extra setup.
+
+Before you deploy, review [Settings reference](settings.md) for the three defaults that are unsafe in production.
 
 ## Environment variables
 
-The table below lists all recognised environment variables. Variables marked
-**required** must be set in every production deployment.
+Variables marked **required** must be set in every production deployment.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -27,17 +29,18 @@ The table below lists all recognised environment variables. Variables marked
 
 
 
-1. **Render** – add a Postgres database service and set `DATABASE_URL` to the
-   connection string. The platform automatically provides `PORT`.
-2. **Heroku** – provision a Postgres add-on and enable the `PORT` config
-   variable. The app will bind to it without further changes.
-3. **Fly.io** – create a Postgres instance with `fly postgres`. Define `DATABASE_URL`
-   and `PORT` in the app configuration.
-4. **Railway** – add a Postgres plugin and copy the `DATABASE_URL`. Railway
-   injects `PORT` when the container starts.
+## Deploy to a hosting platform
 
-The Dockerfile installs backend and frontend dependencies and builds the Next.js
-UI so the resulting image can run on these providers with minimal setup.
+Each platform needs a Postgres database and injects `PORT` for you.
+
+| Platform | Steps |
+| --- | --- |
+| Render | Add a Postgres service and set `DATABASE_URL` to its connection string. `PORT` is provided automatically. |
+| Heroku | Provision a Postgres add-on and enable the `PORT` config variable. The app binds to it with no further changes. |
+| Fly.io | Create an instance with `fly postgres`, then define `DATABASE_URL` and `PORT` in the app configuration. |
+| Railway | Add a Postgres plugin and copy `DATABASE_URL`. Railway injects `PORT` when the container starts. |
+
+For air-gapped networks, see [Air-gap deployment](air_gap_deployment.md). To release without downtime, see [Blue-green deployment](blue_green_deployment.md).
 
 ## Phases and document types
 

@@ -1,10 +1,10 @@
-# Environment Variables
+# Environment variables
 
-Use environment variables to override file-based configuration at runtime. This is the preferred way to pass secrets and deployment-specific settings.
+Use environment variables to override file-based configuration at runtime. This is how you pass secrets and deployment-specific settings.
 
 ## Precedence
 
-Configuration is resolved in this order:
+Configuration resolves in this order:
 
 1. Environment variables
 2. `docreview360.yaml`
@@ -13,14 +13,29 @@ Configuration is resolved in this order:
 
 ## Minimum local setup
 
-For local development, these values are usually enough:
+For local development, these two are usually enough:
 
 ```bash
 DOCREVIEW360_ENV=dev
-NEXT_PUBLIC_API_BASE=http://localhost:8000
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
 ```
 
-If you use the frontend, set `NEXT_PUBLIC_API_BASE` in `frontend/.env.local`.
+Set `NEXT_PUBLIC_API_BASE` in `frontend/.env.local`, and browse the frontend on the same hostname you put in that URL. The session cookie is host-scoped, so serving the frontend at `localhost` while the API is at `127.0.0.1` signs you out on every page load.
+
+## Set these in production
+
+Set `DOCREVIEW360_ENV` to any value other than `dev` or `test`, and DocReview360 refuses to start with missing secrets rather than falling back to development defaults. Provide at least:
+
+| Variable | Why |
+| --- | --- |
+| `DOCREVIEW360_ENV` | Enforces secret validation and stops demo-user seeding. |
+| `DOCREVIEW360_SECRET_KEY` | Signs API tokens. Anyone with this value can mint valid tokens. |
+| `DOCREVIEW360_OIDC_SECRET_KEY` | Signs OIDC tokens. |
+| `DOCREVIEW360_DATABASE_URL` | Points at your production database instead of local SQLite. |
+| `DOCREVIEW360_ALLOW_ORIGINS` | Restricts CORS to your own frontend origins. |
+| `DOCREVIEW360_SIGNATURE_SECRET` | Required for signature verification. |
+
+Never set `DOCREVIEW360_SEED_DEMO_USERS=true` in production. It creates accounts with published passwords.
 
 ## Authentication and tokens
 
@@ -113,19 +128,19 @@ Unix or macOS:
 
 ```bash
 export DOCREVIEW360_ENV=dev
-export NEXT_PUBLIC_API_BASE=http://localhost:8000
+export NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
 ```
 
 Windows PowerShell:
 
 ```powershell
 $env:DOCREVIEW360_ENV="dev"
-$env:NEXT_PUBLIC_API_BASE="http://localhost:8000"
+$env:NEXT_PUBLIC_API_BASE="http://127.0.0.1:8000"
 ```
 
 ## Related pages
 
-- [Getting Started](getting_started.md)
-- [Settings Reference](settings.md)
+- [Get started](getting_started.md)
+- [Settings reference](settings.md)
 - [Deployment](deployment.md)
-- [Testing and Quality](testing_and_quality.md)
+- [Testing and quality](testing_and_quality.md)
