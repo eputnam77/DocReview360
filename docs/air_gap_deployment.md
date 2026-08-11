@@ -17,16 +17,16 @@ On an internet-connected build host:
 
 ```bash
 # Build the production image
-docker build -t docreview360:0.1.2 .
+docker build -t docreview360:0.1.3 .
 
 # Export to archive
-docker save docreview360:0.1.2 | gzip > docreview360-0.1.2.tar.gz
+docker save docreview360:0.1.3 | gzip > docreview360-0.1.3.tar.gz
 
 # Verify
-sha256sum docreview360-0.1.2.tar.gz > docreview360-0.1.2.tar.gz.sha256
+sha256sum docreview360-0.1.3.tar.gz > docreview360-0.1.3.tar.gz.sha256
 ```
 
-Transfer `docreview360-0.1.2.tar.gz` and its `.sha256` to the air-gapped network via approved media.
+Transfer `docreview360-0.1.3.tar.gz` and its `.sha256` to the air-gapped network via approved media.
 
 ---
 
@@ -34,14 +34,14 @@ Transfer `docreview360-0.1.2.tar.gz` and its `.sha256` to the air-gapped network
 
 ```bash
 # Verify integrity
-sha256sum -c docreview360-0.1.2.tar.gz.sha256
+sha256sum -c docreview360-0.1.3.tar.gz.sha256
 
 # Load image
-gunzip -c docreview360-0.1.2.tar.gz | docker load
+gunzip -c docreview360-0.1.3.tar.gz | docker load
 
 # Tag and push to internal registry
-docker tag docreview360:0.1.2 registry.internal.example.gov/docreview360/docreview360:0.1.2
-docker push registry.internal.example.gov/docreview360/docreview360:0.1.2
+docker tag docreview360:0.1.3 registry.internal.example.gov/docreview360/docreview360:0.1.3
+docker push registry.internal.example.gov/docreview360/docreview360:0.1.3
 ```
 
 ---
@@ -70,11 +70,11 @@ Update `docker-compose.prod.yml` to reference the internal registry:
 # docker-compose.airgap.yml
 services:
   web:
-    image: registry.internal.example.gov/docreview360/docreview360:0.1.2
+    image: registry.internal.example.gov/docreview360/docreview360:0.1.3
   worker:
-    image: registry.internal.example.gov/docreview360/docreview360:0.1.2
+    image: registry.internal.example.gov/docreview360/docreview360:0.1.3
   beat:
-    image: registry.internal.example.gov/docreview360/docreview360:0.1.2
+    image: registry.internal.example.gov/docreview360/docreview360:0.1.3
   db:
     image: registry.internal.example.gov/mirror/postgres:16-alpine
   redis:
@@ -94,7 +94,7 @@ docker compose -f docker-compose.prod.yml -f docker-compose.airgap.yml up -d
 ```bash
 # Pull and save all required images
 for img in \
-  ghcr.io/eputnam77/docreview360:0.1.2 \
+  ghcr.io/eputnam77/docreview360:0.1.3 \
   postgres:16-alpine \
   redis:7-alpine \
   nginx:1.27-alpine; do

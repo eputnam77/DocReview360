@@ -2,8 +2,8 @@ apiVersion: v2
 name: docreview360
 description: DocReview360 — federal document workflow and approval platform
 type: application
-version: 0.1.2
-appVersion: "0.1.2"
+version: 0.1.3-a1
+appVersion: "0.1.3a1"
 keywords:
   - document-review
   - workflow

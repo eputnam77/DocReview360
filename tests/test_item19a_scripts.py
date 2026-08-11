@@ -199,10 +199,10 @@ class TestPlaceholdersSource:
         assert ".py" in text
         assert ".tsx" in text
 
-    def test_allowlist_includes_checklist_file(self) -> None:
-        """RELEASE_CHECKLIST.md is in GPL_SKIP_PATHS to avoid false positives."""
+    def test_allowlist_includes_licenses_report(self) -> None:
+        """docs/licenses-report.md is in GPL_SKIP_PATHS to avoid false positives."""
         text = self._text()
-        assert "RELEASE_CHECKLIST.md" in text
+        assert "docs/licenses-report.md" in text
 
 
 # ---------------------------------------------------------------------------
@@ -220,10 +220,10 @@ class TestPlaceholdersFixture:
         assert pattern.search("# TODO: fix this later")
 
     def test_does_not_flag_allowlisted_files(self) -> None:
-        """GPL_SKIP_PATHS must contain RELEASE_CHECKLIST.md."""
+        """GPL_SKIP_PATHS must contain docs/licenses-report.md."""
         text = PLACEHOLDERS_SCRIPT.read_text(encoding="utf-8")
         # The allowlist should include this file
-        assert "RELEASE_CHECKLIST.md" in text
+        assert "docs/licenses-report.md" in text
 
     def test_gpl_pattern_does_not_match_lgpl_or_agpl_as_whole_word(self) -> None:
         """GPL pattern uses negative lookahead to avoid matching LGPL, AGPL."""

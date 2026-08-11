@@ -1,6 +1,10 @@
 # Dependency License Report
 
-Generated from installed packages in the development environment.
+Generated from installed packages in a development environment (snapshot; the
+version column may lag the pins in `pyproject.toml`). Regenerate with
+`pip-licenses --format=markdown` from an environment installed with `.[full]`
+before each release.
+
 DocReview360 core is MIT-licensed. Notes on non-MIT dependencies:
 
 ## Runtime dependency notes
@@ -205,4 +209,3 @@ All source files in `src/docreview360/` carry `# SPDX-License-Identifier: MIT`.
 | defusedxml                               | 0.7.1       | Python Software Foundation License                                                                                                             |
 | distlib                                  | 0.4.0       | Python Software Foundation License                                                                                                             |
 | matplotlib                               | 3.10.3      | Python Software Foundation License                                                                                                             |
-| filelock                                 | 3.18.0      | Unlicense                                                                                                                                      |

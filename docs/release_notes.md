@@ -2,7 +2,7 @@
 
 This file records features and fixes that are fully implemented and tested.
 Items here have been verified against source code and have automated test coverage.
-See `RELEASE_CHECKLIST.md` (root) and `docs/release_checklist.md` for remaining open work.
+See `RELEASE_CHECKLIST.md` (repository root) for remaining open work.
 
 ---
 

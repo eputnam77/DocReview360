@@ -14,7 +14,6 @@ recursive-include src/docreview360 *.py *.json *.html *.sql *.tf *.txt
 # NOTE: The source distribution does not include the frontend source tree.
 prune src/docreview360/scripts
 prune tests
-prune .dev
 prune frontend/node_modules
 prune frontend/.next
 prune frontend/.tmp
@@ -24,6 +23,8 @@ prune frontend
 prune scripts
 prune docs
 prune artifacts
+prune archive_store
+prune tamper_proof_store
 prune .claude
 prune .git
 
