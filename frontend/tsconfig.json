@@ -11,7 +11,6 @@
       "es2022",
       "dom"
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
@@ -40,6 +39,7 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "__tests__"
   ]
 }
