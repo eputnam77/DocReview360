@@ -52,7 +52,7 @@ dependencies = [
   "click==8.4.2",
   "PyYAML==6.0.3",
   "defusedxml==0.7.1",
-  "zipp==3.19.1",
+  "zipp==4.1.0",
   "fastapi>=0.120.0",
   "python-multipart==0.0.32",
   "SQLAlchemy==2.0.41",
