@@ -1,6 +1,10 @@
-# DocReview360 documentation
+# DocReview360 — open-source document review and approval workflow software
 
-DocReview360 routes documents through drafting, review, approval, and publication, and keeps an audit trail of every step.
+DocReview360 is self-hosted document review software for technical and regulated documents. It routes documents through drafting, collaborative review, approval, and publication — with document version control, inline review comments, and a verifiable audit trail of every step.
+
+```
+Draft  →  Review  →  Resolve  →  Approve  →  Publish
+```
 
 This documentation is for administrators, deployers, and developers. If you review or author documents in the web app, open **Help & Support** in the sidebar instead.
 
@@ -12,6 +16,7 @@ This documentation is for administrators, deployers, and developers. If you revi
 | Deploy to production | [Deployment](deployment.md) |
 | Work through a realistic example | [Usage scenarios](scenarios.md) |
 | Contribute code | [Developer guide](developer.md) |
+| Decide if this is the right tool | [Comparison](comparison.md) |
 
 ## What DocReview360 does
 

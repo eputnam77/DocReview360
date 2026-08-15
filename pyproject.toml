@@ -6,27 +6,43 @@ build-backend = "setuptools.build_meta"
 [project]
 name            = "docreview360"
 version         = "0.1.3a1"
-description     = "DocReview360 simplifies document workflows with approvals and templates."
+description     = "Self-hosted document review, approval, and audit workflow software: route documents through drafting, review, approval, and publication with version control and a verifiable audit trail."
 readme          = "README.md"
 requires-python = ">=3.11,<3.13"
 license         = "MIT"
 keywords        = [
   "document-review",
-  "workflow",
-  "approvals",
+  "document-review-software",
+  "document-approval",
+  "approval-workflow",
+  "document-workflow",
+  "document-management",
+  "document-control",
+  "review-workflow",
+  "version-control",
+  "revision-history",
   "audit-trail",
   "compliance",
+  "technical-writing",
+  "self-hosted",
+  "fastapi",
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
+  "Intended Audience :: Legal Industry",
+  "Intended Audience :: System Administrators",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Topic :: Office/Business",
   "Topic :: Office/Business :: Groupware",
   "Topic :: Software Development :: Libraries :: Application Frameworks",
+  "Topic :: Text Processing :: Markup",
   "Typing :: Typed",
 ]
 
@@ -61,7 +77,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage      = "https://github.com/eputnam77/DocReview360"
+Homepage      = "https://eputnam77.github.io/DocReview360/"
+Documentation = "https://eputnam77.github.io/DocReview360/"
 Repository    = "https://github.com/eputnam77/DocReview360"
 Issues        = "https://github.com/eputnam77/DocReview360/issues"
 Changelog     = "https://github.com/eputnam77/DocReview360/blob/main/CHANGELOG.md"
