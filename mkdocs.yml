@@ -1,5 +1,14 @@
-site_name: DocReview360 Docs
+site_name: DocReview360
 site_url: https://eputnam77.github.io/DocReview360/
+site_description: >-
+  DocReview360 is open-source, self-hosted document review and approval workflow
+  software. Route documents through drafting, review, approval, and publication
+  with version control, inline comments, and a verifiable audit trail.
+site_author: Eric Putnam
+repo_url: https://github.com/eputnam77/DocReview360
+repo_name: eputnam77/DocReview360
+edit_uri: edit/main/docs/
+copyright: Released under the MIT License.
 nav:
   - Home: index.md
   - Getting Started: getting_started.md
@@ -61,6 +70,7 @@ nav:
       - Test Determinism: test_determinism.md
       - Manual Admin Scenario: manual-testing/admin-project-scenario.md
       - E2E API CLI QA Runbook: manual-testing/e2e-api-cli-qa-runbook.md
+  - Comparison: comparison.md
   - Licensing:
       - Licenses: licenses.md
       - Licenses Report: licenses-report.md
@@ -71,3 +81,26 @@ nav:
 docs_dir: docs
 theme:
   name: material
+  features:
+    - navigation.instant
+    - navigation.top
+    - search.suggest
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
