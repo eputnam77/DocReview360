@@ -4,7 +4,7 @@
 # Core dependencies
 Jinja2==3.1.6
 pydantic==2.13.3
-matplotlib==3.10.9
+matplotlib==3.11.1
 fonttools==4.62.1
 Pillow==12.3.0
 click==8.4.2
