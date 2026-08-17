@@ -141,7 +141,7 @@ document-analysis = [
 
 charts = [
   "matplotlib==3.10.9",
-  "fonttools==4.62.1",
+  "fonttools==4.63.0",
   "Pillow==12.3.0",
 ]
 
@@ -200,7 +200,7 @@ full = [
   "textstat==0.7.13",
   "textblob==0.19.0",
   "matplotlib==3.10.9",
-  "fonttools==4.62.1",
+  "fonttools==4.63.0",
   "Pillow==12.3.0",
   "ldap3>=2.9",
   "python3-saml>=1.16",
